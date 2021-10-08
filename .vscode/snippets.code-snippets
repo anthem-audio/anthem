@@ -1,0 +1,44 @@
+{
+	// Place your anthem workspace snippets here. Each snippet is defined under a snippet name and has a scope, prefix, body and 
+	// description. Add comma separated ids of the languages where the snippet is applicable in the scope field. If scope 
+	// is left empty or omitted, the snippet gets applied to all languages. The prefix is what is 
+	// used to trigger the snippet and the body will be expanded and inserted. Possible variables are: 
+	// $1, $2 for tab stops, $0 for the final cursor position, and ${1:label}, ${2:another} for placeholders. 
+	// Placeholders with the same ids are connected.
+	// Example:
+	// "Print to console": {
+	// 	"scope": "javascript,typescript",
+	// 	"prefix": "log",
+	// 	"body": [
+	// 		"console.log('$1');",
+	// 		"$2"
+	// 	],
+	// 	"description": "Log output to console"
+	// }
+
+	"License Notice": {
+		"prefix": ["license", "copyright"],
+		"body": [
+			"/*",
+			"    Copyright (C) 2021 $1",
+			"",
+			"    This file is part of Anthem.",
+			"",
+			"    Anthem is free software: you can redistribute it and/or modify",
+			"    it under the terms of the GNU General Public License as published by",
+			"    the Free Software Foundation, either version 3 of the License, or",
+			"    (at your option) any later version.",
+			"",
+			"    Anthem is distributed in the hope that it will be useful,",
+			"    but WITHOUT ANY WARRANTY; without even the implied warranty of",
+			"    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU",
+			"    General Public License for more details.",
+			"",
+			"    You should have received a copy of the GNU General Public License",
+			"    along with Anthem. If not, see <https://www.gnu.org/licenses/>.",
+			"*/",
+			"",
+			""
+		]
+	},
+}
