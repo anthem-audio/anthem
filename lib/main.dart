@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:plugin/generated/rid_api.dart';
 
 void main() {
@@ -10,12 +10,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Rust/Flutter Counter App Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: MyHomePage(_store, title: 'Rust/Flutter Counter Page'),
+    return WidgetsApp(
+      title: 'Anthem',
+      color: const Color.fromARGB(255, 7, 210, 212),
+      builder: (context, widget) {
+        return MyHomePage(_store, title: 'Anthem');
+      },
     );
   }
 }
@@ -31,11 +31,9 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: Center(
+    return Container(
+      color: Color(0xFFaaaaaa),
+      child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -44,30 +42,31 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             Text(
               '${widget._store.count}',
-              style: Theme.of(context).textTheme.headline4,
             ),
             const SizedBox(height: 100),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                GestureDetector(
+                  child: Container(
+                    color: Color(0xFFFF0000),
+                    width: 100,
+                    height: 100,
+                  ),
+                  onTap: _addTen,
+                ),
+                GestureDetector(
+                  child: Container(
+                    color: Color(0xFF00FF00),
+                    width: 100,
+                    height: 100,
+                  ),
+                  onTap: _incrementCounter,
+                ),
+              ],
+            ),
           ],
         ),
-      ),
-      floatingActionButton: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            onPressed: () {
-              _addTen();
-            },
-            tooltip: 'Add 10',
-            child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [Icon(Icons.add), Icon(Icons.add)]),
-          ),
-          FloatingActionButton(
-            onPressed: _incrementCounter,
-            tooltip: 'Increment',
-            child: Icon(Icons.add),
-          ),
-        ],
       ),
     );
   }
