@@ -21,6 +21,8 @@ import 'dart:ui';
 import 'package:flutter/widgets.dart';
 import 'package:plugin/generated/rid_api.dart';
 
+import 'main_window.dart';
+
 void main() {
   runApp(MyApp());
 }
@@ -45,7 +47,7 @@ class MyApp extends StatelessWidget {
             Container(
               color: const Color.fromARGB(77, 0, 0, 0),
             ),
-            MyHomePage(_store, title: "Anthem"),
+            MainWindow(),
           ],
         );
       },
