@@ -73,7 +73,7 @@ class _MyHomePageState extends State<MyHomePage> {
               'You have counted to:',
             ),
             Text(
-              '${widget._store.count}',
+              '${widget._store.counter.count}',
             ),
             const SizedBox(height: 100),
             Row(
