@@ -33,32 +33,57 @@ class WindowHeader extends StatefulWidget {
 class _WindowHeaderState extends State<WindowHeader> {
   @override
   Widget build(BuildContext context) {
+    final store = widget._store;
+
     return SizedBox(
       height: 37,
       child: Row(
-        children: widget._store.projects.map(
-          (project) {
-            final isActiveProject = project.id == widget._store.activeProjectId;
-            return Padding(
-              child: Container(
-                width: 125,
-                decoration: BoxDecoration(
-                  color:
-                      isActiveProject ? Theme.panel.accent : Theme.panel.main,
-                  borderRadius: isActiveProject
-                      ? BorderRadius.only(
-                          topLeft: Radius.circular(2),
-                          topRight: Radius.circular(2))
-                      : BorderRadius.all(
-                          Radius.circular(2),
-                        ),
+        children: store.projects.map<Widget>(
+              (project) {
+                final isActiveProject = project.id == store.activeProjectId;
+                return GestureDetector(
+                  onTap: () {
+                    store.msgSetActiveProject(project.id).then((reply) {
+                      setState(() {});
+                    });
+                  },
+                  child: Padding(
+                    child: Container(
+                      width: 125,
+                      decoration: BoxDecoration(
+                        color: isActiveProject
+                            ? Theme.panel.accent
+                            : Theme.panel.main,
+                        borderRadius: isActiveProject
+                            ? BorderRadius.only(
+                                topLeft: Radius.circular(2),
+                                topRight: Radius.circular(2))
+                            : BorderRadius.all(
+                                Radius.circular(2),
+                              ),
+                      ),
+                    ),
+                    padding: EdgeInsets.only(
+                        right: 1, bottom: isActiveProject ? 0 : 1),
+                  ),
+                );
+              },
+            ).toList() +
+            [
+              Expanded(
+                child: Padding(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.panel.main,
+                      borderRadius: BorderRadius.all(
+                        Radius.circular(2),
+                      ),
+                    ),
+                  ),
+                  padding: EdgeInsets.only(bottom: 1),
                 ),
               ),
-              padding:
-                  EdgeInsets.only(right: 1, bottom: isActiveProject ? 0 : 1),
-            );
-          },
-        ).toList(),
+            ],
       ),
     );
   }
