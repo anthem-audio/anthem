@@ -1,35 +1,43 @@
 use rid::RidStore;
 
 #[rid::store]
-#[rid::structs(Counter)]
+#[rid::structs(Project)]
 #[derive(Debug)]
 pub struct Store {
-    counter: Counter,
+    projects: Vec<Project>,
 }
 
+// #[rid::model]
+// #[derive(Debug)]
+// pub struct Counter {
+//     count: u32,
+// }
+
 #[rid::model]
-#[derive(Debug)]
-pub struct Counter {
-    count: u32,
-}
+#[derive(Clone, Debug)]
+pub struct Project {}
 
 impl RidStore<Msg> for Store {
     fn create() -> Self {
         Self {
-            counter: Counter { count: 0 },
+            // counter: Counter { count: 0 },
+            projects: [Project {}].to_vec(),
         }
     }
 
     fn update(&mut self, req_id: u64, msg: Msg) {
         match msg {
-            Msg::Inc => {
-                self.counter.count += 1;
-                rid::post(Reply::Increased(req_id));
+            Msg::Noop => {
+                rid::post(Reply::Noop(req_id))
             }
-            Msg::Add(n) => {
-                self.counter.count += n;
-                rid::post(Reply::Added(req_id, n.to_string()));
-            }
+            // Msg::Inc => {
+            //     self.counter.count += 1;
+            //     rid::post(Reply::Increased(req_id));
+            // }
+            // Msg::Add(n) => {
+            //     self.counter.count += n;
+            //     rid::post(Reply::Added(req_id, n.to_string()));
+            // }
         }
     }
 }
@@ -37,12 +45,14 @@ impl RidStore<Msg> for Store {
 #[rid::message(Reply)]
 #[derive(Debug)]
 pub enum Msg {
-    Inc,
-    Add(u32),
+    Noop,
+    // Inc,
+    // Add(u32),
 }
 
 #[rid::reply]
 pub enum Reply {
-    Increased(u64),
-    Added(u64, String),
+    Noop(u64),
+    // Increased(u64),
+// Added(u64, String),
 }

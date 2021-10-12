@@ -17,16 +17,17 @@ func dummyCallsToPreventTreeShaking() {
     create_store();
     rid_store_unlock();
     rid_store_free();
-    rid_store_counter(nil);
+    __include_dart_for_vec_project();
+    rid_store_projects(nil);
+    rid_len_vec_project(nil);
+    rid_get_item_vec_project(nil, 0);
     _include_Store_field_wrappers();
     rid_cstring_free(nil);
     rid_init_msg_isolate(0);
     rid_init_reply_isolate(0);
-    _to_dart_for_Counter();
-    rid_counter_debug(nil);
-    rid_counter_debug_pretty(nil);
-    rid_counter_count(nil);
-    rid_msg_Inc(0);
-    rid_msg_Add(0, 0);
+    _to_dart_for_Project();
+    rid_project_debug(nil);
+    rid_project_debug_pretty(nil);
+    rid_msg_Noop(0);
 }
 // <rid:prevent_tree_shake End>
