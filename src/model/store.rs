@@ -1,3 +1,23 @@
+/*
+    Copyright (C) 2021 Joshua Wade
+
+    This file is part of Anthem.
+
+    Anthem is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Anthem is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+    General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+*/
+
+use crate::util::id::get_id;
 use rid::RidStore;
 
 #[rid::store]
@@ -5,6 +25,7 @@ use rid::RidStore;
 #[derive(Debug)]
 pub struct Store {
     projects: Vec<Project>,
+    active_project_id: u64,
 }
 
 // #[rid::model]
@@ -15,29 +36,34 @@ pub struct Store {
 
 #[rid::model]
 #[derive(Clone, Debug)]
-pub struct Project {}
+pub struct Project {
+    id: u64,
+}
 
 impl RidStore<Msg> for Store {
     fn create() -> Self {
         Self {
             // counter: Counter { count: 0 },
-            projects: [Project {}].to_vec(),
+            projects: [
+                Project { id: 0 },
+                Project { id: get_id() },
+                Project { id: get_id() },
+            ]
+            .to_vec(),
+            active_project_id: 0,
         }
     }
 
     fn update(&mut self, req_id: u64, msg: Msg) {
         match msg {
-            Msg::Noop => {
-                rid::post(Reply::Noop(req_id))
+            Msg::NewProject => {
+                self.projects.push(Project { id: get_id() });
+                rid::post(Reply::Success(req_id))
             }
-            // Msg::Inc => {
-            //     self.counter.count += 1;
-            //     rid::post(Reply::Increased(req_id));
-            // }
-            // Msg::Add(n) => {
-            //     self.counter.count += n;
-            //     rid::post(Reply::Added(req_id, n.to_string()));
-            // }
+            Msg::SetActiveProject(project_id) => {
+                self.active_project_id = project_id;
+                rid::post(Reply::Success(req_id))
+            }
         }
     }
 }
@@ -45,14 +71,15 @@ impl RidStore<Msg> for Store {
 #[rid::message(Reply)]
 #[derive(Debug)]
 pub enum Msg {
-    Noop,
+    NewProject,
+    SetActiveProject(u64),
     // Inc,
     // Add(u32),
 }
 
 #[rid::reply]
 pub enum Reply {
-    Noop(u64),
+    Success(u64),
     // Increased(u64),
-// Added(u64, String),
+    // Added(u64, String),
 }

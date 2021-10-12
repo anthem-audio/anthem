@@ -47,7 +47,7 @@ class MyApp extends StatelessWidget {
             Container(
               color: const Color.fromARGB(77, 0, 0, 0),
             ),
-            MainWindow(),
+            MainWindow(_store),
           ],
         );
       },

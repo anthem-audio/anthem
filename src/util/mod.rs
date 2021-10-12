@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2021 Joshua Wade, Budislav Stepanov
+    Copyright (C) 2021 Joshua Wade
 
     This file is part of Anthem.
 
@@ -17,14 +17,4 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:flutter/cupertino.dart';
-
-class Theme {
-  static Panel panel = Panel();
-}
-
-class Panel {
-  Color light = Color(0xFFFFFFFF).withOpacity(0.03);
-  Color main = Color(0xFFFFFFFF).withOpacity(0.07);
-  Color accent = Color(0xFFFFFFFF).withOpacity(0.12);
-}
+pub mod id;

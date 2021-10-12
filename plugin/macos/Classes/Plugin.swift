@@ -27,6 +27,7 @@ func dummyCallsToPreventTreeShaking() {
     rid_store_free();
     __include_dart_for_vec_project();
     rid_store_projects(nil);
+    rid_store_active_project_id(nil);
     rid_len_vec_project(nil);
     rid_get_item_vec_project(nil, 0);
     _include_Store_field_wrappers();
@@ -36,6 +37,8 @@ func dummyCallsToPreventTreeShaking() {
     _to_dart_for_Project();
     rid_project_debug(nil);
     rid_project_debug_pretty(nil);
-    rid_msg_Noop(0);
+    rid_project_id(nil);
+    rid_msg_NewProject(0);
+    rid_msg_SetActiveProject(0, 0);
 }
 // <rid:prevent_tree_shake End>

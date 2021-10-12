@@ -15,3 +15,4 @@ path = "rid_build.rs"
 cbindgen = "0.20.0"
 rid_build = { path = "../../rid/rid-build" }
 rid = { path = "../../rid" }
+rand = "0.8.4"

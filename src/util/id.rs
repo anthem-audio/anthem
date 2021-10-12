@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2021 Joshua Wade, Budislav Stepanov
+    Copyright (C) 2021 Joshua Wade
 
     This file is part of Anthem.
 
@@ -17,14 +17,17 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:flutter/cupertino.dart';
+use rand::prelude::*;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-class Theme {
-  static Panel panel = Panel();
-}
+pub fn get_id() -> u64 {
+    let noise_mask = 0xffffffff00000000;
+    let noise = thread_rng().next_u64() & noise_mask;
 
-class Panel {
-  Color light = Color(0xFFFFFFFF).withOpacity(0.03);
-  Color main = Color(0xFFFFFFFF).withOpacity(0.07);
-  Color accent = Color(0xFFFFFFFF).withOpacity(0.12);
+    let time = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_micros() as u32;
+
+    time as u64 + noise
 }
