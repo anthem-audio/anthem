@@ -18,6 +18,9 @@
 */
 
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/menu/menu.dart';
+import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/window_header.dart';
 import 'package:flutter/widgets.dart';
 import 'package:plugin/generated/rid_api.dart';
@@ -32,6 +35,9 @@ class MainWindow extends StatefulWidget {
 }
 
 class _MainWindowState extends State<MainWindow> {
+  bool isTestMenuOpen = false;
+  MenuController menuController = MenuController();
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -48,7 +54,21 @@ class _MainWindowState extends State<MainWindow> {
           ),
           Expanded(
             child: Container(
-            color: Theme.panel.main,
+              color: Theme.panel.main,
+              child: Stack(
+                children: [
+                  Positioned(
+                    child: Menu(
+                      menuController: menuController,
+                      child: Button(
+                        onPress: () {
+                          menuController.open?.call();
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           SizedBox(
