@@ -58,11 +58,11 @@ impl RidStore<Msg> for Store {
         match msg {
             Msg::NewProject => {
                 self.projects.push(Project { id: get_id() });
-                rid::post(Reply::Success(req_id))
+                rid::post(Reply::NewProjectCreated(req_id))
             }
             Msg::SetActiveProject(project_id) => {
                 self.active_project_id = project_id;
-                rid::post(Reply::Success(req_id))
+                rid::post(Reply::ActiveProjectChanged(req_id))
             }
         }
     }
@@ -79,7 +79,8 @@ pub enum Msg {
 
 #[rid::reply]
 pub enum Reply {
-    Success(u64),
+    NewProjectCreated(u64),
+    ActiveProjectChanged(u64),
     // Increased(u64),
     // Added(u64, String),
 }
