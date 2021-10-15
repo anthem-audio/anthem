@@ -21,6 +21,7 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import 'menu_model.dart';
+import 'menu_renderer.dart';
 
 class MenuOverlay extends StatefulWidget {
   final Widget child;
@@ -43,11 +44,10 @@ class _MenuOverlayState extends State<MenuOverlay> {
   @override
   Widget build(BuildContext context) {
     final bool Function(MenuNotification) onNotification = (n) {
-      print("notif");
       if (n is OpenMenuNotification) {
         setState(() {
           openMenus.add(
-            MenuInstance(menu: MenuDef(), x: n.x, y: n.y, id: n.id),
+            MenuInstance(menu: n.menuDef, x: n.x, y: n.y, id: n.id),
           );
         });
         return true;
@@ -83,10 +83,8 @@ class _MenuOverlayState extends State<MenuOverlay> {
                       (menuInstance) => Positioned(
                         left: menuInstance.x,
                         top: menuInstance.y,
-                        child: Container(
-                          color: Color(0x55FFFFFF),
-                          width: 100,
-                          height: 100,
+                        child: MenuRenderer(
+                          menu: menuInstance.menu,
                         ),
                       ),
                     )

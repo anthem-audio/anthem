@@ -60,6 +60,18 @@ class _MainWindowState extends State<MainWindow> {
                   Positioned(
                     child: Menu(
                       menuController: menuController,
+                      menuDef: MenuDef(
+                        children: [
+                          MenuItem(text: "hello"),
+                          MenuItem(text: "I"),
+                          MenuItem(text: "am"),
+                          MenuItem(text: "a"),
+                          MenuItem(text: "menu"),
+                          Separator(),
+                          MenuItem(text: "I am a loger menu item"),
+                          MenuItem(text: "ok bye"),
+                        ]
+                      ),
                       child: Button(
                         onPress: () {
                           menuController.open?.call();

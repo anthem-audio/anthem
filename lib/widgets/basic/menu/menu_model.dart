@@ -46,7 +46,9 @@ class MenuInstance {
 }
 
 class MenuDef {
-  List<GenericMenuItem> children = [];
+  List<GenericMenuItem> children;
+
+  MenuDef({this.children = const []});
 }
 
 class GenericMenuItem {}
@@ -57,7 +59,7 @@ class MenuItem extends GenericMenuItem {
 
   MenuItem({String? text, MenuDef? submenu}) : super() {
     this.text = text ?? "";
-    this.submenu = submenu ?? MenuDef();
+    this.submenu = submenu ?? MenuDef(children: []);
   }
 }
 
@@ -73,8 +75,13 @@ class OpenMenuNotification extends MenuNotification {
   final int id = _menuIdGen++;
   final double x;
   final double y;
+  final MenuDef menuDef;
 
-  OpenMenuNotification({required this.x, required this.y}) : super();
+  OpenMenuNotification({
+    required this.x,
+    required this.y,
+    required this.menuDef,
+  }) : super();
 }
 
 class CloseMenuNotification extends MenuNotification {

@@ -22,9 +22,15 @@ import 'package:flutter/widgets.dart';
 
 class Menu extends StatefulWidget {
   final MenuController menuController;
+  final MenuDef menuDef;
   final Widget? child;
 
-  const Menu({Key? key, required this.menuController, this.child}) : super(key: key);
+  const Menu({
+    Key? key,
+    required this.menuController,
+    this.child,
+    required this.menuDef,
+  }) : super(key: key);
 
   @override
   State<Menu> createState() => _MenuState();
@@ -32,19 +38,22 @@ class Menu extends StatefulWidget {
 
 class _MenuState extends State<Menu> {
   int openMenuID = -1;
-  
+
   @override
   Widget build(BuildContext context) {
     return widget.child ?? SizedBox();
   }
 
   void openMenu() {
-    print('open menu');
     final contentRenderBox = context.findRenderObject() as RenderBox;
     final pos = contentRenderBox.localToGlobal(Offset(0, 0));
-    final notification = OpenMenuNotification(x: pos.dx, y: pos.dy);
-      openMenuID = notification.id;
-      notification.dispatch(context);
+    final notification = OpenMenuNotification(
+      x: pos.dx,
+      y: pos.dy,
+      menuDef: widget.menuDef,
+    );
+    openMenuID = notification.id;
+    notification.dispatch(context);
   }
 
   void closeMenu() {
