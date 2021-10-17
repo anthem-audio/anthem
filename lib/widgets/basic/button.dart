@@ -17,8 +17,26 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-pub mod commands;
-pub mod model;
-pub mod util;
+import 'package:flutter/widgets.dart';
 
-// use crate::model::store;
+class Button extends StatefulWidget {
+  VoidCallback? onPress;
+  Button({Key? key, this.onPress}) : super(key: key);
+
+  @override
+  _ButtonState createState() => _ButtonState();
+}
+
+class _ButtonState extends State<Button> {
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onPress,
+      child: Container(
+        color: Color(0xFFFF0000),
+        width: 10,
+        height: 10,
+      ),
+    );
+  }
+}

@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2021 Joshua Wade
+    Copyright (C) 2021 Joshua Wade, Budislav Stepanov
 
     This file is part of Anthem.
 
@@ -17,8 +17,20 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-pub mod commands;
-pub mod model;
-pub mod util;
+import 'package:flutter/cupertino.dart';
 
-// use crate::model::store;
+class Theme {
+  static Panel panel = Panel();
+  static Primary primary = Primary();
+  static Color separator = Color(0xFFFFFFFF).withOpacity(0.12);
+}
+
+class Panel {
+  Color light = Color(0xFFFFFFFF).withOpacity(0.03);
+  Color main = Color(0xFFFFFFFF).withOpacity(0.07);
+  Color accent = Color(0xFFFFFFFF).withOpacity(0.12);
+}
+
+class Primary {
+  Color main = Color(0xFF07D2D4);
+}

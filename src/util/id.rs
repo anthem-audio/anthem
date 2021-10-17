@@ -17,8 +17,17 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-pub mod commands;
-pub mod model;
-pub mod util;
+use rand::prelude::*;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-// use crate::model::store;
+pub fn get_id() -> u64 {
+    let noise_mask = 0xffffffff00000000;
+    let noise = thread_rng().next_u64() & noise_mask;
+
+    let time = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_micros() as u32;
+
+    time as u64 + noise
+}

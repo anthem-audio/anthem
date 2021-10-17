@@ -17,8 +17,11 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-pub mod commands;
-pub mod model;
-pub mod util;
+use crate::model::store::{Reply};
 
-// use crate::model::store;
+pub fn rid_reply_all(replies: &Vec<Reply>) {
+    replies.iter().for_each(|reply| {
+        let reply = reply.clone();
+        rid::post(reply);
+    });
+}
