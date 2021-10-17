@@ -17,6 +17,7 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+use crate::model::song::Song;
 use crate::util::id::get_id;
 use rid::RidStore;
 
@@ -24,20 +25,25 @@ use rid::RidStore;
 #[rid::structs(Project)]
 #[derive(Debug)]
 pub struct Store {
-    projects: Vec<Project>,
-    active_project_id: u64,
+    pub projects: Vec<Project>,
+    pub active_project_id: u64,
 }
 
-// #[rid::model]
-// #[derive(Debug)]
-// pub struct Counter {
-//     count: u32,
-// }
+impl Store {
+    pub fn get_project(&mut self, id: u64) -> &mut Project {
+        self.projects
+            .iter_mut()
+            .find(|project| project.id == id)
+            .expect("command references a non-existent project")
+    }
+}
 
 #[rid::model]
+#[rid::structs(Song)]
 #[derive(Clone, Debug)]
 pub struct Project {
-    id: u64,
+    pub id: u64,
+    pub song: Song,
 }
 
 impl RidStore<Msg> for Store {
@@ -45,25 +51,31 @@ impl RidStore<Msg> for Store {
         Self {
             // counter: Counter { count: 0 },
             projects: [
-                Project { id: 0 },
-                Project { id: get_id() },
-                Project { id: get_id() },
+                Project {
+                    id: 0,
+                    song: Song::default(),
+                },
+                Project {
+                    id: get_id(),
+                    song: Song::default(),
+                },
+                Project {
+                    id: get_id(),
+                    song: Song::default(),
+                },
             ]
             .to_vec(),
             active_project_id: 0,
         }
     }
 
-    fn update(&mut self, req_id: u64, msg: Msg) {
+    fn update(&mut self, /*req_id*/_: u64, msg: Msg) {
         match msg {
-            Msg::NewProject => {
-                self.projects.push(Project { id: get_id() });
-                rid::post(Reply::NewProjectCreated(req_id))
-            }
-            Msg::SetActiveProject(project_id) => {
-                self.active_project_id = project_id;
-                rid::post(Reply::ActiveProjectChanged(req_id))
-            }
+            Msg::NewProject => todo!(),
+            Msg::SetActiveProject(_) => todo!(),
+            Msg::CloseProject(_) => todo!(),
+            Msg::AddPattern(_) => todo!(),
+            Msg::DeletePattern(_) => todo!(),
         }
     }
 }
@@ -73,14 +85,16 @@ impl RidStore<Msg> for Store {
 pub enum Msg {
     NewProject,
     SetActiveProject(u64),
-    // Inc,
-    // Add(u32),
+    CloseProject(u64),
+    AddPattern(String),
+    DeletePattern(u64),
 }
 
 #[rid::reply]
 pub enum Reply {
-    NewProjectCreated(u64),
-    ActiveProjectChanged(u64),
-    // Increased(u64),
-    // Added(u64, String),
+    NewProjectCreated,
+    ActiveProjectChanged,
+    ProjectClosed,
+    PatternAdded,
+    PatternDeleted,
 }

@@ -1,6 +1,4 @@
-use rid_build::{
-    build, BuildConfig, BuildTarget, FlutterConfig, FlutterPlatform, Project,
-};
+use rid_build::{build, BuildConfig, BuildTarget, FlutterConfig, FlutterPlatform, Project};
 use std::env;
 
 fn main() {

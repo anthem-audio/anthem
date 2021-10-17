@@ -17,8 +17,5 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-pub mod commands;
-pub mod model;
-pub mod util;
-
-// use crate::model::store;
+pub mod command;
+pub mod pattern_commands;

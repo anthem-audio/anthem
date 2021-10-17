@@ -17,8 +17,22 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-pub mod commands;
-pub mod model;
-pub mod util;
+use crate::model::pattern::Pattern;
+use crate::util::id::get_id;
 
-// use crate::model::store;
+#[rid::model]
+#[rid::structs(Pattern)]
+#[derive(Clone, Debug)]
+pub struct Song {
+    pub id: u64,
+    pub patterns: Vec<Pattern>,
+}
+
+impl Default for Song {
+    fn default() -> Self {
+        Song {
+            id: get_id(),
+            patterns: Vec::new(),
+        }
+    }
+}
