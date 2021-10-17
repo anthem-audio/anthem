@@ -17,8 +17,9 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-pub mod commands;
-pub mod model;
-pub mod util;
+use crate::model::store::{Reply, Store};
 
-// use crate::model::store;
+pub trait Command {
+    fn execute(&self, store: &mut Store, request_id: u64) -> Vec<Reply>;
+    fn rollback(&self, store: &mut Store, request_id: u64) -> Vec<Reply>;
+}

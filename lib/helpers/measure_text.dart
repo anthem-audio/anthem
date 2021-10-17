@@ -17,8 +17,17 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-pub mod commands;
-pub mod model;
-pub mod util;
+import 'package:flutter/widgets.dart';
 
-// use crate::model::store;
+Size measureText(
+    {required String text,
+    required TextStyle textStyle,
+    required BuildContext context}) {
+  return (TextPainter(
+          text: TextSpan(text: text, style: textStyle),
+          maxLines: 1,
+          textScaleFactor: MediaQuery.of(context).textScaleFactor,
+          textDirection: TextDirection.ltr)
+        ..layout())
+      .size;
+}

@@ -1,11 +1,11 @@
 [package]
 name = "anthem"
 version = "0.1.0"
-authors = ["Thorsten Lorenz <thlorenz@gmx.de>"]
+authors = ["Joshua Wade"]
 edition = "2018"
 
 [lib]
-crate-type = ["cdylib", "staticlib" ]
+crate-type = ["cdylib", "staticlib"]
 
 [[bin]]
 name = "rid_build"
@@ -15,3 +15,4 @@ path = "rid_build.rs"
 cbindgen = "0.20.0"
 rid_build = { path = "../../rid/rid-build" }
 rid = { path = "../../rid" }
+rand = "0.8.4"
