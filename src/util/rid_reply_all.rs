@@ -17,9 +17,11 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use crate::model::store::{Reply, Store};
+use crate::model::store::{Reply};
 
-pub trait Command {
-    fn execute(&self, store: &mut Store, request_id: u64) -> Vec<Reply>;
-    fn rollback(&self, store: &mut Store, request_id: u64) -> Vec<Reply>;
+pub fn rid_reply_all(replies: &Vec<Reply>) {
+    replies.iter().for_each(|reply| {
+        let reply = reply.clone();
+        rid::post(reply);
+    });
 }

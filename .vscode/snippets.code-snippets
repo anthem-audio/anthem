@@ -38,7 +38,26 @@
 			"    along with Anthem. If not, see <https://www.gnu.org/licenses/>.",
 			"*/",
 			"",
+			"$0",
 			""
 		]
 	},
+
+	"Anthem Command": {
+		"prefix": ["command"],
+		"body": [
+			"pub struct $1Command {}",
+			"",
+			"impl Command for $1Command {",
+			"    fn execute(&self, store: &mut Store) -> Vec<Reply> {",
+			"        todo!()",
+			"    }",
+			"",
+			"    fn rollback(&self, _store: &mut Store) -> Vec<Reply> {",
+			"        todo!()",
+			"    }",
+			"}",
+			""
+		]
+	}
 }

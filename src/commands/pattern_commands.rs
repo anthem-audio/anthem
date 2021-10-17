@@ -28,7 +28,7 @@ pub struct AddPatternCommand {
 }
 
 impl Command for AddPatternCommand {
-    fn execute(&self, store: &mut Store) -> Vec<Reply> {
+    fn execute(&self, store: &mut Store, request_id: u64) -> Vec<Reply> {
         let pattern = Pattern {
             id: self.pattern_id,
             name: self.name.clone(),
@@ -36,16 +36,16 @@ impl Command for AddPatternCommand {
         let project = store.get_project(self.project_id);
         project.song.patterns.push(pattern);
 
-        vec![Reply::PatternAdded]
+        vec![Reply::PatternAdded(request_id)]
     }
 
-    fn rollback(&self, store: &mut Store) -> Vec<Reply> {
+    fn rollback(&self, store: &mut Store, request_id: u64) -> Vec<Reply> {
         store
             .get_project(self.project_id)
             .song
             .patterns
             .retain(|pattern| pattern.id != self.pattern_id);
 
-        vec![Reply::PatternDeleted]
+        vec![Reply::PatternDeleted(request_id)]
     }
 }

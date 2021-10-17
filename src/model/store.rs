@@ -17,8 +17,11 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+use crate::commands::command::Command;
+use crate::commands::store_commands::*;
 use crate::model::song::Song;
 use crate::util::id::get_id;
+use crate::util::rid_reply_all::rid_reply_all;
 use rid::RidStore;
 
 #[rid::store]
@@ -69,13 +72,29 @@ impl RidStore<Msg> for Store {
         }
     }
 
-    fn update(&mut self, /*req_id*/_: u64, msg: Msg) {
+    fn update(&mut self, /*req_id*/ req_id: u64, msg: Msg) {
         match msg {
-            Msg::NewProject => todo!(),
-            Msg::SetActiveProject(_) => todo!(),
-            Msg::CloseProject(_) => todo!(),
-            Msg::AddPattern(_) => todo!(),
-            Msg::DeletePattern(_) => todo!(),
+            Msg::NewProject => {
+                let replies = (NewProjectCommand {
+                    project_id: get_id(),
+                })
+                .execute(self, req_id);
+
+                rid_reply_all(&replies);
+            }
+            Msg::SetActiveProject(project_id) => {
+                let replies = (SetActiveProjectCommand { project_id }).execute(self, req_id);
+
+                rid_reply_all(&replies);
+            }
+            Msg::CloseProject(project_id) => {
+                let replies = (CloseProjectCommand { project_id }).execute(self, req_id);
+
+                rid_reply_all(&replies);
+            }
+
+            Msg::AddPattern(_) => {}
+            Msg::DeletePattern(_) => {}
         }
     }
 }
@@ -83,18 +102,25 @@ impl RidStore<Msg> for Store {
 #[rid::message(Reply)]
 #[derive(Debug)]
 pub enum Msg {
+    // Store
     NewProject,
     SetActiveProject(u64),
     CloseProject(u64),
+
+    // Pattern
     AddPattern(String),
     DeletePattern(u64),
 }
 
 #[rid::reply]
+#[derive(Clone, Debug)]
 pub enum Reply {
-    NewProjectCreated,
-    ActiveProjectChanged,
-    ProjectClosed,
-    PatternAdded,
-    PatternDeleted,
+    // Store
+    NewProjectCreated(u64),
+    ActiveProjectChanged(u64),
+    ProjectClosed(u64),
+
+    // Pattern
+    PatternAdded(u64),
+    PatternDeleted(u64),
 }
