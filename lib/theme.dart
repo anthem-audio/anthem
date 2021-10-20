@@ -20,17 +20,17 @@
 import 'package:flutter/cupertino.dart';
 
 class Theme {
-  static Panel panel = Panel();
-  static Primary primary = Primary();
+  static _Panel panel = _Panel();
+  static _Primary primary = _Primary();
   static Color separator = Color(0xFFFFFFFF).withOpacity(0.12);
 }
 
-class Panel {
+class _Panel {
   Color light = Color(0xFFFFFFFF).withOpacity(0.03);
   Color main = Color(0xFFFFFFFF).withOpacity(0.07);
   Color accent = Color(0xFFFFFFFF).withOpacity(0.12);
 }
 
-class Primary {
+class _Primary {
   Color main = Color(0xFF07D2D4);
 }

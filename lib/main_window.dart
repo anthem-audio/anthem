@@ -18,9 +18,8 @@
 */
 
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
-import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/window_header.dart';
 import 'package:flutter/widgets.dart';
 import 'package:plugin/generated/rid_api.dart';
@@ -53,33 +52,19 @@ class _MainWindowState extends State<MainWindow> {
             height: 3,
           ),
           Expanded(
-            child: Container(
-              color: Theme.panel.main,
-              child: Stack(
-                children: [
-                  Positioned(
-                    child: Menu(
-                      menuController: menuController,
-                      menuDef: MenuDef(
-                        children: [
-                          MenuItem(text: "hello"),
-                          MenuItem(text: "I"),
-                          MenuItem(text: "am"),
-                          MenuItem(text: "a"),
-                          MenuItem(text: "menu"),
-                          Separator(),
-                          MenuItem(text: "I am a loger menu item"),
-                          MenuItem(text: "ok bye"),
-                        ]
-                      ),
-                      child: Button(
-                        onPress: () {
-                          menuController.open?.call();
-                        },
-                      ),
-                    ),
-                  ),
-                ],
+            child: Panel(
+              orientation: PanelOrientation.Top,
+              child: Panel(
+                orientation: PanelOrientation.Bottom,
+                child: Container(
+                  color: Color(0x55FF0000),
+                ),
+                panelContent: Container(
+                  color: Color(0x5500FF00),
+                ),
+              ),
+              panelContent: Container(
+                color: Color(0x5500FF00),
               ),
             ),
           ),
