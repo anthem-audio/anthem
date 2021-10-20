@@ -19,6 +19,8 @@
 
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/menu/menu.dart';
+import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:flutter/widgets.dart';
 
 class ProjectHeader extends StatelessWidget {
@@ -26,14 +28,35 @@ class ProjectHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final menuController = MenuController();
+
     return Container(
       height: 42,
       color: Theme.panel.accent,
-      child: Padding(padding: EdgeInsets.all(7), child: Row(
-        children: [
-          Button(width: 28, iconPath: "assets/icons/file/hamburger.svg"),
-        ],
-      ))
+      child: Padding(
+        padding: EdgeInsets.all(7),
+        child: Row(
+          children: [
+            Menu(
+              menuController: menuController,
+              menuDef: MenuDef(
+                children: [
+                  MenuItem(text: "New Project", onSelected: () {
+                    
+                  }),
+                ],
+              ),
+              child: Button(
+                width: 28,
+                iconPath: "assets/icons/file/hamburger.svg",
+                onPress: () {
+                  menuController.open?.call();
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

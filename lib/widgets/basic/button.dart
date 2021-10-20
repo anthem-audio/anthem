@@ -70,9 +70,7 @@ class _ButtonState extends State<Button> {
           });
         },
         onPointerUp: (e) {
-          if (widget.onPress != null) {
-            widget.onPress!();
-          }
+          widget.onPress?.call();
           setState(() {
             pressed = false;
           });

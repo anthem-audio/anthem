@@ -104,14 +104,20 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
             hovered = false;
           });
         },
-        child: Container(
-          color: hovered ? Theme.primary.main : null,
-          height: height,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: padding),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(item.text),
+        child: GestureDetector(
+          onTap: () {
+            item.onSelected?.call();
+            CloseAllMenusNotification().dispatch(context);
+          },
+          child: Container(
+            color: hovered ? Theme.primary.main : null,
+            height: height,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: padding),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(item.text),
+              ),
             ),
           ),
         ),
