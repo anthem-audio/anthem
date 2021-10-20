@@ -23,6 +23,8 @@ import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/window_header.dart';
 import 'package:flutter/widgets.dart';
 import 'package:plugin/generated/rid_api.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:anthem/main_window_cubit.dart';
 
 class MainWindow extends StatefulWidget {
   final Store _store;
@@ -39,44 +41,53 @@ class _MainWindowState extends State<MainWindow> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.all(3),
-      child: Column(
-        children: [
-          WindowHeader(widget._store),
-          Container(
-            height: 42,
-            color: Theme.panel.accent,
-          ),
-          SizedBox(
-            height: 3,
-          ),
-          Expanded(
-            child: Panel(
-              orientation: PanelOrientation.Top,
+    return BlocBuilder<MainWindowCubit, MainWindowState>(
+        builder: (context, state) {
+      return Padding(
+        padding: EdgeInsets.all(3),
+        child: Column(
+          children: [
+            WindowHeader(
+              selectedTabID: state.selectedTabID,
+              tabs: state.tabs,
+              setActiveProject: (int id) {
+                context.read<MainWindowCubit>().switchTab(id);
+              },
+            ),
+            Container(
+              height: 42,
+              color: Theme.panel.accent,
+            ),
+            SizedBox(
+              height: 3,
+            ),
+            Expanded(
               child: Panel(
-                orientation: PanelOrientation.Bottom,
-                child: Container(
-                  color: Color(0x55FF0000),
+                orientation: PanelOrientation.Left,
+                child: Panel(
+                  orientation: PanelOrientation.Right,
+                  child: Container(
+                    color: Color(0x55FF0000),
+                  ),
+                  panelContent: Container(
+                    color: Color(0x5500FF00),
+                  ),
                 ),
                 panelContent: Container(
                   color: Color(0x5500FF00),
                 ),
               ),
-              panelContent: Container(
-                color: Color(0x5500FF00),
-              ),
             ),
-          ),
-          SizedBox(
-            height: 3,
-          ),
-          Container(
-            height: 42,
-            color: Theme.panel.light,
-          )
-        ],
-      ),
-    );
+            SizedBox(
+              height: 3,
+            ),
+            Container(
+              height: 42,
+              color: Theme.panel.light,
+            )
+          ],
+        ),
+      );
+    });
   }
 }

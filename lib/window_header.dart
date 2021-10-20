@@ -19,12 +19,20 @@
 
 import 'package:anthem/theme.dart';
 import 'package:flutter/widgets.dart';
-import 'package:plugin/generated/rid_api.dart';
+
+import 'main_window_cubit.dart';
 
 class WindowHeader extends StatefulWidget {
-  final Store _store;
+  final int selectedTabID;
+  final List<TabDef> tabs;
+  final Function(int) setActiveProject;
 
-  WindowHeader(this._store, {Key? key}) : super(key: key);
+  WindowHeader({
+    Key? key,
+    required this.selectedTabID,
+    required this.tabs,
+    required this.setActiveProject,
+  }) : super(key: key);
 
   @override
   _WindowHeaderState createState() => _WindowHeaderState();
@@ -33,19 +41,15 @@ class WindowHeader extends StatefulWidget {
 class _WindowHeaderState extends State<WindowHeader> {
   @override
   Widget build(BuildContext context) {
-    final store = widget._store;
-
     return SizedBox(
       height: 37,
       child: Row(
-        children: store.projects.map<Widget>(
-              (project) {
-                final isActiveProject = project.id == store.activeProjectId;
+        children: widget.tabs.map<Widget>(
+              (tab) {
+                final isActiveProject = tab.id == widget.selectedTabID;
                 return GestureDetector(
                   onTap: () {
-                    store.msgSetActiveProject(project.id).then((reply) {
-                      setState(() {});
-                    });
+                    widget.setActiveProject(tab.id);
                   },
                   child: Padding(
                     child: Container(
