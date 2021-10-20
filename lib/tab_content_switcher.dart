@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/project_header.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/panel.dart';
 import 'package:flutter/widgets.dart';
@@ -52,6 +53,10 @@ class TabContentSwitcher extends StatelessWidget {
                 maintainState: true,
                 child: Column(
                   children: [
+                    ProjectHeader(),
+                    SizedBox(
+                      height: 3,
+                    ),
                     Expanded(
                       child: Panel(
                         orientation: PanelOrientation.Left,

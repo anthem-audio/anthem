@@ -18,24 +18,81 @@
 */
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
+import '../../theme.dart';
 
 class Button extends StatefulWidget {
   VoidCallback? onPress;
-  Button({Key? key, this.onPress}) : super(key: key);
+  double? width;
+  double? height;
+  String? iconPath;
+
+  Button({
+    Key? key,
+    this.onPress,
+    this.width,
+    this.height,
+    this.iconPath,
+  }) : super(key: key);
 
   @override
   _ButtonState createState() => _ButtonState();
 }
 
 class _ButtonState extends State<Button> {
+  bool hovered = false;
+  bool pressed = false;
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: widget.onPress,
-      child: Container(
-        color: Color(0xFFFF0000),
-        width: 10,
-        height: 10,
+    final hoverColor = Theme.control.hover;
+    final activeColor = Theme.control.active;
+
+    var backgroundColor = hovered ? hoverColor : null;
+    if (pressed) backgroundColor = activeColor;
+
+    return MouseRegion(
+      onEnter: (e) {
+        setState(() {
+          hovered = true;
+        });
+      },
+      onExit: (e) {
+        setState(() {
+          hovered = false;
+        });
+      },
+      child: Listener(
+        onPointerDown: (e) {
+          setState(() {
+            pressed = true;
+          });
+        },
+        onPointerUp: (e) {
+          if (widget.onPress != null) {
+            widget.onPress!();
+          }
+          setState(() {
+            pressed = false;
+          });
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.all(Radius.circular(2)),
+          ),
+          width: widget.width,
+          height: widget.height,
+          child: widget.iconPath != null
+              ? Center(
+                  child: SvgPicture.asset(
+                    widget.iconPath!,
+                    color: Theme.text.main,
+                  ),
+                )
+              : null,
+        ),
       ),
     );
   }

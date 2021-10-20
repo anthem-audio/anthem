@@ -55,13 +55,6 @@ class _MainWindowState extends State<MainWindow> {
                 context.read<MainWindowCubit>().switchTab(id);
               },
             ),
-            Container(
-              height: 42,
-              color: Theme.panel.accent,
-            ),
-            SizedBox(
-              height: 3,
-            ),
             Expanded(
               child: TabContentSwitcher(
                 tabs: state.tabs,

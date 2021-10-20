@@ -19,18 +19,32 @@
 
 import 'package:flutter/cupertino.dart';
 
+const white = const Color(0xFFFFFFFF);
+const black = const Color(0xFF000000);
+
 class Theme {
   static _Panel panel = _Panel();
   static _Primary primary = _Primary();
-  static Color separator = Color(0xFFFFFFFF).withOpacity(0.12);
+  static _Control control = _Control();
+  static _Text text = _Text();
+  static Color separator = white.withOpacity(0.12);
 }
 
 class _Panel {
-  Color light = Color(0xFFFFFFFF).withOpacity(0.03);
-  Color main = Color(0xFFFFFFFF).withOpacity(0.07);
-  Color accent = Color(0xFFFFFFFF).withOpacity(0.12);
+  Color light = white.withOpacity(0.03);
+  Color main = white.withOpacity(0.07);
+  Color accent = white.withOpacity(0.12);
 }
 
 class _Primary {
   Color main = Color(0xFF07D2D4);
+}
+
+class _Control {
+  Color hover = white.withOpacity(0.12);
+  Color active = white.withOpacity(0.07);
+}
+
+class _Text {
+  Color main =  white.withOpacity(0.7);
 }
