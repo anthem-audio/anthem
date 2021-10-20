@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/tab_content_switcher.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/panel.dart';
@@ -62,29 +63,11 @@ class _MainWindowState extends State<MainWindow> {
               height: 3,
             ),
             Expanded(
-              child: Panel(
-                orientation: PanelOrientation.Left,
-                child: Panel(
-                  orientation: PanelOrientation.Right,
-                  child: Container(
-                    color: Color(0x55FF0000),
-                  ),
-                  panelContent: Container(
-                    color: Color(0x5500FF00),
-                  ),
-                ),
-                panelContent: Container(
-                  color: Color(0x5500FF00),
-                ),
+              child: TabContentSwitcher(
+                tabs: state.tabs,
+                selectedTabID: state.selectedTabID,
               ),
             ),
-            SizedBox(
-              height: 3,
-            ),
-            Container(
-              height: 42,
-              color: Theme.panel.light,
-            )
           ],
         ),
       );
