@@ -27,11 +27,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'main_window_cubit.dart';
 
 class ProjectHeader extends StatelessWidget {
-  const ProjectHeader({Key? key}) : super(key: key);
+  final int projectID;
+
+  const ProjectHeader({Key? key, required this.projectID}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<MainWindowCubit, MainWindowState>(builder: (context, state) {
+    return BlocBuilder<MainWindowCubit, MainWindowState>(
+        builder: (context, state) {
       final menuController = MenuController();
       final cubit = context.read<MainWindowCubit>();
 
@@ -46,15 +49,21 @@ class ProjectHeader extends StatelessWidget {
                 menuController: menuController,
                 menuDef: MenuDef(
                   children: [
-                    MenuItem(text: "New Project", onSelected: () {
-                      cubit.newProject().then((projectID) => cubit.switchTab(projectID));
-                    }),
+                    MenuItem(
+                        text: "New Project",
+                        onSelected: () {
+                          cubit
+                              .newProject()
+                              .then((projectID) => cubit.switchTab(projectID));
+                        }),
                   ],
                 ),
                 child: Button(
                   width: 28,
                   iconPath: "assets/icons/file/hamburger.svg",
                   onPress: () {
+                    print("press " + projectID.toString());
+                    print(menuController.open == null);
                     menuController.open?.call();
                   },
                 ),

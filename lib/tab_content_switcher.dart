@@ -53,7 +53,9 @@ class TabContentSwitcher extends StatelessWidget {
                 maintainState: true,
                 child: Column(
                   children: [
-                    ProjectHeader(),
+                    ProjectHeader(
+                      projectID: tab.id,
+                    ),
                     SizedBox(
                       height: 3,
                     ),

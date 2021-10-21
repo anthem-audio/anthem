@@ -41,6 +41,7 @@ class _MenuState extends State<Menu> {
 
   @override
   Widget build(BuildContext context) {
+    widget.menuController.open = openMenu;
     return widget.child ?? SizedBox();
   }
 
@@ -58,14 +59,6 @@ class _MenuState extends State<Menu> {
 
   void closeMenu() {
     CloseMenuNotification(id: openMenuID).dispatch(context);
-  }
-
-  @override
-  void initState() {
-    widget.menuController.open = () {
-      openMenu();
-    };
-    super.initState();
   }
 }
 
