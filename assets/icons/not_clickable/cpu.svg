@@ -1,0 +1,34 @@
+<!--
+    Copyright (C) 2021 Joshua Wade, Budislav Stepanov
+
+    This file is part of Anthem.
+
+    Anthem is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Anthem is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+    General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+-->
+
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="4" y="4" width="8" height="8" stroke="white" stroke-width="2"/>
+<path d="M3 1C3 0.447715 3.44772 0 4 0V0C4.55228 0 5 0.447715 5 1V3H3V1Z" fill="white"/>
+<path d="M7 1C7 0.447715 7.44772 0 8 0V0C8.55228 0 9 0.447715 9 1V3H7V1Z" fill="white"/>
+<path d="M11 1C11 0.447715 11.4477 0 12 0V0C12.5523 0 13 0.447715 13 1V3H11V1Z" fill="white"/>
+<path d="M3 13H5V15C5 15.5523 4.55228 16 4 16V16C3.44772 16 3 15.5523 3 15V13Z" fill="white"/>
+<path d="M7 13H9V15C9 15.5523 8.55228 16 8 16V16C7.44772 16 7 15.5523 7 15V13Z" fill="white"/>
+<path d="M11 13H13V15C13 15.5523 12.5523 16 12 16V16C11.4477 16 11 15.5523 11 15V13Z" fill="white"/>
+<path d="M13 3H15C15.5523 3 16 3.44772 16 4V4C16 4.55228 15.5523 5 15 5H13V3Z" fill="white"/>
+<path d="M13 11H15C15.5523 11 16 11.4477 16 12V12C16 12.5523 15.5523 13 15 13H13V11Z" fill="white"/>
+<path d="M13 7H15C15.5523 7 16 7.44772 16 8V8C16 8.55228 15.5523 9 15 9H13V7Z" fill="white"/>
+<path d="M0 4C0 3.44772 0.447715 3 1 3H3V5H1C0.447715 5 0 4.55228 0 4V4Z" fill="white"/>
+<path d="M0 12C0 11.4477 0.447715 11 1 11H3V13H1C0.447715 13 0 12.5523 0 12V12Z" fill="white"/>
+<path d="M0 8C0 7.44772 0.447715 7 1 7H3V9H1C0.447715 9 0 8.55228 0 8V8Z" fill="white"/>
+</svg>
