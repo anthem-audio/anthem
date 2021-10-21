@@ -22,41 +22,47 @@ import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'main_window_cubit.dart';
 
 class ProjectHeader extends StatelessWidget {
   const ProjectHeader({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final menuController = MenuController();
+    return BlocBuilder<MainWindowCubit, MainWindowState>(builder: (context, state) {
+      final menuController = MenuController();
+      final cubit = context.read<MainWindowCubit>();
 
-    return Container(
-      height: 42,
-      color: Theme.panel.accent,
-      child: Padding(
-        padding: EdgeInsets.all(7),
-        child: Row(
-          children: [
-            Menu(
-              menuController: menuController,
-              menuDef: MenuDef(
-                children: [
-                  MenuItem(text: "New Project", onSelected: () {
-                    
-                  }),
-                ],
+      return Container(
+        height: 42,
+        color: Theme.panel.accent,
+        child: Padding(
+          padding: EdgeInsets.all(7),
+          child: Row(
+            children: [
+              Menu(
+                menuController: menuController,
+                menuDef: MenuDef(
+                  children: [
+                    MenuItem(text: "New Project", onSelected: () {
+                      cubit.newProject().then((projectID) => cubit.switchTab(projectID));
+                    }),
+                  ],
+                ),
+                child: Button(
+                  width: 28,
+                  iconPath: "assets/icons/file/hamburger.svg",
+                  onPress: () {
+                    menuController.open?.call();
+                  },
+                ),
               ),
-              child: Button(
-                width: 28,
-                iconPath: "assets/icons/file/hamburger.svg",
-                onPress: () {
-                  menuController.open?.call();
-                },
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 }

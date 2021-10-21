@@ -63,4 +63,10 @@ class MainWindowCubit extends Cubit<MainWindowState> {
   }
 
   Future<void> switchTab(int newTabID) => _store.msgSetActiveProject(newTabID);
+  
+  // Returns the ID of the new tab
+  Future<int> newProject() async {
+    final reply = await _store.msgNewProject();
+    return int.parse(reply.data!);
+  }
 }

@@ -34,7 +34,10 @@ impl Command for NewProjectCommand {
             song: Song::default(),
         };
         store.projects.push(project);
-        vec![Reply::NewProjectCreated(request_id)]
+        vec![Reply::NewProjectCreated(
+            request_id,
+            self.project_id.to_string(),
+        )]
     }
 
     // The new project command should not be part of the undo list
