@@ -24,13 +24,17 @@ class Menu extends StatefulWidget {
   final MenuController menuController;
   final MenuDef menuDef;
   final Widget? child;
+  late final MenuAlignment menuAlignment;
 
-  const Menu({
+  Menu({
     Key? key,
     required this.menuController,
     this.child,
     required this.menuDef,
-  }) : super(key: key);
+    MenuAlignment? alignment,
+  }) : super(key: key) {
+    this.menuAlignment = alignment ?? MenuAlignment.TopLeft;
+  }
 
   @override
   State<Menu> createState() => _MenuState();
@@ -47,7 +51,18 @@ class _MenuState extends State<Menu> {
 
   void openMenu() {
     final contentRenderBox = context.findRenderObject() as RenderBox;
-    final pos = contentRenderBox.localToGlobal(Offset(0, 0));
+    final pos = contentRenderBox.localToGlobal(
+      Offset(
+        widget.menuAlignment == MenuAlignment.TopLeft ||
+                widget.menuAlignment == MenuAlignment.BottomLeft
+            ? 0
+            : contentRenderBox.size.width,
+        widget.menuAlignment == MenuAlignment.TopLeft ||
+                widget.menuAlignment == MenuAlignment.TopRight
+            ? 0
+            : contentRenderBox.size.width,
+      ),
+    );
     final notification = OpenMenuNotification(
       x: pos.dx,
       y: pos.dy,

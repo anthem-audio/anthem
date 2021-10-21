@@ -36,7 +36,7 @@ impl Command for NewProjectCommand {
         store.projects.push(project);
         vec![Reply::NewProjectCreated(
             request_id,
-            self.project_id.to_string(),
+            (self.project_id as i64).to_string(),
         )]
     }
 
@@ -67,8 +67,11 @@ pub struct CloseProjectCommand {
 }
 
 impl Command for CloseProjectCommand {
-    fn execute(&self, _store: &mut Store, _request_id: u64) -> Vec<Reply> {
-        unimplemented!()
+    fn execute(&self, _store: &mut Store, request_id: u64) -> Vec<Reply> {
+        _store.projects.retain(|project| {
+            project.id != self.project_id
+        });
+        vec![Reply::ProjectClosed(request_id)]
     }
 
     // The set active project command should not be part of the undo list

@@ -48,7 +48,7 @@ class MainWindowCubit extends Cubit<MainWindowState> {
 
   static List<TabDef> _getTabs(Store store) {
     return store.projects
-        .map((item) => TabDef(id: item.id, title: "todo"))
+        .map((item) => TabDef(id: item.id, title: item.id.toString()))
         .toList();
   }
 
@@ -63,10 +63,12 @@ class MainWindowCubit extends Cubit<MainWindowState> {
   }
 
   Future<void> switchTab(int newTabID) => _store.msgSetActiveProject(newTabID);
-  
+
   // Returns the ID of the new tab
   Future<int> newProject() async {
     final reply = await _store.msgNewProject();
     return int.parse(reply.data!);
   }
+
+  Future<void> closeProject(int projectID) => _store.msgCloseProject(projectID);
 }

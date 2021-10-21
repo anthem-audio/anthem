@@ -63,33 +63,35 @@ class _ButtonState extends State<Button> {
           hovered = false;
         });
       },
-      child: Listener(
-        onPointerDown: (e) {
-          setState(() {
-            pressed = true;
-          });
-        },
-        onPointerUp: (e) {
-          widget.onPress?.call();
-          setState(() {
-            pressed = false;
-          });
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.all(Radius.circular(2)),
+      child: GestureDetector(
+        onTap: widget.onPress,
+        child: Listener(
+          onPointerDown: (e) {
+            setState(() {
+              pressed = true;
+            });
+          },
+          onPointerUp: (e) {
+            setState(() {
+              pressed = false;
+            });
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.all(Radius.circular(2)),
+            ),
+            width: widget.width,
+            height: widget.height,
+            child: widget.iconPath != null
+                ? Center(
+                    child: SvgPicture.asset(
+                      widget.iconPath!,
+                      color: Theme.text.main,
+                    ),
+                  )
+                : null,
           ),
-          width: widget.width,
-          height: widget.height,
-          child: widget.iconPath != null
-              ? Center(
-                  child: SvgPicture.asset(
-                    widget.iconPath!,
-                    color: Theme.text.main,
-                  ),
-                )
-              : null,
         ),
       ),
     );

@@ -54,6 +54,9 @@ class _MainWindowState extends State<MainWindow> {
               setActiveProject: (int id) {
                 context.read<MainWindowCubit>().switchTab(id);
               },
+              closeProject: (int id) {
+                context.read<MainWindowCubit>().closeProject(id);
+              },
             ),
             Expanded(
               child: TabContentSwitcher(

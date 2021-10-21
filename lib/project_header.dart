@@ -58,12 +58,11 @@ class ProjectHeader extends StatelessWidget {
                         }),
                   ],
                 ),
+                alignment: MenuAlignment.BottomLeft,
                 child: Button(
                   width: 28,
                   iconPath: "assets/icons/file/hamburger.svg",
                   onPress: () {
-                    print("press " + projectID.toString());
-                    print(menuController.open == null);
                     menuController.open?.call();
                   },
                 ),
