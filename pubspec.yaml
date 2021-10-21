@@ -17,6 +17,9 @@ dependencies:
 
   cupertino_icons: ^1.0.2
   provider: "6.0.1"
+  bloc: ^7.2.1
+  flutter_bloc: ^7.3.1
+  flutter_svg: ^0.23.0+1
 
 dev_dependencies:
   flutter_test:
@@ -28,3 +31,23 @@ flutter:
 
   assets:
   - assets/images/
+  - assets/icons/arranger/
+  - assets/icons/arranger/clip/
+  - assets/icons/bottom_bar/
+  - assets/icons/browser/
+  - assets/icons/channel/
+  - assets/icons/control/
+  - assets/icons/controller_rack/
+  - assets/icons/cursor/
+  - assets/icons/file/
+  - assets/icons/main/
+  - assets/icons/media/
+  - assets/icons/mixer/
+  - assets/icons/not_clickable/
+  - assets/icons/note_editor/
+  - assets/icons/pattern_editor/
+  - assets/icons/pattern_list/
+  - assets/icons/patterns/
+  - assets/icons/small/
+  - assets/icons/top_bar/
+  - assets/icons/top_bar/tools/

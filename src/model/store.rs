@@ -116,7 +116,7 @@ pub enum Msg {
 #[derive(Clone, Debug)]
 pub enum Reply {
     // Store
-    NewProjectCreated(u64),
+    NewProjectCreated(u64, String),
     ActiveProjectChanged(u64),
     ProjectClosed(u64),
 
