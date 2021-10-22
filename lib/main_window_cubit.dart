@@ -43,7 +43,8 @@ class MainWindowCubit extends Cubit<MainWindowState> {
     _flushSub = rid.replyChannel.stream
         .where((event) =>
             event.type == Reply.NewProjectCreated ||
-            event.type == Reply.ProjectClosed)
+            event.type == Reply.ProjectClosed ||
+            event.type == Reply.ProjectLoaded)
         .listen(_updateTabList);
   }
 
@@ -84,7 +85,8 @@ class MainWindowCubit extends Cubit<MainWindowState> {
           ?.files[0]
           .path;
       if (path == null) return null;
-      print(path);
+      final id = (await _store.msgLoadProject(path)).data!;
+      return int.parse(id);
     } catch (e) {
       return null;
     }
