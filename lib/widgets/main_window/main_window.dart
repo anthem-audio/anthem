@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/tab_content_switcher.dart';
+import 'package:anthem/widgets/main_window/tab_content_switcher.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/panel.dart';
@@ -25,7 +25,7 @@ import 'package:anthem/window_header.dart';
 import 'package:flutter/widgets.dart';
 import 'package:plugin/generated/rid_api.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:anthem/main_window_cubit.dart';
+import 'package:anthem/widgets/main_window/main_window_cubit.dart';
 
 class MainWindow extends StatefulWidget {
   final Store _store;
