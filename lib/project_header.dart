@@ -50,11 +50,29 @@ class ProjectHeader extends StatelessWidget {
                 menuDef: MenuDef(
                   children: [
                     MenuItem(
-                        text: "New Project",
+                        text: "New project",
                         onSelected: () {
                           cubit
                               .newProject()
                               .then((projectID) => cubit.switchTab(projectID));
+                        }),
+                    MenuItem(
+                        text: "Load project...",
+                        onSelected: () {
+                          cubit.loadProject().then((projectID) {
+                            if (projectID != null) cubit.switchTab(projectID);
+                          });
+                        }),
+                    Separator(),
+                    MenuItem(
+                        text: "Save",
+                        onSelected: () {
+                          cubit.saveProject(projectID, false);
+                        }),
+                    MenuItem(
+                        text: "Save as...",
+                        onSelected: () {
+                          cubit.saveProject(projectID, true);
                         }),
                   ],
                 ),

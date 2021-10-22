@@ -17,16 +17,18 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+use rid::RidStore;
+use serde::{Deserialize, Serialize};
+
 use crate::commands::command::Command;
 use crate::commands::store_commands::*;
 use crate::model::song::Song;
 use crate::util::id::get_id;
 use crate::util::rid_reply_all::rid_reply_all;
-use rid::RidStore;
 
 #[rid::store]
 #[rid::structs(Project)]
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Store {
     pub projects: Vec<Project>,
     pub active_project_id: u64,
@@ -43,36 +45,42 @@ impl Store {
 
 #[rid::model]
 #[rid::structs(Song)]
-#[derive(Clone, Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Project {
     pub id: u64,
+
+    // TODO: replace with Option<String> when rid gets option support
+    #[serde(skip_serializing)]
+    pub is_saved: bool,
+    #[serde(skip_serializing)]
+    pub file_path: String,
+
     pub song: Song,
+}
+
+impl Default for Project {
+    fn default() -> Self {
+        Project {
+            id: get_id(),
+            is_saved: false,
+            file_path: "".into(),
+            song: Song::default(),
+        }
+    }
 }
 
 impl RidStore<Msg> for Store {
     fn create() -> Self {
+        let project = Project::default();
+        let id = project.id;
+
         Self {
-            // counter: Counter { count: 0 },
-            projects: [
-                Project {
-                    id: 0,
-                    song: Song::default(),
-                },
-                Project {
-                    id: get_id(),
-                    song: Song::default(),
-                },
-                Project {
-                    id: get_id(),
-                    song: Song::default(),
-                },
-            ]
-            .to_vec(),
-            active_project_id: 0,
+            projects: vec![project],
+            active_project_id: id,
         }
     }
 
-    fn update(&mut self, /*req_id*/ req_id: u64, msg: Msg) {
+    fn update(&mut self, req_id: u64, msg: Msg) {
         match msg {
             Msg::NewProject => {
                 let replies = (NewProjectCommand {
@@ -92,6 +100,11 @@ impl RidStore<Msg> for Store {
 
                 rid_reply_all(&replies);
             }
+            Msg::SaveProject(project_id, path) => {
+                let replies = (SaveProjectCommand { project_id, path }).execute(self, req_id);
+
+                rid_reply_all(&replies);
+            }
 
             Msg::AddPattern(_) => {}
             Msg::DeletePattern(_) => {}
@@ -106,6 +119,7 @@ pub enum Msg {
     NewProject,
     SetActiveProject(u64),
     CloseProject(u64),
+    SaveProject(u64, String),
 
     // Pattern
     AddPattern(String),
@@ -119,6 +133,7 @@ pub enum Reply {
     NewProjectCreated(u64, String),
     ActiveProjectChanged(u64),
     ProjectClosed(u64),
+    ProjectSaved(u64),
 
     // Pattern
     PatternAdded(u64),

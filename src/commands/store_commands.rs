@@ -17,11 +17,10 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+use std::fs;
+
 use super::command::Command;
-use crate::model::{
-    song::Song,
-    store::{Project, Reply, Store},
-};
+use crate::model::store::{Project, Reply, Store};
 
 pub struct NewProjectCommand {
     pub project_id: u64,
@@ -29,10 +28,7 @@ pub struct NewProjectCommand {
 
 impl Command for NewProjectCommand {
     fn execute(&self, store: &mut Store, request_id: u64) -> Vec<Reply> {
-        let project = Project {
-            id: self.project_id,
-            song: Song::default(),
-        };
+        let project = Project::default();
         store.projects.push(project);
         vec![Reply::NewProjectCreated(
             request_id,
@@ -40,7 +36,7 @@ impl Command for NewProjectCommand {
         )]
     }
 
-    // The new project command should not be part of the undo list
+    // Undo doesn't make sense for this command
     fn rollback(&self, _store: &mut Store, _request_id: u64) -> Vec<Reply> {
         unimplemented!()
     }
@@ -56,7 +52,7 @@ impl Command for SetActiveProjectCommand {
         vec![Reply::ActiveProjectChanged(request_id)]
     }
 
-    // The set active project command should not be part of the undo list
+    // Undo doesn't make sense for this command
     fn rollback(&self, _store: &mut Store, _request_id: u64) -> Vec<Reply> {
         unimplemented!()
     }
@@ -68,13 +64,41 @@ pub struct CloseProjectCommand {
 
 impl Command for CloseProjectCommand {
     fn execute(&self, _store: &mut Store, request_id: u64) -> Vec<Reply> {
-        _store.projects.retain(|project| {
-            project.id != self.project_id
-        });
+        _store
+            .projects
+            .retain(|project| project.id != self.project_id);
         vec![Reply::ProjectClosed(request_id)]
     }
 
-    // The set active project command should not be part of the undo list
+    // Undo doesn't make sense for this command
+    fn rollback(&self, _store: &mut Store, _request_id: u64) -> Vec<Reply> {
+        unimplemented!()
+    }
+}
+
+pub struct SaveProjectCommand {
+    pub project_id: u64,
+    pub path: String,
+}
+
+impl Command for SaveProjectCommand {
+    fn execute(&self, _store: &mut Store, request_id: u64) -> Vec<Reply> {
+        let mut project = _store
+            .projects
+            .iter_mut()
+            .find(|project| project.id == self.project_id)
+            .expect("project does not exist");
+
+        let serialized = serde_json::to_string(project).expect("project failed to serialize");
+
+        fs::write(&self.path, &serialized).expect("unable to write to file");
+
+        project.is_saved = true;
+
+        vec![Reply::ProjectSaved(request_id)]
+    }
+
+    // Undo doesn't make sense for this command
     fn rollback(&self, _store: &mut Store, _request_id: u64) -> Vec<Reply> {
         unimplemented!()
     }
