@@ -17,8 +17,10 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+use serde::{Serialize, Deserialize};
+
 #[rid::model]
-#[derive(Clone, Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Pattern {
     pub id: u64,
     pub name: String,

@@ -24,7 +24,7 @@ import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'main_window_cubit.dart';
+import 'widgets/main_window/main_window_cubit.dart';
 
 class ProjectHeader extends StatelessWidget {
   final int projectID;
@@ -36,7 +36,7 @@ class ProjectHeader extends StatelessWidget {
     return BlocBuilder<MainWindowCubit, MainWindowState>(
         builder: (context, state) {
       final menuController = MenuController();
-      final cubit = context.read<MainWindowCubit>();
+      final mainWindowCubit = context.read<MainWindowCubit>();
 
       return Container(
         height: 42,
@@ -50,11 +50,31 @@ class ProjectHeader extends StatelessWidget {
                 menuDef: MenuDef(
                   children: [
                     MenuItem(
-                        text: "New Project",
+                        text: "New project",
                         onSelected: () {
-                          cubit
-                              .newProject()
-                              .then((projectID) => cubit.switchTab(projectID));
+                          mainWindowCubit.newProject().then((projectID) {
+                            mainWindowCubit.switchTab(projectID);
+                            print(projectID);
+                          });
+                        }),
+                    MenuItem(
+                        text: "Load project...",
+                        onSelected: () {
+                          mainWindowCubit.loadProject().then((projectID) {
+                            if (projectID != null)
+                              mainWindowCubit.switchTab(projectID);
+                          });
+                        }),
+                    Separator(),
+                    MenuItem(
+                        text: "Save",
+                        onSelected: () {
+                          mainWindowCubit.saveProject(projectID, false);
+                        }),
+                    MenuItem(
+                        text: "Save as...",
+                        onSelected: () {
+                          mainWindowCubit.saveProject(projectID, true);
                         }),
                   ],
                 ),
