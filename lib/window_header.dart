@@ -21,7 +21,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:flutter/widgets.dart';
 
-import 'main_window_cubit.dart';
+import 'widgets/main_window/main_window_cubit.dart';
 
 class WindowHeader extends StatefulWidget {
   final int selectedTabID;
