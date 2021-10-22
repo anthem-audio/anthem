@@ -23,8 +23,8 @@ import 'package:flutter/widgets.dart';
 import 'package:plugin/generated/rid_api.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'main_window.dart';
-import 'main_window_cubit.dart';
+import 'widgets/main_window/main_window.dart';
+import 'widgets/main_window/main_window_cubit.dart';
 
 void main() {
   runApp(MyApp());
@@ -39,10 +39,8 @@ class MyApp extends StatelessWidget {
       title: 'Anthem',
       color: const Color.fromARGB(255, 7, 210, 212),
       builder: (context, widget) {
-        return MultiBlocProvider(
-          providers: [
-            BlocProvider<MainWindowCubit>(create: (_) => MainWindowCubit())
-          ],
+        return BlocProvider<MainWindowCubit>(
+          create: (_) => MainWindowCubit(),
           child: MenuOverlay(
             child: Stack(
               fit: StackFit.expand,
