@@ -20,6 +20,7 @@
 import 'package:anthem/project_header.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/panel.dart';
+import 'package:anthem/widgets/project/project_wrapper.dart';
 import 'package:flutter/widgets.dart';
 
 import 'main_window_cubit.dart';
@@ -51,40 +52,7 @@ class TabContentSwitcher extends StatelessWidget {
                 maintainSemantics: false,
                 maintainSize: false,
                 maintainState: true,
-                child: Column(
-                  children: [
-                    ProjectHeader(
-                      projectID: tab.id,
-                    ),
-                    SizedBox(
-                      height: 3,
-                    ),
-                    Expanded(
-                      child: Panel(
-                        orientation: PanelOrientation.Left,
-                        child: Panel(
-                          orientation: PanelOrientation.Right,
-                          child: Container(
-                            color: Color(0x55FF0000),
-                          ),
-                          panelContent: Container(
-                            color: Color(0x5500FF00),
-                          ),
-                        ),
-                        panelContent: Container(
-                          color: Color(0x5500FF00),
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      height: 3,
-                    ),
-                    Container(
-                      height: 42,
-                      color: Theme.panel.light,
-                    )
-                  ],
-                ),
+                child: ProjectWrapper(tab: tab),
               ),
             ),
           )

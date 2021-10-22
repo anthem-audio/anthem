@@ -39,10 +39,8 @@ class MyApp extends StatelessWidget {
       title: 'Anthem',
       color: const Color.fromARGB(255, 7, 210, 212),
       builder: (context, widget) {
-        return MultiBlocProvider(
-          providers: [
-            BlocProvider<MainWindowCubit>(create: (_) => MainWindowCubit())
-          ],
+        return BlocProvider<MainWindowCubit>(
+          create: (_) => MainWindowCubit(),
           child: MenuOverlay(
             child: Stack(
               fit: StackFit.expand,
