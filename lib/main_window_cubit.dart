@@ -22,6 +22,7 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
 import 'package:plugin/generated/rid_api.dart';
+import 'package:file_picker/file_picker.dart';
 
 part 'main_window_state.dart';
 
@@ -71,4 +72,47 @@ class MainWindowCubit extends Cubit<MainWindowState> {
   }
 
   Future<void> closeProject(int projectID) => _store.msgCloseProject(projectID);
+
+  // Returns the ID of the loaded project, or null if the project load failed
+  // or was cancelled
+  Future<int?> loadProject() async {
+    try {
+      final path = (await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ["anthem"],
+      ))
+          ?.files[0]
+          .path;
+      if (path == null) return null;
+      print(path);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<void> saveProject(int projectID, bool alwaysUseFilePicker) async {
+    try {
+      final project =
+          _store.projects.firstWhere((project) => project.id == projectID);
+
+      String? path;
+      if (alwaysUseFilePicker || !project.isSaved) {
+        path = (await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ["anthem"],
+        ))
+            ?.files[0]
+            .path;
+      } else {
+        path = project.filePath;
+      }
+
+      if (path == null) return null;
+
+      await _store.msgSaveProject(projectID, path);
+    } catch (e) {
+      // TODO: the backend isn't telling us if the save failed, so we can't act on that
+      return;
+    }
+  }
 }

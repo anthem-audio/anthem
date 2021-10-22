@@ -17,12 +17,14 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+use serde::{Serialize, Deserialize};
+
 use crate::model::pattern::Pattern;
 use crate::util::id::get_id;
 
 #[rid::model]
 #[rid::structs(Pattern)]
-#[derive(Clone, Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Song {
     pub id: u64,
     pub patterns: Vec<Pattern>,
