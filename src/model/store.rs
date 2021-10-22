@@ -43,6 +43,14 @@ impl Store {
     }
 }
 
+fn default_file_path() -> String {
+    "".to_string()
+}
+
+fn default_is_saved() -> bool {
+    true
+}
+
 #[rid::model]
 #[rid::structs(Song)]
 #[derive(Debug, Serialize, Deserialize)]
@@ -50,9 +58,9 @@ pub struct Project {
     pub id: u64,
 
     // TODO: replace with Option<String> when rid gets option support
-    #[serde(skip_serializing)]
+    #[serde(skip_serializing, default = "default_is_saved")]
     pub is_saved: bool,
-    #[serde(skip_serializing)]
+    #[serde(skip_serializing, default = "default_file_path")]
     pub file_path: String,
 
     pub song: Song,
@@ -83,10 +91,7 @@ impl RidStore<Msg> for Store {
     fn update(&mut self, req_id: u64, msg: Msg) {
         match msg {
             Msg::NewProject => {
-                let replies = (NewProjectCommand {
-                    project_id: get_id(),
-                })
-                .execute(self, req_id);
+                let replies = NewProjectCommand.execute(self, req_id);
 
                 rid_reply_all(&replies);
             }
@@ -105,6 +110,11 @@ impl RidStore<Msg> for Store {
 
                 rid_reply_all(&replies);
             }
+            Msg::LoadProject(path) => {
+                let replies = (LoadProjectCommand { path }).execute(self, req_id);
+
+                rid_reply_all(&replies);
+            }
 
             Msg::AddPattern(_) => {}
             Msg::DeletePattern(_) => {}
@@ -120,6 +130,7 @@ pub enum Msg {
     SetActiveProject(u64),
     CloseProject(u64),
     SaveProject(u64, String),
+    LoadProject(String),
 
     // Pattern
     AddPattern(String),
@@ -131,9 +142,10 @@ pub enum Msg {
 pub enum Reply {
     // Store
     NewProjectCreated(u64, String),
-    ActiveProjectChanged(u64),
+    ActiveProjectChanged(u64, String),
     ProjectClosed(u64),
     ProjectSaved(u64),
+    ProjectLoaded(u64, String),
 
     // Pattern
     PatternAdded(u64),
