@@ -57,7 +57,8 @@ class Project extends StatelessWidget {
                     orientation: PanelOrientation.Left,
                     child: Container(color: Theme.panel.main),
                     panelContent: BlocProvider<PatternEditorCubit>(
-                      create: (context) => PatternEditorCubit(),
+                      create: (context) =>
+                          PatternEditorCubit(projectID: state.id),
                       child: PatternEditor(),
                     ),
                   ),

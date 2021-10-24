@@ -21,14 +21,14 @@ use rid::RidStore;
 use serde::{Deserialize, Serialize};
 
 use crate::commands::command::Command;
-use crate::commands::store_commands::*;
+use crate::message_handlers::store_message_handler::store_message_handler;
+use crate::message_handlers::pattern_message_handler::pattern_message_handler;
 use crate::model::song::Song;
 use crate::util::id::get_id;
-use crate::util::rid_reply_all::rid_reply_all;
 
 #[rid::store]
 #[rid::structs(Project)]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Store {
     pub projects: Vec<Project>,
     pub active_project_id: u64,
@@ -53,7 +53,7 @@ fn default_is_saved() -> bool {
 
 #[rid::model]
 #[rid::structs(Song)]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, rid::Config)]
 pub struct Project {
     pub id: u64,
 
@@ -64,6 +64,16 @@ pub struct Project {
     pub file_path: String,
 
     pub song: Song,
+
+    #[serde(skip_serializing, skip_deserializing)]
+    #[rid(skip)]
+    pub commands: Vec<Box<dyn Command>>,
+
+    // Points to the next command for redo, or one past the end if there is
+    // nothing to redo
+    #[serde(skip_serializing, skip_deserializing)]
+    #[rid(skip)]
+    pub command_pointer: usize,
 }
 
 impl Default for Project {
@@ -73,7 +83,32 @@ impl Default for Project {
             is_saved: false,
             file_path: "".into(),
             song: Song::default(),
+            commands: Vec::new(),
+            command_pointer: 0,
         }
+    }
+}
+
+impl Project {
+    pub fn push_command(&mut self, command: Box<dyn Command>) {
+        while self.commands.len() > self.command_pointer {
+            self.commands.pop();
+        }
+        self.commands.push(command);
+    }
+    pub fn get_undo_and_bump_pointer(&mut self) -> Option<&Box<dyn Command>> {
+        let command = self.commands.get(self.command_pointer - 1);
+        if command.is_some() {
+            self.command_pointer -= 1;
+        }
+        command
+    }
+    pub fn get_redo_and_bump_pointer(&mut self) -> Option<&Box<dyn Command>> {
+        let command = self.commands.get(self.command_pointer);
+        if command.is_some() {
+            self.command_pointer += 1;
+        }
+        command
     }
 }
 
@@ -89,35 +124,14 @@ impl RidStore<Msg> for Store {
     }
 
     fn update(&mut self, req_id: u64, msg: Msg) {
-        match msg {
-            Msg::NewProject => {
-                let replies = NewProjectCommand.execute(self, req_id);
-
-                rid_reply_all(&replies);
-            }
-            Msg::SetActiveProject(project_id) => {
-                let replies = (SetActiveProjectCommand { project_id }).execute(self, req_id);
-
-                rid_reply_all(&replies);
-            }
-            Msg::CloseProject(project_id) => {
-                let replies = (CloseProjectCommand { project_id }).execute(self, req_id);
-
-                rid_reply_all(&replies);
-            }
-            Msg::SaveProject(project_id, path) => {
-                let replies = (SaveProjectCommand { project_id, path }).execute(self, req_id);
-
-                rid_reply_all(&replies);
-            }
-            Msg::LoadProject(path) => {
-                let replies = (LoadProjectCommand { path }).execute(self, req_id);
-
-                rid_reply_all(&replies);
-            }
-
-            Msg::AddPattern(_) => {}
-            Msg::DeletePattern(_) => {}
+        let handled = [
+            store_message_handler(self, req_id, &msg),
+            pattern_message_handler(self, req_id, &msg),
+        ]
+        .iter()
+        .fold(false, |a, b| a || *b);
+        if !handled {
+            panic!("message not handled");
         }
     }
 }
@@ -133,8 +147,8 @@ pub enum Msg {
     LoadProject(String),
 
     // Pattern
-    AddPattern(String),
-    DeletePattern(u64),
+    AddPattern(u64, String),
+    DeletePattern(u64, u64),
 }
 
 #[rid::reply]

@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
 import 'package:plugin/generated/rid_api.dart';
@@ -24,5 +26,40 @@ import 'package:plugin/generated/rid_api.dart';
 part 'pattern_editor_state.dart';
 
 class PatternEditorCubit extends Cubit<PatternEditorState> {
-  PatternEditorCubit() : super(PatternEditorState()) {}
+  // ignore: unused_field
+  late final StreamSubscription<PostedReply> _updatePatternListSub;
+  final Store _store = Store.instance;
+
+  PatternEditorCubit({required int projectID})
+      : super(PatternEditorState(
+          projectID: projectID,
+          pattern: null,
+          patternList: [],
+        )) {
+    _updatePatternListSub = rid.replyChannel.stream
+        .where((event) =>
+            event.type == Reply.PatternAdded ||
+            event.type == Reply.PatternDeleted)
+        .listen(_updatePatternList);
+  }
+
+  _updatePatternList(PostedReply _reply) {
+    emit(
+      PatternEditorState(
+        projectID: state.projectID,
+        pattern: state.pattern,
+        patternList: _store.projects
+            .firstWhere((project) => project.id == state.projectID)
+            .song
+            .patterns
+            .map(
+              (pattern) => PatternListItem(id: pattern.id, name: pattern.name),
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  Future<void> addPattern(String name) => _store.msgAddPattern(state.projectID, name);
+  Future<void> deletePattern(int id) => _store.msgDeletePattern(state.projectID, id);
 }

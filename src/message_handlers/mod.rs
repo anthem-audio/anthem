@@ -17,19 +17,5 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use serde::{Deserialize, Serialize};
-
-use crate::util::id::get_id;
-
-#[rid::model]
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Pattern {
-    pub id: u64,
-    pub name: String,
-}
-
-impl Pattern {
-    pub fn new(name: String) -> Self {
-        Pattern { id: get_id(), name }
-    }
-}
+pub mod store_message_handler;
+pub mod pattern_message_handler;

@@ -26,10 +26,10 @@ import 'menu/menu.dart';
 import 'menu/menu_model.dart';
 
 class Dropdown extends StatefulWidget {
-  double? width;
-  double? height;
-  String? selectedID;
-  List<DropdownItem> items;
+  final double? width;
+  final double? height;
+  final String? selectedID;
+  final List<DropdownItem> items;
 
   Dropdown({
     Key? key,

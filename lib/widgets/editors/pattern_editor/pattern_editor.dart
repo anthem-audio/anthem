@@ -17,9 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/button_row_divider.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
+import 'package:anthem/widgets/basic/menu/menu.dart';
+import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -36,8 +40,12 @@ class PatternEditor extends StatefulWidget {
 class _PatternEditorState extends State<PatternEditor> {
   @override
   Widget build(BuildContext context) {
+    final menuController = MenuController();
+
     return BlocBuilder<PatternEditorCubit, PatternEditorState>(
         builder: (context, state) {
+      final cubit = context.read<PatternEditorCubit>();
+
       return Column(
         children: [
           Container(
@@ -53,10 +61,24 @@ class _PatternEditorState extends State<PatternEditor> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 SizedBox(width: 7),
-                Button(
-                  width: 28,
-                  height: 28,
-                  iconPath: "assets/icons/file/hamburger.svg",
+                Menu(
+                  menuController: menuController,
+                  menuDef: MenuDef(children: [
+                    MenuItem(
+                        text: "New pattern",
+                        onSelected: () {
+                          cubit.addPattern(
+                              "Pattern ${(Random()).nextInt(100).toString()}");
+                        })
+                  ]),
+                  child: Button(
+                    width: 28,
+                    height: 28,
+                    iconPath: "assets/icons/file/hamburger.svg",
+                    onPress: () {
+                      menuController.open?.call();
+                    },
+                  ),
                 ),
                 SizedBox(width: 4),
                 SizedBox(width: 16, child: Center(child: ButtonRowDivider())),
@@ -64,13 +86,14 @@ class _PatternEditorState extends State<PatternEditor> {
                 Dropdown(
                   width: 169,
                   height: 28,
-                  items: [
-                    DropdownItem(id: "1", name: "Pattern 1"),
-                    DropdownItem(id: "2", name: "Pattern 2"),
-                    DropdownItem(id: "3", name: "Pattern 3"),
-                    DropdownItem(id: "4", name: "Pattern 4"),
-                    DropdownItem(id: "5", name: "Pattern 5"),
-                  ],
+                  items: state.patternList
+                      .map(
+                        (item) => DropdownItem(
+                          id: item.id.toString(),
+                          name: item.name,
+                        ),
+                      )
+                      .toList(),
                 ),
                 Expanded(child: SizedBox()),
                 Button(
