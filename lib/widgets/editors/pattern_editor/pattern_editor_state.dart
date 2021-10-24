@@ -17,15 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'project_cubit.dart';
+part of 'pattern_editor_cubit.dart';
 
 @immutable
-class ProjectState {
-  final int id;
-
-  ProjectState({required this.id});
+class PatternEditorState {
+  final Pattern? pattern = null;
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || other is ProjectState && other.id == id;
+      identical(this, other) ||
+      other is PatternEditorState && other.pattern == pattern;
 }
