@@ -18,6 +18,8 @@
 */
 
 pub mod command_queue;
+pub mod generator;
 pub mod pattern;
+pub mod project;
 pub mod song;
 pub mod store;

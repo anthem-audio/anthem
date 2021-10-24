@@ -17,9 +17,10 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use crate::model::{project::Project, store::Reply};
+#[rid::model]
+#[rid::structs(Instrument)]
+pub struct Instrument {}
 
-pub trait Command {
-    fn execute(&self, store: &mut Project, request_id: u64) -> Vec<Reply>;
-    fn rollback(&self, store: &mut Project, request_id: u64) -> Vec<Reply>;
-}
+#[rid::model]
+#[rid::structs(Controller)]
+pub struct Controller {}
