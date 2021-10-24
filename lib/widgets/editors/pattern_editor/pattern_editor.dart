@@ -17,7 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/button_row_divider.dart';
+import 'package:anthem/widgets/basic/dropdown.dart';
+import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../theme.dart';
 
 class PatternEditor extends StatefulWidget {
   PatternEditor({Key? key}) : super(key: key);
@@ -29,8 +36,61 @@ class PatternEditor extends StatefulWidget {
 class _PatternEditorState extends State<PatternEditor> {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Color(0xFFFFFFFF),
-    );
+    return BlocBuilder<PatternEditorCubit, PatternEditorState>(
+        builder: (context, state) {
+      return Column(
+        children: [
+          Container(
+            height: 42,
+            decoration: BoxDecoration(
+              color: Theme.panel.accent,
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(2),
+                bottom: Radius.circular(1),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(width: 7),
+                Button(
+                  width: 28,
+                  height: 28,
+                  iconPath: "assets/icons/file/hamburger.svg",
+                ),
+                SizedBox(width: 4),
+                SizedBox(width: 16, child: Center(child: ButtonRowDivider())),
+                SizedBox(width: 4),
+                Dropdown(width:169, height:28),
+                Expanded(child: SizedBox()),
+                Button(
+                  width: 28,
+                  height: 28,
+                  iconPath: "assets/icons/pattern_editor/add-audio.svg",
+                ),
+                SizedBox(width: 4),
+                Button(
+                  width: 28,
+                  height: 28,
+                  iconPath: "assets/icons/pattern_editor/add-automation.svg",
+                ),
+                SizedBox(width: 7),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.panel.light,
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(1),
+                  bottom: Radius.circular(2),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    });
   }
 }

@@ -6,4 +6,4 @@
 
 build/
 
-macos/Classes/Plugin.swift
+# macos/Classes/Plugin.swift

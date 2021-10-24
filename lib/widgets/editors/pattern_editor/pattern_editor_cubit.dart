@@ -17,15 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'project_cubit.dart';
+import 'package:bloc/bloc.dart';
+import 'package:flutter/widgets.dart';
+import 'package:plugin/generated/rid_api.dart';
 
-@immutable
-class ProjectState {
-  final int id;
+part 'pattern_editor_state.dart';
 
-  ProjectState({required this.id});
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) || other is ProjectState && other.id == id;
+class PatternEditorCubit extends Cubit<PatternEditorState> {
+  PatternEditorCubit() : super(PatternEditorState()) {}
 }
