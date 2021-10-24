@@ -17,9 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/project_header.dart';
-import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/project/project_wrapper.dart';
 import 'package:flutter/widgets.dart';
 

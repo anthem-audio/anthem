@@ -17,15 +17,22 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'project_cubit.dart';
+import 'package:flutter/widgets.dart';
 
-@immutable
-class ProjectState {
-  final int id;
+import '../../theme.dart';
 
-  ProjectState({required this.id});
+class ButtonRowDivider extends StatelessWidget {
+  const ButtonRowDivider({Key? key}) : super(key: key);
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) || other is ProjectState && other.id == id;
+  Widget build(BuildContext context) {
+    return Container(
+      width: 2,
+      height: 16,
+      decoration: BoxDecoration(
+        color: Theme.panel.accent,
+        borderRadius: BorderRadius.all(Radius.circular(1)),
+      ),
+    );
+  }
 }

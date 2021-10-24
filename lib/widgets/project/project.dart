@@ -19,6 +19,7 @@
 
 import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor.dart';
+import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart';
 import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -50,13 +51,15 @@ class Project extends StatelessWidget {
               child: Panel(
                 orientation: PanelOrientation.Right,
                 panelContent: Container(color: Theme.panel.main),
-
                 child: Panel(
                   orientation: PanelOrientation.Bottom,
                   child: Panel(
                     orientation: PanelOrientation.Left,
                     child: Container(color: Theme.panel.main),
-                    panelContent: PatternEditor(),
+                    panelContent: BlocProvider<PatternEditorCubit>(
+                      create: (context) => PatternEditorCubit(),
+                      child: PatternEditor(),
+                    ),
                   ),
                   panelContent: Container(color: Theme.panel.main),
                 ),
