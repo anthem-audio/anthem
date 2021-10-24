@@ -17,6 +17,7 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+pub mod command_queue;
 pub mod pattern;
 pub mod song;
 pub mod store;
