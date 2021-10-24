@@ -30,14 +30,16 @@ pub fn pattern_message_handler(store: &mut Store, req_id: u64, msg: &Msg) -> boo
                 project_id: *project_id,
                 pattern: Pattern::new(pattern_name.clone()),
             };
-            command.execute(store, req_id);
+            command.execute(store.get_project_mut(*project_id), req_id);
             store
-                .get_project(*project_id)
+                .command_queues
+                .get_mut(project_id)
+                .unwrap()
                 .push_command(Box::new(command));
             rid_reply_all(&vec![Reply::PatternAdded(req_id)]);
         }
         Msg::DeletePattern(project_id, pattern_id) => {
-            let project = store.get_project(*project_id);
+            let project = store.get_project_mut(*project_id);
             let patterns = &mut project.song.patterns;
 
             let command = DeletePatternCommand {
@@ -49,9 +51,11 @@ pub fn pattern_message_handler(store: &mut Store, req_id: u64, msg: &Msg) -> boo
                         .expect("pattern delete: requested pattern could not be found"),
                 ),
             };
-            command.execute(store, req_id);
+            command.execute(store.get_project_mut(*project_id), req_id);
             store
-                .get_project(*project_id)
+                .command_queues
+                .get_mut(project_id)
+                .unwrap()
                 .push_command(Box::new(command));
             rid_reply_all(&vec![Reply::PatternAdded(req_id)]);
         }

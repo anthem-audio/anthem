@@ -17,50 +17,98 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use crate::commands::command::Command;
-use crate::commands::store_commands::*;
-use crate::util::rid_reply_all::rid_reply_all;
-use crate::model::store::*;
+use std::fs;
 
-pub fn store_message_handler(store: &mut Store, req_id: u64, msg: &Msg) -> bool {
+use crate::model::store::*;
+use crate::util::rid_reply_all::rid_reply_all;
+
+pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> bool {
     match msg {
         Msg::NewProject => {
-            let replies = NewProjectCommand.execute(store, req_id);
-
-            rid_reply_all(&replies);
+            let project = Project::default();
+            let project_id = project.id;
+            store.projects.push(project);
+            rid::post(Reply::NewProjectCreated(
+                request_id,
+                (project_id as i64).to_string(),
+            ));
         }
         Msg::SetActiveProject(project_id) => {
-            let replies = (SetActiveProjectCommand {
-                project_id: *project_id,
-            })
-            .execute(store, req_id);
-
-            rid_reply_all(&replies);
+            store.active_project_id = *project_id;
+            rid::post(Reply::ActiveProjectChanged(
+                request_id,
+                (*project_id as i64).to_string(),
+            ));
         }
         Msg::CloseProject(project_id) => {
-            let replies = (CloseProjectCommand {
-                project_id: *project_id,
-            })
-            .execute(store, req_id);
-
-            rid_reply_all(&replies);
+            store.projects.retain(|project| project.id != *project_id);
+            rid::post(Reply::ProjectClosed(request_id));
         }
         Msg::SaveProject(project_id, path) => {
-            let replies = (SaveProjectCommand {
-                project_id: *project_id,
-                path: (*path).clone(),
-            })
-            .execute(store, req_id);
+            let mut project = store
+                .projects
+                .iter_mut()
+                .find(|project| project.id == *project_id)
+                .expect("project does not exist");
 
-            rid_reply_all(&replies);
+            let serialized = serde_json::to_string(project).expect("project failed to serialize");
+
+            fs::write(path, &serialized).expect("unable to write to file");
+
+            project.is_saved = true;
+
+            rid::post(Reply::ProjectSaved(request_id));
         }
         Msg::LoadProject(path) => {
-            let replies = (LoadProjectCommand {
-                path: (*path).clone(),
-            })
-            .execute(store, req_id);
+            let project_raw = fs::read_to_string(path).expect("project path does not exist");
+            let mut project: Project = serde_json::from_str(&project_raw).expect("invalid project");
 
-            rid_reply_all(&replies);
+            let id = project.id;
+            project.file_path = path.clone();
+
+            store.projects.push(project);
+
+            rid::post(Reply::ProjectLoaded(request_id, (id as i64).to_string()));
+        }
+        Msg::Undo(project_id) => {
+            let command = store
+                .command_queues
+                .get_mut(project_id)
+                .unwrap()
+                .get_undo_and_bump_pointer();
+            let project = store
+                .projects
+                .iter_mut()
+                .find(|project| project.id == *project_id)
+                .expect("command references a non-existent project");
+
+            if command.is_some() {
+                let command = command.unwrap().as_ref();
+
+                let replies = command.rollback(project, request_id);
+
+                rid_reply_all(&replies);
+            }
+        }
+        Msg::Redo(project_id) => {
+            let command = store
+                .command_queues
+                .get_mut(project_id)
+                .unwrap()
+                .get_redo_and_bump_pointer();
+            let project = store
+                .projects
+                .iter_mut()
+                .find(|project| project.id == *project_id)
+                .expect("command references a non-existent project");
+
+            if command.is_some() {
+                let command = command.unwrap().as_ref();
+
+                let replies = command.execute(project, request_id);
+
+                rid_reply_all(&replies);
+            }
         }
         _ => {
             return false;

@@ -18,18 +18,18 @@
 */
 
 use super::command::Command;
-use crate::model::pattern::Pattern;
-use crate::model::store::{Reply, Store};
+use crate::model::{
+    pattern::Pattern,
+    store::{Project, Reply},
+};
 
-fn add_pattern(store: &mut Store, project_id: u64, pattern: &Pattern) {
+fn add_pattern(project: &mut Project, pattern: &Pattern) {
     let pattern = pattern.clone();
-    let project = store.get_project(project_id);
     project.song.patterns.push(pattern);
 }
 
-fn delete_pattern(store: &mut Store, project_id: u64, pattern_id: u64) {
-    store
-        .get_project(project_id)
+fn delete_pattern(project: &mut Project, pattern_id: u64) {
+    project
         .song
         .patterns
         .retain(|pattern| pattern.id != pattern_id);
@@ -41,13 +41,13 @@ pub struct AddPatternCommand {
 }
 
 impl Command for AddPatternCommand {
-    fn execute(&self, store: &mut Store, request_id: u64) -> Vec<Reply> {
-        add_pattern(store, self.project_id, &self.pattern);
+    fn execute(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {
+        add_pattern(project, &self.pattern);
         vec![Reply::PatternAdded(request_id)]
     }
 
-    fn rollback(&self, store: &mut Store, request_id: u64) -> Vec<Reply> {
-        delete_pattern(store, self.project_id, self.pattern.id);
+    fn rollback(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {
+        delete_pattern(project, self.pattern.id);
         vec![Reply::PatternDeleted(request_id)]
     }
 }
@@ -58,13 +58,13 @@ pub struct DeletePatternCommand {
 }
 
 impl Command for DeletePatternCommand {
-    fn execute(&self, store: &mut Store, request_id: u64) -> Vec<Reply> {
-        delete_pattern(store, self.project_id, self.pattern.id);
+    fn execute(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {
+        delete_pattern(project, self.pattern.id);
         vec![Reply::PatternDeleted(request_id)]
     }
-    
-    fn rollback(&self, store: &mut Store, request_id: u64) -> Vec<Reply> {
-        add_pattern(store, self.project_id, &self.pattern);
+
+    fn rollback(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {
+        add_pattern(project, &self.pattern);
         vec![Reply::PatternAdded(request_id)]
     }
 }

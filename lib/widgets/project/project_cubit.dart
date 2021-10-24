@@ -19,9 +19,15 @@
 
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
+import 'package:plugin/generated/rid_api.dart';
 
 part 'project_state.dart';
 
 class ProjectCubit extends Cubit<ProjectState> {
+  final Store _store = Store.instance;
+
   ProjectCubit({required int id}) : super(ProjectState(id: id)) {}
+
+  Future<void> undo() => _store.msgUndo(state.id);
+  Future<void> redo() => _store.msgRedo(state.id);
 }
