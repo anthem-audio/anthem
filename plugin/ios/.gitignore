@@ -37,4 +37,4 @@ Icon?
 /Flutter/ephemeral/
 /Flutter/flutter_export_environment.sh
 
-Classes/SwiftPlugin.swift
+# Classes/SwiftPlugin.swift

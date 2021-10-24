@@ -27,6 +27,7 @@ class Button extends StatefulWidget {
   double? width;
   double? height;
   String? iconPath;
+  Widget? child;
 
   Button({
     Key? key,
@@ -34,6 +35,7 @@ class Button extends StatefulWidget {
     this.width,
     this.height,
     this.iconPath,
+    this.child,
   }) : super(key: key);
 
   @override
@@ -83,14 +85,22 @@ class _ButtonState extends State<Button> {
             ),
             width: widget.width,
             height: widget.height,
-            child: widget.iconPath != null
-                ? Center(
-                    child: SvgPicture.asset(
-                      widget.iconPath!,
-                      color: Theme.text.main,
-                    ),
-                  )
-                : null,
+            child: Stack(
+                children: <Widget?>[
+              widget.iconPath != null
+                  ? Positioned.fill(
+                      child: Center(
+                        child: SvgPicture.asset(
+                          widget.iconPath!,
+                          color: Theme.text.main,
+                        ),
+                      ),
+                    )
+                  : null,
+              widget.child != null
+                  ? Positioned.fill(child: widget.child!)
+                  : null,
+            ].whereType<Widget>().toList()),
           ),
         ),
       ),
