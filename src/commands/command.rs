@@ -17,9 +17,9 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use crate::model::store::{Reply, Store};
+use crate::model::{store::{Reply, Project}};
 
 pub trait Command {
-    fn execute(&self, store: &mut Store, request_id: u64) -> Vec<Reply>;
-    fn rollback(&self, store: &mut Store, request_id: u64) -> Vec<Reply>;
+    fn execute(&self, store: &mut Project, request_id: u64) -> Vec<Reply>;
+    fn rollback(&self, store: &mut Project, request_id: u64) -> Vec<Reply>;
 }

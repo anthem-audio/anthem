@@ -17,25 +17,37 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+use std::collections::HashMap;
+
 use rid::RidStore;
 use serde::{Deserialize, Serialize};
 
-use crate::commands::command::Command;
 use crate::message_handlers::store_message_handler::store_message_handler;
 use crate::message_handlers::pattern_message_handler::pattern_message_handler;
 use crate::model::song::Song;
 use crate::util::id::get_id;
 
+use super::command_queue::CommandQueue;
+
 #[rid::store]
 #[rid::structs(Project)]
-#[derive(Serialize, Deserialize)]
+#[derive(rid::Config)]
 pub struct Store {
     pub projects: Vec<Project>,
     pub active_project_id: u64,
+
+    #[rid(skip)]
+    pub command_queues: HashMap<u64, CommandQueue>,
 }
 
 impl Store {
-    pub fn get_project(&mut self, id: u64) -> &mut Project {
+    pub fn get_project(&self, id: u64) -> &Project {
+        self.projects
+            .iter()
+            .find(|project| project.id == id)
+            .expect("command references a non-existent project")
+    }
+    pub fn get_project_mut(&mut self, id: u64) -> &mut Project {
         self.projects
             .iter_mut()
             .find(|project| project.id == id)
@@ -64,16 +76,6 @@ pub struct Project {
     pub file_path: String,
 
     pub song: Song,
-
-    #[serde(skip_serializing, skip_deserializing)]
-    #[rid(skip)]
-    pub commands: Vec<Box<dyn Command>>,
-
-    // Points to the next command for redo, or one past the end if there is
-    // nothing to redo
-    #[serde(skip_serializing, skip_deserializing)]
-    #[rid(skip)]
-    pub command_pointer: usize,
 }
 
 impl Default for Project {
@@ -83,32 +85,7 @@ impl Default for Project {
             is_saved: false,
             file_path: "".into(),
             song: Song::default(),
-            commands: Vec::new(),
-            command_pointer: 0,
         }
-    }
-}
-
-impl Project {
-    pub fn push_command(&mut self, command: Box<dyn Command>) {
-        while self.commands.len() > self.command_pointer {
-            self.commands.pop();
-        }
-        self.commands.push(command);
-    }
-    pub fn get_undo_and_bump_pointer(&mut self) -> Option<&Box<dyn Command>> {
-        let command = self.commands.get(self.command_pointer - 1);
-        if command.is_some() {
-            self.command_pointer -= 1;
-        }
-        command
-    }
-    pub fn get_redo_and_bump_pointer(&mut self) -> Option<&Box<dyn Command>> {
-        let command = self.commands.get(self.command_pointer);
-        if command.is_some() {
-            self.command_pointer += 1;
-        }
-        command
     }
 }
 
@@ -116,10 +93,13 @@ impl RidStore<Msg> for Store {
     fn create() -> Self {
         let project = Project::default();
         let id = project.id;
+        let mut command_queues = HashMap::new();
+        command_queues.insert(id, CommandQueue::default());
 
         Self {
             projects: vec![project],
             active_project_id: id,
+            command_queues
         }
     }
 
@@ -145,6 +125,8 @@ pub enum Msg {
     CloseProject(u64),
     SaveProject(u64, String),
     LoadProject(String),
+    Undo(u64),
+    Redo(u64),
 
     // Pattern
     AddPattern(u64, String),

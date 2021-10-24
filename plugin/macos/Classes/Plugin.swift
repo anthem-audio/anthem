@@ -57,6 +57,8 @@ func dummyCallsToPreventTreeShaking() {
     rid_msg_CloseProject(0, 0);
     rid_msg_SaveProject(0, 0, nil);
     rid_msg_LoadProject(0, nil);
+    rid_msg_Undo(0, 0);
+    rid_msg_Redo(0, 0);
     rid_msg_AddPattern(0, 0, nil);
     rid_msg_DeletePattern(0, 0, 0);
 }
