@@ -19,6 +19,7 @@
 
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/button_row_divider.dart';
+import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -60,7 +61,7 @@ class _PatternEditorState extends State<PatternEditor> {
                 SizedBox(width: 4),
                 SizedBox(width: 16, child: Center(child: ButtonRowDivider())),
                 SizedBox(width: 4),
-                // pattern selector
+                Dropdown(width:169, height:28),
                 Expanded(child: SizedBox()),
                 Button(
                   width: 28,
