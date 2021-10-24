@@ -61,7 +61,17 @@ class _PatternEditorState extends State<PatternEditor> {
                 SizedBox(width: 4),
                 SizedBox(width: 16, child: Center(child: ButtonRowDivider())),
                 SizedBox(width: 4),
-                Dropdown(width:169, height:28),
+                Dropdown(
+                  width: 169,
+                  height: 28,
+                  items: [
+                    DropdownItem(id: "1", name: "Pattern 1"),
+                    DropdownItem(id: "2", name: "Pattern 2"),
+                    DropdownItem(id: "3", name: "Pattern 3"),
+                    DropdownItem(id: "4", name: "Pattern 4"),
+                    DropdownItem(id: "5", name: "Pattern 5"),
+                  ],
+                ),
                 Expanded(child: SizedBox()),
                 Button(
                   width: 28,
