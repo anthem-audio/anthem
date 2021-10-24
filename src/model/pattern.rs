@@ -17,11 +17,19 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+
+use crate::util::id::get_id;
 
 #[rid::model]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Pattern {
     pub id: u64,
     pub name: String,
+}
+
+impl Pattern {
+    pub fn new(name: String) -> Self {
+        Pattern { id: get_id(), name }
+    }
 }

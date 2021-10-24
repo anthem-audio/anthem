@@ -21,10 +21,29 @@ part of 'pattern_editor_cubit.dart';
 
 @immutable
 class PatternEditorState {
-  final Pattern? pattern = null;
+  final int projectID;
+  final Pattern? pattern;
+  final List<PatternListItem> patternList;
+
+  PatternEditorState({
+    required this.projectID,
+    required this.pattern,
+    required this.patternList,
+  });
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is PatternEditorState && other.pattern == pattern;
+      other is PatternEditorState &&
+          other.pattern == pattern &&
+          other.projectID == projectID &&
+          other.patternList == patternList;
+}
+
+@immutable
+class PatternListItem {
+  final int id;
+  final String name;
+
+  PatternListItem({required this.id, required this.name});
 }

@@ -21,6 +21,8 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/main_window/main_window_cubit.dart';
+import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -33,10 +35,11 @@ class ProjectHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<MainWindowCubit, MainWindowState>(
+    return BlocBuilder<ProjectCubit, ProjectState>(
         builder: (context, state) {
       final menuController = MenuController();
       final mainWindowCubit = context.read<MainWindowCubit>();
+      final projectCubit = context.read<ProjectCubit>();
 
       return Container(
         height: 42,
@@ -87,6 +90,30 @@ class ProjectHeader extends StatelessWidget {
                   },
                 ),
               ),
+              SizedBox(width: 4),
+                Button(
+                  width: 28,
+                  iconPath: "assets/icons/file/save.svg",
+                  onPress: () {
+                    mainWindowCubit.saveProject(projectID, false);
+                  },
+                ),
+              SizedBox(width: 4),
+                Button(
+                  width: 28,
+                  iconPath: "assets/icons/file/undo.svg",
+                  onPress: () {
+                    projectCubit.undo();
+                  },
+                ),
+              SizedBox(width: 4),
+                Button(
+                  width: 28,
+                  iconPath: "assets/icons/file/redo.svg",
+                  onPress: () {
+                    projectCubit.redo();
+                  },
+                ),
             ],
           ),
         ),

@@ -18,34 +18,53 @@
 */
 
 use super::command::Command;
-use crate::model::pattern::Pattern;
-use crate::model::store::{Reply, Store};
+use crate::model::{
+    pattern::Pattern,
+    store::{Project, Reply},
+};
+
+fn add_pattern(project: &mut Project, pattern: &Pattern) {
+    let pattern = pattern.clone();
+    project.song.patterns.push(pattern);
+}
+
+fn delete_pattern(project: &mut Project, pattern_id: u64) {
+    project
+        .song
+        .patterns
+        .retain(|pattern| pattern.id != pattern_id);
+}
 
 pub struct AddPatternCommand {
-    pattern_id: u64,
-    project_id: u64,
-    name: String,
+    pub project_id: u64,
+    pub pattern: Pattern,
 }
 
 impl Command for AddPatternCommand {
-    fn execute(&self, store: &mut Store, request_id: u64) -> Vec<Reply> {
-        let pattern = Pattern {
-            id: self.pattern_id,
-            name: self.name.clone(),
-        };
-        let project = store.get_project(self.project_id);
-        project.song.patterns.push(pattern);
-
+    fn execute(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {
+        add_pattern(project, &self.pattern);
         vec![Reply::PatternAdded(request_id)]
     }
 
-    fn rollback(&self, store: &mut Store, request_id: u64) -> Vec<Reply> {
-        store
-            .get_project(self.project_id)
-            .song
-            .patterns
-            .retain(|pattern| pattern.id != self.pattern_id);
-
+    fn rollback(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {
+        delete_pattern(project, self.pattern.id);
         vec![Reply::PatternDeleted(request_id)]
+    }
+}
+
+pub struct DeletePatternCommand {
+    pub project_id: u64,
+    pub pattern: Pattern,
+}
+
+impl Command for DeletePatternCommand {
+    fn execute(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {
+        delete_pattern(project, self.pattern.id);
+        vec![Reply::PatternDeleted(request_id)]
+    }
+
+    fn rollback(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {
+        add_pattern(project, &self.pattern);
+        vec![Reply::PatternAdded(request_id)]
     }
 }

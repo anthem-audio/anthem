@@ -17,25 +17,37 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+use std::collections::HashMap;
+
 use rid::RidStore;
 use serde::{Deserialize, Serialize};
 
-use crate::commands::command::Command;
-use crate::commands::store_commands::*;
+use crate::message_handlers::store_message_handler::store_message_handler;
+use crate::message_handlers::pattern_message_handler::pattern_message_handler;
 use crate::model::song::Song;
 use crate::util::id::get_id;
-use crate::util::rid_reply_all::rid_reply_all;
+
+use super::command_queue::CommandQueue;
 
 #[rid::store]
 #[rid::structs(Project)]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(rid::Config)]
 pub struct Store {
     pub projects: Vec<Project>,
     pub active_project_id: u64,
+
+    #[rid(skip)]
+    pub command_queues: HashMap<u64, CommandQueue>,
 }
 
 impl Store {
-    pub fn get_project(&mut self, id: u64) -> &mut Project {
+    pub fn get_project(&self, id: u64) -> &Project {
+        self.projects
+            .iter()
+            .find(|project| project.id == id)
+            .expect("command references a non-existent project")
+    }
+    pub fn get_project_mut(&mut self, id: u64) -> &mut Project {
         self.projects
             .iter_mut()
             .find(|project| project.id == id)
@@ -53,7 +65,7 @@ fn default_is_saved() -> bool {
 
 #[rid::model]
 #[rid::structs(Song)]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, rid::Config)]
 pub struct Project {
     pub id: u64,
 
@@ -81,43 +93,25 @@ impl RidStore<Msg> for Store {
     fn create() -> Self {
         let project = Project::default();
         let id = project.id;
+        let mut command_queues = HashMap::new();
+        command_queues.insert(id, CommandQueue::default());
 
         Self {
             projects: vec![project],
             active_project_id: id,
+            command_queues
         }
     }
 
     fn update(&mut self, req_id: u64, msg: Msg) {
-        match msg {
-            Msg::NewProject => {
-                let replies = NewProjectCommand.execute(self, req_id);
-
-                rid_reply_all(&replies);
-            }
-            Msg::SetActiveProject(project_id) => {
-                let replies = (SetActiveProjectCommand { project_id }).execute(self, req_id);
-
-                rid_reply_all(&replies);
-            }
-            Msg::CloseProject(project_id) => {
-                let replies = (CloseProjectCommand { project_id }).execute(self, req_id);
-
-                rid_reply_all(&replies);
-            }
-            Msg::SaveProject(project_id, path) => {
-                let replies = (SaveProjectCommand { project_id, path }).execute(self, req_id);
-
-                rid_reply_all(&replies);
-            }
-            Msg::LoadProject(path) => {
-                let replies = (LoadProjectCommand { path }).execute(self, req_id);
-
-                rid_reply_all(&replies);
-            }
-
-            Msg::AddPattern(_) => {}
-            Msg::DeletePattern(_) => {}
+        let handled = [
+            store_message_handler(self, req_id, &msg),
+            pattern_message_handler(self, req_id, &msg),
+        ]
+        .iter()
+        .fold(false, |a, b| a || *b);
+        if !handled {
+            panic!("message not handled");
         }
     }
 }
@@ -131,10 +125,12 @@ pub enum Msg {
     CloseProject(u64),
     SaveProject(u64, String),
     LoadProject(String),
+    Undo(u64),
+    Redo(u64),
 
     // Pattern
-    AddPattern(String),
-    DeletePattern(u64),
+    AddPattern(u64, String),
+    DeletePattern(u64, u64),
 }
 
 #[rid::reply]

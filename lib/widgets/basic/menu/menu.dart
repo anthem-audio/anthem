@@ -60,7 +60,7 @@ class _MenuState extends State<Menu> {
         widget.menuAlignment == MenuAlignment.TopLeft ||
                 widget.menuAlignment == MenuAlignment.TopRight
             ? 0
-            : contentRenderBox.size.width,
+            : contentRenderBox.size.height,
       ),
     );
     final notification = OpenMenuNotification(

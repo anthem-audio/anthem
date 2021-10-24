@@ -17,5 +17,5 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-pub mod command;
-pub mod pattern_commands;
+pub mod store_message_handler;
+pub mod pattern_message_handler;
