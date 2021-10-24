@@ -89,5 +89,40 @@
 			"}",
 			""
 		]
+	},
+
+	"Cubit State": {
+		"prefix": ["cubitState"],
+		"scope": "dart",
+		"body": [
+			"part of '$1_cubit.dart';",
+			"",
+			"@immutable",
+			"class $2State {",
+			"  final int id;",
+			"",
+			"  $2State({required this.id});",
+			"",
+			"  @override",
+			"  bool operator ==(Object other) => identical(this, other)",
+			"  || other is $2State &&",
+			"      other.id == id;",
+			"}"
+		],
+	},
+
+	"Cubit": {
+		"prefix": ["cubit"],
+		"scope": "dart",
+		"body": [
+			"import 'package:bloc/bloc.dart';",
+			"import 'package:flutter/widgets.dart';",
+			"",
+			"part '$1_state.dart';",
+			"",
+			"class $2Cubit extends Cubit<$2State> {",
+			"  $2Cubit({required int id}) : super($2State(id: id)) {}",
+			"}"
+		],
 	}
 }
