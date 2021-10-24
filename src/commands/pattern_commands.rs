@@ -19,8 +19,9 @@
 
 use super::command::Command;
 use crate::model::{
+    project::Project,
     pattern::Pattern,
-    store::{Project, Reply},
+    store::Reply,
 };
 
 fn add_pattern(project: &mut Project, pattern: &Pattern) {

@@ -20,6 +20,7 @@
 use std::fs;
 
 use crate::model::store::*;
+use crate::model::project::*;
 use crate::util::rid_reply_all::rid_reply_all;
 
 pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> bool {

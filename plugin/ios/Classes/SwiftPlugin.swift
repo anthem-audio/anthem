@@ -11,15 +11,23 @@ public class SwiftPlugin: NSObject, FlutterPlugin {
 }
 // <rid:prevent_tree_shake Start>
 func dummyCallsToPreventTreeShaking() {
+    _to_dart_for_Instrument();
+    rid_cstring_free(nil);
+    rid_init_msg_isolate(0);
+    rid_init_reply_isolate(0);
+    _to_dart_for_Controller();
     _to_dart_for_Pattern();
     rid_pattern_debug(nil);
     rid_pattern_debug_pretty(nil);
     rid_pattern_id(nil);
     rid_pattern_name(nil);
     rid_pattern_name_len(nil);
-    rid_cstring_free(nil);
-    rid_init_msg_isolate(0);
-    rid_init_reply_isolate(0);
+    _to_dart_for_Project();
+    rid_project_id(nil);
+    rid_project_is_saved(nil);
+    rid_project_file_path(nil);
+    rid_project_file_path_len(nil);
+    rid_project_song(nil);
     _to_dart_for_Song();
     rid_song_debug(nil);
     rid_song_debug_pretty(nil);
@@ -38,12 +46,6 @@ func dummyCallsToPreventTreeShaking() {
     rid_len_vec_project(nil);
     rid_get_item_vec_project(nil, 0);
     _include_Store_field_wrappers();
-    _to_dart_for_Project();
-    rid_project_id(nil);
-    rid_project_is_saved(nil);
-    rid_project_file_path(nil);
-    rid_project_file_path_len(nil);
-    rid_project_song(nil);
     rid_msg_NewProject(0);
     rid_msg_SetActiveProject(0, 0);
     rid_msg_CloseProject(0, 0);
