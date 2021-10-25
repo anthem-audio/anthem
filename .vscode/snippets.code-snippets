@@ -72,25 +72,6 @@
 		]
 	},
 
-	"Anthem Command": {
-		"prefix": ["command"],
-		"scope": "dart",
-		"body": [
-			"pub struct $1Command {}",
-			"",
-			"impl Command for $1Command {",
-			"    fn execute(&self, store: &mut Store) -> Vec<Reply> {",
-			"        todo!()",
-			"    }",
-			"",
-			"    fn rollback(&self, _store: &mut Store) -> Vec<Reply> {",
-			"        todo!()",
-			"    }",
-			"}",
-			""
-		]
-	},
-
 	"Cubit State": {
 		"prefix": ["cubitState"],
 		"scope": "dart",
@@ -130,7 +111,7 @@
 		"prefix": ["command"],
 		"scope": "rust",
 		"body": [
-			"struct $1Command {",
+			"pub struct $1Command {",
 			"    $0",
 			"}",
 			"",

@@ -18,7 +18,7 @@
 */
 
 use super::command::Command;
-use crate::model::{pattern::Pattern, project::Project, store::Reply};
+use crate::model::{note::*, pattern::*, project::*, store::Reply};
 
 fn add_pattern(project: &mut Project, pattern: &Pattern) {
     let pattern = pattern.clone();
@@ -63,5 +63,71 @@ impl Command for DeletePatternCommand {
     fn rollback(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {
         add_pattern(project, &self.pattern);
         vec![Reply::PatternAdded(request_id)]
+    }
+}
+
+pub struct AddNoteCommand {
+    pub project_id: u64,
+    pub pattern_id: u64,
+    pub channel_id: u64,
+    pub note: Note,
+}
+
+fn add_note(project: &mut Project, pattern_id: u64, channel_id: u64, note: &Note) {
+    let pattern = project
+        .song
+        .patterns
+        .iter_mut()
+        .find(|pattern| pattern.id == pattern_id)
+        .unwrap();
+    if pattern.channel_notes.get(&channel_id).is_none() {
+        pattern
+            .channel_notes
+            .insert(channel_id, ChannelNotes::default());
+    }
+    let note_list = &mut pattern.channel_notes.get_mut(&channel_id).unwrap().notes;
+    note_list.push(note.clone());
+    // sort?
+}
+
+fn remove_note(project: &mut Project, pattern_id: u64, channel_id: u64, note_id: u64) {
+    let pattern = project
+        .song
+        .patterns
+        .iter_mut()
+        .find(|pattern| pattern.id == pattern_id)
+        .unwrap();
+    let note_list = &mut pattern.channel_notes.get_mut(&channel_id).unwrap().notes;
+    note_list.retain(|note| note.id != note_id);
+}
+
+impl Command for AddNoteCommand {
+    fn execute(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {
+        add_note(project, self.pattern_id, self.channel_id, &self.note);
+        vec![Reply::NoteAdded(request_id)]
+    }
+
+    fn rollback(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {
+        remove_note(project, self.pattern_id, self.channel_id, self.note.id);
+        vec![Reply::NoteDeleted(request_id)]
+    }
+}
+
+pub struct DeleteNoteCommand {
+    pub project_id: u64,
+    pub pattern_id: u64,
+    pub channel_id: u64,
+    pub note: Note,
+}
+
+impl Command for DeleteNoteCommand {
+    fn execute(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {
+        remove_note(project, self.pattern_id, self.channel_id, self.note.id);
+        vec![Reply::NoteDeleted(request_id)]
+    }
+
+    fn rollback(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {
+        add_note(project, self.pattern_id, self.channel_id, &self.note);
+        vec![Reply::NoteAdded(request_id)]
     }
 }

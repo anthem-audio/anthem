@@ -24,7 +24,7 @@ use crate::util::id::get_id;
 
 #[rid::model]
 #[rid::structs(Pattern)]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Song {
     pub id: u64,
     pub patterns: Vec<Pattern>,

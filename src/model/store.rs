@@ -21,6 +21,7 @@ use std::collections::HashMap;
 
 use rid::RidStore;
 
+use crate::commands::command::Command;
 use crate::message_handlers::pattern_message_handler::pattern_message_handler;
 use crate::message_handlers::project_message_handler::project_message_handler;
 use crate::message_handlers::store_message_handler::store_message_handler;
@@ -52,6 +53,13 @@ impl Store {
             .iter_mut()
             .find(|project| project.id == id)
             .expect("command references a non-existent project")
+    }
+    pub fn push_command(&mut self, project_id: u64, command: Box<dyn Command>) {
+        self
+            .command_queues
+            .get_mut(&project_id)
+            .unwrap()
+            .push_command(command);
     }
 }
 
@@ -103,7 +111,12 @@ pub enum Msg {
     // Pattern
     AddPattern(u64, String),
     DeletePattern(u64, u64),
+    AddNote(u64, u64, u64, String),
+    DeleteNote(u64, u64, u64, u64),
 }
+
+// TODO: Some commands are destructive beyond what they can repair,
+// specifically pattern and generator removal as of writing.
 
 #[rid::reply]
 #[derive(Clone, Debug)]
@@ -123,4 +136,6 @@ pub enum Reply {
     // Pattern
     PatternAdded(u64),
     PatternDeleted(u64),
+    NoteAdded(u64),
+    NoteDeleted(u64),
 }
