@@ -18,11 +18,7 @@
 */
 
 use super::command::Command;
-use crate::model::{
-    project::Project,
-    pattern::Pattern,
-    store::Reply,
-};
+use crate::model::{pattern::Pattern, project::Project, store::Reply};
 
 fn add_pattern(project: &mut Project, pattern: &Pattern) {
     let pattern = pattern.clone();

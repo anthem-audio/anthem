@@ -21,8 +21,8 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::model::generator::{Controller, Instrument};
 use crate::model::song::Song;
-use crate::model::generator::{Instrument, Controller};
 use crate::util::id::get_id;
 
 fn default_file_path() -> String {
