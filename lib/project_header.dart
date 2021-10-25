@@ -81,7 +81,6 @@ class ProjectHeader extends StatelessWidget {
                         }),
                   ],
                 ),
-                alignment: MenuAlignment.BottomLeft,
                 child: Button(
                   width: 28,
                   iconPath: "assets/icons/file/hamburger.svg",

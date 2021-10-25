@@ -18,7 +18,9 @@
 */
 
 import 'dart:async';
+import 'dart:collection';
 
+import 'package:anthem/helpers/get_project.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
 import 'package:plugin/generated/rid_api.dart';
@@ -28,38 +30,63 @@ part 'pattern_editor_state.dart';
 class PatternEditorCubit extends Cubit<PatternEditorState> {
   // ignore: unused_field
   late final StreamSubscription<PostedReply> _updatePatternListSub;
+  // ignore: unused_field
+  late final StreamSubscription<PostedReply> _updateGeneratorListSub;
   final Store _store = Store.instance;
 
   PatternEditorCubit({required int projectID})
-      : super(PatternEditorState(
-          projectID: projectID,
-          pattern: null,
-          patternList: [],
-        )) {
+      : super(PatternEditorState.init(projectID)) {
     _updatePatternListSub = rid.replyChannel.stream
         .where((event) =>
             event.type == Reply.PatternAdded ||
             event.type == Reply.PatternDeleted)
         .listen(_updatePatternList);
+    _updateGeneratorListSub = rid.replyChannel.stream
+        .where((event) =>
+            event.type == Reply.InstrumentAdded ||
+            event.type == Reply.ControllerAdded ||
+            event.type == Reply.GeneratorRemoved)
+        .listen(_updateGeneratorList);
   }
 
   _updatePatternList(PostedReply _reply) {
-    emit(
-      PatternEditorState(
-        projectID: state.projectID,
-        pattern: state.pattern,
-        patternList: _store.projects
-            .firstWhere((project) => project.id == state.projectID)
-            .song
-            .patterns
-            .map(
-              (pattern) => PatternListItem(id: pattern.id, name: pattern.name),
-            )
-            .toList(),
-      ),
-    );
+    emit(PatternEditorState(
+      controllers: state.controllers,
+      generatorIDList: state.generatorIDList,
+      instruments: state.instruments,
+      pattern: state.pattern,
+      patternList: getProject(_store, state.projectID)
+          .song
+          .patterns
+          .map(
+            (pattern) => PatternListItem(id: pattern.id, name: pattern.name),
+          )
+          .toList(),
+      projectID: state.projectID,
+    ));
   }
 
-  Future<void> addPattern(String name) => _store.msgAddPattern(state.projectID, name);
-  Future<void> deletePattern(int id) => _store.msgDeletePattern(state.projectID, id);
+  _updateGeneratorList(PostedReply _reply) {
+    final project = getProject(_store, state.projectID);
+
+    emit(PatternEditorState(
+      controllers: project.controllers,
+      generatorIDList: project.generatorList,
+      instruments: project.instruments,
+      pattern: state.pattern,
+      patternList: state.patternList,
+      projectID: state.projectID,
+    ));
+  }
+
+  Future<void> addPattern(String name) =>
+      _store.msgAddPattern(state.projectID, name);
+  Future<void> deletePattern(int id) =>
+      _store.msgDeletePattern(state.projectID, id);
+  Future<void> addInstrument(String name) =>
+      _store.msgAddInstrument(state.projectID, name);
+  Future<void> addController(String name) =>
+      _store.msgAddController(state.projectID, name);
+  Future<void> removeGenerator(int id) =>
+      _store.msgRemoveGenerator(state.projectID, id);
 }

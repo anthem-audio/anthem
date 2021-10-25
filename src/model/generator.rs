@@ -17,10 +17,20 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+use serde::{Deserialize, Serialize};
+
 #[rid::model]
 #[rid::structs(Instrument)]
-pub struct Instrument {}
+#[derive(Serialize, Deserialize, rid::Config)]
+pub struct Instrument {
+    pub id: u64,
+    pub name: String,
+}
 
 #[rid::model]
 #[rid::structs(Controller)]
-pub struct Controller {}
+#[derive(Serialize, Deserialize, rid::Config)]
+pub struct Controller {
+    pub id: u64,
+    pub name: String,
+}

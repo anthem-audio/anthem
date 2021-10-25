@@ -21,15 +21,30 @@ part of 'pattern_editor_cubit.dart';
 
 @immutable
 class PatternEditorState {
-  final int projectID;
-  final Pattern? pattern;
-  final List<PatternListItem> patternList;
+  late final int projectID;
+  late final Pattern? pattern;
+  late final List<PatternListItem> patternList;
+  late final HashMap<int, Instrument> instruments;
+  late final HashMap<int, Controller> controllers;
+  late final List<int> generatorIDList;
 
   PatternEditorState({
     required this.projectID,
     required this.pattern,
     required this.patternList,
+    required this.instruments,
+    required this.controllers,
+    required this.generatorIDList,
   });
+
+  PatternEditorState.init(int projectID) {
+    this.projectID = projectID;
+    this.pattern = null;
+    this.patternList = [];
+    this.instruments = HashMap();
+    this.controllers = HashMap();
+    this.generatorIDList = [];
+  }
 
   @override
   bool operator ==(Object other) =>
@@ -37,7 +52,10 @@ class PatternEditorState {
       other is PatternEditorState &&
           other.pattern == pattern &&
           other.projectID == projectID &&
-          other.patternList == patternList;
+          other.patternList == patternList &&
+          other.instruments == instruments &&
+          other.controllers == controllers &&
+          other.generatorIDList == generatorIDList;
 }
 
 @immutable

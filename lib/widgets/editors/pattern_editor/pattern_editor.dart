@@ -29,6 +29,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../theme.dart';
+import 'generator_row.dart';
 
 class PatternEditor extends StatefulWidget {
   PatternEditor({Key? key}) : super(key: key);
@@ -40,11 +41,11 @@ class PatternEditor extends StatefulWidget {
 class _PatternEditorState extends State<PatternEditor> {
   @override
   Widget build(BuildContext context) {
-    final menuController = MenuController();
-
     return BlocBuilder<PatternEditorCubit, PatternEditorState>(
         builder: (context, state) {
-      final cubit = context.read<PatternEditorCubit>();
+      final menuController = MenuController();
+
+      print("build");
 
       return Column(
         children: [
@@ -67,7 +68,7 @@ class _PatternEditorState extends State<PatternEditor> {
                     MenuItem(
                         text: "New pattern",
                         onSelected: () {
-                          cubit.addPattern(
+                          context.read<PatternEditorCubit>().addPattern(
                               "Pattern ${(Random()).nextInt(100).toString()}");
                         })
                   ]),
@@ -88,38 +89,71 @@ class _PatternEditorState extends State<PatternEditor> {
                   height: 28,
                   items: state.patternList
                       .map(
-                        (item) => DropdownItem(
+                        (item) {print("item");return DropdownItem(
                           id: item.id.toString(),
                           name: item.name,
-                        ),
+                        );},
                       )
                       .toList(),
                 ),
                 Expanded(child: SizedBox()),
                 Button(
-                  width: 28,
-                  height: 28,
-                  iconPath: "assets/icons/pattern_editor/add-audio.svg",
-                ),
+                    width: 28,
+                    height: 28,
+                    iconPath: "assets/icons/pattern_editor/add-audio.svg",
+                    onPress: () {
+                      context.read<PatternEditorCubit>().addInstrument(
+                          "Instrument ${(Random()).nextInt(100).toString()}");
+                    }),
                 SizedBox(width: 4),
                 Button(
-                  width: 28,
-                  height: 28,
-                  iconPath: "assets/icons/pattern_editor/add-automation.svg",
-                ),
+                    width: 28,
+                    height: 28,
+                    iconPath: "assets/icons/pattern_editor/add-automation.svg",
+                    onPress: () {
+                      context.read<PatternEditorCubit>().addController(
+                          "Controller ${(Random()).nextInt(100).toString()}");
+                    }),
                 SizedBox(width: 7),
               ],
             ),
           ),
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Theme.panel.light,
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(1),
-                  bottom: Radius.circular(2),
-                ),
-              ),
+            child: Column(
+              children: state.generatorIDList.map<Widget>((id) {
+                print("child");
+                    final instrument = state.instruments[id];
+                    final controller = state.controllers[id];
+
+                    if (instrument != null) {
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: 1),
+                        child: GeneratorRow(),
+                      );
+                    }
+
+                    if (controller != null) {
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: 1),
+                        child: GeneratorRow(),
+                      );
+                    }
+
+                    throw new Error();
+                  }).toList() +
+                  [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Theme.panel.light,
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(1),
+                            bottom: Radius.circular(2),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
             ),
           ),
         ],
