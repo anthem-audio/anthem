@@ -17,7 +17,7 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use crate::model::pattern::Pattern;
 use crate::util::id::get_id;

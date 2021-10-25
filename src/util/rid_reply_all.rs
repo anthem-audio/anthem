@@ -17,7 +17,7 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use crate::model::store::{Reply};
+use crate::model::store::Reply;
 
 pub fn rid_reply_all(replies: &Vec<Reply>) {
     replies.iter().for_each(|reply| {
