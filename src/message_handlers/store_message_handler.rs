@@ -19,8 +19,9 @@
 
 use std::fs;
 
-use crate::model::store::*;
+use crate::model::command_queue::CommandQueue;
 use crate::model::project::*;
+use crate::model::store::*;
 use crate::util::rid_reply_all::rid_reply_all;
 
 pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> bool {
@@ -29,6 +30,9 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
             let project = Project::default();
             let project_id = project.id;
             store.projects.push(project);
+            store
+                .command_queues
+                .insert(project_id, CommandQueue::default());
             rid::post(Reply::NewProjectCreated(
                 request_id,
                 (project_id as i64).to_string(),
@@ -43,6 +47,7 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
         }
         Msg::CloseProject(project_id) => {
             store.projects.retain(|project| project.id != *project_id);
+            store.command_queues.remove(project_id);
             rid::post(Reply::ProjectClosed(request_id));
         }
         Msg::SaveProject(project_id, path) => {
