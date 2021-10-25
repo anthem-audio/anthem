@@ -75,7 +75,6 @@ class _DropdownState extends State<Dropdown> {
                 )
               ],
         ),
-        alignment: MenuAlignment.BottomLeft,
         child: Button(
           onPress: () {
             menuController.open?.call();

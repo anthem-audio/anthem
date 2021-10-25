@@ -21,8 +21,9 @@ use std::collections::HashMap;
 
 use rid::RidStore;
 
-use crate::message_handlers::store_message_handler::store_message_handler;
 use crate::message_handlers::pattern_message_handler::pattern_message_handler;
+use crate::message_handlers::project_message_handler::project_message_handler;
+use crate::message_handlers::store_message_handler::store_message_handler;
 
 use crate::model::project::Project;
 
@@ -64,13 +65,14 @@ impl RidStore<Msg> for Store {
         Self {
             projects: vec![project],
             active_project_id: id,
-            command_queues
+            command_queues,
         }
     }
 
     fn update(&mut self, req_id: u64, msg: Msg) {
         let handled = [
             store_message_handler(self, req_id, &msg),
+            project_message_handler(self, req_id, &msg),
             pattern_message_handler(self, req_id, &msg),
         ]
         .iter()
@@ -93,6 +95,11 @@ pub enum Msg {
     Undo(u64),
     Redo(u64),
 
+    // Project
+    AddInstrument(u64, String),
+    AddController(u64, String),
+    RemoveGenerator(u64, u64),
+
     // Pattern
     AddPattern(u64, String),
     DeletePattern(u64, u64),
@@ -107,6 +114,11 @@ pub enum Reply {
     ProjectClosed(u64),
     ProjectSaved(u64),
     ProjectLoaded(u64, String),
+
+    // Project
+    InstrumentAdded(u64),
+    ControllerAdded(u64),
+    GeneratorRemoved(u64),
 
     // Pattern
     PatternAdded(u64),

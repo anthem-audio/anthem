@@ -17,9 +17,12 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::model::song::Song;
+use crate::model::generator::{Instrument, Controller};
 use crate::util::id::get_id;
 
 fn default_file_path() -> String {
@@ -31,7 +34,7 @@ fn default_is_saved() -> bool {
 }
 
 #[rid::model]
-#[rid::structs(Song)]
+#[rid::structs(Song, Instrument, Controller)]
 #[derive(Serialize, Deserialize, rid::Config)]
 pub struct Project {
     pub id: u64,
@@ -43,6 +46,10 @@ pub struct Project {
     pub file_path: String,
 
     pub song: Song,
+
+    pub instruments: HashMap<u64, Instrument>,
+    pub controllers: HashMap<u64, Controller>,
+    pub generator_list: Vec<u64>,
 }
 
 impl Default for Project {
@@ -52,6 +59,9 @@ impl Default for Project {
             is_saved: false,
             file_path: "".into(),
             song: Song::default(),
+            instruments: HashMap::new(),
+            controllers: HashMap::new(),
+            generator_list: Vec::new(),
         }
     }
 }
