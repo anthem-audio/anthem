@@ -45,8 +45,6 @@ class _PatternEditorState extends State<PatternEditor> {
         builder: (context, state) {
       final menuController = MenuController();
 
-      print("build");
-
       return Column(
         children: [
           Container(
@@ -87,14 +85,15 @@ class _PatternEditorState extends State<PatternEditor> {
                 Dropdown(
                   width: 169,
                   height: 28,
-                  items: state.patternList
-                      .map(
-                        (item) {print("item");return DropdownItem(
-                          id: item.id.toString(),
-                          name: item.name,
-                        );},
-                      )
-                      .toList(),
+                  items: state.patternList.map(
+                    (item) {
+                      print("item");
+                      return DropdownItem(
+                        id: item.id.toString(),
+                        name: item.name,
+                      );
+                    },
+                  ).toList(),
                 ),
                 Expanded(child: SizedBox()),
                 Button(
@@ -118,10 +117,10 @@ class _PatternEditorState extends State<PatternEditor> {
               ],
             ),
           ),
+          SizedBox(height: 1),
           Expanded(
             child: Column(
               children: state.generatorIDList.map<Widget>((id) {
-                print("child");
                     final instrument = state.instruments[id];
                     final controller = state.controllers[id];
 
