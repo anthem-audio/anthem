@@ -17,19 +17,41 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
+use crate::model::note::*;
 use crate::util::id::get_id;
 
 #[rid::model]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[rid::structs(ChannelNotes)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Pattern {
     pub id: u64,
     pub name: String,
+    pub channel_notes: HashMap<u64, ChannelNotes>,
+}
+
+#[rid::model]
+#[rid::structs(Note)]
+#[derive(Clone, Serialize, Deserialize)]
+pub struct ChannelNotes {
+    pub notes: Vec<Note>,
+}
+
+impl Default for ChannelNotes {
+    fn default() -> Self {
+        ChannelNotes { notes: Vec::new() }
+    }
 }
 
 impl Pattern {
     pub fn new(name: String) -> Self {
-        Pattern { id: get_id(), name }
+        Pattern {
+            id: get_id(),
+            name,
+            channel_notes: HashMap::new(),
+        }
     }
 }

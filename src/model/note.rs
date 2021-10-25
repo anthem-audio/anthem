@@ -17,10 +17,14 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-pub mod command_queue;
-pub mod generator;
-pub mod note;
-pub mod pattern;
-pub mod project;
-pub mod song;
-pub mod store;
+use serde::{Deserialize, Serialize};
+
+#[rid::model]
+#[derive(Clone, Serialize, Deserialize)]
+pub struct Note {
+    pub id: u64,
+    pub key: u8,
+    pub velocity: u8,
+    pub length: u64,
+    pub offset: u64,
+}
