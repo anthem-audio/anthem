@@ -37,11 +37,16 @@ func dummyCallsToPreventTreeShaking() {
     rid_note_length(nil);
     rid_note_offset(nil);
     _to_dart_for_Pattern();
-    __include_dart_for_hash_map_u64_channelnotes();
+    __include_dart_for_vec_timesignaturechange();
     rid_pattern_id(nil);
     rid_pattern_name(nil);
     rid_pattern_name_len(nil);
     rid_pattern_channel_notes(nil);
+    rid_pattern_time_signature_changes(nil);
+    rid_pattern_default_time_signature(nil);
+    rid_pattern_useless_time_sig_change(nil);
+    rid_len_vec_timesignaturechange(nil);
+    rid_get_item_vec_timesignaturechange(nil, 0);
     rid_export_rid_len_hash_map_u64_channelnotes(nil);
     rid_export_rid_get_hash_map_u64_channelnotes(nil, 0);
     rid_export_rid_contains_key_hash_map_u64_channelnotes(nil, 0);
@@ -55,7 +60,7 @@ func dummyCallsToPreventTreeShaking() {
     rid_len_vec_note(nil);
     rid_get_item_vec_note(nil, 0);
     _to_dart_for_Project();
-    __include_dart_for_hash_map_u64_instrument();
+    __include_dart_for_vec_u64();
     rid_project_id(nil);
     rid_project_is_saved(nil);
     rid_project_file_path(nil);
@@ -64,19 +69,20 @@ func dummyCallsToPreventTreeShaking() {
     rid_project_instruments(nil);
     rid_project_controllers(nil);
     rid_project_generator_list(nil);
-    rid_export_rid_len_hash_map_u64_instrument(nil);
-    rid_export_rid_get_hash_map_u64_instrument(nil, 0);
-    rid_export_rid_contains_key_hash_map_u64_instrument(nil, 0);
-    rid_export_rid_keys_hash_map_u64_instrument(nil);
+    rid_len_vec_u64(nil);
+    rid_get_item_vec_u64(nil, 0);
     rid_export_rid_len_hash_map_u64_controller(nil);
     rid_export_rid_get_hash_map_u64_controller(nil, 0);
     rid_export_rid_contains_key_hash_map_u64_controller(nil, 0);
     rid_export_rid_keys_hash_map_u64_controller(nil);
-    rid_len_vec_u64(nil);
-    rid_get_item_vec_u64(nil, 0);
+    rid_export_rid_len_hash_map_u64_instrument(nil);
+    rid_export_rid_get_hash_map_u64_instrument(nil, 0);
+    rid_export_rid_contains_key_hash_map_u64_instrument(nil, 0);
+    rid_export_rid_keys_hash_map_u64_instrument(nil);
     _to_dart_for_Song();
     __include_dart_for_vec_pattern();
     rid_song_id(nil);
+    rid_song_ticks_per_quarter(nil);
     rid_song_patterns(nil);
     rid_len_vec_pattern(nil);
     rid_get_item_vec_pattern(nil, 0);
@@ -104,5 +110,11 @@ func dummyCallsToPreventTreeShaking() {
     rid_msg_DeletePattern(0, 0, 0);
     rid_msg_AddNote(0, 0, 0, 0, nil);
     rid_msg_DeleteNote(0, 0, 0, 0, 0);
+    _to_dart_for_TimeSignature();
+    rid_timesignature_numerator(nil);
+    rid_timesignature_denominator(nil);
+    _to_dart_for_TimeSignatureChange();
+    rid_timesignaturechange_offset(nil);
+    rid_timesignaturechange_time_signature(nil);
 }
 // <rid:prevent_tree_shake End>

@@ -24,3 +24,4 @@ pub mod pattern;
 pub mod project;
 pub mod song;
 pub mod store;
+pub mod time_signature;

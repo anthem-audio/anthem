@@ -17,26 +17,19 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use serde::{Deserialize, Serialize};
-
-use crate::model::pattern::Pattern;
-use crate::util::id::get_id;
+use serde::{Serialize, Deserialize};
 
 #[rid::model]
-#[rid::structs(Pattern)]
-#[derive(Serialize, Deserialize)]
-pub struct Song {
-    pub id: u64,
-    pub ticks_per_quarter: u64,
-    pub patterns: Vec<Pattern>,
+#[derive(Clone, Serialize, Deserialize)]
+pub struct TimeSignature {
+    pub numerator: u64,
+    pub denominator: u64,
 }
 
-impl Default for Song {
-    fn default() -> Self {
-        Song {
-            id: get_id(),
-            ticks_per_quarter: 96,
-            patterns: Vec::new(),
-        }
-    }
+#[rid::model]
+#[rid::structs(TimeSignature)]
+#[derive(Clone, Serialize, Deserialize)]
+pub struct TimeSignatureChange {
+    pub offset: u64,
+    pub time_signature: TimeSignature,
 }

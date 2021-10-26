@@ -22,15 +22,19 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::model::note::*;
+use crate::model::time_signature::{TimeSignature, TimeSignatureChange};
 use crate::util::id::get_id;
 
 #[rid::model]
-#[rid::structs(ChannelNotes)]
+#[rid::structs(ChannelNotes, TimeSignature, TimeSignatureChange)]
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Pattern {
     pub id: u64,
     pub name: String,
     pub channel_notes: HashMap<u64, ChannelNotes>,
+    pub time_signature_changes: Vec<TimeSignatureChange>,
+    pub default_time_signature: TimeSignature,
+    pub useless_time_sig_change: TimeSignatureChange,
 }
 
 #[rid::model]
@@ -52,6 +56,18 @@ impl Pattern {
             id: get_id(),
             name,
             channel_notes: HashMap::new(),
+            default_time_signature: TimeSignature {
+                numerator: 4,
+                denominator: 4,
+            },
+            time_signature_changes: Vec::new(),
+            useless_time_sig_change: TimeSignatureChange {
+                offset: 0,
+                time_signature: TimeSignature {
+                    numerator: 1234,
+                    denominator: 5678,
+                }
+            }
         }
     }
 }
