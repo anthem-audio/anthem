@@ -61,7 +61,6 @@ class Project extends StatelessWidget {
                     create: (context) => PianoRollCubit(projectID: state.id),
                     // TODO
                     child: PianoRoll(
-                      pattern: null,
                       ticksPerQuarter: 96,
                       channelID: null,
                     ),

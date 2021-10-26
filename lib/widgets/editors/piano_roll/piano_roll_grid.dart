@@ -17,7 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:provider/provider.dart';
 import 'package:plugin/generated/rid_api.dart';
@@ -38,21 +40,26 @@ class PianoRollGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var pattern = context.watch<Pattern>();
-    var timeView = context.watch<TimeView>();
+    return BlocBuilder<PianoRollCubit, PianoRollState>(
+        builder: (context, state) {
+      // TODO
+      if (state.pattern == null) return SizedBox();
+      var pattern = state.pattern!;
+      var timeView = context.watch<TimeView>();
 
-    return ClipRect(
-      child: CustomPaint(
-        painter: PianoRollBackgroundPainter(
-          keyHeight: keyHeight,
-          keyValueAtTop: keyValueAtTop,
-          pattern: pattern,
-          timeViewStart: timeView.start,
-          timeViewEnd: timeView.end,
-          ticksPerQuarter: ticksPerQuarter,
+      return ClipRect(
+        child: CustomPaint(
+          painter: PianoRollBackgroundPainter(
+            keyHeight: keyHeight,
+            keyValueAtTop: keyValueAtTop,
+            pattern: pattern,
+            timeViewStart: timeView.start,
+            timeViewEnd: timeView.end,
+            ticksPerQuarter: ticksPerQuarter,
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 }
 

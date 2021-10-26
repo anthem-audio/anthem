@@ -42,12 +42,22 @@ class PianoRollCubit extends Cubit<PianoRollState> {
             channelID: null,
           ),
         ) {
+          print("constructor1");
+          print("constructor12");
+          print("constructor1");
+          print("constructor12");
+          print("constructor1");
     _updateActivePatternSub = rid.replyChannel.stream
         .where((event) => event.type == Reply.ActivePatternSet)
         .listen(_updateActivePattern);
   }
 
   _updateActivePattern(PostedReply _reply) {
+    print("update");
+    print("updatea");
+    print("updateb");
+    print("updatec");
+
     final project =
         _store.projects.firstWhere((project) => project.id == state.projectID);
     final patternID = project.song.activePatternId;

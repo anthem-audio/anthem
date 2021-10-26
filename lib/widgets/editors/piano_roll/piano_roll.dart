@@ -19,8 +19,10 @@
 
 import 'dart:math';
 
+import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:plugin/generated/rid_api.dart';
 
@@ -33,13 +35,11 @@ import 'timeline.dart';
 import 'piano_control.dart';
 
 class PianoRoll extends StatefulWidget {
-  final Pattern? pattern;
   final int ticksPerQuarter;
   final int? channelID;
 
   const PianoRoll({
     Key? key,
-    required this.pattern,
     required this.ticksPerQuarter,
     required this.channelID,
   }) : super(key: key);
@@ -51,21 +51,25 @@ class PianoRoll extends StatefulWidget {
 class _PianoRollState extends State<PianoRoll> {
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(3),
-      child: Column(
-        children: [
-          _PianoRollHeader(),
-          Expanded(
-            child: _PianoRollContent(
-              pattern: widget.pattern,
-              ticksPerQuarter: widget.ticksPerQuarter,
-              channelID: widget.channelID,
-            ),
-          ),
+    return BlocBuilder<PianoRollCubit, PianoRollState>(
+        builder: (context, state) {
+      return MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => TimeView(0, 3072)),
         ],
-      ),
-    );
+        child: Column(
+          children: [
+            _PianoRollHeader(),
+            Expanded(
+              child: _PianoRollContent(
+                ticksPerQuarter: widget.ticksPerQuarter,
+                channelID: widget.channelID,
+              ),
+            ),
+          ],
+        ),
+      );
+    });
   }
 }
 
@@ -88,13 +92,11 @@ class _PianoRollHeader extends StatelessWidget {
 // TODO: use providers instead of punching everything through
 
 class _PianoRollContent extends StatefulWidget {
-  final Pattern? pattern;
   final int ticksPerQuarter;
   final int? channelID;
 
   _PianoRollContent({
     Key? key,
-    required this.pattern,
     required this.ticksPerQuarter,
     required this.channelID,
   }) : super(key: key);
@@ -111,194 +113,192 @@ class _PianoRollContentState extends State<_PianoRollContent> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.pattern == null) return Container();
-    final pattern = widget.pattern!;
+    return BlocBuilder<PianoRollCubit, PianoRollState>(
+        builder: (context, state) {
+      if (state.pattern == null) return Container();
+      final pattern = state.pattern!;
 
-    final timeView = context.watch<TimeView>();
+      final timeView = context.watch<TimeView>();
 
-    final timelineHeight =
-        pattern.timeSignatureChanges.isNotEmpty ? 42.0 : 21.0;
+      final timelineHeight =
+          pattern.timeSignatureChanges.isNotEmpty ? 42.0 : 21.0;
 
-    final pianoRollContentListenerKey = GlobalKey();
+      final pianoRollContentListenerKey = GlobalKey();
 
-    handlePointerDown(PointerDownEvent e) {
-      final context = pianoRollContentListenerKey.currentContext;
-      if (context == null) return;
+      handlePointerDown(PointerDownEvent e) {
+        final context = pianoRollContentListenerKey.currentContext;
+        if (context == null) return;
 
-      final contentRenderBox = context.findRenderObject() as RenderBox;
-      final pointerPos = contentRenderBox.globalToLocal(e.position);
+        final contentRenderBox = context.findRenderObject() as RenderBox;
+        final pointerPos = contentRenderBox.globalToLocal(e.position);
 
-      PianoRollPointerDownNotification(
-        note: pixelsToKeyValue(
-            keyHeight: keyHeight,
-            keyValueAtTop: keyValueAtTop,
-            pixelOffsetFromTop: pointerPos.dy),
-        time: pixelsToTime(
-            timeViewStart: timeView.start,
-            timeViewEnd: timeView.end,
-            viewPixelWidth: context.size?.width ?? 1,
-            pixelOffsetFromLeft: pointerPos.dx),
-        event: e,
-        pianoRollSize: contentRenderBox.size,
-      ).dispatch(context);
-    }
+        PianoRollPointerDownNotification(
+          note: pixelsToKeyValue(
+              keyHeight: keyHeight,
+              keyValueAtTop: keyValueAtTop,
+              pixelOffsetFromTop: pointerPos.dy),
+          time: pixelsToTime(
+              timeViewStart: timeView.start,
+              timeViewEnd: timeView.end,
+              viewPixelWidth: context.size?.width ?? 1,
+              pixelOffsetFromLeft: pointerPos.dx),
+          event: e,
+          pianoRollSize: contentRenderBox.size,
+        ).dispatch(context);
+      }
 
-    handlePointerMove(PointerMoveEvent e) {
-      final context = pianoRollContentListenerKey.currentContext;
-      if (context == null) return;
+      handlePointerMove(PointerMoveEvent e) {
+        final context = pianoRollContentListenerKey.currentContext;
+        if (context == null) return;
 
-      final contentRenderBox = context.findRenderObject() as RenderBox;
-      final pointerPos = contentRenderBox.globalToLocal(e.position);
+        final contentRenderBox = context.findRenderObject() as RenderBox;
+        final pointerPos = contentRenderBox.globalToLocal(e.position);
 
-      PianoRollPointerMoveNotification(
-        note: pixelsToKeyValue(
-            keyHeight: keyHeight,
-            keyValueAtTop: keyValueAtTop,
-            pixelOffsetFromTop: pointerPos.dy),
-        time: pixelsToTime(
-            timeViewStart: timeView.start,
-            timeViewEnd: timeView.end,
-            viewPixelWidth: context.size?.width ?? 1,
-            pixelOffsetFromLeft: pointerPos.dx),
-        event: e,
-        pianoRollSize: contentRenderBox.size,
-      ).dispatch(context);
-    }
+        PianoRollPointerMoveNotification(
+          note: pixelsToKeyValue(
+              keyHeight: keyHeight,
+              keyValueAtTop: keyValueAtTop,
+              pixelOffsetFromTop: pointerPos.dy),
+          time: pixelsToTime(
+              timeViewStart: timeView.start,
+              timeViewEnd: timeView.end,
+              viewPixelWidth: context.size?.width ?? 1,
+              pixelOffsetFromLeft: pointerPos.dx),
+          event: e,
+          pianoRollSize: contentRenderBox.size,
+        ).dispatch(context);
+      }
 
-    handlePointerUp(PointerUpEvent e) {
-      final context = pianoRollContentListenerKey.currentContext;
-      if (context == null) return;
+      handlePointerUp(PointerUpEvent e) {
+        final context = pianoRollContentListenerKey.currentContext;
+        if (context == null) return;
 
-      final contentRenderBox = context.findRenderObject() as RenderBox;
-      final pointerPos = contentRenderBox.globalToLocal(e.position);
+        final contentRenderBox = context.findRenderObject() as RenderBox;
+        final pointerPos = contentRenderBox.globalToLocal(e.position);
 
-      PianoRollPointerUpNotification(
-        note: pixelsToKeyValue(
-            keyHeight: keyHeight,
-            keyValueAtTop: keyValueAtTop,
-            pixelOffsetFromTop: pointerPos.dy),
-        time: pixelsToTime(
-            timeViewStart: timeView.start,
-            timeViewEnd: timeView.end,
-            viewPixelWidth: context.size?.width ?? 1,
-            pixelOffsetFromLeft: pointerPos.dx),
-        event: e,
-        pianoRollSize: contentRenderBox.size,
-      ).dispatch(context);
-    }
+        PianoRollPointerUpNotification(
+          note: pixelsToKeyValue(
+              keyHeight: keyHeight,
+              keyValueAtTop: keyValueAtTop,
+              pixelOffsetFromTop: pointerPos.dy),
+          time: pixelsToTime(
+              timeViewStart: timeView.start,
+              timeViewEnd: timeView.end,
+              viewPixelWidth: context.size?.width ?? 1,
+              pixelOffsetFromLeft: pointerPos.dx),
+          event: e,
+          pianoRollSize: contentRenderBox.size,
+        ).dispatch(context);
+      }
 
-    final notes = pattern.channelNotes[widget.channelID]?.notes;
+      final notes = pattern.channelNotes[widget.channelID]?.notes;
 
-    // TODO
-    if (notes == null) {
-      return Container();
-    }
-
-    return Column(
-      children: [
-        Expanded(
-          child: Row(
-            children: [
-              // Piano control
-              SizedBox(
-                width: pianoControlWidth,
-                child: Column(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFFFFF).withOpacity(0.12),
-                        borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(1),
-                          bottomRight: Radius.circular(1),
-                        ),
-                      ),
-                      height: timelineHeight + 1,
-                    ),
-                    const SizedBox(height: 1),
-                    Expanded(
-                      child: PianoControl(
-                        keyValueAtTop: keyValueAtTop,
-                        keyHeight: keyHeight,
-                        setKeyValueAtTop: (value) {
-                          setState(() {
-                            keyValueAtTop = value;
-                          });
-                        },
-                        setKeyHeight: (value) {
-                          setState(() {
-                            keyHeight = value;
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 1),
-                  ],
-                ),
-              ),
-              // Timeline and main piano roll render area
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(1, 1, 0, 0),
+      return Column(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                // Piano control
+                SizedBox(
+                  width: pianoControlWidth,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      SizedBox(
-                        height: timelineHeight,
-                        child: Timeline(
-                          pattern: pattern,
-                          ticksPerQuarter: widget.ticksPerQuarter,
-                        ),
-                      ),
-                      Expanded(
-                        child: Listener(
-                          key: pianoRollContentListenerKey,
-                          onPointerDown: handlePointerDown,
-                          onPointerMove: handlePointerMove,
-                          onPointerUp: handlePointerUp,
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              PianoRollGrid(
-                                keyHeight: keyHeight,
-                                keyValueAtTop: keyValueAtTop,
-                                ticksPerQuarter: widget.ticksPerQuarter,
-                              ),
-                              ClipRect(
-                                child: CustomMultiChildLayout(
-                                  children: notes
-                                      .map(
-                                        (note) => LayoutId(
-                                          id: note.id,
-                                          child: NoteWidget(noteID: note.id),
-                                        ),
-                                      )
-                                      .toList(),
-                                  delegate: NoteLayoutDelegate(
-                                    notes: notes,
-                                    keyHeight: keyHeight,
-                                    keyValueAtTop: keyValueAtTop,
-                                    timeViewStart: timeView.start,
-                                    timeViewEnd: timeView.end,
-                                  ),
-                                ),
-                              ),
-                            ],
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFFFFF).withOpacity(0.12),
+                          borderRadius: const BorderRadius.only(
+                            bottomLeft: Radius.circular(1),
+                            bottomRight: Radius.circular(1),
                           ),
                         ),
+                        height: timelineHeight + 1,
                       ),
+                      const SizedBox(height: 1),
+                      Expanded(
+                        child: PianoControl(
+                          keyValueAtTop: keyValueAtTop,
+                          keyHeight: keyHeight,
+                          setKeyValueAtTop: (value) {
+                            setState(() {
+                              keyValueAtTop = value;
+                            });
+                          },
+                          setKeyHeight: (value) {
+                            setState(() {
+                              keyHeight = value;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 1),
                     ],
                   ),
                 ),
-              ),
-            ],
+                // Timeline and main piano roll render area
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(1, 1, 0, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(
+                          height: timelineHeight,
+                          child: Timeline(
+                            pattern: pattern,
+                            ticksPerQuarter: widget.ticksPerQuarter,
+                          ),
+                        ),
+                        Expanded(
+                          child: Listener(
+                            key: pianoRollContentListenerKey,
+                            onPointerDown: handlePointerDown,
+                            onPointerMove: handlePointerMove,
+                            onPointerUp: handlePointerUp,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                PianoRollGrid(
+                                  keyHeight: keyHeight,
+                                  keyValueAtTop: keyValueAtTop,
+                                  ticksPerQuarter: widget.ticksPerQuarter,
+                                ),
+                                ClipRect(
+                                  child: CustomMultiChildLayout(
+                                    children: (notes ?? [])
+                                        .map(
+                                          (note) => LayoutId(
+                                            id: note.id,
+                                            child: NoteWidget(noteID: note.id),
+                                          ),
+                                        )
+                                        .toList(),
+                                    delegate: NoteLayoutDelegate(
+                                      notes: notes ?? [],
+                                      keyHeight: keyHeight,
+                                      keyValueAtTop: keyValueAtTop,
+                                      timeViewStart: timeView.start,
+                                      timeViewEnd: timeView.end,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        Container(
-          color: const Color(0xFFFFFFFF).withOpacity(0.12),
-          height: footerHeight,
-        ),
-      ],
-    );
+          Container(
+            color: const Color(0xFFFFFFFF).withOpacity(0.12),
+            height: footerHeight,
+          ),
+        ],
+      );
+    });
   }
 }
 
