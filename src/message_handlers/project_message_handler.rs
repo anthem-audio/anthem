@@ -17,11 +17,10 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use crate::commands::command::Command;
 use crate::commands::project_commands::*;
 use crate::model::store::*;
-use crate::util::id::get_id;
-use crate::util::rid_reply_all::rid_reply_all;
+use crate::util::execute_and_push::*;
+use crate::util::id::*;
 
 pub fn project_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> bool {
     match msg {
@@ -30,29 +29,21 @@ pub fn project_message_handler(store: &mut Store, request_id: u64, msg: &Msg) ->
                 id: get_id(),
                 name: name.clone(),
             };
-            let replies = command.execute(store.get_project_mut(*project_id), request_id);
-            store
-                .command_queues
-                .get_mut(project_id)
-                .unwrap()
-                .push_command(Box::new(command));
-            rid_reply_all(&replies);
+            execute_and_push(store, request_id, *project_id, Box::new(command));
         }
         Msg::AddController(project_id, name) => {
             let command = AddControllerCommand {
                 id: get_id(),
                 name: name.clone(),
             };
-            let replies = command.execute(store.get_project_mut(*project_id), request_id);
-            store
-                .command_queues
-                .get_mut(project_id)
-                .unwrap()
-                .push_command(Box::new(command));
-            rid_reply_all(&replies);
+            execute_and_push(store, request_id, *project_id, Box::new(command));
         }
         Msg::RemoveGenerator(_project_id, _generator_id) => {
             todo!();
+        }
+        Msg::SetActivePattern(project_id, pattern_id) => {
+            store.get_project_mut(*project_id).song.active_pattern_id = *pattern_id;
+            rid::post(Reply::ActivePatternSet(request_id));
         }
         _ => {
             return false;

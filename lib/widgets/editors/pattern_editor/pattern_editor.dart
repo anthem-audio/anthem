@@ -87,13 +87,17 @@ class _PatternEditorState extends State<PatternEditor> {
                   height: 28,
                   items: state.patternList.map(
                     (item) {
-                      print("item");
                       return DropdownItem(
                         id: item.id.toString(),
                         name: item.name,
                       );
                     },
                   ).toList(),
+                  selectedID: state.activePatternID.toString(),
+                  onChanged: (idStr) {
+                    final id = idStr == null ? 0 : int.parse(idStr);
+                    context.read<PatternEditorCubit>().setActivePattern(id);
+                  },
                 ),
                 Expanded(child: SizedBox()),
                 Button(

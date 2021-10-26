@@ -17,12 +17,11 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use crate::commands::command::Command;
 use crate::commands::pattern_commands::*;
 use crate::model::note::*;
 use crate::model::pattern::*;
 use crate::model::store::*;
-use crate::util::rid_reply_all::rid_reply_all;
+use crate::util::execute_and_push::*;
 
 pub fn pattern_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> bool {
     match msg {
@@ -31,13 +30,7 @@ pub fn pattern_message_handler(store: &mut Store, request_id: u64, msg: &Msg) ->
                 project_id: *project_id,
                 pattern: Pattern::new(pattern_name.clone()),
             };
-            command.execute(store.get_project_mut(*project_id), request_id);
-            store
-                .command_queues
-                .get_mut(project_id)
-                .unwrap()
-                .push_command(Box::new(command));
-            rid_reply_all(&vec![Reply::PatternAdded(request_id)]);
+            execute_and_push(store, request_id, *project_id, Box::new(command));
         }
         Msg::DeletePattern(project_id, pattern_id) => {
             let project = store.get_project_mut(*project_id);
@@ -53,14 +46,9 @@ pub fn pattern_message_handler(store: &mut Store, request_id: u64, msg: &Msg) ->
                 ),
             };
 
-            let replies = command.execute(store.get_project_mut(*project_id), request_id);
-            store.push_command(*project_id, Box::new(command));
-
-            rid_reply_all(&replies);
+            execute_and_push(store, request_id, *project_id, Box::new(command));
         }
         Msg::AddNote(project_id, pattern_id, instrument_id, note_json) => {
-            let project = store.get_project_mut(*project_id);
-
             let note: Note = serde_json::from_str(note_json).unwrap();
 
             let command = AddNoteCommand {
@@ -70,10 +58,7 @@ pub fn pattern_message_handler(store: &mut Store, request_id: u64, msg: &Msg) ->
                 note,
             };
 
-            let replies = command.execute(project, request_id);
-            store.push_command(*project_id, Box::new(command));
-
-            rid_reply_all(&replies);
+            execute_and_push(store, request_id, *project_id, Box::new(command));
         }
         _ => {
             return false;

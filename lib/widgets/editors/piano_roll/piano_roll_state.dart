@@ -21,11 +21,13 @@ part of 'piano_roll_cubit.dart';
 
 @immutable
 class PianoRollState {
+  final int projectID;
   final Pattern? pattern;
   final int ticksPerQuarter;
   final int? channelID;
 
   PianoRollState({
+    required this.projectID,
     required this.pattern,
     required this.ticksPerQuarter,
     required this.channelID,
