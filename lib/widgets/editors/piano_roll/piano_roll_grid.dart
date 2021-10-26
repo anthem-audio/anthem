@@ -42,9 +42,7 @@ class PianoRollGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<PianoRollCubit, PianoRollState>(
         builder: (context, state) {
-      // TODO
-      if (state.pattern == null) return SizedBox();
-      var pattern = state.pattern!;
+      var pattern = state.pattern;
       var timeView = context.watch<TimeView>();
 
       return ClipRect(
@@ -75,7 +73,7 @@ class PianoRollBackgroundPainter extends CustomPainter {
 
   final double keyHeight;
   final double keyValueAtTop;
-  final Pattern pattern;
+  final Pattern? pattern;
   final double timeViewStart;
   final double timeViewEnd;
   final int ticksPerQuarter;
@@ -105,8 +103,8 @@ class PianoRollBackgroundPainter extends CustomPainter {
       viewWidthInPixels: size.width,
       minPixelsPerSection: 8,
       snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
-      defaultTimeSignature: pattern.defaultTimeSignature,
-      timeSignatureChanges: pattern.timeSignatureChanges,
+      defaultTimeSignature: pattern?.defaultTimeSignature,
+      timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
       ticksPerQuarter: ticksPerQuarter,
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
@@ -130,8 +128,8 @@ class PianoRollBackgroundPainter extends CustomPainter {
       viewWidthInPixels: size.width,
       minPixelsPerSection: 20,
       snap: DivisionSnap(division: Division(multiplier: 1, divisor: 1)),
-      defaultTimeSignature: pattern.defaultTimeSignature,
-      timeSignatureChanges: pattern.timeSignatureChanges,
+      defaultTimeSignature: pattern?.defaultTimeSignature,
+      timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
       ticksPerQuarter: ticksPerQuarter,
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,

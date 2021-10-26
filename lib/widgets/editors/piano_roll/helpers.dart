@@ -119,8 +119,8 @@ class Division {
   int multiplier;
   int divisor;
 
-  Time getSizeInTicks(Time ticksPerQuarter, TimeSignature timeSignature) {
-    return ((ticksPerQuarter * 4) ~/ timeSignature.denominator) *
+  Time getSizeInTicks(Time ticksPerQuarter, TimeSignature? timeSignature) {
+    return ((ticksPerQuarter * 4) ~/ (timeSignature?.denominator ?? 4)) *
         multiplier ~/
         divisor;
   }
@@ -157,7 +157,12 @@ class DivisionChange {
   int startLabel;
 }
 
-Time getBarLength(Time ticksPerQuarter, TimeSignature timeSignature) {
+Time getBarLength(Time ticksPerQuarter, TimeSignature? timeSignature) {
+  // Fall back to 4/4 time signature
+  if (timeSignature == null) {
+    return ticksPerQuarter * 4;
+  }
+
   return (ticksPerQuarter * 4 * timeSignature.numerator) ~/
       timeSignature.denominator;
 }
@@ -234,7 +239,7 @@ List<int> factors(int x) {
 }
 
 GetBestDivisionResult getBestDivision({
-  required TimeSignature timeSignature,
+  required TimeSignature? timeSignature,
   required Snap snap,
   required double ticksPerPixel,
   required double minPixelsPerDivision,
@@ -303,7 +308,7 @@ List<DivisionChange> getDivisionChanges({
   required double viewWidthInPixels,
   required double minPixelsPerSection,
   required Snap snap,
-  required TimeSignature defaultTimeSignature,
+  required TimeSignature? defaultTimeSignature,
   required List<TimeSignatureChange> timeSignatureChanges,
   required int ticksPerQuarter,
   required double timeViewStart,
@@ -319,7 +324,7 @@ List<DivisionChange> getDivisionChanges({
   var divisionStartPtr = 0;
   var divisionBarLength = 1;
 
-  processTimeSignatureChange(int offset, TimeSignature timeSignature) {
+  processTimeSignatureChange(int offset, TimeSignature? timeSignature) {
     var lastDivisionSize = offset - divisionStartPtr;
     startLabelPtr += lastDivisionSize ~/ divisionBarLength;
     if (lastDivisionSize % divisionBarLength > 0) {
