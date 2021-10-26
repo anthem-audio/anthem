@@ -35,7 +35,7 @@ class Timeline extends StatefulWidget {
     required this.ticksPerQuarter,
   }) : super(key: key);
 
-  final Pattern pattern;
+  final Pattern? pattern;
   final int ticksPerQuarter;
 
   @override
@@ -96,7 +96,7 @@ class _TimelineState extends State<Timeline> {
               ),
             ),
             CustomMultiChildLayout(
-              children: widget.pattern.timeSignatureChanges
+              children: (widget.pattern?.timeSignatureChanges ?? [])
                   .map(
                     (change) => LayoutId(
                       id: change.offset,
@@ -107,7 +107,7 @@ class _TimelineState extends State<Timeline> {
                   )
                   .toList(),
               delegate: TimeSignatureLabelLayoutDelegate(
-                timeSignatureChanges: widget.pattern.timeSignatureChanges,
+                timeSignatureChanges: widget.pattern?.timeSignatureChanges ?? [],
                 timeViewStart: timeView.start,
                 timeViewEnd: timeView.end,
                 // viewPixelWidth:
@@ -206,7 +206,7 @@ class TimelinePainter extends CustomPainter {
 
   final double timeViewStart;
   final double timeViewEnd;
-  final Pattern pattern;
+  final Pattern? pattern;
   final int ticksPerQuarter;
 
   @override
@@ -215,8 +215,8 @@ class TimelinePainter extends CustomPainter {
       viewWidthInPixels: size.width,
       minPixelsPerSection: 32,
       snap: BarSnap(),
-      defaultTimeSignature: pattern.defaultTimeSignature,
-      timeSignatureChanges: pattern.timeSignatureChanges,
+      defaultTimeSignature: pattern?.defaultTimeSignature,
+      timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
       ticksPerQuarter: ticksPerQuarter,
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,

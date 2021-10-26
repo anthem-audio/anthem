@@ -115,13 +115,12 @@ class _PianoRollContentState extends State<_PianoRollContent> {
   Widget build(BuildContext context) {
     return BlocBuilder<PianoRollCubit, PianoRollState>(
         builder: (context, state) {
-      if (state.pattern == null) return Container();
-      final pattern = state.pattern!;
+      final pattern = state.pattern;
 
       final timeView = context.watch<TimeView>();
 
       final timelineHeight =
-          pattern.timeSignatureChanges.isNotEmpty ? 42.0 : 21.0;
+          (pattern?.timeSignatureChanges ?? []).isNotEmpty ? 42.0 : 21.0;
 
       final pianoRollContentListenerKey = GlobalKey();
 
@@ -191,7 +190,7 @@ class _PianoRollContentState extends State<_PianoRollContent> {
         ).dispatch(context);
       }
 
-      final notes = pattern.channelNotes[widget.channelID]?.notes;
+      final notes = pattern == null ? <Note>[] : pattern.channelNotes[widget.channelID]?.notes;
 
       return Column(
         children: [
