@@ -30,6 +30,7 @@ class Dropdown extends StatefulWidget {
   final double? height;
   final String? selectedID;
   final List<DropdownItem> items;
+  final Function(String?)? onChanged;
 
   Dropdown({
     Key? key,
@@ -37,6 +38,7 @@ class Dropdown extends StatefulWidget {
     this.height,
     this.selectedID,
     this.items = const [],
+    this.onChanged,
   }) : super(key: key);
 
   @override
@@ -61,6 +63,7 @@ class _DropdownState extends State<Dropdown> {
                         setState(() {
                           localSelectedID = item.id;
                         });
+                        widget.onChanged?.call(item.id);
                       }))
                   .toList() +
               [
@@ -71,6 +74,7 @@ class _DropdownState extends State<Dropdown> {
                     setState(() {
                       localSelectedID = null;
                     });
+                    widget.onChanged?.call(null);
                   },
                 )
               ],

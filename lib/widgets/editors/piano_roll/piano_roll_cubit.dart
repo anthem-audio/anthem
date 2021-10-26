@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
 import 'package:plugin/generated/rid_api.dart';
@@ -24,9 +26,14 @@ import 'package:plugin/generated/rid_api.dart';
 part 'piano_roll_state.dart';
 
 class PianoRollCubit extends Cubit<PianoRollState> {
+  // ignore: unused_field
+  late final StreamSubscription<PostedReply> _updateActivePatternSub;
+  final Store _store = Store.instance;
+
   PianoRollCubit({required int projectID})
       : super(
           PianoRollState(
+            projectID: projectID,
             pattern: null,
             ticksPerQuarter: Store.instance.projects
                 .firstWhere((project) => project.id == projectID)
@@ -34,5 +41,26 @@ class PianoRollCubit extends Cubit<PianoRollState> {
                 .ticksPerQuarter,
             channelID: null,
           ),
-        ) {}
+        ) {
+    _updateActivePatternSub = rid.replyChannel.stream
+        .where((event) => event.type == Reply.ActivePatternSet)
+        .listen(_updateActivePattern);
+  }
+
+  _updateActivePattern(PostedReply _reply) {
+    final project =
+        _store.projects.firstWhere((project) => project.id == state.projectID);
+    final patternID = project.song.activePatternId;
+    Pattern? pattern;
+    if (patternID != 0) {
+      pattern = project.song.patterns
+          .firstWhere((pattern) => pattern.id == patternID);
+    }
+    emit(PianoRollState(
+      projectID: state.projectID,
+      channelID: state.channelID,
+      ticksPerQuarter: state.ticksPerQuarter,
+      pattern: pattern,
+    ));
+  }
 }

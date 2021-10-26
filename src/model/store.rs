@@ -107,6 +107,7 @@ pub enum Msg {
     AddInstrument(u64, String),
     AddController(u64, String),
     RemoveGenerator(u64, u64),
+    SetActivePattern(u64, u64), // 0 means none
 
     // Pattern
     AddPattern(u64, String),
@@ -132,6 +133,7 @@ pub enum Reply {
     InstrumentAdded(u64),
     ControllerAdded(u64),
     GeneratorRemoved(u64),
+    ActivePatternSet(u64),
 
     // Pattern
     PatternAdded(u64),

@@ -17,30 +17,18 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use serde::{Deserialize, Serialize};
+use super::rid_reply_all::*;
+use crate::commands::command::*;
+use crate::model::store::*;
 
-use crate::model::pattern::Pattern;
-use crate::util::id::get_id;
-
-#[rid::model]
-#[rid::structs(Pattern)]
-#[derive(Serialize, Deserialize)]
-pub struct Song {
-    pub id: u64,
-    pub ticks_per_quarter: u64,
-    pub patterns: Vec<Pattern>,
-    // TODO: replace with Option<u64> when RID implements that
-    // until then, 0 means none selected
-    pub active_pattern_id: u64,
-}
-
-impl Default for Song {
-    fn default() -> Self {
-        Song {
-            id: get_id(),
-            ticks_per_quarter: 96,
-            patterns: Vec::new(),
-            active_pattern_id: 0,
-        }
-    }
+pub fn execute_and_push(
+    store: &mut Store,
+    request_id: u64,
+    project_id: u64,
+    command: Box<dyn Command>,
+) {
+    let project = store.get_project_mut(project_id);
+    let replies = command.execute(project, request_id);
+    store.push_command(project_id, command);
+    rid_reply_all(&replies);
 }

@@ -29,6 +29,8 @@ part 'pattern_editor_state.dart';
 
 class PatternEditorCubit extends Cubit<PatternEditorState> {
   // ignore: unused_field
+  late final StreamSubscription<PostedReply> _updateActivePatternSub;
+  // ignore: unused_field
   late final StreamSubscription<PostedReply> _updatePatternListSub;
   // ignore: unused_field
   late final StreamSubscription<PostedReply> _updateGeneratorListSub;
@@ -36,6 +38,9 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
 
   PatternEditorCubit({required int projectID})
       : super(PatternEditorState.init(projectID)) {
+    _updateActivePatternSub = rid.replyChannel.stream
+        .where((event) => event.type == Reply.ActivePatternSet)
+        .listen(_updateActivePattern);
     _updatePatternListSub = rid.replyChannel.stream
         .where((event) =>
             event.type == Reply.PatternAdded ||
@@ -47,6 +52,18 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
             event.type == Reply.ControllerAdded ||
             event.type == Reply.GeneratorRemoved)
         .listen(_updateGeneratorList);
+  }
+
+  _updateActivePattern(PostedReply _reply) {
+    emit(PatternEditorState(
+      controllers: state.controllers,
+      generatorIDList: state.generatorIDList,
+      instruments: state.instruments,
+      pattern: state.pattern,
+      patternList: state.patternList,
+      projectID: state.projectID,
+      activePatternID: getProject(_store, state.projectID).song.activePatternId,
+    ));
   }
 
   _updatePatternList(PostedReply _reply) {
@@ -63,6 +80,7 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
           )
           .toList(),
       projectID: state.projectID,
+      activePatternID: state.activePatternID,
     ));
   }
 
@@ -76,6 +94,7 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
       pattern: state.pattern,
       patternList: state.patternList,
       projectID: state.projectID,
+      activePatternID: state.activePatternID,
     ));
   }
 
@@ -89,4 +108,6 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
       _store.msgAddController(state.projectID, name);
   Future<void> removeGenerator(int id) =>
       _store.msgRemoveGenerator(state.projectID, id);
+  Future<void> setActivePattern(int id) =>
+      _store.msgSetActivePattern(state.projectID, id);
 }

@@ -27,6 +27,7 @@ class PatternEditorState {
   late final HashMap<int, Instrument> instruments;
   late final HashMap<int, Controller> controllers;
   late final List<int> generatorIDList;
+  late final int activePatternID;
 
   PatternEditorState({
     required this.projectID,
@@ -35,6 +36,7 @@ class PatternEditorState {
     required this.instruments,
     required this.controllers,
     required this.generatorIDList,
+    required this.activePatternID,
   });
 
   PatternEditorState.init(int projectID) {
@@ -44,6 +46,7 @@ class PatternEditorState {
     this.instruments = HashMap();
     this.controllers = HashMap();
     this.generatorIDList = [];
+    this.activePatternID = 0;
   }
 
   @override
@@ -55,7 +58,8 @@ class PatternEditorState {
           other.patternList == patternList &&
           other.instruments == instruments &&
           other.controllers == controllers &&
-          other.generatorIDList == generatorIDList;
+          other.generatorIDList == generatorIDList &&
+          other.activePatternID == activePatternID;
 }
 
 @immutable
