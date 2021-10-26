@@ -20,6 +20,8 @@
 import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -42,27 +44,38 @@ class Project extends StatelessWidget {
             height: 3,
           ),
           Expanded(
-            // left panel
             child: Panel(
               orientation: PanelOrientation.Left,
+              // left panel
               panelContent: Container(color: Theme.panel.main),
 
-              // right panel
               child: Panel(
                 orientation: PanelOrientation.Right,
+                // right panel
                 panelContent: Container(color: Theme.panel.main),
+
                 child: Panel(
                   orientation: PanelOrientation.Bottom,
+                  // bottom panel
+                  panelContent: BlocProvider<PianoRollCubit>(
+                    create: (context) => PianoRollCubit(projectID: state.id),
+                    // TODO
+                    child: PianoRoll(
+                      pattern: null,
+                      ticksPerQuarter: 96,
+                      channelID: null,
+                    ),
+                  ),
                   child: Panel(
                     orientation: PanelOrientation.Left,
                     child: Container(color: Theme.panel.main),
+                    // pattern editor
                     panelContent: BlocProvider<PatternEditorCubit>(
                       create: (context) =>
                           PatternEditorCubit(projectID: state.id),
                       child: PatternEditor(),
                     ),
                   ),
-                  panelContent: Container(color: Theme.panel.main),
                 ),
               ),
             ),
