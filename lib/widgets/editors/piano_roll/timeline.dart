@@ -19,6 +19,7 @@
 
 import 'dart:math';
 
+import 'package:anthem/widgets/main_window/main_window_cubit.dart';
 import 'package:flutter/widgets.dart';
 
 import 'package:provider/provider.dart';
@@ -59,24 +60,25 @@ class _TimelineState extends State<Timeline> {
         startTimeViewEndValue = timeView.end;
       },
       onPointerMove: (e) {
-        // if (!keyboardModifiers.alt) {
-        final viewWidth = _timelineKey.currentContext?.size?.width;
-        if (viewWidth == null) return;
+        final keyboardModifiers =
+            Provider.of<KeyboardModifiers>(context, listen: false);
+        if (!keyboardModifiers.alt) {
+          final viewWidth = _timelineKey.currentContext?.size?.width;
+          if (viewWidth == null) return;
 
-        var pixelsPerTick = viewWidth / (timeView.end - timeView.start);
-        final tickDelta =
-            (e.localPosition.dx - startPixelValue) / pixelsPerTick;
-        timeView.setStart(startTimeViewStartValue - tickDelta);
-        timeView.setEnd(startTimeViewEndValue - tickDelta);
-        // } else {
-        //   final oldSize =
-        //       startTimeViewEndValue.value - startTimeViewStartValue.value;
-        //   final newSize = oldSize *
-        //       pow(2, 0.01 * (startPixelValue.value - e.localPosition.dx));
-        //   final delta = newSize - oldSize;
-        //   timeView.setStart(startTimeViewStartValue.value - delta * 0.5);
-        //   timeView.setEnd(startTimeViewEndValue.value + delta * 0.5);
-        // }
+          var pixelsPerTick = viewWidth / (timeView.end - timeView.start);
+          final tickDelta =
+              (e.localPosition.dx - startPixelValue) / pixelsPerTick;
+          timeView.setStart(startTimeViewStartValue - tickDelta);
+          timeView.setEnd(startTimeViewEndValue - tickDelta);
+        } else {
+          final oldSize = startTimeViewEndValue - startTimeViewStartValue;
+          final newSize =
+              oldSize * pow(2, 0.01 * (startPixelValue - e.localPosition.dx));
+          final delta = newSize - oldSize;
+          timeView.setStart(startTimeViewStartValue - delta * 0.5);
+          timeView.setEnd(startTimeViewEndValue + delta * 0.5);
+        }
       },
       child: ClipRect(
         child: Stack(
@@ -107,7 +109,8 @@ class _TimelineState extends State<Timeline> {
                   )
                   .toList(),
               delegate: TimeSignatureLabelLayoutDelegate(
-                timeSignatureChanges: widget.pattern?.timeSignatureChanges ?? [],
+                timeSignatureChanges:
+                    widget.pattern?.timeSignatureChanges ?? [],
                 timeViewStart: timeView.start,
                 timeViewEnd: timeView.end,
                 // viewPixelWidth:

@@ -20,6 +20,7 @@
 import 'dart:async';
 
 import 'package:bloc/bloc.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:plugin/generated/rid_api.dart';
 import 'package:file_picker/file_picker.dart';

@@ -17,7 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/main_window/main_window_cubit.dart';
 import 'package:flutter/widgets.dart';
+import 'package:provider/provider.dart';
 
 import 'helpers.dart';
 
@@ -49,9 +51,9 @@ class PianoControl extends StatefulWidget {
 }
 
 class _PianoControlState extends State<PianoControl> {
-  double startPixelValue =-1.0;
-  double startTopKeyValue =-1.0;
-  double startKeyHeightValue =-1.0;
+  double startPixelValue = -1.0;
+  double startTopKeyValue = -1.0;
+  double startKeyHeightValue = -1.0;
 
   @override
   Widget build(BuildContext context) {
@@ -66,15 +68,17 @@ class _PianoControlState extends State<PianoControl> {
             startKeyHeightValue = widget.keyHeight;
           },
           onPointerMove: (e) {
-            // if (!keyboardModifiers.alt) {
+            final keyboardModifiers =
+                Provider.of<KeyboardModifiers>(context, listen: false);
+            if (!keyboardModifiers.alt) {
               final keyDelta =
                   (e.localPosition.dy - startPixelValue) / widget.keyHeight;
               widget.setKeyValueAtTop(startTopKeyValue + keyDelta);
-            // } else {
-            //   widget.setKeyHeight((startKeyHeightValue +
-            //           (e.localPosition.dy - startPixelValue) / 3)
-            //       .clamp(4, 50));
-            // }
+            } else {
+              widget.setKeyHeight((startKeyHeightValue +
+                      (e.localPosition.dy - startPixelValue) / 3)
+                  .clamp(4, 50));
+            }
           },
           child: Container(
             decoration: BoxDecoration(
@@ -92,13 +96,15 @@ class _PianoControlState extends State<PianoControl> {
                 return const SizedBox();
               }
 
-              var keyValueAtBottom =
-                  (widget.keyValueAtTop - contentRenderBox.size.height / widget.keyHeight)
-                      .floor();
+              var keyValueAtBottom = (widget.keyValueAtTop -
+                      contentRenderBox.size.height / widget.keyHeight)
+                  .floor();
 
               List<int> notes = [];
 
-              for (var i = widget.keyValueAtTop.ceil(); i >= keyValueAtBottom; i--) {
+              for (var i = widget.keyValueAtTop.ceil();
+                  i >= keyValueAtBottom;
+                  i--) {
                 notes.add(i);
               }
 
@@ -108,9 +114,11 @@ class _PianoControlState extends State<PianoControl> {
                 Widget child;
 
                 if (keyType == KeyType.white) {
-                  child = _WhiteKey(keyHeight: widget.keyHeight, keyNumber: note);
+                  child =
+                      _WhiteKey(keyHeight: widget.keyHeight, keyNumber: note);
                 } else {
-                  child = _BlackKey(keyHeight: widget.keyHeight, keyNumber: note);
+                  child =
+                      _BlackKey(keyHeight: widget.keyHeight, keyNumber: note);
                 }
 
                 return LayoutId(id: note, child: child);
