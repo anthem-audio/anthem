@@ -27,8 +27,6 @@ import 'package:provider/provider.dart';
 import 'helpers.dart';
 import 'package:plugin/generated/rid_api.dart';
 
-final _timelineKey = GlobalKey();
-
 class Timeline extends StatefulWidget {
   const Timeline({
     Key? key,
@@ -53,7 +51,6 @@ class _TimelineState extends State<Timeline> {
     var timeView = context.watch<TimeView>();
 
     return Listener(
-      key: _timelineKey,
       onPointerDown: (e) {
         startPixelValue = e.localPosition.dx;
         startTimeViewStartValue = timeView.start;
@@ -63,7 +60,7 @@ class _TimelineState extends State<Timeline> {
         final keyboardModifiers =
             Provider.of<KeyboardModifiers>(context, listen: false);
         if (!keyboardModifiers.alt) {
-          final viewWidth = _timelineKey.currentContext?.size?.width;
+          final viewWidth = context.size?.width;
           if (viewWidth == null) return;
 
           var pixelsPerTick = viewWidth / (timeView.end - timeView.start);
