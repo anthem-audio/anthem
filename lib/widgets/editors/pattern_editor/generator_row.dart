@@ -20,13 +20,17 @@
 import 'dart:math';
 
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart';
+import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 import '../../../theme.dart';
 
 class GeneratorRow extends StatelessWidget {
-  const GeneratorRow({Key? key}) : super(key: key);
+  final int id;
+
+  const GeneratorRow({Key? key, required this.id}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -34,42 +38,47 @@ class GeneratorRow extends StatelessWidget {
 
     return BlocBuilder<PatternEditorCubit, PatternEditorState>(
         builder: (context, state) {
-      return SizedBox(
-        height: 42,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              width: 9,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.horizontal(
-                  left: Radius.circular(1),
-                  right: Radius.circular(0),
-                ),
-                color: Color.fromARGB(
-                  255,
-                  random.nextInt(255),
-                  random.nextInt(255),
-                  random.nextInt(255),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Container(
+      return GestureDetector(
+        onTap: () {
+          BlocProvider.of<ProjectCubit>(context).setActiveInstrumentID(id);
+        },
+        child: SizedBox(
+          height: 42,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                width: 9,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.horizontal(
-                    left: Radius.circular(0),
-                    right: Radius.circular(1),
+                    left: Radius.circular(1),
+                    right: Radius.circular(0),
                   ),
-                  color: Theme.panel.light,
+                  color: Color.fromARGB(
+                    255,
+                    random.nextInt(255),
+                    random.nextInt(255),
+                    random.nextInt(255),
+                  ),
                 ),
-                child: Row(children: [
-                  SizedBox(width: 270),
-                  // ...
-                ]),
               ),
-            )
-          ],
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.horizontal(
+                      left: Radius.circular(0),
+                      right: Radius.circular(1),
+                    ),
+                    color: Theme.panel.light,
+                  ),
+                  child: Row(children: [
+                    SizedBox(width: 270),
+                    // ...
+                  ]),
+                ),
+              )
+            ],
+          ),
         ),
       );
     });

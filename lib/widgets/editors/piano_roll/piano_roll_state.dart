@@ -24,13 +24,13 @@ class PianoRollState {
   final int projectID;
   final Pattern? pattern;
   final int ticksPerQuarter;
-  final int? channelID;
+  final int? activeInstrumentID;
 
   PianoRollState({
     required this.projectID,
     required this.pattern,
     required this.ticksPerQuarter,
-    required this.channelID,
+    required this.activeInstrumentID,
   });
 
   @override
@@ -39,5 +39,5 @@ class PianoRollState {
       (other is PianoRollState &&
           other.pattern == pattern &&
           other.ticksPerQuarter == ticksPerQuarter &&
-          other.channelID == channelID);
+          other.activeInstrumentID == activeInstrumentID);
 }

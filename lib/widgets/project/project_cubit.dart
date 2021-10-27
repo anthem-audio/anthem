@@ -26,8 +26,34 @@ part 'project_state.dart';
 class ProjectCubit extends Cubit<ProjectState> {
   final Store _store = Store.instance;
 
-  ProjectCubit({required int id}) : super(ProjectState(id: id)) {}
+  ProjectCubit({required int id})
+      : super(
+          ProjectState(
+            id: id,
+            activeInstrumentID: null,
+            activeControllerID: null,
+          ),
+        );
 
   Future<void> undo() => _store.msgUndo(state.id);
   Future<void> redo() => _store.msgRedo(state.id);
+  void setActiveInstrumentID(int? id) {
+    emit(
+      ProjectState(
+        id: state.id,
+        activeControllerID: state.activeControllerID,
+        activeInstrumentID: id,
+      ),
+    );
+  }
+
+  void setActiveControllerID(int? id) {
+    emit(
+      ProjectState(
+        id: state.id,
+        activeInstrumentID: state.activeInstrumentID,
+        activeControllerID: id,
+      ),
+    );
+  }
 }
