@@ -45,6 +45,14 @@ pub fn project_message_handler(store: &mut Store, request_id: u64, msg: &Msg) ->
             store.get_project_mut(*project_id).song.active_pattern_id = *pattern_id;
             rid::post(Reply::ActivePatternSet(request_id));
         }
+        Msg::SetActiveInstrument(project_id, instrument_id) => {
+            store.get_project_mut(*project_id).song.active_instrument_id = *instrument_id;
+            rid::post(Reply::ActiveInstrumentSet(request_id));
+        }
+        Msg::SetActiveController(project_id, controller_id) => {
+            store.get_project_mut(*project_id).song.active_controller_id = *controller_id;
+            rid::post(Reply::ActiveControllerSet(request_id));
+        }
         _ => {
             return false;
         }

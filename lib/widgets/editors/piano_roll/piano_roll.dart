@@ -20,6 +20,8 @@
 import 'dart:math';
 
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll_notification_handler.dart';
+import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -36,12 +38,10 @@ import 'piano_control.dart';
 
 class PianoRoll extends StatefulWidget {
   final int ticksPerQuarter;
-  final int? channelID;
 
   const PianoRoll({
     Key? key,
     required this.ticksPerQuarter,
-    required this.channelID,
   }) : super(key: key);
 
   @override
@@ -57,16 +57,17 @@ class _PianoRollState extends State<PianoRoll> {
         providers: [
           ChangeNotifierProvider(create: (_) => TimeView(0, 3072)),
         ],
-        child: Column(
-          children: [
-            _PianoRollHeader(),
-            Expanded(
-              child: _PianoRollContent(
-                ticksPerQuarter: widget.ticksPerQuarter,
-                channelID: widget.channelID,
+        child: PianoRollNotificationHandler(
+          child: Column(
+            children: [
+              _PianoRollHeader(),
+              Expanded(
+                child: _PianoRollContent(
+                  ticksPerQuarter: widget.ticksPerQuarter,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     });
@@ -93,12 +94,10 @@ class _PianoRollHeader extends StatelessWidget {
 
 class _PianoRollContent extends StatefulWidget {
   final int ticksPerQuarter;
-  final int? channelID;
 
   _PianoRollContent({
     Key? key,
     required this.ticksPerQuarter,
-    required this.channelID,
   }) : super(key: key);
 
   @override
@@ -116,6 +115,7 @@ class _PianoRollContentState extends State<_PianoRollContent> {
     return BlocBuilder<PianoRollCubit, PianoRollState>(
         builder: (context, state) {
       final pattern = state.pattern;
+      final channelID = BlocProvider.of<ProjectCubit>(context).state.activeInstrumentID;
 
       final timeView = context.watch<TimeView>();
 
@@ -190,7 +190,8 @@ class _PianoRollContentState extends State<_PianoRollContent> {
         ).dispatch(context);
       }
 
-      final notes = pattern == null ? <Note>[] : pattern.channelNotes[widget.channelID]?.notes;
+      final notes =
+          pattern == null ? <Note>[] : pattern.channelNotes[channelID]?.notes;
 
       return Column(
         children: [

@@ -18,10 +18,12 @@
 */
 
 use serde::{Deserialize, Serialize};
+use crate::util::id::get_id;
 
 #[rid::model]
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Note {
+    #[serde(default = "get_id")]
     pub id: u64,
     pub key: u8,
     pub velocity: u8,

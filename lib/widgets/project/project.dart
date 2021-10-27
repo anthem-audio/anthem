@@ -25,6 +25,7 @@ import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 import '../../project_header.dart';
 import '../../theme.dart';
@@ -59,10 +60,8 @@ class Project extends StatelessWidget {
                   // bottom panel
                   panelContent: BlocProvider<PianoRollCubit>(
                     create: (context) => PianoRollCubit(projectID: state.id),
-                    // TODO
                     child: PianoRoll(
                       ticksPerQuarter: 96,
-                      channelID: null,
                     ),
                   ),
                   child: Panel(

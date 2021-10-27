@@ -128,17 +128,18 @@ class _PatternEditorState extends State<PatternEditor> {
                     final instrument = state.instruments[id];
                     final controller = state.controllers[id];
 
+                    // TODO: provide type to child
                     if (instrument != null) {
                       return Padding(
                         padding: EdgeInsets.only(bottom: 1),
-                        child: GeneratorRow(),
+                        child: GeneratorRow(id: id),
                       );
                     }
 
                     if (controller != null) {
                       return Padding(
                         padding: EdgeInsets.only(bottom: 1),
-                        child: GeneratorRow(),
+                        child: GeneratorRow(id: id),
                       );
                     }
 

@@ -55,9 +55,6 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
   }
 
   _updateActivePattern(PostedReply _reply) {
-    print("update2");
-    print("update2");
-    print("update2");
     emit(PatternEditorState(
       controllers: state.controllers,
       generatorIDList: state.generatorIDList,
