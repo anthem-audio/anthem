@@ -122,12 +122,7 @@ class _PianoRollContentState extends State<_PianoRollContent> {
       final timelineHeight =
           (pattern?.timeSignatureChanges ?? []).isNotEmpty ? 42.0 : 21.0;
 
-      final pianoRollContentListenerKey = GlobalKey();
-
       handlePointerDown(PointerDownEvent e) {
-        final context = pianoRollContentListenerKey.currentContext;
-        if (context == null) return;
-
         final contentRenderBox = context.findRenderObject() as RenderBox;
         final pointerPos = contentRenderBox.globalToLocal(e.position);
 
@@ -147,9 +142,6 @@ class _PianoRollContentState extends State<_PianoRollContent> {
       }
 
       handlePointerMove(PointerMoveEvent e) {
-        final context = pianoRollContentListenerKey.currentContext;
-        if (context == null) return;
-
         final contentRenderBox = context.findRenderObject() as RenderBox;
         final pointerPos = contentRenderBox.globalToLocal(e.position);
 
@@ -169,9 +161,6 @@ class _PianoRollContentState extends State<_PianoRollContent> {
       }
 
       handlePointerUp(PointerUpEvent e) {
-        final context = pianoRollContentListenerKey.currentContext;
-        if (context == null) return;
-
         final contentRenderBox = context.findRenderObject() as RenderBox;
         final pointerPos = contentRenderBox.globalToLocal(e.position);
 
@@ -250,7 +239,6 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                         ),
                         Expanded(
                           child: Listener(
-                            key: pianoRollContentListenerKey,
                             onPointerDown: handlePointerDown,
                             onPointerMove: handlePointerMove,
                             onPointerUp: handlePointerUp,
