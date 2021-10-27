@@ -20,11 +20,11 @@
 use crate::commands::command::Command;
 
 pub struct CommandQueue {
-    pub commands: Vec<Box<dyn Command>>,
+    commands: Vec<Box<dyn Command>>,
 
     // Points to the next command for redo, or one past the end if there is
     // nothing to redo
-    pub command_pointer: usize,
+    command_pointer: usize,
 }
 
 impl Default for CommandQueue {

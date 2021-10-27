@@ -17,11 +17,18 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use crate::model::store::Reply;
+use super::rid_reply_all::*;
+use crate::commands::command::*;
+use crate::model::store::*;
 
-pub fn rid_reply_all(replies: &Vec<Reply>) {
-    replies.iter().for_each(|reply| {
-        let reply = reply.clone();
-        rid::post(reply);
-    });
+pub fn execute_and_push(
+    store: &mut Store,
+    request_id: u64,
+    project_id: u64,
+    command: Box<dyn Command>,
+) {
+    let project = store.get_project_mut(project_id);
+    let replies = command.execute(project, request_id);
+    store.push_command(project_id, command);
+    rid_reply_all(&replies);
 }

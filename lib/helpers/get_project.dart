@@ -17,25 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'project_cubit.dart';
+import 'package:plugin/generated/rid_api.dart';
 
-@immutable
-class ProjectState {
-  final int id;
-  final int? activeInstrumentID;
-  final int? activeControllerID;
-
-  ProjectState({
-    required this.id,
-    required this.activeInstrumentID,
-    required this.activeControllerID,
-  });
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ProjectState &&
-          other.id == id &&
-          other.activeInstrumentID == activeInstrumentID &&
-          other.activeControllerID == activeControllerID;
+Project getProject(Store store, int projectID) {
+  return store.projects.firstWhere((project) => project.id == projectID);
 }

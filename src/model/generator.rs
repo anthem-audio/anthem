@@ -17,11 +17,20 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use crate::model::store::Reply;
+use serde::{Deserialize, Serialize};
 
-pub fn rid_reply_all(replies: &Vec<Reply>) {
-    replies.iter().for_each(|reply| {
-        let reply = reply.clone();
-        rid::post(reply);
-    });
+#[rid::model]
+#[rid::structs(Instrument)]
+#[derive(Serialize, Deserialize, rid::Config)]
+pub struct Instrument {
+    pub id: u64,
+    pub name: String,
+}
+
+#[rid::model]
+#[rid::structs(Controller)]
+#[derive(Serialize, Deserialize, rid::Config)]
+pub struct Controller {
+    pub id: u64,
+    pub name: String,
 }

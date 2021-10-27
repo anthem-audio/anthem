@@ -22,6 +22,7 @@ import 'package:anthem/widgets/basic/menu/menu_overlay.dart';
 import 'package:flutter/widgets.dart';
 import 'package:plugin/generated/rid_api.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 import 'widgets/main_window/main_window.dart';
 import 'widgets/main_window/main_window_cubit.dart';
@@ -41,20 +42,25 @@ class MyApp extends StatelessWidget {
       builder: (context, widget) {
         return BlocProvider<MainWindowCubit>(
           create: (_) => MainWindowCubit(),
-          child: MenuOverlay(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                ImageFiltered(
-                  imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
-                  child: Image.asset("assets/images/background-small.jpg",
-                      fit: BoxFit.cover),
-                ),
-                Container(
-                  color: const Color.fromARGB(77, 0, 0, 0),
-                ),
-                MainWindow(_store),
-              ],
+          child: MultiProvider(
+            providers: [
+              ChangeNotifierProvider(create: (_) => KeyboardModifiers())
+            ],
+            child: MenuOverlay(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ImageFiltered(
+                    imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+                    child: Image.asset("assets/images/background-small.jpg",
+                        fit: BoxFit.cover),
+                  ),
+                  Container(
+                    color: const Color.fromARGB(77, 0, 0, 0),
+                  ),
+                  MainWindow(_store),
+                ],
+              ),
             ),
           ),
         );

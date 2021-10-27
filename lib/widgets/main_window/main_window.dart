@@ -18,14 +18,13 @@
 */
 
 import 'package:anthem/widgets/main_window/tab_content_switcher.dart';
-import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
-import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/window_header.dart';
 import 'package:flutter/widgets.dart';
 import 'package:plugin/generated/rid_api.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:anthem/widgets/main_window/main_window_cubit.dart';
+import 'package:provider/provider.dart';
 
 class MainWindow extends StatefulWidget {
   final Store _store;
@@ -44,27 +43,54 @@ class _MainWindowState extends State<MainWindow> {
   Widget build(BuildContext context) {
     return BlocBuilder<MainWindowCubit, MainWindowState>(
         builder: (context, state) {
-      return Padding(
-        padding: EdgeInsets.all(3),
-        child: Column(
-          children: [
-            WindowHeader(
-              selectedTabID: state.selectedTabID,
-              tabs: state.tabs,
-              setActiveProject: (int id) {
-                context.read<MainWindowCubit>().switchTab(id);
-              },
-              closeProject: (int id) {
-                context.read<MainWindowCubit>().closeProject(id);
-              },
-            ),
-            Expanded(
-              child: TabContentSwitcher(
-                tabs: state.tabs,
+      return RawKeyboardListener(
+        focusNode: FocusNode(),
+        autofocus: true,
+        onKey: (e) {
+          final type = e.runtimeType.toString();
+
+          final keyDown = type == 'RawKeyDownEvent';
+          final keyUp = type == 'RawKeyUpEvent';
+
+          final ctrl = e.logicalKey.keyLabel == "Control Left" ||
+              e.logicalKey.keyLabel == "Control Right";
+          final alt = e.logicalKey.keyLabel == "Alt Left" ||
+              e.logicalKey.keyLabel == "Alt Right";
+          final shift = e.logicalKey.keyLabel == "Shift Left" ||
+              e.logicalKey.keyLabel == "Shift Right";
+
+          final keyboardModifiers =
+              Provider.of<KeyboardModifiers>(context, listen: false);
+
+          if (ctrl && keyDown) keyboardModifiers.setCtrl(true);
+          if (ctrl && keyUp) keyboardModifiers.setCtrl(false);
+          if (alt && keyDown) keyboardModifiers.setAlt(true);
+          if (alt && keyUp) keyboardModifiers.setAlt(false);
+          if (shift && keyDown) keyboardModifiers.setShift(true);
+          if (shift && keyUp) keyboardModifiers.setShift(false);
+        },
+        child: Padding(
+          padding: EdgeInsets.all(3),
+          child: Column(
+            children: [
+              WindowHeader(
                 selectedTabID: state.selectedTabID,
+                tabs: state.tabs,
+                setActiveProject: (int id) {
+                  context.read<MainWindowCubit>().switchTab(id);
+                },
+                closeProject: (int id) {
+                  context.read<MainWindowCubit>().closeProject(id);
+                },
               ),
-            ),
-          ],
+              Expanded(
+                child: TabContentSwitcher(
+                  tabs: state.tabs,
+                  selectedTabID: state.selectedTabID,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     });

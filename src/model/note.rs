@@ -17,11 +17,16 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use crate::model::store::Reply;
+use serde::{Deserialize, Serialize};
+use crate::util::id::get_id;
 
-pub fn rid_reply_all(replies: &Vec<Reply>) {
-    replies.iter().for_each(|reply| {
-        let reply = reply.clone();
-        rid::post(reply);
-    });
+#[rid::model]
+#[derive(Clone, Serialize, Deserialize)]
+pub struct Note {
+    #[serde(default = "get_id")]
+    pub id: u64,
+    pub key: u8,
+    pub velocity: u8,
+    pub length: u64,
+    pub offset: u64,
 }

@@ -17,25 +17,27 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'project_cubit.dart';
+part of 'piano_roll_cubit.dart';
 
 @immutable
-class ProjectState {
-  final int id;
+class PianoRollState {
+  final int projectID;
+  final Pattern? pattern;
+  final int ticksPerQuarter;
   final int? activeInstrumentID;
-  final int? activeControllerID;
 
-  ProjectState({
-    required this.id,
+  PianoRollState({
+    required this.projectID,
+    required this.pattern,
+    required this.ticksPerQuarter,
     required this.activeInstrumentID,
-    required this.activeControllerID,
   });
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ProjectState &&
-          other.id == id &&
-          other.activeInstrumentID == activeInstrumentID &&
-          other.activeControllerID == activeControllerID;
+      (other is PianoRollState &&
+          other.pattern == pattern &&
+          other.ticksPerQuarter == ticksPerQuarter &&
+          other.activeInstrumentID == activeInstrumentID);
 }

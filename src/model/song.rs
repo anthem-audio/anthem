@@ -17,24 +17,35 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use crate::model::pattern::Pattern;
 use crate::util::id::get_id;
 
 #[rid::model]
 #[rid::structs(Pattern)]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Song {
     pub id: u64,
+    pub ticks_per_quarter: u64,
     pub patterns: Vec<Pattern>,
+
+    // TODO: replace with Option<u64> when RID implements that
+    // until then, 0 means none selected
+    pub active_pattern_id: u64,
+    pub active_instrument_id: u64,
+    pub active_controller_id: u64,
 }
 
 impl Default for Song {
     fn default() -> Self {
         Song {
             id: get_id(),
+            ticks_per_quarter: 96,
             patterns: Vec::new(),
+            active_pattern_id: 0,
+            active_instrument_id: 0,
+            active_controller_id: 0,
         }
     }
 }

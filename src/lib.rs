@@ -18,8 +18,8 @@
 */
 
 pub mod commands;
+pub mod message_handlers;
 pub mod model;
 pub mod util;
-pub mod message_handlers;
 
 // use crate::model::store;

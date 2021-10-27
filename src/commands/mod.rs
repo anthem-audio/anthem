@@ -19,3 +19,4 @@
 
 pub mod command;
 pub mod pattern_commands;
+pub mod project_commands;
