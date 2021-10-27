@@ -85,7 +85,7 @@ class _PanelState extends State<Panel> {
     final contentHugBottom = horizontal || panelFirst;
 
     final separatorSize = 3.0;
-    final handleSize = 8.0;
+    final handleSize = 6.0;
 
     var handleLeft = panelHugLeft ? panelSize : null;
     var handleRight =

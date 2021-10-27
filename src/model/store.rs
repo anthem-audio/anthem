@@ -20,12 +20,13 @@
 use std::collections::HashMap;
 
 use rid::RidStore;
-use serde::{Deserialize, Serialize};
 
-use crate::message_handlers::store_message_handler::store_message_handler;
+use crate::commands::command::Command;
 use crate::message_handlers::pattern_message_handler::pattern_message_handler;
-use crate::model::song::Song;
-use crate::util::id::get_id;
+use crate::message_handlers::project_message_handler::project_message_handler;
+use crate::message_handlers::store_message_handler::store_message_handler;
+
+use crate::model::project::Project;
 
 use super::command_queue::CommandQueue;
 
@@ -53,39 +54,12 @@ impl Store {
             .find(|project| project.id == id)
             .expect("command references a non-existent project")
     }
-}
-
-fn default_file_path() -> String {
-    "".to_string()
-}
-
-fn default_is_saved() -> bool {
-    true
-}
-
-#[rid::model]
-#[rid::structs(Song)]
-#[derive(Serialize, Deserialize, rid::Config)]
-pub struct Project {
-    pub id: u64,
-
-    // TODO: replace with Option<String> when rid gets option support
-    #[serde(skip_serializing, default = "default_is_saved")]
-    pub is_saved: bool,
-    #[serde(skip_serializing, default = "default_file_path")]
-    pub file_path: String,
-
-    pub song: Song,
-}
-
-impl Default for Project {
-    fn default() -> Self {
-        Project {
-            id: get_id(),
-            is_saved: false,
-            file_path: "".into(),
-            song: Song::default(),
-        }
+    pub fn push_command(&mut self, project_id: u64, command: Box<dyn Command>) {
+        self
+            .command_queues
+            .get_mut(&project_id)
+            .unwrap()
+            .push_command(command);
     }
 }
 
@@ -99,13 +73,14 @@ impl RidStore<Msg> for Store {
         Self {
             projects: vec![project],
             active_project_id: id,
-            command_queues
+            command_queues,
         }
     }
 
     fn update(&mut self, req_id: u64, msg: Msg) {
         let handled = [
             store_message_handler(self, req_id, &msg),
+            project_message_handler(self, req_id, &msg),
             pattern_message_handler(self, req_id, &msg),
         ]
         .iter()
@@ -128,10 +103,23 @@ pub enum Msg {
     Undo(u64),
     Redo(u64),
 
+    // Project
+    AddInstrument(u64, String),
+    AddController(u64, String),
+    RemoveGenerator(u64, u64),
+    SetActivePattern(u64, u64), // 0 means none
+    SetActiveInstrument(u64, u64), // 0 means none
+    SetActiveController(u64, u64), // 0 means none
+
     // Pattern
     AddPattern(u64, String),
     DeletePattern(u64, u64),
+    AddNote(u64, u64, u64, String),
+    DeleteNote(u64, u64, u64, u64),
 }
+
+// TODO: Some commands are destructive beyond what they can repair,
+// specifically pattern and generator removal as of writing.
 
 #[rid::reply]
 #[derive(Clone, Debug)]
@@ -143,7 +131,17 @@ pub enum Reply {
     ProjectSaved(u64),
     ProjectLoaded(u64, String),
 
+    // Project
+    InstrumentAdded(u64),
+    ControllerAdded(u64),
+    GeneratorRemoved(u64),
+    ActivePatternSet(u64),
+    ActiveInstrumentSet(u64),
+    ActiveControllerSet(u64),
+
     // Pattern
     PatternAdded(u64),
     PatternDeleted(u64),
+    NoteAdded(u64),
+    NoteDeleted(u64),
 }

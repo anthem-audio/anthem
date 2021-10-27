@@ -72,25 +72,6 @@
 		]
 	},
 
-	"Anthem Command": {
-		"prefix": ["command"],
-		"scope": "dart",
-		"body": [
-			"pub struct $1Command {}",
-			"",
-			"impl Command for $1Command {",
-			"    fn execute(&self, store: &mut Store) -> Vec<Reply> {",
-			"        todo!()",
-			"    }",
-			"",
-			"    fn rollback(&self, _store: &mut Store) -> Vec<Reply> {",
-			"        todo!()",
-			"    }",
-			"}",
-			""
-		]
-	},
-
 	"Cubit State": {
 		"prefix": ["cubitState"],
 		"scope": "dart",
@@ -124,5 +105,43 @@
 			"  $2Cubit({required int id}) : super($2State(id: id)) {}",
 			"}"
 		],
+	},
+
+	"Command Impl": {
+		"prefix": ["command"],
+		"scope": "rust",
+		"body": [
+			"pub struct $1Command {",
+			"    $0",
+			"}",
+			"",
+			"impl Command for $1Command {",
+			"    fn execute(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {",
+			"        vec![]",
+			"    }",
+			"",
+			"    fn rollback(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {",
+			"        vec![]",
+			"    }",
+			"}",
+		],
+	},
+
+	"Stateless widget with bloc builder": {
+		"prefix": ["statelessWBloc", "blocStatelessW"],
+		"scope": "dart",
+		"body": [
+			"class $1 extends StatelessWidget {",
+			"  const $1({Key? key}) : super(key: key);",
+			"",
+			"  @override",
+			"  Widget build(BuildContext context) {",
+			"    return BlocBuilder<$2Cubit, $2State>(",
+			"        builder: (context, state) {",
+			"      return Container();",
+			"    });",
+			"  }",
+			"}"
+		]
 	}
 }

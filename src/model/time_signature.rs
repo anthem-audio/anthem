@@ -17,11 +17,19 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use crate::model::store::Reply;
+use serde::{Serialize, Deserialize};
 
-pub fn rid_reply_all(replies: &Vec<Reply>) {
-    replies.iter().for_each(|reply| {
-        let reply = reply.clone();
-        rid::post(reply);
-    });
+#[rid::model]
+#[derive(Clone, Serialize, Deserialize)]
+pub struct TimeSignature {
+    pub numerator: u64,
+    pub denominator: u64,
+}
+
+#[rid::model]
+#[rid::structs(TimeSignature)]
+#[derive(Clone, Serialize, Deserialize)]
+pub struct TimeSignatureChange {
+    pub offset: u64,
+    pub time_signature: TimeSignature,
 }

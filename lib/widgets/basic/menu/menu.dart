@@ -33,7 +33,7 @@ class Menu extends StatefulWidget {
     required this.menuDef,
     MenuAlignment? alignment,
   }) : super(key: key) {
-    this.menuAlignment = alignment ?? MenuAlignment.TopLeft;
+    this.menuAlignment = alignment ?? MenuAlignment.BottomLeft;
   }
 
   @override
