@@ -44,7 +44,32 @@ class TabDef {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is TabDef &&
-          other.id == id &&
-          other.title == title;
+      other is TabDef && other.id == id && other.title == title;
+}
+
+class KeyboardModifiers with ChangeNotifier, DiagnosticableTreeMixin {
+  bool _ctrl = false;
+  bool _alt = false;
+  bool _shift = false;
+
+  KeyboardModifiers();
+
+  bool get ctrl => _ctrl;
+  bool get alt => _alt;
+  bool get shift => _shift;
+
+  void setCtrl(bool value) {
+    _ctrl = value;
+    notifyListeners();
+  }
+
+  void setAlt(bool value) {
+    _alt = value;
+    notifyListeners();
+  }
+
+  void setShift(bool value) {
+    _shift = value;
+    notifyListeners();
+  }
 }
