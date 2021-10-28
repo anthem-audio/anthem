@@ -54,7 +54,7 @@ pub fn pattern_message_handler(store: &mut Store, request_id: u64, msg: &Msg) ->
             let command = AddNoteCommand {
                 project_id: *project_id,
                 pattern_id: *pattern_id,
-                channel_id: *instrument_id,
+                generator_id: *instrument_id,
                 note,
             };
 
