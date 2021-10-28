@@ -35,8 +35,7 @@ class ProjectHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ProjectCubit, ProjectState>(
-        builder: (context, state) {
+    return BlocBuilder<ProjectCubit, ProjectState>(builder: (context, state) {
       final menuController = MenuController();
       final mainWindowCubit = context.read<MainWindowCubit>();
       final projectCubit = context.read<ProjectCubit>();
@@ -90,29 +89,29 @@ class ProjectHeader extends StatelessWidget {
                 ),
               ),
               SizedBox(width: 4),
-                Button(
-                  width: 28,
-                  iconPath: "assets/icons/file/save.svg",
-                  onPress: () {
-                    mainWindowCubit.saveProject(projectID, false);
-                  },
-                ),
+              Button(
+                width: 28,
+                iconPath: "assets/icons/file/save.svg",
+                onPress: () {
+                  mainWindowCubit.saveProject(projectID, false);
+                },
+              ),
               SizedBox(width: 4),
-                Button(
-                  width: 28,
-                  iconPath: "assets/icons/file/undo.svg",
-                  onPress: () {
-                    projectCubit.undo();
-                  },
-                ),
+              Button(
+                width: 28,
+                iconPath: "assets/icons/file/undo.svg",
+                onPress: () {
+                  projectCubit.undo();
+                },
+              ),
               SizedBox(width: 4),
-                Button(
-                  width: 28,
-                  iconPath: "assets/icons/file/redo.svg",
-                  onPress: () {
-                    projectCubit.redo();
-                  },
-                ),
+              Button(
+                width: 28,
+                iconPath: "assets/icons/file/redo.svg",
+                onPress: () {
+                  projectCubit.redo();
+                },
+              ),
             ],
           ),
         ),
