@@ -142,6 +142,6 @@ pub enum Reply {
     // Pattern
     PatternAdded(u64),
     PatternDeleted(u64),
-    NoteAdded(u64),
-    NoteDeleted(u64),
+    NoteAdded(u64, String), // { "generatorID": u64, "patternID": u64 }
+    NoteDeleted(u64, String), // { "generatorID": u64, "patternID": u64 }
 }
