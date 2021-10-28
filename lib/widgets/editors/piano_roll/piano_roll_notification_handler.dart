@@ -22,7 +22,8 @@ class PianoRollNotificationHandler extends StatelessWidget {
       return NotificationListener<PianoRollNotification>(
           onNotification: (notification) {
             final timeView = Provider.of<TimeView>(context, listen: false);
-            final channelID = BlocProvider.of<ProjectCubit>(context).state.activeInstrumentID;
+            final channelID =
+                BlocProvider.of<ProjectCubit>(context).state.activeInstrumentID;
 
             /*
               This feels excessive, as it recalculates snap for each
@@ -69,11 +70,12 @@ class PianoRollNotificationHandler extends StatelessWidget {
               }
 
               context.read<PianoRollCubit>().addNote(
-                  channelID: channelID,
-                  key: notification.note.floor(),
-                  velocity: 128,
-                  length: 96,
-                  offset: targetTime,);
+                    channelID: channelID,
+                    key: notification.note.floor(),
+                    velocity: 128,
+                    length: 96,
+                    offset: targetTime,
+                  );
               return true;
             } else if (notification is PianoRollPointerMoveNotification) {
               print(

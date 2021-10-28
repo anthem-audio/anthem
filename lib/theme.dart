@@ -46,5 +46,5 @@ class _Control {
 }
 
 class _Text {
-  Color main =  white.withOpacity(0.7);
+  Color main = white.withOpacity(0.7);
 }

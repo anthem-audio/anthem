@@ -210,36 +210,36 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                           ),
                         ),
                         Expanded(
-                          child: 
-                              PianoRollEventListener(child:Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              PianoRollGrid(
-                                keyHeight: localState.keyHeight,
-                                keyValueAtTop: localState.keyValueAtTop,
-                                ticksPerQuarter: widget.ticksPerQuarter,
-                              ),
-                              ClipRect(
-                                child: CustomMultiChildLayout(
-                                  children: (notes ?? [])
-                                      .map(
-                                        (note) => LayoutId(
-                                          id: note.id,
-                                          child: NoteWidget(noteID: note.id),
-                                        ),
-                                      )
-                                      .toList(),
-                                  delegate: NoteLayoutDelegate(
-                                    notes: notes ?? [],
-                                    keyHeight: localState.keyHeight,
-                                    keyValueAtTop: localState.keyValueAtTop,
-                                    timeViewStart: timeView.start,
-                                    timeViewEnd: timeView.end,
+                          child: PianoRollEventListener(
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                PianoRollGrid(
+                                  keyHeight: localState.keyHeight,
+                                  keyValueAtTop: localState.keyValueAtTop,
+                                  ticksPerQuarter: widget.ticksPerQuarter,
+                                ),
+                                ClipRect(
+                                  child: CustomMultiChildLayout(
+                                    children: (notes ?? [])
+                                        .map(
+                                          (note) => LayoutId(
+                                            id: note.id,
+                                            child: NoteWidget(noteID: note.id),
+                                          ),
+                                        )
+                                        .toList(),
+                                    delegate: NoteLayoutDelegate(
+                                      notes: notes ?? [],
+                                      keyHeight: localState.keyHeight,
+                                      keyValueAtTop: localState.keyValueAtTop,
+                                      timeViewStart: timeView.start,
+                                      timeViewEnd: timeView.end,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              
-                            ],),
+                              ],
+                            ),
                           ),
                         ),
                       ],

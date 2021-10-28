@@ -25,9 +25,10 @@ import 'package:provider/provider.dart';
 import 'helpers.dart';
 
 class PianoRollEventListener extends StatelessWidget {
-final Widget  child;
+  final Widget child;
 
-  const PianoRollEventListener({Key? key, required this.child}) : super(key: key);
+  const PianoRollEventListener({Key? key, required this.child})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
