@@ -29,8 +29,6 @@ part 'generator_row_state.dart';
 class GeneratorRowCubit extends Cubit<GeneratorRowState> {
   // ignore: unused_field
   late final StreamSubscription<PostedReply> _updateNotesSub;
-  // ignore: unused_field
-  late final StreamSubscription<PostedReply> _updateActivePatternSub;
   final Store _store = Store.instance;
 
   GeneratorRowCubit({
@@ -51,48 +49,33 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
             event.type == Reply.NoteDeleted ||
             event.type == Reply.ActivePatternSet)
         .listen(_updateNotes);
-    _updateActivePatternSub = rid.replyChannel.stream
-        .where((event) => event.type == Reply.ActivePatternSet)
-        .listen(_updateActivePattern);
   }
 
   _updateNotes(PostedReply reply) {
-    Map response = jsonDecode(reply.data!);
+    if (reply.type == Reply.NoteAdded || reply.type == Reply.NoteDeleted) {
+      Map response = jsonDecode(reply.data!);
 
-    final patternID = response["patternID"];
-    final generatorID = response["generatorID"];
+      final patternID = response["patternID"];
+      final generatorID = response["generatorID"];
 
-    print(state.patternID);
-    print(state.generatorID);
-
-    if (state.patternID != patternID || state.generatorID != generatorID) {
-      return;
+      if (state.patternID != patternID || state.generatorID != generatorID) {
+        return;
+      }
     }
 
-    emit(GeneratorRowState(
-      projectID: state.projectID,
-      generatorID: state.generatorID,
-      patternID: state.patternID,
-      notes: _store.projects
+    final notes = _store.projects
           .firstWhere((project) => project.id == state.projectID)
           .song
           .patterns
           .firstWhere((pattern) => pattern.id == state.patternID)
           .generatorNotes[state.generatorID]!
-          .notes,
-    ));
-  }
+          .notes;
 
-  _updateActivePattern(PostedReply _reply) {
-    emit(
-      GeneratorRowState(
-          projectID: state.projectID,
-          generatorID: state.generatorID,
-          notes: state.notes,
-          patternID: _store.projects
-              .firstWhere((project) => project.id == state.projectID)
-              .song
-              .activePatternId),
-    );
+    emit(GeneratorRowState(
+      projectID: state.projectID,
+      generatorID: state.generatorID,
+      patternID: state.patternID,
+      notes: notes,
+    ));
   }
 }
