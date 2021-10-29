@@ -36,5 +36,9 @@ class GeneratorRowState {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is GeneratorRowState && other.generatorID == generatorID;
+      other is GeneratorRowState &&
+          other.generatorID == generatorID &&
+          other.projectID == projectID &&
+          other.patternID == patternID &&
+          other.notes == notes;
 }
