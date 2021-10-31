@@ -29,7 +29,8 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
         Msg::NewProject => {
             let project = Project::default();
             let project_id = project.id;
-            store.projects.push(project);
+            store.projects.insert(project.id, project);
+            store.project_order.push(project_id);
             store
                 .command_queues
                 .insert(project_id, CommandQueue::default());
@@ -46,15 +47,15 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
             ));
         }
         Msg::CloseProject(project_id) => {
-            store.projects.retain(|project| project.id != *project_id);
+            store.projects.remove(project_id);
+            store.project_order.retain(|id| *id != *project_id);
             store.command_queues.remove(project_id);
             rid::post(Reply::ProjectClosed(request_id));
         }
         Msg::SaveProject(project_id, path) => {
             let mut project = store
                 .projects
-                .iter_mut()
-                .find(|project| project.id == *project_id)
+                .get_mut(project_id)
                 .expect("project does not exist");
 
             let serialized = serde_json::to_string(project).expect("project failed to serialize");
@@ -72,7 +73,8 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
             let id = project.id;
             project.file_path = path.clone();
 
-            store.projects.push(project);
+            store.projects.insert(project.id, project);
+            store.project_order.push(id);
 
             rid::post(Reply::ProjectLoaded(request_id, (id as i64).to_string()));
         }
@@ -84,8 +86,7 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
                 .get_undo_and_bump_pointer();
             let project = store
                 .projects
-                .iter_mut()
-                .find(|project| project.id == *project_id)
+                .get_mut(project_id)
                 .expect("command references a non-existent project");
 
             if command.is_some() {
@@ -104,8 +105,7 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
                 .get_redo_and_bump_pointer();
             let project = store
                 .projects
-                .iter_mut()
-                .find(|project| project.id == *project_id)
+                .get_mut(project_id)
                 .expect("command references a non-existent project");
 
             if command.is_some() {

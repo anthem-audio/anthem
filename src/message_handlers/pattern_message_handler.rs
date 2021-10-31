@@ -31,8 +31,7 @@ pub fn pattern_message_handler(store: &mut Store, request_id: u64, msg: &Msg) ->
                 pattern: Pattern::new(pattern_name.clone()),
                 index: store
                     .projects
-                    .iter()
-                    .find(|project| project.id == *project_id)
+                    .get(project_id)
                     .unwrap()
                     .song
                     .pattern_order
@@ -41,7 +40,7 @@ pub fn pattern_message_handler(store: &mut Store, request_id: u64, msg: &Msg) ->
             execute_and_push(store, request_id, *project_id, Box::new(command));
         }
         Msg::DeletePattern(project_id, pattern_id) => {
-            let project = store.get_project_mut(*project_id);
+            let project = store.projects.get_mut(project_id).unwrap();
             let patterns = &mut project.song.patterns;
 
             let command = DeletePatternCommand {
@@ -49,8 +48,7 @@ pub fn pattern_message_handler(store: &mut Store, request_id: u64, msg: &Msg) ->
                 pattern: patterns.get(pattern_id).unwrap().clone(),
                 index: store
                     .projects
-                    .iter()
-                    .find(|project| project.id == *project_id)
+                    .get(project_id)
                     .unwrap()
                     .song
                     .pattern_order

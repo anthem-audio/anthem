@@ -51,7 +51,7 @@ func dummyCallsToPreventTreeShaking() {
     rid_len_vec_note(nil);
     rid_get_item_vec_note(nil, 0);
     _to_dart_for_Project();
-    __include_dart_for_hash_map_u64_controller();
+    __include_dart_for_vec_u64();
     rid_project_id(nil);
     rid_project_is_saved(nil);
     rid_project_file_path(nil);
@@ -60,6 +60,8 @@ func dummyCallsToPreventTreeShaking() {
     rid_project_instruments(nil);
     rid_project_controllers(nil);
     rid_project_generator_list(nil);
+    rid_len_vec_u64(nil);
+    rid_get_item_vec_u64(nil, 0);
     rid_export_rid_len_hash_map_u64_controller(nil);
     rid_export_rid_get_hash_map_u64_controller(nil, 0);
     rid_export_rid_contains_key_hash_map_u64_controller(nil, 0);
@@ -68,10 +70,8 @@ func dummyCallsToPreventTreeShaking() {
     rid_export_rid_get_hash_map_u64_instrument(nil, 0);
     rid_export_rid_contains_key_hash_map_u64_instrument(nil, 0);
     rid_export_rid_keys_hash_map_u64_instrument(nil);
-    rid_len_vec_u64(nil);
-    rid_get_item_vec_u64(nil, 0);
     _to_dart_for_Song();
-    __include_dart_for_vec_u64();
+    __include_dart_for_hash_map_u64_pattern();
     rid_song_id(nil);
     rid_song_ticks_per_quarter(nil);
     rid_song_patterns(nil);
@@ -87,11 +87,14 @@ func dummyCallsToPreventTreeShaking() {
     create_store();
     rid_store_unlock();
     rid_store_free();
-    __include_dart_for_vec_project();
+    __include_dart_for_vec_u64();
     rid_store_projects(nil);
+    rid_store_project_order(nil);
     rid_store_active_project_id(nil);
-    rid_len_vec_project(nil);
-    rid_get_item_vec_project(nil, 0);
+    rid_export_rid_len_hash_map_u64_project(nil);
+    rid_export_rid_get_hash_map_u64_project(nil, 0);
+    rid_export_rid_contains_key_hash_map_u64_project(nil, 0);
+    rid_export_rid_keys_hash_map_u64_project(nil);
     _include_Store_field_wrappers();
     rid_msg_NewProject(0);
     rid_msg_SetActiveProject(0, 0);

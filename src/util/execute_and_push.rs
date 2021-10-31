@@ -27,7 +27,7 @@ pub fn execute_and_push(
     project_id: u64,
     command: Box<dyn Command>,
 ) {
-    let project = store.get_project_mut(project_id);
+    let project = store.projects.get_mut(&project_id).unwrap();
     let replies = command.execute(project, request_id);
     store.push_command(project_id, command);
     rid_reply_all(&replies);
