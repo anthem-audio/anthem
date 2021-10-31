@@ -58,9 +58,8 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
     return _store.projects
             .firstWhere((project) => project.id == state.projectID)
             .song
-            .patterns
-            .firstWhere((pattern) => pattern.id == patternID)
-            .generatorNotes[state.generatorID]
+            .patterns[patternID]
+            ?.generatorNotes[state.generatorID]
             ?.notes ??
         [];
   }
