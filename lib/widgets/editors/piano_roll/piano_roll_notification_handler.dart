@@ -46,8 +46,8 @@ class PianoRollNotificationHandler extends StatelessWidget {
             );
 
             if (notification is PianoRollPointerDownNotification) {
-              print(
-                  "pointer down: ${notification.note}, time: ${notification.time}");
+              // print(
+              //     "pointer down: ${notification.note}, time: ${notification.time}");
 
               final notificationTime = notification.time.floor();
               if (notificationTime < 0) return true;
@@ -78,12 +78,12 @@ class PianoRollNotificationHandler extends StatelessWidget {
                   );
               return true;
             } else if (notification is PianoRollPointerMoveNotification) {
-              print(
-                  "pointer move: ${notification.note}, time: ${notification.time}");
+              // print(
+              //     "pointer move: ${notification.note}, time: ${notification.time}");
               return true;
             } else if (notification is PianoRollPointerUpNotification) {
-              print(
-                  "pointer up: ${notification.note}, time: ${notification.time}");
+              // print(
+              //     "pointer up: ${notification.note}, time: ${notification.time}");
               return true;
             }
             return false;

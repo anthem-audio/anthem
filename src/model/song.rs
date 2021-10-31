@@ -17,6 +17,8 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::model::pattern::Pattern;
@@ -28,7 +30,8 @@ use crate::util::id::get_id;
 pub struct Song {
     pub id: u64,
     pub ticks_per_quarter: u64,
-    pub patterns: Vec<Pattern>,
+    pub patterns: HashMap<u64, Pattern>,
+    pub pattern_order: Vec<u64>,
 
     // TODO: replace with Option<u64> when RID implements that
     // until then, 0 means none selected
@@ -42,7 +45,8 @@ impl Default for Song {
         Song {
             id: get_id(),
             ticks_per_quarter: 96,
-            patterns: Vec::new(),
+            patterns: HashMap::new(),
+            pattern_order: Vec::new(),
             active_pattern_id: 0,
             active_instrument_id: 0,
             active_controller_id: 0,

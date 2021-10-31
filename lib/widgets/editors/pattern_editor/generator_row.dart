@@ -28,14 +28,19 @@ import '../../../theme.dart';
 import 'generator_row_cubit.dart';
 
 class GeneratorRow extends StatelessWidget {
-  const GeneratorRow({Key? key}) : super(key: key);
+  final Color generatorColor = Color.fromARGB(
+    255,
+    Random().nextInt(255),
+    Random().nextInt(255),
+    Random().nextInt(255),
+  );
+
+  GeneratorRow({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<GeneratorRowCubit, GeneratorRowState>(
         builder: (context, state) {
-      final random = Random();
-
       return GestureDetector(
         onTap: () {
           BlocProvider.of<ProjectCubit>(context)
@@ -53,12 +58,7 @@ class GeneratorRow extends StatelessWidget {
                     left: Radius.circular(1),
                     right: Radius.circular(0),
                   ),
-                  color: Color.fromARGB(
-                    255,
-                    random.nextInt(255),
-                    random.nextInt(255),
-                    random.nextInt(255),
-                  ),
+                  color: generatorColor,
                 ),
               ),
               Expanded(
@@ -70,19 +70,22 @@ class GeneratorRow extends StatelessWidget {
                     ),
                     color: Theme.panel.light,
                   ),
-                  child: Row(children: [
-                    // SizedBox(width: 270),
-                    Expanded(
-                        child: state.notes == null
-                            ? SizedBox()
-                            : ClipNotes(
-                                notes: state.notes!,
-                                timeViewStart: 0,
-                                // 1 bar is 100 pxiels, can be tweaked (and should probably be set above?)
-                                // TODO: hard-coded ticks-per-beat
-                                ticksPerPixel: (96 * 4) / 100,
-                              ))
-                  ]),
+                  child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // SizedBox(width: 270),
+                        Expanded(
+                            child: state.notes == null
+                                ? SizedBox()
+                                : ClipNotes(
+                                    notes: state.notes!,
+                                    timeViewStart: 0,
+                                    // 1 bar is 100 pxiels, can be tweaked (and should probably be set above?)
+                                    // TODO: hard-coded ticks-per-beat
+                                    ticksPerPixel: (96 * 4) / 100,
+                                    color: generatorColor,
+                                  ))
+                      ]),
                 ),
               )
             ],
