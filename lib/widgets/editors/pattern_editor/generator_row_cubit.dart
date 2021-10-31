@@ -29,6 +29,8 @@ part 'generator_row_state.dart';
 class GeneratorRowCubit extends Cubit<GeneratorRowState> {
   // ignore: unused_field
   late final StreamSubscription<PostedReply> _updateNotesSub;
+  // ignore: unused_field
+  late final StreamSubscription<PostedReply> _changePatternSub;
   final Store _store = Store.instance;
 
   GeneratorRowCubit({
@@ -45,10 +47,38 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
         ) {
     _updateNotesSub = rid.replyChannel.stream
         .where((event) =>
-            event.type == Reply.NoteAdded ||
-            event.type == Reply.NoteDeleted ||
-            event.type == Reply.ActivePatternSet)
+            event.type == Reply.NoteAdded || event.type == Reply.NoteDeleted)
         .listen(_updateNotes);
+    _changePatternSub = rid.replyChannel.stream
+        .where((event) => event.type == Reply.ActivePatternSet)
+        .listen(_changePattern);
+  }
+
+  List<Note> _getNotes(int patternID) {
+    return _store.projects
+            .firstWhere((project) => project.id == state.projectID)
+            .song
+            .patterns
+            .firstWhere((pattern) => pattern.id == patternID)
+            .generatorNotes[state.generatorID]
+            ?.notes ??
+        [];
+  }
+
+  _changePattern(PostedReply reply) {
+    final patternID = _store.projects
+        .firstWhere((project) => project.id == state.projectID)
+        .song
+        .activePatternId;
+
+    final notes = _getNotes(patternID);
+
+    emit(GeneratorRowState(
+      projectID: state.projectID,
+      generatorID: state.generatorID,
+      patternID: patternID,
+      notes: notes,
+    ));
   }
 
   _updateNotes(PostedReply reply) {
@@ -63,13 +93,7 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
       }
     }
 
-    final notes = _store.projects
-          .firstWhere((project) => project.id == state.projectID)
-          .song
-          .patterns
-          .firstWhere((pattern) => pattern.id == state.patternID)
-          .generatorNotes[state.generatorID]!
-          .notes;
+    final notes = _getNotes(state.patternID!);
 
     emit(GeneratorRowState(
       projectID: state.projectID,
