@@ -65,8 +65,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
     final patternID = project.song.activePatternId;
     Pattern? pattern;
     if (patternID != 0) {
-      pattern = project.song.patterns
-          .firstWhere((pattern) => pattern.id == patternID);
+      pattern = project.song.patterns[patternID];
     }
     emit(PianoRollState(
       projectID: state.projectID,

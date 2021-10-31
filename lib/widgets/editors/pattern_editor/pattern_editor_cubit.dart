@@ -67,16 +67,17 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
   }
 
   _updatePatternList(PostedReply _reply) {
+    final project = getProject(_store, state.projectID);
+
     emit(PatternEditorState(
       controllers: state.controllers,
       generatorIDList: state.generatorIDList,
       instruments: state.instruments,
       pattern: state.pattern,
-      patternList: getProject(_store, state.projectID)
-          .song
-          .patterns
+      patternList: project.song.patternOrder
           .map(
-            (pattern) => PatternListItem(id: pattern.id, name: pattern.name),
+            (id) => PatternListItem(
+                id: id, name: project.song.patterns[id]?.name ?? ""),
           )
           .toList(),
       projectID: state.projectID,

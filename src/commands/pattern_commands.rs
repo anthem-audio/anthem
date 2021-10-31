@@ -20,26 +20,29 @@
 use super::command::Command;
 use crate::model::{note::*, pattern::*, project::*, store::Reply};
 
-fn add_pattern(project: &mut Project, pattern: &Pattern) {
+fn add_pattern(project: &mut Project, pattern: &Pattern, index: usize) {
     let pattern = pattern.clone();
-    project.song.patterns.push(pattern);
+    project.song.pattern_order.insert(index, pattern.id);
+    project.song.patterns.insert(pattern.id, pattern);
 }
 
 fn delete_pattern(project: &mut Project, pattern_id: u64) {
     project
         .song
-        .patterns
-        .retain(|pattern| pattern.id != pattern_id);
+        .pattern_order
+        .retain(|id| *id != pattern_id);
+    project.song.patterns.remove(&pattern_id);
 }
 
 pub struct AddPatternCommand {
     pub project_id: u64,
     pub pattern: Pattern,
+    pub index: usize,
 }
 
 impl Command for AddPatternCommand {
     fn execute(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {
-        add_pattern(project, &self.pattern);
+        add_pattern(project, &self.pattern, self.index);
         vec![Reply::PatternAdded(request_id)]
     }
 
@@ -52,6 +55,7 @@ impl Command for AddPatternCommand {
 pub struct DeletePatternCommand {
     pub project_id: u64,
     pub pattern: Pattern,
+    pub index: usize,
 }
 
 impl Command for DeletePatternCommand {
@@ -61,7 +65,7 @@ impl Command for DeletePatternCommand {
     }
 
     fn rollback(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {
-        add_pattern(project, &self.pattern);
+        add_pattern(project, &self.pattern, self.index);
         vec![Reply::PatternAdded(request_id)]
     }
 }
@@ -77,8 +81,7 @@ fn add_note(project: &mut Project, pattern_id: u64, generator_id: u64, note: &No
     let pattern = project
         .song
         .patterns
-        .iter_mut()
-        .find(|pattern| pattern.id == pattern_id)
+        .get_mut(&pattern_id)
         .unwrap();
     if pattern.generator_notes.get(&generator_id).is_none() {
         pattern
@@ -98,8 +101,7 @@ fn remove_note(project: &mut Project, pattern_id: u64, generator_id: u64, note_i
     let pattern = project
         .song
         .patterns
-        .iter_mut()
-        .find(|pattern| pattern.id == pattern_id)
+        .get_mut(&pattern_id)
         .unwrap();
     let note_list = &mut pattern
         .generator_notes
