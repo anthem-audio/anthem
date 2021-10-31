@@ -55,8 +55,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
             event.type == Reply.ActiveInstrumentSet)
         .listen(_updateActivePattern);
     _updateActiveInstrumentSub = rid.replyChannel.stream
-        .where((event) =>
-            event.type == Reply.ActiveInstrumentSet)
+        .where((event) => event.type == Reply.ActiveInstrumentSet)
         .listen(_updateActiveInstrument);
   }
 

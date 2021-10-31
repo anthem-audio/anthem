@@ -55,8 +55,7 @@ impl Store {
             .expect("command references a non-existent project")
     }
     pub fn push_command(&mut self, project_id: u64, command: Box<dyn Command>) {
-        self
-            .command_queues
+        self.command_queues
             .get_mut(&project_id)
             .unwrap()
             .push_command(command);
@@ -107,7 +106,7 @@ pub enum Msg {
     AddInstrument(u64, String),
     AddController(u64, String),
     RemoveGenerator(u64, u64),
-    SetActivePattern(u64, u64), // 0 means none
+    SetActivePattern(u64, u64),    // 0 means none
     SetActiveInstrument(u64, u64), // 0 means none
     SetActiveController(u64, u64), // 0 means none
 
@@ -142,6 +141,6 @@ pub enum Reply {
     // Pattern
     PatternAdded(u64),
     PatternDeleted(u64),
-    NoteAdded(u64),
-    NoteDeleted(u64),
+    NoteAdded(u64, String),   // { "generatorID": u64, "patternID": u64 }
+    NoteDeleted(u64, String), // { "generatorID": u64, "patternID": u64 }
 }

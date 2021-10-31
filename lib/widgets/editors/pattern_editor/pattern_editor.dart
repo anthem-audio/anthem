@@ -30,6 +30,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../theme.dart';
 import 'generator_row.dart';
+import 'generator_row_cubit.dart';
 
 class PatternEditor extends StatefulWidget {
   PatternEditor({Key? key}) : super(key: key);
@@ -132,14 +133,28 @@ class _PatternEditorState extends State<PatternEditor> {
                     if (instrument != null) {
                       return Padding(
                         padding: EdgeInsets.only(bottom: 1),
-                        child: GeneratorRow(id: id),
+                        child: BlocProvider(
+                          create: (context) => GeneratorRowCubit(
+                            projectID: state.projectID,
+                            patternID: state.activePatternID,
+                            generatorID: id,
+                          ),
+                          child: GeneratorRow(),
+                        ),
                       );
                     }
 
                     if (controller != null) {
                       return Padding(
                         padding: EdgeInsets.only(bottom: 1),
-                        child: GeneratorRow(id: id),
+                        child: BlocProvider(
+                          create: (context) => GeneratorRowCubit(
+                            projectID: state.projectID,
+                            patternID: state.activePatternID,
+                            generatorID: id,
+                          ),
+                          child: GeneratorRow(),
+                        ),
                       );
                     }
 

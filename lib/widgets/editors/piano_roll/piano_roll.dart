@@ -20,8 +20,10 @@
 import 'dart:math';
 
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_notification_handler.dart';
 import 'package:anthem/widgets/project/project_cubit.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -56,6 +58,12 @@ class _PianoRollState extends State<PianoRoll> {
       return MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => TimeView(0, 3072)),
+          ChangeNotifierProvider(
+            create: (context) => PianoRollLocalState(
+              keyHeight: 20,
+              keyValueAtTop: 62,
+            ),
+          )
         ],
         child: PianoRollNotificationHandler(
           child: Column(
@@ -90,7 +98,29 @@ class _PianoRollHeader extends StatelessWidget {
   }
 }
 
-// TODO: use providers instead of punching everything through
+class PianoRollLocalState with ChangeNotifier, DiagnosticableTreeMixin {
+  late double _keyHeight;
+  late double _keyValueAtTop;
+
+  double get keyHeight => _keyHeight;
+  double get keyValueAtTop => _keyValueAtTop;
+
+  PianoRollLocalState(
+      {required double keyHeight, required double keyValueAtTop}) {
+    this._keyHeight = keyHeight;
+    this._keyValueAtTop = keyValueAtTop;
+  }
+
+  void setKeyHeight(double value) {
+    _keyHeight = value;
+    notifyListeners();
+  }
+
+  void setKeyValueAtTop(double value) {
+    _keyValueAtTop = value;
+    notifyListeners();
+  }
+}
 
 class _PianoRollContent extends StatefulWidget {
   final int ticksPerQuarter;
@@ -107,91 +137,24 @@ class _PianoRollContent extends StatefulWidget {
 class _PianoRollContentState extends State<_PianoRollContent> {
   double footerHeight = (61);
   double pianoControlWidth = (103);
-  double keyValueAtTop = (64);
-  double keyHeight = (20);
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<PianoRollCubit, PianoRollState>(
         builder: (context, state) {
       final pattern = state.pattern;
-      final channelID = BlocProvider.of<ProjectCubit>(context).state.activeInstrumentID;
+      final channelID =
+          BlocProvider.of<ProjectCubit>(context).state.activeInstrumentID;
 
       final timeView = context.watch<TimeView>();
 
       final timelineHeight =
           (pattern?.timeSignatureChanges ?? []).isNotEmpty ? 42.0 : 21.0;
 
-      final pianoRollContentListenerKey = GlobalKey();
-
-      handlePointerDown(PointerDownEvent e) {
-        final context = pianoRollContentListenerKey.currentContext;
-        if (context == null) return;
-
-        final contentRenderBox = context.findRenderObject() as RenderBox;
-        final pointerPos = contentRenderBox.globalToLocal(e.position);
-
-        PianoRollPointerDownNotification(
-          note: pixelsToKeyValue(
-              keyHeight: keyHeight,
-              keyValueAtTop: keyValueAtTop,
-              pixelOffsetFromTop: pointerPos.dy),
-          time: pixelsToTime(
-              timeViewStart: timeView.start,
-              timeViewEnd: timeView.end,
-              viewPixelWidth: context.size?.width ?? 1,
-              pixelOffsetFromLeft: pointerPos.dx),
-          event: e,
-          pianoRollSize: contentRenderBox.size,
-        ).dispatch(context);
-      }
-
-      handlePointerMove(PointerMoveEvent e) {
-        final context = pianoRollContentListenerKey.currentContext;
-        if (context == null) return;
-
-        final contentRenderBox = context.findRenderObject() as RenderBox;
-        final pointerPos = contentRenderBox.globalToLocal(e.position);
-
-        PianoRollPointerMoveNotification(
-          note: pixelsToKeyValue(
-              keyHeight: keyHeight,
-              keyValueAtTop: keyValueAtTop,
-              pixelOffsetFromTop: pointerPos.dy),
-          time: pixelsToTime(
-              timeViewStart: timeView.start,
-              timeViewEnd: timeView.end,
-              viewPixelWidth: context.size?.width ?? 1,
-              pixelOffsetFromLeft: pointerPos.dx),
-          event: e,
-          pianoRollSize: contentRenderBox.size,
-        ).dispatch(context);
-      }
-
-      handlePointerUp(PointerUpEvent e) {
-        final context = pianoRollContentListenerKey.currentContext;
-        if (context == null) return;
-
-        final contentRenderBox = context.findRenderObject() as RenderBox;
-        final pointerPos = contentRenderBox.globalToLocal(e.position);
-
-        PianoRollPointerUpNotification(
-          note: pixelsToKeyValue(
-              keyHeight: keyHeight,
-              keyValueAtTop: keyValueAtTop,
-              pixelOffsetFromTop: pointerPos.dy),
-          time: pixelsToTime(
-              timeViewStart: timeView.start,
-              timeViewEnd: timeView.end,
-              viewPixelWidth: context.size?.width ?? 1,
-              pixelOffsetFromLeft: pointerPos.dx),
-          event: e,
-          pianoRollSize: contentRenderBox.size,
-        ).dispatch(context);
-      }
-
       final notes =
-          pattern == null ? <Note>[] : pattern.channelNotes[channelID]?.notes;
+          pattern == null ? <Note>[] : pattern.generatorNotes[channelID]?.notes;
+
+      final localState = context.watch<PianoRollLocalState>();
 
       return Column(
         children: [
@@ -216,17 +179,15 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                       const SizedBox(height: 1),
                       Expanded(
                         child: PianoControl(
-                          keyValueAtTop: keyValueAtTop,
-                          keyHeight: keyHeight,
+                          keyValueAtTop: localState.keyValueAtTop,
+                          keyHeight: localState.keyHeight,
                           setKeyValueAtTop: (value) {
                             setState(() {
-                              keyValueAtTop = value;
+                              localState.setKeyValueAtTop(value);
                             });
                           },
                           setKeyHeight: (value) {
-                            setState(() {
-                              keyHeight = value;
-                            });
+                            localState.setKeyHeight(value);
                           },
                         ),
                       ),
@@ -249,17 +210,13 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                           ),
                         ),
                         Expanded(
-                          child: Listener(
-                            key: pianoRollContentListenerKey,
-                            onPointerDown: handlePointerDown,
-                            onPointerMove: handlePointerMove,
-                            onPointerUp: handlePointerUp,
+                          child: PianoRollEventListener(
                             child: Stack(
                               fit: StackFit.expand,
                               children: [
                                 PianoRollGrid(
-                                  keyHeight: keyHeight,
-                                  keyValueAtTop: keyValueAtTop,
+                                  keyHeight: localState.keyHeight,
+                                  keyValueAtTop: localState.keyValueAtTop,
                                   ticksPerQuarter: widget.ticksPerQuarter,
                                 ),
                                 ClipRect(
@@ -274,8 +231,8 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                                         .toList(),
                                     delegate: NoteLayoutDelegate(
                                       notes: notes ?? [],
-                                      keyHeight: keyHeight,
-                                      keyValueAtTop: keyValueAtTop,
+                                      keyHeight: localState.keyHeight,
+                                      keyValueAtTop: localState.keyValueAtTop,
                                       timeViewStart: timeView.start,
                                       timeViewEnd: timeView.end,
                                     ),
