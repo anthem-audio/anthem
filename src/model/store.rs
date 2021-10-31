@@ -34,7 +34,8 @@ use super::command_queue::CommandQueue;
 #[rid::structs(Project)]
 #[derive(rid::Config)]
 pub struct Store {
-    pub projects: Vec<Project>,
+    pub projects: HashMap<u64, Project>,
+    pub project_order: Vec<u64>,
     pub active_project_id: u64,
 
     #[rid(skip)]
@@ -42,18 +43,6 @@ pub struct Store {
 }
 
 impl Store {
-    pub fn get_project(&self, id: u64) -> &Project {
-        self.projects
-            .iter()
-            .find(|project| project.id == id)
-            .expect("command references a non-existent project")
-    }
-    pub fn get_project_mut(&mut self, id: u64) -> &mut Project {
-        self.projects
-            .iter_mut()
-            .find(|project| project.id == id)
-            .expect("command references a non-existent project")
-    }
     pub fn push_command(&mut self, project_id: u64, command: Box<dyn Command>) {
         self.command_queues
             .get_mut(&project_id)
@@ -69,8 +58,13 @@ impl RidStore<Msg> for Store {
         let mut command_queues = HashMap::new();
         command_queues.insert(id, CommandQueue::default());
 
+        let mut projects = HashMap::new();
+        let project_id = project.id;
+        projects.insert(project_id, project);
+
         Self {
-            projects: vec![project],
+            projects: projects,
+            project_order: vec![project_id],
             active_project_id: id,
             command_queues,
         }

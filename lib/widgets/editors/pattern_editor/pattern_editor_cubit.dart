@@ -20,7 +20,6 @@
 import 'dart:async';
 import 'dart:collection';
 
-import 'package:anthem/helpers/get_project.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
 import 'package:plugin/generated/rid_api.dart';
@@ -62,12 +61,12 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
       pattern: state.pattern,
       patternList: state.patternList,
       projectID: state.projectID,
-      activePatternID: getProject(_store, state.projectID).song.activePatternId,
+      activePatternID: _store.projects[state.projectID]!.song.activePatternId,
     ));
   }
 
   _updatePatternList(PostedReply _reply) {
-    final project = getProject(_store, state.projectID);
+    final project = _store.projects[state.projectID]!;
 
     emit(PatternEditorState(
       controllers: state.controllers,
@@ -86,7 +85,7 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
   }
 
   _updateGeneratorList(PostedReply _reply) {
-    final project = getProject(_store, state.projectID);
+    final project = _store.projects[state.projectID]!;
 
     emit(PatternEditorState(
       controllers: project.controllers,

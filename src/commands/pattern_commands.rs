@@ -27,10 +27,7 @@ fn add_pattern(project: &mut Project, pattern: &Pattern, index: usize) {
 }
 
 fn delete_pattern(project: &mut Project, pattern_id: u64) {
-    project
-        .song
-        .pattern_order
-        .retain(|id| *id != pattern_id);
+    project.song.pattern_order.retain(|id| *id != pattern_id);
     project.song.patterns.remove(&pattern_id);
 }
 
@@ -78,11 +75,7 @@ pub struct AddNoteCommand {
 }
 
 fn add_note(project: &mut Project, pattern_id: u64, generator_id: u64, note: &Note) {
-    let pattern = project
-        .song
-        .patterns
-        .get_mut(&pattern_id)
-        .unwrap();
+    let pattern = project.song.patterns.get_mut(&pattern_id).unwrap();
     if pattern.generator_notes.get(&generator_id).is_none() {
         pattern
             .generator_notes
@@ -98,11 +91,7 @@ fn add_note(project: &mut Project, pattern_id: u64, generator_id: u64, note: &No
 }
 
 fn remove_note(project: &mut Project, pattern_id: u64, generator_id: u64, note_id: u64) {
-    let pattern = project
-        .song
-        .patterns
-        .get_mut(&pattern_id)
-        .unwrap();
+    let pattern = project.song.patterns.get_mut(&pattern_id).unwrap();
     let note_list = &mut pattern
         .generator_notes
         .get_mut(&generator_id)

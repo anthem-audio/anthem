@@ -40,9 +40,8 @@ class PianoRollCubit extends Cubit<PianoRollState> {
           PianoRollState(
             projectID: projectID,
             pattern: null,
-            ticksPerQuarter: Store.instance.projects
-                .firstWhere((project) => project.id == projectID)
-                .song
+            ticksPerQuarter: Store.instance.projects[projectID]
+                !.song
                 .ticksPerQuarter,
             activeInstrumentID: null,
           ),
@@ -61,7 +60,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
 
   _updateActivePattern(PostedReply _reply) {
     final project =
-        _store.projects.firstWhere((project) => project.id == state.projectID);
+        _store.projects[state.projectID]!;
     final patternID = project.song.activePatternId;
     Pattern? pattern;
     if (patternID != 0) {
@@ -77,7 +76,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
 
   _updateActiveInstrument(PostedReply _reply) {
     final project =
-        _store.projects.firstWhere((project) => project.id == state.projectID);
+        _store.projects[state.projectID]!;
     emit(PianoRollState(
       projectID: state.projectID,
       ticksPerQuarter: state.ticksPerQuarter,
