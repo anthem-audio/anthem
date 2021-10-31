@@ -30,7 +30,7 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
   // ignore: unused_field
   late final StreamSubscription<PostedReply> _updateNotesSub;
   // ignore: unused_field
-  late final StreamSubscription<PostedReply> _updateActivePatternSub;
+  late final StreamSubscription<PostedReply> _changePatternSub;
   final Store _store = Store.instance;
 
   GeneratorRowCubit({
@@ -47,52 +47,51 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
         ) {
     _updateNotesSub = rid.replyChannel.stream
         .where((event) =>
-            event.type == Reply.NoteAdded ||
-            event.type == Reply.NoteDeleted ||
-            event.type == Reply.ActivePatternSet)
+            event.type == Reply.NoteAdded || event.type == Reply.NoteDeleted)
         .listen(_updateNotes);
-    _updateActivePatternSub = rid.replyChannel.stream
+    _changePatternSub = rid.replyChannel.stream
         .where((event) => event.type == Reply.ActivePatternSet)
-        .listen(_updateActivePattern);
+        .listen(_changePattern);
+  }
+
+  List<Note> _getNotes(int patternID) {
+    return _store.projects[state.projectID]!.song.patterns[patternID]
+            ?.generatorNotes[state.generatorID]?.notes ??
+        [];
+  }
+
+  _changePattern(PostedReply reply) {
+    final patternID = _store.projects[state.projectID]!.song.activePatternId;
+
+    final notes = _getNotes(patternID);
+
+    emit(GeneratorRowState(
+      projectID: state.projectID,
+      generatorID: state.generatorID,
+      patternID: patternID,
+      notes: notes,
+    ));
   }
 
   _updateNotes(PostedReply reply) {
-    Map response = jsonDecode(reply.data!);
+    if (reply.type == Reply.NoteAdded || reply.type == Reply.NoteDeleted) {
+      Map response = jsonDecode(reply.data!);
 
-    final patternID = response["patternID"];
-    final generatorID = response["generatorID"];
+      final patternID = response["patternID"];
+      final generatorID = response["generatorID"];
 
-    print(state.patternID);
-    print(state.generatorID);
-
-    if (state.patternID != patternID || state.generatorID != generatorID) {
-      return;
+      if (state.patternID != patternID || state.generatorID != generatorID) {
+        return;
+      }
     }
+
+    final notes = _getNotes(state.patternID!);
 
     emit(GeneratorRowState(
       projectID: state.projectID,
       generatorID: state.generatorID,
       patternID: state.patternID,
-      notes: _store.projects
-          .firstWhere((project) => project.id == state.projectID)
-          .song
-          .patterns
-          .firstWhere((pattern) => pattern.id == state.patternID)
-          .generatorNotes[state.generatorID]!
-          .notes,
+      notes: notes,
     ));
-  }
-
-  _updateActivePattern(PostedReply _reply) {
-    emit(
-      GeneratorRowState(
-          projectID: state.projectID,
-          generatorID: state.generatorID,
-          notes: state.notes,
-          patternID: _store.projects
-              .firstWhere((project) => project.id == state.projectID)
-              .song
-              .activePatternId),
-    );
   }
 }

@@ -29,21 +29,32 @@ pub fn pattern_message_handler(store: &mut Store, request_id: u64, msg: &Msg) ->
             let command = AddPatternCommand {
                 project_id: *project_id,
                 pattern: Pattern::new(pattern_name.clone()),
+                index: store
+                    .projects
+                    .get(project_id)
+                    .unwrap()
+                    .song
+                    .pattern_order
+                    .len(),
             };
             execute_and_push(store, request_id, *project_id, Box::new(command));
         }
         Msg::DeletePattern(project_id, pattern_id) => {
-            let project = store.get_project_mut(*project_id);
+            let project = store.projects.get_mut(project_id).unwrap();
             let patterns = &mut project.song.patterns;
 
             let command = DeletePatternCommand {
                 project_id: *project_id,
-                pattern: patterns.remove(
-                    patterns
-                        .iter()
-                        .position(|pattern| pattern.id == *pattern_id)
-                        .expect("pattern delete: requested pattern could not be found"),
-                ),
+                pattern: patterns.get(pattern_id).unwrap().clone(),
+                index: store
+                    .projects
+                    .get(project_id)
+                    .unwrap()
+                    .song
+                    .pattern_order
+                    .iter()
+                    .position(|id| *id == *pattern_id)
+                    .unwrap(),
             };
 
             execute_and_push(store, request_id, *project_id, Box::new(command));
