@@ -22,7 +22,8 @@ class PianoRollNotificationHandler extends StatelessWidget {
       return NotificationListener<PianoRollNotification>(
           onNotification: (notification) {
             final timeView = Provider.of<TimeView>(context, listen: false);
-            final channelID = BlocProvider.of<ProjectCubit>(context).state.activeInstrumentID;
+            final channelID =
+                BlocProvider.of<ProjectCubit>(context).state.activeInstrumentID;
 
             /*
               This feels excessive, as it recalculates snap for each
@@ -45,8 +46,8 @@ class PianoRollNotificationHandler extends StatelessWidget {
             );
 
             if (notification is PianoRollPointerDownNotification) {
-              print(
-                  "pointer down: ${notification.note}, time: ${notification.time}");
+              // print(
+              //     "pointer down: ${notification.note}, time: ${notification.time}");
 
               final notificationTime = notification.time.floor();
               if (notificationTime < 0) return true;
@@ -69,19 +70,20 @@ class PianoRollNotificationHandler extends StatelessWidget {
               }
 
               context.read<PianoRollCubit>().addNote(
-                  channelID: channelID,
-                  key: notification.note.floor(),
-                  velocity: 128,
-                  length: 96,
-                  offset: targetTime,);
+                    channelID: channelID,
+                    key: notification.note.floor(),
+                    velocity: 128,
+                    length: 96,
+                    offset: targetTime,
+                  );
               return true;
             } else if (notification is PianoRollPointerMoveNotification) {
-              print(
-                  "pointer move: ${notification.note}, time: ${notification.time}");
+              // print(
+              //     "pointer move: ${notification.note}, time: ${notification.time}");
               return true;
             } else if (notification is PianoRollPointerUpNotification) {
-              print(
-                  "pointer up: ${notification.note}, time: ${notification.time}");
+              // print(
+              //     "pointer up: ${notification.note}, time: ${notification.time}");
               return true;
             }
             return false;

@@ -17,8 +17,8 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use serde::{Deserialize, Serialize};
 use crate::util::id::get_id;
+use serde::{Deserialize, Serialize};
 
 #[rid::model]
 #[derive(Clone, Serialize, Deserialize)]

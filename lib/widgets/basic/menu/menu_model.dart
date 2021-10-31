@@ -31,12 +31,7 @@ class ActiveMenus with ChangeNotifier, DiagnosticableTreeMixin {
   }
 }
 
-enum MenuAlignment {
-  TopLeft,
-  TopRight,
-  BottomLeft,
-  BottomRight
-}
+enum MenuAlignment { TopLeft, TopRight, BottomLeft, BottomRight }
 
 class MenuInstance {
   MenuDef menu;

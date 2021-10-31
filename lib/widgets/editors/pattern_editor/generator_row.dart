@@ -19,28 +19,32 @@
 
 import 'dart:math';
 
-import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart';
+import 'package:anthem/widgets/basic/clip/clip_notes.dart';
 import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart';
 
 import '../../../theme.dart';
+import 'generator_row_cubit.dart';
 
 class GeneratorRow extends StatelessWidget {
-  final int id;
+  final Color generatorColor = Color.fromARGB(
+    255,
+    Random().nextInt(255),
+    Random().nextInt(255),
+    Random().nextInt(255),
+  );
 
-  const GeneratorRow({Key? key, required this.id}) : super(key: key);
+  GeneratorRow({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final random = Random();
-
-    return BlocBuilder<PatternEditorCubit, PatternEditorState>(
+    return BlocBuilder<GeneratorRowCubit, GeneratorRowState>(
         builder: (context, state) {
       return GestureDetector(
         onTap: () {
-          BlocProvider.of<ProjectCubit>(context).setActiveInstrumentID(id);
+          BlocProvider.of<ProjectCubit>(context)
+              .setActiveInstrumentID(state.generatorID);
         },
         child: SizedBox(
           height: 42,
@@ -54,12 +58,7 @@ class GeneratorRow extends StatelessWidget {
                     left: Radius.circular(1),
                     right: Radius.circular(0),
                   ),
-                  color: Color.fromARGB(
-                    255,
-                    random.nextInt(255),
-                    random.nextInt(255),
-                    random.nextInt(255),
-                  ),
+                  color: generatorColor,
                 ),
               ),
               Expanded(
@@ -71,10 +70,22 @@ class GeneratorRow extends StatelessWidget {
                     ),
                     color: Theme.panel.light,
                   ),
-                  child: Row(children: [
-                    SizedBox(width: 270),
-                    // ...
-                  ]),
+                  child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // SizedBox(width: 270),
+                        Expanded(
+                            child: state.notes == null
+                                ? SizedBox()
+                                : ClipNotes(
+                                    notes: state.notes!,
+                                    timeViewStart: 0,
+                                    // 1 bar is 100 pxiels, can be tweaked (and should probably be set above?)
+                                    // TODO: hard-coded ticks-per-beat
+                                    ticksPerPixel: (96 * 4) / 100,
+                                    color: generatorColor,
+                                  ))
+                      ]),
                 ),
               )
             ],
