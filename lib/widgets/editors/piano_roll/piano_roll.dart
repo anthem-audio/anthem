@@ -22,19 +22,15 @@ import 'dart:math';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_notification_handler.dart';
-import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:plugin/generated/rid_api.dart';
-
 import 'package:provider/provider.dart';
 
 import 'helpers.dart';
 import 'piano_roll_grid.dart';
-import 'piano_roll_notifications.dart';
 import 'timeline.dart';
 import 'piano_control.dart';
 
@@ -143,16 +139,13 @@ class _PianoRollContentState extends State<_PianoRollContent> {
     return BlocBuilder<PianoRollCubit, PianoRollState>(
         builder: (context, state) {
       final pattern = state.pattern;
-      final channelID =
-          BlocProvider.of<ProjectCubit>(context).state.activeInstrumentID;
 
       final timeView = context.watch<TimeView>();
 
       final timelineHeight =
           (pattern?.timeSignatureChanges ?? []).isNotEmpty ? 42.0 : 21.0;
 
-      final notes =
-          pattern == null ? <Note>[] : pattern.generatorNotes[channelID]?.notes;
+      final notes = state.notes;
 
       final localState = context.watch<PianoRollLocalState>();
 
@@ -221,16 +214,17 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                                 ),
                                 ClipRect(
                                   child: CustomMultiChildLayout(
-                                    children: (notes ?? [])
+                                    children: notes
                                         .map(
                                           (note) => LayoutId(
-                                            id: note.id,
-                                            child: NoteWidget(noteID: note.id),
+                                            id: note.model.id,
+                                            child: NoteWidget(
+                                                noteID: note.model.id),
                                           ),
                                         )
                                         .toList(),
                                     delegate: NoteLayoutDelegate(
-                                      notes: notes ?? [],
+                                      notes: notes,
                                       keyHeight: localState.keyHeight,
                                       keyValueAtTop: localState.keyValueAtTop,
                                       timeViewStart: timeView.start,
@@ -268,7 +262,7 @@ class NoteLayoutDelegate extends MultiChildLayoutDelegate {
     required this.timeViewEnd,
   });
 
-  final List<Note> notes;
+  final List<LocalNote> notes;
   final double timeViewStart;
   final double timeViewEnd;
   final double keyValueAtTop;
@@ -278,7 +272,7 @@ class NoteLayoutDelegate extends MultiChildLayoutDelegate {
   void performLayout(Size size) {
     for (var note in notes) {
       final y = keyValueToPixels(
-              keyValue: note.key.toDouble(),
+              keyValue: note.getKey().toDouble(),
               keyValueAtTop: keyValueAtTop,
               keyHeight: keyHeight) -
           keyHeight +
@@ -289,25 +283,26 @@ class NoteLayoutDelegate extends MultiChildLayoutDelegate {
               timeViewStart: timeViewStart,
               timeViewEnd: timeViewEnd,
               viewPixelWidth: size.width,
-              time: note.offset.toDouble()) +
+              time: note.getOffset().toDouble()) +
           1;
       final width = timeToPixels(
               timeViewStart: timeViewStart,
               timeViewEnd: timeViewEnd,
               viewPixelWidth: size.width,
-              time: timeViewStart + note.length.toDouble()) -
+              time: timeViewStart + note.getLength().toDouble()) -
           1;
 
       layoutChild(
-        note.id,
+        note.model.id,
         BoxConstraints(maxHeight: height, maxWidth: max(width, 0)),
       );
-      positionChild(note.id, Offset(startX, y));
+      positionChild(note.model.id, Offset(startX, y));
     }
   }
 
   @override
   bool shouldRelayout(covariant NoteLayoutDelegate oldDelegate) {
+    print("should relayout");
     if (oldDelegate.timeViewStart != timeViewStart ||
         oldDelegate.timeViewEnd != timeViewEnd ||
         oldDelegate.notes.length != notes.length ||
@@ -318,12 +313,13 @@ class NoteLayoutDelegate extends MultiChildLayoutDelegate {
       var newNote = notes[i];
 
       // No re-layout on velocity. I think this is okay?
-      if (oldNote.key != newNote.key ||
-          oldNote.length != newNote.length ||
-          oldNote.offset != newNote.offset) {
+      if (oldNote.getKey() != newNote.getKey() ||
+          oldNote.getLength() != newNote.getLength() ||
+          oldNote.getOffset() != newNote.getOffset()) {
         return true;
       }
     }
+    print("should relayout not");
     return false;
   }
 }
