@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
 import 'package:plugin/generated/rid_api.dart';
@@ -24,6 +26,10 @@ import 'package:plugin/generated/rid_api.dart';
 part 'project_state.dart';
 
 class ProjectCubit extends Cubit<ProjectState> {
+  // ignore: unused_field
+  late final StreamSubscription<PostedReply> _updateActiveInstrumentSub;
+  // ignore: unused_field
+  late final StreamSubscription<PostedReply> _updateActiveControllerSub;
   final Store _store = Store.instance;
 
   ProjectCubit({required int id})
@@ -33,11 +39,17 @@ class ProjectCubit extends Cubit<ProjectState> {
             activeInstrumentID: null,
             activeControllerID: null,
           ),
-        );
+        ) {
+    _updateActiveInstrumentSub = rid.replyChannel.stream
+        .where((event) => event.type == Reply.ActiveInstrumentSet)
+        .listen(_updateActiveInstrument);
+    _updateActiveControllerSub = rid.replyChannel.stream
+        .where((event) => event.type == Reply.ActiveControllerSet)
+        .listen(_updateActiveController);
+  }
 
-  Future<void> undo() => _store.msgUndo(state.id);
-  Future<void> redo() => _store.msgRedo(state.id);
-  void setActiveInstrumentID(int? id) {
+  _updateActiveInstrument(PostedReply _reply) {
+    final id = _store.projects[state.id]!.song.activeInstrumentId;
     emit(
       ProjectState(
         id: state.id,
@@ -47,13 +59,21 @@ class ProjectCubit extends Cubit<ProjectState> {
     );
   }
 
-  void setActiveControllerID(int? id) {
+  _updateActiveController(PostedReply _reply) {
+    final id = _store.projects[state.id]!.song.activeControllerId;
     emit(
       ProjectState(
         id: state.id,
-        activeInstrumentID: state.activeInstrumentID,
         activeControllerID: id,
+        activeInstrumentID: state.activeInstrumentID,
       ),
     );
   }
+
+  Future<void> undo() => _store.msgUndo(state.id);
+  Future<void> redo() => _store.msgRedo(state.id);
+  Future<void> setActiveInstrumentID(int? id) =>
+    _store.msgSetActiveInstrument(state.id, id ?? 0); // TODO: nullable once rid supports this
+  Future<void> setActiveControllerID(int? id) =>
+    _store.msgSetActiveController(state.id, id ?? 0); // TODO: nullable once rid supports this
 }

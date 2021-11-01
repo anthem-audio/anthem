@@ -46,9 +46,6 @@ class PianoRollNotificationHandler extends StatelessWidget {
             );
 
             if (notification is PianoRollPointerDownNotification) {
-              // print(
-              //     "pointer down: ${notification.note}, time: ${notification.time}");
-
               final notificationTime = notification.time.floor();
               if (notificationTime < 0) return true;
 
