@@ -40,10 +40,10 @@ class PianoRollCubit extends Cubit<PianoRollState> {
           PianoRollState(
             projectID: projectID,
             pattern: null,
-            ticksPerQuarter: Store.instance.projects[projectID]
-                !.song
-                .ticksPerQuarter,
+            ticksPerQuarter:
+                Store.instance.projects[projectID]!.song.ticksPerQuarter,
             activeInstrumentID: null,
+            notes: [],
           ),
         ) {
     _updateActivePatternSub = rid.replyChannel.stream
@@ -58,30 +58,43 @@ class PianoRollCubit extends Cubit<PianoRollState> {
         .listen(_updateActiveInstrument);
   }
 
+  List<LocalNote> _getLocalNotes(int patternID, int generatorID) {
+    return (_store.projects[state.projectID]!.song.patterns[patternID]!
+        .generatorNotes[generatorID]?.notes ?? [])
+        .map((modelNote) {
+      return LocalNote(note: modelNote);
+    }).toList();
+  }
+
   _updateActivePattern(PostedReply _reply) {
-    final project =
-        _store.projects[state.projectID]!;
+    final project = _store.projects[state.projectID]!;
     final patternID = project.song.activePatternId;
     Pattern? pattern;
     if (patternID != 0) {
       pattern = project.song.patterns[patternID];
     }
+
     emit(PianoRollState(
       projectID: state.projectID,
       ticksPerQuarter: state.ticksPerQuarter,
       pattern: pattern,
       activeInstrumentID: state.activeInstrumentID,
+      notes: pattern == null || state.activeInstrumentID == null
+          ? []
+          : _getLocalNotes(patternID, state.activeInstrumentID!),
     ));
   }
 
   _updateActiveInstrument(PostedReply _reply) {
-    final project =
-        _store.projects[state.projectID]!;
+    final project = _store.projects[state.projectID]!;
     emit(PianoRollState(
       projectID: state.projectID,
       ticksPerQuarter: state.ticksPerQuarter,
       pattern: state.pattern,
       activeInstrumentID: project.song.activeInstrumentId,
+      notes: state.pattern == null
+          ? []
+          : _getLocalNotes(state.pattern!.id, project.song.activeInstrumentId),
     ));
   }
 
