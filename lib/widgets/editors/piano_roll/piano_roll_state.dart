@@ -45,43 +45,43 @@ class PianoRollState {
           other.notes == notes);
 }
 
-// Wraps a note and contains additional state that doesn't need to be sent to
-// the Rust side
-class LocalNote {
-  late Note model;
-  int? transientOffset;
-  int? transientKey;
-  int? transientLength;
+// A list of these is used by the piano roll. The list is updated when the Rust
+// note list updates.
+class LocalNote implements Note {
+  late int _id;
+  late int _key;
+  late int _length;
+  late int _offset;
+  late int _velocity;
 
-  LocalNote(
-      {required Note note,
-      int? transientOffset,
-      int? transientKey,
-      int? transientLength}) {
-    model = note;
-    this.transientKey = transientKey;
-    this.transientOffset = transientOffset;
-    this.transientLength = transientLength;
+  LocalNote({required int id, required int key, required int length, required int offset, required int velocity}) {
+    this._id = id;
+    this._key = key;
+    this._length = length;
+    this._offset = offset;
+    this._velocity = velocity;
   }
 
-  int getOffset() {
-    return transientOffset ?? model.offset;
-  }
-
-  int getKey() {
-    return transientKey ?? model.key;
-  }
-
-  int getLength() {
-    return transientLength ?? model.length;
+  LocalNote.fromNote(Note note) {
+    this._id = note.id;
+    this._key = note.key;
+    this._length = note.length;
+    this._offset = note.offset;
+    this._velocity = note.velocity;
   }
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is LocalNote &&
-          other.model == model &&
-          other.transientKey == transientKey &&
-          other.transientOffset == transientOffset &&
-          other.transientLength == transientLength);
+  int get id => this._id;
+
+  @override
+  int get key => this._key;
+
+  @override
+  int get length => this._length;
+
+  @override
+  int get offset => this._offset;
+
+  @override
+  int get velocity => this._velocity;
 }
