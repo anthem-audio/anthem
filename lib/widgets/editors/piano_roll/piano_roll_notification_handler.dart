@@ -22,7 +22,7 @@ class PianoRollNotificationHandler extends StatelessWidget {
       return NotificationListener<PianoRollNotification>(
           onNotification: (notification) {
             final timeView = Provider.of<TimeView>(context, listen: false);
-            final channelID =
+            final instrumentID =
                 BlocProvider.of<ProjectCubit>(context).state.activeInstrumentID;
 
             /*
@@ -67,7 +67,7 @@ class PianoRollNotificationHandler extends StatelessWidget {
               }
 
               context.read<PianoRollCubit>().addNote(
-                    channelID: channelID,
+                    instrumentID: instrumentID,
                     key: notification.note.floor(),
                     velocity: 128,
                     length: 96,

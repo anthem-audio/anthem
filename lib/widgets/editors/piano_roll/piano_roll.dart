@@ -26,6 +26,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:plugin/generated/rid_api.dart';
 
 import 'package:provider/provider.dart';
 
@@ -217,9 +218,9 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                                     children: notes
                                         .map(
                                           (note) => LayoutId(
-                                            id: note.model.id,
+                                            id: note.id,
                                             child: NoteWidget(
-                                                noteID: note.model.id),
+                                                noteID: note.id),
                                           ),
                                         )
                                         .toList(),
@@ -262,7 +263,7 @@ class NoteLayoutDelegate extends MultiChildLayoutDelegate {
     required this.timeViewEnd,
   });
 
-  final List<LocalNote> notes;
+  final List<Note> notes;
   final double timeViewStart;
   final double timeViewEnd;
   final double keyValueAtTop;
@@ -272,7 +273,7 @@ class NoteLayoutDelegate extends MultiChildLayoutDelegate {
   void performLayout(Size size) {
     for (var note in notes) {
       final y = keyValueToPixels(
-              keyValue: note.getKey().toDouble(),
+              keyValue: note.key.toDouble(),
               keyValueAtTop: keyValueAtTop,
               keyHeight: keyHeight) -
           keyHeight +
@@ -283,20 +284,20 @@ class NoteLayoutDelegate extends MultiChildLayoutDelegate {
               timeViewStart: timeViewStart,
               timeViewEnd: timeViewEnd,
               viewPixelWidth: size.width,
-              time: note.getOffset().toDouble()) +
+              time: note.offset.toDouble()) +
           1;
       final width = timeToPixels(
               timeViewStart: timeViewStart,
               timeViewEnd: timeViewEnd,
               viewPixelWidth: size.width,
-              time: timeViewStart + note.getLength().toDouble()) -
+              time: timeViewStart + note.length.toDouble()) -
           1;
 
       layoutChild(
-        note.model.id,
+        note.id,
         BoxConstraints(maxHeight: height, maxWidth: max(width, 0)),
       );
-      positionChild(note.model.id, Offset(startX, y));
+      positionChild(note.id, Offset(startX, y));
     }
   }
 
@@ -313,9 +314,9 @@ class NoteLayoutDelegate extends MultiChildLayoutDelegate {
       var newNote = notes[i];
 
       // No re-layout on velocity. I think this is okay?
-      if (oldNote.getKey() != newNote.getKey() ||
-          oldNote.getLength() != newNote.getLength() ||
-          oldNote.getOffset() != newNote.getOffset()) {
+      if (oldNote.key != newNote.key ||
+          oldNote.length != newNote.length ||
+          oldNote.offset != newNote.offset) {
         return true;
       }
     }
