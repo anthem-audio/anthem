@@ -66,13 +66,25 @@ class PianoRollNotificationHandler extends StatelessWidget {
                 break;
               }
 
-              context.read<PianoRollCubit>().addNote(
+              final pianoRollCubit = context.read<PianoRollCubit>();
+              // final projectCubit = context.read<ProjectCubit>();
+
+              // projectCubit.journalStartEntry();
+              pianoRollCubit.addNote(
                     instrumentID: instrumentID,
                     key: notification.note.floor(),
                     velocity: 128,
                     length: 96,
                     offset: targetTime,
                   );
+              // pianoRollCubit.addNote(
+              //       instrumentID: instrumentID,
+              //       key: notification.note.floor() - 1,
+              //       velocity: 128,
+              //       length: 96,
+              //       offset: targetTime,
+              //     );
+              // projectCubit.journalCommitEntry();
               return true;
             } else if (notification is PianoRollPointerMoveNotification) {
               // print(
