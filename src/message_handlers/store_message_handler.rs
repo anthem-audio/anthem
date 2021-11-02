@@ -18,8 +18,12 @@
 */
 
 use std::fs;
+use std::mem::replace;
 
+use crate::commands::command::Command;
+use crate::commands::project_commands::JournalPage;
 use crate::model::command_queue::CommandQueue;
+use crate::model::jorunal_page_accumulator::JournalPageAccumulator;
 use crate::model::project::*;
 use crate::model::store::*;
 use crate::util::rid_reply_all::rid_reply_all;
@@ -31,9 +35,19 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
             let project_id = project.id;
             store.projects.insert(project.id, project);
             store.project_order.push(project_id);
+
             store
                 .command_queues
                 .insert(project_id, CommandQueue::default());
+
+            store.journal_page_accumulators.insert(
+                project_id,
+                JournalPageAccumulator {
+                    is_active: false,
+                    command_list: Vec::new(),
+                },
+            );
+
             rid::post(Reply::NewProjectCreated(
                 request_id,
                 (project_id as i64).to_string(),
@@ -50,6 +64,7 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
             store.projects.remove(project_id);
             store.project_order.retain(|id| *id != *project_id);
             store.command_queues.remove(project_id);
+            store.journal_page_accumulators.remove(project_id);
             rid::post(Reply::ProjectClosed(request_id));
         }
         Msg::SaveProject(project_id, path) => {
@@ -119,7 +134,29 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
             } else {
                 rid::post(Reply::NothingChanged(request_id));
             }
-            }
+        }
+        Msg::JournalStartEntry(project_id) => {
+            store
+                .journal_page_accumulators
+                .get_mut(project_id)
+                .unwrap()
+                .is_active = true;
+            rid::post(Reply::JournalEntryStarted(request_id));
+        }
+        Msg::JournalCommitEntry(project_id) => {
+            let accumulator = store.journal_page_accumulators.get_mut(project_id).unwrap();
+            accumulator.is_active = false;
+            let commands: Vec<Box<dyn Command>> =
+                replace(&mut accumulator.command_list, Vec::new());
+            let page = JournalPage { commands };
+            store
+                .command_queues
+                .get_mut(project_id)
+                .unwrap()
+                .push_command(Box::new(page));
+            // We don't execute the page's commands because they should have
+            // already been executed by execute_and_push().
+            rid::post(Reply::JournalEntryCommitted(request_id));
         }
         _ => {
             return false;

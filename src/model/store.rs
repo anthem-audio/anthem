@@ -29,6 +29,7 @@ use crate::message_handlers::store_message_handler::store_message_handler;
 use crate::model::project::Project;
 
 use super::command_queue::CommandQueue;
+use super::jorunal_page_accumulator::JournalPageAccumulator;
 
 #[rid::store]
 #[rid::structs(Project)]
@@ -38,8 +39,13 @@ pub struct Store {
     pub project_order: Vec<u64>,
     pub active_project_id: u64,
 
+    // Undo/redo vectors for each project
     #[rid(skip)]
     pub command_queues: HashMap<u64, CommandQueue>,
+
+    // Current journal page accumulator for each project
+    #[rid(skip)]
+    pub journal_page_accumulators: HashMap<u64, JournalPageAccumulator>,
 }
 
 impl Store {
@@ -55,18 +61,29 @@ impl RidStore<Msg> for Store {
     fn create() -> Self {
         let project = Project::default();
         let id = project.id;
-        let mut command_queues = HashMap::new();
-        command_queues.insert(id, CommandQueue::default());
 
         let mut projects = HashMap::new();
         let project_id = project.id;
         projects.insert(project_id, project);
+
+        let mut command_queues = HashMap::new();
+        command_queues.insert(id, CommandQueue::default());
+
+        let mut journal_page_accumulators = HashMap::new();
+        journal_page_accumulators.insert(
+            id,
+            JournalPageAccumulator {
+                is_active: false,
+                command_list: Vec::new(),
+            },
+        );
 
         Self {
             projects: projects,
             project_order: vec![project_id],
             active_project_id: id,
             command_queues,
+            journal_page_accumulators,
         }
     }
 
@@ -78,6 +95,7 @@ impl RidStore<Msg> for Store {
         ]
         .iter()
         .fold(false, |a, b| a || *b);
+
         if !handled {
             panic!("message not handled");
         }
@@ -87,7 +105,9 @@ impl RidStore<Msg> for Store {
 #[rid::message(Reply)]
 #[derive(Debug)]
 pub enum Msg {
+    //
     // Store
+    //
     NewProject,
     SetActiveProject(u64),
     CloseProject(u64),
@@ -96,7 +116,14 @@ pub enum Msg {
     Undo(u64),
     Redo(u64),
 
+    // All commands sent between a journal start and journal commit will be
+    // batched into a single undo/redo operation
+    JournalStartEntry(u64),
+    JournalCommitEntry(u64),
+
+    //
     // Project
+    //
     AddInstrument(u64, String),
     AddController(u64, String),
     RemoveGenerator(u64, u64),
@@ -104,7 +131,9 @@ pub enum Msg {
     SetActiveInstrument(u64, u64), // 0 means none
     SetActiveController(u64, u64), // 0 means none
 
+    //
     // Pattern
+    //
     AddPattern(u64, String),
     DeletePattern(u64, u64),
     AddNote(u64, u64, u64, String),
@@ -122,14 +151,20 @@ pub enum Reply {
     //
     NothingChanged(u64),
 
+    //
     // Store
+    //
     NewProjectCreated(u64, String),
     ActiveProjectChanged(u64, String),
     ProjectClosed(u64),
     ProjectSaved(u64),
     ProjectLoaded(u64, String),
+    JournalEntryStarted(u64),
+    JournalEntryCommitted(u64),
 
+    //
     // Project
+    //
     InstrumentAdded(u64),
     ControllerAdded(u64),
     GeneratorRemoved(u64),
@@ -137,7 +172,9 @@ pub enum Reply {
     ActiveInstrumentSet(u64),
     ActiveControllerSet(u64),
 
+    //
     // Pattern
+    //
     PatternAdded(u64),
     PatternDeleted(u64),
     NoteAdded(u64, String),   // { "generatorID": u64, "patternID": u64 }
