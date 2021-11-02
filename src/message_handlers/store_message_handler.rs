@@ -95,6 +95,8 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
                 let replies = command.rollback(project, request_id);
 
                 rid_reply_all(&replies);
+            } else {
+                rid::post(Reply::NothingChanged(request_id));
             }
         }
         Msg::Redo(project_id) => {
@@ -114,6 +116,9 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
                 let replies = command.execute(project, request_id);
 
                 rid_reply_all(&replies);
+            } else {
+                rid::post(Reply::NothingChanged(request_id));
+            }
             }
         }
         _ => {

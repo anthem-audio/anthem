@@ -117,6 +117,11 @@ pub enum Msg {
 #[rid::reply]
 #[derive(Clone, Debug)]
 pub enum Reply {
+    //
+    // Special
+    //
+    NothingChanged(u64),
+
     // Store
     NewProjectCreated(u64, String),
     ActiveProjectChanged(u64, String),
