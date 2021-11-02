@@ -303,7 +303,6 @@ class NoteLayoutDelegate extends MultiChildLayoutDelegate {
 
   @override
   bool shouldRelayout(covariant NoteLayoutDelegate oldDelegate) {
-    print("should relayout");
     if (oldDelegate.timeViewStart != timeViewStart ||
         oldDelegate.timeViewEnd != timeViewEnd ||
         oldDelegate.notes.length != notes.length ||
@@ -320,7 +319,6 @@ class NoteLayoutDelegate extends MultiChildLayoutDelegate {
         return true;
       }
     }
-    print("should relayout not");
     return false;
   }
 }
