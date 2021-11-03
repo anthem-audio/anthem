@@ -127,17 +127,19 @@ pub enum Msg {
     AddInstrument(u64, String),
     AddController(u64, String),
     RemoveGenerator(u64, u64),
-    SetActivePattern(u64, u64),    // 0 means none
-    SetActiveInstrument(u64, u64), // 0 means none
-    SetActiveController(u64, u64), // 0 means none
+    SetActivePattern(u64, u64),    // project ID, pattern ID (0 means none)
+    SetActiveInstrument(u64, u64), // project ID, instrument ID (0 means none)
+    SetActiveController(u64, u64), // project ID, controller ID (0 means none)
 
     //
     // Pattern
     //
-    AddPattern(u64, String),
-    DeletePattern(u64, u64),
-    AddNote(u64, u64, u64, String),
-    DeleteNote(u64, u64, u64, u64),
+    AddPattern(u64, String), // project ID, pattern name
+    DeletePattern(u64, u64), // project ID, pattern ID
+    AddNote(u64, u64, u64, String), // project ID, pattern ID, insrument ID, note as JSON
+    DeleteNote(u64, u64, u64, u64), // project ID, pattern ID, insrument ID, note ID
+    MoveNote(u64, u64, u64, u64, u64, u64), // project ID, pattern ID, insrument ID, note ID, new key value, new offset
+    ResizeNote(u64, u64, u64, u64, u64), // project ID, pattern ID, insrument ID, note ID, new length
 }
 
 // TODO: Some commands are destructive beyond what they can repair,
@@ -179,4 +181,6 @@ pub enum Reply {
     PatternDeleted(u64),
     NoteAdded(u64, String),   // { "generatorID": u64, "patternID": u64 }
     NoteDeleted(u64, String), // { "generatorID": u64, "patternID": u64 }
+    NoteMoved(u64, String),   // { "generatorID": u64, "patternID": u64 }
+    NoteResized(u64, String), // { "generatorID": u64, "patternID": u64 }
 }

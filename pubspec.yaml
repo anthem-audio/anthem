@@ -31,7 +31,6 @@ flutter:
   uses-material-design: false
 
   assets:
-  - assets/images/
   - assets/icons/arranger/
   - assets/icons/arranger/clip/
   - assets/icons/bottom_bar/
