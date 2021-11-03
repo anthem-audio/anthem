@@ -21,7 +21,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:flutter/widgets.dart';
 
-import 'widgets/main_window/main_window_cubit.dart';
+import 'main_window_cubit.dart';
 
 class WindowHeader extends StatefulWidget {
   final int selectedTabID;
@@ -45,7 +45,7 @@ class _WindowHeaderState extends State<WindowHeader> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 37,
+      height: 29,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: widget.tabs.map<Widget>(
@@ -59,7 +59,7 @@ class _WindowHeaderState extends State<WindowHeader> {
                     padding: EdgeInsets.only(
                         right: 1, bottom: isActiveProject ? 0 : 1),
                     child: Container(
-                      width: 125,
+                      width: 115,
                       decoration: BoxDecoration(
                         color: isActiveProject
                             ? Theme.panel.accent

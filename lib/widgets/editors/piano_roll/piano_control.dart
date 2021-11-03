@@ -21,6 +21,7 @@ import 'package:anthem/widgets/main_window/main_window_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
+import '../../../theme.dart';
 import 'helpers.dart';
 
 class DragInfo {
@@ -83,7 +84,7 @@ class _PianoControlState extends State<PianoControl> {
           child: Container(
             decoration: BoxDecoration(
               borderRadius: const BorderRadius.all(Radius.circular(1)),
-              color: const Color(0xFFFFFFFF).withOpacity(0.12),
+              color: Theme.panel.main,
             ),
             width: 39,
           ),

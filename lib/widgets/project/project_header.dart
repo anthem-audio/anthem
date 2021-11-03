@@ -26,7 +26,7 @@ import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'widgets/main_window/main_window_cubit.dart';
+import '../main_window/main_window_cubit.dart';
 
 class ProjectHeader extends StatelessWidget {
   final int projectID;
@@ -41,7 +41,7 @@ class ProjectHeader extends StatelessWidget {
       final projectCubit = context.read<ProjectCubit>();
 
       return Container(
-        height: 42,
+        height: 40,
         color: Theme.panel.accent,
         child: Padding(
           padding: EdgeInsets.all(7),

@@ -164,7 +164,7 @@ class _PatternEditorState extends State<PatternEditor> {
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Theme.panel.light,
+                          color: Theme.panel.main,
                           borderRadius: BorderRadius.vertical(
                             top: Radius.circular(1),
                             bottom: Radius.circular(2),

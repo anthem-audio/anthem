@@ -24,6 +24,7 @@ import 'package:flutter/widgets.dart';
 
 import 'package:provider/provider.dart';
 
+import '../../../theme.dart';
 import 'helpers.dart';
 import 'package:plugin/generated/rid_api.dart';
 
@@ -82,7 +83,7 @@ class _TimelineState extends State<Timeline> {
           fit: StackFit.expand,
           children: [
             Container(
-              color: const Color(0xFFFFFFFF).withOpacity(0.12),
+              color: Theme.panel.main,
               child: ClipRect(
                 child: CustomPaint(
                   painter: TimelinePainter(
