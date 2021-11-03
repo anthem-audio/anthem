@@ -84,15 +84,15 @@ class _PanelState extends State<Panel> {
     final contentHugTop = horizontal || !panelFirst;
     final contentHugBottom = horizontal || panelFirst;
 
-    final separatorSize = 3.0;
-    final handleSize = 6.0;
+    final separatorSize = 2.0;
+    final handleSize = 10.0;
 
-    var handleLeft = panelHugLeft ? panelSize : null;
+    var handleLeft = panelHugLeft ? panelSize - handleSize/2 + separatorSize/2 : null;
     var handleRight =
-        panelHugRight ? panelSize - handleSize + separatorSize : null;
-    var handleTop = panelHugTop ? panelSize : null;
+        panelHugRight ? panelSize - handleSize/2 + separatorSize/2 : null;
+    var handleTop = panelHugTop ? panelSize - handleSize/2 + separatorSize/2 : null;
     var handleBottom =
-        panelHugBottom ? panelSize - handleSize + separatorSize : null;
+        panelHugBottom ? panelSize - handleSize/2 + separatorSize/2 : null;
 
     if (horizontal) {
       handleTop = 0;
@@ -158,7 +158,7 @@ class _PanelState extends State<Panel> {
                 width: horizontal ? handleSize : null,
                 height: !horizontal ? handleSize : null,
                 // this is not clickable unless it has a color and I have no idea why
-                color: Color(0x00000000),
+                color: Color(0x00FFFFFF),
               ),
             ),
           ),

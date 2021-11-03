@@ -30,6 +30,7 @@ import 'package:plugin/generated/rid_api.dart';
 
 import 'package:provider/provider.dart';
 
+import '../../../theme.dart';
 import 'helpers.dart';
 import 'piano_roll_grid.dart';
 import 'timeline.dart';
@@ -84,7 +85,7 @@ class _PianoRollHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF).withOpacity(0.12),
+        color: Theme.panel.main,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(2),
           topRight: Radius.circular(2),
@@ -162,7 +163,7 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                     children: [
                       Container(
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFFFFF).withOpacity(0.12),
+                          color: Theme.panel.main,
                           borderRadius: const BorderRadius.only(
                             bottomLeft: Radius.circular(1),
                             bottomRight: Radius.circular(1),
@@ -245,7 +246,7 @@ class _PianoRollContentState extends State<_PianoRollContent> {
             ),
           ),
           Container(
-            color: const Color(0xFFFFFFFF).withOpacity(0.12),
+            color: Theme.panel.main,
             height: footerHeight,
           ),
         ],

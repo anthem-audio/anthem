@@ -19,17 +19,14 @@
 
 import 'package:anthem/widgets/main_window/tab_content_switcher.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
-import 'package:anthem/window_header.dart';
+import 'package:anthem/widgets/main_window/window_header.dart';
 import 'package:flutter/widgets.dart';
-import 'package:plugin/generated/rid_api.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:anthem/widgets/main_window/main_window_cubit.dart';
 import 'package:provider/provider.dart';
 
 class MainWindow extends StatefulWidget {
-  final Store _store;
-
-  MainWindow(this._store, {Key? key}) : super(key: key);
+  MainWindow({Key? key}) : super(key: key);
 
   @override
   _MainWindowState createState() => _MainWindowState();
@@ -70,7 +67,7 @@ class _MainWindowState extends State<MainWindow> {
           if (shift && keyUp) keyboardModifiers.setShift(false);
         },
         child: Padding(
-          padding: EdgeInsets.all(3),
+          padding: EdgeInsets.all(2),
           child: Column(
             children: [
               WindowHeader(
