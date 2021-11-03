@@ -100,6 +100,46 @@ fn remove_note(project: &mut Project, pattern_id: u64, generator_id: u64, note_i
     note_list.retain(|note| note.id != note_id);
 }
 
+fn move_note(
+    project: &mut Project,
+    pattern_id: u64,
+    generator_id: u64,
+    note_id: u64,
+    new_offset: u64,
+) {
+    let pattern = project.song.patterns.get_mut(&pattern_id).unwrap();
+    let note_list = &mut pattern
+        .generator_notes
+        .get_mut(&generator_id)
+        .unwrap()
+        .notes;
+    let note = note_list
+        .iter_mut()
+        .find(|note| note.id == note_id)
+        .unwrap();
+    note.offset = new_offset;
+}
+
+fn resize_note(
+    project: &mut Project,
+    pattern_id: u64,
+    generator_id: u64,
+    note_id: u64,
+    new_length: u64,
+) {
+    let pattern = project.song.patterns.get_mut(&pattern_id).unwrap();
+    let note_list = &mut pattern
+        .generator_notes
+        .get_mut(&generator_id)
+        .unwrap()
+        .notes;
+    let note = note_list
+        .iter_mut()
+        .find(|note| note.id == note_id)
+        .unwrap();
+    note.length = new_length;
+}
+
 fn get_note_reply(pattern_id: u64, generator_id: u64) -> String {
     format!(
         r#"{{ "patternID":{},"generatorID":{} }}"#,
@@ -144,6 +184,86 @@ impl Command for DeleteNoteCommand {
     fn rollback(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {
         add_note(project, self.pattern_id, self.generator_id, &self.note);
         vec![Reply::NoteAdded(
+            request_id,
+            get_note_reply(self.pattern_id, self.generator_id),
+        )]
+    }
+}
+
+pub struct MoveNoteCommand {
+    pub project_id: u64,
+    pub pattern_id: u64,
+    pub generator_id: u64,
+    pub note_id: u64,
+    pub old_key: u8,
+    pub new_key: u8,
+    pub old_offset: u64,
+    pub new_offset: u64,
+}
+
+impl Command for MoveNoteCommand {
+    fn execute(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {
+        move_note(
+            project,
+            self.pattern_id,
+            self.generator_id,
+            self.note_id,
+            self.new_offset,
+        );
+        vec![Reply::NoteMoved(
+            request_id,
+            get_note_reply(self.pattern_id, self.generator_id),
+        )]
+    }
+
+    fn rollback(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {
+        move_note(
+            project,
+            self.pattern_id,
+            self.generator_id,
+            self.note_id,
+            self.old_offset,
+        );
+        vec![Reply::NoteMoved(
+            request_id,
+            get_note_reply(self.pattern_id, self.generator_id),
+        )]
+    }
+}
+
+pub struct ResizeNoteCommand {
+    pub project_id: u64,
+    pub pattern_id: u64,
+    pub generator_id: u64,
+    pub note_id: u64,
+    pub old_length: u64,
+    pub new_length: u64,
+}
+
+impl Command for ResizeNoteCommand {
+    fn execute(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {
+        resize_note(
+            project,
+            self.pattern_id,
+            self.generator_id,
+            self.note_id,
+            self.new_length,
+        );
+        vec![Reply::NoteMoved(
+            request_id,
+            get_note_reply(self.pattern_id, self.generator_id),
+        )]
+    }
+
+    fn rollback(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {
+        resize_note(
+            project,
+            self.pattern_id,
+            self.generator_id,
+            self.note_id,
+            self.old_length,
+        );
+        vec![Reply::NoteMoved(
             request_id,
             get_note_reply(self.pattern_id, self.generator_id),
         )]

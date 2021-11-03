@@ -52,6 +52,8 @@ class PianoRollCubit extends Cubit<PianoRollState> {
             event.type == Reply.ActivePatternSet ||
             event.type == Reply.NoteAdded ||
             event.type == Reply.NoteDeleted ||
+            event.type == Reply.NoteMoved ||
+            event.type == Reply.NoteResized ||
             event.type == Reply.ActiveInstrumentSet)
         .listen(_updateActivePattern);
     _updateActiveInstrumentSub = rid.replyChannel.stream
@@ -61,7 +63,8 @@ class PianoRollCubit extends Cubit<PianoRollState> {
 
   List<LocalNote> _getLocalNotes(int patternID, int generatorID) {
     return (_store.projects[state.projectID]!.song.patterns[patternID]!
-        .generatorNotes[generatorID]?.notes ?? [])
+                .generatorNotes[generatorID]?.notes ??
+            [])
         .map((modelNote) {
       return LocalNote.fromNote(modelNote);
     }).toList();
@@ -99,6 +102,12 @@ class PianoRollCubit extends Cubit<PianoRollState> {
     ));
   }
 
+  Future<void> _noAction() {
+    final completer = Completer();
+    completer.complete();
+    return completer.future;
+  }
+
   Future<void> addNote({
     required int? instrumentID,
     required int key,
@@ -107,9 +116,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
     required int offset,
   }) {
     if (state.pattern == null || instrumentID == null) {
-      final completer = Completer();
-      completer.complete();
-      return completer.future;
+      return _noAction();
     }
 
     final data = Map();
@@ -122,5 +129,57 @@ class PianoRollCubit extends Cubit<PianoRollState> {
 
     return _store.msgAddNote(
         state.projectID, state.pattern!.id, instrumentID, json.encode(data));
+  }
+
+  Future<void> removeNote({required int? instrumentID, required int noteID}) {
+    if (state.pattern == null || instrumentID == null) {
+      return _noAction();
+    }
+
+    return _store.msgDeleteNote(
+        state.projectID, state.pattern!.id, instrumentID, noteID);
+  }
+
+  Future<void> moveNote(
+      {required int? instrumentID,
+      required int noteID,
+      required int key,
+      required int offset}) {
+    if (state.pattern == null || instrumentID == null) {
+      return _noAction();
+    }
+
+    return _store.msgMoveNote(
+        state.projectID, state.pattern!.id, instrumentID, noteID, key, offset);
+  }
+
+  Future<void> resizeNote(
+      {required int? instrumentID, required int noteID, required int length}) {
+    if (state.pattern == null || instrumentID == null) {
+      return _noAction();
+    }
+
+    return _store.msgResizeNote(
+        state.projectID, state.pattern!.id, instrumentID, noteID, length);
+  }
+
+  void mutateLocalNotes(
+      {required int? instrumentID,
+      required Function(List<LocalNote> notes) mutator}) {
+    if (state.pattern == null || instrumentID == null) {
+      return;
+    }
+
+    final newNotes = [...state.notes];
+
+    mutator(newNotes);
+
+    emit(PianoRollState(
+      activeInstrumentID: state.activeInstrumentID,
+      pattern: state.pattern,
+      projectID: state.projectID,
+      ticksPerQuarter: state.ticksPerQuarter,
+      notes: newNotes,
+    ));
   }
 }

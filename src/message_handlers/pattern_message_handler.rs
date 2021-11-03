@@ -23,6 +23,30 @@ use crate::model::pattern::*;
 use crate::model::store::*;
 use crate::util::execute_and_push::*;
 
+fn get_note<'a>(
+    store: &'a Store,
+    project_id: &u64,
+    pattern_id: &u64,
+    instrument_id: &u64,
+    note_id: &u64,
+) -> &'a Note {
+    &(store
+        .projects
+        .get(project_id)
+        .unwrap()
+        .song
+        .patterns
+        .get(pattern_id)
+        .unwrap()
+        .generator_notes
+        .get(instrument_id)
+        .unwrap()
+        .notes
+        .iter()
+        .find(|note| note.id == *note_id)
+        .unwrap())
+}
+
 pub fn pattern_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> bool {
     match msg {
         Msg::AddPattern(project_id, pattern_name) => {
@@ -67,6 +91,48 @@ pub fn pattern_message_handler(store: &mut Store, request_id: u64, msg: &Msg) ->
                 pattern_id: *pattern_id,
                 generator_id: *instrument_id,
                 note,
+            };
+
+            execute_and_push(store, request_id, *project_id, Box::new(command));
+        }
+        Msg::DeleteNote(project_id, pattern_id, instrument_id, note_id) => {
+            let note = get_note(store, project_id, pattern_id, instrument_id, note_id);
+
+            let command = DeleteNoteCommand {
+                project_id: *project_id,
+                pattern_id: *pattern_id,
+                generator_id: *instrument_id,
+                note: note.clone(),
+            };
+
+            execute_and_push(store, request_id, *project_id, Box::new(command));
+        }
+        Msg::MoveNote(project_id, pattern_id, instrument_id, note_id, new_key, new_offset) => {
+            let note = get_note(store, project_id, pattern_id, instrument_id, note_id);
+
+            let command = MoveNoteCommand {
+                project_id: *project_id,
+                pattern_id: *pattern_id,
+                generator_id: *instrument_id,
+                note_id: *note_id,
+                old_key: note.key,
+                new_key: *new_key as u8,
+                old_offset: note.offset,
+                new_offset: *new_offset,
+            };
+
+            execute_and_push(store, request_id, *project_id, Box::new(command));
+        }
+        Msg::ResizeNote(project_id, pattern_id, instrument_id, note_id, new_length) => {
+            let note = get_note(store, project_id, pattern_id, instrument_id, note_id);
+
+            let command = ResizeNoteCommand {
+                project_id: *project_id,
+                pattern_id: *pattern_id,
+                generator_id: *instrument_id,
+                note_id: *note_id,
+                old_length: note.length,
+                new_length: *new_length,
             };
 
             execute_and_push(store, request_id, *project_id, Box::new(command));
