@@ -22,19 +22,17 @@ import 'dart:math';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_notification_handler.dart';
-import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 import 'package:plugin/generated/rid_api.dart';
 
 import 'package:provider/provider.dart';
 
+import '../../../theme.dart';
 import 'helpers.dart';
 import 'piano_roll_grid.dart';
-import 'piano_roll_notifications.dart';
 import 'timeline.dart';
 import 'piano_control.dart';
 
@@ -87,7 +85,7 @@ class _PianoRollHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF).withOpacity(0.12),
+        color: Theme.panel.main,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(2),
           topRight: Radius.circular(2),
@@ -143,16 +141,13 @@ class _PianoRollContentState extends State<_PianoRollContent> {
     return BlocBuilder<PianoRollCubit, PianoRollState>(
         builder: (context, state) {
       final pattern = state.pattern;
-      final channelID =
-          BlocProvider.of<ProjectCubit>(context).state.activeInstrumentID;
 
       final timeView = context.watch<TimeView>();
 
       final timelineHeight =
           (pattern?.timeSignatureChanges ?? []).isNotEmpty ? 42.0 : 21.0;
 
-      final notes =
-          pattern == null ? <Note>[] : pattern.generatorNotes[channelID]?.notes;
+      final notes = state.notes;
 
       final localState = context.watch<PianoRollLocalState>();
 
@@ -168,7 +163,7 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                     children: [
                       Container(
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFFFFF).withOpacity(0.12),
+                          color: Theme.panel.main,
                           borderRadius: const BorderRadius.only(
                             bottomLeft: Radius.circular(1),
                             bottomRight: Radius.circular(1),
@@ -221,16 +216,17 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                                 ),
                                 ClipRect(
                                   child: CustomMultiChildLayout(
-                                    children: (notes ?? [])
+                                    children: notes
                                         .map(
                                           (note) => LayoutId(
                                             id: note.id,
-                                            child: NoteWidget(noteID: note.id),
+                                            child: NoteWidget(
+                                                noteID: note.id),
                                           ),
                                         )
                                         .toList(),
                                     delegate: NoteLayoutDelegate(
-                                      notes: notes ?? [],
+                                      notes: notes,
                                       keyHeight: localState.keyHeight,
                                       keyValueAtTop: localState.keyValueAtTop,
                                       timeViewStart: timeView.start,
@@ -250,7 +246,7 @@ class _PianoRollContentState extends State<_PianoRollContent> {
             ),
           ),
           Container(
-            color: const Color(0xFFFFFFFF).withOpacity(0.12),
+            color: Theme.panel.main,
             height: footerHeight,
           ),
         ],

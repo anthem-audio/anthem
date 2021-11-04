@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/widgets.dart';
 
 const white = const Color(0xFFFFFFFF);
 const black = const Color(0xFF000000);
@@ -31,9 +31,9 @@ class Theme {
 }
 
 class _Panel {
-  Color light = white.withOpacity(0.03);
-  Color main = white.withOpacity(0.07);
-  Color accent = white.withOpacity(0.12);
+  Color main = Color.fromARGB(255, 53, 62, 69);
+  Color accent = Color.fromARGB(255, 61, 72, 79);
+  Color border = Color.fromARGB(255, 41, 49, 54);
 }
 
 class _Primary {

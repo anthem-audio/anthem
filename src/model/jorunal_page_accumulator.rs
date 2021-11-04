@@ -17,29 +17,9 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use super::rid_reply_all::*;
-use crate::commands::command::*;
-use crate::model::store::*;
+use crate::commands::command::Command;
 
-pub fn execute_and_push(
-    store: &mut Store,
-    request_id: u64,
-    project_id: u64,
-    command: Box<dyn Command>,
-) {
-    let project = store.projects.get_mut(&project_id).unwrap();
-    let journal_accumulator = store
-        .journal_page_accumulators
-        .get_mut(&project_id)
-        .unwrap();
-
-    let replies = command.execute(project, request_id);
-
-    if journal_accumulator.is_active {
-        journal_accumulator.command_list.push(command);
-    } else {
-        store.push_command(project_id, command);
-    }
-
-    rid_reply_all(&replies);
+pub struct JournalPageAccumulator {
+    pub is_active: bool,
+    pub command_list: Vec<Box<dyn Command>>,
 }

@@ -68,7 +68,7 @@ class GeneratorRow extends StatelessWidget {
                       left: Radius.circular(0),
                       right: Radius.circular(1),
                     ),
-                    color: Theme.panel.light,
+                    color: Theme.panel.main,
                   ),
                   child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
