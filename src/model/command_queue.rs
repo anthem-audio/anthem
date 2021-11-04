@@ -45,10 +45,11 @@ impl CommandQueue {
         self.command_pointer += 1;
     }
     pub fn get_undo_and_bump_pointer(&mut self) -> Option<&Box<dyn Command>> {
-        let command = self.commands.get(self.command_pointer - 1);
-        if command.is_some() {
-            self.command_pointer -= 1;
+        if self.command_pointer == 0 {
+            return None;
         }
+        let command = self.commands.get(self.command_pointer - 1);
+        self.command_pointer -= 1;
         command
     }
     pub fn get_redo_and_bump_pointer(&mut self) -> Option<&Box<dyn Command>> {

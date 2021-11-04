@@ -18,6 +18,7 @@
 */
 
 import 'dart:ui';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/menu/menu_overlay.dart';
 import 'package:flutter/widgets.dart';
 import 'package:plugin/generated/rid_api.dart';
@@ -50,15 +51,10 @@ class MyApp extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  ImageFiltered(
-                    imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
-                    child: Image.asset("assets/images/background-small.jpg",
-                        fit: BoxFit.cover),
-                  ),
                   Container(
-                    color: const Color.fromARGB(77, 0, 0, 0),
+                    color: Theme.panel.border,
                   ),
-                  MainWindow(_store),
+                  MainWindow(),
                 ],
               ),
             ),
@@ -68,69 +64,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
-// class MyHomePage extends StatefulWidget {
-//   final Store _store;
-//   MyHomePage(this._store, {Key? key, required this.title}) : super(key: key);
-//   final String title;
-//   @override
-//   _MyHomePageState createState() => _MyHomePageState();
-// }
-
-// class _MyHomePageState extends State<MyHomePage> {
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       child: Center(
-//         child: Column(
-//           mainAxisAlignment: MainAxisAlignment.center,
-//           children: [
-//             Text(
-//               'You have counted to:',
-//             ),
-//             Text(
-//               '${widget._store.counter.count}',
-//             ),
-//             const SizedBox(height: 100),
-//             Row(
-//               mainAxisAlignment: MainAxisAlignment.end,
-//               children: [
-//                 GestureDetector(
-//                   child: Container(
-//                     color: Color(0xFFFF0000),
-//                     width: 100,
-//                     height: 100,
-//                   ),
-//                   onTap: _addTen,
-//                 ),
-//                 GestureDetector(
-//                   child: Container(
-//                     color: Color(0xFF00FF00),
-//                     width: 100,
-//                     height: 100,
-//                   ),
-//                   onTap: _incrementCounter,
-//                 ),
-//               ],
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-
-//   void _addTen() async {
-//     final res = await widget._store.msgAdd(10);
-//     debugPrint('$res');
-//     debugPrint("${widget._store.raw.debug(true)}");
-//     setState(() {});
-//   }
-
-//   void _incrementCounter() {
-//     widget._store.msgInc().then((res) {
-//       debugPrint('$res');
-//       debugPrint("${widget._store.raw.debug(true)}");
-//       setState(() {});
-//     });
-//   }
-// }

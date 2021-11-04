@@ -55,21 +55,13 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
   }
 
   List<Note> _getNotes(int patternID) {
-    return _store.projects
-            .firstWhere((project) => project.id == state.projectID)
-            .song
-            .patterns
-            .firstWhere((pattern) => pattern.id == patternID)
-            .generatorNotes[state.generatorID]
-            ?.notes ??
+    return _store.projects[state.projectID]!.song.patterns[patternID]
+            ?.generatorNotes[state.generatorID]?.notes ??
         [];
   }
 
   _changePattern(PostedReply reply) {
-    final patternID = _store.projects
-        .firstWhere((project) => project.id == state.projectID)
-        .song
-        .activePatternId;
+    final patternID = _store.projects[state.projectID]!.song.activePatternId;
 
     final notes = _getNotes(patternID);
 

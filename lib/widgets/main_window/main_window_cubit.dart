@@ -50,8 +50,10 @@ class MainWindowCubit extends Cubit<MainWindowState> {
   }
 
   static List<TabDef> _getTabs(Store store) {
-    return store.projects
-        .map((item) => TabDef(id: item.id, title: item.id.toString()))
+    return store.projectOrder
+        .map((id) => TabDef(
+            id: store.projects[id]!.id,
+            title: store.projects[id]!.id.toString()))
         .toList();
   }
 
@@ -61,6 +63,7 @@ class MainWindowCubit extends Cubit<MainWindowState> {
   }
 
   _updateTabList(PostedReply _reply) {
+    print("update tab list");
     emit(MainWindowState(
         tabs: _getTabs(_store), selectedTabID: _store.activeProjectId));
   }
@@ -96,7 +99,7 @@ class MainWindowCubit extends Cubit<MainWindowState> {
   Future<void> saveProject(int projectID, bool alwaysUseFilePicker) async {
     try {
       final project =
-          _store.projects.firstWhere((project) => project.id == projectID);
+          _store.projects[projectID]!;
 
       String? path;
       if (alwaysUseFilePicker || !project.isSaved) {

@@ -27,7 +27,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 
-import '../../project_header.dart';
+import 'project_header.dart';
 import '../../theme.dart';
 
 class Project extends StatelessWidget {
@@ -42,7 +42,7 @@ class Project extends StatelessWidget {
             projectID: state.id,
           ),
           SizedBox(
-            height: 3,
+            height: 2,
           ),
           Expanded(
             child: Panel(
@@ -79,11 +79,11 @@ class Project extends StatelessWidget {
             ),
           ),
           SizedBox(
-            height: 3,
+            height: 2,
           ),
           Container(
             height: 42,
-            color: Theme.panel.light,
+            color: Theme.panel.main,
           )
         ],
       );
