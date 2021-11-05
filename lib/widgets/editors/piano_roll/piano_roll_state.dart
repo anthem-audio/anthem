@@ -27,7 +27,7 @@ class PianoRollState {
   final int? activeInstrumentID;
   final List<LocalNote> notes;
 
-  PianoRollState({
+  const PianoRollState({
     required this.projectID,
     required this.pattern,
     required this.ticksPerQuarter,
@@ -43,6 +43,13 @@ class PianoRollState {
           other.ticksPerQuarter == ticksPerQuarter &&
           other.activeInstrumentID == activeInstrumentID &&
           other.notes == notes);
+
+  @override
+  int get hashCode =>
+      pattern.hashCode ^
+      ticksPerQuarter.hashCode ^
+      activeInstrumentID.hashCode ^
+      notes.hashCode;
 }
 
 // A list of these is used by the piano roll. The list is updated when the Rust
@@ -54,34 +61,39 @@ class LocalNote implements Note {
   late int _offset;
   late int _velocity;
 
-  LocalNote({required int id, required int key, required int length, required int offset, required int velocity}) {
-    this._id = id;
-    this._key = key;
-    this._length = length;
-    this._offset = offset;
-    this._velocity = velocity;
+  LocalNote(
+      {required int id,
+      required int key,
+      required int length,
+      required int offset,
+      required int velocity}) {
+    _id = id;
+    _key = key;
+    _length = length;
+    _offset = offset;
+    _velocity = velocity;
   }
 
   LocalNote.fromNote(Note note) {
-    this._id = note.id;
-    this._key = note.key;
-    this._length = note.length;
-    this._offset = note.offset;
-    this._velocity = note.velocity;
+    _id = note.id;
+    _key = note.key;
+    _length = note.length;
+    _offset = note.offset;
+    _velocity = note.velocity;
   }
 
   @override
-  int get id => this._id;
+  int get id => _id;
 
   @override
-  int get key => this._key;
+  int get key => _key;
 
   @override
-  int get length => this._length;
+  int get length => _length;
 
   @override
-  int get offset => this._offset;
+  int get offset => _offset;
 
   @override
-  int get velocity => this._velocity;
+  int get velocity => _velocity;
 }

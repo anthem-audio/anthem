@@ -75,8 +75,8 @@ class ProjectCubit extends Cubit<ProjectState> {
   Future<void> journalStartEntry() => _store.msgJournalStartEntry(state.id);
   Future<void> journalCommitEntry() => _store.msgJournalCommitEntry(state.id);
 
-  Future<void> setActiveInstrumentID(int? id) =>
-    _store.msgSetActiveInstrument(state.id, id ?? 0); // TODO: nullable once rid supports this
-  Future<void> setActiveControllerID(int? id) =>
-    _store.msgSetActiveController(state.id, id ?? 0); // TODO: nullable once rid supports this
+  Future<void> setActiveInstrumentID(int? id) => _store.msgSetActiveInstrument(
+      state.id, id ?? 0); // TODO: nullable once rid supports this
+  Future<void> setActiveControllerID(int? id) => _store.msgSetActiveController(
+      state.id, id ?? 0); // TODO: nullable once rid supports this
 }

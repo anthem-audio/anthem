@@ -54,7 +54,7 @@ class GeneratorRow extends StatelessWidget {
               Container(
                 width: 9,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.horizontal(
+                  borderRadius: const BorderRadius.horizontal(
                     left: Radius.circular(1),
                     right: Radius.circular(0),
                   ),
@@ -64,7 +64,7 @@ class GeneratorRow extends StatelessWidget {
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.horizontal(
+                    borderRadius: const BorderRadius.horizontal(
                       left: Radius.circular(0),
                       right: Radius.circular(1),
                     ),
@@ -76,7 +76,7 @@ class GeneratorRow extends StatelessWidget {
                         // SizedBox(width: 270),
                         Expanded(
                             child: state.notes == null
-                                ? SizedBox()
+                                ? const SizedBox()
                                 : ClipNotes(
                                     notes: state.notes!,
                                     timeViewStart: 0,

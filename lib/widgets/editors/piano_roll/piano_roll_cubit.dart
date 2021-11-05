@@ -44,7 +44,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
             ticksPerQuarter:
                 Store.instance.projects[projectID]!.song.ticksPerQuarter,
             activeInstrumentID: null,
-            notes: [],
+            notes: const [],
           ),
         ) {
     _updateActivePatternSub = rid.replyChannel.stream
@@ -119,7 +119,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
       return _noAction();
     }
 
-    final data = Map();
+    final data = {};
 
     data["id"] = getID();
     data["key"] = key;

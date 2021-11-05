@@ -20,21 +20,16 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-enum PanelOrientation {
-  Left,
-  Top,
-  Right,
-  Bottom,
-}
+enum PanelOrientation { left, top, right, bottom }
 
 bool _isLeftOrRight(PanelOrientation orientation) {
-  return orientation == PanelOrientation.Left ||
-      orientation == PanelOrientation.Right;
+  return orientation == PanelOrientation.left ||
+      orientation == PanelOrientation.right;
 }
 
 bool _isPanelFirst(PanelOrientation orientation) {
-  return orientation == PanelOrientation.Left ||
-      orientation == PanelOrientation.Top;
+  return orientation == PanelOrientation.left ||
+      orientation == PanelOrientation.top;
 }
 
 class Panel extends StatefulWidget {
@@ -43,7 +38,7 @@ class Panel extends StatefulWidget {
   final PanelOrientation orientation;
   final bool? hidden;
 
-  Panel({
+  const Panel({
     Key? key,
     required this.panelContent,
     required this.child,
@@ -67,7 +62,7 @@ class _PanelState extends State<Panel> {
 
   @override
   Widget build(BuildContext context) {
-    if (this.widget.hidden == true) {
+    if (widget.hidden == true) {
       return widget.child;
     }
 
@@ -84,15 +79,17 @@ class _PanelState extends State<Panel> {
     final contentHugTop = horizontal || !panelFirst;
     final contentHugBottom = horizontal || panelFirst;
 
-    final separatorSize = 2.0;
-    final handleSize = 10.0;
+    const separatorSize = 2.0;
+    const handleSize = 10.0;
 
-    var handleLeft = panelHugLeft ? panelSize - handleSize/2 + separatorSize/2 : null;
+    var handleLeft =
+        panelHugLeft ? panelSize - handleSize / 2 + separatorSize / 2 : null;
     var handleRight =
-        panelHugRight ? panelSize - handleSize/2 + separatorSize/2 : null;
-    var handleTop = panelHugTop ? panelSize - handleSize/2 + separatorSize/2 : null;
+        panelHugRight ? panelSize - handleSize / 2 + separatorSize / 2 : null;
+    var handleTop =
+        panelHugTop ? panelSize - handleSize / 2 + separatorSize / 2 : null;
     var handleBottom =
-        panelHugBottom ? panelSize - handleSize/2 + separatorSize/2 : null;
+        panelHugBottom ? panelSize - handleSize / 2 + separatorSize / 2 : null;
 
     if (horizontal) {
       handleTop = 0;
@@ -158,7 +155,7 @@ class _PanelState extends State<Panel> {
                 width: horizontal ? handleSize : null,
                 height: !horizontal ? handleSize : null,
                 // this is not clickable unless it has a color and I have no idea why
-                color: Color(0x00FFFFFF),
+                color: const Color(0x00FFFFFF),
               ),
             ),
           ),

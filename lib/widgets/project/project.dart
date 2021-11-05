@@ -25,7 +25,6 @@ import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart';
 
 import 'project_header.dart';
 import '../../theme.dart';
@@ -41,44 +40,44 @@ class Project extends StatelessWidget {
           ProjectHeader(
             projectID: state.id,
           ),
-          SizedBox(
+          const SizedBox(
             height: 2,
           ),
           Expanded(
             child: Panel(
-              orientation: PanelOrientation.Left,
+              orientation: PanelOrientation.left,
               // left panel
               panelContent: Container(color: Theme.panel.main),
 
               child: Panel(
-                orientation: PanelOrientation.Right,
+                orientation: PanelOrientation.right,
                 // right panel
                 panelContent: Container(color: Theme.panel.main),
 
                 child: Panel(
-                  orientation: PanelOrientation.Bottom,
+                  orientation: PanelOrientation.bottom,
                   // bottom panel
                   panelContent: BlocProvider<PianoRollCubit>(
                     create: (context) => PianoRollCubit(projectID: state.id),
-                    child: PianoRoll(
+                    child: const PianoRoll(
                       ticksPerQuarter: 96,
                     ),
                   ),
                   child: Panel(
-                    orientation: PanelOrientation.Left,
+                    orientation: PanelOrientation.left,
                     child: Container(color: Theme.panel.main),
                     // pattern editor
                     panelContent: BlocProvider<PatternEditorCubit>(
                       create: (context) =>
                           PatternEditorCubit(projectID: state.id),
-                      child: PatternEditor(),
+                      child: const PatternEditor(),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-          SizedBox(
+          const SizedBox(
             height: 2,
           ),
           Container(

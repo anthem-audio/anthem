@@ -32,7 +32,7 @@ class Dropdown extends StatefulWidget {
   final List<DropdownItem> items;
   final Function(String?)? onChanged;
 
-  Dropdown({
+  const Dropdown({
     Key? key,
     this.width,
     this.height,
@@ -83,10 +83,10 @@ class _DropdownState extends State<Dropdown> {
           onPress: () {
             menuController.open?.call();
           },
-          width: this.widget.width,
-          height: this.widget.height,
+          width: widget.width,
+          height: widget.height,
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 9),
+            padding: const EdgeInsets.symmetric(horizontal: 9),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -94,7 +94,8 @@ class _DropdownState extends State<Dropdown> {
                   child: Text(
                     widget.items
                         .firstWhere((element) => element.id == selectedID,
-                            orElse: () => DropdownItem(id: "", name: "(none)"))
+                            orElse: () =>
+                                const DropdownItem(id: "", name: "(none)"))
                         .name,
                     style: TextStyle(
                       color: Theme.text.main,
@@ -118,5 +119,5 @@ class DropdownItem {
   final String id;
   final String name;
 
-  DropdownItem({required this.id, required this.name});
+  const DropdownItem({required this.id, required this.name});
 }

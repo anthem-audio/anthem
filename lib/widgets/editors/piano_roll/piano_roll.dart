@@ -105,8 +105,8 @@ class PianoRollLocalState with ChangeNotifier, DiagnosticableTreeMixin {
 
   PianoRollLocalState(
       {required double keyHeight, required double keyValueAtTop}) {
-    this._keyHeight = keyHeight;
-    this._keyValueAtTop = keyValueAtTop;
+    _keyHeight = keyHeight;
+    _keyValueAtTop = keyValueAtTop;
   }
 
   void setKeyHeight(double value) {
@@ -123,7 +123,7 @@ class PianoRollLocalState with ChangeNotifier, DiagnosticableTreeMixin {
 class _PianoRollContent extends StatefulWidget {
   final int ticksPerQuarter;
 
-  _PianoRollContent({
+  const _PianoRollContent({
     Key? key,
     required this.ticksPerQuarter,
   }) : super(key: key);
@@ -220,8 +220,7 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                                         .map(
                                           (note) => LayoutId(
                                             id: note.id,
-                                            child: NoteWidget(
-                                                noteID: note.id),
+                                            child: NoteWidget(noteID: note.id),
                                           ),
                                         )
                                         .toList(),

@@ -1,6 +1,20 @@
 # anthem
 
-Rust integrated Dart Flutter Project
+Rust Integrated Dart Flutter Project
+
+## Installing LLVM
+Rust Integrated Dart uses LLVM. Install LLVM (9+) in the following way.
+
+#### Ubuntu
+1. Install libclangdev - `sudo apt-get install libclang-dev`.
+
+#### Windows
+1. Install Visual Studio with C++ development support.
+2. Install [LLVM](https://releases.llvm.org/download.html) or `winget install -e --id LLVM.LLVM`.
+
+#### macOS
+1. Install Xcode.
+2. Install LLVM - `brew install llvm`.
 
 ## Getting Started
 

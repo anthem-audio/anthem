@@ -33,7 +33,7 @@ class Menu extends StatefulWidget {
     required this.menuDef,
     MenuAlignment? alignment,
   }) : super(key: key) {
-    this.menuAlignment = alignment ?? MenuAlignment.BottomLeft;
+    menuAlignment = alignment ?? MenuAlignment.bottomLeft;
   }
 
   @override
@@ -46,19 +46,19 @@ class _MenuState extends State<Menu> {
   @override
   Widget build(BuildContext context) {
     widget.menuController.open = openMenu;
-    return widget.child ?? SizedBox();
+    return widget.child ?? const SizedBox();
   }
 
   void openMenu() {
     final contentRenderBox = context.findRenderObject() as RenderBox;
     final pos = contentRenderBox.localToGlobal(
       Offset(
-        widget.menuAlignment == MenuAlignment.TopLeft ||
-                widget.menuAlignment == MenuAlignment.BottomLeft
+        widget.menuAlignment == MenuAlignment.topLeft ||
+                widget.menuAlignment == MenuAlignment.bottomLeft
             ? 0
             : contentRenderBox.size.width,
-        widget.menuAlignment == MenuAlignment.TopLeft ||
-                widget.menuAlignment == MenuAlignment.TopRight
+        widget.menuAlignment == MenuAlignment.topLeft ||
+                widget.menuAlignment == MenuAlignment.topRight
             ? 0
             : contentRenderBox.size.height,
       ),

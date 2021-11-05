@@ -71,12 +71,12 @@ class PianoRollNotificationHandler extends StatelessWidget {
 
               // projectCubit.journalStartEntry();
               pianoRollCubit.addNote(
-                    instrumentID: instrumentID,
-                    key: notification.note.floor(),
-                    velocity: 128,
-                    length: 96,
-                    offset: targetTime,
-                  );
+                instrumentID: instrumentID,
+                key: notification.note.floor(),
+                velocity: 128,
+                length: 96,
+                offset: targetTime,
+              );
               // pianoRollCubit.addNote(
               //       instrumentID: instrumentID,
               //       key: notification.note.floor() - 1,

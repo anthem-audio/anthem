@@ -20,7 +20,6 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:plugin/generated/rid_api.dart';
-import 'piano_roll_cubit.dart';
 
 enum KeyType { black, white }
 enum NotchType { above, below, both }

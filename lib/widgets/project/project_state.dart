@@ -25,7 +25,7 @@ class ProjectState {
   final int? activeInstrumentID;
   final int? activeControllerID;
 
-  ProjectState({
+  const ProjectState({
     required this.id,
     required this.activeInstrumentID,
     required this.activeControllerID,
@@ -38,4 +38,8 @@ class ProjectState {
           other.id == id &&
           other.activeInstrumentID == activeInstrumentID &&
           other.activeControllerID == activeControllerID;
+
+  @override
+  int get hashCode =>
+      id.hashCode ^ activeInstrumentID.hashCode ^ activeControllerID.hashCode;
 }

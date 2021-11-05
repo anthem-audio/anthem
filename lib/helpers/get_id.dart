@@ -21,12 +21,13 @@ import 'dart:math';
 
 final _random = Random();
 
+// ignore: non_constant_identifier_names
 final _2_32 = pow(2, 32).floor();
 
 // This should be roughly equivalent to how we generate IDs in Rust
 int getID() {
   final time = DateTime.now().millisecondsSinceEpoch;
-  
+
   // Dart is weird with its number ops. It has << and >>, but those only work
   // on numbers up to 0xFFFFFFFF (Dart has 64-bit integers). As of 2.14 Dart
   // also has >>> which works as you would expect, but for some reason it

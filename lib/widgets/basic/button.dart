@@ -23,13 +23,13 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../theme.dart';
 
 class Button extends StatefulWidget {
-  VoidCallback? onPress;
-  double? width;
-  double? height;
-  String? iconPath;
-  Widget? child;
+  final VoidCallback? onPress;
+  final double? width;
+  final double? height;
+  final String? iconPath;
+  final Widget? child;
 
-  Button({
+  const Button({
     Key? key,
     this.onPress,
     this.width,
@@ -81,7 +81,7 @@ class _ButtonState extends State<Button> {
           child: Container(
             decoration: BoxDecoration(
               color: backgroundColor,
-              borderRadius: BorderRadius.all(Radius.circular(2)),
+              borderRadius: const BorderRadius.all(Radius.circular(2)),
             ),
             width: widget.width,
             height: widget.height,

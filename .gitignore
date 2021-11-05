@@ -68,7 +68,6 @@ lib/generated_plugin_registrant.dart
 
 ### Rust ###
 **/target/**
-**/Cargo.lock
 
 ### Rid ###
 **/generated/**
