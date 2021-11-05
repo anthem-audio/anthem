@@ -32,7 +32,7 @@ class ProjectWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => ProjectCubit(id: tab.id),
-      child: Project(),
+      child: const Project(),
     );
   }
 }

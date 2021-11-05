@@ -33,7 +33,7 @@ import 'generator_row.dart';
 import 'generator_row_cubit.dart';
 
 class PatternEditor extends StatefulWidget {
-  PatternEditor({Key? key}) : super(key: key);
+  const PatternEditor({Key? key}) : super(key: key);
 
   @override
   _PatternEditorState createState() => _PatternEditorState();
@@ -52,7 +52,7 @@ class _PatternEditorState extends State<PatternEditor> {
             height: 42,
             decoration: BoxDecoration(
               color: Theme.panel.accent,
-              borderRadius: BorderRadius.vertical(
+              borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(2),
                 bottom: Radius.circular(1),
               ),
@@ -60,7 +60,7 @@ class _PatternEditorState extends State<PatternEditor> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                SizedBox(width: 7),
+                const SizedBox(width: 7),
                 Menu(
                   menuController: menuController,
                   menuDef: MenuDef(children: [
@@ -80,9 +80,10 @@ class _PatternEditorState extends State<PatternEditor> {
                     },
                   ),
                 ),
-                SizedBox(width: 4),
-                SizedBox(width: 16, child: Center(child: ButtonRowDivider())),
-                SizedBox(width: 4),
+                const SizedBox(width: 4),
+                const SizedBox(
+                    width: 16, child: Center(child: ButtonRowDivider())),
+                const SizedBox(width: 4),
                 Dropdown(
                   width: 169,
                   height: 28,
@@ -100,7 +101,7 @@ class _PatternEditorState extends State<PatternEditor> {
                     context.read<PatternEditorCubit>().setActivePattern(id);
                   },
                 ),
-                Expanded(child: SizedBox()),
+                const Expanded(child: SizedBox()),
                 Button(
                     width: 28,
                     height: 28,
@@ -109,7 +110,7 @@ class _PatternEditorState extends State<PatternEditor> {
                       context.read<PatternEditorCubit>().addInstrument(
                           "Instrument ${(Random()).nextInt(100).toString()}");
                     }),
-                SizedBox(width: 4),
+                const SizedBox(width: 4),
                 Button(
                     width: 28,
                     height: 28,
@@ -118,11 +119,11 @@ class _PatternEditorState extends State<PatternEditor> {
                       context.read<PatternEditorCubit>().addController(
                           "Controller ${(Random()).nextInt(100).toString()}");
                     }),
-                SizedBox(width: 7),
+                const SizedBox(width: 7),
               ],
             ),
           ),
-          SizedBox(height: 1),
+          const SizedBox(height: 1),
           Expanded(
             child: Column(
               children: state.generatorIDList.map<Widget>((id) {
@@ -132,7 +133,7 @@ class _PatternEditorState extends State<PatternEditor> {
                     // TODO: provide type to child
                     if (instrument != null) {
                       return Padding(
-                        padding: EdgeInsets.only(bottom: 1),
+                        padding: const EdgeInsets.only(bottom: 1),
                         child: BlocProvider(
                           create: (context) => GeneratorRowCubit(
                             projectID: state.projectID,
@@ -146,7 +147,7 @@ class _PatternEditorState extends State<PatternEditor> {
 
                     if (controller != null) {
                       return Padding(
-                        padding: EdgeInsets.only(bottom: 1),
+                        padding: const EdgeInsets.only(bottom: 1),
                         child: BlocProvider(
                           create: (context) => GeneratorRowCubit(
                             projectID: state.projectID,
@@ -158,14 +159,14 @@ class _PatternEditorState extends State<PatternEditor> {
                       );
                     }
 
-                    throw new Error();
+                    throw Error();
                   }).toList() +
                   [
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(
                           color: Theme.panel.main,
-                          borderRadius: BorderRadius.vertical(
+                          borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(1),
                             bottom: Radius.circular(2),
                           ),
