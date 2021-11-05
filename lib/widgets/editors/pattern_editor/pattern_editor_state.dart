@@ -29,6 +29,8 @@ class PatternEditorState {
   late final List<int> generatorIDList;
   late final int activePatternID;
 
+  // TODO: Figure out how to do this without late final fields
+  // ignore: prefer_const_constructors_in_immutables
   PatternEditorState({
     required this.projectID,
     required this.pattern,
@@ -39,14 +41,13 @@ class PatternEditorState {
     required this.activePatternID,
   });
 
-  PatternEditorState.init(int projectID) {
-    this.projectID = projectID;
-    this.pattern = null;
-    this.patternList = [];
-    this.instruments = HashMap();
-    this.controllers = HashMap();
-    this.generatorIDList = [];
-    this.activePatternID = 0;
+  PatternEditorState.init(this.projectID) {
+    pattern = null;
+    patternList = [];
+    instruments = HashMap();
+    controllers = HashMap();
+    generatorIDList = [];
+    activePatternID = 0;
   }
 
   @override
@@ -60,6 +61,16 @@ class PatternEditorState {
           other.controllers == controllers &&
           other.generatorIDList == generatorIDList &&
           other.activePatternID == activePatternID;
+
+  @override
+  int get hashCode =>
+      pattern.hashCode ^
+      projectID.hashCode ^
+      patternList.hashCode ^
+      instruments.hashCode ^
+      controllers.hashCode ^
+      generatorIDList.hashCode ^
+      activePatternID.hashCode;
 }
 
 @immutable
@@ -67,5 +78,5 @@ class PatternListItem {
   final int id;
   final String name;
 
-  PatternListItem({required this.id, required this.name});
+  const PatternListItem({required this.id, required this.name});
 }

@@ -98,8 +98,7 @@ class MainWindowCubit extends Cubit<MainWindowState> {
 
   Future<void> saveProject(int projectID, bool alwaysUseFilePicker) async {
     try {
-      final project =
-          _store.projects[projectID]!;
+      final project = _store.projects[projectID]!;
 
       String? path;
       if (alwaysUseFilePicker || !project.isSaved) {
@@ -113,7 +112,7 @@ class MainWindowCubit extends Cubit<MainWindowState> {
         path = project.filePath;
       }
 
-      if (path == null) return null;
+      if (path == null) return;
 
       await _store.msgSaveProject(projectID, path);
     } catch (e) {
