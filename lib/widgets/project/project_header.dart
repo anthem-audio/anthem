@@ -44,7 +44,7 @@ class ProjectHeader extends StatelessWidget {
         height: 40,
         color: Theme.panel.accent,
         child: Padding(
-          padding: EdgeInsets.all(7),
+          padding: const EdgeInsets.all(7),
           child: Row(
             children: [
               Menu(
@@ -63,8 +63,9 @@ class ProjectHeader extends StatelessWidget {
                         text: "Load project...",
                         onSelected: () {
                           mainWindowCubit.loadProject().then((projectID) {
-                            if (projectID != null)
+                            if (projectID != null) {
                               mainWindowCubit.switchTab(projectID);
+                            }
                           });
                         }),
                     Separator(),
@@ -88,7 +89,7 @@ class ProjectHeader extends StatelessWidget {
                   },
                 ),
               ),
-              SizedBox(width: 4),
+              const SizedBox(width: 4),
               Button(
                 width: 28,
                 iconPath: "assets/icons/file/save.svg",
@@ -96,7 +97,7 @@ class ProjectHeader extends StatelessWidget {
                   mainWindowCubit.saveProject(projectID, false);
                 },
               ),
-              SizedBox(width: 4),
+              const SizedBox(width: 4),
               Button(
                 width: 28,
                 iconPath: "assets/icons/file/undo.svg",
@@ -104,7 +105,7 @@ class ProjectHeader extends StatelessWidget {
                   projectCubit.undo();
                 },
               ),
-              SizedBox(width: 4),
+              const SizedBox(width: 4),
               Button(
                 width: 28,
                 iconPath: "assets/icons/file/redo.svg",
