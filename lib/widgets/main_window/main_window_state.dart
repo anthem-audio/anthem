@@ -24,7 +24,7 @@ class MainWindowState {
   final int selectedTabID;
   final List<TabDef> tabs;
 
-  MainWindowState({required this.selectedTabID, required this.tabs});
+  const MainWindowState({required this.selectedTabID, required this.tabs});
 
   @override
   bool operator ==(Object other) =>
@@ -32,6 +32,9 @@ class MainWindowState {
       other is MainWindowState &&
           other.selectedTabID == selectedTabID &&
           other.tabs == tabs;
+
+  @override
+  int get hashCode => selectedTabID.hashCode ^ tabs.hashCode;
 }
 
 @immutable
@@ -39,12 +42,15 @@ class TabDef {
   final int id;
   final String title;
 
-  TabDef({required this.id, required this.title});
+  const TabDef({required this.id, required this.title});
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is TabDef && other.id == id && other.title == title;
+
+  @override
+  int get hashCode => id.hashCode ^ title.hashCode;
 }
 
 class KeyboardModifiers with ChangeNotifier, DiagnosticableTreeMixin {

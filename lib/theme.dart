@@ -19,8 +19,8 @@
 
 import 'package:flutter/widgets.dart';
 
-const white = const Color(0xFFFFFFFF);
-const black = const Color(0xFF000000);
+const white = Color(0xFFFFFFFF);
+const black = Color(0xFF000000);
 
 class Theme {
   static _Panel panel = _Panel();
@@ -31,13 +31,13 @@ class Theme {
 }
 
 class _Panel {
-  Color main = Color.fromARGB(255, 53, 62, 69);
-  Color accent = Color.fromARGB(255, 61, 72, 79);
-  Color border = Color.fromARGB(255, 41, 49, 54);
+  Color main = const Color.fromARGB(255, 53, 62, 69);
+  Color accent = const Color.fromARGB(255, 61, 72, 79);
+  Color border = const Color.fromARGB(255, 41, 49, 54);
 }
 
 class _Primary {
-  Color main = Color(0xFF07D2D4);
+  Color main = const Color(0xFF07D2D4);
 }
 
 class _Control {
