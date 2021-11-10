@@ -29,7 +29,7 @@ class WindowHeader extends StatefulWidget {
   final Function(int) setActiveProject;
   final Function(int) closeProject;
 
-  WindowHeader({
+  const WindowHeader({
     Key? key,
     required this.selectedTabID,
     required this.tabs,
@@ -65,17 +65,17 @@ class _WindowHeaderState extends State<WindowHeader> {
                             ? Theme.panel.accent
                             : Theme.panel.main,
                         borderRadius: isActiveProject
-                            ? BorderRadius.only(
+                            ? const BorderRadius.only(
                                 topLeft: Radius.circular(2),
                                 topRight: Radius.circular(2))
-                            : BorderRadius.all(
+                            : const BorderRadius.all(
                                 Radius.circular(2),
                               ),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          SizedBox(width: 12),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               tab.title,
@@ -91,7 +91,7 @@ class _WindowHeaderState extends State<WindowHeader> {
                               widget.closeProject(tab.id);
                             },
                           ),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                         ],
                       ),
                     ),
@@ -105,12 +105,12 @@ class _WindowHeaderState extends State<WindowHeader> {
                   child: Container(
                     decoration: BoxDecoration(
                       color: Theme.panel.main,
-                      borderRadius: BorderRadius.all(
+                      borderRadius: const BorderRadius.all(
                         Radius.circular(2),
                       ),
                     ),
                   ),
-                  padding: EdgeInsets.only(bottom: 1),
+                  padding: const EdgeInsets.only(bottom: 1),
                 ),
               ),
             ],
