@@ -75,3 +75,5 @@ lib/generated_plugin_registrant.dart
 **/macos/*.a
 **/ios/*.a
 **/android/src/main/jniLibs/*
+
+assets/build/
