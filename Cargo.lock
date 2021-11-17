@@ -24,12 +24,22 @@ dependencies = [
 name = "anthem"
 version = "0.1.0"
 dependencies = [
+ "anthem_engine_model",
  "cbindgen",
  "rand",
  "rid",
  "rid_build",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "anthem_engine_model"
+version = "0.1.0"
+source = "git+https://github.com/SecondFlight/anthem-engine.git#5d86ed355bc14db86b0812c5860336885fbbe84e"
+dependencies = [
+ "rand",
+ "serde",
 ]
 
 [[package]]

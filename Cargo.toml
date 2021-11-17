@@ -13,6 +13,7 @@ path = "rid_build.rs"
 
 [dependencies]
 cbindgen = "0.20.0"
+anthem_engine_model = { git = "https://github.com/SecondFlight/anthem-engine.git" }
 rid_build = { git = "https://github.com/thlorenz/rid.git" }
 rid = { git = "https://github.com/thlorenz/rid.git" }
 rand = "0.8"
