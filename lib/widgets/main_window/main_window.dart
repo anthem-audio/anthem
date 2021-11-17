@@ -26,7 +26,7 @@ import 'package:anthem/widgets/main_window/main_window_cubit.dart';
 import 'package:provider/provider.dart';
 
 class MainWindow extends StatefulWidget {
-  MainWindow({Key? key}) : super(key: key);
+  const MainWindow({Key? key}) : super(key: key);
 
   @override
   _MainWindowState createState() => _MainWindowState();
@@ -67,7 +67,7 @@ class _MainWindowState extends State<MainWindow> {
           if (shift && keyUp) keyboardModifiers.setShift(false);
         },
         child: Padding(
-          padding: EdgeInsets.all(2),
+          padding: const EdgeInsets.all(2),
           child: Column(
             children: [
               WindowHeader(

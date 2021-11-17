@@ -43,10 +43,10 @@ class MenuRenderer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final widest = menu.children
-        .where((child) => child is MenuItem)
+        .whereType<MenuItem>()
         .map((child) => measureText(
-              text: (child as MenuItem).text,
-              textStyle: TextStyle(),
+              text: child.text,
+              textStyle: const TextStyle(),
               context: context,
             ).width)
         .fold<double>(0, (value, element) => max(value, element));
@@ -56,15 +56,15 @@ class MenuRenderer extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Color(0x00000000).withOpacity(0.7),
-        borderRadius: BorderRadius.all(
+        color: const Color(0x00000000).withOpacity(0.7),
+        borderRadius: const BorderRadius.all(
           Radius.circular(padding),
         ),
       ),
       width: widest + padding * 2,
       height: height + padding * 2,
       child: Padding(
-        padding: EdgeInsets.only(top: padding, bottom: padding),
+        padding: const EdgeInsets.only(top: padding, bottom: padding),
         child: Column(
           children: menu.children
               .map((child) => MenuItemRenderer(menuItem: child))
@@ -113,7 +113,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
             color: hovered ? Theme.primary.main : null,
             height: height,
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: padding),
+              padding: const EdgeInsets.symmetric(horizontal: padding),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(item.text),
@@ -139,6 +139,6 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
       );
     }
 
-    return SizedBox();
+    return const SizedBox();
   }
 }
