@@ -64,14 +64,14 @@ func dummyCallsToPreventTreeShaking() {
     rid_export_rid_get_hash_map_u64_controller(nil, 0);
     rid_export_rid_contains_key_hash_map_u64_controller(nil, 0);
     rid_export_rid_keys_hash_map_u64_controller(nil);
-    rid_len_vec_u64(nil);
-    rid_get_item_vec_u64(nil, 0);
     rid_export_rid_len_hash_map_u64_instrument(nil);
     rid_export_rid_get_hash_map_u64_instrument(nil, 0);
     rid_export_rid_contains_key_hash_map_u64_instrument(nil, 0);
     rid_export_rid_keys_hash_map_u64_instrument(nil);
+    rid_len_vec_u64(nil);
+    rid_get_item_vec_u64(nil, 0);
     _to_dart_for_Song();
-    __include_dart_for_vec_u64();
+    __include_dart_for_hash_map_u64_pattern();
     rid_song_id(nil);
     rid_song_ticks_per_quarter(nil);
     rid_song_patterns(nil);
@@ -87,7 +87,7 @@ func dummyCallsToPreventTreeShaking() {
     create_store();
     rid_store_unlock();
     rid_store_free();
-    __include_dart_for_hash_map_u64_project();
+    __include_dart_for_vec_u64();
     rid_store_projects(nil);
     rid_store_project_order(nil);
     rid_store_active_project_id(nil);
