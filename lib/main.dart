@@ -21,7 +21,6 @@ import 'dart:ui';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/menu/menu_overlay.dart';
 import 'package:flutter/widgets.dart';
-import 'package:plugin/generated/rid_api.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 
@@ -29,11 +28,11 @@ import 'widgets/main_window/main_window.dart';
 import 'widgets/main_window/main_window_cubit.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  final Store _store = Store.instance;
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +53,7 @@ class MyApp extends StatelessWidget {
                   Container(
                     color: Theme.panel.border,
                   ),
-                  MainWindow(),
+                  const MainWindow(),
                 ],
               ),
             ),
