@@ -23,9 +23,11 @@ import 'package:anthem/widgets/basic/menu/menu_overlay.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
+import 'package:plugin/generated/rid_api.dart';
 
 import 'widgets/main_window/main_window.dart';
 import 'widgets/main_window/main_window_cubit.dart';
+
 
 void main() async {
   await Store.instance.msgInit();
