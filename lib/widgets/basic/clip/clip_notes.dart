@@ -38,10 +38,10 @@ class ClipNotes extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomPaint(
       painter: ClipNotesPainter(
-        notes: this.notes,
-        timeViewStart: this.timeViewStart,
-        ticksPerPixel: this.ticksPerPixel,
-        color: this.color,
+        notes: notes,
+        timeViewStart: timeViewStart,
+        ticksPerPixel: ticksPerPixel,
+        color: color,
       ),
     );
   }
@@ -62,14 +62,14 @@ class ClipNotesPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (notes.length == 0) return;
+    if (notes.isEmpty) return;
 
     var bottom = notes[0].key;
     var top = notes[0].key;
-    notes.forEach((note) {
+    for (var note in notes) {
       if (note.key < bottom) bottom = note.key;
       if (note.key > top) top = note.key;
-    });
+    }
 
     bottom--;
 
@@ -81,9 +81,10 @@ class ClipNotesPainter extends CustomPainter {
     final keyHeight = top - bottom;
     final yPixelsPerKey = size.height / keyHeight;
 
-    notes.forEach((note) {
+    for (var note in notes) {
       final left = (note.offset / ticksPerPixel).floorToDouble();
-      final top = (size.height - (note.key - bottom) * yPixelsPerKey).floorToDouble();
+      final top =
+          (size.height - (note.key - bottom) * yPixelsPerKey).floorToDouble();
       final width = (note.length / ticksPerPixel).ceilToDouble();
       final height = (yPixelsPerKey).ceilToDouble();
 
@@ -97,7 +98,7 @@ class ClipNotesPainter extends CustomPainter {
 
       canvas.drawRect(
           Rect.fromPoints(topLeft, bottomRight), Paint()..color = color);
-    });
+    }
   }
 
   @override
