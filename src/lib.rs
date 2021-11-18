@@ -21,5 +21,3 @@ pub mod commands;
 pub mod message_handlers;
 pub mod model;
 pub mod util;
-
-// use crate::model::store;

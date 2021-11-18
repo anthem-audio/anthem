@@ -31,6 +31,10 @@ use crate::util::rid_reply_all::rid_reply_all;
 pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> bool {
     match msg {
         Msg::Init => {
+            store_message_handler(store, request_id, &Msg::NewProject);
+            let new_project_id = *(store.projects.iter().next().unwrap().0);
+            store_message_handler(store, request_id, &Msg::SetActiveProject(new_project_id));
+
             std::process::Command::new(
                 &std::path::Path::new("data")
                     .join("flutter_assets")
@@ -40,10 +44,9 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
                     .to_str()
                     .unwrap(),
             )
-            .status()
-            .unwrap();
-
-            rid::post(Reply::NothingChanged(request_id));
+            .arg(new_project_id.to_string())
+            .spawn()
+            .expect("Failed to start engine");
         }
         Msg::NewProject => {
             let project = Project::default();
