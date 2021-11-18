@@ -76,8 +76,6 @@ fn build_anthem_engine() {
             "build",
             "--manifest-path",
             engine_cargo_file,
-            // Hack: output to a predictable directory, then set an environment
-            // variable. This won't work for the final build.
             "--out-dir",
             engine_out_dir,
             "-Z",
