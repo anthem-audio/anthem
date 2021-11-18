@@ -30,6 +30,9 @@ import 'widgets/main_window/main_window_cubit.dart';
 
 
 void main() async {
+  rid.debugReply = (reply) {};
+  rid.debugLock = (a, b, {request}) {};
+
   await Store.instance.msgInit();
 
   runApp(const MyApp());

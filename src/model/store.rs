@@ -59,31 +59,12 @@ impl Store {
 
 impl RidStore<Msg> for Store {
     fn create() -> Self {
-        let project = Project::default();
-        let id = project.id;
-
-        let mut projects = HashMap::new();
-        let project_id = project.id;
-        projects.insert(project_id, project);
-
-        let mut command_queues = HashMap::new();
-        command_queues.insert(id, CommandQueue::default());
-
-        let mut journal_page_accumulators = HashMap::new();
-        journal_page_accumulators.insert(
-            id,
-            JournalPageAccumulator {
-                is_active: false,
-                command_list: Vec::new(),
-            },
-        );
-
         Self {
-            projects: projects,
-            project_order: vec![project_id],
-            active_project_id: id,
-            command_queues,
-            journal_page_accumulators,
+            projects: HashMap::new(),
+            project_order: Vec::new(),
+            active_project_id: 0,
+            command_queues: HashMap::new(),
+            journal_page_accumulators: HashMap::new(),
         }
     }
 

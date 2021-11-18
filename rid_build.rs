@@ -42,7 +42,6 @@ fn main() {
 
 fn build_anthem_engine() {
     fs::create_dir("./build").ok();
-    fs::create_dir("./target").ok();
 
     let crate_dir = env::var("CARGO_MANIFEST_DIR")
         .expect("Missing CARGO_MANIFEST_DIR, please run this via 'cargo run'");
@@ -83,6 +82,4 @@ fn build_anthem_engine() {
         ])
         .output()
         .unwrap();
-
-    env::set_var("ANTHEM_ENGINE_DIR", engine_out_dir);
 }
