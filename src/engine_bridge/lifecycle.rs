@@ -1,3 +1,5 @@
+use std::process::Stdio;
+
 /*
     Copyright (C) 2021 Joshua Wade
 
@@ -17,8 +19,24 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-pub mod commands;
-pub mod engine_bridge;
-pub mod message_handlers;
-pub mod model;
-pub mod util;
+pub fn start_engine(id: &String) {
+    std::process::Command::new(
+        &std::path::Path::new("data")
+            .join("flutter_assets")
+            .join("assets")
+            .join("build")
+            .join("anthem_engine")
+            .to_str()
+            .unwrap(),
+    )
+    .arg(id)
+    
+    // Connecting this process to our stdout causes the Flutter dev connection
+    // to break
+    .stdin(Stdio::null())
+    .stdout(Stdio::null())
+    .stderr(Stdio::null())
+
+    .spawn()
+    .expect("Failed to start engine");
+}
