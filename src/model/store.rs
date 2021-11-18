@@ -108,6 +108,7 @@ pub enum Msg {
     //
     // Store
     //
+    Init,
     NewProject,
     SetActiveProject(u64),
     CloseProject(u64),

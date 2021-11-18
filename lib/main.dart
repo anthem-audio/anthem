@@ -28,7 +28,9 @@ import 'package:provider/provider.dart';
 import 'widgets/main_window/main_window.dart';
 import 'widgets/main_window/main_window_cubit.dart';
 
-void main() {
+void main() async {
+  await Store.instance.msgInit();
+
   runApp(MyApp());
 }
 

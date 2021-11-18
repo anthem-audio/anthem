@@ -30,6 +30,21 @@ use crate::util::rid_reply_all::rid_reply_all;
 
 pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> bool {
     match msg {
+        Msg::Init => {
+            std::process::Command::new(
+                &std::path::Path::new("data")
+                    .join("flutter_assets")
+                    .join("assets")
+                    .join("build")
+                    .join("anthem_engine")
+                    .to_str()
+                    .unwrap(),
+            )
+            .status()
+            .unwrap();
+
+            rid::post(Reply::NothingChanged(request_id));
+        }
         Msg::NewProject => {
             let project = Project::default();
             let project_id = project.id;
