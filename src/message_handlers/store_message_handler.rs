@@ -22,6 +22,7 @@ use std::mem::replace;
 
 use crate::commands::command::Command;
 use crate::commands::project_commands::JournalPage;
+use crate::engine_bridge::lifecycle::start_engine;
 use crate::model::command_queue::CommandQueue;
 use crate::model::jorunal_page_accumulator::JournalPageAccumulator;
 use crate::model::project::*;
@@ -34,19 +35,6 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
             store_message_handler(store, request_id, &Msg::NewProject);
             let new_project_id = *(store.projects.iter().next().unwrap().0);
             store_message_handler(store, request_id, &Msg::SetActiveProject(new_project_id));
-
-            std::process::Command::new(
-                &std::path::Path::new("data")
-                    .join("flutter_assets")
-                    .join("assets")
-                    .join("build")
-                    .join("anthem_engine")
-                    .to_str()
-                    .unwrap(),
-            )
-            .arg(new_project_id.to_string())
-            .spawn()
-            .expect("Failed to start engine");
         }
         Msg::NewProject => {
             let project = Project::default();
@@ -66,6 +54,8 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
                 },
             );
 
+            start_engine(&project_id.to_string());
+
             rid::post(Reply::NewProjectCreated(
                 request_id,
                 (project_id as i64).to_string(),
@@ -84,6 +74,8 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
             store.command_queues.remove(project_id);
             store.journal_page_accumulators.remove(project_id);
             rid::post(Reply::ProjectClosed(request_id));
+
+            // TODO: Stop engine
         }
         Msg::SaveProject(project_id, path) => {
             let mut project = store
@@ -108,6 +100,8 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
 
             store.projects.insert(project.id, project);
             store.project_order.push(id);
+
+            start_engine(&id.to_string());
 
             rid::post(Reply::ProjectLoaded(request_id, (id as i64).to_string()));
         }
