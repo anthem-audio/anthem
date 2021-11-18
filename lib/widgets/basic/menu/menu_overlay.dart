@@ -18,7 +18,6 @@
 */
 
 import 'package:flutter/widgets.dart';
-import 'package:provider/provider.dart';
 
 import 'menu_model.dart';
 import 'menu_renderer.dart';
@@ -26,7 +25,7 @@ import 'menu_renderer.dart';
 class MenuOverlay extends StatefulWidget {
   final Widget child;
 
-  MenuOverlay({Key? key, required this.child}) : super(key: key);
+  const MenuOverlay({Key? key, required this.child}) : super(key: key);
 
   @override
   _MenuOverlayState createState() => _MenuOverlayState();
@@ -43,7 +42,7 @@ class _MenuOverlayState extends State<MenuOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    final bool Function(MenuNotification) onNotification = (n) {
+    onNotification(MenuNotification n) {
       if (n is OpenMenuNotification) {
         setState(() {
           openMenus.add(
@@ -64,14 +63,14 @@ class _MenuOverlayState extends State<MenuOverlay> {
       }
 
       return false;
-    };
+    }
 
     return NotificationListener<MenuNotification>(
       onNotification: onNotification,
       child: Stack(children: [
         widget.child,
         IgnorePointer(
-          ignoring: openMenus.length == 0,
+          ignoring: openMenus.isEmpty,
           child: Stack(
             children: <Widget>[
                   GestureDetector(onTap: () {

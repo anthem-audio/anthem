@@ -31,7 +31,7 @@ class ButtonRowDivider extends StatelessWidget {
       height: 16,
       decoration: BoxDecoration(
         color: Theme.panel.accent,
-        borderRadius: BorderRadius.all(Radius.circular(1)),
+        borderRadius: const BorderRadius.all(Radius.circular(1)),
       ),
     );
   }
