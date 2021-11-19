@@ -17,4 +17,6 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-pub mod lifecycle;
+mod engine_bridge;
+
+pub use engine_bridge::EngineBridge;
