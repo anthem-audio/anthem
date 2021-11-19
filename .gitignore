@@ -77,3 +77,4 @@ lib/generated_plugin_registrant.dart
 **/android/src/main/jniLibs/*
 
 assets/build/
+logs/

@@ -20,9 +20,11 @@
 use std::fs;
 use std::mem::replace;
 
+use anthem_engine_model::message::Message;
+
 use crate::commands::command::Command;
 use crate::commands::project_commands::JournalPage;
-use crate::engine_bridge::lifecycle::start_engine;
+use crate::engine_bridge::EngineBridge;
 use crate::model::command_queue::CommandQueue;
 use crate::model::jorunal_page_accumulator::JournalPageAccumulator;
 use crate::model::project::*;
@@ -54,7 +56,9 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
                 },
             );
 
-            start_engine(&project_id.to_string());
+            let mut engine = EngineBridge::new(&project_id.to_string());
+            engine.send(&Message::Init);
+            engine.send(&Message::Exit);
 
             rid::post(Reply::NewProjectCreated(
                 request_id,
@@ -101,7 +105,9 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
             store.projects.insert(project.id, project);
             store.project_order.push(id);
 
-            start_engine(&id.to_string());
+            let mut engine = EngineBridge::new(&id.to_string());
+            engine.send(&Message::Init);
+            engine.send(&Message::Exit);
 
             rid::post(Reply::ProjectLoaded(request_id, (id as i64).to_string()));
         }
