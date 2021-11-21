@@ -19,12 +19,9 @@
 
 // cspell:ignore interprocess bincode
 
-use std::{
-    io::{BufReader, Write},
-    process::Stdio,
-};
+use std::{io::{BufReader, Read, Write}, process::Stdio};
 
-use anthem_engine_model::message::Message;
+use anthem_engine_model::message::{Message, Reply};
 use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
 
 pub struct EngineBridge {
@@ -76,5 +73,24 @@ impl EngineBridge {
             .get_mut()
             .write_all(&message_bytes)
             .expect("Could not write to engine");
+    }
+
+    pub fn receive(&mut self) -> Reply {
+        let mut message_length_buffer = [0u8; 8];
+
+        self.connection
+            .get_mut()
+            .read_exact(&mut message_length_buffer)
+            .expect("Failed to read length header");
+
+        let header_length = usize::from_be_bytes(message_length_buffer);
+
+        let mut message_buffer = vec![0u8; header_length];
+        self.connection
+            .get_mut()
+            .read_exact(&mut message_buffer)
+            .expect("Failed to read message");
+
+        bincode::deserialize(&message_buffer).expect("Reply could not be parsed as bincode")
     }
 }
