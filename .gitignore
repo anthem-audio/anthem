@@ -68,7 +68,6 @@ lib/generated_plugin_registrant.dart
 
 ### Rust ###
 **/target/**
-**/Cargo.lock
 
 ### Rid ###
 **/generated/**
@@ -76,3 +75,6 @@ lib/generated_plugin_registrant.dart
 **/macos/*.a
 **/ios/*.a
 **/android/src/main/jniLibs/*
+
+assets/build/
+logs/

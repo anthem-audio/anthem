@@ -17,6 +17,10 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-pub mod pattern_message_handler;
-pub mod project_message_handler;
-pub mod store_message_handler;
+mod pattern_message_handler;
+mod project_message_handler;
+mod store_message_handler;
+
+pub use pattern_message_handler::pattern_message_handler;
+pub use project_message_handler::project_message_handler;
+pub use store_message_handler::store_message_handler;
