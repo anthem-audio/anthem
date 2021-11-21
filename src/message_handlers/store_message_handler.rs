@@ -26,7 +26,7 @@ use crate::commands::command::Command;
 use crate::commands::project_commands::JournalPage;
 use crate::engine_bridge::EngineBridge;
 use crate::model::command_queue::CommandQueue;
-use crate::model::jorunal_page_accumulator::JournalPageAccumulator;
+use crate::model::journal_page_accumulator::JournalPageAccumulator;
 use crate::model::project::*;
 use crate::model::store::*;
 use crate::util::rid_reply_all::rid_reply_all;
@@ -58,7 +58,7 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
 
             let mut engine = EngineBridge::new(&project_id.to_string());
             engine.send(&Message::Init);
-            engine.send(&Message::Exit);
+            store.engines.insert(project_id, engine);
 
             rid::post(Reply::NewProjectCreated(
                 request_id,
@@ -77,9 +77,10 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
             store.project_order.retain(|id| *id != *project_id);
             store.command_queues.remove(project_id);
             store.journal_page_accumulators.remove(project_id);
+            let mut engine = store.engines.remove(project_id).unwrap();
+            engine.send(&Message::Exit);
+            
             rid::post(Reply::ProjectClosed(request_id));
-
-            // TODO: Stop engine
         }
         Msg::SaveProject(project_id, path) => {
             let mut project = store
@@ -99,17 +100,17 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
             let project_raw = fs::read_to_string(path).expect("project path does not exist");
             let mut project: Project = serde_json::from_str(&project_raw).expect("invalid project");
 
-            let id = project.id;
+            let project_id = project.id;
             project.file_path = path.clone();
 
             store.projects.insert(project.id, project);
-            store.project_order.push(id);
+            store.project_order.push(project_id);
 
-            let mut engine = EngineBridge::new(&id.to_string());
+            let mut engine = EngineBridge::new(&project_id.to_string());
             engine.send(&Message::Init);
-            engine.send(&Message::Exit);
+            store.engines.insert(project_id, engine);
 
-            rid::post(Reply::ProjectLoaded(request_id, (id as i64).to_string()));
+            rid::post(Reply::ProjectLoaded(request_id, (project_id as i64).to_string()));
         }
         Msg::Undo(project_id) => {
             let command = store
