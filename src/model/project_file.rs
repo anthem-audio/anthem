@@ -17,13 +17,10 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-pub mod command_queue;
-pub mod generator;
-pub mod journal_page_accumulator;
-pub mod note;
-pub mod pattern;
-pub mod project;
-pub mod project_file;
-pub mod song;
-pub mod store;
-pub mod time_signature;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
+pub struct ProjectFile {
+    pub core_model: serde_json::Value,
+    pub engine_model: serde_json::Value,
+}
