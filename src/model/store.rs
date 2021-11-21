@@ -22,14 +22,14 @@ use std::collections::HashMap;
 use rid::RidStore;
 
 use crate::commands::command::Command;
-use crate::message_handlers::pattern_message_handler::pattern_message_handler;
-use crate::message_handlers::project_message_handler::project_message_handler;
-use crate::message_handlers::store_message_handler::store_message_handler;
-
+use crate::engine_bridge::EngineBridge;
+use crate::message_handlers::pattern_message_handler;
+use crate::message_handlers::project_message_handler;
+use crate::message_handlers::store_message_handler;
 use crate::model::project::Project;
 
 use super::command_queue::CommandQueue;
-use super::jorunal_page_accumulator::JournalPageAccumulator;
+use super::journal_page_accumulator::JournalPageAccumulator;
 
 #[rid::store]
 #[rid::structs(Project)]
@@ -46,6 +46,10 @@ pub struct Store {
     // Current journal page accumulator for each project
     #[rid(skip)]
     pub journal_page_accumulators: HashMap<u64, JournalPageAccumulator>,
+
+    // Engine process wrappers for each project
+    #[rid(skip)]
+    pub engines: HashMap<u64, EngineBridge>,
 }
 
 impl Store {
@@ -59,31 +63,13 @@ impl Store {
 
 impl RidStore<Msg> for Store {
     fn create() -> Self {
-        let project = Project::default();
-        let id = project.id;
-
-        let mut projects = HashMap::new();
-        let project_id = project.id;
-        projects.insert(project_id, project);
-
-        let mut command_queues = HashMap::new();
-        command_queues.insert(id, CommandQueue::default());
-
-        let mut journal_page_accumulators = HashMap::new();
-        journal_page_accumulators.insert(
-            id,
-            JournalPageAccumulator {
-                is_active: false,
-                command_list: Vec::new(),
-            },
-        );
-
         Self {
-            projects: projects,
-            project_order: vec![project_id],
-            active_project_id: id,
-            command_queues,
-            journal_page_accumulators,
+            projects: HashMap::new(),
+            project_order: Vec::new(),
+            active_project_id: 0,
+            command_queues: HashMap::new(),
+            journal_page_accumulators: HashMap::new(),
+            engines: HashMap::new(),
         }
     }
 
@@ -108,6 +94,7 @@ pub enum Msg {
     //
     // Store
     //
+    Init,
     NewProject,
     SetActiveProject(u64),
     CloseProject(u64),
@@ -134,10 +121,10 @@ pub enum Msg {
     //
     // Pattern
     //
-    AddPattern(u64, String), // project ID, pattern name
-    DeletePattern(u64, u64), // project ID, pattern ID
-    AddNote(u64, u64, u64, String), // project ID, pattern ID, insrument ID, note as JSON
-    DeleteNote(u64, u64, u64, u64), // project ID, pattern ID, insrument ID, note ID
+    AddPattern(u64, String),                // project ID, pattern name
+    DeletePattern(u64, u64),                // project ID, pattern ID
+    AddNote(u64, u64, u64, String),         // project ID, pattern ID, insrument ID, note as JSON
+    DeleteNote(u64, u64, u64, u64),         // project ID, pattern ID, insrument ID, note ID
     MoveNote(u64, u64, u64, u64, u64, u64), // project ID, pattern ID, insrument ID, note ID, new key value, new offset
     ResizeNote(u64, u64, u64, u64, u64), // project ID, pattern ID, insrument ID, note ID, new length
 }

@@ -20,16 +20,25 @@
 use std::fs;
 use std::mem::replace;
 
+use anthem_engine_model::{message::{Message as EngineMessage, Reply as EngineReply}, project::Project as EngineProject};
+
 use crate::commands::command::Command;
 use crate::commands::project_commands::JournalPage;
+use crate::engine_bridge::EngineBridge;
 use crate::model::command_queue::CommandQueue;
-use crate::model::jorunal_page_accumulator::JournalPageAccumulator;
+use crate::model::journal_page_accumulator::JournalPageAccumulator;
 use crate::model::project::*;
+use crate::model::project_file::ProjectFile;
 use crate::model::store::*;
 use crate::util::rid_reply_all::rid_reply_all;
 
 pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> bool {
     match msg {
+        Msg::Init => {
+            store_message_handler(store, request_id, &Msg::NewProject);
+            let new_project_id = *(store.projects.iter().next().unwrap().0);
+            store_message_handler(store, request_id, &Msg::SetActiveProject(new_project_id));
+        }
         Msg::NewProject => {
             let project = Project::default();
             let project_id = project.id;
@@ -48,6 +57,10 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
                 },
             );
 
+            let mut engine = EngineBridge::new(&project_id.to_string());
+            engine.send(&EngineMessage::Init);
+            store.engines.insert(project_id, engine);
+
             rid::post(Reply::NewProjectCreated(
                 request_id,
                 (project_id as i64).to_string(),
@@ -65,6 +78,9 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
             store.project_order.retain(|id| *id != *project_id);
             store.command_queues.remove(project_id);
             store.journal_page_accumulators.remove(project_id);
+            let mut engine = store.engines.remove(project_id).unwrap();
+            engine.send(&EngineMessage::Exit);
+
             rid::post(Reply::ProjectClosed(request_id));
         }
         Msg::SaveProject(project_id, path) => {
@@ -73,7 +89,18 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
                 .get_mut(project_id)
                 .expect("project does not exist");
 
-            let serialized = serde_json::to_string(project).expect("project failed to serialize");
+            let engine = store.engines.get_mut(&project_id).unwrap();
+            engine.send(&EngineMessage::GetModel);
+            let engine_model = match engine.receive() {
+                EngineReply::GetModelReply(engine_project) => engine_project,
+            };
+
+            let project_file = ProjectFile {
+                core_model: serde_json::to_value(&project).unwrap(),
+                engine_model: serde_json::to_value(&engine_model).unwrap(),
+            };
+
+            let serialized = serde_json::to_string(&project_file).expect("project failed to serialize");
 
             fs::write(path, &serialized).expect("unable to write to file");
 
@@ -82,16 +109,29 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
             rid::post(Reply::ProjectSaved(request_id));
         }
         Msg::LoadProject(path) => {
-            let project_raw = fs::read_to_string(path).expect("project path does not exist");
-            let mut project: Project = serde_json::from_str(&project_raw).expect("invalid project");
+            let project_file_raw = fs::read_to_string(path).expect("project path does not exist");
+            let project_file: ProjectFile =
+                serde_json::from_str(&project_file_raw).expect("invalid project");
+            let mut project: Project =
+                serde_json::from_value(project_file.core_model).expect("invalid project");
+            let engine_project: EngineProject =
+                serde_json::from_value(project_file.engine_model).expect("invalid project");
 
-            let id = project.id;
+            let project_id = project.id;
             project.file_path = path.clone();
 
             store.projects.insert(project.id, project);
-            store.project_order.push(id);
+            store.project_order.push(project_id);
 
-            rid::post(Reply::ProjectLoaded(request_id, (id as i64).to_string()));
+            let mut engine = EngineBridge::new(&project_id.to_string());
+            engine.send(&EngineMessage::LoadModel(engine_project));
+            engine.send(&EngineMessage::Init);
+            store.engines.insert(project_id, engine);
+
+            rid::post(Reply::ProjectLoaded(
+                request_id,
+                (project_id as i64).to_string(),
+            ));
         }
         Msg::Undo(project_id) => {
             let command = store

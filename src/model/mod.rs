@@ -19,10 +19,11 @@
 
 pub mod command_queue;
 pub mod generator;
-pub mod jorunal_page_accumulator;
+pub mod journal_page_accumulator;
 pub mod note;
 pub mod pattern;
 pub mod project;
+pub mod project_file;
 pub mod song;
 pub mod store;
 pub mod time_signature;
