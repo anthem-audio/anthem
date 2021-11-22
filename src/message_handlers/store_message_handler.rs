@@ -20,7 +20,10 @@
 use std::fs;
 use std::mem::replace;
 
-use anthem_engine_model::{message::{Message as EngineMessage, Reply as EngineReply}, project::Project as EngineProject};
+use anthem_engine_model::{
+    message::{Message as EngineMessage, Reply as EngineReply},
+    project::Project as EngineProject,
+};
 
 use crate::commands::command::Command;
 use crate::commands::project_commands::JournalPage;
@@ -100,7 +103,8 @@ pub fn store_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> b
                 engine_model: serde_json::to_value(&engine_model).unwrap(),
             };
 
-            let serialized = serde_json::to_string(&project_file).expect("project failed to serialize");
+            let serialized =
+                serde_json::to_string(&project_file).expect("project failed to serialize");
 
             fs::write(path, &serialized).expect("unable to write to file");
 
