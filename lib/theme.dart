@@ -41,8 +41,10 @@ class _Primary {
 }
 
 class _Control {
-  Color hover = white.withOpacity(0.12);
-  Color active = white.withOpacity(0.07);
+  Color hover = const Color(0xFF4B5861);
+  Color active = const Color(0xFF3D464E);
+  Color main = const Color(0xFF414C54);
+  Color border = const Color(0xFF293136);
 }
 
 class _Text {
