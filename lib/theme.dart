@@ -41,12 +41,25 @@ class _Primary {
 }
 
 class _Control {
-  Color hover = const Color(0xFF4B5861);
-  Color active = const Color(0xFF3D464E);
-  Color main = const Color(0xFF414C54);
+  _ByBackgroundType main = _ByBackgroundType(
+    dark: const Color(0xFF414C54),
+    light: const Color(0xFF4C5A63),
+  );
+  _ByBackgroundType hover = _ByBackgroundType(
+    dark: const Color(0xFF4B5861),
+    light: const Color(0xFF505F69),
+  );
+  Color active = const Color(0xFF25C29D);
   Color border = const Color(0xFF293136);
 }
 
 class _Text {
-  Color main = white.withOpacity(0.7);
+  Color main = const Color(0xFF9DB9CC);
+}
+
+class _ByBackgroundType {
+  Color dark;
+  Color light;
+
+  _ByBackgroundType({required this.dark, required this.light});
 }
