@@ -21,18 +21,31 @@ import 'package:anthem/widgets/basic/tree_view/tree_item_indent.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
-const baseIndent = 20.0;
+const indentIncrement = 21.0;
 
-class TreeView extends StatelessWidget {
+class TreeItem extends StatelessWidget {
+  final String? label;
   final List<Widget>? children;
-
-  const TreeView({Key? key, this.children}) : super(key: key);
+  const TreeItem({Key? key, this.label, this.children}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Provider(create: (context) => TreeItemIndent(indent: baseIndent), child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: children ?? [],
-    ),);
+    final indent = Provider.of<TreeItemIndent>(context).indent;
+
+    return Provider(
+      create: (context) => TreeItemIndent(indent: indent + indentIncrement),
+      child: Column(
+        children: <Widget>[
+              Padding(
+                padding: EdgeInsets.only(left: indent),
+                child: Container(
+                  color: const Color(0xFF00FF00),
+                  height: 24,
+                ),
+              ),
+            ] +
+            (children ?? []),
+      ),
+    );
   }
 }

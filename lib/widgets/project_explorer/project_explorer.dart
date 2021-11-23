@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/widgets/basic/background.dart';
+import 'package:anthem/widgets/basic/tree_view/tree_item.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_view.dart';
 import 'package:flutter/widgets.dart';
 
@@ -52,14 +53,13 @@ class ProjectExplorer extends StatelessWidget {
                       ),
                       child: TreeView(
                         children: [
-                          Container(
-                            height: 10,
-                            color: const Color(0xFF00FF00),
-                          ),
-                          Container(
-                            height: 20,
-                            color: const Color(0xFF00FFFF),
-                          ),
+                          TreeItem(children: [
+                            TreeItem(),
+                            TreeItem(),
+                            TreeItem(),
+                          ]),
+                          TreeItem(),
+                          TreeItem(),
                         ],
                       ),
                     ),
