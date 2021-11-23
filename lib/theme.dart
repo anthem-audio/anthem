@@ -31,8 +31,9 @@ class Theme {
 }
 
 class _Panel {
-  Color main = const Color.fromARGB(255, 53, 62, 69);
-  Color accent = const Color.fromARGB(255, 61, 72, 79);
+  Color main = const Color(0xFF353E45);
+  Color accent = const Color(0xFF3D484F);
+  Color accentDark = const Color(0xFF313A40);
   Color border = const Color.fromARGB(255, 41, 49, 54);
 }
 
