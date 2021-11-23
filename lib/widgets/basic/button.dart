@@ -21,9 +21,11 @@ import 'dart:math';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 import 'package:vector_math/vector_math_64.dart';
 
 import '../../theme.dart';
+import 'background.dart';
 
 class Button extends StatefulWidget {
   final VoidCallback? onPress;
@@ -57,12 +59,19 @@ class _ButtonState extends State<Button> {
 
   @override
   Widget build(BuildContext context) {
-    final hoverColor = Theme.control.hover;
+    final backgroundType = Provider.of<BackgroundType>(context);
+
+    final mainColor = backgroundType == BackgroundType.dark
+        ? Theme.control.main.dark
+        : Theme.control.main.light;
+    final hoverColor = backgroundType == BackgroundType.dark
+        ? Theme.control.hover.dark
+        : Theme.control.hover.light;
     final activeColor = Theme.control.active;
 
     var backgroundColor = widget.hideBackground ?? false
         ? const Color(0x00000000)
-        : Theme.control.main;
+        : mainColor;
     if (hovered) backgroundColor = hoverColor;
     if (pressed) backgroundColor = activeColor;
 

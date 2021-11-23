@@ -19,6 +19,7 @@
 
 import 'dart:ui';
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/menu/menu_overlay.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -51,7 +52,8 @@ class MyApp extends StatelessWidget {
           create: (_) => MainWindowCubit(),
           child: MultiProvider(
             providers: [
-              ChangeNotifierProvider(create: (_) => KeyboardModifiers())
+              ChangeNotifierProvider(create: (context) => KeyboardModifiers()),
+              Provider(create: (context) => BackgroundType.dark)
             ],
             child: MenuOverlay(
               child: Stack(
