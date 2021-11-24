@@ -53,13 +53,13 @@ class ProjectExplorer extends StatelessWidget {
                       ),
                       child: TreeView(
                         children: [
-                          TreeItem(children: [
-                            TreeItem(),
-                            TreeItem(),
-                            TreeItem(),
+                          TreeItem(label: "Current project", children: [
+                            TreeItem(label: "abc"),
+                            TreeItem(label: "abc"),
+                            TreeItem(label: "abc"),
                           ]),
-                          TreeItem(),
-                          TreeItem(),
+                          TreeItem(label: "Recent files"),
+                          TreeItem(label: "Plugin databases"),
                         ],
                       ),
                     ),
