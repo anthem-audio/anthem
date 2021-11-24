@@ -54,7 +54,14 @@ class ProjectExplorer extends StatelessWidget {
                       child: TreeView(
                         children: [
                           TreeItem(label: "Current project", children: [
-                            TreeItem(label: "abc"),
+                            TreeItem(
+                              label: "abc",
+                              children: [
+                                TreeItem(label: "abc"),
+                                TreeItem(label: "abc"),
+                                TreeItem(label: "abc"),
+                              ],
+                            ),
                             TreeItem(label: "abc"),
                             TreeItem(label: "abc"),
                           ]),
