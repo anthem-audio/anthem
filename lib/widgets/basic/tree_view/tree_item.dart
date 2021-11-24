@@ -21,12 +21,29 @@ import 'package:anthem/widgets/basic/tree_view/tree_item_indent.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
+import '../../../theme.dart';
+
 const indentIncrement = 21.0;
 
-class TreeItem extends StatelessWidget {
+class TreeItem extends StatefulWidget {
   final String? label;
   final List<Widget>? children;
   const TreeItem({Key? key, this.label, this.children}) : super(key: key);
+
+  @override
+  State<TreeItem> createState() => _TreeItemState();
+}
+
+class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
+  bool hovered = false;
+  late final AnimationController _controller = AnimationController(
+    duration: const Duration(seconds: 3),
+    vsync: this,
+  )..repeat();
+  late final Animation<double> _animation = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.fastOutSlowIn,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -36,15 +53,44 @@ class TreeItem extends StatelessWidget {
       create: (context) => TreeItemIndent(indent: indent + indentIncrement),
       child: Column(
         children: <Widget>[
-              Padding(
-                padding: EdgeInsets.only(left: indent),
-                child: Container(
-                  color: const Color(0xFF00FF00),
-                  height: 24,
-                ),
+          MouseRegion(
+            onEnter: (e) {
+              setState(() {
+                hovered = true;
+              });
+            },
+            onExit: (e) {
+              setState(() {
+                hovered = false;
+              });
+            },
+            child: Container(
+              color: hovered ? Theme.control.hover.dark : null,
+              height: 24,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(left: indent),
+                      child: Text(
+                        widget.label ?? "",
+                        textAlign: TextAlign.left,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: Theme.text.main),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ] +
-            (children ?? []),
+            ),
+          ),
+          SizeTransition(
+            sizeFactor: _animation,
+            axis: Axis.vertical,
+            child: Column(children: widget.children ?? []),
+          ),
+        ],
       ),
     );
   }
