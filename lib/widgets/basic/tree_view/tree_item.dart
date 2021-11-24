@@ -35,15 +35,20 @@ class TreeItem extends StatefulWidget {
 }
 
 class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
-  bool hovered = false;
-  late final AnimationController _controller = AnimationController(
-    duration: const Duration(seconds: 3),
-    vsync: this,
-  )..repeat();
-  late final Animation<double> _animation = CurvedAnimation(
-    parent: _controller,
-    curve: Curves.fastOutSlowIn,
-  );
+  bool isHovered = false;
+  bool isOpen = false;
+
+  void open() {
+    setState(() {
+      isOpen = true;
+    });
+  }
+
+  void close() {
+    setState(() {
+      isOpen = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,44 +58,61 @@ class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
       create: (context) => TreeItemIndent(indent: indent + indentIncrement),
       child: Column(
         children: <Widget>[
-          MouseRegion(
-            onEnter: (e) {
-              setState(() {
-                hovered = true;
-              });
-            },
-            onExit: (e) {
-              setState(() {
-                hovered = false;
-              });
-            },
-            child: Container(
-              color: hovered ? Theme.control.hover.dark : null,
-              height: 24,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(left: indent),
-                      child: Text(
-                        widget.label ?? "",
-                        textAlign: TextAlign.left,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: Theme.text.main),
-                      ),
+              MouseRegion(
+                onEnter: (e) {
+                  setState(() {
+                    isHovered = true;
+                  });
+                },
+                onExit: (e) {
+                  setState(() {
+                    isHovered = false;
+                  });
+                },
+                child: GestureDetector(
+                  onTap: () {
+                    if ((widget.children?.length ?? 0) > 0) {
+                      setState(() {
+                        if (isOpen) {
+                          close();
+                        } else {
+                          open();
+                        }
+                      });
+                    }
+                  },
+                  child: Container(
+                    color: isHovered ? Theme.control.hover.dark : null,
+                    height: 24,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        SizedBox(width: indent),
+                        widget.children?.isNotEmpty ?? false
+                            ? Container(
+                                width: 10,
+                                height: 10,
+                                color: isOpen
+                                    ? const Color(0xFFFF0000)
+                                    : const Color(0xFFFFFFFF),
+                              )
+                            : const SizedBox(width: 10),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            widget.label ?? "",
+                            textAlign: TextAlign.left,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: Theme.text.main),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-          SizeTransition(
-            sizeFactor: _animation,
-            axis: Axis.vertical,
-            child: Column(children: widget.children ?? []),
-          ),
-        ],
+            ] +
+            ((isOpen ? widget.children : []) ?? []),
       ),
     );
   }
