@@ -30,9 +30,14 @@ class TreeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Provider(create: (context) => TreeItemIndent(indent: baseIndent), child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: children ?? [],
-    ),);
+    return Provider(
+      create: (context) => TreeItemIndent(indent: baseIndent),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children ?? [],
+        ),
+      ),
+    );
   }
 }
