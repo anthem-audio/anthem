@@ -51,8 +51,92 @@ class ProjectExplorer extends StatelessWidget {
                         border: Border.all(color: Theme.panel.border, width: 1),
                         borderRadius: BorderRadius.circular(1),
                       ),
-                      child: TreeView(
+                      child: const TreeView(
                         children: [
+                          TreeItem(label: "Current project", children: [
+                            TreeItem(
+                              label: "abc",
+                              children: [
+                                TreeItem(label: "abc"),
+                                TreeItem(label: "abc"),
+                                TreeItem(label: "abc"),
+                              ],
+                            ),
+                            TreeItem(label: "abc"),
+                            TreeItem(label: "abc"),
+                          ]),
+                          TreeItem(label: "Recent files"),
+                          TreeItem(label: "Plugin databases"),
+                          TreeItem(label: "Current project", children: [
+                            TreeItem(
+                              label: "abc",
+                              children: [
+                                TreeItem(label: "abc"),
+                                TreeItem(label: "abc"),
+                                TreeItem(label: "abc"),
+                              ],
+                            ),
+                            TreeItem(label: "abc"),
+                            TreeItem(label: "abc"),
+                          ]),
+                          TreeItem(label: "Recent files"),
+                          TreeItem(label: "Plugin databases"),
+                          TreeItem(label: "Current project", children: [
+                            TreeItem(
+                              label: "abc",
+                              children: [
+                                TreeItem(label: "abc"),
+                                TreeItem(label: "abc"),
+                                TreeItem(label: "abc"),
+                              ],
+                            ),
+                            TreeItem(label: "abc"),
+                            TreeItem(label: "abc"),
+                          ]),
+                          TreeItem(label: "Recent files"),
+                          TreeItem(label: "Plugin databases"),
+                          TreeItem(label: "Current project", children: [
+                            TreeItem(
+                              label: "abc",
+                              children: [
+                                TreeItem(label: "abc"),
+                                TreeItem(label: "abc"),
+                                TreeItem(label: "abc"),
+                              ],
+                            ),
+                            TreeItem(label: "abc"),
+                            TreeItem(label: "abc"),
+                          ]),
+                          TreeItem(label: "Recent files"),
+                          TreeItem(label: "Plugin databases"),
+                          TreeItem(label: "Current project", children: [
+                            TreeItem(
+                              label: "abc",
+                              children: [
+                                TreeItem(label: "abc"),
+                                TreeItem(label: "abc"),
+                                TreeItem(label: "abc"),
+                              ],
+                            ),
+                            TreeItem(label: "abc"),
+                            TreeItem(label: "abc"),
+                          ]),
+                          TreeItem(label: "Recent files"),
+                          TreeItem(label: "Plugin databases"),
+                          TreeItem(label: "Current project", children: [
+                            TreeItem(
+                              label: "abc",
+                              children: [
+                                TreeItem(label: "abc"),
+                                TreeItem(label: "abc"),
+                                TreeItem(label: "abc"),
+                              ],
+                            ),
+                            TreeItem(label: "abc"),
+                            TreeItem(label: "abc"),
+                          ]),
+                          TreeItem(label: "Recent files"),
+                          TreeItem(label: "Plugin databases"),
                           TreeItem(label: "Current project", children: [
                             TreeItem(
                               label: "abc",

@@ -56,68 +56,70 @@ class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
 
     return Provider(
       create: (context) => TreeItemIndent(indent: indent + indentIncrement),
-      child: Column(children: <Widget>[
-        MouseRegion(
-          onEnter: (e) {
-            setState(() {
-              isHovered = true;
-            });
-          },
-          onExit: (e) {
-            setState(() {
-              isHovered = false;
-            });
-          },
-          child: GestureDetector(
-            onTap: () {
-              if ((widget.children?.length ?? 0) > 0) {
-                setState(() {
-                  if (isOpen) {
-                    close();
-                  } else {
-                    open();
-                  }
-                });
-              }
+      child: Column(
+        children: <Widget>[
+          MouseRegion(
+            onEnter: (e) {
+              setState(() {
+                isHovered = true;
+              });
             },
-            child: Container(
-              color: isHovered ? Theme.control.hover.dark : null,
-              height: 24,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  SizedBox(width: indent),
-                  widget.children?.isNotEmpty ?? false
-                      ? Container(
-                          width: 10,
-                          height: 10,
-                          color: isOpen
-                              ? const Color(0xFFFF0000)
-                              : const Color(0xFFFFFFFF),
-                        )
-                      : const SizedBox(width: 10),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      widget.label ?? "",
-                      textAlign: TextAlign.left,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Theme.text.main),
+            onExit: (e) {
+              setState(() {
+                isHovered = false;
+              });
+            },
+            child: GestureDetector(
+              onTap: () {
+                if ((widget.children?.length ?? 0) > 0) {
+                  setState(() {
+                    if (isOpen) {
+                      close();
+                    } else {
+                      open();
+                    }
+                  });
+                }
+              },
+              child: Container(
+                color: isHovered ? Theme.control.hover.dark : null,
+                height: 24,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    SizedBox(width: indent),
+                    widget.children?.isNotEmpty ?? false
+                        ? Container(
+                            width: 10,
+                            height: 10,
+                            color: isOpen
+                                ? const Color(0xFFFF0000)
+                                : const Color(0xFFFFFFFF),
+                          )
+                        : const SizedBox(width: 10),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        widget.label ?? "",
+                        textAlign: TextAlign.left,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: Theme.text.main),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        Visibility(
-          visible: isOpen,
-          maintainState: true,
-          child: Column(
-            children: widget.children ?? [],
+          Visibility(
+            visible: isOpen,
+            maintainState: true,
+            child: Column(
+              children: widget.children ?? [],
+            ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 }

@@ -29,7 +29,6 @@ import 'package:plugin/generated/rid_api.dart';
 import 'widgets/main_window/main_window.dart';
 import 'widgets/main_window/main_window_cubit.dart';
 
-
 void main() async {
   rid.debugReply = (reply) {};
   rid.debugLock = (a, b, {request}) {};
@@ -55,15 +54,19 @@ class MyApp extends StatelessWidget {
               ChangeNotifierProvider(create: (context) => KeyboardModifiers()),
               Provider(create: (context) => BackgroundType.dark)
             ],
-            child: MenuOverlay(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Container(
-                    color: Theme.panel.border,
-                  ),
-                  const MainWindow(),
-                ],
+            child: ScrollConfiguration(
+              behavior:
+                  ScrollConfiguration.of(context).copyWith(scrollbars: false),
+              child: MenuOverlay(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Container(
+                      color: Theme.panel.border,
+                    ),
+                    const MainWindow(),
+                  ],
+                ),
               ),
             ),
           ),
