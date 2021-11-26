@@ -41,6 +41,10 @@ class Scrollbar extends StatefulWidget {
 }
 
 class _ScrollbarState extends State<Scrollbar> {
+  bool _isThumbPressed = false;
+  double _localStartPos = -1;
+  double _scrollAreaStartPos = -1;
+
   int before = 0;
   int inside = 1;
   int after = 0;
@@ -73,6 +77,25 @@ class _ScrollbarState extends State<Scrollbar> {
 
   bool _isVertical() {
     return widget.direction == ScrollbarDirection.vertical;
+  }
+
+  void _handleDown(double pos, double containerMainAxisLength) {
+    _localStartPos = pos;
+    _scrollAreaStartPos = widget.controller.position.pixels;
+  }
+
+  void _handleMove(double pos, double containerMainAxisLength) {
+    final delta = pos - _localStartPos;
+    final normalizedThumbSize = inside / (before + inside + after);
+    final normalizedDelta = delta / containerMainAxisLength;
+    final scrollAreaStart = widget.controller.position.minScrollExtent;
+    final scrollAreaEnd = widget.controller.position.maxScrollExtent;
+    final scrollAreaSize = scrollAreaEnd - scrollAreaStart;
+    final targetPos =
+        normalizedDelta * (scrollAreaSize * (1 / (1 - normalizedThumbSize))) +
+            _scrollAreaStartPos +
+            scrollAreaStart;
+    widget.controller.jumpTo(targetPos.clamp(scrollAreaStart, scrollAreaEnd));
   }
 
   @override
@@ -165,21 +188,41 @@ class _ScrollbarState extends State<Scrollbar> {
             child: border,
           ),
 
-          // Scrollbar
+          // Scrollbar track with handle
           Positioned(
             left: isVertical ? 0 : widget.crossAxisSize,
             right: isVertical ? 0 : widget.crossAxisSize,
             top: isHorizontal ? 0 : widget.crossAxisSize,
             bottom: isHorizontal ? 0 : widget.crossAxisSize,
-            child: isHorizontal
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: flexChildren,
-                  )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: flexChildren,
-                  ),
+            child: GestureDetector(
+              onVerticalDragDown: (details) {
+                if (!_isVertical()) return;
+                _handleDown(
+                    details.localPosition.dy, context.size?.height ?? 1);
+              },
+              onVerticalDragUpdate: (details) {
+                if (!_isVertical()) return;
+                _handleMove(
+                    details.localPosition.dy, context.size?.height ?? 1);
+              },
+              onHorizontalDragDown: (details) {
+                if (!_isHorizontal()) return;
+                _handleDown(details.localPosition.dx, context.size?.width ?? 1);
+              },
+              onHorizontalDragUpdate: (details) {
+                if (!_isHorizontal()) return;
+                _handleMove(details.localPosition.dx, context.size?.width ?? 1);
+              },
+              child: isHorizontal
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: flexChildren,
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: flexChildren,
+                    ),
+            ),
           ),
         ],
       ),
