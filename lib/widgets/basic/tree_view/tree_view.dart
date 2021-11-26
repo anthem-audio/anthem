@@ -25,14 +25,16 @@ const baseIndent = 20.0;
 
 class TreeView extends StatelessWidget {
   final List<Widget>? children;
+  final ScrollController? scrollController;
 
-  const TreeView({Key? key, this.children}) : super(key: key);
+  const TreeView({Key? key, this.children, this.scrollController}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Provider(
       create: (context) => TreeItemIndent(indent: baseIndent),
       child: SingleChildScrollView(
+        controller: scrollController,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: children ?? [],
