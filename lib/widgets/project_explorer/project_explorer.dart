@@ -18,17 +18,35 @@
 */
 
 import 'package:anthem/widgets/basic/background.dart';
+import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_item.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_view.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../theme.dart';
 
-class ProjectExplorer extends StatelessWidget {
+class ProjectExplorer extends StatefulWidget {
   const ProjectExplorer({Key? key}) : super(key: key);
 
   @override
+  State<ProjectExplorer> createState() => _ProjectExplorerState();
+}
+
+class _ProjectExplorerState extends State<ProjectExplorer> {
+  final ScrollController controller = ScrollController();
+
+  @override
+  void initState() {
+    // controller.
+    WidgetsBinding.instance?.addPostFrameCallback((timeStamp) {
+      print(controller.position.maxScrollExtent);
+    });
+    super.initState();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    print("build");
     return Background(
       type: BackgroundType.dark,
       child: Padding(
@@ -51,8 +69,9 @@ class ProjectExplorer extends StatelessWidget {
                         border: Border.all(color: Theme.panel.border, width: 1),
                         borderRadius: BorderRadius.circular(1),
                       ),
-                      child: const TreeView(
-                        children: [
+                      child: TreeView(
+                        scrollController: controller,
+                        children: const [
                           TreeItem(label: "Current project", children: [
                             TreeItem(
                               label: "abc",
@@ -156,7 +175,11 @@ class ProjectExplorer extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 4),
-                  const SizedBox(width: 17),
+                    Scrollbar(
+                      controller: controller,
+                      direction: ScrollbarDirection.vertical,
+                      crossAxisSize: 17,
+                    ),
                 ],
               ),
             ),
