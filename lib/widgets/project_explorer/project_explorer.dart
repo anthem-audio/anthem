@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/widgets/basic/background.dart';
+import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_item.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_view.dart';
@@ -46,7 +47,6 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
 
   @override
   Widget build(BuildContext context) {
-    print("build");
     return Background(
       type: BackgroundType.dark,
       child: Padding(

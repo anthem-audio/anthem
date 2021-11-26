@@ -27,17 +27,30 @@ class TreeView extends StatelessWidget {
   final List<Widget>? children;
   final ScrollController? scrollController;
 
-  const TreeView({Key? key, this.children, this.scrollController}) : super(key: key);
+  const TreeView({Key? key, this.children, this.scrollController})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Provider(
       create: (context) => TreeItemIndent(indent: baseIndent),
-      child: SingleChildScrollView(
-        controller: scrollController,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: children ?? [],
+      child: NotificationListener<SizeChangedLayoutNotification>(
+        onNotification: (notification) {
+          WidgetsBinding.instance?.addPostFrameCallback((duration) {
+            scrollController?.position.notifyListeners();
+          });
+          return true;
+        },
+        child: SizeChangedLayoutNotifier(
+          child: SingleChildScrollView(
+            controller: scrollController,
+            child: SizeChangedLayoutNotifier(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: children ?? [],
+              ),
+            ),
+          ),
         ),
       ),
     );
