@@ -18,7 +18,7 @@
 -->
 
 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M1.5 3.5H14.5" stroke="#9DB9CC" stroke-linecap="round"/>
-<path d="M1.5 8.5H14.5" stroke="#9DB9CC" stroke-linecap="round"/>
-<path d="M1.5 13.5H14.5" stroke="#9DB9CC" stroke-linecap="round"/>
+<circle cx="8" cy="3" r="1" fill="#C1C4C6"/>
+<circle cx="8" cy="8" r="1" fill="#C1C4C6"/>
+<circle cx="8" cy="13" r="1" fill="#C1C4C6"/>
 </svg>

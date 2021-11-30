@@ -19,6 +19,7 @@
 
 import 'dart:ui';
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/menu/menu_overlay.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -27,7 +28,6 @@ import 'package:plugin/generated/rid_api.dart';
 
 import 'widgets/main_window/main_window.dart';
 import 'widgets/main_window/main_window_cubit.dart';
-
 
 void main() async {
   rid.debugReply = (reply) {};
@@ -51,17 +51,22 @@ class MyApp extends StatelessWidget {
           create: (_) => MainWindowCubit(),
           child: MultiProvider(
             providers: [
-              ChangeNotifierProvider(create: (_) => KeyboardModifiers())
+              ChangeNotifierProvider(create: (context) => KeyboardModifiers()),
+              Provider(create: (context) => BackgroundType.dark)
             ],
-            child: MenuOverlay(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Container(
-                    color: Theme.panel.border,
-                  ),
-                  const MainWindow(),
-                ],
+            child: ScrollConfiguration(
+              behavior:
+                  ScrollConfiguration.of(context).copyWith(scrollbars: false),
+              child: MenuOverlay(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Container(
+                      color: Theme.panel.border,
+                    ),
+                    const MainWindow(),
+                  ],
+                ),
               ),
             ),
           ),

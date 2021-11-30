@@ -31,8 +31,9 @@ class Theme {
 }
 
 class _Panel {
-  Color main = const Color.fromARGB(255, 53, 62, 69);
-  Color accent = const Color.fromARGB(255, 61, 72, 79);
+  Color main = const Color(0xFF353E45);
+  Color accent = const Color(0xFF3D484F);
+  Color accentDark = const Color(0xFF313A40);
   Color border = const Color.fromARGB(255, 41, 49, 54);
 }
 
@@ -41,10 +42,25 @@ class _Primary {
 }
 
 class _Control {
-  Color hover = white.withOpacity(0.12);
-  Color active = white.withOpacity(0.07);
+  _ByBackgroundType main = _ByBackgroundType(
+    dark: const Color(0xFF414C54),
+    light: const Color(0xFF4C5A63),
+  );
+  _ByBackgroundType hover = _ByBackgroundType(
+    dark: const Color(0xFF4B5861),
+    light: const Color(0xFF505F69),
+  );
+  Color active = const Color(0xFF25C29D);
+  Color border = const Color(0xFF293136);
 }
 
 class _Text {
   Color main = white.withOpacity(0.7);
+}
+
+class _ByBackgroundType {
+  Color dark;
+  Color light;
+
+  _ByBackgroundType({required this.dark, required this.light});
 }

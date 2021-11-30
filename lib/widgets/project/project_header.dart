@@ -84,6 +84,7 @@ class ProjectHeader extends StatelessWidget {
                 child: Button(
                   width: 28,
                   iconPath: "assets/icons/file/hamburger.svg",
+                  showMenuIndicator: true,
                   onPress: () {
                     menuController.open?.call();
                   },
