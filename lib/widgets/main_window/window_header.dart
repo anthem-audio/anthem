@@ -86,6 +86,8 @@ class _WindowHeaderState extends State<WindowHeader> {
                           Button(
                             width: 20,
                             height: 20,
+                            hideBorder: true,
+                            hideBackground: true,
                             iconPath: "assets/icons/small/close.svg",
                             onPress: () {
                               widget.closeProject(tab.id);

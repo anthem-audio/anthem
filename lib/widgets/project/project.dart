@@ -23,6 +23,7 @@ import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart'
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/project/project_cubit.dart';
+import 'package:anthem/widgets/project_explorer/project_explorer.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -47,7 +48,7 @@ class Project extends StatelessWidget {
             child: Panel(
               orientation: PanelOrientation.left,
               // left panel
-              panelContent: Container(color: Theme.panel.main),
+              panelContent: const ProjectExplorer(),
 
               child: Panel(
                 orientation: PanelOrientation.right,

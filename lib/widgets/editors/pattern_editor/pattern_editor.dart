@@ -75,6 +75,7 @@ class _PatternEditorState extends State<PatternEditor> {
                     width: 28,
                     height: 28,
                     iconPath: "assets/icons/file/hamburger.svg",
+                    showMenuIndicator: true,
                     onPress: () {
                       menuController.open?.call();
                     },
