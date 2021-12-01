@@ -111,8 +111,8 @@ pub enum Msg {
     //
     // Project
     //
-    AddInstrument(u64, String),
-    AddController(u64, String),
+    AddInstrument(u64, String, u32),    // project ID, name, color
+    AddController(u64, String, u32),    // project ID, name, color
     RemoveGenerator(u64, u64),
     SetActivePattern(u64, u64),    // project ID, pattern ID (0 means none)
     SetActiveInstrument(u64, u64), // project ID, instrument ID (0 means none)

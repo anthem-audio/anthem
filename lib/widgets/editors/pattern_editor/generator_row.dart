@@ -28,14 +28,7 @@ import '../../../theme.dart';
 import 'generator_row_cubit.dart';
 
 class GeneratorRow extends StatelessWidget {
-  final Color generatorColor = Color.fromARGB(
-    255,
-    Random().nextInt(255),
-    Random().nextInt(255),
-    Random().nextInt(255),
-  );
-
-  GeneratorRow({Key? key}) : super(key: key);
+  const GeneratorRow({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -78,7 +71,7 @@ class GeneratorRow extends StatelessWidget {
                           // 1 bar is 100 pxiels, can be tweaked (and should probably be set above?)
                           // TODO: hard-coded ticks-per-beat
                           ticksPerPixel: (96 * 4) / 100,
-                          color: generatorColor,
+                          color: state.color,
                         ),
                 ),
               ),
