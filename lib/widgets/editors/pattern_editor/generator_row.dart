@@ -47,48 +47,42 @@ class GeneratorRow extends StatelessWidget {
               .setActiveInstrumentID(state.generatorID);
         },
         child: SizedBox(
-          height: 42,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                width: 9,
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.horizontal(
-                    left: Radius.circular(1),
-                    right: Radius.circular(0),
-                  ),
-                  color: generatorColor,
-                ),
-              ),
+          height: 34,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child:
+                Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              // Container(
+              //   width: 9,
+              //   decoration: BoxDecoration(
+              //     borderRadius: const BorderRadius.horizontal(
+              //       left: Radius.circular(1),
+              //       right: Radius.circular(0),
+              //     ),
+              //     color: generatorColor,
+              //   ),
+              // ),
               Expanded(
                 child: Container(
+                  height: 30,
                   decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.horizontal(
-                      left: Radius.circular(0),
-                      right: Radius.circular(1),
-                    ),
+                    border: Border.all(color: Theme.panel.border),
+                    borderRadius: const BorderRadius.all(Radius.circular(1)),
                     color: Theme.panel.main,
                   ),
-                  child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // SizedBox(width: 270),
-                        Expanded(
-                            child: state.notes == null
-                                ? const SizedBox()
-                                : ClipNotes(
-                                    notes: state.notes!,
-                                    timeViewStart: 0,
-                                    // 1 bar is 100 pxiels, can be tweaked (and should probably be set above?)
-                                    // TODO: hard-coded ticks-per-beat
-                                    ticksPerPixel: (96 * 4) / 100,
-                                    color: generatorColor,
-                                  ))
-                      ]),
+                  child: state.notes == null
+                      ? const SizedBox()
+                      : ClipNotes(
+                          notes: state.notes!,
+                          timeViewStart: 0,
+                          // 1 bar is 100 pxiels, can be tweaked (and should probably be set above?)
+                          // TODO: hard-coded ticks-per-beat
+                          ticksPerPixel: (96 * 4) / 100,
+                          color: generatorColor,
+                        ),
                 ),
-              )
-            ],
+              ),
+            ]),
           ),
         ),
       );
