@@ -94,7 +94,7 @@ class ClipNotesPainter extends CustomPainter {
           (top + height).clamp(0, size.height));
 
       final noteSize = bottomRight - topLeft;
-      if (noteSize.dx == 0 || noteSize.dy == 0) return;
+      if (noteSize.dx == 0 || noteSize.dy == 0) continue;
 
       canvas.drawRect(
           Rect.fromPoints(topLeft, bottomRight), Paint()..color = color);
