@@ -42,6 +42,14 @@ class PatternEditor extends StatefulWidget {
 }
 
 class _PatternEditorState extends State<PatternEditor> {
+  double nextHue = 0;
+
+  Color getColor() {
+    final color = HSLColor.fromAHSL(1, nextHue, 0.33, 0.5).toColor();
+    nextHue = (nextHue + 330) % 360;
+    return color;
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<PatternEditorCubit, PatternEditorState>(
@@ -106,7 +114,9 @@ class _PatternEditorState extends State<PatternEditor> {
                       iconPath: "assets/icons/pattern_editor/add-audio.svg",
                       onPress: () {
                         context.read<PatternEditorCubit>().addInstrument(
-                            "Instrument ${(Random()).nextInt(100).toString()}");
+                              "Instrument ${(Random()).nextInt(100).toString()}",
+                              getColor(),
+                            );
                       }),
                   const SizedBox(width: 4),
                   Button(
@@ -116,7 +126,9 @@ class _PatternEditorState extends State<PatternEditor> {
                           "assets/icons/pattern_editor/add-automation.svg",
                       onPress: () {
                         context.read<PatternEditorCubit>().addController(
-                            "Controller ${(Random()).nextInt(100).toString()}");
+                              "Controller ${(Random()).nextInt(100).toString()}",
+                              getColor(),
+                            );
                       }),
                 ],
               ),

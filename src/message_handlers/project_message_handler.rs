@@ -24,17 +24,19 @@ use crate::util::id::*;
 
 pub fn project_message_handler(store: &mut Store, request_id: u64, msg: &Msg) -> bool {
     match msg {
-        Msg::AddInstrument(project_id, name) => {
+        Msg::AddInstrument(project_id, name, color) => {
             let command = AddInstrumentCommand {
                 id: get_id(),
                 name: name.clone(),
+                color: *color,
             };
             execute_and_push(store, request_id, *project_id, Box::new(command));
         }
-        Msg::AddController(project_id, name) => {
+        Msg::AddController(project_id, name, color) => {
             let command = AddControllerCommand {
                 id: get_id(),
                 name: name.clone(),
+                color: *color,
             };
             execute_and_push(store, request_id, *project_id, Box::new(command));
         }

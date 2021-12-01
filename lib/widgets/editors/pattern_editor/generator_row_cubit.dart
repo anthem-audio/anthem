@@ -38,12 +38,25 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
     required int? patternID,
     required int generatorID,
   }) : super(
-          GeneratorRowState(
-            projectID: projectID,
-            patternID: patternID,
-            generatorID: generatorID,
-            notes: null,
-          ),
+          (() {
+            final project = Store.instance.projects[projectID];
+
+            var color = const Color(0xFFFFFFFF);
+
+            if (project?.instruments[generatorID] != null) {
+              color = Color(project!.instruments[generatorID]!.color);
+            } else if (project?.controllers[generatorID] != null) {
+              color = Color(project!.controllers[generatorID]!.color);
+            }
+
+            return GeneratorRowState(
+              projectID: projectID,
+              patternID: patternID,
+              generatorID: generatorID,
+              color: color,
+              notes: null,
+            );
+          })(),
         ) {
     _updateNotesSub = rid.replyChannel.stream
         .where((event) =>
@@ -70,6 +83,7 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
       generatorID: state.generatorID,
       patternID: patternID,
       notes: notes,
+      color: state.color,
     ));
   }
 
@@ -92,6 +106,7 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
       generatorID: state.generatorID,
       patternID: state.patternID,
       notes: notes,
+      color: state.color,
     ));
   }
 }
