@@ -36,6 +36,8 @@ class Button extends StatefulWidget {
   final bool? hideBorder;
   final bool? hideBackground;
   final bool? showMenuIndicator;
+  final Color? backgroundColor;
+  final Color? backgroundHoverColor;
 
   const Button({
     Key? key,
@@ -47,6 +49,8 @@ class Button extends StatefulWidget {
     this.hideBorder,
     this.hideBackground,
     this.showMenuIndicator,
+    this.backgroundColor,
+    this.backgroundHoverColor,
   }) : super(key: key);
 
   @override
@@ -61,17 +65,18 @@ class _ButtonState extends State<Button> {
   Widget build(BuildContext context) {
     final backgroundType = Provider.of<BackgroundType>(context);
 
-    final mainColor = backgroundType == BackgroundType.dark
-        ? Theme.control.main.dark
-        : Theme.control.main.light;
-    final hoverColor = backgroundType == BackgroundType.dark
-        ? Theme.control.hover.dark
-        : Theme.control.hover.light;
+    final mainColor = widget.backgroundColor ??
+        (backgroundType == BackgroundType.dark
+            ? Theme.control.main.dark
+            : Theme.control.main.light);
+    final hoverColor = widget.backgroundHoverColor ??
+        (backgroundType == BackgroundType.dark
+            ? Theme.control.hover.dark
+            : Theme.control.hover.light);
     final activeColor = Theme.control.active;
 
-    var backgroundColor = widget.hideBackground ?? false
-        ? const Color(0x00000000)
-        : mainColor;
+    var backgroundColor =
+        widget.hideBackground ?? false ? const Color(0x00000000) : mainColor;
     if (hovered) backgroundColor = hoverColor;
     if (pressed) backgroundColor = activeColor;
 
