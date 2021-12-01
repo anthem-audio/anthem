@@ -21,11 +21,9 @@ import 'dart:math';
 
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/button.dart';
-import 'package:anthem/widgets/basic/button_row_divider.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
-import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -157,7 +155,7 @@ class _PatternEditorState extends State<PatternEditor> {
                                   patternID: state.activePatternID,
                                   generatorID: id,
                                 ),
-                                child: GeneratorRow(),
+                                child: const GeneratorRow(),
                               );
                             }
 
@@ -170,7 +168,7 @@ class _PatternEditorState extends State<PatternEditor> {
                                     patternID: state.activePatternID,
                                     generatorID: id,
                                   ),
-                                  child: GeneratorRow(),
+                                  child: const GeneratorRow(),
                                 ),
                               );
                             }
