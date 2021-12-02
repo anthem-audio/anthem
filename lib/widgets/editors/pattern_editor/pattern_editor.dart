@@ -133,6 +133,7 @@ class _PatternEditorState extends State<PatternEditor> {
               const SizedBox(height: 4),
               Expanded(
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(
                       child: Background(
@@ -140,41 +141,44 @@ class _PatternEditorState extends State<PatternEditor> {
                         border: Border.all(color: Theme.panel.border),
                         borderRadius:
                             const BorderRadius.all(Radius.circular(2)),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 5),
-                          child: Column(
-                              children: state.generatorIDList.map<Widget>((id) {
-                            final instrument = state.instruments[id];
-                            final controller = state.controllers[id];
+                        child: SingleChildScrollView(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 5),
+                            child: Column(
+                                children:
+                                    state.generatorIDList.map<Widget>((id) {
+                              final instrument = state.instruments[id];
+                              final controller = state.controllers[id];
 
-                            // TODO: provide type to child
-                            if (instrument != null) {
-                              return BlocProvider(
-                                create: (context) => GeneratorRowCubit(
-                                  projectID: state.projectID,
-                                  patternID: state.activePatternID,
-                                  generatorID: id,
-                                ),
-                                child: const GeneratorRow(),
-                              );
-                            }
-
-                            if (controller != null) {
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 1),
-                                child: BlocProvider(
+                              // TODO: provide type to child
+                              if (instrument != null) {
+                                return BlocProvider(
                                   create: (context) => GeneratorRowCubit(
                                     projectID: state.projectID,
                                     patternID: state.activePatternID,
                                     generatorID: id,
                                   ),
                                   child: const GeneratorRow(),
-                                ),
-                              );
-                            }
+                                );
+                              }
 
-                            throw Error();
-                          }).toList()),
+                              if (controller != null) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 1),
+                                  child: BlocProvider(
+                                    create: (context) => GeneratorRowCubit(
+                                      projectID: state.projectID,
+                                      patternID: state.activePatternID,
+                                      generatorID: id,
+                                    ),
+                                    child: const GeneratorRow(),
+                                  ),
+                                );
+                              }
+
+                              throw Error();
+                            }).toList()),
+                          ),
                         ),
                       ),
                     ),
