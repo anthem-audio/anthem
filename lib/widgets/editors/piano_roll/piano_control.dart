@@ -104,7 +104,7 @@ class _PianoControlState extends State<PianoControl> {
               List<int> notes = [];
 
               for (var i = widget.keyValueAtTop.ceil();
-                  i >= keyValueAtBottom;
+                  i >= keyValueAtBottom - 1;
                   i--) {
                 notes.add(i);
               }
@@ -216,47 +216,48 @@ class _WhiteKey extends StatelessWidget {
     final opacity = keyNumber < 0 || keyNumber > 128 ? 0.3 : 0.6;
 
     return GestureDetector(
-        onTap: () {
-          print(keyNumber);
-        },
-        child: SizedBox(
-          height: widgetHeight - 1,
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  children: [
-                    SizedBox(height: hasTopNotch ? keyHeight * 0.5 : 0),
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(1),
-                            bottomLeft: Radius.circular(1),
-                          ),
-                          color: const Color(0xFFFFFFFF).withOpacity(opacity),
+      // onTap: () {
+      //   print(keyNumber);
+      // },
+      child: SizedBox(
+        height: widgetHeight - 1,
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                children: [
+                  SizedBox(height: hasTopNotch ? keyHeight * 0.5 : 0),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(1),
+                          bottomLeft: Radius.circular(1),
                         ),
+                        color: const Color(0xFFFFFFFF).withOpacity(opacity),
                       ),
                     ),
-                    SizedBox(height: hasBottomNotch ? keyHeight * 0.5 : 0),
-                  ],
-                ),
-              ),
-              Container(
-                width: notchWidth,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(hasTopNotch ? 1 : 0),
-                    bottomLeft: Radius.circular(hasBottomNotch ? 1 : 0),
-                    topRight: const Radius.circular(1),
-                    bottomRight: const Radius.circular(1),
                   ),
-                  color: const Color(0xFFFFFFFF).withOpacity(opacity),
-                ),
+                  SizedBox(height: hasBottomNotch ? keyHeight * 0.5 : 0),
+                ],
               ),
-            ],
-          ),
-        ));
+            ),
+            Container(
+              width: notchWidth,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(hasTopNotch ? 1 : 0),
+                  bottomLeft: Radius.circular(hasBottomNotch ? 1 : 0),
+                  topRight: const Radius.circular(1),
+                  bottomRight: const Radius.circular(1),
+                ),
+                color: const Color(0xFFFFFFFF).withOpacity(opacity),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
