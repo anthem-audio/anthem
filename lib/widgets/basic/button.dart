@@ -84,11 +84,13 @@ class _ButtonState extends State<Button> {
 
     return MouseRegion(
       onEnter: (e) {
+        if (!mounted) return;
         setState(() {
           hovered = true;
         });
       },
       onExit: (e) {
+        if (!mounted) return;
         setState(() {
           hovered = false;
         });
@@ -97,11 +99,13 @@ class _ButtonState extends State<Button> {
         onTap: widget.onPress,
         child: Listener(
           onPointerDown: (e) {
+            if (!mounted) return;
             setState(() {
               pressed = true;
             });
           },
           onPointerUp: (e) {
+            if (!mounted) return;
             setState(() {
               pressed = false;
             });
