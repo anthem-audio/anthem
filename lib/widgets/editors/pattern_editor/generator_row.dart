@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:math';
-
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes.dart';
 import 'package:anthem/widgets/project/project_cubit.dart';
