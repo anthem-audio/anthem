@@ -128,9 +128,9 @@ class _ScrollbarState extends State<Scrollbar> {
     ]);
 
     if (after > 0) {
-      flexChildren.add(Spacer(
-        flex: after,
-      ));
+      flexChildren.add(
+        Spacer(flex: after),
+      );
     }
 
     return Container(
