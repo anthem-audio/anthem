@@ -102,10 +102,10 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
       _store.msgAddPattern(state.projectID, name);
   Future<void> deletePattern(int id) =>
       _store.msgDeletePattern(state.projectID, id);
-  Future<void> addInstrument(String name) =>
-      _store.msgAddInstrument(state.projectID, name);
-  Future<void> addController(String name) =>
-      _store.msgAddController(state.projectID, name);
+  Future<void> addInstrument(String name, Color color) =>
+      _store.msgAddInstrument(state.projectID, name, color.value);
+  Future<void> addController(String name, Color color) =>
+      _store.msgAddController(state.projectID, name, color.value);
   Future<void> removeGenerator(int id) =>
       _store.msgRemoveGenerator(state.projectID, id);
   Future<void> setActivePattern(int id) =>

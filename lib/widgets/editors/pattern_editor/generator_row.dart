@@ -19,6 +19,7 @@
 
 import 'dart:math';
 
+import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes.dart';
 import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/widgets.dart';
@@ -28,14 +29,7 @@ import '../../../theme.dart';
 import 'generator_row_cubit.dart';
 
 class GeneratorRow extends StatelessWidget {
-  final Color generatorColor = Color.fromARGB(
-    255,
-    Random().nextInt(255),
-    Random().nextInt(255),
-    Random().nextInt(255),
-  );
-
-  GeneratorRow({Key? key}) : super(key: key);
+  const GeneratorRow({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -47,48 +41,53 @@ class GeneratorRow extends StatelessWidget {
               .setActiveInstrumentID(state.generatorID);
         },
         child: SizedBox(
-          height: 42,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                width: 9,
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.horizontal(
-                    left: Radius.circular(1),
-                    right: Radius.circular(0),
-                  ),
-                  color: generatorColor,
+          height: 34,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(width: 127),
+                Button(
+                  width: 105,
+                  height: 26,
+                  backgroundColor: state.color,
+                  backgroundHoverColor: HSLColor.fromColor(state.color)
+                      .withLightness(0.56)
+                      .toColor(),
                 ),
-              ),
-              Expanded(
-                child: Container(
+                const SizedBox(width: 8),
+                Container(
+                  width: 8,
+                  height: 22,
                   decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.horizontal(
-                      left: Radius.circular(0),
-                      right: Radius.circular(1),
-                    ),
-                    color: Theme.panel.main,
+                    color: state.color,
+                    border: Border.all(color: Theme.panel.border),
                   ),
-                  child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // SizedBox(width: 270),
-                        Expanded(
-                            child: state.notes == null
-                                ? const SizedBox()
-                                : ClipNotes(
-                                    notes: state.notes!,
-                                    timeViewStart: 0,
-                                    // 1 bar is 100 pxiels, can be tweaked (and should probably be set above?)
-                                    // TODO: hard-coded ticks-per-beat
-                                    ticksPerPixel: (96 * 4) / 100,
-                                    color: generatorColor,
-                                  ))
-                      ]),
                 ),
-              )
-            ],
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Container(
+                    height: 30,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Theme.panel.border),
+                      borderRadius: const BorderRadius.all(Radius.circular(1)),
+                      color: Theme.panel.main,
+                    ),
+                    child: state.notes == null
+                        ? const SizedBox()
+                        : ClipNotes(
+                            notes: state.notes!,
+                            timeViewStart: 0,
+                            // 1 bar is 100 pxiels, can be tweaked (and should probably be set above?)
+                            // TODO: hard-coded ticks-per-beat
+                            ticksPerPixel: (96 * 4) / 100,
+                            color: state.color,
+                          ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );

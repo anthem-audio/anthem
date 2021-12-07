@@ -19,11 +19,12 @@
 
 import 'dart:math';
 
+import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/button.dart';
-import 'package:anthem/widgets/basic/button_row_divider.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -40,144 +41,177 @@ class PatternEditor extends StatefulWidget {
 }
 
 class _PatternEditorState extends State<PatternEditor> {
+  double nextHue = 0;
+  ScrollController verticalScrollController = ScrollController();
+
+  Color getColor() {
+    final color = HSLColor.fromAHSL(1, nextHue, 0.33, 0.5).toColor();
+    nextHue = (nextHue + 330) % 360;
+    return color;
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<PatternEditorCubit, PatternEditorState>(
         builder: (context, state) {
       final menuController = MenuController();
 
-      return Column(
-        children: [
-          Container(
-            height: 42,
-            decoration: BoxDecoration(
-              color: Theme.panel.accent,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(2),
-                bottom: Radius.circular(1),
-              ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(width: 7),
-                Menu(
-                  menuController: menuController,
-                  menuDef: MenuDef(children: [
-                    MenuItem(
-                        text: "New pattern",
-                        onSelected: () {
-                          context.read<PatternEditorCubit>().addPattern(
-                              "Pattern ${(Random()).nextInt(100).toString()}");
-                        })
-                  ]),
-                  child: Button(
-                    width: 28,
-                    height: 28,
-                    iconPath: "assets/icons/file/hamburger.svg",
-                    showMenuIndicator: true,
-                    onPress: () {
-                      menuController.open?.call();
-                    },
-                  ),
-                ),
-                const SizedBox(width: 4),
-                const SizedBox(
-                    width: 16, child: Center(child: ButtonRowDivider())),
-                const SizedBox(width: 4),
-                Dropdown(
-                  width: 169,
-                  height: 28,
-                  items: state.patternList.map(
-                    (item) {
-                      return DropdownItem(
-                        id: item.id.toString(),
-                        name: item.name,
-                      );
-                    },
-                  ).toList(),
-                  selectedID: state.activePatternID.toString(),
-                  onChanged: (idStr) {
-                    final id = idStr == null ? 0 : int.parse(idStr);
-                    context.read<PatternEditorCubit>().setActivePattern(id);
-                  },
-                ),
-                const Expanded(child: SizedBox()),
-                Button(
-                    width: 28,
-                    height: 28,
-                    iconPath: "assets/icons/pattern_editor/add-audio.svg",
-                    onPress: () {
-                      context.read<PatternEditorCubit>().addInstrument(
-                          "Instrument ${(Random()).nextInt(100).toString()}");
-                    }),
-                const SizedBox(width: 4),
-                Button(
-                    width: 28,
-                    height: 28,
-                    iconPath: "assets/icons/pattern_editor/add-automation.svg",
-                    onPress: () {
-                      context.read<PatternEditorCubit>().addController(
-                          "Controller ${(Random()).nextInt(100).toString()}");
-                    }),
-                const SizedBox(width: 7),
-              ],
-            ),
+      return NotificationListener<SizeChangedLayoutNotification>(
+        onNotification: (notification) {
+          WidgetsBinding.instance?.addPostFrameCallback((_) {
+            verticalScrollController.position.notifyListeners();
+          });
+          return true;
+        },
+        child: SizeChangedLayoutNotifier(
+            child: Background(
+          type: BackgroundType.dark,
+          borderRadius: const BorderRadius.all(
+            Radius.circular(2),
           ),
-          const SizedBox(height: 1),
-          Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(6.0),
             child: Column(
-              children: state.generatorIDList.map<Widget>((id) {
-                    final instrument = state.instruments[id];
-                    final controller = state.controllers[id];
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Menu(
+                      menuController: menuController,
+                      menuDef: MenuDef(children: [
+                        MenuItem(
+                            text: "New pattern",
+                            onSelected: () {
+                              context.read<PatternEditorCubit>().addPattern(
+                                  "Pattern ${(Random()).nextInt(100).toString()}");
+                            })
+                      ]),
+                      child: Button(
+                        width: 28,
+                        height: 28,
+                        iconPath: "assets/icons/file/kebab.svg",
+                        showMenuIndicator: true,
+                        onPress: () {
+                          menuController.open?.call();
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Dropdown(
+                      width: 169,
+                      height: 28,
+                      items: state.patternList.map(
+                        (item) {
+                          return DropdownItem(
+                            id: item.id.toString(),
+                            name: item.name,
+                          );
+                        },
+                      ).toList(),
+                      selectedID: state.activePatternID.toString(),
+                      onChanged: (idStr) {
+                        final id = idStr == null ? 0 : int.parse(idStr);
+                        context.read<PatternEditorCubit>().setActivePattern(id);
+                      },
+                    ),
+                    const Expanded(child: SizedBox()),
+                    Button(
+                      width: 28,
+                      height: 28,
+                      iconPath: "assets/icons/pattern_editor/add-audio.svg",
+                      onPress: () {
+                        context.read<PatternEditorCubit>().addInstrument(
+                              "Instrument ${(Random()).nextInt(100).toString()}",
+                              getColor(),
+                            );
+                      },
+                    ),
+                    const SizedBox(width: 4),
+                    Button(
+                      width: 28,
+                      height: 28,
+                      iconPath:
+                          "assets/icons/pattern_editor/add-automation.svg",
+                      onPress: () {
+                        context.read<PatternEditorCubit>().addController(
+                              "Controller ${(Random()).nextInt(100).toString()}",
+                              getColor(),
+                            );
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: Background(
+                          type: BackgroundType.light,
+                          border: Border.all(color: Theme.panel.border),
+                          borderRadius:
+                              const BorderRadius.all(Radius.circular(2)),
+                          child: SingleChildScrollView(
+                            controller: verticalScrollController,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 5),
+                              child: SizeChangedLayoutNotifier(
+                                child: Column(
+                                    children:
+                                        state.generatorIDList.map<Widget>((id) {
+                                  final instrument = state.instruments[id];
+                                  final controller = state.controllers[id];
 
-                    // TODO: provide type to child
-                    if (instrument != null) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 1),
-                        child: BlocProvider(
-                          create: (context) => GeneratorRowCubit(
-                            projectID: state.projectID,
-                            patternID: state.activePatternID,
-                            generatorID: id,
-                          ),
-                          child: GeneratorRow(),
-                        ),
-                      );
-                    }
+                                  // TODO: provide type to child
+                                  if (instrument != null) {
+                                    return BlocProvider(
+                                      create: (context) => GeneratorRowCubit(
+                                        projectID: state.projectID,
+                                        patternID: state.activePatternID,
+                                        generatorID: id,
+                                      ),
+                                      child: const GeneratorRow(),
+                                    );
+                                  }
 
-                    if (controller != null) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 1),
-                        child: BlocProvider(
-                          create: (context) => GeneratorRowCubit(
-                            projectID: state.projectID,
-                            patternID: state.activePatternID,
-                            generatorID: id,
-                          ),
-                          child: GeneratorRow(),
-                        ),
-                      );
-                    }
+                                  if (controller != null) {
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 1),
+                                      child: BlocProvider(
+                                        create: (context) => GeneratorRowCubit(
+                                          projectID: state.projectID,
+                                          patternID: state.activePatternID,
+                                          generatorID: id,
+                                        ),
+                                        child: const GeneratorRow(),
+                                      ),
+                                    );
+                                  }
 
-                    throw Error();
-                  }).toList() +
-                  [
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Theme.panel.main,
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(1),
-                            bottom: Radius.circular(2),
+                                  throw Error();
+                                }).toList()),
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      Scrollbar(
+                        controller: verticalScrollController,
+                        crossAxisSize: 17,
+                        direction: ScrollbarDirection.vertical,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const SizedBox(height: 17),
+              ],
             ),
           ),
-        ],
+        )),
       );
     });
   }

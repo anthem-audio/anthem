@@ -25,6 +25,7 @@ use serde::{Deserialize, Serialize};
 pub struct Instrument {
     pub id: u64,
     pub name: String,
+    pub color: u32,
 }
 
 #[rid::model]
@@ -33,4 +34,5 @@ pub struct Instrument {
 pub struct Controller {
     pub id: u64,
     pub name: String,
+    pub color: u32,
 }
