@@ -60,84 +60,90 @@ class _PianoControlState extends State<PianoControl> {
   Widget build(BuildContext context) {
     final contentRenderBox = context.findRenderObject() as RenderBox?;
 
-    return Row(
-      children: [
-        Listener(
-          onPointerDown: (e) {
-            startPixelValue = e.localPosition.dy;
-            startTopKeyValue = widget.keyValueAtTop;
-            startKeyHeightValue = widget.keyHeight;
-          },
-          onPointerMove: (e) {
-            final keyboardModifiers =
-                Provider.of<KeyboardModifiers>(context, listen: false);
-            if (!keyboardModifiers.alt) {
-              final keyDelta =
-                  (e.localPosition.dy - startPixelValue) / widget.keyHeight;
-              widget.setKeyValueAtTop(startTopKeyValue + keyDelta);
-            } else {
-              widget.setKeyHeight((startKeyHeightValue +
-                      (e.localPosition.dy - startPixelValue) / 3)
-                  .clamp(4, 50));
-            }
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.all(Radius.circular(1)),
-              color: Theme.panel.main,
-            ),
-            width: 39,
-          ),
-        ),
-        const SizedBox(width: 1),
-        Expanded(
-          child: ClipRect(
-            child: (() {
-              if (contentRenderBox == null) {
-                return const SizedBox();
-              }
+    if (contentRenderBox == null) {
+      return const SizedBox();
+    }
 
-              var keyValueAtBottom = (widget.keyValueAtTop -
-                      contentRenderBox.size.height / widget.keyHeight)
-                  .floor();
+    final keysOnScreen = contentRenderBox.size.height / widget.keyHeight;
 
-              List<int> notes = [];
+    final keyValueAtBottom =
+        (widget.keyValueAtTop - keysOnScreen)
+            .floor();
 
-              for (var i = widget.keyValueAtTop.ceil();
-                  i >= keyValueAtBottom;
-                  i--) {
-                notes.add(i);
-              }
+    List<int> notes = [];
 
-              var noteWidgets = notes.map((note) {
-                var keyType = getKeyType(note);
+    for (var i = widget.keyValueAtTop.ceil(); i >= keyValueAtBottom - 1; i--) {
+      notes.add(i);
+    }
 
-                Widget child;
+    final noteWidgets = notes.map((note) {
+      final keyType = getKeyType(note);
 
-                if (keyType == KeyType.white) {
-                  child =
-                      _WhiteKey(keyHeight: widget.keyHeight, keyNumber: note);
+      Widget child;
+
+      if (keyType == KeyType.white) {
+        child = _WhiteKey(keyHeight: widget.keyHeight, keyNumber: note);
+      } else {
+        child = _BlackKey(keyHeight: widget.keyHeight, keyNumber: note);
+      }
+
+      return LayoutId(id: note, child: child);
+    }).toList();
+
+    return NotificationListener<SizeChangedLayoutNotification>(
+      onNotification: (notification) {
+        WidgetsBinding.instance?.addPostFrameCallback((_) {
+          setState(() {});
+        });
+        return true;
+      },
+      child: SizeChangedLayoutNotifier(
+        child: Row(
+          children: [
+            Listener(
+              onPointerDown: (e) {
+                startPixelValue = e.localPosition.dy;
+                startTopKeyValue = widget.keyValueAtTop;
+                startKeyHeightValue = widget.keyHeight;
+              },
+              onPointerMove: (e) {
+                final keyboardModifiers =
+                    Provider.of<KeyboardModifiers>(context, listen: false);
+                if (!keyboardModifiers.alt) {
+                  final keyDelta =
+                      (e.localPosition.dy - startPixelValue) / widget.keyHeight;
+                  widget.setKeyValueAtTop(startTopKeyValue + keyDelta);
                 } else {
-                  child =
-                      _BlackKey(keyHeight: widget.keyHeight, keyNumber: note);
+                  widget.setKeyHeight((startKeyHeightValue +
+                          (e.localPosition.dy - startPixelValue) / 3)
+                      .clamp(4, 50));
                 }
-
-                return LayoutId(id: note, child: child);
-              }).toList();
-
-              return CustomMultiChildLayout(
-                delegate: KeyLayoutDelegate(
-                  keyHeight: widget.keyHeight,
-                  keyValueAtTop: widget.keyValueAtTop,
-                  notes: notes,
-                  parentHeight: contentRenderBox.size.height,
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: const BorderRadius.all(Radius.circular(1)),
+                  color: Theme.panel.main,
                 ),
-                children: noteWidgets,
-              );
-            })(),
-          ),
+                width: 39,
+              ),
+            ),
+            const SizedBox(width: 1),
+            Expanded(
+              child: ClipRect(
+                child: CustomMultiChildLayout(
+                  delegate: KeyLayoutDelegate(
+                    keyHeight: widget.keyHeight,
+                    keyValueAtTop: widget.keyValueAtTop,
+                    notes: notes,
+                    parentHeight: contentRenderBox.size.height,
+                  ),
+                  children: noteWidgets,
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -216,47 +222,48 @@ class _WhiteKey extends StatelessWidget {
     final opacity = keyNumber < 0 || keyNumber > 128 ? 0.3 : 0.6;
 
     return GestureDetector(
-        onTap: () {
-          print(keyNumber);
-        },
-        child: SizedBox(
-          height: widgetHeight - 1,
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  children: [
-                    SizedBox(height: hasTopNotch ? keyHeight * 0.5 : 0),
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(1),
-                            bottomLeft: Radius.circular(1),
-                          ),
-                          color: const Color(0xFFFFFFFF).withOpacity(opacity),
+      // onTap: () {
+      //   print(keyNumber);
+      // },
+      child: SizedBox(
+        height: widgetHeight - 1,
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                children: [
+                  SizedBox(height: hasTopNotch ? keyHeight * 0.5 : 0),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(1),
+                          bottomLeft: Radius.circular(1),
                         ),
+                        color: const Color(0xFFFFFFFF).withOpacity(opacity),
                       ),
                     ),
-                    SizedBox(height: hasBottomNotch ? keyHeight * 0.5 : 0),
-                  ],
-                ),
-              ),
-              Container(
-                width: notchWidth,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(hasTopNotch ? 1 : 0),
-                    bottomLeft: Radius.circular(hasBottomNotch ? 1 : 0),
-                    topRight: const Radius.circular(1),
-                    bottomRight: const Radius.circular(1),
                   ),
-                  color: const Color(0xFFFFFFFF).withOpacity(opacity),
-                ),
+                  SizedBox(height: hasBottomNotch ? keyHeight * 0.5 : 0),
+                ],
               ),
-            ],
-          ),
-        ));
+            ),
+            Container(
+              width: notchWidth,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(hasTopNotch ? 1 : 0),
+                  bottomLeft: Radius.circular(hasBottomNotch ? 1 : 0),
+                  topRight: const Radius.circular(1),
+                  bottomRight: const Radius.circular(1),
+                ),
+                color: const Color(0xFFFFFFFF).withOpacity(opacity),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

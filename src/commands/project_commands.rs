@@ -83,6 +83,7 @@ impl Command for JournalPage {
 pub struct AddInstrumentCommand {
     pub id: u64,
     pub name: String,
+    pub color: u32,
 }
 
 impl Command for AddInstrumentCommand {
@@ -93,6 +94,7 @@ impl Command for AddInstrumentCommand {
             Instrument {
                 id: self.id,
                 name: self.name.clone(),
+                color: self.color,
             },
         );
         vec![Reply::InstrumentAdded(request_id)]
@@ -107,6 +109,7 @@ impl Command for AddInstrumentCommand {
 pub struct AddControllerCommand {
     pub id: u64,
     pub name: String,
+    pub color: u32,
 }
 
 impl Command for AddControllerCommand {
@@ -117,6 +120,7 @@ impl Command for AddControllerCommand {
             Controller {
                 id: self.id,
                 name: self.name.clone(),
+                color: self.color,
             },
         );
         vec![Reply::ControllerAdded(request_id)]

@@ -25,12 +25,14 @@ class GeneratorRowState {
   final int projectID;
   final int? patternID;
   final List<Note>? notes;
+  final Color color;
 
   const GeneratorRowState({
     required this.generatorID,
     required this.projectID,
     required this.patternID,
     required this.notes,
+    required this.color,
   });
 
   @override
@@ -40,12 +42,14 @@ class GeneratorRowState {
           other.generatorID == generatorID &&
           other.projectID == projectID &&
           other.patternID == patternID &&
-          other.notes == notes;
+          other.notes == notes &&
+          other.color == color;
 
   @override
   int get hashCode =>
       generatorID.hashCode ^
       projectID.hashCode ^
       patternID.hashCode ^
-      notes.hashCode;
+      notes.hashCode ^
+      color.hashCode;
 }
