@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/commands/state_change.dart';
+import 'package:anthem/commands/state_changes.dart';
 
 abstract class Command {
   List<StateChange> execute();
