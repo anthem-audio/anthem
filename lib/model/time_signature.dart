@@ -25,6 +25,18 @@ class TimeSignatureModel {
     this.numerator,
     this.denominator,
   );
+
+  @override
+  operator ==(Object other) {
+    if (identical(other, this)) return true;
+
+    return other is TimeSignatureModel &&
+        other.numerator == numerator &&
+        other.denominator == denominator;
+  }
+
+  @override
+  int get hashCode => numerator.hashCode ^ denominator.hashCode;
 }
 
 class TimeSignatureChangeModel {
@@ -35,4 +47,16 @@ class TimeSignatureChangeModel {
     required this.timeSignature,
     required this.offset,
   });
+
+  @override
+  operator ==(Object other) {
+    if (identical(other, this)) return true;
+
+    return other is TimeSignatureChangeModel &&
+        other.timeSignature == timeSignature &&
+        other.offset == offset;
+  }
+
+  @override
+  int get hashCode => timeSignature.hashCode ^ offset.hashCode;
 }

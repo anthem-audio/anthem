@@ -45,4 +45,16 @@ class CommandQueue {
     commands[commandPointer + 1].execute();
     commandPointer++;
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(other, this)) return true;
+
+    return other is CommandQueue &&
+        other.commands == commands &&
+        other.commandPointer == commandPointer;
+  }
+
+  @override
+  int get hashCode => commands.hashCode ^ commandPointer.hashCode;
 }

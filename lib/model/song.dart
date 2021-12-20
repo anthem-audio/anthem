@@ -29,5 +29,33 @@ class SongModel {
   int? activeInstrumentID;
   int? activeControllerID;
 
-  SongModel() : id = getID(), ticksPerQuarter = 96, patterns = {}, patternOrder = [];
+  SongModel()
+      : id = getID(),
+        ticksPerQuarter = 96,
+        patterns = {},
+        patternOrder = [];
+
+  @override
+  operator ==(Object other) {
+    if (identical(other, this)) return true;
+
+    return other is SongModel &&
+        other.id == id &&
+        other.ticksPerQuarter == ticksPerQuarter &&
+        other.patterns == patterns &&
+        other.patternOrder == patternOrder &&
+        other.activePatternID == activePatternID &&
+        other.activeInstrumentID == activeInstrumentID &&
+        other.activeControllerID == activeControllerID;
+  }
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      ticksPerQuarter.hashCode ^
+      patterns.hashCode ^
+      patternOrder.hashCode ^
+      activePatternID.hashCode ^
+      activeInstrumentID.hashCode ^
+      activeControllerID.hashCode;
 }

@@ -29,6 +29,19 @@ abstract class GeneratorModel {
     required this.name,
     required this.color,
   }) : id = getID();
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(other, this)) return true;
+
+    return other is GeneratorModel &&
+        other.id == id &&
+        other.name == name &&
+        other.color == color;
+  }
+
+  @override
+  int get hashCode => id.hashCode ^ name.hashCode ^ color.hashCode;
 }
 
 class InstrumentModel extends GeneratorModel {
