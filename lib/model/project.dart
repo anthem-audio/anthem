@@ -44,4 +44,28 @@ class ProjectModel {
         controllers = {},
         generatorList = [],
         commandQueue = CommandQueue();
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(other, this)) return true;
+
+    return other is ProjectModel &&
+        other.id == id &&
+        other.song == song &&
+        other.instruments == instruments &&
+        other.controllers == controllers &&
+        other.generatorList == generatorList &&
+        other.commandQueue == commandQueue &&
+        other.filePath == filePath;
+  }
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      song.hashCode ^
+      instruments.hashCode ^
+      controllers.hashCode ^
+      generatorList.hashCode ^
+      commandQueue.hashCode ^
+      filePath.hashCode;
 }

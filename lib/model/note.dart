@@ -32,4 +32,24 @@ class NoteModel {
     required this.length,
     required this.offset,
   }) : id = getID();
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(other, this)) return true;
+
+    return other is NoteModel &&
+        other.id == id &&
+        other.key == key &&
+        other.velocity == velocity &&
+        other.length == length &&
+        other.offset == offset;
+  }
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      key.hashCode ^
+      velocity.hashCode ^
+      length.hashCode ^
+      offset.hashCode;
 }

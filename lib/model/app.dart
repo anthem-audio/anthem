@@ -29,4 +29,18 @@ class AppModel {
       : projects = {},
         projectOrder = [],
         activeProjectID = getID();
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(other, this)) return true;
+
+    return other is AppModel &&
+        other.projects == projects &&
+        other.projectOrder == projectOrder &&
+        other.activeProjectID == activeProjectID;
+  }
+
+  @override
+  int get hashCode =>
+      projects.hashCode ^ projectOrder.hashCode ^ activeProjectID.hashCode;
 }
