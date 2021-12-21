@@ -61,6 +61,12 @@ abstract class NoteStateChange extends PatternStateChange {
 
 class NothingChanged extends StateChange {}
 
+class MultipleThingsChanged extends StateChange {
+  List<StateChange> changes;
+
+  MultipleThingsChanged(this.changes);
+}
+
 /*
  * App
  */

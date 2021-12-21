@@ -20,11 +20,22 @@
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/model/project.dart';
 
-abstract class Command {
-  ProjectModel project;
+import 'command.dart';
 
-  StateChange execute();
-  StateChange rollback();
+class JournalPageCommand extends Command {
+  List<Command> commands;
 
-  Command(this.project);
+  JournalPageCommand(ProjectModel project, this.commands) : super(project);
+
+  @override
+  StateChange execute() {
+    return MultipleThingsChanged(
+        commands.map((command) => command.execute()).toList());
+  }
+
+  @override
+  StateChange rollback() {
+    return MultipleThingsChanged(
+        commands.reversed.map((command) => command.rollback()).toList());
+  }
 }
