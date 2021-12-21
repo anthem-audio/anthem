@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/commands/command.dart';
 import 'package:anthem/commands/command_queue.dart';
 import 'package:anthem/helpers/get_id.dart';
 import 'package:anthem/model/song.dart';
@@ -32,10 +33,10 @@ class ProjectModel {
   Map<int, ControllerModel> controllers;
   List<int> generatorList;
 
-  CommandQueue commandQueue;
-
   // Not to be serialized
   String? filePath;
+  CommandQueue commandQueue;
+  List<Command> journalPageAccumulator;
 
   ProjectModel()
       : id = getID(),
@@ -43,7 +44,8 @@ class ProjectModel {
         instruments = {},
         controllers = {},
         generatorList = [],
-        commandQueue = CommandQueue();
+        commandQueue = CommandQueue(),
+        journalPageAccumulator = [];
 
   @override
   bool operator ==(Object other) {
