@@ -17,7 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/get_id.dart';
+import 'dart:async';
+
+import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/model/project.dart';
 
 class AppModel {
@@ -25,10 +27,16 @@ class AppModel {
   List<int> projectOrder;
   int activeProjectID;
 
+  final StreamController<StateChange> _stateChangeStreamController =
+      StreamController.broadcast();
+  late Stream<StateChange> stateChangeStream;
+
   AppModel()
       : projects = {},
         projectOrder = [],
-        activeProjectID = getID();
+        activeProjectID = -1 {
+    stateChangeStream = _stateChangeStreamController.stream;
+  }
 
   @override
   bool operator ==(Object other) {
@@ -43,4 +51,30 @@ class AppModel {
   @override
   int get hashCode =>
       projects.hashCode ^ projectOrder.hashCode ^ activeProjectID.hashCode;
+
+  void addProject(ProjectModel project) {
+    projects[project.id] = project;
+    projectOrder.add(project.id);
+    activeProjectID = project.id;
+    _stateChangeStreamController.add(ProjectAdded(projectID: project.id));
+  }
+
+  void setActiveProject(int projectID) {
+    activeProjectID = projectID;
+    _stateChangeStreamController
+        .add(ActiveProjectChanged(projectID: projectID));
+  }
+
+  void closeProject(int projectID) {
+    projects.remove(projectID);
+    projectOrder.removeWhere((element) => element == projectID);
+    if (activeProjectID == projectID && projectOrder.isNotEmpty) {
+      activeProjectID = projectOrder[0];
+    }
+    _stateChangeStreamController.add(ProjectClosed(projectID: projectID));
+  }
+
+  void init() {
+    addProject(ProjectModel());
+  }
 }

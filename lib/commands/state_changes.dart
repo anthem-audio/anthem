@@ -71,8 +71,8 @@ class MultipleThingsChanged extends StateChange {
  * App
  */
 
-class NewProjectCreated extends ProjectStateChange {
-  NewProjectCreated({required int projectID}) : super(projectID: projectID);
+class ProjectAdded extends ProjectStateChange {
+  ProjectAdded({required int projectID}) : super(projectID: projectID);
 }
 
 class ActiveProjectChanged extends ProjectStateChange {
@@ -85,10 +85,6 @@ class ProjectClosed extends ProjectStateChange {
 
 class ProjectSaved extends ProjectStateChange {
   ProjectSaved({required int projectID}) : super(projectID: projectID);
-}
-
-class ProjectLoaded extends ProjectStateChange {
-  ProjectLoaded({required int projectID}) : super(projectID: projectID);
 }
 
 class JournalEntryStarted extends ProjectStateChange {

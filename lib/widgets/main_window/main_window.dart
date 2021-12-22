@@ -80,12 +80,12 @@ class _MainWindowState extends State<MainWindow> {
                   context.read<MainWindowCubit>().closeProject(id);
                 },
               ),
-              Expanded(
-                child: TabContentSwitcher(
-                  tabs: state.tabs,
-                  selectedTabID: state.selectedTabID,
-                ),
-              ),
+              // Expanded(
+              //   child: TabContentSwitcher(
+              //     tabs: state.tabs,
+              //     selectedTabID: state.selectedTabID,
+              //   ),
+              // ),
             ],
           ),
         ),

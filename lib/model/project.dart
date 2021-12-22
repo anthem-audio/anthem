@@ -21,6 +21,7 @@ import 'dart:async';
 
 import 'package:anthem/commands/command.dart';
 import 'package:anthem/commands/command_queue.dart';
+import 'package:anthem/commands/journal_commands.dart';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/get_id.dart';
 import 'package:anthem/model/song.dart';
@@ -39,7 +40,8 @@ class ProjectModel {
   // Not to be serialized
   String? filePath;
   CommandQueue commandQueue = CommandQueue();
-  List<Command> journalPageAccumulator = [];
+  List<Command> _journalPageAccumulator = [];
+  bool _journalPageActive = false;
   final StreamController<StateChange> _stateChangeStreamController =
       StreamController.broadcast();
   late Stream<StateChange> stateChangeStream;
@@ -82,24 +84,56 @@ class ProjectModel {
       for (var change in change.changes) {
         _stateChangeStreamController.add(change);
       }
-    }
-    else {
+    } else {
       _stateChangeStreamController.add(change);
     }
   }
 
   void execute(Command command) {
-    final change = commandQueue.executeAndPush(command);
-    _dispatch(change);
+    if (_journalPageActive) {
+      _journalPageAccumulator.add(command);
+    }
+    else {
+      final change = commandQueue.executeAndPush(command);
+      _dispatch(change);
+    }
+  }
+
+  void _assertJournalInactive() {
+    if (_journalPageActive) {
+      throw AssertionError("Journal page was active but shouldn't have been.");
+    }
   }
 
   void undo() {
+    _assertJournalInactive();
     final change = commandQueue.undo();
     _dispatch(change);
   }
 
   void redo() {
+    _assertJournalInactive();
     final change = commandQueue.redo();
+    _dispatch(change);
+  }
+
+  void startJournalPage() {
+    _journalPageActive = true;
+  }
+
+  void commitJournalPage() {
+    if (!_journalPageActive) return;
+    if (_journalPageAccumulator.isEmpty) {
+      _journalPageActive = false;
+      return;
+    }
+
+    final accumulator = _journalPageAccumulator;
+    _journalPageAccumulator = [];
+    _journalPageActive = false;
+
+    final command = JournalPageCommand(this, accumulator);
+    final change = commandQueue.executeAndPush(command);
     _dispatch(change);
   }
 }
