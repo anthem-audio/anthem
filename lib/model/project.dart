@@ -17,8 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:anthem/commands/command.dart';
 import 'package:anthem/commands/command_queue.dart';
+import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/get_id.dart';
 import 'package:anthem/model/song.dart';
 
@@ -35,17 +38,20 @@ class ProjectModel {
 
   // Not to be serialized
   String? filePath;
-  CommandQueue commandQueue;
-  List<Command> journalPageAccumulator;
+  CommandQueue commandQueue = CommandQueue();
+  List<Command> journalPageAccumulator = [];
+  final StreamController<StateChange> _stateChangeStreamController =
+      StreamController.broadcast();
+  late Stream<StateChange> stateChangeStream;
 
   ProjectModel()
       : id = getID(),
         song = SongModel(),
         instruments = {},
         controllers = {},
-        generatorList = [],
-        commandQueue = CommandQueue(),
-        journalPageAccumulator = [];
+        generatorList = [] {
+    stateChangeStream = _stateChangeStreamController.stream;
+  }
 
   @override
   bool operator ==(Object other) {
@@ -70,4 +76,30 @@ class ProjectModel {
       generatorList.hashCode ^
       commandQueue.hashCode ^
       filePath.hashCode;
+
+  void _dispatch(StateChange change) {
+    if (change is MultipleThingsChanged) {
+      for (var change in change.changes) {
+        _stateChangeStreamController.add(change);
+      }
+    }
+    else {
+      _stateChangeStreamController.add(change);
+    }
+  }
+
+  void execute(Command command) {
+    final change = commandQueue.executeAndPush(command);
+    _dispatch(change);
+  }
+
+  void undo() {
+    final change = commandQueue.undo();
+    _dispatch(change);
+  }
+
+  void redo() {
+    final change = commandQueue.redo();
+    _dispatch(change);
+  }
 }

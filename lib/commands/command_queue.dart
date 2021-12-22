@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/commands/state_changes.dart';
+
 import 'command.dart';
 
 class CommandQueue {
@@ -29,21 +31,21 @@ class CommandQueue {
     commandPointer++;
   }
 
-  void executeAndPush(Command command) {
-    command.execute();
+  StateChange executeAndPush(Command command) {
     push(command);
+    return command.execute();
   }
 
-  void undo() {
-    if (commandPointer - 1 < 0) return;
-    commands[commandPointer - 1].rollback();
+  StateChange undo() {
+    if (commandPointer - 1 < 0) return NothingChanged();
     commandPointer--;
+    return commands[commandPointer - 1].rollback();
   }
 
-  void redo() {
-    if (commandPointer + 1 >= commands.length) return;
-    commands[commandPointer + 1].execute();
+  StateChange redo() {
+    if (commandPointer + 1 >= commands.length) return NothingChanged();
     commandPointer++;
+    return commands[commandPointer + 1].execute();
   }
 
   @override
