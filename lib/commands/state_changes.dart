@@ -37,7 +37,7 @@ abstract class GeneratorStateChange extends ProjectStateChange {
 }
 
 abstract class PatternStateChange extends ProjectStateChange {
-  int patternID;
+  int? patternID;
 
   PatternStateChange({required int projectID, required this.patternID})
       : super(projectID: projectID);
@@ -137,7 +137,7 @@ class PatternDeleted extends PatternStateChange {
 class ActivePatternSet extends PatternStateChange {
   ActivePatternSet({
     required int projectID,
-    required int patternID,
+    required int? patternID,
   }) : super(projectID: projectID, patternID: patternID);
 }
 

@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:collection';
+
 import 'package:anthem/helpers/get_id.dart';
 import 'package:anthem/model/time_signature.dart';
 
@@ -25,14 +27,13 @@ import 'note.dart';
 class PatternModel {
   int id;
   String name;
-  Map<int, List<NoteModel>> notes;
+  HashMap<int, List<NoteModel>> notes;
   List<TimeSignatureChangeModel> timeSignatureChanges;
   TimeSignatureModel defaultTimeSignature; // TODO: Just pull from project??
 
-  PatternModel()
+  PatternModel(this.name)
       : id = getID(),
-        name = "Pattern 123",
-        notes = {},
+        notes = HashMap(),
         timeSignatureChanges = [],
         defaultTimeSignature = TimeSignatureModel(4, 4);
 
