@@ -17,8 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
+import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/get_id.dart';
 import 'package:anthem/model/pattern.dart';
+import 'package:anthem/model/project.dart';
 
 class SongModel {
   int id;
@@ -26,10 +30,13 @@ class SongModel {
   Map<int, PatternModel> patterns;
   List<int> patternOrder;
   int? activePatternID;
-  int? activeInstrumentID;
-  int? activeControllerID;
+  int? activeGeneratorID;
 
-  SongModel()
+  // Not to be serialized
+  StreamController<StateChange> _changeStreamController;
+  ProjectModel _project;
+
+  SongModel(this._project, this._changeStreamController)
       : id = getID(),
         ticksPerQuarter = 96,
         patterns = {},
@@ -45,8 +52,7 @@ class SongModel {
         other.patterns == patterns &&
         other.patternOrder == patternOrder &&
         other.activePatternID == activePatternID &&
-        other.activeInstrumentID == activeInstrumentID &&
-        other.activeControllerID == activeControllerID;
+        other.activeGeneratorID == activeGeneratorID;
   }
 
   @override
@@ -56,6 +62,11 @@ class SongModel {
       patterns.hashCode ^
       patternOrder.hashCode ^
       activePatternID.hashCode ^
-      activeInstrumentID.hashCode ^
-      activeControllerID.hashCode;
+      activeGeneratorID.hashCode;
+
+  void setActiveGenerator(int? generatorID) {
+    activeGeneratorID = generatorID;
+    _changeStreamController.add(
+        ActiveGeneratorSet(projectID: _project.id, generatorID: generatorID));
+  }
 }

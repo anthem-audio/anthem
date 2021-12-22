@@ -36,7 +36,7 @@ class GeneratorRow extends StatelessWidget {
       return GestureDetector(
         onTap: () {
           BlocProvider.of<ProjectCubit>(context)
-              .setActiveInstrumentID(state.generatorID);
+              .setActiveGeneratorID(state.generatorID);
         },
         child: SizedBox(
           height: 34,

@@ -31,7 +31,7 @@ import 'generator.dart';
 class ProjectModel {
   int id;
 
-  SongModel song;
+  late SongModel song;
 
   Map<int, InstrumentModel> instruments;
   Map<int, ControllerModel> controllers;
@@ -48,11 +48,11 @@ class ProjectModel {
 
   ProjectModel()
       : id = getID(),
-        song = SongModel(),
         instruments = {},
         controllers = {},
         generatorList = [] {
     stateChangeStream = _stateChangeStreamController.stream;
+    song = SongModel(this, _stateChangeStreamController);
   }
 
   @override
