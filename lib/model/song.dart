@@ -28,7 +28,7 @@ import 'package:anthem/model/project.dart';
 class SongModel {
   int id;
   int ticksPerQuarter = 96; // TODO
-  HashMap<int, PatternModel> patterns;
+  Map<int, PatternModel> patterns;
   List<int> patternOrder;
   int? activePatternID;
   int? activeGeneratorID;

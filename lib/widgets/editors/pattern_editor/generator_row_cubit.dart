@@ -18,95 +18,73 @@
 */
 
 import 'dart:async';
-import 'dart:convert';
 
+import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/model/pattern.dart';
+import 'package:anthem/model/project.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
-import 'package:plugin/generated/rid_api.dart';
+import 'package:optional/optional_internal.dart';
 
 part 'generator_row_state.dart';
 
 class GeneratorRowCubit extends Cubit<GeneratorRowState> {
   // ignore: unused_field
-  late final StreamSubscription<PostedReply> _updateNotesSub;
+  late final StreamSubscription<NoteStateChange> _updateNotesSub;
   // ignore: unused_field
-  late final StreamSubscription<PostedReply> _changePatternSub;
-  final Store _store = Store.instance;
+  late final StreamSubscription<PatternStateChange> _changePatternSub;
+  final ProjectModel project;
 
   GeneratorRowCubit({
-    required int projectID,
+    required this.project,
     required int? patternID,
     required int generatorID,
   }) : super(
           (() {
-            final project = Store.instance.projects[projectID];
-
             var color = const Color(0xFFFFFFFF);
 
-            if (project?.instruments[generatorID] != null) {
-              color = Color(project!.instruments[generatorID]!.color);
-            } else if (project?.controllers[generatorID] != null) {
-              color = Color(project!.controllers[generatorID]!.color);
+            if (project.instruments[generatorID] != null) {
+              color = project.instruments[generatorID]!.color;
+            } else if (project.controllers[generatorID] != null) {
+              color = project.controllers[generatorID]!.color;
             }
 
             return GeneratorRowState(
-              projectID: projectID,
-              patternID: patternID,
+              projectID: project.id,
               generatorID: generatorID,
+              pattern: patternID == null
+                  ? const Optional.empty()
+                  : Optional.ofNullable(project.song.patterns[patternID]),
               color: color,
-              notes: null,
             );
           })(),
         ) {
-    _updateNotesSub = rid.replyChannel.stream
-        .where((event) =>
-            event.type == Reply.NoteAdded || event.type == Reply.NoteDeleted)
+    _updateNotesSub = project.stateChangeStream
+        .where((change) => change is NoteAdded || change is NoteDeleted)
+        .map((change) => change as NoteStateChange)
         .listen(_updateNotes);
-    _changePatternSub = rid.replyChannel.stream
-        .where((event) => event.type == Reply.ActivePatternSet)
+    _changePatternSub = project.stateChangeStream
+        .where((change) => change is ActivePatternSet)
+        .map((change) => change as PatternStateChange)
         .listen(_changePattern);
   }
 
-  List<Note> _getNotes(int patternID) {
-    return _store.projects[state.projectID]!.song.patterns[patternID]
-            ?.generatorNotes[state.generatorID]?.notes ??
-        [];
-  }
+  _changePattern(PatternStateChange change) {
+    final pattern =
+        Optional.ofNullable(project.song.patterns[change.patternID]);
 
-  _changePattern(PostedReply reply) {
-    final patternID = _store.projects[state.projectID]!.song.activePatternId;
-
-    final notes = _getNotes(patternID);
-
-    emit(GeneratorRowState(
-      projectID: state.projectID,
-      generatorID: state.generatorID,
-      patternID: patternID,
-      notes: notes,
-      color: state.color,
+    emit(state.copyWith(
+      pattern: pattern,
     ));
   }
 
-  _updateNotes(PostedReply reply) {
-    if (reply.type == Reply.NoteAdded || reply.type == Reply.NoteDeleted) {
-      Map response = jsonDecode(reply.data!);
-
-      final patternID = response["patternID"];
-      final generatorID = response["generatorID"];
-
-      if (state.patternID != patternID || state.generatorID != generatorID) {
-        return;
-      }
+  _updateNotes(NoteStateChange change) {
+    if (state.pattern.map((pattern) => pattern.id).orElseNull !=
+            change.patternID ||
+        state.generatorID != change.generatorID) {
+      return;
     }
 
-    final notes = _getNotes(state.patternID!);
-
-    emit(GeneratorRowState(
-      projectID: state.projectID,
-      generatorID: state.generatorID,
-      patternID: state.patternID,
-      notes: notes,
-      color: state.color,
-    ));
+    emit(state.copyWith());
   }
 }

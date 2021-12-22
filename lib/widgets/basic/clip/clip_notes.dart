@@ -17,11 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/note.dart';
 import 'package:flutter/widgets.dart';
-import 'package:plugin/generated/rid_api.dart';
 
 class ClipNotes extends StatelessWidget {
-  final List<Note> notes;
+  final List<NoteModel> notes;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;
@@ -48,7 +48,7 @@ class ClipNotes extends StatelessWidget {
 }
 
 class ClipNotesPainter extends CustomPainter {
-  final List<Note> notes;
+  final List<NoteModel> notes;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;
