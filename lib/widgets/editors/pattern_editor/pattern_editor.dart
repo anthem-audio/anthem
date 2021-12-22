@@ -19,6 +19,7 @@
 
 import 'dart:math';
 
+import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
@@ -141,45 +142,45 @@ class _PatternEditorState extends State<PatternEditor> {
                                     const EdgeInsets.symmetric(vertical: 5),
                                 child: SizeChangedLayoutNotifier(
                                   child: Column(
-                                      //     children: state.generatorIDList
-                                      //         .map<Widget>((id) {
-                                      //   final instrument = state.instruments[id];
-                                      //   final controller = state.controllers[id];
+                                          children: state.generatorIDList
+                                              .map<Widget>((id) {
+                                        final instrument = state.instruments[id];
+                                        final controller = state.controllers[id];
 
-                                      //   // TODO: provide type to child
-                                      //   if (instrument != null) {
-                                      //     return BlocProvider(
-                                      //       create: (context) => GeneratorRowCubit(
-                                      //         projectID: state.projectID,
-                                      //         patternID: state.activePattern
-                                      //             .map((pattern) => pattern.id)
-                                      //             .orElse(0),
-                                      //         generatorID: id,
-                                      //       ),
-                                      //       child: const GeneratorRow(),
-                                      //     );
-                                      //   }
+                                        // TODO: provide type to child
+                                        if (instrument != null) {
+                                          return BlocProvider(
+                                            create: (context) => GeneratorRowCubit(
+                                              project: Store.instance.projects[state.projectID]!,
+                                              patternID: state.activePattern
+                                                  .map((pattern) => pattern.id)
+                                                  .orElse(0),
+                                              generatorID: id,
+                                            ),
+                                            child: const GeneratorRow(),
+                                          );
+                                        }
 
-                                      //   if (controller != null) {
-                                      //     return Padding(
-                                      //       padding:
-                                      //           const EdgeInsets.only(bottom: 1),
-                                      //       child: BlocProvider(
-                                      //         create: (context) =>
-                                      //             GeneratorRowCubit(
-                                      //           projectID: state.projectID,
-                                      //           patternID: state.activePattern
-                                      //               .map((pattern) => pattern.id)
-                                      //               .orElse(0),
-                                      //           generatorID: id,
-                                      //         ),
-                                      //         child: const GeneratorRow(),
-                                      //       ),
-                                      //     );
-                                      //   }
+                                        if (controller != null) {
+                                          return Padding(
+                                            padding:
+                                                const EdgeInsets.only(bottom: 1),
+                                            child: BlocProvider(
+                                              create: (context) =>
+                                                  GeneratorRowCubit(
+                                                project: Store.instance.projects[state.projectID]!,
+                                                patternID: state.activePattern
+                                                    .map((pattern) => pattern.id)
+                                                    .orElse(0),
+                                                generatorID: id,
+                                              ),
+                                              child: const GeneratorRow(),
+                                            ),
+                                          );
+                                        }
 
-                                      //   throw Error();
-                                      // }).toList(),
+                                        throw Error();
+                                      }).toList(),
                                       ),
                                 ),
                               ),

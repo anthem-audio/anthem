@@ -27,7 +27,7 @@ import 'note.dart';
 class PatternModel {
   int id;
   String name;
-  HashMap<int, List<NoteModel>> notes;
+  Map<int, List<NoteModel>> notes;
   List<TimeSignatureChangeModel> timeSignatureChanges;
   TimeSignatureModel defaultTimeSignature; // TODO: Just pull from project??
 

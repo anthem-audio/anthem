@@ -24,8 +24,8 @@ class PatternEditorState {
   late final int projectID;
   late final Optional<PatternModel> activePattern;
   late final List<PatternListItem> patternList;
-  late final HashMap<int, InstrumentModel> instruments;
-  late final HashMap<int, ControllerModel> controllers;
+  late final Map<int, GeneratorListItem> instruments;
+  late final Map<int, GeneratorListItem> controllers;
   late final List<int> generatorIDList;
 
   // TODO: Figure out how to do this without late final fields
@@ -71,8 +71,8 @@ class PatternEditorState {
     int? projectID,
     Optional<PatternModel>? activePattern,
     List<PatternListItem>? patternList,
-    HashMap<int, InstrumentModel>? instruments,
-    HashMap<int, ControllerModel>? controllers,
+    Map<int, GeneratorListItem>? instruments,
+    Map<int, GeneratorListItem>? controllers,
     List<int>? generatorIDList,
   }) {
     return PatternEditorState(
@@ -92,4 +92,11 @@ class PatternListItem {
   final String name;
 
   const PatternListItem({required this.id, required this.name});
+}
+
+@immutable
+class GeneratorListItem {
+  final int id;
+
+  const GeneratorListItem({required this.id});
 }

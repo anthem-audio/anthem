@@ -40,7 +40,7 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
   // ignore: unused_field
   late final StreamSubscription<PatternStateChange> _updatePatternListSub;
   // ignore: unused_field
-  late final StreamSubscription<PatternStateChange> _updateGeneratorListSub;
+  late final StreamSubscription<GeneratorStateChange> _updateGeneratorListSub;
 
   final ProjectModel project;
 
@@ -57,7 +57,7 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
     _updateGeneratorListSub = project.stateChangeStream
         .where(
             (change) => change is GeneratorAdded || change is GeneratorRemoved)
-        .map((change) => change as PatternStateChange)
+        .map((change) => change as GeneratorStateChange)
         .listen(_updateGeneratorList);
   }
 
@@ -77,11 +77,13 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
             .toList()));
   }
 
-  _updateGeneratorList(PatternStateChange _reply) {
+  _updateGeneratorList(GeneratorStateChange _reply) {
     emit(state.copyWith(
-      controllers: project.controllers,
+      controllers: project.controllers
+          .map((key, value) => MapEntry(key, GeneratorListItem(id: value.id))),
       generatorIDList: project.generatorList,
-      instruments: project.instruments,
+      instruments: project.instruments
+          .map((key, value) => MapEntry(key, GeneratorListItem(id: value.id))),
     ));
   }
 

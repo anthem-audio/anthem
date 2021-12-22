@@ -34,8 +34,8 @@ class ProjectModel {
 
   late SongModel song;
 
-  HashMap<int, InstrumentModel> instruments;
-  HashMap<int, ControllerModel> controllers;
+  Map<int, InstrumentModel> instruments;
+  Map<int, ControllerModel> controllers;
   List<int> generatorList;
 
   // Not to be serialized
