@@ -30,7 +30,7 @@ abstract class ProjectStateChange extends StateChange {
 }
 
 abstract class GeneratorStateChange extends ProjectStateChange {
-  int generatorID;
+  int? generatorID;
 
   GeneratorStateChange({required int projectID, required this.generatorID})
       : super(projectID: projectID);
@@ -116,7 +116,7 @@ class GeneratorRemoved extends GeneratorStateChange {
 class ActiveGeneratorSet extends GeneratorStateChange {
   ActiveGeneratorSet({
     required int projectID,
-    required int generatorID,
+    required int? generatorID,
   }) : super(projectID: projectID, generatorID: generatorID);
 }
 

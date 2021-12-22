@@ -23,7 +23,7 @@ class PianoRollNotificationHandler extends StatelessWidget {
           onNotification: (notification) {
             final timeView = Provider.of<TimeView>(context, listen: false);
             final instrumentID =
-                BlocProvider.of<ProjectCubit>(context).state.activeInstrumentID;
+                BlocProvider.of<ProjectCubit>(context).state.activeGeneratorID;
 
             /*
               This feels excessive, as it recalculates snap for each

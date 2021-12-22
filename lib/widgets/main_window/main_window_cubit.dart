@@ -59,14 +59,14 @@ class MainWindowCubit extends Cubit<MainWindowState> {
   _updateActiveTab(ActiveProjectChanged change) {
     emit(MainWindowState(
       tabs: state.tabs,
-      selectedTabID: state.selectedTabID,
+      selectedTabID: Store.instance.activeProjectID,
     ));
   }
 
   _updateTabList(ProjectStateChange change) {
     emit(MainWindowState(
       tabs: _getTabs(),
-      selectedTabID: state.selectedTabID,
+      selectedTabID: Store.instance.activeProjectID,
     ));
   }
 
