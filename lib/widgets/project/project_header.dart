@@ -54,30 +54,28 @@ class ProjectHeader extends StatelessWidget {
                     MenuItem(
                         text: "New project",
                         onSelected: () {
-                          mainWindowCubit.newProject().then((projectID) {
-                            mainWindowCubit.switchTab(projectID);
-                            print(projectID);
-                          });
+                          final projectID = mainWindowCubit.newProject();
+                          mainWindowCubit.switchTab(projectID);
                         }),
                     MenuItem(
                         text: "Load project...",
                         onSelected: () {
-                          mainWindowCubit.loadProject().then((projectID) {
-                            if (projectID != null) {
-                              mainWindowCubit.switchTab(projectID);
-                            }
-                          });
+                          // mainWindowCubit.loadProject().then((projectID) {
+                          //   if (projectID != null) {
+                          //     mainWindowCubit.switchTab(projectID);
+                          //   }
+                          // });
                         }),
                     Separator(),
                     MenuItem(
                         text: "Save",
                         onSelected: () {
-                          mainWindowCubit.saveProject(projectID, false);
+                          // mainWindowCubit.saveProject(projectID, false);
                         }),
                     MenuItem(
                         text: "Save as...",
                         onSelected: () {
-                          mainWindowCubit.saveProject(projectID, true);
+                          // mainWindowCubit.saveProject(projectID, true);
                         }),
                   ],
                 ),
@@ -95,7 +93,7 @@ class ProjectHeader extends StatelessWidget {
                 width: 28,
                 iconPath: "assets/icons/file/save.svg",
                 onPress: () {
-                  mainWindowCubit.saveProject(projectID, false);
+                  // mainWindowCubit.saveProject(projectID, false);
                 },
               ),
               const SizedBox(width: 4),

@@ -19,18 +19,25 @@
 
 import 'dart:async';
 
+import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/model/project.dart';
+import 'package:anthem/model/store.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
-import 'package:plugin/generated/rid_api.dart';
+import 'package:plugin/generated/rid_api.dart' as rid;
 
 part 'project_state.dart';
 
 class ProjectCubit extends Cubit<ProjectState> {
   // ignore: unused_field
-  late final StreamSubscription<PostedReply> _updateActiveInstrumentSub;
+  late final StreamSubscription<rid.PostedReply> _rid_updateActiveInstrumentSub;
   // ignore: unused_field
-  late final StreamSubscription<PostedReply> _updateActiveControllerSub;
-  final Store _store = Store.instance;
+  late final StreamSubscription<rid.PostedReply> _rid_updateActiveControllerSub;
+  // ignore: unused_field
+  late final StreamSubscription<StateChange> _updateActiveGeneratorSub;
+
+  final rid.Store _store = rid.Store.instance;
+  late final ProjectModel project;
 
   ProjectCubit({required int id})
       : super(
@@ -40,15 +47,33 @@ class ProjectCubit extends Cubit<ProjectState> {
             activeControllerID: null,
           ),
         ) {
-    _updateActiveInstrumentSub = rid.replyChannel.stream
-        .where((event) => event.type == Reply.ActiveInstrumentSet)
-        .listen(_updateActiveInstrument);
-    _updateActiveControllerSub = rid.replyChannel.stream
-        .where((event) => event.type == Reply.ActiveControllerSet)
-        .listen(_updateActiveController);
+    _rid_updateActiveInstrumentSub = rid.rid.replyChannel.stream
+        .where((event) => event.type == rid.Reply.ActiveInstrumentSet)
+        .listen(_rid_updateActiveInstrument);
+    _rid_updateActiveControllerSub = rid.rid.replyChannel.stream
+        .where((event) => event.type == rid.Reply.ActiveControllerSet)
+        .listen(_rid_updateActiveController);
+
+    project = Store.instance.projects[id]!;
+
+    _updateActiveGeneratorSub = project.stateChangeStream
+        .where((change) => change is ActiveGeneratorSet)
+        .map((change) => change as ActiveGeneratorSet)
+        .listen(_updateActiveGenerator);
+  }
+  
+  _updateActiveGenerator(ActiveGeneratorSet change) {
+    emit(
+      ProjectState(
+        id: state.id,
+        activeControllerID: state.activeControllerID,
+        activeInstrumentID: change.generatorID,
+      ),
+    );
   }
 
-  _updateActiveInstrument(PostedReply _reply) {
+  // TODO: remove
+  _rid_updateActiveInstrument(rid.PostedReply _reply) {
     final id = _store.projects[state.id]!.song.activeInstrumentId;
     emit(
       ProjectState(
@@ -59,7 +84,8 @@ class ProjectCubit extends Cubit<ProjectState> {
     );
   }
 
-  _updateActiveController(PostedReply _reply) {
+  // TODO: remove
+  _rid_updateActiveController(rid.PostedReply _reply) {
     final id = _store.projects[state.id]!.song.activeControllerId;
     emit(
       ProjectState(
@@ -70,10 +96,25 @@ class ProjectCubit extends Cubit<ProjectState> {
     );
   }
 
-  Future<void> undo() => _store.msgUndo(state.id);
-  Future<void> redo() => _store.msgRedo(state.id);
-  Future<void> journalStartEntry() => _store.msgJournalStartEntry(state.id);
-  Future<void> journalCommitEntry() => _store.msgJournalCommitEntry(state.id);
+  Future<void> undo() {
+    project.undo();
+    return _store.msgUndo(state.id); // TODO: remove this
+  }
+
+  Future<void> redo() {
+    project.redo();
+    return _store.msgRedo(state.id); // TODO: remove this
+  }
+
+  Future<void> journalStartEntry() {
+    project.startJournalPage();
+    return _store.msgJournalStartEntry(state.id); // TODO: remove this
+  }
+
+  Future<void> journalCommitEntry() {
+    project.commitJournalPage();
+    return _store.msgJournalCommitEntry(state.id); // TODO: remove this
+  }
 
   Future<void> setActiveInstrumentID(int? id) => _store.msgSetActiveInstrument(
       state.id, id ?? 0); // TODO: nullable once rid supports this
