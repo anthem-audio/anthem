@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart';
@@ -44,47 +45,48 @@ class Project extends StatelessWidget {
           const SizedBox(
             height: 2,
           ),
-          // Expanded(
-          //   child: Panel(
-          //     orientation: PanelOrientation.left,
-          //     // left panel
-          //     panelContent: const ProjectExplorer(),
+          Expanded(
+            child: Panel(
+              orientation: PanelOrientation.left,
+              // left panel
+              panelContent: const ProjectExplorer(),
 
-          //     child: Panel(
-          //       orientation: PanelOrientation.right,
-          //       // right panel
-          //       panelContent: Container(color: Theme.panel.main),
+              child: Panel(
+                orientation: PanelOrientation.right,
+                // right panel
+                panelContent: Container(color: Theme.panel.main),
 
-          //       child: Panel(
-          //         orientation: PanelOrientation.bottom,
-          //         // bottom panel
-          //         panelContent: BlocProvider<PianoRollCubit>(
-          //           create: (context) => PianoRollCubit(projectID: state.id),
-          //           child: const PianoRoll(
-          //             ticksPerQuarter: 96,
-          //           ),
-          //         ),
-          //         child: Panel(
-          //           orientation: PanelOrientation.left,
-          //           child: Container(color: Theme.panel.main),
-          //           // pattern editor
-          //           panelContent: BlocProvider<PatternEditorCubit>(
-          //             create: (context) =>
-          //                 PatternEditorCubit(projectID: state.id),
-          //             child: const PatternEditor(),
-          //           ),
-          //         ),
-          //       ),
-          //     ),
-          //   ),
-          // ),
-          // const SizedBox(
-          //   height: 2,
-          // ),
-          // Container(
-          //   height: 42,
-          //   color: Theme.panel.main,
-          // )
+                child: Panel(
+                  orientation: PanelOrientation.bottom,
+                  // bottom panel
+                  panelContent: SizedBox(),
+                  // panelContent: BlocProvider<PianoRollCubit>(
+                  //   create: (context) => PianoRollCubit(projectID: state.id),
+                  //   child: const PianoRoll(
+                  //     ticksPerQuarter: 96,
+                  //   ),
+                  // ),
+                  child: Panel(
+                    orientation: PanelOrientation.left,
+                    child: Container(color: Theme.panel.main),
+                    // pattern editor
+                    panelContent: BlocProvider<PatternEditorCubit>(
+                      create: (context) =>
+                          PatternEditorCubit(project: Store.instance.projects[state.id]!),
+                      child: const PatternEditor(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(
+            height: 2,
+          ),
+          Container(
+            height: 42,
+            color: Theme.panel.main,
+          )
         ],
       );
     });

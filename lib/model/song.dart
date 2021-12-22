@@ -18,6 +18,7 @@
 */
 
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/get_id.dart';
@@ -27,7 +28,7 @@ import 'package:anthem/model/project.dart';
 class SongModel {
   int id;
   int ticksPerQuarter = 96; // TODO
-  Map<int, PatternModel> patterns;
+  HashMap<int, PatternModel> patterns;
   List<int> patternOrder;
   int? activePatternID;
   int? activeGeneratorID;
@@ -39,7 +40,7 @@ class SongModel {
   SongModel(this._project, this._changeStreamController)
       : id = getID(),
         ticksPerQuarter = 96,
-        patterns = {},
+        patterns = HashMap(),
         patternOrder = [];
 
   @override
@@ -68,5 +69,11 @@ class SongModel {
     activeGeneratorID = generatorID;
     _changeStreamController.add(
         ActiveGeneratorSet(projectID: _project.id, generatorID: generatorID));
+  }
+
+  void setActivePattern(int? patternID) {
+    activePatternID = patternID;
+    _changeStreamController.add(
+        ActivePatternSet(projectID: _project.id, patternID: patternID));
   }
 }

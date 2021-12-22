@@ -22,55 +22,68 @@ part of 'pattern_editor_cubit.dart';
 @immutable
 class PatternEditorState {
   late final int projectID;
-  late final Pattern? pattern;
+  late final Optional<PatternModel> activePattern;
   late final List<PatternListItem> patternList;
-  late final HashMap<int, Instrument> instruments;
-  late final HashMap<int, Controller> controllers;
+  late final HashMap<int, InstrumentModel> instruments;
+  late final HashMap<int, ControllerModel> controllers;
   late final List<int> generatorIDList;
-  late final int activePatternID;
 
   // TODO: Figure out how to do this without late final fields
   // ignore: prefer_const_constructors_in_immutables
   PatternEditorState({
     required this.projectID,
-    required this.pattern,
+    required this.activePattern,
     required this.patternList,
     required this.instruments,
     required this.controllers,
     required this.generatorIDList,
-    required this.activePatternID,
   });
 
   PatternEditorState.init(this.projectID) {
-    pattern = null;
+    activePattern = const Optional.empty();
     patternList = [];
     instruments = HashMap();
     controllers = HashMap();
     generatorIDList = [];
-    activePatternID = 0;
   }
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is PatternEditorState &&
-          other.pattern == pattern &&
+          other.activePattern == activePattern &&
           other.projectID == projectID &&
           other.patternList == patternList &&
           other.instruments == instruments &&
           other.controllers == controllers &&
-          other.generatorIDList == generatorIDList &&
-          other.activePatternID == activePatternID;
+          other.generatorIDList == generatorIDList;
 
   @override
   int get hashCode =>
-      pattern.hashCode ^
+      activePattern.hashCode ^
       projectID.hashCode ^
       patternList.hashCode ^
       instruments.hashCode ^
       controllers.hashCode ^
-      generatorIDList.hashCode ^
-      activePatternID.hashCode;
+      generatorIDList.hashCode;
+
+  PatternEditorState copyWith({
+    int? projectID,
+    Optional<PatternModel>? activePattern,
+    List<PatternListItem>? patternList,
+    HashMap<int, InstrumentModel>? instruments,
+    HashMap<int, ControllerModel>? controllers,
+    List<int>? generatorIDList,
+  }) {
+    return PatternEditorState(
+      projectID: projectID ?? this.projectID,
+      activePattern: activePattern ?? this.activePattern,
+      patternList: patternList ?? this.patternList,
+      instruments: instruments ?? this.instruments,
+      controllers: controllers ?? this.controllers,
+      generatorIDList: generatorIDList ?? this.generatorIDList,
+    );
+  }
 }
 
 @immutable

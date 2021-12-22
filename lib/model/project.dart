@@ -18,6 +18,7 @@
 */
 
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:anthem/commands/command.dart';
 import 'package:anthem/commands/command_queue.dart';
@@ -33,8 +34,8 @@ class ProjectModel {
 
   late SongModel song;
 
-  Map<int, InstrumentModel> instruments;
-  Map<int, ControllerModel> controllers;
+  HashMap<int, InstrumentModel> instruments;
+  HashMap<int, ControllerModel> controllers;
   List<int> generatorList;
 
   // Not to be serialized
@@ -48,8 +49,8 @@ class ProjectModel {
 
   ProjectModel()
       : id = getID(),
-        instruments = {},
-        controllers = {},
+        instruments = HashMap(),
+        controllers = HashMap(),
         generatorList = [] {
     stateChangeStream = _stateChangeStreamController.stream;
     song = SongModel(this, _stateChangeStreamController);
