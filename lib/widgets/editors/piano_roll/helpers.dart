@@ -17,9 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/time_signature.dart';
 import 'package:flutter/foundation.dart';
-
-import 'package:plugin/generated/rid_api.dart';
 
 enum KeyType { black, white }
 enum NotchType { above, below, both }
@@ -118,7 +117,7 @@ class Division {
   int multiplier;
   int divisor;
 
-  Time getSizeInTicks(Time ticksPerQuarter, TimeSignature? timeSignature) {
+  Time getSizeInTicks(Time ticksPerQuarter, TimeSignatureModel? timeSignature) {
     return ((ticksPerQuarter * 4) ~/ (timeSignature?.denominator ?? 4)) *
         multiplier ~/
         divisor;
@@ -156,7 +155,7 @@ class DivisionChange {
   int startLabel;
 }
 
-Time getBarLength(Time ticksPerQuarter, TimeSignature? timeSignature) {
+Time getBarLength(Time ticksPerQuarter, TimeSignatureModel? timeSignature) {
   // Fall back to 4/4 time signature
   if (timeSignature == null) {
     return ticksPerQuarter * 4;
@@ -238,7 +237,7 @@ List<int> factors(int x) {
 }
 
 GetBestDivisionResult getBestDivision({
-  required TimeSignature? timeSignature,
+  required TimeSignatureModel? timeSignature,
   required Snap snap,
   required double ticksPerPixel,
   required double minPixelsPerDivision,
@@ -307,8 +306,8 @@ List<DivisionChange> getDivisionChanges({
   required double viewWidthInPixels,
   required double minPixelsPerSection,
   required Snap snap,
-  required TimeSignature? defaultTimeSignature,
-  required List<TimeSignatureChange> timeSignatureChanges,
+  required TimeSignatureModel? defaultTimeSignature,
+  required List<TimeSignatureChangeModel> timeSignatureChanges,
   required int ticksPerQuarter,
   required double timeViewStart,
   required double timeViewEnd,
@@ -323,7 +322,7 @@ List<DivisionChange> getDivisionChanges({
   var divisionStartPtr = 0;
   var divisionBarLength = 1;
 
-  processTimeSignatureChange(int offset, TimeSignature? timeSignature) {
+  processTimeSignatureChange(int offset, TimeSignatureModel? timeSignature) {
     var lastDivisionSize = offset - divisionStartPtr;
     startLabelPtr += lastDivisionSize ~/ divisionBarLength;
     if (lastDivisionSize % divisionBarLength > 0) {

@@ -38,8 +38,12 @@ class PianoRollNotificationHandler extends StatelessWidget {
               // getter in piano_roll_grid.dart
               minPixelsPerSection: 8,
               snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
-              defaultTimeSignature: state.pattern?.defaultTimeSignature,
-              timeSignatureChanges: state.pattern?.timeSignatureChanges ?? [],
+              defaultTimeSignature: state.pattern
+                  .map((pattern) => pattern.defaultTimeSignature)
+                  .orElseNull,
+              timeSignatureChanges: state.pattern
+                  .map((pattern) => pattern.timeSignatureChanges)
+                  .orElse([]),
               ticksPerQuarter: state.ticksPerQuarter,
               timeViewStart: timeView.start,
               timeViewEnd: timeView.end,

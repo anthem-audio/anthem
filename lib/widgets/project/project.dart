@@ -59,20 +59,19 @@ class Project extends StatelessWidget {
                 child: Panel(
                   orientation: PanelOrientation.bottom,
                   // bottom panel
-                  panelContent: SizedBox(),
-                  // panelContent: BlocProvider<PianoRollCubit>(
-                  //   create: (context) => PianoRollCubit(projectID: state.id),
-                  //   child: const PianoRoll(
-                  //     ticksPerQuarter: 96,
-                  //   ),
-                  // ),
+                  panelContent: BlocProvider<PianoRollCubit>(
+                    create: (context) => PianoRollCubit(projectID: state.id),
+                    child: const PianoRoll(
+                      ticksPerQuarter: 96,
+                    ),
+                  ),
                   child: Panel(
                     orientation: PanelOrientation.left,
                     child: Container(color: Theme.panel.main),
                     // pattern editor
                     panelContent: BlocProvider<PatternEditorCubit>(
-                      create: (context) =>
-                          PatternEditorCubit(project: Store.instance.projects[state.id]!),
+                      create: (context) => PatternEditorCubit(
+                          project: Store.instance.projects[state.id]!),
                       child: const PatternEditor(),
                     ),
                   ),

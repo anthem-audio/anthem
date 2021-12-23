@@ -20,8 +20,26 @@
 import 'package:anthem/model/note.dart';
 import 'package:flutter/widgets.dart';
 
+class ClipNoteModel {
+  late final int key;
+  late final int offset;
+  late final int length;
+
+  ClipNoteModel({
+    required this.key,
+    required this.offset,
+    required this.length,
+  });
+
+  ClipNoteModel.fromNoteModel(NoteModel noteModel) {
+    key = noteModel.key;
+    offset = noteModel.offset;
+    length = noteModel.length;
+  }
+}
+
 class ClipNotes extends StatelessWidget {
-  final List<NoteModel> notes;
+  final List<ClipNoteModel> notes;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;
@@ -48,7 +66,7 @@ class ClipNotes extends StatelessWidget {
 }
 
 class ClipNotesPainter extends CustomPainter {
-  final List<NoteModel> notes;
+  final List<ClipNoteModel> notes;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;

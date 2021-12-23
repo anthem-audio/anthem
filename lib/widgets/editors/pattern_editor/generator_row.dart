@@ -74,8 +74,7 @@ class GeneratorRow extends StatelessWidget {
                         color: Theme.panel.main,
                       ),
                       child: state.pattern.map<Widget>((pattern) {
-                        final notes = pattern.notes[state.generatorID];
-                        if (notes == null) return const SizedBox();
+                        final notes = state.clipNotes;
 
                         return ClipNotes(
                           notes: notes,
