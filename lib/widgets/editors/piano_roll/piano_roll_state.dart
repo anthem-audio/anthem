@@ -22,9 +22,9 @@ part of 'piano_roll_cubit.dart';
 @immutable
 class PianoRollState {
   final int projectID;
-  final Pattern? pattern;
+  final Optional<PatternModel> pattern;
   final int ticksPerQuarter;
-  final int? activeInstrumentID;
+  final Optional<int> activeInstrumentID;
   final List<LocalNote> notes;
 
   const PianoRollState({
@@ -50,50 +50,51 @@ class PianoRollState {
       ticksPerQuarter.hashCode ^
       activeInstrumentID.hashCode ^
       notes.hashCode;
+
+  PianoRollState copyWith({
+    int? projectID,
+    Optional<PatternModel>? pattern,
+    int? ticksPerQuarter,
+    Optional<int>? activeInstrumentID,
+    List<LocalNote>? notes,
+  }) {
+    return PianoRollState(
+      projectID: projectID ?? this.projectID,
+      pattern: pattern ?? this.pattern,
+      ticksPerQuarter: ticksPerQuarter ?? this.ticksPerQuarter,
+      activeInstrumentID: activeInstrumentID ?? this.activeInstrumentID,
+      notes: notes ?? this.notes,
+    );
+  }
 }
 
 // A list of these is used by the piano roll. The list is updated when the Rust
 // note list updates.
-class LocalNote implements Note {
-  late int _id;
-  late int _key;
-  late int _length;
-  late int _offset;
-  late int _velocity;
+class LocalNote implements NoteModel {
+  @override
+  late int id;
+  @override
+  late int key;
+  @override
+  late int length;
+  @override
+  late int offset;
+  @override
+  late int velocity;
 
-  LocalNote(
-      {required int id,
-      required int key,
-      required int length,
-      required int offset,
-      required int velocity}) {
-    _id = id;
-    _key = key;
-    _length = length;
-    _offset = offset;
-    _velocity = velocity;
+  LocalNote({
+    required this.id,
+    required this.key,
+    required this.length,
+    required this.offset,
+    required this.velocity,
+  });
+
+  LocalNote.fromNote(NoteModel note) {
+    id = note.id;
+    key = note.key;
+    length = note.length;
+    offset = note.offset;
+    velocity = note.velocity;
   }
-
-  LocalNote.fromNote(Note note) {
-    _id = note.id;
-    _key = note.key;
-    _length = note.length;
-    _offset = note.offset;
-    _velocity = note.velocity;
-  }
-
-  @override
-  int get id => _id;
-
-  @override
-  int get key => _key;
-
-  @override
-  int get length => _length;
-
-  @override
-  int get offset => _offset;
-
-  @override
-  int get velocity => _velocity;
 }

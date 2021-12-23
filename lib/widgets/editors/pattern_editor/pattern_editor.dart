@@ -19,7 +19,6 @@
 
 import 'dart:math';
 
-import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
@@ -151,7 +150,7 @@ class _PatternEditorState extends State<PatternEditor> {
                                         if (instrument != null) {
                                           return BlocProvider(
                                             create: (context) => GeneratorRowCubit(
-                                              project: Store.instance.projects[state.projectID]!,
+                                              projectID: state.projectID,
                                               patternID: state.activePattern
                                                   .map((pattern) => pattern.id)
                                                   .orElse(0),
@@ -168,7 +167,7 @@ class _PatternEditorState extends State<PatternEditor> {
                                             child: BlocProvider(
                                               create: (context) =>
                                                   GeneratorRowCubit(
-                                                project: Store.instance.projects[state.projectID]!,
+                                                projectID: state.projectID,
                                                 patternID: state.activePattern
                                                     .map((pattern) => pattern.id)
                                                     .orElse(0),

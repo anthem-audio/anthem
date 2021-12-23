@@ -22,6 +22,8 @@ import 'dart:async';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/model/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/store.dart';
+import 'package:anthem/widgets/basic/clip/clip_notes.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
 import 'package:optional/optional_internal.dart';
@@ -33,14 +35,16 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
   late final StreamSubscription<NoteStateChange> _updateNotesSub;
   // ignore: unused_field
   late final StreamSubscription<PatternStateChange> _changePatternSub;
-  final ProjectModel project;
+  late final ProjectModel project;
 
   GeneratorRowCubit({
-    required this.project,
+    required int projectID,
     required int? patternID,
     required int generatorID,
   }) : super(
           (() {
+            final project = Store.instance.projects[projectID]!;
+
             var color = const Color(0xFFFFFFFF);
 
             if (project.instruments[generatorID] != null) {
@@ -59,6 +63,7 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
             );
           })(),
         ) {
+    project = Store.instance.projects[projectID]!;
     _updateNotesSub = project.stateChangeStream
         .where((change) => change is NoteAdded || change is NoteDeleted)
         .map((change) => change as NoteStateChange)
@@ -85,6 +90,10 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
       return;
     }
 
-    emit(state.copyWith());
+    emit(state.copyWith(
+      clipNotes: state.pattern.value.notes[state.generatorID]
+          ?.map((note) => ClipNoteModel.fromNoteModel(note))
+          .toList(),
+    ));
   }
 }

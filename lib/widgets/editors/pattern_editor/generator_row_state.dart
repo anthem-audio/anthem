@@ -25,12 +25,14 @@ class GeneratorRowState {
   final int projectID;
   final Optional<PatternModel> pattern;
   final Color color;
+  final List<ClipNoteModel> clipNotes;
 
   const GeneratorRowState({
     required this.generatorID,
     required this.projectID,
     required this.pattern,
     required this.color,
+    this.clipNotes = const [],
   });
 
   @override
@@ -40,26 +42,30 @@ class GeneratorRowState {
           other.generatorID == generatorID &&
           other.projectID == projectID &&
           other.pattern == pattern &&
-          other.color == color;
+          other.color == color &&
+          other.clipNotes == clipNotes;
 
   @override
   int get hashCode =>
       generatorID.hashCode ^
       projectID.hashCode ^
       pattern.hashCode ^
-      color.hashCode;
+      color.hashCode ^
+      clipNotes.hashCode;
 
   GeneratorRowState copyWith({
     int? generatorID,
     int? projectID,
     Optional<PatternModel>? pattern,
     Color? color,
+    List<ClipNoteModel>? clipNotes,
   }) {
     return GeneratorRowState(
       generatorID: generatorID ?? this.generatorID,
       projectID: projectID ?? this.projectID,
       pattern: pattern ?? this.pattern,
       color: color ?? this.color,
+      clipNotes: clipNotes ?? this.clipNotes,
     );
   }
 }
