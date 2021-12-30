@@ -18,12 +18,17 @@
 */
 
 import 'dart:collection';
+import 'dart:convert';
 
 import 'package:anthem/helpers/get_id.dart';
 import 'package:anthem/model/time_signature.dart';
+import 'package:json_annotation/json_annotation.dart';
 
 import 'note.dart';
 
+part 'pattern.g.dart';
+
+@JsonSerializable()
 class PatternModel {
   int id;
   String name;
@@ -36,6 +41,14 @@ class PatternModel {
         notes = HashMap(),
         timeSignatureChanges = [],
         defaultTimeSignature = TimeSignatureModel(4, 4);
+
+  factory PatternModel.fromJson(Map<String, dynamic> json) =>
+      _$PatternModelFromJson(json);
+
+  Map<String, dynamic> toJson() => _$PatternModelToJson(this);
+
+  @override
+  String toString() => json.encode(toJson());
 
   @override
   operator ==(Object other) {

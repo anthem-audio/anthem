@@ -19,6 +19,7 @@
 
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 
 import 'package:anthem/commands/command.dart';
 import 'package:anthem/commands/command_queue.dart';
@@ -26,26 +27,44 @@ import 'package:anthem/commands/journal_commands.dart';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/get_id.dart';
 import 'package:anthem/model/song.dart';
+import 'package:json_annotation/json_annotation.dart';
 
 import 'generator.dart';
 
-class ProjectModel {
-  int id;
+part 'project.g.dart';
 
+@JsonSerializable()
+class ProjectModel {
   late SongModel song;
 
   Map<int, InstrumentModel> instruments;
   Map<int, ControllerModel> controllers;
   List<int> generatorList;
 
-  // Not to be serialized
+  @JsonKey(ignore: true)
+  int id;
+
+  @JsonKey(ignore: true)
   String? filePath;
+
+  @JsonKey(ignore: true)
   CommandQueue commandQueue = CommandQueue();
+
+  @JsonKey(ignore: true)
   List<Command> _journalPageAccumulator = [];
+
+  @JsonKey(ignore: true)
   bool _journalPageActive = false;
+
+  @JsonKey(ignore: true)
   final StreamController<StateChange> _stateChangeStreamController =
       StreamController.broadcast();
+
+  @JsonKey(ignore: true)
   late Stream<StateChange> stateChangeStream;
+
+  @JsonKey(ignore: true)
+  bool isSaved = false;
 
   ProjectModel()
       : id = getID(),
@@ -53,8 +72,28 @@ class ProjectModel {
         controllers = HashMap(),
         generatorList = [] {
     stateChangeStream = _stateChangeStreamController.stream;
-    song = SongModel(this, _stateChangeStreamController);
+    song = SongModel();
   }
+
+  factory ProjectModel.fromJson(Map<String, dynamic> json) {
+    final model = _$ProjectModelFromJson(json);
+    model.isSaved = true;
+    return model;
+  }
+
+  /// This function is run after deserialization. It allows us to do some setup
+  /// that the deserialization step can't do for us.
+  void hydrate() {
+    song.hydrate(
+      project: this,
+      changeStreamController: _stateChangeStreamController,
+    );
+  }
+
+  Map<String, dynamic> toJson() => _$ProjectModelToJson(this);
+
+  @override
+  String toString() => json.encode(toJson());
 
   @override
   bool operator ==(Object other) {
@@ -93,8 +132,7 @@ class ProjectModel {
   void execute(Command command) {
     if (_journalPageActive) {
       _journalPageAccumulator.add(command);
-    }
-    else {
+    } else {
       final change = commandQueue.executeAndPush(command);
       _dispatch(change);
     }

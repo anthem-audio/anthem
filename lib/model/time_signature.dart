@@ -17,6 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:convert';
+
+import 'package:json_annotation/json_annotation.dart';
+
+part 'time_signature.g.dart';
+
+@JsonSerializable()
 class TimeSignatureModel {
   int numerator;
   int denominator;
@@ -25,6 +32,14 @@ class TimeSignatureModel {
     this.numerator,
     this.denominator,
   );
+
+  factory TimeSignatureModel.fromJson(Map<String, dynamic> json) =>
+      _$TimeSignatureModelFromJson(json);
+
+  Map<String, dynamic> toJson() => _$TimeSignatureModelToJson(this);
+
+  @override
+  String toString() => json.encode(toJson());
 
   @override
   operator ==(Object other) {
@@ -39,6 +54,7 @@ class TimeSignatureModel {
   int get hashCode => numerator.hashCode ^ denominator.hashCode;
 }
 
+@JsonSerializable()
 class TimeSignatureChangeModel {
   TimeSignatureModel timeSignature;
   int offset;
@@ -47,6 +63,14 @@ class TimeSignatureChangeModel {
     required this.timeSignature,
     required this.offset,
   });
+
+  factory TimeSignatureChangeModel.fromJson(Map<String, dynamic> json) =>
+      _$TimeSignatureChangeModelFromJson(json);
+
+  Map<String, dynamic> toJson() => _$TimeSignatureChangeModelToJson(this);
+
+  @override
+  String toString() => json.encode(toJson());
 
   @override
   operator ==(Object other) {

@@ -97,4 +97,9 @@ class LocalNote implements NoteModel {
     offset = note.offset;
     velocity = note.velocity;
   }
+
+  @override
+  Map<String, dynamic> toJson() {
+    throw UnimplementedError();
+  }
 }

@@ -75,6 +75,8 @@ class AppModel {
   }
 
   void init() {
-    addProject(ProjectModel());
+    final model = ProjectModel();
+    model.hydrate();
+    addProject(model);
   }
 }

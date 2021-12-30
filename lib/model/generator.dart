@@ -17,12 +17,18 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:convert';
 import 'dart:ui';
+import 'package:anthem/helpers/convert.dart';
 import 'package:anthem/helpers/get_id.dart';
+import 'package:json_annotation/json_annotation.dart';
+
+part 'generator.g.dart';
 
 abstract class GeneratorModel {
   int id;
   String name;
+  @JsonKey(toJson: ColorConvert.colorToInt, fromJson: ColorConvert.intToColor)
   Color color;
 
   GeneratorModel({
@@ -44,16 +50,34 @@ abstract class GeneratorModel {
   int get hashCode => id.hashCode ^ name.hashCode ^ color.hashCode;
 }
 
+@JsonSerializable()
 class InstrumentModel extends GeneratorModel {
   InstrumentModel({
     required String name,
     required Color color,
   }) : super(name: name, color: color);
+
+  factory InstrumentModel.fromJson(Map<String, dynamic> json) =>
+      _$InstrumentModelFromJson(json);
+
+  Map<String, dynamic> toJson() => _$InstrumentModelToJson(this);
+
+  @override
+  String toString() => json.encode(toJson());
 }
 
+@JsonSerializable()
 class ControllerModel extends GeneratorModel {
   ControllerModel({
     required String name,
     required Color color,
   }) : super(name: name, color: color);
+
+  factory ControllerModel.fromJson(Map<String, dynamic> json) =>
+      _$ControllerModelFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ControllerModelToJson(this);
+
+  @override
+  String toString() => json.encode(toJson());
 }

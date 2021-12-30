@@ -19,12 +19,17 @@
 
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/get_id.dart';
 import 'package:anthem/model/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:json_annotation/json_annotation.dart';
 
+part 'song.g.dart';
+
+@JsonSerializable()
 class SongModel {
   int id;
   int ticksPerQuarter = 96; // TODO
@@ -33,15 +38,33 @@ class SongModel {
   int? activePatternID;
   int? activeGeneratorID;
 
-  // Not to be serialized
-  StreamController<StateChange> _changeStreamController;
-  ProjectModel _project;
+  @JsonKey(ignore: true)
+  StreamController<StateChange>? _changeStreamController;
 
-  SongModel(this._project, this._changeStreamController)
+  @JsonKey(ignore: true)
+  ProjectModel? _project;
+
+  SongModel()
       : id = getID(),
         ticksPerQuarter = 96,
         patterns = HashMap(),
         patternOrder = [];
+
+  factory SongModel.fromJson(Map<String, dynamic> json) =>
+      _$SongModelFromJson(json);
+
+  Map<String, dynamic> toJson() => _$SongModelToJson(this);
+
+  @override
+  String toString() => json.encode(toJson());
+
+  void hydrate({
+    required ProjectModel project,
+    required StreamController<StateChange> changeStreamController,
+  }) {
+    _project = project;
+    _changeStreamController = changeStreamController;
+  }
 
   @override
   operator ==(Object other) {
@@ -67,13 +90,13 @@ class SongModel {
 
   void setActiveGenerator(int? generatorID) {
     activeGeneratorID = generatorID;
-    _changeStreamController.add(
-        ActiveGeneratorSet(projectID: _project.id, generatorID: generatorID));
+    _changeStreamController!.add(
+        ActiveGeneratorSet(projectID: _project!.id, generatorID: generatorID));
   }
 
   void setActivePattern(int? patternID) {
     activePatternID = patternID;
-    _changeStreamController.add(
-        ActivePatternSet(projectID: _project.id, patternID: patternID));
+    _changeStreamController!
+        .add(ActivePatternSet(projectID: _project!.id, patternID: patternID));
   }
 }

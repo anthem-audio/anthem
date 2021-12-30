@@ -18,13 +18,15 @@
 */
 
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/foundation.dart';
-// import 'package:file_picker/file_picker.dart';
+import 'package:file_picker/file_picker.dart';
 
 part 'main_window_state.dart';
 
@@ -75,53 +77,59 @@ class MainWindowCubit extends Cubit<MainWindowState> {
   // Returns the ID of the new tab
   int newProject() {
     ProjectModel project = ProjectModel();
+    project.hydrate();
     Store.instance.addProject(project);
     return project.id;
   }
 
   void closeProject(int projectID) => Store.instance.closeProject(projectID);
 
-  // TODO
-  // // Returns the ID of the loaded project, or null if the project load failed
-  // // or was cancelled
-  // Future<int?> loadProject() async {
-  //   try {
-  //     final path = (await FilePicker.platform.pickFiles(
-  //       type: FileType.custom,
-  //       allowedExtensions: ["anthem"],
-  //     ))
-  //         ?.files[0]
-  //         .path;
-  //     if (path == null) return null;
-  //     final id = (await _store.msgLoadProject(path)).data!;
-  //     return int.parse(id);
-  //   } catch (e) {
-  //     return null;
-  //   }
-  // }
+  /// Returns the ID of the loaded project, or null if the project load failed
+  /// or was cancelled
+  /// TODO: Granular error handling
+  Future<int?> loadProject() async {
+    try {
+      final path = (await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ["anthem"],
+      ))
+          ?.files[0]
+          .path;
+      if (path == null) return null;
+      final file = await File(path).readAsString();
 
-  // Future<void> saveProject(int projectID, bool alwaysUseFilePicker) async {
-  //   try {
-  //     final project = _store.projects[projectID]!;
+      final project = ProjectModel.fromJson(json.decode(file));
+      project.hydrate();
+      Store.instance.addProject(project);
 
-  //     String? path;
-  //     if (alwaysUseFilePicker || !project.isSaved) {
-  //       path = (await FilePicker.platform.pickFiles(
-  //         type: FileType.custom,
-  //         allowedExtensions: ["anthem"],
-  //       ))
-  //           ?.files[0]
-  //           .path;
-  //     } else {
-  //       path = project.filePath;
-  //     }
+      return project.id;
+    } catch (e) {
+      return null;
+    }
+  }
 
-  //     if (path == null) return;
+  Future<void> saveProject(int projectID, bool alwaysUseFilePicker) async {
+    try {
+      final project = Store.instance.projects[projectID]!;
 
-  //     await _store.msgSaveProject(projectID, path);
-  //   } catch (e) {
-  //     // TODO: the backend isn't telling us if the save failed, so we can't act on that
-  //     return;
-  //   }
-  // }
+      String? path;
+      if (alwaysUseFilePicker || !project.isSaved) {
+        path = (await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ["anthem"],
+        ))
+            ?.files[0]
+            .path;
+      } else {
+        path = project.filePath;
+      }
+
+      if (path == null) return;
+
+      await File(path).writeAsString(project.toString());
+    } catch (e) {
+      // TODO: the backend isn't telling us if the save failed, so we can't act on that
+      return;
+    }
+  }
 }
