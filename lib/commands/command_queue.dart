@@ -39,13 +39,13 @@ class CommandQueue {
   StateChange undo() {
     if (commandPointer - 1 < 0) return NothingChanged();
     commandPointer--;
-    return commands[commandPointer - 1].rollback();
+    return commands[commandPointer].rollback();
   }
 
   StateChange redo() {
-    if (commandPointer + 1 >= commands.length) return NothingChanged();
+    if (commandPointer + 1 > commands.length) return NothingChanged();
     commandPointer++;
-    return commands[commandPointer + 1].execute();
+    return commands[commandPointer - 1].execute();
   }
 
   @override
