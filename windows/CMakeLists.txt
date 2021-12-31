@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
-project(anthem LANGUAGES CXX)
+project(with_flutter LANGUAGES CXX)
 
-set(BINARY_NAME "anthem")
+set(BINARY_NAME "with_flutter")
 
 cmake_policy(SET CMP0063 NEW)
 
@@ -50,6 +50,9 @@ add_subdirectory("runner")
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+# Include Rust crate
+
+include(./rust.cmake)
 
 # === Installation ===
 # Support files are copied into place next to the executable, so that it can

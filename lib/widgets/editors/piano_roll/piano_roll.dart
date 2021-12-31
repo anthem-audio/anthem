@@ -24,10 +24,8 @@ import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_notification_handler.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:plugin/generated/rid_api.dart';
 
 import 'package:provider/provider.dart';
 
