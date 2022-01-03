@@ -4,7 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:anthem/bridge_generated.dart';
+import 'package:anthem/flutter_rust_bridge_generated.dart';
 import 'package:anthem/off_topic_code.dart';
 
 // Simple Flutter code. If you are not familiar with Flutter, this may sounds a bit long. But indeed

@@ -6,7 +6,7 @@ import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:anthem/bridge_generated.dart';
+import 'package:anthem/flutter_rust_bridge_generated.dart';
 import 'package:anthem/main_from_example.dart' as app;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';

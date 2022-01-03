@@ -6,7 +6,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:anthem/bridge_generated.dart';
+import 'package:anthem/flutter_rust_bridge_generated.dart';
 
 Widget buildPageUi(Uint8List? exampleImage, String? exampleText) {
   return MaterialApp(
