@@ -1,6 +1,58 @@
+/*
+    Copyright (C) 2022 Joshua Wade
+
+    This file is part of Anthem.
+
+    Anthem is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Anthem is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+    General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+*/
+
 use anyhow::{anyhow, Result};
 
 use flutter_rust_bridge::ZeroCopyBuffer;
+
+use crate::{
+    dependencies::engine_model::{message::{Request, RequestWrapper, Reply}, util::get_id},
+    engine_bridge::EngineBridge,
+    state::STATE,
+};
+
+// Anthem code
+
+// TODO: error handling
+pub fn start_engine(id: i64) -> Result<()> {
+    let bridge = EngineBridge::new(&id.to_string());
+    STATE.lock().unwrap().engine_processes.insert(id, bridge);
+    Ok(())
+}
+
+// TODO: error handling
+pub fn stop_engine(id: i64) -> Result<()> {
+    STATE.lock().unwrap().engine_processes.remove(&id);
+    Ok(())
+}
+
+// TODO: error handling
+// TODO: full duplex
+pub fn send(engine_id: i64, request: Request) -> Result<Option<Reply>> {
+    let mut state = STATE.lock().unwrap();
+    let engine = state.engine_processes.get_mut(&engine_id).unwrap();
+    engine.send(&RequestWrapper::new(get_id(), request));
+    let reply_wrapper = engine.receive();
+    Ok(reply_wrapper.reply)
+}
+
+// Example code (TODO: remove)
 
 //
 // NOTE: Please look at https://github.com/fzyzcjy/flutter_rust_bridge/blob/master/frb_example/simple/rust/src/api.rs

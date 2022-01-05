@@ -48,3 +48,8 @@ app.*.map.json
 
 assets/build/
 logs/
+generated/
+
+# Hacky dependency thing from bindgen script
+/rust/src/dependencies/engine_model/*
+!/rust/src/dependencies/engine_model/mod.rs

@@ -22,7 +22,7 @@
 use std::io::{BufReader, Read, Write};
 
 use anthem_engine_model::{
-    message::{Message, Reply},
+    message::{Reply, ReplyWrapper, Request, RequestWrapper},
     project::Project,
 };
 use bincode;
@@ -34,7 +34,7 @@ use log4rs::{
     config::{Appender, Root},
 };
 
-fn write(stream: &mut LocalSocketStream, reply: &Reply) {
+fn write(stream: &mut LocalSocketStream, reply: &ReplyWrapper) {
     let message_bytes = bincode::serialize(reply).unwrap();
     let message_size = message_bytes.len().to_be_bytes();
 
@@ -103,24 +103,33 @@ fn main() {
             .read_exact(&mut message_buffer)
             .expect("Failed to read message");
 
-        let message: Message =
+        let request_wrapper: RequestWrapper =
             bincode::deserialize(&message_buffer).expect("Message could not be parsed as bincode");
+        let id = request_wrapper.id;
 
-        match message {
-            Message::Init => {
+        let did_reply = match request_wrapper.request {
+            Request::Init => {
                 debug!("Initialize processed successfully!");
+                false
             }
-            Message::Exit => {
+            Request::Exit => {
                 debug!("Exiting...");
+                write(reader.get_mut(), &ReplyWrapper::new(id, None));
                 break;
             }
 
-            Message::GetModel => {
-                write(reader.get_mut(), &Reply::GetModelReply(Project::default()));
+            Request::GetModel => {
+                write(
+                    reader.get_mut(),
+                    &ReplyWrapper::new(id, Some(Reply::GetModelReply(Project::default()))),
+                );
+                true
             }
-            Message::LoadModel(_project) => {
-                // TODO
-            }
+            Request::LoadModel(_project) => false,
+        };
+
+        if !did_reply {
+            write(reader.get_mut(), &ReplyWrapper::new(id, None));
         }
     }
 }

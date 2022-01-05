@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2021 Joshua Wade
+    Copyright (C) 2022 Joshua Wade
 
     This file is part of Anthem.
 
@@ -17,23 +17,24 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+use crate::engine_bridge::EngineBridge;
+
+use lazy_static::lazy_static;
+use std::sync::Mutex;
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
-
-use super::{pattern::Pattern, util::get_id};
-
-#[derive(Serialize, Deserialize)]
-pub struct Song {
-    id: u64,
-    patterns: HashMap<u64, Pattern>,
+pub struct State {
+    pub engine_processes: HashMap<i64, EngineBridge>
 }
 
-impl Default for Song {
-    fn default() -> Self {
-        Self {
-            id: get_id(),
-            patterns: HashMap::new(),
+impl State {
+    pub fn new() -> Self {
+        State {
+            engine_processes: HashMap::new()
         }
     }
+}
+
+lazy_static! {
+    pub static ref STATE: Mutex<State> = Mutex::new(State::new());
 }

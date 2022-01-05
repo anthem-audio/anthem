@@ -19,7 +19,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{song::Song, util::get_id};
+use super::{song::Song, util::get_id};
 
 #[derive(Serialize, Deserialize)]
 pub struct Project {

@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2021 Joshua Wade
+    Copyright (C) 2021 - 2022 Joshua Wade
 
     This file is part of Anthem.
 
@@ -19,10 +19,10 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::project::Project;
+use super::project::Project;
 
 #[derive(Serialize, Deserialize)]
-pub enum Message {
+pub enum Request {
     // Lifecycle
     Init,
     Exit,
@@ -33,9 +33,33 @@ pub enum Message {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct RequestWrapper {
+    pub id: u64,
+    pub request: Request,
+}
+
+impl RequestWrapper {
+    pub fn new(id: u64, request: Request) -> Self {
+        RequestWrapper { id, request }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
 pub enum Reply {
     // Lifecycle
 
     // Save / Load
     GetModelReply(Project),
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ReplyWrapper {
+    pub id: u64,
+    pub reply: Option<Reply>,
+}
+
+impl ReplyWrapper {
+    pub fn new(id: u64, reply: Option<Reply>) -> Self {
+        ReplyWrapper { id, reply }
+    }
 }

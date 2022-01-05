@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2021 Joshua Wade
+    Copyright (C) 2022 Joshua Wade
 
     This file is part of Anthem.
 
@@ -17,23 +17,4 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use std::collections::HashMap;
-
-use serde::{Deserialize, Serialize};
-
-use super::{pattern::Pattern, util::get_id};
-
-#[derive(Serialize, Deserialize)]
-pub struct Song {
-    id: u64,
-    patterns: HashMap<u64, Pattern>,
-}
-
-impl Default for Song {
-    fn default() -> Self {
-        Self {
-            id: get_id(),
-            patterns: HashMap::new(),
-        }
-    }
-}
+pub mod engine_model;
