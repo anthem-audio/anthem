@@ -17,23 +17,21 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 
 use super::{pattern::Pattern, util::get_id};
 
 #[derive(Serialize, Deserialize)]
 pub struct Song {
-    id: u64,
-    patterns: HashMap<u64, Pattern>,
+    pub id: u64,
+    pub patterns: Vec<Pattern>,
 }
 
 impl Default for Song {
     fn default() -> Self {
         Self {
             id: get_id(),
-            patterns: HashMap::new(),
+            patterns: Vec::new(),
         }
     }
 }

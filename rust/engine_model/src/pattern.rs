@@ -21,5 +21,5 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct Pattern {
-    id: u64,
+    pub id: u64,
 }

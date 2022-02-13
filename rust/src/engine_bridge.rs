@@ -19,10 +19,13 @@
 
 // cspell:ignore interprocess bincode
 
-use std::{io::{BufReader, Read, Write}, process::Stdio};
+use std::{
+    io::{BufReader, Read, Write},
+    process::Stdio,
+};
 
 // use anthem_engine_model::message::{Message, Reply};
-use crate::dependencies::engine_model::message::{RequestWrapper,  ReplyWrapper};
+use crate::dependencies::engine_model::message::{ReplyWrapper, RequestWrapper};
 use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
 
 pub struct EngineBridge {
@@ -38,23 +41,27 @@ impl EngineBridge {
         let listener =
             LocalSocketListener::bind(id.clone()).expect("Could not create local socket");
 
-        std::process::Command::new(
-            &std::path::Path::new("data")
-                .join("flutter_assets")
-                .join("assets")
-                .join("build")
-                .join("anthem_engine")
-                .to_str()
-                .unwrap(),
-        )
-        .arg(id)
-        // Connecting the new process to stdout in this process causes the Flutter
-        // dev connection to break
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .expect("Failed to start engine");
+        let path = std::path::Path::new("data")
+            .join("flutter_assets")
+            .join("assets")
+            .join("build")
+            .join("anthem_engine");
+        
+        let path_str = path
+            .to_str()
+            .unwrap();
+
+        println!("{} / {:?}", path_str, std::env::current_dir());
+
+        std::process::Command::new(&path_str)
+            .arg(id)
+            // Connecting the new process to stdout in this process causes the Flutter
+            // dev connection to break
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .expect("Failed to start engine");
 
         let stream = listener.accept().expect("Could not connect to UI");
         let reader = BufReader::new(stream);

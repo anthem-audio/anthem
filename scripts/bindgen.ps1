@@ -28,7 +28,10 @@ Remove-Item `
 # Main API
 flutter_rust_bridge_codegen `
     --rust-input rust\src\api.rs `
-    --dart-output lib\generated\api.dart `
+    --dart-output lib\bridge_generated.dart `
     --rust-output rust\src\generated\api.rs
+    # --dart-output lib\generated\api.dart
     # iOS is probably broken anyway
     # --c-output ios\Runner\flutter_rust_bridge_generated.h
+
+flutter pub run build_runner build
