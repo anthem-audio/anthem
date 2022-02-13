@@ -24,14 +24,14 @@ use super::{song::Song, util::get_id};
 #[derive(Serialize, Deserialize)]
 pub struct Project {
     pub id: u64,
-    pub song: Song,
+    pub song: Box<Song>,
 }
 
 impl Default for Project {
     fn default() -> Self {
         Self {
             id: get_id(),
-            song: Song::default(),
+            song: Box::new(Song::default()),
         }
     }
 }

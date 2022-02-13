@@ -17,6 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:ffi';
+import 'dart:io';
+
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/menu/menu_overlay.dart';
@@ -27,9 +30,20 @@ import 'package:provider/provider.dart';
 import 'model/store.dart';
 import 'widgets/main_window/main_window.dart';
 import 'widgets/main_window/main_window_cubit.dart';
+import 'package:anthem/bridge_generated.dart';
+
+const base = 'anthem';
+final path = Platform.isWindows
+    ? '$base.dll'
+    : Platform.isMacOS
+        ? 'lib$base.dylib'
+        : 'lib$base.so';
+late final dylib = Platform.isIOS ? DynamicLibrary.process() : DynamicLibrary.open(path);
+late final api = AnthemImpl(dylib);
 
 void main() async {
   Store.instance.init();
+  api.startEngine(id: 0);
   runApp(const MyApp());
 }
 
