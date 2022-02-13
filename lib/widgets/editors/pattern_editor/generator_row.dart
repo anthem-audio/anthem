@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:math';
-
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes.dart';
 import 'package:anthem/widgets/project/project_cubit.dart';
@@ -38,7 +36,7 @@ class GeneratorRow extends StatelessWidget {
       return GestureDetector(
         onTap: () {
           BlocProvider.of<ProjectCubit>(context)
-              .setActiveInstrumentID(state.generatorID);
+              .setActiveGeneratorID(state.generatorID);
         },
         child: SizedBox(
           height: 34,
@@ -68,23 +66,25 @@ class GeneratorRow extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Container(
-                    height: 30,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Theme.panel.border),
-                      borderRadius: const BorderRadius.all(Radius.circular(1)),
-                      color: Theme.panel.main,
-                    ),
-                    child: state.notes == null
-                        ? const SizedBox()
-                        : ClipNotes(
-                            notes: state.notes!,
-                            timeViewStart: 0,
-                            // 1 bar is 100 pxiels, can be tweaked (and should probably be set above?)
-                            // TODO: hard-coded ticks-per-beat
-                            ticksPerPixel: (96 * 4) / 100,
-                            color: state.color,
-                          ),
-                  ),
+                      height: 30,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Theme.panel.border),
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(1)),
+                        color: Theme.panel.main,
+                      ),
+                      child: state.pattern.map<Widget>((pattern) {
+                        final notes = state.clipNotes;
+
+                        return ClipNotes(
+                          notes: notes,
+                          timeViewStart: 0,
+                          // 1 bar is 100 pxiels, can be tweaked (and should probably be set above?)
+                          // TODO: hard-coded ticks-per-beat
+                          ticksPerPixel: (96 * 4) / 100,
+                          color: state.color,
+                        );
+                      }).orElse(const SizedBox())),
                 ),
               ],
             ),

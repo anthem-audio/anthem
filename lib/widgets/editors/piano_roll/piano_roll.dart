@@ -19,14 +19,13 @@
 
 import 'dart:math';
 
+import 'package:anthem/model/note.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_notification_handler.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:plugin/generated/rid_api.dart';
 
 import 'package:provider/provider.dart';
 
@@ -144,8 +143,11 @@ class _PianoRollContentState extends State<_PianoRollContent> {
 
       final timeView = context.watch<TimeView>();
 
-      final timelineHeight =
-          (pattern?.timeSignatureChanges ?? []).isNotEmpty ? 42.0 : 21.0;
+      final timelineHeight = (pattern
+              .map((pattern) => pattern.timeSignatureChanges)
+              .orElse([])).isNotEmpty
+          ? 42.0
+          : 21.0;
 
       final notes = state.notes;
 
@@ -200,7 +202,7 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                         SizedBox(
                           height: timelineHeight,
                           child: Timeline(
-                            pattern: pattern,
+                            pattern: pattern.orElseNull,
                             ticksPerQuarter: widget.ticksPerQuarter,
                           ),
                         ),
@@ -263,7 +265,7 @@ class NoteLayoutDelegate extends MultiChildLayoutDelegate {
     required this.timeViewEnd,
   });
 
-  final List<Note> notes;
+  final List<NoteModel> notes;
   final double timeViewStart;
   final double timeViewEnd;
   final double keyValueAtTop;

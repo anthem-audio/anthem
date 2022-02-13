@@ -37,18 +37,10 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
   final ScrollController controller = ScrollController();
 
   @override
-  void initState() {
-    // controller.
-    WidgetsBinding.instance?.addPostFrameCallback((timeStamp) {
-      print(controller.position.maxScrollExtent);
-    });
-    super.initState();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Background(
       type: BackgroundType.dark,
+      borderRadius: const BorderRadius.all(Radius.circular(2)),
       child: Padding(
         padding: const EdgeInsets.all(6),
         child: Column(

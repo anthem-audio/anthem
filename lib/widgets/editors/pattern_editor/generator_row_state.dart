@@ -23,16 +23,16 @@ part of 'generator_row_cubit.dart';
 class GeneratorRowState {
   final int generatorID;
   final int projectID;
-  final int? patternID;
-  final List<Note>? notes;
+  final Optional<PatternModel> pattern;
   final Color color;
+  final List<ClipNoteModel> clipNotes;
 
   const GeneratorRowState({
     required this.generatorID,
     required this.projectID,
-    required this.patternID,
-    required this.notes,
+    required this.pattern,
     required this.color,
+    this.clipNotes = const [],
   });
 
   @override
@@ -41,15 +41,31 @@ class GeneratorRowState {
       other is GeneratorRowState &&
           other.generatorID == generatorID &&
           other.projectID == projectID &&
-          other.patternID == patternID &&
-          other.notes == notes &&
-          other.color == color;
+          other.pattern == pattern &&
+          other.color == color &&
+          other.clipNotes == clipNotes;
 
   @override
   int get hashCode =>
       generatorID.hashCode ^
       projectID.hashCode ^
-      patternID.hashCode ^
-      notes.hashCode ^
-      color.hashCode;
+      pattern.hashCode ^
+      color.hashCode ^
+      clipNotes.hashCode;
+
+  GeneratorRowState copyWith({
+    int? generatorID,
+    int? projectID,
+    Optional<PatternModel>? pattern,
+    Color? color,
+    List<ClipNoteModel>? clipNotes,
+  }) {
+    return GeneratorRowState(
+      generatorID: generatorID ?? this.generatorID,
+      projectID: projectID ?? this.projectID,
+      pattern: pattern ?? this.pattern,
+      color: color ?? this.color,
+      clipNotes: clipNotes ?? this.clipNotes,
+    );
+  }
 }

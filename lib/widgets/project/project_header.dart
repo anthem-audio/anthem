@@ -54,10 +54,8 @@ class ProjectHeader extends StatelessWidget {
                     MenuItem(
                         text: "New project",
                         onSelected: () {
-                          mainWindowCubit.newProject().then((projectID) {
-                            mainWindowCubit.switchTab(projectID);
-                            print(projectID);
-                          });
+                          final projectID = mainWindowCubit.newProject();
+                          mainWindowCubit.switchTab(projectID);
                         }),
                     MenuItem(
                         text: "Load project...",
