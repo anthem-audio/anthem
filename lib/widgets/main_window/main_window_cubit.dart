@@ -18,68 +18,75 @@
 */
 
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
+import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/model/project.dart';
+import 'package:anthem/model/store.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
-import 'package:plugin/generated/rid_api.dart';
 import 'package:file_picker/file_picker.dart';
 
 part 'main_window_state.dart';
 
 class MainWindowCubit extends Cubit<MainWindowState> {
   // ignore: unused_field
-  late final StreamSubscription<PostedReply> _updateSub;
+  late final StreamSubscription<ProjectStateChange> _updateSub;
   // ignore: unused_field
-  late final StreamSubscription<PostedReply> _flushSub;
-  final Store _store = Store.instance;
+  late final StreamSubscription<ProjectStateChange> _flushSub;
 
   MainWindowCubit()
       : super(MainWindowState(
-            tabs: _getTabs(Store.instance),
-            selectedTabID: Store.instance.activeProjectId)) {
-    _updateSub = rid.replyChannel.stream
-        .where((event) => event.type == Reply.ActiveProjectChanged)
+            tabs: _getTabs(), selectedTabID: Store.instance.activeProjectID)) {
+    _updateSub = Store.instance.stateChangeStream
+        .where((change) => change is ActiveProjectChanged)
+        .map((change) => change as ActiveProjectChanged)
         .listen(_updateActiveTab);
-    _flushSub = rid.replyChannel.stream
-        .where((event) =>
-            event.type == Reply.NewProjectCreated ||
-            event.type == Reply.ProjectClosed ||
-            event.type == Reply.ProjectLoaded)
+
+    _flushSub = Store.instance.stateChangeStream
+        .where((change) => change is ProjectAdded || change is ProjectClosed)
+        .map((change) => change as ProjectStateChange)
         .listen(_updateTabList);
   }
 
-  static List<TabDef> _getTabs(Store store) {
-    return store.projectOrder
+  static List<TabDef> _getTabs() {
+    return Store.instance.projectOrder
         .map((id) => TabDef(
-            id: store.projects[id]!.id,
-            title: store.projects[id]!.id.toString()))
+            id: Store.instance.projects[id]!.id,
+            title: Store.instance.projects[id]!.id.toString()))
         .toList();
   }
 
-  _updateActiveTab(PostedReply _reply) {
+  _updateActiveTab(ActiveProjectChanged change) {
     emit(MainWindowState(
-        tabs: state.tabs, selectedTabID: _store.activeProjectId));
+      tabs: state.tabs,
+      selectedTabID: Store.instance.activeProjectID,
+    ));
   }
 
-  _updateTabList(PostedReply _reply) {
-    print("update tab list");
+  _updateTabList(ProjectStateChange change) {
     emit(MainWindowState(
-        tabs: _getTabs(_store), selectedTabID: _store.activeProjectId));
+      tabs: _getTabs(),
+      selectedTabID: Store.instance.activeProjectID,
+    ));
   }
 
-  Future<void> switchTab(int newTabID) => _store.msgSetActiveProject(newTabID);
+  void switchTab(int newTabID) => Store.instance.setActiveProject(newTabID);
 
   // Returns the ID of the new tab
-  Future<int> newProject() async {
-    final reply = await _store.msgNewProject();
-    return int.parse(reply.data!);
+  int newProject() {
+    ProjectModel project = ProjectModel();
+    project.hydrate();
+    Store.instance.addProject(project);
+    return project.id;
   }
 
-  Future<void> closeProject(int projectID) => _store.msgCloseProject(projectID);
+  void closeProject(int projectID) => Store.instance.closeProject(projectID);
 
-  // Returns the ID of the loaded project, or null if the project load failed
-  // or was cancelled
+  /// Returns the ID of the loaded project, or null if the project load failed
+  /// or was cancelled
+  /// TODO: Granular error handling
   Future<int?> loadProject() async {
     try {
       final path = (await FilePicker.platform.pickFiles(
@@ -89,8 +96,13 @@ class MainWindowCubit extends Cubit<MainWindowState> {
           ?.files[0]
           .path;
       if (path == null) return null;
-      final id = (await _store.msgLoadProject(path)).data!;
-      return int.parse(id);
+      final file = await File(path).readAsString();
+
+      final project = ProjectModel.fromJson(json.decode(file));
+      project.hydrate();
+      Store.instance.addProject(project);
+
+      return project.id;
     } catch (e) {
       return null;
     }
@@ -98,7 +110,7 @@ class MainWindowCubit extends Cubit<MainWindowState> {
 
   Future<void> saveProject(int projectID, bool alwaysUseFilePicker) async {
     try {
-      final project = _store.projects[projectID]!;
+      final project = Store.instance.projects[projectID]!;
 
       String? path;
       if (alwaysUseFilePicker || !project.isSaved) {
@@ -114,7 +126,7 @@ class MainWindowCubit extends Cubit<MainWindowState> {
 
       if (path == null) return;
 
-      await _store.msgSaveProject(projectID, path);
+      await File(path).writeAsString(project.toString());
     } catch (e) {
       // TODO: the backend isn't telling us if the save failed, so we can't act on that
       return;

@@ -17,12 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/pattern.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:provider/provider.dart';
-import 'package:plugin/generated/rid_api.dart';
 
 import 'helpers.dart';
 
@@ -50,7 +50,7 @@ class PianoRollGrid extends StatelessWidget {
           painter: PianoRollBackgroundPainter(
             keyHeight: keyHeight,
             keyValueAtTop: keyValueAtTop,
-            pattern: pattern,
+            pattern: pattern.orElseNull,
             timeViewStart: timeView.start,
             timeViewEnd: timeView.end,
             ticksPerQuarter: ticksPerQuarter,
@@ -73,7 +73,7 @@ class PianoRollBackgroundPainter extends CustomPainter {
 
   final double keyHeight;
   final double keyValueAtTop;
-  final Pattern? pattern;
+  final PatternModel? pattern;
   final double timeViewStart;
   final double timeViewEnd;
   final int ticksPerQuarter;

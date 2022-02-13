@@ -22,13 +22,11 @@ part of 'project_cubit.dart';
 @immutable
 class ProjectState {
   final int id;
-  final int? activeInstrumentID;
-  final int? activeControllerID;
+  final int? activeGeneratorID;
 
   const ProjectState({
     required this.id,
-    required this.activeInstrumentID,
-    required this.activeControllerID,
+    required this.activeGeneratorID,
   });
 
   @override
@@ -36,10 +34,9 @@ class ProjectState {
       identical(this, other) ||
       other is ProjectState &&
           other.id == id &&
-          other.activeInstrumentID == activeInstrumentID &&
-          other.activeControllerID == activeControllerID;
+          other.activeGeneratorID == activeGeneratorID;
 
   @override
   int get hashCode =>
-      id.hashCode ^ activeInstrumentID.hashCode ^ activeControllerID.hashCode;
+      id.hashCode ^ activeGeneratorID.hashCode;
 }

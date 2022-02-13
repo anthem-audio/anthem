@@ -19,6 +19,8 @@
 
 import 'dart:math';
 
+import 'package:anthem/model/pattern.dart';
+import 'package:anthem/model/time_signature.dart';
 import 'package:anthem/widgets/main_window/main_window_cubit.dart';
 import 'package:flutter/widgets.dart';
 
@@ -26,7 +28,6 @@ import 'package:provider/provider.dart';
 
 import '../../../theme.dart';
 import 'helpers.dart';
-import 'package:plugin/generated/rid_api.dart';
 
 class Timeline extends StatefulWidget {
   const Timeline({
@@ -35,7 +36,7 @@ class Timeline extends StatefulWidget {
     required this.ticksPerQuarter,
   }) : super(key: key);
 
-  final Pattern? pattern;
+  final PatternModel? pattern;
   final int ticksPerQuarter;
 
   @override
@@ -129,7 +130,7 @@ class TimeSignatureLabelLayoutDelegate extends MultiChildLayoutDelegate {
     // required this.viewPixelWidth,
   });
 
-  List<TimeSignatureChange> timeSignatureChanges;
+  List<TimeSignatureChangeModel> timeSignatureChanges;
   double timeViewStart;
   double timeViewEnd;
   // double viewPixelWidth;
@@ -207,7 +208,7 @@ class TimelinePainter extends CustomPainter {
 
   final double timeViewStart;
   final double timeViewEnd;
-  final Pattern? pattern;
+  final PatternModel? pattern;
   final int ticksPerQuarter;
 
   @override

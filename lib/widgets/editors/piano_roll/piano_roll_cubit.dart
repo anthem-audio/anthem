@@ -20,103 +20,104 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:anthem/commands/pattern_commands.dart';
+import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/model/note.dart';
+import 'package:anthem/model/pattern.dart';
+import 'package:anthem/model/project.dart';
+import 'package:anthem/model/store.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
-import 'package:plugin/generated/rid_api.dart';
+import 'package:optional/optional_internal.dart';
 
 part 'piano_roll_state.dart';
 
 class PianoRollCubit extends Cubit<PianoRollState> {
   // ignore: unused_field
-  late final StreamSubscription<PostedReply> _updateActivePatternSub;
-  // ignore: unused_field
-  late final StreamSubscription<PostedReply> _updateActiveInstrumentSub;
-  // ignore: unused_field
-  late final StreamSubscription<PostedReply> _updateNotesSub;
-  final Store _store = Store.instance;
+  late final StreamSubscription<StateChange> _updateActivePatternSub;
+  late final StreamSubscription<GeneratorStateChange>
+      // ignore: unused_field
+      _updateActiveInstrumentSub;
+  late final ProjectModel project;
 
   PianoRollCubit({required int projectID})
       : super(
           PianoRollState(
             projectID: projectID,
-            pattern: null,
+            pattern: const Optional.empty(),
             ticksPerQuarter:
                 Store.instance.projects[projectID]!.song.ticksPerQuarter,
-            activeInstrumentID: null,
+            activeInstrumentID: const Optional.empty(),
             notes: const [],
           ),
         ) {
-    _updateActivePatternSub = rid.replyChannel.stream
+    project = Store.instance.projects[projectID]!;
+    _updateActivePatternSub = project.stateChangeStream
         .where((event) =>
-            event.type == Reply.ActivePatternSet ||
-            event.type == Reply.NoteAdded ||
-            event.type == Reply.NoteDeleted ||
-            event.type == Reply.NoteMoved ||
-            event.type == Reply.NoteResized ||
-            event.type == Reply.ActiveInstrumentSet)
+            event is ActivePatternSet ||
+            event is NoteAdded ||
+            event is NoteDeleted ||
+            event is NoteMoved ||
+            event is NoteResized ||
+            event is ActiveGeneratorSet)
         .listen(_updateActivePattern);
-    _updateActiveInstrumentSub = rid.replyChannel.stream
-        .where((event) => event.type == Reply.ActiveInstrumentSet)
+    _updateActiveInstrumentSub = project.stateChangeStream
+        .where((event) => event is ActiveGeneratorSet)
+        .map((event) => event as ActiveGeneratorSet)
         .listen(_updateActiveInstrument);
   }
 
   List<LocalNote> _getLocalNotes(int patternID, int generatorID) {
-    return (_store.projects[state.projectID]!.song.patterns[patternID]!
-                .generatorNotes[generatorID]?.notes ??
-            [])
-        .map((modelNote) {
-      return LocalNote.fromNote(modelNote);
-    }).toList();
+    return (project.song.patterns[patternID]!.notes[generatorID] ?? [])
+        .map((modelNote) => LocalNote.fromNote(modelNote))
+        .toList();
   }
 
-  _updateActivePattern(PostedReply _reply) {
-    final project = _store.projects[state.projectID]!;
-    final patternID = project.song.activePatternId;
-    Pattern? pattern;
-    if (patternID != 0) {
+  _updateActivePattern(StateChange change) {
+    final patternID = project.song.activePatternID;
+    PatternModel? pattern;
+    if (patternID != null) {
       pattern = project.song.patterns[patternID];
     }
 
-    emit(PianoRollState(
-      projectID: state.projectID,
-      ticksPerQuarter: state.ticksPerQuarter,
-      pattern: pattern,
-      activeInstrumentID: state.activeInstrumentID,
-      notes: pattern == null || state.activeInstrumentID == null
+    emit(state.copyWith(
+      pattern: Optional.ofNullable(pattern),
+      notes: pattern == null || state.activeInstrumentID.isEmpty
           ? []
-          : _getLocalNotes(patternID, state.activeInstrumentID!),
+          : _getLocalNotes(pattern.id, state.activeInstrumentID.value),
     ));
   }
 
-  _updateActiveInstrument(PostedReply _reply) {
-    final project = _store.projects[state.projectID]!;
-    emit(PianoRollState(
-      projectID: state.projectID,
-      ticksPerQuarter: state.ticksPerQuarter,
-      pattern: state.pattern,
-      activeInstrumentID: project.song.activeInstrumentId,
-      notes: state.pattern == null
+  _updateActiveInstrument(GeneratorStateChange change) {
+    emit(state.copyWith(
+      activeInstrumentID: Optional.ofNullable(project.song.activeGeneratorID),
+      notes: state.pattern.isEmpty || project.song.activeGeneratorID == null
           ? []
-          : _getLocalNotes(state.pattern!.id, project.song.activeInstrumentId),
+          : _getLocalNotes(
+              state.pattern.value.id, project.song.activeGeneratorID!),
     ));
   }
 
-  Future<void> _noAction() {
-    final completer = Completer();
-    completer.complete();
-    return completer.future;
+  NoteModel? _getNote(int? instrumentID, int noteID) {
+    final noteList = state.pattern.value.notes[instrumentID];
+    NoteModel? note;
+    try {
+      note = noteList?.firstWhere((note) => note.id == noteID);
+    } catch (ex) {
+      note = null;
+    }
   }
 
-  Future<void> addNote({
+  void addNote({
     required int? instrumentID,
     required int key,
     required int velocity,
     required int length,
     required int offset,
   }) {
-    if (state.pattern == null || instrumentID == null) {
-      return _noAction();
+    if (state.pattern.isEmpty || instrumentID == null) {
+      return;
     }
 
     final data = {};
@@ -127,46 +128,83 @@ class PianoRollCubit extends Cubit<PianoRollState> {
     data["length"] = length;
     data["offset"] = offset;
 
-    return _store.msgAddNote(
-        state.projectID, state.pattern!.id, instrumentID, json.encode(data));
+    project.execute(AddNoteCommand(
+      project: project,
+      patternID: state.pattern.value.id,
+      generatorID: instrumentID,
+      note: NoteModel(
+        key: key,
+        velocity: velocity,
+        length: length,
+        offset: offset,
+      ),
+    ));
   }
 
-  Future<void> removeNote({required int? instrumentID, required int noteID}) {
-    if (state.pattern == null || instrumentID == null) {
-      return _noAction();
+  void removeNote({required int? instrumentID, required int noteID}) {
+    final note = _getNote(instrumentID, noteID);
+
+    if (state.pattern.isEmpty || instrumentID == null || note == null) {
+      return;
     }
 
-    return _store.msgDeleteNote(
-        state.projectID, state.pattern!.id, instrumentID, noteID);
+    project.execute(DeleteNoteCommand(
+      project: project,
+      patternID: state.pattern.value.id,
+      generatorID: instrumentID,
+      note: note,
+    ));
   }
 
-  Future<void> moveNote(
-      {required int? instrumentID,
-      required int noteID,
-      required int key,
-      required int offset}) {
-    if (state.pattern == null || instrumentID == null) {
-      return _noAction();
+  void moveNote({
+    required int? instrumentID,
+    required int noteID,
+    required int key,
+    required int offset,
+  }) {
+    final note = _getNote(instrumentID, noteID);
+
+    if (state.pattern.isEmpty || instrumentID == null || note == null) {
+      return;
     }
 
-    return _store.msgMoveNote(
-        state.projectID, state.pattern!.id, instrumentID, noteID, key, offset);
+    return project.execute(MoveNoteCommand(
+      project: project,
+      patternID: state.pattern.value.id,
+      generatorID: instrumentID,
+      noteID: noteID,
+      oldKey: note.key,
+      newKey: key,
+      oldOffset: note.offset,
+      newOffset: offset,
+    ));
   }
 
-  Future<void> resizeNote(
-      {required int? instrumentID, required int noteID, required int length}) {
-    if (state.pattern == null || instrumentID == null) {
-      return _noAction();
+  void resizeNote({
+    required int? instrumentID,
+    required int noteID,
+    required int length,
+  }) {
+    final note = _getNote(instrumentID, noteID);
+
+    if (state.pattern.isEmpty || instrumentID == null || note == null) {
+      return;
     }
 
-    return _store.msgResizeNote(
-        state.projectID, state.pattern!.id, instrumentID, noteID, length);
+    return project.execute(ResizeNoteCommand(
+      project: project,
+      patternID: state.pattern.value.id,
+      generatorID: instrumentID,
+      noteID: noteID,
+      oldLength: note.length,
+      newLength: length,
+    ));
   }
 
   void mutateLocalNotes(
       {required int? instrumentID,
       required Function(List<LocalNote> notes) mutator}) {
-    if (state.pattern == null || instrumentID == null) {
+    if (state.pattern.isEmpty || instrumentID == null) {
       return;
     }
 

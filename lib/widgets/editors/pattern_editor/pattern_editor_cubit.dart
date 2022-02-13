@@ -20,94 +20,110 @@
 import 'dart:async';
 import 'dart:collection';
 
+import 'package:anthem/commands/pattern_commands.dart';
+import 'package:anthem/commands/project_commands.dart';
+import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/model/pattern.dart';
+import 'package:anthem/model/project.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
-import 'package:plugin/generated/rid_api.dart';
+import 'package:optional/optional.dart';
 
 part 'pattern_editor_state.dart';
 
 class PatternEditorCubit extends Cubit<PatternEditorState> {
   // ignore: unused_field
-  late final StreamSubscription<PostedReply> _updateActivePatternSub;
+  late final StreamSubscription<ActivePatternSet> _updateActivePatternSub;
   // ignore: unused_field
-  late final StreamSubscription<PostedReply> _updatePatternListSub;
+  late final StreamSubscription<PatternStateChange> _updatePatternListSub;
   // ignore: unused_field
-  late final StreamSubscription<PostedReply> _updateGeneratorListSub;
-  final Store _store = Store.instance;
+  late final StreamSubscription<GeneratorStateChange> _updateGeneratorListSub;
 
-  PatternEditorCubit({required int projectID})
-      : super(PatternEditorState.init(projectID)) {
-    _updateActivePatternSub = rid.replyChannel.stream
-        .where((event) => event.type == Reply.ActivePatternSet)
+  final ProjectModel project;
+
+  PatternEditorCubit({required this.project})
+      : super(PatternEditorState.init(project.id)) {
+    _updateActivePatternSub = project.stateChangeStream
+        .where((change) => change is ActivePatternSet)
+        .map((change) => change as ActivePatternSet)
         .listen(_updateActivePattern);
-    _updatePatternListSub = rid.replyChannel.stream
-        .where((event) =>
-            event.type == Reply.PatternAdded ||
-            event.type == Reply.PatternDeleted)
+    _updatePatternListSub = project.stateChangeStream
+        .where((change) => change is PatternAdded || change is PatternDeleted)
+        .map((change) => change as PatternStateChange)
         .listen(_updatePatternList);
-    _updateGeneratorListSub = rid.replyChannel.stream
-        .where((event) =>
-            event.type == Reply.InstrumentAdded ||
-            event.type == Reply.ControllerAdded ||
-            event.type == Reply.GeneratorRemoved)
+    _updateGeneratorListSub = project.stateChangeStream
+        .where(
+            (change) => change is GeneratorAdded || change is GeneratorRemoved)
+        .map((change) => change as GeneratorStateChange)
         .listen(_updateGeneratorList);
   }
 
-  _updateActivePattern(PostedReply _reply) {
-    emit(PatternEditorState(
-      controllers: state.controllers,
-      generatorIDList: state.generatorIDList,
-      instruments: state.instruments,
-      pattern: state.pattern,
-      patternList: state.patternList,
-      projectID: state.projectID,
-      activePatternID: _store.projects[state.projectID]!.song.activePatternId,
-    ));
+  _updateActivePattern(ActivePatternSet change) {
+    emit(state.copyWith(
+        activePattern: Optional.ofNullable(
+            project.song.patterns[project.song.activePatternID])));
   }
 
-  _updatePatternList(PostedReply _reply) {
-    final project = _store.projects[state.projectID]!;
-
-    emit(PatternEditorState(
-      controllers: state.controllers,
-      generatorIDList: state.generatorIDList,
-      instruments: state.instruments,
-      pattern: state.pattern,
-      patternList: project.song.patternOrder
-          .map(
-            (id) => PatternListItem(
-                id: id, name: project.song.patterns[id]?.name ?? ""),
-          )
-          .toList(),
-      projectID: state.projectID,
-      activePatternID: state.activePatternID,
-    ));
+  _updatePatternList(PatternStateChange _reply) {
+    emit(state.copyWith(
+        patternList: project.song.patternOrder
+            .map(
+              (id) => PatternListItem(
+                  id: id, name: project.song.patterns[id]?.name ?? ""),
+            )
+            .toList()));
   }
 
-  _updateGeneratorList(PostedReply _reply) {
-    final project = _store.projects[state.projectID]!;
-
-    emit(PatternEditorState(
-      controllers: project.controllers,
+  _updateGeneratorList(GeneratorStateChange _reply) {
+    emit(state.copyWith(
+      controllers: project.controllers
+          .map((key, value) => MapEntry(key, GeneratorListItem(id: value.id))),
       generatorIDList: project.generatorList,
-      instruments: project.instruments,
-      pattern: state.pattern,
-      patternList: state.patternList,
-      projectID: state.projectID,
-      activePatternID: state.activePatternID,
+      instruments: project.instruments
+          .map((key, value) => MapEntry(key, GeneratorListItem(id: value.id))),
     ));
   }
 
-  Future<void> addPattern(String name) =>
-      _store.msgAddPattern(state.projectID, name);
-  Future<void> deletePattern(int id) =>
-      _store.msgDeletePattern(state.projectID, id);
-  Future<void> addInstrument(String name, Color color) =>
-      _store.msgAddInstrument(state.projectID, name, color.value);
-  Future<void> addController(String name, Color color) =>
-      _store.msgAddController(state.projectID, name, color.value);
-  Future<void> removeGenerator(int id) =>
-      _store.msgRemoveGenerator(state.projectID, id);
-  Future<void> setActivePattern(int id) =>
-      _store.msgSetActivePattern(state.projectID, id);
+  void addPattern(String name) {
+    project.execute(AddPatternCommand(
+      project: project,
+      pattern: PatternModel(name),
+      index: project.song.patternOrder.length,
+    ));
+  }
+
+  void deletePattern(int patternID) {
+    project.execute(DeletePatternCommand(
+      project: project,
+      pattern: project.song.patterns[patternID]!,
+      index: project.song.patternOrder.indexOf(patternID),
+    ));
+  }
+
+  void addInstrument(String name, Color color) {
+    project.execute(AddInstrumentCommand(
+      project: project,
+      instrumentID: getID(),
+      name: name,
+      color: color,
+    ));
+  }
+
+  void addController(String name, Color color) {
+    project.execute(AddControllerCommand(
+      project: project,
+      controllerID: getID(),
+      name: name,
+      color: color,
+    ));
+  }
+
+  void removeGenerator(int id) {
+    throw UnimplementedError();
+  }
+
+  void setActivePattern(int id) {
+    project.song.setActivePattern(id);
+  }
 }

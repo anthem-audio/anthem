@@ -19,64 +19,57 @@
 
 import 'dart:async';
 
+import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/model/project.dart';
+import 'package:anthem/model/store.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
-import 'package:plugin/generated/rid_api.dart';
 
 part 'project_state.dart';
 
 class ProjectCubit extends Cubit<ProjectState> {
   // ignore: unused_field
-  late final StreamSubscription<PostedReply> _updateActiveInstrumentSub;
-  // ignore: unused_field
-  late final StreamSubscription<PostedReply> _updateActiveControllerSub;
-  final Store _store = Store.instance;
+  late final StreamSubscription<StateChange> _updateActiveGeneratorSub;
+
+  late final ProjectModel project;
 
   ProjectCubit({required int id})
       : super(
           ProjectState(
             id: id,
-            activeInstrumentID: null,
-            activeControllerID: null,
+            activeGeneratorID: null,
           ),
         ) {
-    _updateActiveInstrumentSub = rid.replyChannel.stream
-        .where((event) => event.type == Reply.ActiveInstrumentSet)
-        .listen(_updateActiveInstrument);
-    _updateActiveControllerSub = rid.replyChannel.stream
-        .where((event) => event.type == Reply.ActiveControllerSet)
-        .listen(_updateActiveController);
+    project = Store.instance.projects[id]!;
+
+    _updateActiveGeneratorSub = project.stateChangeStream
+        .where((change) => change is ActiveGeneratorSet)
+        .map((change) => change as ActiveGeneratorSet)
+        .listen(_updateActiveGenerator);
   }
 
-  _updateActiveInstrument(PostedReply _reply) {
-    final id = _store.projects[state.id]!.song.activeInstrumentId;
+  _updateActiveGenerator(ActiveGeneratorSet change) {
     emit(
       ProjectState(
-        id: state.id,
-        activeControllerID: state.activeControllerID,
-        activeInstrumentID: id,
-      ),
+          id: state.id, activeGeneratorID: project.song.activeGeneratorID),
     );
   }
 
-  _updateActiveController(PostedReply _reply) {
-    final id = _store.projects[state.id]!.song.activeControllerId;
-    emit(
-      ProjectState(
-        id: state.id,
-        activeControllerID: id,
-        activeInstrumentID: state.activeInstrumentID,
-      ),
-    );
+  void undo() {
+    project.undo();
   }
 
-  Future<void> undo() => _store.msgUndo(state.id);
-  Future<void> redo() => _store.msgRedo(state.id);
-  Future<void> journalStartEntry() => _store.msgJournalStartEntry(state.id);
-  Future<void> journalCommitEntry() => _store.msgJournalCommitEntry(state.id);
+  void redo() {
+    project.redo();
+  }
 
-  Future<void> setActiveInstrumentID(int? id) => _store.msgSetActiveInstrument(
-      state.id, id ?? 0); // TODO: nullable once rid supports this
-  Future<void> setActiveControllerID(int? id) => _store.msgSetActiveController(
-      state.id, id ?? 0); // TODO: nullable once rid supports this
+  void journalStartEntry() {
+    project.startJournalPage();
+  }
+
+  void journalCommitEntry() {
+    project.commitJournalPage();
+  }
+
+  void setActiveGeneratorID(int? id) => project.song.setActiveGenerator(id);
 }

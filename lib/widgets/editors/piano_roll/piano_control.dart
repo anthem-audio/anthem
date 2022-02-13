@@ -55,20 +55,26 @@ class _PianoControlState extends State<PianoControl> {
   double startPixelValue = -1.0;
   double startTopKeyValue = -1.0;
   double startKeyHeightValue = -1.0;
+  bool hasRerendered = false;
 
   @override
   Widget build(BuildContext context) {
     final contentRenderBox = context.findRenderObject() as RenderBox?;
 
     if (contentRenderBox == null) {
+      if (!hasRerendered) {
+        WidgetsBinding.instance?.addPostFrameCallback((_) {
+          setState(() {});
+        });
+        hasRerendered = true;
+      }
       return const SizedBox();
     }
+    hasRerendered = false;
 
     final keysOnScreen = contentRenderBox.size.height / widget.keyHeight;
 
-    final keyValueAtBottom =
-        (widget.keyValueAtTop - keysOnScreen)
-            .floor();
+    final keyValueAtBottom = (widget.keyValueAtTop - keysOnScreen).floor();
 
     List<int> notes = [];
 
@@ -90,45 +96,45 @@ class _PianoControlState extends State<PianoControl> {
       return LayoutId(id: note, child: child);
     }).toList();
 
-    return NotificationListener<SizeChangedLayoutNotification>(
-      onNotification: (notification) {
-        WidgetsBinding.instance?.addPostFrameCallback((_) {
-          setState(() {});
-        });
-        return true;
-      },
-      child: SizeChangedLayoutNotifier(
-        child: Row(
-          children: [
-            Listener(
-              onPointerDown: (e) {
-                startPixelValue = e.localPosition.dy;
-                startTopKeyValue = widget.keyValueAtTop;
-                startKeyHeightValue = widget.keyHeight;
-              },
-              onPointerMove: (e) {
-                final keyboardModifiers =
-                    Provider.of<KeyboardModifiers>(context, listen: false);
-                if (!keyboardModifiers.alt) {
-                  final keyDelta =
-                      (e.localPosition.dy - startPixelValue) / widget.keyHeight;
-                  widget.setKeyValueAtTop(startTopKeyValue + keyDelta);
-                } else {
-                  widget.setKeyHeight((startKeyHeightValue +
-                          (e.localPosition.dy - startPixelValue) / 3)
-                      .clamp(4, 50));
-                }
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.all(Radius.circular(1)),
-                  color: Theme.panel.main,
-                ),
-                width: 39,
-              ),
+    return Row(
+      children: [
+        Listener(
+          onPointerDown: (e) {
+            startPixelValue = e.localPosition.dy;
+            startTopKeyValue = widget.keyValueAtTop;
+            startKeyHeightValue = widget.keyHeight;
+          },
+          onPointerMove: (e) {
+            final keyboardModifiers =
+                Provider.of<KeyboardModifiers>(context, listen: false);
+            if (!keyboardModifiers.alt) {
+              final keyDelta =
+                  (e.localPosition.dy - startPixelValue) / widget.keyHeight;
+              widget.setKeyValueAtTop(startTopKeyValue + keyDelta);
+            } else {
+              widget.setKeyHeight((startKeyHeightValue +
+                      (e.localPosition.dy - startPixelValue) / 3)
+                  .clamp(4, 50));
+            }
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: const BorderRadius.all(Radius.circular(1)),
+              color: Theme.panel.main,
             ),
-            const SizedBox(width: 1),
-            Expanded(
+            width: 39,
+          ),
+        ),
+        const SizedBox(width: 1),
+        Expanded(
+          child: NotificationListener<SizeChangedLayoutNotification>(
+            onNotification: (notification) {
+              WidgetsBinding.instance?.addPostFrameCallback((_) {
+                setState(() {});
+              });
+              return true;
+            },
+            child: SizeChangedLayoutNotifier(
               child: ClipRect(
                 child: CustomMultiChildLayout(
                   delegate: KeyLayoutDelegate(
@@ -141,9 +147,9 @@ class _PianoControlState extends State<PianoControl> {
                 ),
               ),
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }
