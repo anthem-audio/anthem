@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,6 +19,7 @@
 
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/widgets.dart';
 
 import 'main_window_cubit.dart';
@@ -103,16 +104,18 @@ class _WindowHeaderState extends State<WindowHeader> {
             ).toList() +
             [
               Expanded(
-                child: Padding(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Theme.panel.main,
-                      borderRadius: const BorderRadius.all(
-                        Radius.circular(2),
+                child: MoveWindow(
+                  child: Padding(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Theme.panel.main,
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(2),
+                        ),
                       ),
                     ),
+                    padding: const EdgeInsets.only(bottom: 1),
                   ),
-                  padding: const EdgeInsets.only(bottom: 1),
                 ),
               ),
             ],
