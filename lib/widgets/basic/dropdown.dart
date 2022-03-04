@@ -22,6 +22,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../theme.dart';
 import 'button.dart';
+import 'icon.dart';
 import 'menu/menu.dart';
 import 'menu/menu_model.dart';
 
@@ -85,31 +86,37 @@ class _DropdownState extends State<Dropdown> {
           },
           width: widget.width,
           height: widget.height,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 9),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.items
-                        .firstWhere((element) => element.id == selectedID,
-                            orElse: () =>
-                                const DropdownItem(id: "", name: "(none)"))
-                        .name,
-                    style: TextStyle(
-                      color: Theme.text.main,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                SvgPicture.asset(
-                  "assets/icons/small/arrow-down-selectbtn.svg",
-                  color: Theme.text.main,
-                ),
-              ],
-            ),
-          ),
+          text: widget.items
+              .firstWhere((element) => element.id == selectedID,
+                  orElse: () => const DropdownItem(id: "", name: "(none)"))
+              .name,
+          endIcon: Icons.arrowDown,
+
+          // child: Padding(
+          //   padding: const EdgeInsets.symmetric(horizontal: 9),
+          //   child: Row(
+          //     crossAxisAlignment: CrossAxisAlignment.center,
+          //     children: [
+          //       Expanded(
+          //         child: Text(
+          //           widget.items
+          //               .firstWhere((element) => element.id == selectedID,
+          //                   orElse: () =>
+          //                       const DropdownItem(id: "", name: "(none)"))
+          //               .name,
+          //           style: TextStyle(
+          //             color: Theme.text.main,
+          //             overflow: TextOverflow.ellipsis,
+          //           ),
+          //         ),
+          //       ),
+          //       SvgPicture.asset(
+          //         "assets/icons/small/arrow-down-selectbtn.svg",
+          //         color: Theme.text.main,
+          //       ),
+          //     ],
+          //   ),
+          // ),
         ));
   }
 }

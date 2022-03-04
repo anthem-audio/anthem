@@ -122,7 +122,9 @@ class _ScrollbarState extends State<Scrollbar> {
         flex: inside,
         child: const Button(
           hideBorder: true,
+          expand: true,
         ),
+        // child: Container(color: Color(0xFFFFFFFF)),
       ),
       border,
     ]);

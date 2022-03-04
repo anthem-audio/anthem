@@ -33,6 +33,9 @@ class GeneratorRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<GeneratorRowCubit, GeneratorRowState>(
         builder: (context, state) {
+      final backgroundHoverColor =
+          HSLColor.fromColor(state.color).withLightness(0.56).toColor();
+
       return GestureDetector(
         onTap: () {
           BlocProvider.of<ProjectCubit>(context)
@@ -50,9 +53,8 @@ class GeneratorRow extends StatelessWidget {
                   width: 105,
                   height: 26,
                   backgroundColor: state.color,
-                  backgroundHoverColor: HSLColor.fromColor(state.color)
-                      .withLightness(0.56)
-                      .toColor(),
+                  backgroundHoverColor: backgroundHoverColor,
+                  backgroundPressColor: backgroundHoverColor,
                 ),
                 const SizedBox(width: 8),
                 Container(

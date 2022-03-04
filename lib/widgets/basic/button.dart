@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,69 +18,273 @@
 */
 
 import 'dart:math';
-
-import 'package:flutter/widgets.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:vector_math/vector_math_64.dart';
 
-import '../../theme.dart';
+import 'package:flutter/widgets.dart';
+
 import 'background.dart';
+import 'icon.dart';
+
+enum ButtonVariant {
+  light,
+  dark,
+  label,
+  ghost,
+}
+
+class _ButtonColors {
+  late Color base;
+  late Color hover;
+  late Color press;
+
+  _ButtonColors({
+    required this.base,
+    required this.hover,
+    required this.press,
+  });
+
+  _ButtonColors.all(Color color) {
+    base = color;
+    hover = color;
+    press = color;
+  }
+
+  Color getColor(bool hovered, bool pressed) {
+    if (pressed) return press;
+    if (hovered) return hover;
+    return base;
+  }
+}
+
+class _ButtonTheme {
+  final _ButtonColors background;
+  final _ButtonColors border;
+  final _ButtonColors text;
+
+  const _ButtonTheme({
+    required this.background,
+    required this.border,
+    required this.text,
+  });
+}
+
+final _textColors = _ButtonColors(
+  base: const Color(0xFF9DB9CC),
+  hover: const Color(0xFF9DB9CC),
+  press: const Color(0xFF25C29D),
+);
+
+final _lightTheme = _ButtonTheme(
+  background: _ButtonColors(
+    base: const Color(0xFF4C5A63),
+    hover: const Color(0xFF505F69),
+    press: const Color(0xFF505F69),
+  ),
+  border: _ButtonColors.all(
+    const Color(0xFF293136),
+  ),
+  text: _textColors,
+);
+final _darkTheme = _ButtonTheme(
+  background: _ButtonColors(
+    base: const Color(0xFF414C54),
+    hover: const Color(0xFF455159),
+    press: const Color(0xFF455159),
+  ),
+  border: _ButtonColors.all(
+    const Color(0xFF293136),
+  ),
+  text: _textColors,
+);
+final _labelTheme = _ButtonTheme(
+  background: _ButtonColors(
+    base: const Color(0x00000000),
+    hover: const Color(0x00000000),
+    press: const Color(0x00000000),
+  ),
+  border: _ButtonColors(
+    base: const Color(0x00000000),
+    hover: const Color(0xFF293136),
+    press: const Color(0xFF293136),
+  ),
+  text: _textColors,
+);
+final _ghostTheme = _ButtonTheme(
+  background: _ButtonColors(
+    base: const Color(0x00000000),
+    hover: const Color(0xFF3C484F),
+    press: const Color(0xFF3C484F),
+  ),
+  border: _ButtonColors.all(
+    const Color(0xFF293136),
+  ),
+  text: _textColors,
+);
 
 class Button extends StatefulWidget {
-  final VoidCallback? onPress;
+  final ButtonVariant? variant;
+  final String? text;
+  final IconDef? startIcon;
+  final IconDef? endIcon;
   final double? width;
   final double? height;
-  final String? iconPath;
-  final Widget? child;
-  final bool? hideBorder;
-  final bool? hideBackground;
   final bool? showMenuIndicator;
+  final Function? onPress;
   final Color? backgroundColor;
   final Color? backgroundHoverColor;
+  final Color? backgroundPressColor;
+  final bool? hideBorder;
+  final bool? expand;
 
   const Button({
     Key? key,
-    this.onPress,
+    this.variant,
+    this.text,
+    this.startIcon,
+    this.endIcon,
     this.width,
     this.height,
-    this.iconPath,
-    this.child,
-    this.hideBorder,
-    this.hideBackground,
     this.showMenuIndicator,
+    this.onPress,
     this.backgroundColor,
     this.backgroundHoverColor,
+    this.backgroundPressColor,
+    this.hideBorder,
+    this.expand,
   }) : super(key: key);
 
   @override
-  _ButtonState createState() => _ButtonState();
+  State<Button> createState() => _ButtonState();
 }
 
 class _ButtonState extends State<Button> {
-  bool hovered = false;
-  bool pressed = false;
+  var hovered = false;
+  var pressed = false;
+
+  _ButtonState();
 
   @override
   Widget build(BuildContext context) {
+    _ButtonTheme theme;
+
     final backgroundType = Provider.of<BackgroundType>(context);
 
-    final mainColor = widget.backgroundColor ??
-        (backgroundType == BackgroundType.dark
-            ? Theme.control.main.dark
-            : Theme.control.main.light);
-    final hoverColor = widget.backgroundHoverColor ??
-        (backgroundType == BackgroundType.dark
-            ? Theme.control.hover.dark
-            : Theme.control.hover.light);
-    final activeColor = Theme.control.active;
+    final variant = widget.variant ??
+        (backgroundType == BackgroundType.light
+            ? ButtonVariant.light
+            : ButtonVariant.dark);
 
-    var backgroundColor =
-        widget.hideBackground ?? false ? const Color(0x00000000) : mainColor;
-    if (hovered) backgroundColor = hoverColor;
-    if (pressed) backgroundColor = activeColor;
+    switch (variant) {
+      case ButtonVariant.light:
+        theme = _lightTheme;
+        break;
+      case ButtonVariant.dark:
+        theme = _darkTheme;
+        break;
+      case ButtonVariant.label:
+        theme = _labelTheme;
+        break;
+      case ButtonVariant.ghost:
+        theme = _ghostTheme;
+        break;
+    }
 
-    final showMenuIndicator = widget.showMenuIndicator ?? false;
+    var backgroundColor = theme.background.getColor(hovered, pressed);
+
+    if (!hovered && !pressed && widget.backgroundColor != null) {
+      backgroundColor = widget.backgroundColor!;
+    }
+
+    if (hovered && !pressed && widget.backgroundHoverColor != null) {
+      backgroundColor = widget.backgroundHoverColor!;
+    }
+
+    if (pressed && widget.backgroundHoverColor != null) {
+      backgroundColor = widget.backgroundHoverColor!;
+    }
+
+    final textColor = theme.text.getColor(hovered, pressed);
+
+    final List<Widget> innerRowChildren = [];
+    final List<Widget> rowChildren = [];
+
+    if (widget.startIcon != null) {
+      innerRowChildren.add(
+        SvgIcon(
+          widget.startIcon!,
+          color: textColor,
+        ),
+      );
+      if (widget.text != null) {
+        innerRowChildren.add(
+          const SizedBox(width: 4),
+        );
+      }
+    }
+
+    rowChildren.add(
+      Row(
+        children: innerRowChildren,
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+      ),
+    );
+
+    if (widget.text != null) {
+      innerRowChildren.add(
+        Text(
+          widget.text!,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 11,
+          ),
+          overflow: TextOverflow.ellipsis,
+        ),
+      );
+    }
+
+    if (widget.endIcon != null) {
+      rowChildren.addAll(
+        [
+          const SizedBox(width: 4),
+          SvgIcon(
+            widget.endIcon!,
+            color: textColor,
+          ),
+        ],
+      );
+    }
+
+    final List<Widget> stackChildren = [
+      Padding(
+        padding: const EdgeInsets.all(5),
+        child: Row(
+          children: rowChildren,
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: widget.endIcon == null
+              ? MainAxisAlignment.spaceAround
+              : MainAxisAlignment.spaceBetween,
+        ),
+      ),
+    ];
+
+    if (widget.showMenuIndicator == true) {
+      stackChildren.add(
+        Positioned(
+          right: 0,
+          bottom: 0,
+          child: Transform(
+            transform: Matrix4.rotationZ(pi / 4)..translate(Vector3(8, -4, 0)),
+            child: Container(
+              width: 6 * sqrt2,
+              height: 6 * sqrt2,
+              color: textColor,
+            ),
+          ),
+        ),
+      );
+    }
 
     return MouseRegion(
       onEnter: (e) {
@@ -95,64 +299,37 @@ class _ButtonState extends State<Button> {
           hovered = false;
         });
       },
-      child: GestureDetector(
-        onTap: widget.onPress,
-        child: Listener(
-          onPointerDown: (e) {
-            if (!mounted) return;
-            setState(() {
-              pressed = true;
-            });
-          },
-          onPointerUp: (e) {
-            if (!mounted) return;
-            setState(() {
-              pressed = false;
-            });
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              color: backgroundColor,
-              borderRadius: const BorderRadius.all(Radius.circular(1)),
-              border: widget.hideBorder ?? false
-                  ? null
-                  : Border.all(color: Theme.control.border),
-            ),
-            width: widget.width,
-            height: widget.height,
-            child: ClipRect(
-              child: Stack(
-                children: <Widget?>[
-                  widget.iconPath != null
-                      ? Positioned.fill(
-                          child: Center(
-                            child: SvgPicture.asset(
-                              widget.iconPath!,
-                              color: Theme.text.main,
-                            ),
-                          ),
-                        )
-                      : null,
-                  widget.child != null
-                      ? Positioned.fill(child: widget.child!)
-                      : null,
-                  showMenuIndicator
-                      ? Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: Transform(
-                            transform: Matrix4.rotationZ(pi / 4)
-                              ..translate(Vector3(4 * sqrt2, -2 * sqrt2, 0)),
-                            child: Container(
-                              width: 4 * sqrt2,
-                              height: 4 * sqrt2,
-                              color: Theme.text.main,
-                            ),
-                          ),
-                        )
-                      : null,
-                ].whereType<Widget>().toList(),
-              ),
+      child: Listener(
+        onPointerDown: (e) {
+          if (!mounted) return;
+          setState(() {
+            pressed = true;
+          });
+        },
+        onPointerUp: (e) {
+          if (!mounted) return;
+          setState(() {
+            pressed = false;
+            widget.onPress?.call();
+          });
+        },
+        child: Container(
+          width: widget.width,
+          height: widget.height,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(4),
+            border: widget.hideBorder == true
+                ? null
+                : Border.all(
+                    color: theme.border.getColor(hovered, pressed),
+                  ),
+            color: backgroundColor,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(1),
+            child: Stack(
+              fit: widget.expand != null ? StackFit.expand : StackFit.passthrough,
+              children: stackChildren,
             ),
           ),
         ),

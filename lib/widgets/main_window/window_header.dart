@@ -22,6 +22,7 @@ import 'package:anthem/widgets/basic/button.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/widgets.dart';
 
+import '../basic/icon.dart';
 import 'main_window_cubit.dart';
 
 class WindowHeader extends StatefulWidget {
@@ -85,11 +86,11 @@ class _WindowHeaderState extends State<WindowHeader> {
                             ),
                           ),
                           Button(
+                            variant: ButtonVariant.ghost,
                             width: 20,
                             height: 20,
                             hideBorder: true,
-                            hideBackground: true,
-                            iconPath: "assets/icons/small/close.svg",
+                            startIcon: Icons.close,
                             onPress: () {
                               widget.closeProject(tab.id);
                             },
