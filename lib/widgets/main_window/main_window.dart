@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -66,27 +66,30 @@ class _MainWindowState extends State<MainWindow> {
           if (shift && keyDown) keyboardModifiers.setShift(true);
           if (shift && keyUp) keyboardModifiers.setShift(false);
         },
-        child: Padding(
-          padding: const EdgeInsets.all(2),
-          child: Column(
-            children: [
-              WindowHeader(
-                selectedTabID: state.selectedTabID,
-                tabs: state.tabs,
-                setActiveProject: (int id) {
-                  context.read<MainWindowCubit>().switchTab(id);
-                },
-                closeProject: (int id) {
-                  context.read<MainWindowCubit>().closeProject(id);
-                },
-              ),
-              Expanded(
-                child: TabContentSwitcher(
-                  tabs: state.tabs,
+        child: Container(
+          color: const Color(0xFF2A3237),
+          child: Padding(
+            padding: const EdgeInsets.all(3),
+            child: Column(
+              children: [
+                WindowHeader(
                   selectedTabID: state.selectedTabID,
+                  tabs: state.tabs,
+                  setActiveProject: (int id) {
+                    context.read<MainWindowCubit>().switchTab(id);
+                  },
+                  closeProject: (int id) {
+                    context.read<MainWindowCubit>().closeProject(id);
+                  },
                 ),
-              ),
-            ],
+                Expanded(
+                  child: TabContentSwitcher(
+                    tabs: state.tabs,
+                    selectedTabID: state.selectedTabID,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );

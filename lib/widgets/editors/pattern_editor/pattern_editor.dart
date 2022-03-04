@@ -30,6 +30,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../theme.dart';
+import '../../basic/icon.dart';
 import 'generator_row.dart';
 import 'generator_row_cubit.dart';
 
@@ -88,9 +89,9 @@ class _PatternEditorState extends State<PatternEditor> {
                               })
                         ]),
                         child: Button(
-                          width: 28,
-                          height: 28,
-                          iconPath: "assets/icons/file/kebab.svg",
+                          // width: 28,
+                          // height: 28,
+                          startIcon: Icons.kebab,
                           showMenuIndicator: true,
                           onPress: () {
                             menuController.open?.call();
