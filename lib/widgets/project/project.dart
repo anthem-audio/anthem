@@ -29,6 +29,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../editors/arranger/arranger.dart';
+import '../editors/arranger/arranger_cubit.dart';
 import 'project_header.dart';
 import '../../theme.dart';
 
@@ -71,7 +72,10 @@ class Project extends StatelessWidget {
                     orientation: PanelOrientation.left,
                     child: Container(
                       color: Theme.panel.main,
-                      child: const Arranger(),
+                      child: BlocProvider<ArrangerCubit>(
+                        create: (context) => ArrangerCubit(projectID: state.id),
+                        child: Arranger(),
+                      ),
                     ),
                     // pattern editor
                     panelContent: BlocProvider<PatternEditorCubit>(
