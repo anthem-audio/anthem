@@ -17,22 +17,25 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker_cubit.dart';
+import 'package:collection/collection.dart';
+import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
-class PatternPicker extends StatelessWidget {
-  const PatternPicker({Key? key}) : super(key: key);
+import '../../../../model/pattern.dart';
+import '../../../../model/store.dart';
 
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<PatternPickerCubit, PatternPickerState>(
-      builder: (context, state) {
-        return Container(
-          color: const Color(0xFFFF00FF),
-          child: Text(state.patterns.length.toString()),
-        );
-      },
-    );
-  }
+part 'pattern_picker_state.dart';
+
+List<PatternModel> getPatterns(int projectID) {
+  final project = Store.instance.projects[projectID];
+  return project?.song.patternOrder
+          .map((patternID) => project.song.patterns[patternID])
+          .whereNotNull()
+          .toList() ??
+      [];
+}
+
+class PatternPickerCubit extends Cubit<PatternPickerState> {
+  PatternPickerCubit({required int projectID})
+      : super(PatternPickerState(patterns: getPatterns(projectID))) {}
 }

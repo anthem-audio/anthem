@@ -17,39 +17,50 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker.dart';
+import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker_cubit.dart';
 import 'package:flutter/widgets.dart';
-
-import '../../basic/button.dart';
-import '../../basic/icon.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class Arranger extends StatelessWidget {
   const Arranger({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(height: 26),
-          const SizedBox(height: 4),
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 15),
-                  child: SizedBox(width: 126, child: PatternPicker()),
+    return BlocBuilder<ArrangerCubit, ArrangerState>(
+      builder: (context, state) {
+        return Padding(
+          padding: const EdgeInsets.all(6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(height: 26),
+              const SizedBox(height: 4),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 15),
+                      child: SizedBox(
+                        width: 126,
+                        child: BlocProvider<PatternPickerCubit>(
+                          create: (context) =>
+                              PatternPickerCubit(projectID: state.projectID),
+                          child: PatternPicker(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(child: Container(color: const Color(0x11FFFFFF)))
+                  ],
                 ),
-                const SizedBox(width: 6),
-                Expanded(child: Container(color: const Color(0x11FFFFFF)))
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
