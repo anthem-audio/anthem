@@ -53,6 +53,7 @@ class Project extends StatelessWidget {
               panelContent: const ProjectExplorer(),
 
               child: Panel(
+                hidden: true,
                 orientation: PanelOrientation.right,
                 // right panel
                 panelContent: Container(color: Theme.panel.main),

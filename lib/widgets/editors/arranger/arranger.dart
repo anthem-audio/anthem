@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../basic/button.dart';
@@ -27,60 +28,27 @@ class Arranger extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: SizedBox(
-        width: 300,
-        child: GridView.count(
-          crossAxisCount: 2,
-          children: [
-            Center(
-              child: Button(
-                variant: ButtonVariant.light,
-                text: "Light",
-                startIcon: Icons.hamburger,
-              ),
+    return Padding(
+      padding: const EdgeInsets.all(6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(height: 26),
+          const SizedBox(height: 4),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 15),
+                  child: SizedBox(width: 126, child: PatternPicker()),
+                ),
+                const SizedBox(width: 6),
+                Expanded(child: Container(color: const Color(0x11FFFFFF)))
+              ],
             ),
-            Center(
-              child: Button(
-                variant: ButtonVariant.dark,
-                text: "Dark",
-                startIcon: Icons.hamburger,
-              ),
-            ),
-            Center(
-              child: Button(
-                variant: ButtonVariant.label,
-                text: "Label",
-                startIcon: Icons.hamburger,
-                endIcon: Icons.kebab,
-              ),
-            ),
-            Center(
-              child: Button(
-                width: 120,
-                variant: ButtonVariant.ghost,
-                text: "Ghost",
-                startIcon: Icons.hamburger,
-                endIcon: Icons.kebab,
-              ),
-            ),
-            Center(
-              child: Button(
-                variant: ButtonVariant.ghost,
-                startIcon: Icons.kebab,
-              ),
-            ),
-            Center(
-              child: Button(
-                variant: ButtonVariant.ghost,
-                startIcon: Icons.kebab,
-                width: 50,
-                height: 40,
-                showMenuIndicator: true,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
