@@ -17,17 +17,20 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:collection/collection.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../../../commands/state_changes.dart';
 import '../../../../model/pattern.dart';
+import '../../../../model/project.dart';
 import '../../../../model/store.dart';
 
 part 'pattern_picker_state.dart';
 
-List<PatternModel> getPatterns(int projectID) {
-  final project = Store.instance.projects[projectID];
+List<PatternModel> getPatterns(ProjectModel? project) {
   return project?.song.patternOrder
           .map((patternID) => project.song.patterns[patternID])
           .whereNotNull()
@@ -36,6 +39,21 @@ List<PatternModel> getPatterns(int projectID) {
 }
 
 class PatternPickerCubit extends Cubit<PatternPickerState> {
+  // ignore: unused_field
+  late final StreamSubscription<PatternStateChange> _updatePatternsSub;
+  late final ProjectModel project;
+
   PatternPickerCubit({required int projectID})
-      : super(PatternPickerState(patterns: getPatterns(projectID))) {}
+      : super(PatternPickerState(
+            patterns: getPatterns(Store.instance.projects[projectID]))) {
+    project = Store.instance.projects[projectID]!;
+    _updatePatternsSub = project.stateChangeStream
+        .where((change) => change is PatternAdded || change is PatternDeleted)
+        .map((change) => change as PatternStateChange)
+        .listen(_updatePatternList);
+  }
+
+  _updatePatternList(PatternStateChange change) {
+    emit(state.copyWith(patterns: getPatterns(project)));
+  }
 }
