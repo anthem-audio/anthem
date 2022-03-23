@@ -45,7 +45,11 @@ class PatternPickerCubit extends Cubit<PatternPickerState> {
 
   PatternPickerCubit({required int projectID})
       : super(PatternPickerState(
-            patterns: getPatterns(Store.instance.projects[projectID]))) {
+          projectID: projectID,
+          patterns: getPatterns(
+            Store.instance.projects[projectID],
+          ),
+        )) {
     project = Store.instance.projects[projectID]!;
     _updatePatternsSub = project.stateChangeStream
         .where((change) => change is PatternAdded || change is PatternDeleted)

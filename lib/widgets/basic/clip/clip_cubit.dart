@@ -17,20 +17,21 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/widgets/basic/clip/clip_cubit.dart';
+import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
-class Clip extends StatelessWidget {
-  const Clip({Key? key}) : super(key: key);
+import '../../../model/pattern.dart';
+import '../../../model/store.dart';
 
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<ClipCubit, ClipState>(builder: (context, state) {
-      return Container(
-        color: const Color(0xFF00FFFF),
-        child: Text(state.pattern.id.toString()),
-      );
-    });
-  }
+part 'clip_state.dart';
+
+class ClipCubit extends Cubit<ClipState> {
+  // TODO: ALlow this to optionally take a ClipModel
+  ClipCubit({required int projectID, required int patternID})
+      : super(
+          ClipState(
+            pattern:
+                Store.instance.projects[projectID]!.song.patterns[patternID]!,
+          ),
+        ) {}
 }

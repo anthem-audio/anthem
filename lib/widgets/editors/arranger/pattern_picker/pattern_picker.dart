@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/widgets/basic/clip/clip.dart' as anthem_clip;
+import 'package:anthem/widgets/basic/clip/clip_cubit.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -67,8 +68,16 @@ class PatternPicker extends StatelessWidget {
                                 (pattern) => Padding(
                                   padding: const EdgeInsets.only(bottom: 1),
                                   child: SizedBox(
-                                    height: 30,
-                                    child: anthem_clip.Clip(),
+                                    height: 44,
+                                    child: BlocProvider(
+                                      create: (context) {
+                                        return ClipCubit(
+                                          projectID: state.projectID,
+                                          patternID: pattern.id,
+                                        );
+                                      },
+                                      child: anthem_clip.Clip(),
+                                    ),
                                   ),
                                 ),
                               )
