@@ -2,9 +2,10 @@ part of 'pattern_picker_cubit.dart';
 
 @immutable
 class PatternPickerState {
+  final int projectID;
   final List<PatternModel> patterns;
 
-  const PatternPickerState({required this.patterns});
+  const PatternPickerState({required this.projectID, required this.patterns});
 
   @override
   bool operator ==(Object other) =>
@@ -14,7 +15,10 @@ class PatternPickerState {
   @override
   int get hashCode => patterns.hashCode;
 
-  PatternPickerState copyWith({List<PatternModel>? patterns}) {
-    return PatternPickerState(patterns: patterns ?? this.patterns);
+  PatternPickerState copyWith({int? projectID, List<PatternModel>? patterns}) {
+    return PatternPickerState(
+      projectID: projectID ?? this.projectID,
+      patterns: patterns ?? this.patterns,
+    );
   }
 }
