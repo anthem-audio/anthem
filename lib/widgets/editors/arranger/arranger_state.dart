@@ -20,6 +20,6 @@
 part of 'arranger_cubit.dart';
 
 @freezed
-class ArrangerState with _$ArrangerState {
+abstract class ArrangerState with _$ArrangerState {
   factory ArrangerState({required int projectID}) = _ArrangerState;
 }

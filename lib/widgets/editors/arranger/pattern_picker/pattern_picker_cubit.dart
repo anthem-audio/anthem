@@ -19,23 +19,18 @@
 
 import 'dart:async';
 
-import 'package:collection/collection.dart';
 import 'package:bloc/bloc.dart';
-import 'package:flutter/widgets.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../../../commands/state_changes.dart';
-import '../../../../model/pattern.dart';
 import '../../../../model/project.dart';
 import '../../../../model/store.dart';
 
 part 'pattern_picker_state.dart';
+part 'pattern_picker_cubit.freezed.dart';
 
-List<PatternModel> getPatterns(ProjectModel? project) {
-  return project?.song.patternOrder
-          .map((patternID) => project.song.patterns[patternID])
-          .whereNotNull()
-          .toList() ??
-      [];
+List<int> getPatternIDs(ProjectModel? project) {
+  return project?.song.patternOrder ?? [];
 }
 
 class PatternPickerCubit extends Cubit<PatternPickerState> {
@@ -46,7 +41,7 @@ class PatternPickerCubit extends Cubit<PatternPickerState> {
   PatternPickerCubit({required int projectID})
       : super(PatternPickerState(
           projectID: projectID,
-          patterns: getPatterns(
+          patternIDs: getPatternIDs(
             Store.instance.projects[projectID],
           ),
         )) {
@@ -58,6 +53,6 @@ class PatternPickerCubit extends Cubit<PatternPickerState> {
   }
 
   _updatePatternList(PatternStateChange change) {
-    emit(state.copyWith(patterns: getPatterns(project)));
+    emit(state.copyWith(patternIDs: getPatternIDs(project)));
   }
 }
