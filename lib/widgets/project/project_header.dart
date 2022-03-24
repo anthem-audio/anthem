@@ -26,6 +26,7 @@ import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../basic/icon.dart';
 import '../main_window/main_window_cubit.dart';
 
 class ProjectHeader extends StatelessWidget {
@@ -80,8 +81,8 @@ class ProjectHeader extends StatelessWidget {
                   ],
                 ),
                 child: Button(
-                  width: 28,
-                  iconPath: "assets/icons/file/hamburger.svg",
+                  // width: 28,
+                  startIcon: Icons.hamburger,
                   showMenuIndicator: true,
                   onPress: () {
                     menuController.open?.call();
@@ -90,24 +91,24 @@ class ProjectHeader extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               Button(
-                width: 28,
-                iconPath: "assets/icons/file/save.svg",
+                // width: 28,
+                startIcon: Icons.save,
                 onPress: () {
                   mainWindowCubit.saveProject(projectID, false);
                 },
               ),
               const SizedBox(width: 4),
               Button(
-                width: 28,
-                iconPath: "assets/icons/file/undo.svg",
+                // width: 28,
+                startIcon: Icons.undo,
                 onPress: () {
                   projectCubit.undo();
                 },
               ),
               const SizedBox(width: 4),
               Button(
-                width: 28,
-                iconPath: "assets/icons/file/redo.svg",
+                // width: 28,
+                startIcon: Icons.redo,
                 onPress: () {
                   projectCubit.redo();
                 },

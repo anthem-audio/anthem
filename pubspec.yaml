@@ -41,8 +41,9 @@ dependencies:
   flutter_svg: ^0.23.0+1
   file_picker: ^4.1.6
   optional: 6.1.0+1
-  json_annotation: ^4.3.0
+  json_annotation: ^4.4.0
   freezed_annotation: ^1.1.0
+  bitsdojo_window: ^0.1.1+1
 
 dev_dependencies:
   json_serializable: ^6.0.0

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,15 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'generator_row_cubit.dart';
+import 'package:bloc/bloc.dart';
+import 'package:flutter/widgets.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-@freezed
-class GeneratorRowState with _$GeneratorRowState {
-  factory GeneratorRowState({
-    required int generatorID,
-    required int projectID,
-    required int? patternID,
-    required Color color,
-    @Default([]) List<ClipNoteModel> clipNotes,
-  }) = _GeneratorRowState;
+part 'arranger_state.dart';
+part 'arranger_cubit.freezed.dart';
+
+class ArrangerCubit extends Cubit<ArrangerState> {
+  ArrangerCubit({required int projectID})
+      : super(ArrangerState(projectID: projectID)) {}
 }

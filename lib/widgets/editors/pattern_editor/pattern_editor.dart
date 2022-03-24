@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -30,6 +30,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../theme.dart';
+import '../../basic/icon.dart';
 import 'generator_row.dart';
 import 'generator_row_cubit.dart';
 
@@ -88,9 +89,9 @@ class _PatternEditorState extends State<PatternEditor> {
                               })
                         ]),
                         child: Button(
-                          width: 28,
-                          height: 28,
-                          iconPath: "assets/icons/file/kebab.svg",
+                          // width: 28,
+                          // height: 28,
+                          startIcon: Icons.kebab,
                           showMenuIndicator: true,
                           onPress: () {
                             menuController.open?.call();
@@ -109,10 +110,7 @@ class _PatternEditorState extends State<PatternEditor> {
                             );
                           },
                         ).toList(),
-                        selectedID: state.activePattern
-                            .map((pattern) => pattern.id)
-                            .orElse(0)
-                            .toString(),
+                        selectedID: state.activePatternID?.toString(),
                         onChanged: (idStr) {
                           final id = idStr == null ? 0 : int.parse(idStr);
                           context
@@ -141,46 +139,43 @@ class _PatternEditorState extends State<PatternEditor> {
                                     const EdgeInsets.symmetric(vertical: 5),
                                 child: SizeChangedLayoutNotifier(
                                   child: Column(
-                                          children: state.generatorIDList
-                                              .map<Widget>((id) {
-                                        final instrument = state.instruments[id];
-                                        final controller = state.controllers[id];
+                                    children:
+                                        state.generatorIDList.map<Widget>((id) {
+                                      final instrument = state.instruments[id];
+                                      final controller = state.controllers[id];
 
-                                        // TODO: provide type to child
-                                        if (instrument != null) {
-                                          return BlocProvider(
-                                            create: (context) => GeneratorRowCubit(
+                                      // TODO: provide type to child
+                                      if (instrument != null) {
+                                        return BlocProvider(
+                                          create: (context) =>
+                                              GeneratorRowCubit(
+                                            projectID: state.projectID,
+                                            patternID: state.activePatternID,
+                                            generatorID: id,
+                                          ),
+                                          child: const GeneratorRow(),
+                                        );
+                                      }
+
+                                      if (controller != null) {
+                                        return Padding(
+                                          padding:
+                                              const EdgeInsets.only(bottom: 1),
+                                          child: BlocProvider(
+                                            create: (context) =>
+                                                GeneratorRowCubit(
                                               projectID: state.projectID,
-                                              patternID: state.activePattern
-                                                  .map((pattern) => pattern.id)
-                                                  .orElse(0),
+                                              patternID: state.activePatternID,
                                               generatorID: id,
                                             ),
                                             child: const GeneratorRow(),
-                                          );
-                                        }
+                                          ),
+                                        );
+                                      }
 
-                                        if (controller != null) {
-                                          return Padding(
-                                            padding:
-                                                const EdgeInsets.only(bottom: 1),
-                                            child: BlocProvider(
-                                              create: (context) =>
-                                                  GeneratorRowCubit(
-                                                projectID: state.projectID,
-                                                patternID: state.activePattern
-                                                    .map((pattern) => pattern.id)
-                                                    .orElse(0),
-                                                generatorID: id,
-                                              ),
-                                              child: const GeneratorRow(),
-                                            ),
-                                          );
-                                        }
-
-                                        throw Error();
-                                      }).toList(),
-                                      ),
+                                      throw Error();
+                                    }).toList(),
+                                  ),
                                 ),
                               ),
                             ),

@@ -28,6 +28,8 @@ import 'package:anthem/widgets/project_explorer/project_explorer.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../editors/arranger/arranger.dart';
+import '../editors/arranger/arranger_cubit.dart';
 import 'project_header.dart';
 import '../../theme.dart';
 
@@ -52,6 +54,7 @@ class Project extends StatelessWidget {
               panelContent: const ProjectExplorer(),
 
               child: Panel(
+                hidden: true,
                 orientation: PanelOrientation.right,
                 // right panel
                 panelContent: Container(color: Theme.panel.main),
@@ -67,7 +70,13 @@ class Project extends StatelessWidget {
                   ),
                   child: Panel(
                     orientation: PanelOrientation.left,
-                    child: Container(color: Theme.panel.main),
+                    child: Container(
+                      color: Theme.panel.main,
+                      child: BlocProvider<ArrangerCubit>(
+                        create: (context) => ArrangerCubit(projectID: state.id),
+                        child: Arranger(),
+                      ),
+                    ),
                     // pattern editor
                     panelContent: BlocProvider<PatternEditorCubit>(
                       create: (context) => PatternEditorCubit(
