@@ -68,25 +68,23 @@ class GeneratorRow extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Container(
-                      height: 30,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Theme.panel.border),
-                        borderRadius:
-                            const BorderRadius.all(Radius.circular(1)),
-                        color: Theme.panel.main,
-                      ),
-                      child: state.pattern.map<Widget>((pattern) {
-                        final notes = state.clipNotes;
-
-                        return ClipNotes(
-                          notes: notes,
-                          timeViewStart: 0,
-                          // 1 bar is 100 pxiels, can be tweaked (and should probably be set above?)
-                          // TODO: hard-coded ticks-per-beat
-                          ticksPerPixel: (96 * 4) / 100,
-                          color: state.color,
-                        );
-                      }).orElse(const SizedBox())),
+                    height: 30,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Theme.panel.border),
+                      borderRadius: const BorderRadius.all(Radius.circular(1)),
+                      color: Theme.panel.main,
+                    ),
+                    child: state.patternID == null
+                        ? const SizedBox()
+                        : ClipNotes(
+                            notes: state.clipNotes,
+                            timeViewStart: 0,
+                            // 1 bar is 100 pixels, can be tweaked (and should probably be set above?)
+                            // TODO: hard-coded ticks-per-beat
+                            ticksPerPixel: (96 * 4) / 100,
+                            color: state.color,
+                          ),
+                  ),
                 ),
               ],
             ),

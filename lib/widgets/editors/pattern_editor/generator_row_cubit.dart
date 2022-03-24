@@ -27,8 +27,10 @@ import 'package:anthem/widgets/basic/clip/clip_notes.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
 import 'package:optional/optional_internal.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'generator_row_state.dart';
+part 'generator_row_cubit.freezed.dart';
 
 class GeneratorRowCubit extends Cubit<GeneratorRowState> {
   // ignore: unused_field
@@ -56,9 +58,7 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
             return GeneratorRowState(
               projectID: project.id,
               generatorID: generatorID,
-              pattern: patternID == null
-                  ? const Optional.empty()
-                  : Optional.ofNullable(project.song.patterns[patternID]),
+              patternID: patternID,
               color: color,
             );
           })(),
@@ -81,28 +81,28 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
   }
 
   _changePattern(PatternStateChange change) {
-    final pattern =
-        Optional.ofNullable(project.song.patterns[change.patternID]);
+    final pattern = project.song.patterns[change.patternID];
 
     emit(state.copyWith(
-      pattern: pattern,
-      clipNotes: state.pattern.value.notes[state.generatorID]
+      patternID: change.patternID,
+      clipNotes: pattern?.notes[state.generatorID]
           ?.map((note) => ClipNoteModel.fromNoteModel(note))
-          .toList(),
+          .toList() ?? [],
     ));
   }
 
   _updateNotes(NoteStateChange change) {
-    if (state.pattern.map((pattern) => pattern.id).orElseNull !=
-            change.patternID ||
+    if (state.patternID != change.patternID ||
         state.generatorID != change.generatorID) {
       return;
     }
 
+    final pattern = project.song.patterns[change.patternID];
+
     emit(state.copyWith(
-      clipNotes: state.pattern.value.notes[state.generatorID]
+      clipNotes: pattern?.notes[state.generatorID]
           ?.map((note) => ClipNoteModel.fromNoteModel(note))
-          .toList(),
+          .toList() ?? [],
     ));
   }
 }
