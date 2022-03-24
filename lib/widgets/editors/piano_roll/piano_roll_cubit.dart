@@ -18,18 +18,14 @@
 */
 
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/get_id.dart';
 import 'package:anthem/model/note.dart';
-import 'package:anthem/model/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:bloc/bloc.dart';
-import 'package:flutter/widgets.dart';
-import 'package:optional/optional_internal.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'piano_roll_state.dart';
@@ -87,8 +83,6 @@ class PianoRollCubit extends Cubit<PianoRollState> {
   }
 
   _updateActiveInstrument(GeneratorStateChange change) {
-    final pattern = project.song.patterns[state.patternID];
-
     emit(state.copyWith(
       activeInstrumentID: project.song.activeGeneratorID,
       notes: state.patternID == null || project.song.activeGeneratorID == null
@@ -106,6 +100,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
     } catch (ex) {
       note = null;
     }
+    return note;
   }
 
   void addNote({
