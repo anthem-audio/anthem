@@ -19,8 +19,10 @@
 
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'arranger_state.dart';
+part 'arranger_cubit.freezed.dart';
 
 class ArrangerCubit extends Cubit<ArrangerState> {
   ArrangerCubit({required int projectID})

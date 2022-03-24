@@ -19,14 +19,7 @@
 
 part of 'arranger_cubit.dart';
 
-@immutable
-class ArrangerState {
-  final int projectID;
-
-  ArrangerState({required this.projectID});
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ArrangerState && other.projectID == projectID;
+@freezed
+class ArrangerState with _$ArrangerState {
+  factory ArrangerState({required int projectID}) = _ArrangerState;
 }
