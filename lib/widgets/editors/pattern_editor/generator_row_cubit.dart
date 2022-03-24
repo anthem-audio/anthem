@@ -57,6 +57,7 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
 
             return GeneratorRowState(
               projectID: project.id,
+              ticksPerQuarter: project.song.ticksPerQuarter,
               generatorID: generatorID,
               patternID: patternID,
               color: color,
