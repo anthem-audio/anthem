@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -30,8 +30,10 @@ import 'package:anthem/model/store.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
 import 'package:optional/optional_internal.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'piano_roll_state.dart';
+part 'piano_roll_cubit.freezed.dart';
 
 class PianoRollCubit extends Cubit<PianoRollState> {
   // ignore: unused_field
@@ -45,10 +47,8 @@ class PianoRollCubit extends Cubit<PianoRollState> {
       : super(
           PianoRollState(
             projectID: projectID,
-            pattern: const Optional.empty(),
             ticksPerQuarter:
                 Store.instance.projects[projectID]!.song.ticksPerQuarter,
-            activeInstrumentID: const Optional.empty(),
             notes: const [],
           ),
         ) {
@@ -76,31 +76,30 @@ class PianoRollCubit extends Cubit<PianoRollState> {
 
   _updateActivePattern(StateChange change) {
     final patternID = project.song.activePatternID;
-    PatternModel? pattern;
-    if (patternID != null) {
-      pattern = project.song.patterns[patternID];
-    }
+    final pattern = project.song.patterns[patternID];
 
     emit(state.copyWith(
-      pattern: Optional.ofNullable(pattern),
-      notes: pattern == null || state.activeInstrumentID.isEmpty
+      patternID: patternID,
+      notes: pattern == null || state.activeInstrumentID == null
           ? []
-          : _getLocalNotes(pattern.id, state.activeInstrumentID.value),
+          : _getLocalNotes(pattern.id, state.activeInstrumentID!),
     ));
   }
 
   _updateActiveInstrument(GeneratorStateChange change) {
+    final pattern = project.song.patterns[state.patternID];
+
     emit(state.copyWith(
-      activeInstrumentID: Optional.ofNullable(project.song.activeGeneratorID),
-      notes: state.pattern.isEmpty || project.song.activeGeneratorID == null
+      activeInstrumentID: project.song.activeGeneratorID,
+      notes: state.patternID == null || project.song.activeGeneratorID == null
           ? []
-          : _getLocalNotes(
-              state.pattern.value.id, project.song.activeGeneratorID!),
+          : _getLocalNotes(state.patternID!, project.song.activeGeneratorID!),
     ));
   }
 
   NoteModel? _getNote(int? instrumentID, int noteID) {
-    final noteList = state.pattern.value.notes[instrumentID];
+    final pattern = project.song.patterns[state.patternID];
+    final noteList = pattern?.notes[instrumentID];
     NoteModel? note;
     try {
       note = noteList?.firstWhere((note) => note.id == noteID);
@@ -116,7 +115,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
     required int length,
     required int offset,
   }) {
-    if (state.pattern.isEmpty || instrumentID == null) {
+    if (state.patternID == null || instrumentID == null) {
       return;
     }
 
@@ -130,7 +129,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
 
     project.execute(AddNoteCommand(
       project: project,
-      patternID: state.pattern.value.id,
+      patternID: state.patternID!,
       generatorID: instrumentID,
       note: NoteModel(
         key: key,
@@ -144,13 +143,13 @@ class PianoRollCubit extends Cubit<PianoRollState> {
   void removeNote({required int? instrumentID, required int noteID}) {
     final note = _getNote(instrumentID, noteID);
 
-    if (state.pattern.isEmpty || instrumentID == null || note == null) {
+    if (state.patternID == null || instrumentID == null || note == null) {
       return;
     }
 
     project.execute(DeleteNoteCommand(
       project: project,
-      patternID: state.pattern.value.id,
+      patternID: state.patternID!,
       generatorID: instrumentID,
       note: note,
     ));
@@ -164,13 +163,13 @@ class PianoRollCubit extends Cubit<PianoRollState> {
   }) {
     final note = _getNote(instrumentID, noteID);
 
-    if (state.pattern.isEmpty || instrumentID == null || note == null) {
+    if (state.patternID == null || instrumentID == null || note == null) {
       return;
     }
 
     return project.execute(MoveNoteCommand(
       project: project,
-      patternID: state.pattern.value.id,
+      patternID: state.patternID!,
       generatorID: instrumentID,
       noteID: noteID,
       oldKey: note.key,
@@ -187,13 +186,13 @@ class PianoRollCubit extends Cubit<PianoRollState> {
   }) {
     final note = _getNote(instrumentID, noteID);
 
-    if (state.pattern.isEmpty || instrumentID == null || note == null) {
+    if (state.patternID == null || instrumentID == null || note == null) {
       return;
     }
 
     return project.execute(ResizeNoteCommand(
       project: project,
-      patternID: state.pattern.value.id,
+      patternID: state.patternID!,
       generatorID: instrumentID,
       noteID: noteID,
       oldLength: note.length,
@@ -204,7 +203,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
   void mutateLocalNotes(
       {required int? instrumentID,
       required Function(List<LocalNote> notes) mutator}) {
-    if (state.pattern.isEmpty || instrumentID == null) {
+    if (state.patternID == null || instrumentID == null) {
       return;
     }
 
@@ -214,7 +213,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
 
     emit(PianoRollState(
       activeInstrumentID: state.activeInstrumentID,
-      pattern: state.pattern,
+      patternID: state.patternID,
       projectID: state.projectID,
       ticksPerQuarter: state.ticksPerQuarter,
       notes: newNotes,

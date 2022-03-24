@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,57 +19,20 @@
 
 part of 'piano_roll_cubit.dart';
 
-@immutable
-class PianoRollState {
-  final int projectID;
-  final Optional<PatternModel> pattern;
-  final int ticksPerQuarter;
-  final Optional<int> activeInstrumentID;
-  final List<LocalNote> notes;
+@freezed
+class PianoRollState with _$PianoRollState {
 
-  const PianoRollState({
-    required this.projectID,
-    required this.pattern,
-    required this.ticksPerQuarter,
-    required this.activeInstrumentID,
-    required this.notes,
-  });
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is PianoRollState &&
-          other.pattern == pattern &&
-          other.ticksPerQuarter == ticksPerQuarter &&
-          other.activeInstrumentID == activeInstrumentID &&
-          other.notes == notes);
-
-  @override
-  int get hashCode =>
-      pattern.hashCode ^
-      ticksPerQuarter.hashCode ^
-      activeInstrumentID.hashCode ^
-      notes.hashCode;
-
-  PianoRollState copyWith({
-    int? projectID,
-    Optional<PatternModel>? pattern,
-    int? ticksPerQuarter,
-    Optional<int>? activeInstrumentID,
-    List<LocalNote>? notes,
-  }) {
-    return PianoRollState(
-      projectID: projectID ?? this.projectID,
-      pattern: pattern ?? this.pattern,
-      ticksPerQuarter: ticksPerQuarter ?? this.ticksPerQuarter,
-      activeInstrumentID: activeInstrumentID ?? this.activeInstrumentID,
-      notes: notes ?? this.notes,
-    );
-  }
+  factory PianoRollState({
+    required int projectID,
+    int? patternID,
+    required int ticksPerQuarter,
+    int? activeInstrumentID,
+    required List<LocalNote> notes,
+  }) = _PianoRollState;
 }
 
-// A list of these is used by the piano roll. The list is updated when the Rust
-// note list updates.
+// A list of these is used by the piano roll. The list is updated when the
+// model note list updates.
 class LocalNote implements NoteModel {
   @override
   late int id;
