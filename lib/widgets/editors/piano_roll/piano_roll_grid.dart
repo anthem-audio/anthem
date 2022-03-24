@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -24,6 +24,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:provider/provider.dart';
 
+import '../../../model/project.dart';
+import '../../../model/store.dart';
 import 'helpers.dart';
 
 class PianoRollGrid extends StatelessWidget {
@@ -42,15 +44,15 @@ class PianoRollGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<PianoRollCubit, PianoRollState>(
         builder: (context, state) {
-      var pattern = state.pattern;
-      var timeView = context.watch<TimeView>();
+      final pattern = Store.instance.projects[state.projectID]?.song.patterns[state.patternID];
+      final timeView = context.watch<TimeView>();
 
       return ClipRect(
         child: CustomPaint(
           painter: PianoRollBackgroundPainter(
             keyHeight: keyHeight,
             keyValueAtTop: keyValueAtTop,
-            pattern: pattern.orElseNull,
+            pattern: pattern,
             timeViewStart: timeView.start,
             timeViewEnd: timeView.end,
             ticksPerQuarter: ticksPerQuarter,

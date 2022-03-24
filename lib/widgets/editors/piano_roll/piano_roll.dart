@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -29,6 +29,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:provider/provider.dart';
 
+import '../../../model/store.dart';
 import '../../../theme.dart';
 import 'helpers.dart';
 import 'piano_roll_grid.dart';
@@ -139,15 +140,14 @@ class _PianoRollContentState extends State<_PianoRollContent> {
   Widget build(BuildContext context) {
     return BlocBuilder<PianoRollCubit, PianoRollState>(
         builder: (context, state) {
-      final pattern = state.pattern;
+      // TODO: Should some of this be in the cubit state?
+      final project = Store.instance.projects[state.projectID];
+      final pattern = project?.song.patterns[state.patternID];
 
       final timeView = context.watch<TimeView>();
 
-      final timelineHeight = (pattern
-              .map((pattern) => pattern.timeSignatureChanges)
-              .orElse([])).isNotEmpty
-          ? 42.0
-          : 21.0;
+      final timelineHeight =
+          (pattern?.timeSignatureChanges.length ?? 0) > 0 ? 42.0 : 21.0;
 
       final notes = state.notes;
 
@@ -202,7 +202,7 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                         SizedBox(
                           height: timelineHeight,
                           child: Timeline(
-                            pattern: pattern.orElseNull,
+                            pattern: pattern,
                             ticksPerQuarter: widget.ticksPerQuarter,
                           ),
                         ),
