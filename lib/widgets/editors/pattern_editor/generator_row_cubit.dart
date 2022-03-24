@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -65,11 +65,17 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
         ) {
     project = Store.instance.projects[projectID]!;
     _updateNotesSub = project.stateChangeStream
-        .where((change) => change is NoteAdded || change is NoteDeleted)
+        // .where((change) => change is NoteAdded || change is NoteDeleted)
+        .where((change) {
+          return change is NoteAdded || change is NoteDeleted;
+        })
         .map((change) => change as NoteStateChange)
         .listen(_updateNotes);
     _changePatternSub = project.stateChangeStream
-        .where((change) => change is ActivePatternSet)
+        // .where((change) => change is ActivePatternSet)
+        .where((change) {
+          return change is ActivePatternSet;
+        })
         .map((change) => change as PatternStateChange)
         .listen(_changePattern);
   }
@@ -80,6 +86,9 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
 
     emit(state.copyWith(
       pattern: pattern,
+      clipNotes: state.pattern.value.notes[state.generatorID]
+          ?.map((note) => ClipNoteModel.fromNoteModel(note))
+          .toList(),
     ));
   }
 
