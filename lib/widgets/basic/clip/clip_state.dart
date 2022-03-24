@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,15 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'generator_row_cubit.dart';
+part of 'clip_cubit.dart';
 
 @freezed
-class GeneratorRowState with _$GeneratorRowState {
-  factory GeneratorRowState({
-    required int generatorID,
-    required int projectID,
-    required int? patternID,
-    required Color color,
-    @Default([]) List<ClipNoteModel> clipNotes,
-  }) = _GeneratorRowState;
+class ClipState with _$ClipState {
+  factory ClipState({
+    required List<ClipNoteModel> notes,
+    required String patternName,
+  }) = _ClipState;
 }

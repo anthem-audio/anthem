@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -30,7 +30,9 @@ import 'package:provider/provider.dart';
 import 'model/store.dart';
 import 'widgets/main_window/main_window.dart';
 import 'widgets/main_window/main_window_cubit.dart';
-import 'package:anthem/bridge_generated.dart';
+import 'package:anthem/bridge_generated.dart' as bridge;
+
+import 'package:bitsdojo_window/bitsdojo_window.dart';
 
 const base = 'anthem';
 final path = Platform.isWindows
@@ -39,12 +41,20 @@ final path = Platform.isWindows
         ? 'lib$base.dylib'
         : 'lib$base.so';
 late final dylib = Platform.isIOS ? DynamicLibrary.process() : DynamicLibrary.open(path);
-late final api = AnthemImpl(dylib);
+late final api = bridge.AnthemImpl(dylib);
 
 void main() async {
   Store.instance.init();
   api.startEngine(id: 0);
   runApp(const MyApp());
+
+  doWhenWindowReady(() {
+    final initialSize = Size(800, 600);
+    appWindow.minSize = initialSize;
+    appWindow.size = initialSize;
+    appWindow.alignment = Alignment.center;
+    appWindow.show();
+  });
 }
 
 class MyApp extends StatelessWidget {

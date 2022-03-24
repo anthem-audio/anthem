@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,8 +19,10 @@
 
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/widgets.dart';
 
+import '../basic/icon.dart';
 import 'main_window_cubit.dart';
 
 class WindowHeader extends StatefulWidget {
@@ -84,11 +86,11 @@ class _WindowHeaderState extends State<WindowHeader> {
                             ),
                           ),
                           Button(
+                            variant: ButtonVariant.ghost,
                             width: 20,
                             height: 20,
                             hideBorder: true,
-                            hideBackground: true,
-                            iconPath: "assets/icons/small/close.svg",
+                            startIcon: Icons.close,
                             onPress: () {
                               widget.closeProject(tab.id);
                             },
@@ -103,16 +105,18 @@ class _WindowHeaderState extends State<WindowHeader> {
             ).toList() +
             [
               Expanded(
-                child: Padding(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Theme.panel.main,
-                      borderRadius: const BorderRadius.all(
-                        Radius.circular(2),
+                child: MoveWindow(
+                  child: Padding(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Theme.panel.main,
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(2),
+                        ),
                       ),
                     ),
+                    padding: const EdgeInsets.only(bottom: 1),
                   ),
-                  padding: const EdgeInsets.only(bottom: 1),
                 ),
               ),
             ],

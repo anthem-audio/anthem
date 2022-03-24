@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade, Budislav Stepanov
+  Copyright (C) 2021 - 2022 Joshua Wade, Budislav Stepanov
 
   This file is part of Anthem.
 

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -33,6 +33,9 @@ class GeneratorRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<GeneratorRowCubit, GeneratorRowState>(
         builder: (context, state) {
+      final backgroundHoverColor =
+          HSLColor.fromColor(state.color).withLightness(0.56).toColor();
+
       return GestureDetector(
         onTap: () {
           BlocProvider.of<ProjectCubit>(context)
@@ -50,9 +53,8 @@ class GeneratorRow extends StatelessWidget {
                   width: 105,
                   height: 26,
                   backgroundColor: state.color,
-                  backgroundHoverColor: HSLColor.fromColor(state.color)
-                      .withLightness(0.56)
-                      .toColor(),
+                  backgroundHoverColor: backgroundHoverColor,
+                  backgroundPressColor: backgroundHoverColor,
                 ),
                 const SizedBox(width: 8),
                 Container(
@@ -66,25 +68,23 @@ class GeneratorRow extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Container(
-                      height: 30,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Theme.panel.border),
-                        borderRadius:
-                            const BorderRadius.all(Radius.circular(1)),
-                        color: Theme.panel.main,
-                      ),
-                      child: state.pattern.map<Widget>((pattern) {
-                        final notes = state.clipNotes;
-
-                        return ClipNotes(
-                          notes: notes,
-                          timeViewStart: 0,
-                          // 1 bar is 100 pxiels, can be tweaked (and should probably be set above?)
-                          // TODO: hard-coded ticks-per-beat
-                          ticksPerPixel: (96 * 4) / 100,
-                          color: state.color,
-                        );
-                      }).orElse(const SizedBox())),
+                    height: 30,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Theme.panel.border),
+                      borderRadius: const BorderRadius.all(Radius.circular(1)),
+                      color: Theme.panel.main,
+                    ),
+                    child: state.patternID == null
+                        ? const SizedBox()
+                        : ClipNotes(
+                            notes: state.clipNotes,
+                            timeViewStart: 0,
+                            // 1 bar is 100 pixels, can be tweaked (and should probably be set above?)
+                            // TODO: hard-coded ticks-per-beat
+                            ticksPerPixel: (96 * 4) / 100,
+                            color: state.color,
+                          ),
+                  ),
                 ),
               ],
             ),

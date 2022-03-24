@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,84 +19,25 @@
 
 part of 'pattern_editor_cubit.dart';
 
-@immutable
-class PatternEditorState {
-  late final int projectID;
-  late final Optional<PatternModel> activePattern;
-  late final List<PatternListItem> patternList;
-  late final Map<int, GeneratorListItem> instruments;
-  late final Map<int, GeneratorListItem> controllers;
-  late final List<int> generatorIDList;
-
-  // TODO: Figure out how to do this without late final fields
-  // ignore: prefer_const_constructors_in_immutables
-  PatternEditorState({
-    required this.projectID,
-    required this.activePattern,
-    required this.patternList,
-    required this.instruments,
-    required this.controllers,
-    required this.generatorIDList,
-  });
-
-  PatternEditorState.init(this.projectID) {
-    activePattern = const Optional.empty();
-    patternList = [];
-    instruments = HashMap();
-    controllers = HashMap();
-    generatorIDList = [];
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is PatternEditorState &&
-          other.activePattern == activePattern &&
-          other.projectID == projectID &&
-          other.patternList == patternList &&
-          other.instruments == instruments &&
-          other.controllers == controllers &&
-          other.generatorIDList == generatorIDList;
-
-  @override
-  int get hashCode =>
-      activePattern.hashCode ^
-      projectID.hashCode ^
-      patternList.hashCode ^
-      instruments.hashCode ^
-      controllers.hashCode ^
-      generatorIDList.hashCode;
-
-  PatternEditorState copyWith({
-    int? projectID,
-    Optional<PatternModel>? activePattern,
-    List<PatternListItem>? patternList,
-    Map<int, GeneratorListItem>? instruments,
-    Map<int, GeneratorListItem>? controllers,
-    List<int>? generatorIDList,
-  }) {
-    return PatternEditorState(
-      projectID: projectID ?? this.projectID,
-      activePattern: activePattern ?? this.activePattern,
-      patternList: patternList ?? this.patternList,
-      instruments: instruments ?? this.instruments,
-      controllers: controllers ?? this.controllers,
-      generatorIDList: generatorIDList ?? this.generatorIDList,
-    );
-  }
+@freezed
+class PatternEditorState with _$PatternEditorState {
+  factory PatternEditorState({
+    required int projectID,
+    int? activePatternID,
+    @Default([]) List<PatternListItem> patternList,
+    @Default({}) Map<int, GeneratorListItem> instruments,
+    @Default({}) Map<int, GeneratorListItem> controllers,
+    @Default([]) List<int> generatorIDList,
+  }) = _PatternEditorState;
 }
 
-@immutable
-class PatternListItem {
-  final int id;
-  final String name;
-
-  const PatternListItem({required this.id, required this.name});
+@freezed
+class PatternListItem with _$PatternListItem {
+  factory PatternListItem({required int id, required String name}) =
+      _PatternListItem;
 }
 
-@immutable
-class GeneratorListItem {
-  final int id;
-
-  const GeneratorListItem({required this.id});
+@freezed
+class GeneratorListItem with _$GeneratorListItem {
+  factory GeneratorListItem({required int id}) = _GeneratorListItem;
 }
