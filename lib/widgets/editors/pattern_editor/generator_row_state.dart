@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,7 +20,7 @@
 part of 'generator_row_cubit.dart';
 
 @freezed
-abstract class GeneratorRowState with _$GeneratorRowState {
+class GeneratorRowState with _$GeneratorRowState {
   factory GeneratorRowState({
     required int generatorID,
     required int projectID,
