@@ -20,7 +20,7 @@
 part of 'clip_cubit.dart';
 
 @freezed
-abstract class ClipState with _$ClipState {
+class ClipState with _$ClipState {
   factory ClipState({
     required List<ClipNoteModel> notes,
     required String patternName,

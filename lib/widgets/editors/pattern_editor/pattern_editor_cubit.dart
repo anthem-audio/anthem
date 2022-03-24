@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -29,8 +29,10 @@ import 'package:anthem/model/project.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
 import 'package:optional/optional.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'pattern_editor_state.dart';
+part 'pattern_editor_cubit.freezed.dart';
 
 class PatternEditorCubit extends Cubit<PatternEditorState> {
   // ignore: unused_field
@@ -43,7 +45,7 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
   final ProjectModel project;
 
   PatternEditorCubit({required this.project})
-      : super(PatternEditorState.init(project.id)) {
+      : super(PatternEditorState(projectID: project.id)) {
     _updateActivePatternSub = project.stateChangeStream
         .where((change) => change is ActivePatternSet)
         .map((change) => change as ActivePatternSet)
@@ -61,8 +63,8 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
 
   _updateActivePattern(ActivePatternSet change) {
     emit(state.copyWith(
-        activePattern: Optional.ofNullable(
-            project.song.patterns[project.song.activePatternID])));
+      activePatternID: project.song.activePatternID,
+    ));
   }
 
   _updatePatternList(PatternStateChange _reply) {
