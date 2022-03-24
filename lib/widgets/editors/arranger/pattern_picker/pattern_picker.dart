@@ -63,9 +63,9 @@ class PatternPicker extends StatelessWidget {
                         controller: scrollController,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: state.patterns
+                          children: state.patternIDs
                               .map(
-                                (pattern) => Padding(
+                                (patternID) => Padding(
                                   padding: const EdgeInsets.only(bottom: 1),
                                   child: SizedBox(
                                     height: 44,
@@ -73,7 +73,7 @@ class PatternPicker extends StatelessWidget {
                                       create: (context) {
                                         return ClipCubit(
                                           projectID: state.projectID,
-                                          patternID: pattern.id,
+                                          patternID: patternID,
                                         );
                                       },
                                       child: anthem_clip.Clip(),
