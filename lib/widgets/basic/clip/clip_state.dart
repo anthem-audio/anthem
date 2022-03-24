@@ -22,13 +22,16 @@ part of 'clip_cubit.dart';
 @immutable
 class ClipState {
   final PatternModel pattern;
+  late int count = 0;
 
-  const ClipState({required this.pattern});
+  ClipState({required this.pattern, int? count}) {
+    if (count != null) this.count = count;
+  }
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) || other is ClipState && other.pattern == pattern;
+  // Hack: Don't override == so that we can trigger a render on any pattern
+  // state change
 
-  @override
-  int get hashCode => pattern.hashCode;
+  ClipState copyWith({PatternModel? pattern}) {
+    return ClipState(pattern: pattern ?? this.pattern);
+  }
 }

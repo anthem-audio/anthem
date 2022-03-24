@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/widgets/basic/clip/clip_cubit.dart';
+import 'package:anthem/widgets/basic/clip/clip_notes.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -27,9 +28,48 @@ class Clip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<ClipCubit, ClipState>(builder: (context, state) {
-      return Container(
-        color: const Color(0xFF00FFFF),
-        child: Text(state.pattern.id.toString()),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            height: 15,
+            decoration: const BoxDecoration(
+              color: Color(0xFFA15D5B),
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(3),
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              state.pattern.name,
+              style: const TextStyle(
+                color: Color(0xFFFFD7D6),
+                fontSize: 10,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+                decoration: const BoxDecoration(
+                  color: Color(0x66A15D5B),
+                  borderRadius: BorderRadius.vertical(
+                    bottom: Radius.circular(3),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: ClipNotes(
+                    color: const Color(0xFFEEA0A2),
+                    timeViewStart: 0,
+                    ticksPerPixel: 5,
+                    notes: state.pattern.notes.entries
+                        .expand((e) => e.value)
+                        .map((note) => ClipNoteModel.fromNoteModel(note))
+                        .toList(),
+                  ),
+                )),
+          ),
+        ],
       );
     });
   }

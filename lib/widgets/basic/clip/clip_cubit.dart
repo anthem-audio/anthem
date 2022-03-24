@@ -17,21 +17,42 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../../commands/state_changes.dart';
 import '../../../model/pattern.dart';
+import '../../../model/project.dart';
 import '../../../model/store.dart';
 
 part 'clip_state.dart';
 
 class ClipCubit extends Cubit<ClipState> {
-  // TODO: ALlow this to optionally take a ClipModel
+  // TODO: Allow this to optionally take a ClipModel
+  late final ProjectModel project;
+
+  // ignore: unused_field
+  late final StreamSubscription<PatternStateChange> _updatePatternSub;
+
   ClipCubit({required int projectID, required int patternID})
       : super(
           ClipState(
             pattern:
                 Store.instance.projects[projectID]!.song.patterns[patternID]!,
           ),
-        ) {}
+        ) {
+    project = Store.instance.projects[projectID]!;
+    _updatePatternSub = project.stateChangeStream
+        .where((change) =>
+            change is NoteStateChange &&
+            change.patternID == patternID)
+        .map((change) => change as PatternStateChange)
+        .listen(_updatePattern);
+  }
+
+  _updatePattern(PatternStateChange change) {
+    emit(state.copyWith());
+  }
 }
