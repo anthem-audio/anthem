@@ -19,40 +19,54 @@
 
 import 'dart:async';
 
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../../commands/state_changes.dart';
+import '../../../model/note.dart';
 import '../../../model/pattern.dart';
 import '../../../model/project.dart';
 import '../../../model/store.dart';
+import 'clip_notes.dart';
 
 part 'clip_state.dart';
+part 'clip_cubit.freezed.dart';
 
 class ClipCubit extends Cubit<ClipState> {
   // TODO: Allow this to optionally take a ClipModel
   late final ProjectModel project;
+  late final PatternModel pattern;
 
   // ignore: unused_field
   late final StreamSubscription<PatternStateChange> _updatePatternSub;
 
   ClipCubit({required int projectID, required int patternID})
-      : super(
-          ClipState(
-            pattern:
-                Store.instance.projects[projectID]!.song.patterns[patternID]!,
-          ),
-        ) {
+      : super((() {
+          final pattern =
+              Store.instance.projects[projectID]!.song.patterns[patternID]!;
+          return ClipState(
+            notes: _getClipNotes(pattern),
+            patternName: pattern.name,
+          );
+        })()) {
     project = Store.instance.projects[projectID]!;
+    pattern = project.song.patterns[patternID]!;
     _updatePatternSub = project.stateChangeStream
         .where((change) =>
-            change is NoteStateChange &&
-            change.patternID == patternID)
+            change is NoteStateChange && change.patternID == patternID)
         .map((change) => change as PatternStateChange)
         .listen(_updatePattern);
   }
 
   _updatePattern(PatternStateChange change) {
-    emit(state.copyWith());
+    emit(state.copyWith(notes: _getClipNotes(pattern)));
   }
+}
+
+List<ClipNoteModel> _getClipNotes(PatternModel pattern) {
+  return pattern.notes.entries
+      .expand((entry) => entry.value)
+      .map((noteModel) => ClipNoteModel.fromNoteModel(noteModel))
+      .toList();
 }

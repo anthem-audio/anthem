@@ -19,19 +19,10 @@
 
 part of 'clip_cubit.dart';
 
-@immutable
-class ClipState {
-  final PatternModel pattern;
-  late int count = 0;
-
-  ClipState({required this.pattern, int? count}) {
-    if (count != null) this.count = count;
-  }
-
-  // Hack: Don't override == so that we can trigger a render on any pattern
-  // state change
-
-  ClipState copyWith({PatternModel? pattern}) {
-    return ClipState(pattern: pattern ?? this.pattern);
-  }
+@freezed
+abstract class ClipState with _$ClipState {
+  factory ClipState({
+    required List<ClipNoteModel> notes,
+    required String patternName,
+  }) = _ClipState;
 }

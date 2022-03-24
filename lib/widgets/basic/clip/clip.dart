@@ -41,7 +41,7 @@ class Clip extends StatelessWidget {
             ),
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(
-              state.pattern.name,
+              state.patternName,
               style: const TextStyle(
                 color: Color(0xFFFFD7D6),
                 fontSize: 10,
@@ -62,10 +62,7 @@ class Clip extends StatelessWidget {
                     color: const Color(0xFFEEA0A2),
                     timeViewStart: 0,
                     ticksPerPixel: 5,
-                    notes: state.pattern.notes.entries
-                        .expand((e) => e.value)
-                        .map((note) => ClipNoteModel.fromNoteModel(note))
-                        .toList(),
+                    notes: state.notes,
                   ),
                 )),
           ),
