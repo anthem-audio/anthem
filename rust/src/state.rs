@@ -37,4 +37,5 @@ impl State {
 
 lazy_static! {
     pub static ref STATE: Mutex<State> = Mutex::new(State::new());
+    pub static ref INPUT_CTX: Mutex<tfc::Context> = Mutex::new(tfc::Context::new().unwrap());
 }

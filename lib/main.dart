@@ -40,7 +40,8 @@ final path = Platform.isWindows
     : Platform.isMacOS
         ? 'lib$base.dylib'
         : 'lib$base.so';
-late final dylib = Platform.isIOS ? DynamicLibrary.process() : DynamicLibrary.open(path);
+late final dylib =
+    Platform.isIOS ? DynamicLibrary.process() : DynamicLibrary.open(path);
 late final api = bridge.AnthemImpl(dylib);
 
 void main() async {
@@ -49,7 +50,7 @@ void main() async {
   runApp(const MyApp());
 
   doWhenWindowReady(() {
-    final initialSize = Size(800, 600);
+    const initialSize = Size(800, 600);
     appWindow.minSize = initialSize;
     appWindow.size = initialSize;
     appWindow.alignment = Alignment.center;
