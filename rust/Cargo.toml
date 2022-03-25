@@ -9,7 +9,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 anyhow = { version = "1.0.52", features = ["backtrace"] }
-flutter_rust_bridge = "1.16.0"
+flutter_rust_bridge = "1.23.0"
 num = "0.4" # unrelated to Flutter Rust Bridge. Used only to draw beautiful photos.
 image = "0.23.14" # unrelated to Flutter Rust Bridge. Used only to draw beautiful photos.
 crossbeam = "0.8" # unrelated to Flutter Rust Bridge. Used only to draw beautiful photos.
@@ -19,3 +19,4 @@ serde = { version = "1.0.133", features = ["derive"] }
 bincode = "1.3.3"
 # anthem_engine_model = { path = "./engine_model" }
 rand = "0.8.4"
+tfc="0.6.0"
