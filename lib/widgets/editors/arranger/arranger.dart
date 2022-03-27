@@ -68,7 +68,10 @@ class _ArrangerState extends State<Arranger> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Text("x: $x, y: $y"),
+                            Row(children: [
+                              SizedBox(width: 100, child: Text("x: $x,")),
+                              SizedBox(width: 100, child: Text("y: $y"))
+                            ]),
                             Expanded(
                               child: ControlMouseHandler(
                                 child:
