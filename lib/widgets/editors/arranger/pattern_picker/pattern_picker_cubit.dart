@@ -19,6 +19,7 @@
 
 import 'dart:async';
 
+import 'package:anthem/main.dart';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -44,6 +45,7 @@ class PatternPickerCubit extends Cubit<PatternPickerState> {
           patternIDs: getPatternIDs(
             Store.instance.projects[projectID],
           ),
+          patternHeight: 50,
         )) {
     project = Store.instance.projects[projectID]!;
     _updatePatternsSub = project.stateChangeStream
@@ -54,5 +56,9 @@ class PatternPickerCubit extends Cubit<PatternPickerState> {
 
   _updatePatternList(PatternStateChange change) {
     emit(state.copyWith(patternIDs: getPatternIDs(project)));
+  }
+
+  setPatternHeight(double height) {
+    emit(state.copyWith(patternHeight: height));
   }
 }

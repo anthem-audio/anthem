@@ -74,6 +74,9 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
   // If the mouse is less than this far from the edge of the window, we jump
   double jumpMouseAreaSize = 30;
 
+  // When we jump, we jump to (screen edge) + jumpMouseAreaSize + jumpPadding
+  double jumpPadding = 20;
+
   // State machine for managing mouse jumps
   _AxisHandlerStatus horizontalAxisState = _AxisHandlerStatus.idle;
   _AxisHandlerStatus verticalAxisState = _AxisHandlerStatus.idle;
@@ -107,10 +110,13 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
         widget.onStart?.call();
       },
       onPointerUp: (e) {
-        api.setMousePos(
-          x: (originalMouseX * devicePixelRatio).round(),
-          y: (originalMouseY * devicePixelRatio).round(),
-        );
+        // We'll skip this for now, until we can figure out a way to make the
+        // mouse cursor disappear.
+
+        // api.setMousePos(
+        //   x: (originalMouseX * devicePixelRatio).round(),
+        //   y: (originalMouseY * devicePixelRatio).round(),
+        // );
 
         widget.onEnd?.call(
           ControlMouseEvent(
@@ -126,8 +132,6 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
         verticalAxisState = _AxisHandlerStatus.idle;
       },
       onPointerMove: (e) async {
-        print(verticalAxisState);
-
         final mousePos = Offset(
             e.position.dx + windowRect.left, e.position.dy + windowRect.top);
         final mouseX = mousePos.dx;
@@ -208,15 +212,15 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
           var y = mouseY;
 
           if (xJumpDirection == _JumpDirection.positive) {
-            x = windowRect.right - jumpMouseAreaSize + 10;
+            x = windowRect.right - jumpMouseAreaSize + jumpPadding;
           } else if (xJumpDirection == _JumpDirection.negative) {
-            x = windowRect.left + jumpMouseAreaSize + 10;
+            x = windowRect.left + jumpMouseAreaSize + jumpPadding;
           }
 
           if (yJumpDirection == _JumpDirection.positive) {
-            y = windowRect.bottom - jumpMouseAreaSize + 10;
+            y = windowRect.bottom - jumpMouseAreaSize + jumpPadding;
           } else if (yJumpDirection == _JumpDirection.negative) {
-            y = windowRect.top + jumpMouseAreaSize + 10;
+            y = windowRect.top + jumpMouseAreaSize + jumpPadding;
           }
 
           x *= devicePixelRatio;
@@ -228,8 +232,8 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
         widget.onChange?.call(
           ControlMouseEvent(
             delta: Offset(isWaitingForHorizontalJump ? 0 : dx,
-                isWaitingForVerticalJump ? 0 : dy),
-            absolute: Offset(accumulatorX, accumulatorY),
+                isWaitingForVerticalJump ? 0 : -dy),
+            absolute: Offset(accumulatorX, -accumulatorY),
           ),
         );
 
