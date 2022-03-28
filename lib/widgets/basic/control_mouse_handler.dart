@@ -35,7 +35,6 @@ enum _AxisHandlerStatus {
   idle,
   waitingForNegativeJump,
   waitingForPositiveJump,
-  waitingForZoneExit,
 }
 
 enum _JumpDirection { positive, negative }
@@ -71,9 +70,6 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
 
   double accumulatorX = 0;
   double accumulatorY = 0;
-
-  // Size of the region we use to detect if the mouse has successfully jumped
-  double jumpDetectionAreaSize = 30;
 
   // If the mouse is less than this far from the edge of the window, we jump
   double jumpMouseAreaSize = 30;
@@ -130,6 +126,8 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
         verticalAxisState = _AxisHandlerStatus.idle;
       },
       onPointerMove: (e) async {
+        print(verticalAxisState);
+
         final mousePos = Offset(
             e.position.dx + windowRect.left, e.position.dy + windowRect.top);
         final mouseX = mousePos.dx;
@@ -147,15 +145,6 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
         final isInBottomJumpDetectZone =
             windowRect.bottom - mouseY < jumpMouseAreaSize;
 
-        final isInLeftJumpTargetZone =
-            mouseX - windowRect.left < jumpDetectionAreaSize;
-        final isInTopJumpTargetZone =
-            mouseY - windowRect.top < jumpDetectionAreaSize;
-        final isInRightJumpTargetZone =
-            windowRect.right - mouseX < jumpDetectionAreaSize;
-        final isInBottomJumpTargetZone =
-            windowRect.bottom - mouseY < jumpDetectionAreaSize;
-
         _JumpDirection? xJumpDirection;
         _JumpDirection? yJumpDirection;
 
@@ -167,24 +156,17 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
                 verticalAxisState == _AxisHandlerStatus.waitingForPositiveJump;
 
         // Horizontal axis jump detection
-        if (horizontalAxisState == _AxisHandlerStatus.waitingForZoneExit) {
-          accumulatorX += dx;
-
-          if (!isInLeftJumpTargetZone && !isInRightJumpTargetZone) {
-            horizontalAxisState = _AxisHandlerStatus.idle;
-          }
-        } else if (horizontalAxisState ==
-                _AxisHandlerStatus.waitingForNegativeJump ||
+        if (horizontalAxisState == _AxisHandlerStatus.waitingForNegativeJump ||
             horizontalAxisState == _AxisHandlerStatus.waitingForPositiveJump) {
           if (horizontalAxisState ==
                   _AxisHandlerStatus.waitingForNegativeJump &&
-              !isInRightJumpTargetZone) {
-            horizontalAxisState = _AxisHandlerStatus.waitingForZoneExit;
+              !isInRightJumpDetectZone) {
+            horizontalAxisState = _AxisHandlerStatus.idle;
           }
           if (horizontalAxisState ==
                   _AxisHandlerStatus.waitingForPositiveJump &&
-              !isInLeftJumpTargetZone) {
-            horizontalAxisState = _AxisHandlerStatus.waitingForZoneExit;
+              !isInLeftJumpDetectZone) {
+            horizontalAxisState = _AxisHandlerStatus.idle;
           }
         } else if (horizontalAxisState == _AxisHandlerStatus.idle) {
           accumulatorX += dx;
@@ -199,22 +181,15 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
         }
 
         // Vertical axis jump detection
-        if (verticalAxisState == _AxisHandlerStatus.waitingForZoneExit) {
-          accumulatorY += dy;
-
-          if (!isInTopJumpTargetZone && !isInBottomJumpTargetZone) {
-            verticalAxisState = _AxisHandlerStatus.idle;
-          }
-        } else if (verticalAxisState ==
-                _AxisHandlerStatus.waitingForNegativeJump ||
+        if (verticalAxisState == _AxisHandlerStatus.waitingForNegativeJump ||
             verticalAxisState == _AxisHandlerStatus.waitingForPositiveJump) {
           if (verticalAxisState == _AxisHandlerStatus.waitingForNegativeJump &&
-              !isInBottomJumpTargetZone) {
-            verticalAxisState = _AxisHandlerStatus.waitingForZoneExit;
+              !isInBottomJumpDetectZone) {
+            verticalAxisState = _AxisHandlerStatus.idle;
           }
           if (verticalAxisState == _AxisHandlerStatus.waitingForPositiveJump &&
-              !isInTopJumpTargetZone) {
-            verticalAxisState = _AxisHandlerStatus.waitingForZoneExit;
+              !isInTopJumpDetectZone) {
+            verticalAxisState = _AxisHandlerStatus.idle;
           }
         } else if (verticalAxisState == _AxisHandlerStatus.idle) {
           accumulatorY += dy;
@@ -233,15 +208,15 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
           var y = mouseY;
 
           if (xJumpDirection == _JumpDirection.positive) {
-            x = windowRect.right - jumpMouseAreaSize;
+            x = windowRect.right - jumpMouseAreaSize + 10;
           } else if (xJumpDirection == _JumpDirection.negative) {
-            x = windowRect.left + jumpMouseAreaSize;
+            x = windowRect.left + jumpMouseAreaSize + 10;
           }
 
           if (yJumpDirection == _JumpDirection.positive) {
-            y = windowRect.bottom - jumpMouseAreaSize;
+            y = windowRect.bottom - jumpMouseAreaSize + 10;
           } else if (yJumpDirection == _JumpDirection.negative) {
-            y = windowRect.top + jumpMouseAreaSize;
+            y = windowRect.top + jumpMouseAreaSize + 10;
           }
 
           x *= devicePixelRatio;
