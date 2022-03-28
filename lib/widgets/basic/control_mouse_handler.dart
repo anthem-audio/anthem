@@ -101,11 +101,12 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
         );
         devicePixelRatio = mediaQuery.devicePixelRatio;
 
-        final mousePos = await api.getMousePos();
-        originalMouseX = mousePos.x / devicePixelRatio;
-        originalMouseY = mousePos.y / devicePixelRatio;
-        mostRecentMouseX = mousePos.x / devicePixelRatio;
-        mostRecentMouseY = mousePos.y / devicePixelRatio;
+        final mousePos = Offset(
+            e.position.dx + windowRect.left, e.position.dy + windowRect.top);
+        originalMouseX = mousePos.dx;
+        originalMouseY = mousePos.dy;
+        mostRecentMouseX = mousePos.dx;
+        mostRecentMouseY = mousePos.dy;
 
         widget.onStart?.call();
       },
@@ -129,9 +130,10 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
         verticalAxisState = _AxisHandlerStatus.idle;
       },
       onPointerMove: (e) async {
-        final mousePos = await api.getMousePos();
-        final mouseX = mousePos.x / devicePixelRatio;
-        final mouseY = mousePos.y / devicePixelRatio;
+        final mousePos = Offset(
+            e.position.dx + windowRect.left, e.position.dy + windowRect.top);
+        final mouseX = mousePos.dx;
+        final mouseY = mousePos.dy;
 
         final dx = (mouseX - mostRecentMouseX) / devicePixelRatio;
         final dy = (mouseY - mostRecentMouseY) / devicePixelRatio;
@@ -163,7 +165,7 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
         final isWaitingForVerticalJump =
             verticalAxisState == _AxisHandlerStatus.waitingForNegativeJump ||
                 verticalAxisState == _AxisHandlerStatus.waitingForPositiveJump;
-        
+
         // Horizontal axis jump detection
         if (horizontalAxisState == _AxisHandlerStatus.waitingForZoneExit) {
           accumulatorX += dx;
@@ -250,7 +252,8 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
 
         widget.onChange?.call(
           ControlMouseEvent(
-            delta: Offset(isWaitingForHorizontalJump ? 0 : dx, isWaitingForVerticalJump ? 0 : dy),
+            delta: Offset(isWaitingForHorizontalJump ? 0 : dx,
+                isWaitingForVerticalJump ? 0 : dy),
             absolute: Offset(accumulatorX, accumulatorY),
           ),
         );
