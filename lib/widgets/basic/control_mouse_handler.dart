@@ -93,13 +93,13 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
     final child = Listener(
       onPointerDown: (e) async {
         final mediaQuery = MediaQuery.of(context);
+        devicePixelRatio = mediaQuery.devicePixelRatio;
         windowRect = Rect.fromLTRB(
           appWindow.rect.left / devicePixelRatio,
           appWindow.rect.top / devicePixelRatio,
           appWindow.rect.right / devicePixelRatio,
           appWindow.rect.bottom / devicePixelRatio,
         );
-        devicePixelRatio = mediaQuery.devicePixelRatio;
 
         final mousePos = Offset(
             e.position.dx + windowRect.left, e.position.dy + windowRect.top);
@@ -135,8 +135,8 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
         final mouseX = mousePos.dx;
         final mouseY = mousePos.dy;
 
-        final dx = (mouseX - mostRecentMouseX) / devicePixelRatio;
-        final dy = (mouseY - mostRecentMouseY) / devicePixelRatio;
+        final dx = (mouseX - mostRecentMouseX);
+        final dy = (mouseY - mostRecentMouseY);
 
         final isInLeftJumpDetectZone =
             mouseX - windowRect.left < jumpMouseAreaSize;
