@@ -212,13 +212,13 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
           var y = mouseY;
 
           if (xJumpDirection == _JumpDirection.positive) {
-            x = windowRect.right - jumpMouseAreaSize + jumpPadding;
+            x = windowRect.right - jumpMouseAreaSize - jumpPadding;
           } else if (xJumpDirection == _JumpDirection.negative) {
             x = windowRect.left + jumpMouseAreaSize + jumpPadding;
           }
 
           if (yJumpDirection == _JumpDirection.positive) {
-            y = windowRect.bottom - jumpMouseAreaSize + jumpPadding;
+            y = windowRect.bottom - jumpMouseAreaSize - jumpPadding;
           } else if (yJumpDirection == _JumpDirection.negative) {
             y = windowRect.top + jumpMouseAreaSize + jumpPadding;
           }
