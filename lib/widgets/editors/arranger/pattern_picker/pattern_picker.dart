@@ -19,6 +19,7 @@
 
 import 'package:anthem/widgets/basic/clip/clip.dart' as anthem_clip;
 import 'package:anthem/widgets/basic/clip/clip_cubit.dart';
+import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -43,55 +44,81 @@ class PatternPicker extends StatelessWidget {
             return true;
           },
           child: SizeChangedLayoutNotifier(
-            child: Row(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: Theme.panel.border,
-                        width: 1,
+                SizedBox(
+                  height: 26,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Expanded(child: SizedBox()),
+                      const SizedBox(width: 4),
+                      VerticalScaleControl(
+                        min: 25,
+                        max: 100,
+                        value: state.patternHeight,
+                        onChange: (value) {
+                          final cubit = context.read<PatternPickerCubit>();
+                          cubit.setPatternHeight(value);
+                        },
                       ),
-                      color: Theme.panel.accentDark,
-                    ),
-                    // clipBehavior: Clip.antiAlias,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: SingleChildScrollView(
-                        controller: scrollController,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: state.patternIDs
-                              .map(
-                                (patternID) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 1),
-                                  child: SizedBox(
-                                    height: 44,
-                                    child: BlocProvider(
-                                      create: (context) {
-                                        return ClipCubit(
-                                          projectID: state.projectID,
-                                          patternID: patternID,
-                                        );
-                                      },
-                                      child: anthem_clip.Clip(),
-                                    ),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ),
-                    ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 4),
-                Scrollbar(
-                  controller: scrollController,
-                  crossAxisSize: 17,
-                  direction: ScrollbarDirection.vertical,
+                const SizedBox(height: 4),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: Theme.panel.border,
+                              width: 1,
+                            ),
+                            color: Theme.panel.accentDark,
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: SingleChildScrollView(
+                              controller: scrollController,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: state.patternIDs
+                                    .map(
+                                      (patternID) => Padding(
+                                        padding: const EdgeInsets.only(bottom: 1),
+                                        child: SizedBox(
+                                          height: state.patternHeight,
+                                          child: BlocProvider(
+                                            create: (context) {
+                                              return ClipCubit(
+                                                projectID: state.projectID,
+                                                patternID: patternID,
+                                              );
+                                            },
+                                            child: anthem_clip.Clip(),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Scrollbar(
+                        controller: scrollController,
+                        crossAxisSize: 17,
+                        direction: ScrollbarDirection.vertical,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
