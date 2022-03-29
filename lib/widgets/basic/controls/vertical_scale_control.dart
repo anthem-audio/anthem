@@ -17,18 +17,15 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-// TODO: Microinteractions
-
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/control_mouse_handler.dart';
 import 'package:flutter/widgets.dart';
 
-class VerticalScaleControl extends StatelessWidget {
+class VerticalScaleControl extends StatefulWidget {
   final double min;
   final double max;
   final double value;
   final Function(double newValue) onChange;
-  final double handleHeight = 7;
 
   const VerticalScaleControl({
     Key? key,
@@ -39,46 +36,82 @@ class VerticalScaleControl extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<VerticalScaleControl> createState() => _VerticalScaleControlState();
+}
+
+class _VerticalScaleControlState extends State<VerticalScaleControl> {
+  final double handleHeight = 7;
+  bool isOver = false;
+  bool isPressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, boxConstraints) {
-        return MouseRegion(
-          cursor: SystemMouseCursors.resizeUpDown,
-          child: ControlMouseHandler(
-            onChange: (event) {
-              onChange((value + event.delta.dy).clamp(min, max));
-            },
-            child: SizedBox(
-              width: 17,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Theme.control.border),
-                        borderRadius: const BorderRadius.all(Radius.circular(4)),
-                      ),
+    Color handleColor = Theme.control.main.light;
+
+    if (isPressed) {
+      handleColor = Theme.control.hover.dark;
+    } else if (isOver) {
+      handleColor = Theme.control.hover.light;
+    }
+
+    return LayoutBuilder(builder: (context, boxConstraints) {
+      return MouseRegion(
+        cursor: SystemMouseCursors.resizeUpDown,
+        onEnter: (event) {
+          setState(() {
+            isOver = true;
+          });
+        },
+        onExit: (event) {
+          setState(() {
+            isOver = false;
+          });
+        },
+        child: ControlMouseHandler(
+          onStart: () {
+            setState(() {
+            isPressed = true;
+          });
+          },
+          onEnd: (event) {
+            setState(() {
+            isPressed = false;
+          });
+          },
+          onChange: (event) {
+            widget.onChange((widget.value + event.delta.dy).clamp(widget.min, widget.max));
+          },
+          child: SizedBox(
+            width: 17,
+            child: Stack(
+              children: [
+                Positioned(
+                  top: (1 - (widget.value - widget.min) / (widget.max - widget.min)) *
+                      (boxConstraints.maxHeight - handleHeight),
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Theme.control.border),
+                      borderRadius: const BorderRadius.all(Radius.circular(3)),
+                      color: handleColor,
+                    ),
+                    height: handleHeight,
+                  ),
+                ),
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Theme.control.border),
+                      borderRadius: const BorderRadius.all(Radius.circular(4)),
                     ),
                   ),
-                  Positioned(
-                    top: (1 - (value - min) / max) * (boxConstraints.maxHeight - handleHeight),
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Theme.control.border),
-                        borderRadius: const BorderRadius.all(Radius.circular(3)),
-                        color: Theme.control.main.light,
-                      ),
-                      height: handleHeight,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-        );
-      }
-    );
+        ),
+      );
+    });
   }
 }
