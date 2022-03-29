@@ -87,12 +87,14 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
     ));
   }
 
-  void addPattern(String name) {
+  int addPattern(String name) {
+    final pattern = PatternModel(name);
     project.execute(AddPatternCommand(
       project: project,
-      pattern: PatternModel(name),
+      pattern: pattern,
       index: project.song.patternOrder.length,
     ));
+    return pattern.id;
   }
 
   void deletePattern(int patternID) {

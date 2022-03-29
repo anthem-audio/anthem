@@ -143,5 +143,25 @@
 			"  }",
 			"}"
 		]
+	},
+
+	"Model item": {
+		"prefix": "modelItem",
+		"scope": "dart",
+		"body": [
+			"import 'package:freezed_annotation/freezed_annotation.dart';",
+			"",
+			"part '$1.g.dart';",
+			"",
+			"@JsonSerializable()",
+			"class $2 {",
+			"  $2();",
+			"",
+			"  factory $2.fromJson(Map<String, dynamic> json) =>",
+			"      _$$2FromJson(json);",
+			"",
+			"  Map<String, dynamic> toJson() => _$$2ToJson(this);",
+			"}"
+		]
 	}
 }

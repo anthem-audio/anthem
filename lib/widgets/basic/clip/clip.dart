@@ -22,6 +22,8 @@ import 'package:anthem/widgets/basic/clip/clip_notes.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../model/shared/anthem_color.dart';
+
 class Clip extends StatelessWidget {
   const Clip({Key? key}) : super(key: key);
 
@@ -33,33 +35,33 @@ class Clip extends StatelessWidget {
         children: [
           Container(
             height: 15,
-            decoration: const BoxDecoration(
-              color: Color(0xFFA15D5B),
-              borderRadius: BorderRadius.vertical(
+            decoration: BoxDecoration(
+              color: getBaseColor(state.color),
+              borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(3),
               ),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(
               state.patternName,
-              style: const TextStyle(
-                color: Color(0xFFFFD7D6),
+              style: TextStyle(
+                color: getTextColor(state.color),
                 fontSize: 10,
               ),
             ),
           ),
           Expanded(
             child: Container(
-                decoration: const BoxDecoration(
-                  color: Color(0x66A15D5B),
-                  borderRadius: BorderRadius.vertical(
+                decoration: BoxDecoration(
+                  color: getBaseColor(state.color).withAlpha(0x66),
+                  borderRadius: const BorderRadius.vertical(
                     bottom: Radius.circular(3),
                   ),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: ClipNotes(
-                    color: const Color(0xFFEEA0A2),
+                    color: getContentColor(state.color),
                     timeViewStart: 0,
                     ticksPerPixel: 5,
                     notes: state.notes,
@@ -70,4 +72,18 @@ class Clip extends StatelessWidget {
       );
     });
   }
+}
+
+// TODO: AnthemColor brightness modifier
+
+Color getBaseColor(AnthemColor color) {
+  return HSLColor.fromAHSL(1, color.hue, 0.28, 0.49).toColor();
+}
+
+Color getTextColor(AnthemColor color) {
+  return HSLColor.fromAHSL(1, color.hue, 1, 0.92).toColor();
+}
+
+Color getContentColor(AnthemColor color) {
+  return HSLColor.fromAHSL(1, color.hue, 0.7, 0.78).toColor();
 }

@@ -22,6 +22,10 @@ abstract class Anthem {
   Future<Reply?> send(
       {required int engineId, required Request request, dynamic hint});
 
+  Future<MousePos> getMousePos({dynamic hint});
+
+  Future<void> setMousePos({required int x, required int y, dynamic hint});
+
   Future<Uint8List> drawMandelbrot(
       {required Size imageSize,
       required Point zoomPoint,
@@ -55,6 +59,16 @@ abstract class Anthem {
   Future<int> offTopicDeliberatelyReturnError({dynamic hint});
 
   Future<int> offTopicDeliberatelyPanic({dynamic hint});
+}
+
+class MousePos {
+  final int x;
+  final int y;
+
+  MousePos({
+    required this.x,
+    required this.y,
+  });
 }
 
 class Pattern {
@@ -173,6 +187,31 @@ class AnthemImpl extends FlutterRustBridgeBase<AnthemWire> implements Anthem {
           argNames: ["engineId", "request"],
         ),
         argValues: [engineId, request],
+        hint: hint,
+      ));
+
+  Future<MousePos> getMousePos({dynamic hint}) =>
+      executeNormal(FlutterRustBridgeTask(
+        callFfi: (port_) => inner.wire_get_mouse_pos(port_),
+        parseSuccessData: _wire2api_mouse_pos,
+        constMeta: const FlutterRustBridgeTaskConstMeta(
+          debugName: "get_mouse_pos",
+          argNames: [],
+        ),
+        argValues: [],
+        hint: hint,
+      ));
+
+  Future<void> setMousePos({required int x, required int y, dynamic hint}) =>
+      executeNormal(FlutterRustBridgeTask(
+        callFfi: (port_) =>
+            inner.wire_set_mouse_pos(port_, _api2wire_i32(x), _api2wire_i32(y)),
+        parseSuccessData: _wire2api_unit,
+        constMeta: const FlutterRustBridgeTaskConstMeta(
+          debugName: "set_mouse_pos",
+          argNames: ["x", "y"],
+        ),
+        argValues: [x, y],
         hint: hint,
       ));
 
@@ -547,6 +586,16 @@ List<TreeNode> _wire2api_list_tree_node(dynamic raw) {
   return (raw as List<dynamic>).map(_wire2api_tree_node).toList();
 }
 
+MousePos _wire2api_mouse_pos(dynamic raw) {
+  final arr = raw as List<dynamic>;
+  if (arr.length != 2)
+    throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+  return MousePos(
+    x: _wire2api_i32(arr[0]),
+    y: _wire2api_i32(arr[1]),
+  );
+}
+
 Reply? _wire2api_opt_reply(dynamic raw) {
   return raw == null ? null : _wire2api_reply(raw);
 }
@@ -699,6 +748,39 @@ class AnthemWire implements FlutterRustBridgeWireBase {
               ffi.Int64, ffi.Int64, ffi.Pointer<wire_Request>)>>('wire_send');
   late final _wire_send = _wire_sendPtr
       .asFunction<void Function(int, int, ffi.Pointer<wire_Request>)>();
+
+  void wire_get_mouse_pos(
+    int port_,
+  ) {
+    return _wire_get_mouse_pos(
+      port_,
+    );
+  }
+
+  late final _wire_get_mouse_posPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>(
+          'wire_get_mouse_pos');
+  late final _wire_get_mouse_pos =
+      _wire_get_mouse_posPtr.asFunction<void Function(int)>();
+
+  void wire_set_mouse_pos(
+    int port_,
+    int x,
+    int y,
+  ) {
+    return _wire_set_mouse_pos(
+      port_,
+      x,
+      y,
+    );
+  }
+
+  late final _wire_set_mouse_posPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(
+              ffi.Int64, ffi.Int32, ffi.Int32)>>('wire_set_mouse_pos');
+  late final _wire_set_mouse_pos =
+      _wire_set_mouse_posPtr.asFunction<void Function(int, int, int)>();
 
   void wire_draw_mandelbrot(
     int port_,

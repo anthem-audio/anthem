@@ -17,13 +17,19 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'clip_cubit.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-@freezed
-class ClipState with _$ClipState {
-  factory ClipState({
-    required List<ClipNoteModel> notes,
-    required String patternName,
-    required AnthemColor color,
-  }) = _ClipState;
+part 'anthem_color.g.dart';
+
+@JsonSerializable()
+class AnthemColor {
+  double hue;
+  double brightnessModifier; // 0 is normal, + is brighter, - is dimmer
+
+  AnthemColor({required this.hue, this.brightnessModifier = 0});
+
+  factory AnthemColor.fromJson(Map<String, dynamic> json) =>
+      _$AnthemColorFromJson(json);
+
+  Map<String, dynamic> toJson() => _$AnthemColorToJson(this);
 }

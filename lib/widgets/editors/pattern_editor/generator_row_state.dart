@@ -24,6 +24,7 @@ class GeneratorRowState with _$GeneratorRowState {
   factory GeneratorRowState({
     required int generatorID,
     required int projectID,
+    required int ticksPerQuarter,
     required int? patternID,
     required Color color,
     @Default([]) List<ClipNoteModel> clipNotes,

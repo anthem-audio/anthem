@@ -80,8 +80,7 @@ class GeneratorRow extends StatelessWidget {
                             notes: state.clipNotes,
                             timeViewStart: 0,
                             // 1 bar is 100 pixels, can be tweaked (and should probably be set above?)
-                            // TODO: hard-coded ticks-per-beat
-                            ticksPerPixel: (96 * 4) / 100,
+                            ticksPerPixel: (state.ticksPerQuarter * 4) / 100,
                             color: state.color,
                           ),
                   ),

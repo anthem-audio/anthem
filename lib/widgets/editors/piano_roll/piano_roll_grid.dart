@@ -33,12 +33,10 @@ class PianoRollGrid extends StatelessWidget {
     Key? key,
     required this.keyHeight,
     required this.keyValueAtTop,
-    required this.ticksPerQuarter,
   }) : super(key: key);
 
   final double keyValueAtTop;
   final double keyHeight;
-  final int ticksPerQuarter;
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +53,7 @@ class PianoRollGrid extends StatelessWidget {
             pattern: pattern,
             timeViewStart: timeView.start,
             timeViewEnd: timeView.end,
-            ticksPerQuarter: ticksPerQuarter,
+            ticksPerQuarter: state.ticksPerQuarter,
           ),
         ),
       );

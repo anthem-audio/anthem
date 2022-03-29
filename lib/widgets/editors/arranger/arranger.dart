@@ -17,14 +17,23 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/basic/control_mouse_handler.dart';
 import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-class Arranger extends StatelessWidget {
+class Arranger extends StatefulWidget {
   const Arranger({Key? key}) : super(key: key);
+
+  @override
+  State<Arranger> createState() => _ArrangerState();
+}
+
+class _ArrangerState extends State<Arranger> {
+  double x = 0;
+  double y = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +62,32 @@ class Arranger extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Expanded(child: Container(color: const Color(0x11FFFFFF)))
+                    Expanded(
+                      child: Container(
+                        color: const Color(0x11FFFFFF),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(children: [
+                              SizedBox(width: 100, child: Text("x: $x,")),
+                              SizedBox(width: 100, child: Text("y: $y"))
+                            ]),
+                            Expanded(
+                              child: ControlMouseHandler(
+                                child:
+                                    Container(color: const Color(0xFFFABCDE)),
+                                onChange: (e) {
+                                  setState(() {
+                                    x += e.delta.dx;
+                                    y += e.delta.dy;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),

@@ -37,11 +37,8 @@ import 'timeline.dart';
 import 'piano_control.dart';
 
 class PianoRoll extends StatefulWidget {
-  final int ticksPerQuarter;
-
   const PianoRoll({
     Key? key,
-    required this.ticksPerQuarter,
   }) : super(key: key);
 
   @override
@@ -68,9 +65,7 @@ class _PianoRollState extends State<PianoRoll> {
             children: [
               _PianoRollHeader(),
               Expanded(
-                child: _PianoRollContent(
-                  ticksPerQuarter: widget.ticksPerQuarter,
-                ),
+                child: _PianoRollContent(),
               ),
             ],
           ),
@@ -121,11 +116,8 @@ class PianoRollLocalState with ChangeNotifier, DiagnosticableTreeMixin {
 }
 
 class _PianoRollContent extends StatefulWidget {
-  final int ticksPerQuarter;
-
   const _PianoRollContent({
     Key? key,
-    required this.ticksPerQuarter,
   }) : super(key: key);
 
   @override
@@ -203,7 +195,7 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                           height: timelineHeight,
                           child: Timeline(
                             pattern: pattern,
-                            ticksPerQuarter: widget.ticksPerQuarter,
+                            ticksPerQuarter: state.ticksPerQuarter,
                           ),
                         ),
                         Expanded(
@@ -214,7 +206,6 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                                 PianoRollGrid(
                                   keyHeight: localState.keyHeight,
                                   keyValueAtTop: localState.keyValueAtTop,
-                                  ticksPerQuarter: widget.ticksPerQuarter,
                                 ),
                                 ClipRect(
                                   child: CustomMultiChildLayout(
