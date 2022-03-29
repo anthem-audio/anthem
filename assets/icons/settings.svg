@@ -1,0 +1,23 @@
+<!--
+  Copyright (C) 2022 Budislav Stepanov, Joshua Wade
+
+  This file is part of Anthem.
+
+  Anthem is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Anthem is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+-->
+
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M8 9.5C7.17157 9.5 6.5 8.82843 6.5 8C6.5 7.17157 7.17157 6.5 8 6.5C8.82843 6.5 9.5 7.17157 9.5 8C9.5 8.39782 9.34196 8.77936 9.06066 9.06066C8.77936 9.34196 8.39782 9.5 8 9.5Z" stroke="#9DB9CC" stroke-linecap="round" stroke-linejoin="round"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M12.1776 11.193V10.1385C12.1777 9.87735 12.2814 9.62692 12.466 9.44228L13.2117 8.69659C13.5961 8.31209 13.5961 7.6887 13.2117 7.3042L12.466 6.5585C12.2814 6.37386 12.1777 6.12343 12.1776 5.86231V4.80702C12.1776 4.26325 11.7369 3.82245 11.1931 3.82245H10.1379C9.87683 3.82244 9.62642 3.71871 9.44179 3.53407L8.69614 2.78837C8.31167 2.40388 7.68833 2.40388 7.30386 2.78837L6.55821 3.53407C6.37358 3.71871 6.12317 3.82244 5.86207 3.82245H4.80685C4.54561 3.82245 4.29508 3.92629 4.11043 4.1111C3.92577 4.29591 3.82214 4.54654 3.82235 4.8078V5.86231C3.82235 6.12343 3.71862 6.37386 3.53399 6.5585L2.78835 7.3042C2.40388 7.6887 2.40388 8.31209 2.78835 8.69659L3.53399 9.44228C3.71862 9.62692 3.82235 9.87735 3.82235 10.1385V11.193C3.82235 11.7367 4.26313 12.1776 4.80685 12.1776H5.86207C6.12317 12.1776 6.37358 12.2813 6.55821 12.4659L7.30386 13.2116C7.68833 13.5961 8.31167 13.5961 8.69614 13.2116L9.44179 12.4659C9.62642 12.2813 9.87683 12.1776 10.1379 12.1776H11.1924C11.4536 12.1778 11.7042 12.0741 11.889 11.8895C12.0738 11.7048 12.1776 11.4542 12.1776 11.193Z" stroke="#9DB9CC" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

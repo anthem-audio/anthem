@@ -1,22 +1,22 @@
 <!--
-    Copyright (C) 2021 Joshua Wade, Budislav Stepanov
+  Copyright (C) 2022 Budislav Stepanov, Joshua Wade
 
-    This file is part of Anthem.
+  This file is part of Anthem.
 
-    Anthem is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+  Anthem is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-    Anthem is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-    General Public License for more details.
+  Anthem is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+  You should have received a copy of the GNU General Public License
+  along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 -->
 
 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path fill-rule="evenodd" clip-rule="evenodd" d="M8.86378 1.49613C8.68457 1.18891 8.35567 1 8 1C7.64433 1 7.31543 1.18891 7.13622 1.49613L0.136221 13.4961C-0.142059 13.9732 0.0190771 14.5855 0.496129 14.8638C0.660154 14.9595 0.84017 15.0032 1.0171 15H4.98166C5.32742 15.006 5.6668 14.8323 5.85749 14.5145L8 10.9437L10.1425 14.5145C10.3332 14.8323 10.6726 15.006 11.0183 15H14.9829C15.1598 15.0032 15.3398 14.9595 15.5039 14.8638C15.9809 14.5855 16.1421 13.9732 15.8638 13.4961L8.86378 1.49613ZM13.259 13L8 3.98464L2.74104 13H4.43381L7.14251 8.4855C7.32323 8.1843 7.64874 8 8 8C8.35126 8 8.67677 8.1843 8.85749 8.4855L11.5662 13H13.259Z" fill="white"/>
+<path d="M0.999939 14L7.99994 2L14.9999 14H10.9999L7.99994 9L4.99994 14H0.999939Z" fill="#9DB9CC"/>
 </svg>

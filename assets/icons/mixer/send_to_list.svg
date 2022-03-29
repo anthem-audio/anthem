@@ -1,0 +1,25 @@
+<!--
+  Copyright (C) 2022 Budislav Stepanov, Joshua Wade
+
+  This file is part of Anthem.
+
+  Anthem is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Anthem is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+-->
+
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M3.5 0C3.77614 0 4 0.223858 4 0.5V5.29289L6.14645 3.14645C6.34171 2.95118 6.65829 2.95118 6.85355 3.14645C7.04882 3.34171 7.04882 3.65829 6.85355 3.85355L3.85355 6.85355C3.65829 7.04882 3.34171 7.04882 3.14645 6.85355L0.146447 3.85355C-0.0488155 3.65829 -0.0488155 3.34171 0.146447 3.14645C0.341709 2.95118 0.658291 2.95118 0.853553 3.14645L3 5.29289V0.5C3 0.223858 3.22386 0 3.5 0Z" fill="#9DB9CC"/>
+<path d="M15.5 9.5H9.5" stroke="#9DB9CC" stroke-linecap="round" stroke-linejoin="bevel"/>
+<path d="M15.5 12.5H9.5" stroke="#9DB9CC" stroke-linecap="round" stroke-linejoin="bevel"/>
+<path d="M15.5 15.5H9.5" stroke="#9DB9CC" stroke-linecap="round" stroke-linejoin="bevel"/>
+</svg>
