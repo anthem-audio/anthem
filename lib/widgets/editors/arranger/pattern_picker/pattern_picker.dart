@@ -52,15 +52,23 @@ class PatternPicker extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Expanded(child: SizedBox()),
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(4),
+                            color: Theme.control.main.dark,
+                          ),
+                        ),
+                      ),
                       const SizedBox(width: 4),
                       VerticalScaleControl(
                         min: 25,
-                        max: 100,
+                        max: 60,
                         value: state.patternHeight,
                         onChange: (value) {
                           final cubit = context.read<PatternPickerCubit>();
                           cubit.setPatternHeight(value);
+                          scrollController.position.notifyListeners();
                         },
                       ),
                     ],
@@ -90,7 +98,8 @@ class PatternPicker extends StatelessWidget {
                                 children: state.patternIDs
                                     .map(
                                       (patternID) => Padding(
-                                        padding: const EdgeInsets.only(bottom: 1),
+                                        padding:
+                                            const EdgeInsets.only(bottom: 1),
                                         child: SizedBox(
                                           height: state.patternHeight,
                                           child: BlocProvider(

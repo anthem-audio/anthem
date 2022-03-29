@@ -21,6 +21,7 @@ import 'dart:collection';
 import 'dart:convert';
 
 import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/time_signature.dart';
 import 'package:json_annotation/json_annotation.dart';
 
@@ -28,10 +29,15 @@ import 'note.dart';
 
 part 'pattern.g.dart';
 
+double _hueGen = 0;
+
 @JsonSerializable()
 class PatternModel {
   int id;
+
   String name;
+  AnthemColor color;
+
   Map<int, List<NoteModel>> notes;
   List<TimeSignatureChangeModel> timeSignatureChanges;
   TimeSignatureModel defaultTimeSignature; // TODO: Just pull from project??
@@ -40,7 +46,15 @@ class PatternModel {
       : id = getID(),
         notes = HashMap(),
         timeSignatureChanges = [],
-        defaultTimeSignature = TimeSignatureModel(4, 4);
+        defaultTimeSignature = TimeSignatureModel(4, 4),
+        color = AnthemColor(
+          hue: (() {
+            final result = _hueGen;
+            _hueGen = _hueGen + 30 % 360;
+            return result;
+          })(),
+          brightnessModifier: 0,
+        );
 
   factory PatternModel.fromJson(Map<String, dynamic> json) =>
       _$PatternModelFromJson(json);
