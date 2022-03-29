@@ -80,14 +80,20 @@ class _PatternEditorState extends State<PatternEditor> {
                     children: [
                       Menu(
                         menuController: menuController,
-                        menuDef: MenuDef(children: [
-                          MenuItem(
+                        menuDef: MenuDef(
+                          children: [
+                            MenuItem(
                               text: "New pattern",
                               onSelected: () {
-                                context.read<PatternEditorCubit>().addPattern(
+                                final cubit =
+                                    context.read<PatternEditorCubit>();
+                                final patternID = cubit.addPattern(
                                     "Pattern ${(Random()).nextInt(100).toString()}");
-                              })
-                        ]),
+                                cubit.setActivePattern(patternID);
+                              },
+                            )
+                          ],
+                        ),
                         child: Button(
                           // width: 28,
                           // height: 28,
