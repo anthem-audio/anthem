@@ -64,9 +64,7 @@ class Project extends StatelessWidget {
                   // bottom panel
                   panelContent: BlocProvider<PianoRollCubit>(
                     create: (context) => PianoRollCubit(projectID: state.id),
-                    child: const PianoRoll(
-                      ticksPerQuarter: 96,
-                    ),
+                    child: const PianoRoll(),
                   ),
                   child: Panel(
                     orientation: PanelOrientation.left,

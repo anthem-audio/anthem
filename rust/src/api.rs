@@ -17,14 +17,21 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+use std::ops::DerefMut;
+
 use anyhow::{anyhow, Result};
 
 use flutter_rust_bridge::ZeroCopyBuffer;
+use lazy_static::__Deref;
+use tfc::{MouseContext, ScreenContext};
 
 use crate::{
-    dependencies::engine_model::{message::{Request, RequestWrapper, Reply}, util::get_id},
+    dependencies::engine_model::{
+        message::{Reply, Request, RequestWrapper},
+        util::get_id,
+    },
     engine_bridge::EngineBridge,
-    state::STATE,
+    state::{INPUT_CTX, STATE},
 };
 
 // Anthem code
@@ -50,6 +57,39 @@ pub fn send(engine_id: i64, request: Request) -> Result<Option<Reply>> {
     engine.send(&RequestWrapper::new(get_id(), request));
     let reply_wrapper = engine.receive();
     Ok(reply_wrapper.reply)
+}
+
+// Mouse handling
+
+pub struct MousePos {
+    pub x: i32,
+    pub y: i32,
+}
+
+pub fn get_mouse_pos() -> Result<MousePos> {
+    let ctx_mutex = match INPUT_CTX.lock() {
+        Ok(mutex) => mutex,
+        Err(_) => return Err(anyhow!("get_mouse_pos(): mutex lock failed")),
+    };
+    let ctx = ctx_mutex.deref();
+    let loc = match ctx.cursor_location() {
+        Ok(loc) => loc,
+        Err(_) => return Err(anyhow!("get_mouse_pos(): ctx.cursor_location() failed")),
+    };
+    Ok(MousePos { x: loc.0, y: loc.1 })
+}
+
+pub fn set_mouse_pos(x: i32, y: i32) -> Result<()> {
+    let mut ctx_mutex = match INPUT_CTX.lock() {
+        Ok(mutex) => mutex,
+        Err(_) => return Err(anyhow!("set_mouse_pos(): mutex lock failed")),
+    };
+    let ctx = ctx_mutex.deref_mut();
+    match ctx.mouse_move_abs(x, y) {
+        Err(_) => return Err(anyhow!("get_mouse_pos(): ctx.move_mouse_abs() failed")),
+        _ => {}
+    }
+    Ok(())
 }
 
 // Example code (TODO: remove)

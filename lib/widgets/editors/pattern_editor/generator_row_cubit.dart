@@ -20,13 +20,11 @@
 import 'dart:async';
 
 import 'package:anthem/commands/state_changes.dart';
-import 'package:anthem/model/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
-import 'package:optional/optional_internal.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'generator_row_state.dart';
@@ -57,6 +55,7 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
 
             return GeneratorRowState(
               projectID: project.id,
+              ticksPerQuarter: project.song.ticksPerQuarter,
               generatorID: generatorID,
               patternID: patternID,
               color: color,

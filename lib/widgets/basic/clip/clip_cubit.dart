@@ -27,6 +27,7 @@ import '../../../commands/state_changes.dart';
 import '../../../model/note.dart';
 import '../../../model/pattern.dart';
 import '../../../model/project.dart';
+import '../../../model/shared/anthem_color.dart';
 import '../../../model/store.dart';
 import 'clip_notes.dart';
 
@@ -48,6 +49,7 @@ class ClipCubit extends Cubit<ClipState> {
           return ClipState(
             notes: _getClipNotes(pattern),
             patternName: pattern.name,
+            color: pattern.color,
           );
         })()) {
     project = Store.instance.projects[projectID]!;
