@@ -74,26 +74,29 @@ flutter:
 
   assets:
   - assets/build/
+  - assets/icons/
+  - assets/icons/add/
   - assets/icons/arranger/
   - assets/icons/arranger/clip/
+  - assets/icons/audio_editor/
+  - assets/icons/automation_editor/
   - assets/icons/bottom_bar/
-  - assets/icons/browser/
   - assets/icons/channel/
-  - assets/icons/control/
+  - assets/icons/channel_rack/
   - assets/icons/controller_rack/
-  - assets/icons/cursor/
-  - assets/icons/file/
+  - assets/icons/device_panel/
+  - assets/icons/edit/
+  - assets/icons/instrument_and_effect_rack/
   - assets/icons/main/
-  - assets/icons/media/
+  - assets/icons/main_toolbar/
+  - assets/icons/misc/
   - assets/icons/mixer/
   - assets/icons/not_clickable/
   - assets/icons/note_editor/
-  - assets/icons/pattern_editor/
-  - assets/icons/pattern_list/
-  - assets/icons/patterns/
+  - assets/icons/options/
+  - assets/icons/scrollbar/
   - assets/icons/small/
-  - assets/icons/top_bar/
-  - assets/icons/top_bar/tools/
+  - assets/icons/topbar/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.

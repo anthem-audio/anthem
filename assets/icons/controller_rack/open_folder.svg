@@ -1,0 +1,22 @@
+<!--
+  Copyright (C) 2022 Budislav Stepanov, Joshua Wade
+
+  This file is part of Anthem.
+
+  Anthem is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Anthem is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+-->
+
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M0.500003 0C0.22386 0 2.86102e-06 0.223858 2.86102e-06 0.5V15C2.86102e-06 15.088 0.0227155 15.1706 0.0625959 15.2424L0.0318383 15.3244C-0.0257424 15.478 -0.00436765 15.65 0.08904 15.7848C0.182448 15.9196 0.336013 16 0.500003 16H12.5C12.7084 16 12.895 15.8707 12.9682 15.6756L15.9682 7.67556C16.0257 7.52201 16.0044 7.34999 15.911 7.2152C15.8176 7.08042 15.664 7 15.5 7H3.5C3.29158 7 3.10502 7.12929 3.03184 7.32444L1 12.7427V1H5.23241L7.08398 3.77735C7.17671 3.91645 7.33283 4 7.5 4H15.5C15.7761 4 16 3.77614 16 3.5C16 3.22386 15.7761 3 15.5 3H7.76759L5.91603 0.22265C5.8233 0.0835506 5.66718 0 5.5 0H0.500003ZM1.2215 15L3.8465 8H14.7785L12.1535 15H1.2215Z" fill="#9DB9CC"/>
+</svg>

@@ -1,0 +1,23 @@
+<!--
+  Copyright (C) 2022 Budislav Stepanov, Joshua Wade
+
+  This file is part of Anthem.
+
+  Anthem is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Anthem is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+-->
+
+<svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M8.85355 6.14645C8.65829 5.95118 8.34171 5.95118 8.14645 6.14645C7.95118 6.34171 7.95118 6.65829 8.14645 6.85355L9.29289 8H5.5C5.22386 8 5 8.22386 5 8.5C5 8.77614 5.22386 9 5.5 9H9.2929L8.14645 10.1464C7.95118 10.3417 7.95118 10.6583 8.14645 10.8536C8.34171 11.0488 8.65829 11.0488 8.85355 10.8536L10.8536 8.85355C10.9015 8.80561 10.9377 8.75036 10.9621 8.69139C10.9861 8.63331 10.9996 8.5697 11 8.503C11 8.502 11 8.501 11 8.5C11 8.499 11 8.498 11 8.497C10.9996 8.4303 10.9861 8.36669 10.9621 8.30861C10.9388 8.25232 10.9048 8.19942 10.86 8.15303C10.8576 8.15055 10.8552 8.1481 10.8528 8.14567L8.85355 6.14645Z" fill="#9DB9CC"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M2.14645 0.146447C2.34171 -0.0488155 2.65829 -0.0488155 2.85355 0.146447C3.04882 0.341709 3.04882 0.658291 2.85355 0.853553L1.70711 2H5.5C5.77614 2 6 2.22386 6 2.5C6 2.77614 5.77614 3 5.5 3H1.70711L2.85355 4.14645C3.04882 4.34171 3.04882 4.65829 2.85355 4.85355C2.65829 5.04882 2.34171 5.04882 2.14645 4.85355L0.146446 2.85355C0.0985079 2.80561 0.0623388 2.75036 0.0379391 2.69139C0.0138535 2.63331 0.000400543 2.5697 8.58307e-06 2.503C2.86102e-06 2.502 0 2.501 0 2.5C0 2.499 2.86102e-06 2.498 8.58307e-06 2.497C0.000400543 2.4303 0.0138535 2.36669 0.0379391 2.30861C0.0623388 2.24964 0.0985079 2.19439 0.146446 2.14645L2.14645 0.146447Z" fill="#9DB9CC"/>
+</svg>

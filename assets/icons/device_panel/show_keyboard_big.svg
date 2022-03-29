@@ -1,0 +1,24 @@
+<!--
+  Copyright (C) 2022 Budislav Stepanov, Joshua Wade
+
+  This file is part of Anthem.
+
+  Anthem is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Anthem is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+-->
+
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M4 9C4 8.44771 3.55228 8 3 8L2 8L2 1C2 0.447715 1.55228 -1.06993e-07 1 -1.31134e-07C0.447715 -1.55275e-07 -1.95703e-08 0.447715 -4.37114e-08 1L-3.49691e-07 8L-6.55671e-07 15C-6.79812e-07 15.5523 0.447715 16 0.999999 16L3 16C3.55228 16 4 15.5523 4 15L4 9Z" fill="#9DB9CC"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M10 9C10 8.44771 9.55228 8 9 8L9 1C9 0.447715 8.55228 -6.32816e-08 8 -8.74228e-08C7.44772 -1.11564e-07 7 0.447715 7 1L7 8C6.44771 8 6 8.44771 6 9L6 15C6 15.5523 6.44771 16 7 16L9 16C9.55228 16 10 15.5523 10 15L10 9Z" fill="#9DB9CC"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M16 1C16 0.447715 15.5523 -1.95705e-08 15 -4.37116e-08C14.4477 -6.78527e-08 14 0.447715 14 1L14 8L13 8C12.4477 8 12 8.44771 12 9L12 15C12 15.5523 12.4477 16 13 16L15 16C15.5523 16 16 15.5523 16 15L16 8L16 1Z" fill="#9DB9CC"/>
+</svg>
