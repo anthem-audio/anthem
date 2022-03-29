@@ -31,7 +31,7 @@ part 'pattern_picker_state.dart';
 part 'pattern_picker_cubit.freezed.dart';
 
 List<int> getPatternIDs(ProjectModel? project) {
-  return project?.song.patternOrder ?? [];
+  return [...project?.song.patternOrder ?? []];
 }
 
 class PatternPickerCubit extends Cubit<PatternPickerState> {
