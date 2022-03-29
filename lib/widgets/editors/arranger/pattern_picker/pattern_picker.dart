@@ -109,7 +109,7 @@ class PatternPicker extends StatelessWidget {
                                                 patternID: patternID,
                                               );
                                             },
-                                            child: anthem_clip.Clip(),
+                                            child: const anthem_clip.Clip(),
                                           ),
                                         ),
                                       ),
