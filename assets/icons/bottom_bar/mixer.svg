@@ -1,24 +1,27 @@
 <!--
-    Copyright (C) 2021 Joshua Wade, Budislav Stepanov
+  Copyright (C) 2022 Budislav Stepanov, Joshua Wade
 
-    This file is part of Anthem.
+  This file is part of Anthem.
 
-    Anthem is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+  Anthem is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-    Anthem is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-    General Public License for more details.
+  Anthem is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+  You should have received a copy of the GNU General Public License
+  along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 -->
 
 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path fill-rule="evenodd" clip-rule="evenodd" d="M3 1C3 0.447715 2.55228 0 2 0C1.44772 0 1 0.447715 1 1V5C0.447715 5 0 5.44772 0 6C0 6.55228 0.447715 7 1 7V15C1 15.5523 1.44772 16 2 16C2.55228 16 3 15.5523 3 15V7C3.55228 7 4 6.55228 4 6C4 5.44772 3.55228 5 3 5V1Z" fill="white"/>
-<path fill-rule="evenodd" clip-rule="evenodd" d="M9 1C9 0.447715 8.55228 0 8 0C7.44772 0 7 0.447715 7 1V9C6.44772 9 6 9.44771 6 10C6 10.5523 6.44772 11 7 11V15C7 15.5523 7.44772 16 8 16C8.55228 16 9 15.5523 9 15V11C9.55228 11 10 10.5523 10 10C10 9.44771 9.55228 9 9 9V1Z" fill="white"/>
-<path fill-rule="evenodd" clip-rule="evenodd" d="M15 1C15 0.447715 14.5523 0 14 0C13.4477 0 13 0.447715 13 1V5C12.4477 5 12 5.44772 12 6C12 6.55228 12.4477 7 13 7V15C13 15.5523 13.4477 16 14 16C14.5523 16 15 15.5523 15 15V7C15.5523 7 16 6.55228 16 6C16 5.44772 15.5523 5 15 5V1Z" fill="white"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M9 2.42857C9 2.15243 8.77614 1.92857 8.5 1.92857C8.22386 1.92857 8 2.15243 8 2.42857V9.08532C8.15639 9.03004 8.32468 8.99997 8.5 8.99997C8.67532 8.99997 8.84361 9.03004 9 9.08532V2.42857ZM9 11.9146C8.84361 11.9699 8.67532 12 8.5 12C8.32468 12 8.15639 11.9699 8 11.9146V13.5714C8 13.8476 8.22386 14.0714 8.5 14.0714C8.77614 14.0714 9 13.8476 9 13.5714V11.9146Z" fill="#9DB9CC"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M14 2.42857C14 2.15243 13.7761 1.92857 13.5 1.92857C13.2239 1.92857 13 2.15243 13 2.42857V4.08539C13.1564 4.03011 13.3247 4.00003 13.5 4.00003C13.6753 4.00003 13.8436 4.03011 14 4.08539V2.42857ZM14 6.91468C13.8436 6.96996 13.6753 7.00003 13.5 7.00003C13.3247 7.00003 13.1564 6.96996 13 6.91468V13.5714C13 13.8476 13.2239 14.0714 13.5 14.0714C13.7761 14.0714 14 13.8476 14 13.5714V6.91468Z" fill="#9DB9CC"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M4 2.42857C4 2.15243 3.77614 1.92857 3.5 1.92857C3.22386 1.92857 3 2.15243 3 2.42857V4.08537C3.15639 4.03009 3.32468 4.00002 3.5 4.00002C3.67532 4.00002 3.84361 4.03009 4 4.08537V2.42857ZM4 6.91466C3.84361 6.96994 3.67532 7.00002 3.5 7.00002C3.32468 7.00002 3.15639 6.96994 3 6.91466V13.5714C3 13.8476 3.22386 14.0714 3.5 14.0714C3.77614 14.0714 4 13.8476 4 13.5714V6.91466Z" fill="#9DB9CC"/>
+<circle cx="8.5" cy="10.5" r="1" stroke="#9DB9CC"/>
+<circle cx="13.5" cy="5.5" r="1" stroke="#9DB9CC"/>
+<circle cx="3.5" cy="5.5" r="1" stroke="#9DB9CC"/>
 </svg>

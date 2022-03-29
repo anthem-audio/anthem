@@ -87,8 +87,8 @@ class _WindowHeaderState extends State<WindowHeader> {
                           ),
                           Button(
                             variant: ButtonVariant.ghost,
-                            width: 20,
-                            height: 20,
+                            width: 22,
+                            height: 22,
                             hideBorder: true,
                             startIcon: Icons.close,
                             onPress: () {

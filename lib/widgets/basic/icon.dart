@@ -27,13 +27,13 @@ class IconDef {
 }
 
 class Icons {
-  static IconDef arrowDown = IconDef("assets/icons/small/arrow-down-selectbtn.svg");
+  static IconDef arrowDown = IconDef("assets/icons/small/arrow_down_selectbtn.svg");
   static IconDef close = IconDef("assets/icons/small/close.svg");
-  static IconDef hamburger = IconDef("assets/icons/file/hamburger.svg");
-  static IconDef kebab = IconDef("assets/icons/file/kebab.svg");
-  static IconDef redo = IconDef("assets/icons/file/redo.svg");
-  static IconDef save = IconDef("assets/icons/file/save.svg");
-  static IconDef undo = IconDef("assets/icons/file/undo.svg");
+  static IconDef hamburger = IconDef("assets/icons/misc/hamburgner.svg");
+  static IconDef kebab = IconDef("assets/icons/misc.svg");
+  static IconDef redo = IconDef("assets/icons/edit/redo.svg");
+  static IconDef save = IconDef("assets/icons/edit/save.svg");
+  static IconDef undo = IconDef("assets/icons/edit/undo.svg");
 }
 
 class SvgIcon extends StatelessWidget {
