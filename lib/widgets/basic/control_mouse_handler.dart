@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:async';
-
 import 'package:anthem/main.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/services.dart';
@@ -90,7 +88,7 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
   @override
   Widget build(BuildContext context) {
     final child = Listener(
-      onPointerDown: (e) async {
+      onPointerDown: (e) {
         final mediaQuery = MediaQuery.of(context);
         devicePixelRatio = mediaQuery.devicePixelRatio;
         windowRect = Rect.fromLTRB(
@@ -131,7 +129,7 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
         horizontalAxisState = _AxisHandlerStatus.idle;
         verticalAxisState = _AxisHandlerStatus.idle;
       },
-      onPointerMove: (e) async {
+      onPointerMove: (e) {
         final mousePos = Offset(
             e.position.dx + windowRect.left, e.position.dy + windowRect.top);
         final mouseX = mousePos.dx;
