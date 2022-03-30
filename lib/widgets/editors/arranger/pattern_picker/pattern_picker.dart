@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/clip/clip.dart' as anthem_clip;
 import 'package:anthem/widgets/basic/clip/clip_cubit.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
@@ -25,6 +26,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../theme.dart';
+import '../../../basic/icon.dart';
 import '../../../basic/scroll/scrollbar.dart';
 
 class PatternPicker extends StatelessWidget {
@@ -121,10 +123,31 @@ class PatternPicker extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 4),
-                      Scrollbar(
-                        controller: scrollController,
-                        crossAxisSize: 17,
-                        direction: ScrollbarDirection.vertical,
+                      SizedBox(
+                        width: 17,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: Scrollbar(
+                                controller: scrollController,
+                                crossAxisSize: 17,
+                                direction: ScrollbarDirection.vertical,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Button(
+                              startIcon: Icons.add,
+                              height: 17,
+                              variant: ButtonVariant.ghost,
+                              contentPadding: const EdgeInsets.all(0),
+                              onPress: () {
+                                final cubit = context.read<PatternPickerCubit>();
+                                cubit.addPattern("Pattern");
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),

@@ -50,7 +50,7 @@ class PatternModel {
         color = AnthemColor(
           hue: (() {
             final result = _hueGen;
-            _hueGen = _hueGen + 30 % 360;
+            _hueGen = (_hueGen + 30) % 360;
             return result;
           })(),
           brightnessModifier: 0,

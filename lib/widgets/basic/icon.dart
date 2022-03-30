@@ -34,6 +34,7 @@ class Icons {
   static IconDef redo = IconDef("assets/icons/edit/redo.svg");
   static IconDef save = IconDef("assets/icons/edit/save.svg");
   static IconDef undo = IconDef("assets/icons/edit/undo.svg");
+  static IconDef add = IconDef("assets/icons/scrollbar/add.svg");
 }
 
 class SvgIcon extends StatelessWidget {
