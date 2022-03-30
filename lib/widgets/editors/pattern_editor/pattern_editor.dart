@@ -205,6 +205,8 @@ class _PatternEditorState extends State<PatternEditor> {
                         const SizedBox(width: 136),
                         Button(
                           width: 105,
+                          contentPadding: EdgeInsets.zero,
+                          startIcon: Icons.add,
                           onPress: () {
                             context.read<PatternEditorCubit>().addInstrument(
                                   "Instrument ${(Random()).nextInt(100).toString()}",
