@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -46,24 +46,4 @@ class NoteModel {
 
   @override
   String toString() => json.encode(toJson());
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(other, this)) return true;
-
-    return other is NoteModel &&
-        other.id == id &&
-        other.key == key &&
-        other.velocity == velocity &&
-        other.length == length &&
-        other.offset == offset;
-  }
-
-  @override
-  int get hashCode =>
-      id.hashCode ^
-      key.hashCode ^
-      velocity.hashCode ^
-      length.hashCode ^
-      offset.hashCode;
 }

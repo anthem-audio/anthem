@@ -63,24 +63,4 @@ class PatternModel {
 
   @override
   String toString() => json.encode(toJson());
-
-  @override
-  operator ==(Object other) {
-    if (identical(other, this)) return true;
-
-    return other is PatternModel &&
-        other.id == id &&
-        other.name == name &&
-        other.notes == notes &&
-        other.timeSignatureChanges == timeSignatureChanges &&
-        other.defaultTimeSignature == defaultTimeSignature;
-  }
-
-  @override
-  int get hashCode =>
-      id.hashCode ^
-      name.hashCode ^
-      notes.hashCode ^
-      timeSignatureChanges.hashCode ^
-      defaultTimeSignature.hashCode;
 }

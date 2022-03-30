@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -65,28 +65,6 @@ class SongModel {
     _project = project;
     _changeStreamController = changeStreamController;
   }
-
-  @override
-  operator ==(Object other) {
-    if (identical(other, this)) return true;
-
-    return other is SongModel &&
-        other.id == id &&
-        other.ticksPerQuarter == ticksPerQuarter &&
-        other.patterns == patterns &&
-        other.patternOrder == patternOrder &&
-        other.activePatternID == activePatternID &&
-        other.activeGeneratorID == activeGeneratorID;
-  }
-
-  @override
-  int get hashCode =>
-      id.hashCode ^
-      ticksPerQuarter.hashCode ^
-      patterns.hashCode ^
-      patternOrder.hashCode ^
-      activePatternID.hashCode ^
-      activeGeneratorID.hashCode;
 
   void setActiveGenerator(int? generatorID) {
     activeGeneratorID = generatorID;

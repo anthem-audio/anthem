@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -37,20 +37,6 @@ class AppModel {
         activeProjectID = -1 {
     stateChangeStream = _stateChangeStreamController.stream;
   }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(other, this)) return true;
-
-    return other is AppModel &&
-        other.projects == projects &&
-        other.projectOrder == projectOrder &&
-        other.activeProjectID == activeProjectID;
-  }
-
-  @override
-  int get hashCode =>
-      projects.hashCode ^ projectOrder.hashCode ^ activeProjectID.hashCode;
 
   void addProject(ProjectModel project) {
     projects[project.id] = project;
