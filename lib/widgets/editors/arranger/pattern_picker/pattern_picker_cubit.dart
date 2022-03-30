@@ -19,11 +19,13 @@
 
 import 'dart:async';
 
+import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/main.dart';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../../../commands/state_changes.dart';
+import '../../../../model/pattern.dart';
 import '../../../../model/project.dart';
 import '../../../../model/store.dart';
 
@@ -60,5 +62,15 @@ class PatternPickerCubit extends Cubit<PatternPickerState> {
 
   setPatternHeight(double height) {
     emit(state.copyWith(patternHeight: height));
+  }
+
+  addPattern(String name) {
+    project.execute(
+      AddPatternCommand(
+        project: project,
+        pattern: PatternModel(name),
+        index: project.song.patternOrder.length,
+      ),
+    );
   }
 }
