@@ -29,6 +29,8 @@ import 'package:provider/provider.dart';
 
 import '../../../theme.dart';
 import '../piano_roll/helpers.dart';
+import 'helpers/time_helpers.dart';
+import 'helpers/types.dart';
 
 class Timeline extends StatefulWidget {
   const Timeline({Key? key}) : super(key: key);

@@ -31,6 +31,8 @@ import 'package:provider/provider.dart';
 
 import '../../../model/store.dart';
 import '../../../theme.dart';
+import '../shared/helpers/time_helpers.dart';
+import '../shared/helpers/types.dart';
 import '../shared/timeline_cubit.dart';
 import 'helpers.dart';
 import 'piano_roll_grid.dart';
