@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -55,101 +55,83 @@ class _PianoControlState extends State<PianoControl> {
   double startPixelValue = -1.0;
   double startTopKeyValue = -1.0;
   double startKeyHeightValue = -1.0;
-  bool hasRerendered = false;
 
   @override
   Widget build(BuildContext context) {
-    final contentRenderBox = context.findRenderObject() as RenderBox?;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final keysOnScreen = constraints.maxHeight / widget.keyHeight;
 
-    if (contentRenderBox == null) {
-      if (!hasRerendered) {
-        WidgetsBinding.instance?.addPostFrameCallback((_) {
-          setState(() {});
-        });
-        hasRerendered = true;
-      }
-      return const SizedBox();
-    }
-    hasRerendered = false;
+        final keyValueAtBottom = (widget.keyValueAtTop - keysOnScreen).floor();
 
-    final keysOnScreen = contentRenderBox.size.height / widget.keyHeight;
+        List<int> notes = [];
 
-    final keyValueAtBottom = (widget.keyValueAtTop - keysOnScreen).floor();
+        for (var i = widget.keyValueAtTop.ceil();
+            i >= keyValueAtBottom - 1;
+            i--) {
+          notes.add(i);
+        }
 
-    List<int> notes = [];
+        final noteWidgets = notes.map((note) {
+          final keyType = getKeyType(note);
 
-    for (var i = widget.keyValueAtTop.ceil(); i >= keyValueAtBottom - 1; i--) {
-      notes.add(i);
-    }
+          Widget child;
 
-    final noteWidgets = notes.map((note) {
-      final keyType = getKeyType(note);
+          if (keyType == KeyType.white) {
+            child = _WhiteKey(keyHeight: widget.keyHeight, keyNumber: note);
+          } else {
+            child = _BlackKey(keyHeight: widget.keyHeight, keyNumber: note);
+          }
 
-      Widget child;
+          return LayoutId(id: note, child: child);
+        }).toList();
 
-      if (keyType == KeyType.white) {
-        child = _WhiteKey(keyHeight: widget.keyHeight, keyNumber: note);
-      } else {
-        child = _BlackKey(keyHeight: widget.keyHeight, keyNumber: note);
-      }
-
-      return LayoutId(id: note, child: child);
-    }).toList();
-
-    return Row(
-      children: [
-        Listener(
-          onPointerDown: (e) {
-            startPixelValue = e.localPosition.dy;
-            startTopKeyValue = widget.keyValueAtTop;
-            startKeyHeightValue = widget.keyHeight;
-          },
-          onPointerMove: (e) {
-            final keyboardModifiers =
-                Provider.of<KeyboardModifiers>(context, listen: false);
-            if (!keyboardModifiers.alt) {
-              final keyDelta =
-                  (e.localPosition.dy - startPixelValue) / widget.keyHeight;
-              widget.setKeyValueAtTop(startTopKeyValue + keyDelta);
-            } else {
-              widget.setKeyHeight((startKeyHeightValue +
-                      (e.localPosition.dy - startPixelValue) / 3)
-                  .clamp(4, 50));
-            }
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.all(Radius.circular(1)),
-              color: Theme.panel.main,
+        return Row(
+          children: [
+            Listener(
+              onPointerDown: (e) {
+                startPixelValue = e.localPosition.dy;
+                startTopKeyValue = widget.keyValueAtTop;
+                startKeyHeightValue = widget.keyHeight;
+              },
+              onPointerMove: (e) {
+                final keyboardModifiers =
+                    Provider.of<KeyboardModifiers>(context, listen: false);
+                if (!keyboardModifiers.alt) {
+                  final keyDelta =
+                      (e.localPosition.dy - startPixelValue) / widget.keyHeight;
+                  widget.setKeyValueAtTop(startTopKeyValue + keyDelta);
+                } else {
+                  widget.setKeyHeight((startKeyHeightValue +
+                          (e.localPosition.dy - startPixelValue) / 3)
+                      .clamp(4, 50));
+                }
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: const BorderRadius.all(Radius.circular(1)),
+                  color: Theme.panel.main,
+                ),
+                width: 39,
+              ),
             ),
-            width: 39,
-          ),
-        ),
-        const SizedBox(width: 1),
-        Expanded(
-          child: NotificationListener<SizeChangedLayoutNotification>(
-            onNotification: (notification) {
-              WidgetsBinding.instance?.addPostFrameCallback((_) {
-                setState(() {});
-              });
-              return true;
-            },
-            child: SizeChangedLayoutNotifier(
+            const SizedBox(width: 1),
+            Expanded(
               child: ClipRect(
                 child: CustomMultiChildLayout(
                   delegate: KeyLayoutDelegate(
                     keyHeight: widget.keyHeight,
                     keyValueAtTop: widget.keyValueAtTop,
                     notes: notes,
-                    parentHeight: contentRenderBox.size.height,
+                    parentHeight: constraints.maxHeight,
                   ),
                   children: noteWidgets,
                 ),
               ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 }
@@ -196,10 +178,9 @@ class KeyLayoutDelegate extends MultiChildLayoutDelegate {
 
   @override
   bool shouldRelayout(covariant KeyLayoutDelegate oldDelegate) {
-    if (oldDelegate.keyHeight != keyHeight ||
+    return oldDelegate.keyHeight != keyHeight ||
         oldDelegate.keyValueAtTop != keyValueAtTop ||
-        oldDelegate.parentHeight != parentHeight) return true;
-    return false;
+        oldDelegate.parentHeight != parentHeight;
   }
 }
 
