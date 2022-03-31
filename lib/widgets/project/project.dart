@@ -52,6 +52,7 @@ class Project extends StatelessWidget {
               orientation: PanelOrientation.left,
               // left panel
               panelContent: const ProjectExplorer(),
+              hidden: true,
 
               child: Panel(
                 hidden: true,
