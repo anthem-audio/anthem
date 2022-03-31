@@ -55,7 +55,7 @@ class _Control {
 }
 
 class _Text {
-  Color main = white.withOpacity(0.7);
+  Color main = const Color(0xFF9DB9CC);
 }
 
 class _ByBackgroundType {

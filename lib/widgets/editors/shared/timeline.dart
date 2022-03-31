@@ -81,7 +81,7 @@ class _TimelineState extends State<Timeline> {
               fit: StackFit.expand,
               children: [
                 Container(
-                  color: Theme.panel.main,
+                  color: Theme.panel.accent,
                   child: ClipRect(
                     child: CustomPaint(
                       painter: TimelinePainter(
@@ -231,18 +231,17 @@ class TimelinePainter extends CustomPainter {
         (timeViewStart / divisionChanges[0].divisionRenderSize).floor() *
             divisionChanges[0].divisionRenderSize;
     var barNumber = divisionChanges[0].startLabel;
-    if (timePtr < 0) {
-      barNumber += (timePtr /
-              (divisionChanges[0].divisionRenderSize /
-                  divisionChanges[0].distanceBetween))
-          .floor();
-    }
+
+    barNumber += (timePtr /
+            (divisionChanges[0].divisionRenderSize /
+                divisionChanges[0].distanceBetween))
+        .floor();
 
     while (timePtr < timeViewEnd) {
       // This shouldn't happen, but safety first
       if (i >= divisionChanges.length) break;
 
-      var thisDivision = divisionChanges[i];
+      final thisDivision = divisionChanges[i];
       var nextDivisionStart = 0x7FFFFFFFFFFFFFFF; // int max
 
       if (i < divisionChanges.length - 1) {
@@ -257,14 +256,14 @@ class TimelinePainter extends CustomPainter {
       }
 
       while (timePtr < nextDivisionStart && timePtr < timeViewEnd) {
-        var x = timeToPixels(
+        final x = timeToPixels(
             timeViewStart: timeViewStart,
             timeViewEnd: timeViewEnd,
             viewPixelWidth: size.width,
             time: timePtr.toDouble());
 
         TextSpan span = TextSpan(
-            style: TextStyle(color: const Color(0xFFFFFFFF).withOpacity(0.6)),
+            style: TextStyle(color: Theme.text.main),
             text: barNumber.toString());
         TextPainter textPainter = TextPainter(
             text: span,

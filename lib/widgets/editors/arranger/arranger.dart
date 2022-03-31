@@ -125,7 +125,7 @@ class ArrangerContent extends StatelessWidget {
               Container(height: 1, color: Theme.panel.border),
               Expanded(
                 child: Container(
-                  color: const Color(0x11FFFFFF),
+                  color: Theme.panel.accent,
                 ),
               ),
             ],
