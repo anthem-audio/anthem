@@ -31,9 +31,10 @@ import 'package:provider/provider.dart';
 
 import '../../../model/store.dart';
 import '../../../theme.dart';
+import '../shared/timeline_cubit.dart';
 import 'helpers.dart';
 import 'piano_roll_grid.dart';
-import 'timeline.dart';
+import '../shared/timeline.dart';
 import 'piano_control.dart';
 
 class PianoRoll extends StatefulWidget {
@@ -64,7 +65,7 @@ class _PianoRollState extends State<PianoRoll> {
           child: Column(
             children: [
               _PianoRollHeader(),
-              Expanded(
+              const Expanded(
                 child: _PianoRollContent(),
               ),
             ],
@@ -193,9 +194,12 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                       children: [
                         SizedBox(
                           height: timelineHeight,
-                          child: Timeline(
-                            pattern: pattern,
-                            ticksPerQuarter: state.ticksPerQuarter,
+                          child: BlocProvider<TimelineCubit>(
+                            create: (context) => TimelineCubit(
+                              projectID: state.projectID,
+                              timelineType: TimelineType.patternTimeline,
+                            ),
+                            child: const Timeline(),
                           ),
                         ),
                         Expanded(
