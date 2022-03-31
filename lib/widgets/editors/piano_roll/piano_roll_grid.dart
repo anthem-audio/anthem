@@ -22,10 +22,10 @@ import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:provider/provider.dart';
-
-import '../../../model/project.dart';
 import '../../../model/store.dart';
+import '../shared/helpers/grid_paint_helpers.dart';
+import '../shared/helpers/time_helpers.dart';
+import '../shared/helpers/types.dart';
 import 'helpers.dart';
 
 class PianoRollGrid extends StatelessWidget {
@@ -154,54 +154,5 @@ class PianoRollBackgroundPainter extends CustomPainter {
         oldDelegate.keyValueAtTop != keyValueAtTop ||
         oldDelegate.timeViewStart != timeViewStart ||
         oldDelegate.timeViewEnd != timeViewEnd;
-  }
-}
-
-void paintVerticalLines({
-  required Canvas canvas,
-  required double timeViewStart,
-  required double timeViewEnd,
-  required List<DivisionChange> divisionChanges,
-  required Size size,
-  required Paint paint,
-}) {
-  var i = 0;
-  // There should always be at least one division change. The first change
-  // should always represent the base time signature for the pattern (or the
-  // first time signature change, if its position is 0).
-  var timePtr =
-      (timeViewStart / divisionChanges[0].divisionRenderSize).floor() *
-          divisionChanges[0].divisionRenderSize;
-
-  while (timePtr < timeViewEnd) {
-    // This shouldn't happen, but safety first
-    if (i >= divisionChanges.length) break;
-
-    var thisDivision = divisionChanges[i];
-    var nextDivisionStart = 0x7FFFFFFFFFFFFFFF; // int max
-
-    if (i < divisionChanges.length - 1) {
-      nextDivisionStart = divisionChanges[i + 1].offset;
-    }
-
-    if (timePtr >= nextDivisionStart) {
-      timePtr = nextDivisionStart;
-      i++;
-      continue;
-    }
-
-    while (timePtr < nextDivisionStart && timePtr < timeViewEnd) {
-      var x = timeToPixels(
-          timeViewStart: timeViewStart,
-          timeViewEnd: timeViewEnd,
-          viewPixelWidth: size.width,
-          time: timePtr.toDouble());
-
-      canvas.drawRect(Rect.fromLTWH(x, 0, 1, size.height), paint);
-
-      timePtr += thisDivision.divisionRenderSize;
-    }
-
-    i++;
   }
 }

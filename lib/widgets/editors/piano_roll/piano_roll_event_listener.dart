@@ -22,6 +22,8 @@ import 'package:anthem/widgets/editors/piano_roll/piano_roll_notifications.dart'
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
+import '../shared/helpers/time_helpers.dart';
+import '../shared/helpers/types.dart';
 import 'helpers.dart';
 
 class PianoRollEventListener extends StatelessWidget {

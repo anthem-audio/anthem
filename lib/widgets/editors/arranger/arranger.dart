@@ -27,6 +27,7 @@ import 'package:provider/provider.dart';
 
 import '../../../theme.dart';
 import '../piano_roll/helpers.dart';
+import '../shared/helpers/types.dart';
 import '../shared/timeline.dart';
 import '../shared/timeline_cubit.dart';
 
