@@ -23,6 +23,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../model/store.dart';
+import '../../../theme.dart';
 import '../shared/helpers/grid_paint_helpers.dart';
 import '../shared/helpers/time_helpers.dart';
 import '../shared/helpers/types.dart';
@@ -80,20 +81,46 @@ class PianoRollBackgroundPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    var black = Paint();
-    black.color = const Color(0xFF000000);
+    canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
-    canvas.saveLayer(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint()..color = const Color(0xFF000000).withOpacity(0.2),
-    );
+    var accentLinePaint = Paint()
+      ..color = Theme.grid.accent;
+    var majorLinePaint = Paint()
+      ..color = Theme.grid.major;
+    var minorLinePaint = Paint()
+      ..color = Theme.grid.minor;
+    
+    var lightBackgroundPaint = Paint()
+      ..color = Theme.grid.backgroundLight;
+    var darkBackgroundPaint = Paint()
+      ..color = Theme.grid.backgroundDark;
+
+    // Background
+
+    var keyNum = keyValueAtTop.ceil();
+
+    while (true) {
+      final y = (keyValueAtTop - keyNum) * keyHeight;
+
+      if (y > size.height) break;
+
+      final keyType = getKeyType(keyNum - 1);
+      final backgroundStripRect = Rect.fromLTWH(0, y, size.width, keyHeight);
+      if (keyType == KeyType.white) {
+        canvas.drawRect(backgroundStripRect, lightBackgroundPaint);
+      }
+      else {
+        canvas.drawRect(backgroundStripRect, darkBackgroundPaint);
+      }
+      keyNum--;
+    }
 
     // Horizontal lines
 
     var linePointer = ((keyValueAtTop * keyHeight) % keyHeight);
 
     while (linePointer < size.height) {
-      canvas.drawRect(Rect.fromLTWH(0, linePointer, size.width, 1), black);
+      canvas.drawRect(Rect.fromLTWH(0, linePointer, size.width, 1), minorLinePaint);
       linePointer += keyHeight;
     }
 
@@ -116,13 +143,8 @@ class PianoRollBackgroundPainter extends CustomPainter {
       timeViewEnd: timeViewEnd,
       divisionChanges: minorDivisionChanges,
       size: size,
-      paint: black,
+      paint: minorLinePaint,
     );
-
-    // Draws everything since canvas.saveLayer() with the color provided in
-    // canvas.saveLayer(). This means that overlapping lines won't be darker,
-    // even though the whole thing is rendered with opacity.
-    canvas.restore();
 
     var majorDivisionChanges = getDivisionChanges(
       viewWidthInPixels: size.width,
@@ -135,16 +157,33 @@ class PianoRollBackgroundPainter extends CustomPainter {
       timeViewEnd: timeViewEnd,
     );
 
-    var majorVerticalLinePaint = Paint()
-      ..color = const Color(0xFF000000).withOpacity(0.22);
-
     paintVerticalLines(
       canvas: canvas,
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
       divisionChanges: majorDivisionChanges,
       size: size,
-      paint: majorVerticalLinePaint,
+      paint: majorLinePaint,
+    );
+
+    var barDivisionChanges = getDivisionChanges(
+      viewWidthInPixels: size.width,
+      minPixelsPerSection: 20,
+      snap: BarSnap(),
+      defaultTimeSignature: pattern?.defaultTimeSignature,
+      timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
+      ticksPerQuarter: ticksPerQuarter,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+    );
+
+    paintVerticalLines(
+      canvas: canvas,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      divisionChanges: barDivisionChanges,
+      size: size,
+      paint: accentLinePaint,
     );
   }
 

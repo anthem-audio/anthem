@@ -31,6 +31,7 @@ import 'package:provider/provider.dart';
 
 import '../../../model/store.dart';
 import '../../../theme.dart';
+import '../../basic/panel.dart';
 import '../shared/helpers/time_helpers.dart';
 import '../shared/helpers/types.dart';
 import '../shared/timeline_cubit.dart';
@@ -64,13 +65,24 @@ class _PianoRollState extends State<PianoRoll> {
           )
         ],
         child: PianoRollNotificationHandler(
-          child: Column(
-            children: [
-              _PianoRollHeader(),
-              const Expanded(
-                child: _PianoRollContent(),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              color: Theme.panel.main,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _PianoRollHeader(),
+                  const SizedBox(height: 4),
+                  const Expanded(
+                    child: _PianoRollContent(),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       );
@@ -81,15 +93,8 @@ class _PianoRollState extends State<PianoRoll> {
 class _PianoRollHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.panel.main,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(2),
-          topRight: Radius.circular(2),
-        ),
-      ),
-      height: 42,
+    return const SizedBox(
+      height: 26,
     );
   }
 }
@@ -128,8 +133,8 @@ class _PianoRollContent extends StatefulWidget {
 }
 
 class _PianoRollContentState extends State<_PianoRollContent> {
-  double footerHeight = (61);
-  double pianoControlWidth = (103);
+  double footerHeight = 61;
+  double pianoControlWidth = 69;
 
   @override
   Widget build(BuildContext context) {
@@ -148,28 +153,46 @@ class _PianoRollContentState extends State<_PianoRollContent> {
 
       final localState = context.watch<PianoRollLocalState>();
 
-      return Column(
-        children: [
-          Expanded(
-            child: Row(
+      return Panel(
+        orientation: PanelOrientation.bottom,
+        panelStartSize: 89,
+        separatorSize: 6,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Theme.panel.border),
+            borderRadius: const BorderRadius.all(Radius.circular(4)),
+          ),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.all(Radius.circular(4)),
+            child: Column(
               children: [
-                // Piano control
+                // Timeline
                 SizedBox(
-                  width: pianoControlWidth,
-                  child: Column(
+                  height: timelineHeight,
+                  child: Row(
                     children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Theme.panel.main,
-                          borderRadius: const BorderRadius.only(
-                            bottomLeft: Radius.circular(1),
-                            bottomRight: Radius.circular(1),
-                          ),
-                        ),
-                        height: timelineHeight + 1,
-                      ),
-                      const SizedBox(height: 1),
+                      SizedBox(width: pianoControlWidth),
+                      Container(color: Theme.panel.border, width: 1),
                       Expanded(
+                        child: BlocProvider<TimelineCubit>(
+                          create: (context) => TimelineCubit(
+                            projectID: state.projectID,
+                            timelineType: TimelineType.patternTimeline,
+                          ),
+                          child: const Timeline(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(color: Theme.panel.border, height: 1),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Piano control
+                      SizedBox(
+                        width: pianoControlWidth,
                         child: PianoControl(
                           keyValueAtTop: localState.keyValueAtTop,
                           keyHeight: localState.keyHeight,
@@ -183,71 +206,53 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                           },
                         ),
                       ),
-                      const SizedBox(height: 1),
-                    ],
-                  ),
-                ),
-                // Timeline and main piano roll render area
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(1, 1, 0, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        SizedBox(
-                          height: timelineHeight,
-                          child: BlocProvider<TimelineCubit>(
-                            create: (context) => TimelineCubit(
-                              projectID: state.projectID,
-                              timelineType: TimelineType.patternTimeline,
-                            ),
-                            child: const Timeline(),
-                          ),
-                        ),
-                        Expanded(
-                          child: PianoRollEventListener(
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                PianoRollGrid(
-                                  keyHeight: localState.keyHeight,
-                                  keyValueAtTop: localState.keyValueAtTop,
-                                ),
-                                ClipRect(
-                                  child: CustomMultiChildLayout(
-                                    children: notes
-                                        .map(
-                                          (note) => LayoutId(
-                                            id: note.id,
-                                            child: NoteWidget(noteID: note.id),
-                                          ),
-                                        )
-                                        .toList(),
-                                    delegate: NoteLayoutDelegate(
-                                      notes: notes,
-                                      keyHeight: localState.keyHeight,
-                                      keyValueAtTop: localState.keyValueAtTop,
-                                      timeViewStart: timeView.start,
-                                      timeViewEnd: timeView.end,
-                                    ),
+                      Container(color: Theme.panel.border, width: 1),
+                      // Main piano roll render area
+                      Expanded(
+                        child: PianoRollEventListener(
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              PianoRollGrid(
+                                keyHeight: localState.keyHeight,
+                                keyValueAtTop: localState.keyValueAtTop,
+                              ),
+                              ClipRect(
+                                child: CustomMultiChildLayout(
+                                  children: notes
+                                      .map(
+                                        (note) => LayoutId(
+                                          id: note.id,
+                                          child: NoteWidget(noteID: note.id),
+                                        ),
+                                      )
+                                      .toList(),
+                                  delegate: NoteLayoutDelegate(
+                                    notes: notes,
+                                    keyHeight: localState.keyHeight,
+                                    keyValueAtTop: localState.keyValueAtTop,
+                                    timeViewStart: timeView.start,
+                                    timeViewEnd: timeView.end,
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-          Container(
-            color: Theme.panel.main,
-            height: footerHeight,
+        ),
+        panelContent: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Theme.panel.border),
+            borderRadius: const BorderRadius.all(Radius.circular(4)),
           ),
-        ],
+        ),
       );
     });
   }
@@ -366,7 +371,9 @@ class _NoteWidgetState extends State<NoteWidget> {
         },
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF07D2D4).withOpacity(isHovered ? 0.5 : 0.33),
+            color: HSLColor.fromAHSL(
+                    1, 166, isHovered ? 0.2 : 0.28, isHovered ? 0.56 : 0.49)
+                .toColor(),
             borderRadius: const BorderRadius.all(Radius.circular(1)),
           ),
         ),

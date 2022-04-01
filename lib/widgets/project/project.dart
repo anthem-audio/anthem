@@ -69,12 +69,9 @@ class Project extends StatelessWidget {
                   ),
                   child: Panel(
                     orientation: PanelOrientation.left,
-                    child: Container(
-                      color: Theme.panel.main,
-                      child: BlocProvider<ArrangerCubit>(
-                        create: (context) => ArrangerCubit(projectID: state.id),
-                        child: Arranger(),
-                      ),
+                    child: BlocProvider<ArrangerCubit>(
+                      create: (context) => ArrangerCubit(projectID: state.id),
+                      child: const Arranger(),
                     ),
                     // pattern editor
                     panelContent: BlocProvider<PatternEditorCubit>(

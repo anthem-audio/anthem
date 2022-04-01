@@ -64,13 +64,20 @@ class _PianoControlState extends State<PianoControl> {
 
         final keyValueAtBottom = (widget.keyValueAtTop - keysOnScreen).floor();
 
-        List<int> notes = [];
+        List<int> whiteNotes = [];
+        List<int> blackNotes = [];
 
         for (var i = widget.keyValueAtTop.ceil();
             i >= keyValueAtBottom - 1;
             i--) {
-          notes.add(i);
+          if (getKeyType(i) == KeyType.white) {
+            whiteNotes.add(i);
+          } else {
+            blackNotes.add(i);
+          }
         }
+
+        final notes = whiteNotes + blackNotes;
 
         final noteWidgets = notes.map((note) {
           final keyType = getKeyType(note);
@@ -86,50 +93,36 @@ class _PianoControlState extends State<PianoControl> {
           return LayoutId(id: note, child: child);
         }).toList();
 
-        return Row(
-          children: [
-            Listener(
-              onPointerDown: (e) {
-                startPixelValue = e.localPosition.dy;
-                startTopKeyValue = widget.keyValueAtTop;
-                startKeyHeightValue = widget.keyHeight;
-              },
-              onPointerMove: (e) {
-                final keyboardModifiers =
-                    Provider.of<KeyboardModifiers>(context, listen: false);
-                if (!keyboardModifiers.alt) {
-                  final keyDelta =
-                      (e.localPosition.dy - startPixelValue) / widget.keyHeight;
-                  widget.setKeyValueAtTop(startTopKeyValue + keyDelta);
-                } else {
-                  widget.setKeyHeight((startKeyHeightValue +
-                          (e.localPosition.dy - startPixelValue) / 3)
-                      .clamp(4, 50));
-                }
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.all(Radius.circular(1)),
-                  color: Theme.panel.main,
-                ),
-                width: 39,
+        return Listener(
+          onPointerDown: (e) {
+            startPixelValue = e.localPosition.dy;
+            startTopKeyValue = widget.keyValueAtTop;
+            startKeyHeightValue = widget.keyHeight;
+          },
+          onPointerMove: (e) {
+            final keyboardModifiers =
+                Provider.of<KeyboardModifiers>(context, listen: false);
+            if (!keyboardModifiers.alt) {
+              final keyDelta =
+                  (e.localPosition.dy - startPixelValue) / widget.keyHeight;
+              widget.setKeyValueAtTop(startTopKeyValue + keyDelta);
+            } else {
+              widget.setKeyHeight((startKeyHeightValue +
+                      (e.localPosition.dy - startPixelValue) / 3)
+                  .clamp(4, 50));
+            }
+          },
+          child: ClipRect(
+            child: CustomMultiChildLayout(
+              delegate: KeyLayoutDelegate(
+                keyHeight: widget.keyHeight,
+                keyValueAtTop: widget.keyValueAtTop,
+                notes: notes,
+                parentHeight: constraints.maxHeight,
               ),
+              children: noteWidgets,
             ),
-            const SizedBox(width: 1),
-            Expanded(
-              child: ClipRect(
-                child: CustomMultiChildLayout(
-                  delegate: KeyLayoutDelegate(
-                    keyHeight: widget.keyHeight,
-                    keyValueAtTop: widget.keyValueAtTop,
-                    notes: notes,
-                    parentHeight: constraints.maxHeight,
-                  ),
-                  children: noteWidgets,
-                ),
-              ),
-            ),
-          ],
+          ),
         );
       },
     );
@@ -198,57 +191,17 @@ class _WhiteKey extends StatelessWidget {
     final notchType = getNotchType(keyNumber);
     final widgetHeight =
         notchType == NotchType.both ? keyHeight * 2 : keyHeight * 1.5;
-    final hasTopNotch =
-        notchType == NotchType.both || notchType == NotchType.above;
-    final hasBottomNotch =
-        notchType == NotchType.both || notchType == NotchType.below;
 
     // 41 / 22
 
     // 128 here is arbitrary
-    final opacity = keyNumber < 0 || keyNumber > 128 ? 0.3 : 0.6;
+    final double opacity = keyNumber < 0 || keyNumber > 128 ? 0.7 : 1;
 
-    return GestureDetector(
-      // onTap: () {
-      //   print(keyNumber);
-      // },
-      child: SizedBox(
-        height: widgetHeight - 1,
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                children: [
-                  SizedBox(height: hasTopNotch ? keyHeight * 0.5 : 0),
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(1),
-                          bottomLeft: Radius.circular(1),
-                        ),
-                        color: const Color(0xFFFFFFFF).withOpacity(opacity),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: hasBottomNotch ? keyHeight * 0.5 : 0),
-                ],
-              ),
-            ),
-            Container(
-              width: notchWidth,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(hasTopNotch ? 1 : 0),
-                  bottomLeft: Radius.circular(hasBottomNotch ? 1 : 0),
-                  topRight: const Radius.circular(1),
-                  bottomRight: const Radius.circular(1),
-                ),
-                color: const Color(0xFFFFFFFF).withOpacity(opacity),
-              ),
-            ),
-          ],
-        ),
+    return Container(
+      height: widgetHeight - 1,
+      decoration: BoxDecoration(
+        borderRadius: const BorderRadius.horizontal(right: Radius.circular(1)),
+        color: const Color(0xFFAAB7C0).withOpacity(opacity),
       ),
     );
   }
@@ -264,9 +217,9 @@ class _BlackKey extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        borderRadius: const BorderRadius.all(Radius.circular(1)),
-        color: const Color(0xFFFFFFFF).withOpacity(0.07),
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.horizontal(right: Radius.circular(4)),
+        color: Color(0xFF3D484F),
       ),
       height: keyHeight - 1,
       margin: const EdgeInsets.only(right: notchWidth + 1),

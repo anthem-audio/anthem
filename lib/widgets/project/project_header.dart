@@ -43,7 +43,12 @@ class ProjectHeader extends StatelessWidget {
 
       return Container(
         height: 40,
-        color: Theme.panel.accent,
+        decoration: BoxDecoration(
+          borderRadius: const BorderRadius.vertical(
+            bottom: Radius.circular(2),
+          ),
+          color: Theme.panel.accent,
+        ),
         child: Padding(
           padding: const EdgeInsets.all(7),
           child: Row(
