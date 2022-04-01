@@ -20,6 +20,7 @@
 import 'dart:math';
 
 import 'package:anthem/model/note.dart';
+import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_notification_handler.dart';
@@ -39,6 +40,9 @@ import 'helpers.dart';
 import 'piano_roll_grid.dart';
 import '../shared/timeline.dart';
 import 'piano_control.dart';
+
+const double minKeyHeight = 6;
+const double maxKeyHeight = 50;
 
 class PianoRoll extends StatefulWidget {
   const PianoRoll({
@@ -157,95 +161,140 @@ class _PianoRollContentState extends State<_PianoRollContent> {
         orientation: PanelOrientation.bottom,
         panelStartSize: 89,
         separatorSize: 6,
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: Theme.panel.border),
-            borderRadius: const BorderRadius.all(Radius.circular(4)),
-          ),
-          child: ClipRRect(
-            borderRadius: const BorderRadius.all(Radius.circular(4)),
-            child: Column(
-              children: [
-                // Timeline
-                SizedBox(
-                  height: timelineHeight,
-                  child: Row(
-                    children: [
-                      SizedBox(width: pianoControlWidth),
-                      Container(color: Theme.panel.border, width: 1),
-                      Expanded(
-                        child: BlocProvider<TimelineCubit>(
-                          create: (context) => TimelineCubit(
-                            projectID: state.projectID,
-                            timelineType: TimelineType.patternTimeline,
-                          ),
-                          child: const Timeline(),
-                        ),
-                      ),
-                    ],
+        child: Column(
+          children: [
+            SizedBox(
+              height: 26,
+              child: Row(
+                children: [
+                  const Expanded(child: SizedBox()),
+                  const SizedBox(width: 4),
+                  VerticalScaleControl(
+                    min: minKeyHeight,
+                    max: maxKeyHeight,
+                    value: localState.keyHeight,
+                    onChange: (height) {
+                      localState.setKeyHeight(height);
+                    },
                   ),
-                ),
-                Container(color: Theme.panel.border, height: 1),
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Piano control
-                      SizedBox(
-                        width: pianoControlWidth,
-                        child: PianoControl(
-                          keyValueAtTop: localState.keyValueAtTop,
-                          keyHeight: localState.keyHeight,
-                          setKeyValueAtTop: (value) {
-                            setState(() {
-                              localState.setKeyValueAtTop(value);
-                            });
-                          },
-                          setKeyHeight: (value) {
-                            localState.setKeyHeight(value);
-                          },
-                        ),
-                      ),
-                      Container(color: Theme.panel.border, width: 1),
-                      // Main piano roll render area
-                      Expanded(
-                        child: PianoRollEventListener(
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              PianoRollGrid(
-                                keyHeight: localState.keyHeight,
-                                keyValueAtTop: localState.keyValueAtTop,
-                              ),
-                              ClipRect(
-                                child: CustomMultiChildLayout(
-                                  children: notes
-                                      .map(
-                                        (note) => LayoutId(
-                                          id: note.id,
-                                          child: NoteWidget(noteID: note.id),
-                                        ),
-                                      )
-                                      .toList(),
-                                  delegate: NoteLayoutDelegate(
-                                    notes: notes,
-                                    keyHeight: localState.keyHeight,
-                                    keyValueAtTop: localState.keyValueAtTop,
-                                    timeViewStart: timeView.start,
-                                    timeViewEnd: timeView.end,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+            const SizedBox(height: 4),
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Theme.panel.border),
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(4)),
+                      ),
+                      child: ClipRRect(
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(4)),
+                        child: Column(
+                          children: [
+                            // Timeline
+                            SizedBox(
+                              height: timelineHeight,
+                              child: Row(
+                                children: [
+                                  SizedBox(width: pianoControlWidth),
+                                  Container(
+                                      color: Theme.panel.border, width: 1),
+                                  Expanded(
+                                    child: BlocProvider<TimelineCubit>(
+                                      create: (context) => TimelineCubit(
+                                        projectID: state.projectID,
+                                        timelineType:
+                                            TimelineType.patternTimeline,
+                                      ),
+                                      child: const Timeline(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(color: Theme.panel.border, height: 1),
+                            Expanded(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // Piano control
+                                  SizedBox(
+                                    width: pianoControlWidth,
+                                    child: PianoControl(
+                                      keyValueAtTop: localState.keyValueAtTop,
+                                      keyHeight: localState.keyHeight,
+                                      setKeyValueAtTop: (value) {
+                                        setState(() {
+                                          localState.setKeyValueAtTop(value);
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  Container(
+                                      color: Theme.panel.border, width: 1),
+                                  // Main piano roll render area
+                                  Expanded(
+                                    child: PianoRollEventListener(
+                                      child: Stack(
+                                        fit: StackFit.expand,
+                                        children: [
+                                          PianoRollGrid(
+                                            keyHeight: localState.keyHeight,
+                                            keyValueAtTop:
+                                                localState.keyValueAtTop,
+                                          ),
+                                          ClipRect(
+                                            child: CustomMultiChildLayout(
+                                              children: notes
+                                                  .map(
+                                                    (note) => LayoutId(
+                                                      id: note.id,
+                                                      child: NoteWidget(
+                                                          noteID: note.id),
+                                                    ),
+                                                  )
+                                                  .toList(),
+                                              delegate: NoteLayoutDelegate(
+                                                notes: notes,
+                                                keyHeight: localState.keyHeight,
+                                                keyValueAtTop:
+                                                    localState.keyValueAtTop,
+                                                timeViewStart: timeView.start,
+                                                timeViewEnd: timeView.end,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Vertical scrollbar
+                  const SizedBox(width: 4),
+                  Container(
+                    width: 17,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Theme.panel.border),
+                      color: Theme.panel.accent,
+                      borderRadius: const BorderRadius.all(Radius.circular(4)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         panelContent: Container(
           decoration: BoxDecoration(
@@ -372,7 +421,7 @@ class _NoteWidgetState extends State<NoteWidget> {
         child: Container(
           decoration: BoxDecoration(
             color: HSLColor.fromAHSL(
-                    1, 166, isHovered ? 0.2 : 0.28, isHovered ? 0.56 : 0.49)
+                    1, 166, isHovered ? 0.4 : 0.46, isHovered ? 0.35 : 0.31)
                 .toColor(),
             borderRadius: const BorderRadius.all(Radius.circular(1)),
           ),

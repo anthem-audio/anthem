@@ -39,13 +39,11 @@ class PianoControl extends StatefulWidget {
     required this.keyValueAtTop,
     required this.keyHeight,
     required this.setKeyValueAtTop,
-    required this.setKeyHeight,
   }) : super(key: key);
 
   final double keyValueAtTop;
   final double keyHeight;
   final ValueSetter<double> setKeyValueAtTop;
-  final ValueSetter<double> setKeyHeight;
 
   @override
   State<PianoControl> createState() => _PianoControlState();
@@ -100,17 +98,9 @@ class _PianoControlState extends State<PianoControl> {
             startKeyHeightValue = widget.keyHeight;
           },
           onPointerMove: (e) {
-            final keyboardModifiers =
-                Provider.of<KeyboardModifiers>(context, listen: false);
-            if (!keyboardModifiers.alt) {
-              final keyDelta =
-                  (e.localPosition.dy - startPixelValue) / widget.keyHeight;
-              widget.setKeyValueAtTop(startTopKeyValue + keyDelta);
-            } else {
-              widget.setKeyHeight((startKeyHeightValue +
-                      (e.localPosition.dy - startPixelValue) / 3)
-                  .clamp(4, 50));
-            }
+            final keyDelta =
+                (e.localPosition.dy - startPixelValue) / widget.keyHeight;
+            widget.setKeyValueAtTop(startTopKeyValue + keyDelta);
           },
           child: ClipRect(
             child: CustomMultiChildLayout(
