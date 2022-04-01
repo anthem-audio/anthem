@@ -21,10 +21,10 @@ import 'dart:math';
 
 import 'package:anthem/model/note.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
+import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_notification_handler.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -152,6 +152,7 @@ class _PianoRollContentState extends State<_PianoRollContent> {
             const SizedBox(height: 4),
             Expanded(
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Expanded(
                     child: Container(
@@ -252,14 +253,7 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                   ),
                   // Vertical scrollbar
                   const SizedBox(width: 4),
-                  Container(
-                    width: 17,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Theme.panel.border),
-                      color: Theme.panel.accent,
-                      borderRadius: const BorderRadius.all(Radius.circular(4)),
-                    ),
-                  ),
+                  const SizedBox(width: 17, child: ScrollbarRenderer()),
                 ],
               ),
             ),

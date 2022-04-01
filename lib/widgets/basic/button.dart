@@ -137,6 +137,7 @@ class Button extends StatefulWidget {
   final bool? hideBorder;
   final bool? expand;
   final EdgeInsets contentPadding;
+  final BorderRadius? borderRadius;
 
   const Button({
     Key? key,
@@ -154,6 +155,7 @@ class Button extends StatefulWidget {
     this.hideBorder,
     this.expand,
     this.contentPadding = const EdgeInsets.all(5),
+    this.borderRadius,
   }) : super(key: key);
 
   @override
@@ -330,7 +332,7 @@ class _ButtonState extends State<Button> {
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: widget.borderRadius ?? BorderRadius.circular(4),
             border: widget.hideBorder == true
                 ? null
                 : Border.all(
