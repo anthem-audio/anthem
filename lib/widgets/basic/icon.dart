@@ -21,20 +21,29 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/svg.dart';
 
 class IconDef {
-  String path;
+  final String path;
 
-  IconDef(this.path);
+  const IconDef(this.path);
 }
 
 class Icons {
-  static IconDef arrowDown = IconDef("assets/icons/small/arrow_down_selectbtn.svg");
-  static IconDef close = IconDef("assets/icons/small/close.svg");
-  static IconDef hamburger = IconDef("assets/icons/misc/hamburgner.svg");
-  static IconDef kebab = IconDef("assets/icons/misc.svg");
-  static IconDef redo = IconDef("assets/icons/edit/redo.svg");
-  static IconDef save = IconDef("assets/icons/edit/save.svg");
-  static IconDef undo = IconDef("assets/icons/edit/undo.svg");
-  static IconDef add = IconDef("assets/icons/scrollbar/add.svg");
+  static IconDef arrowDown =
+      const IconDef("assets/icons/small/arrow_down_selectbtn.svg");
+  static IconDef close = const IconDef("assets/icons/small/close.svg");
+  static IconDef hamburger = const IconDef("assets/icons/misc/hamburgner.svg");
+  static IconDef kebab = const IconDef("assets/icons/misc.svg");
+  static IconDef redo = const IconDef("assets/icons/edit/redo.svg");
+  static IconDef save = const IconDef("assets/icons/edit/save.svg");
+  static IconDef undo = const IconDef("assets/icons/edit/undo.svg");
+  static IconDef add = const IconDef("assets/icons/scrollbar/add.svg");
+  static _ScrollbarIcons scrollbar = _ScrollbarIcons();
+}
+
+class _ScrollbarIcons {
+  IconDef arrowDown = const IconDef("assets/icons/scrollbar/arrow_down.svg");
+  IconDef arrowLeft = const IconDef("assets/icons/scrollbar/arrow_left.svg");
+  IconDef arrowRight = const IconDef("assets/icons/scrollbar/arrow_right.svg");
+  IconDef arrowUp = const IconDef("assets/icons/scrollbar/arrow_up.svg");
 }
 
 class SvgIcon extends StatelessWidget {
