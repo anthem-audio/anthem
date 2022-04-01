@@ -28,6 +28,8 @@ class PianoRollState with _$PianoRollState {
     required int ticksPerQuarter,
     int? activeInstrumentID,
     required List<LocalNote> notes,
+    required double keyHeight,
+    required double keyValueAtTop,
   }) = _PianoRollState;
 }
 

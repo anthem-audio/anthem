@@ -46,6 +46,9 @@ class PianoRollCubit extends Cubit<PianoRollState> {
             ticksPerQuarter:
                 Store.instance.projects[projectID]!.song.ticksPerQuarter,
             notes: const [],
+            keyHeight: 20,
+            keyValueAtTop:
+                63.95, // Hack: cuts off the top horizontal line. Otherwise the default view looks off
           ),
         ) {
     project = Store.instance.projects[projectID]!;
@@ -195,6 +198,26 @@ class PianoRollCubit extends Cubit<PianoRollState> {
     ));
   }
 
+  // Used to affect the notes in the view model without changing the main
+  // model. This is used for in-progress operations. For example, if the user
+  // selects a group of notes, presses mouse down, and moves the notes around,
+  // mutateLocalNotes() is called. On mouse up, moveNote is called above. This
+  // is useful because moveNote pushes a command to the undo/redo queue,
+  // whereas this does not.
+  //
+  // It might be possible to handle this at the app model level. This would
+  // have the advantage of allowing in-progress updates to affect other things
+  // like clip renderers and property panels, but I haven't thought of a way to
+  // generalize a fix for the undo/redo issue. We can use journal pages, but we
+  // also don't want pages to contain every in-progress action the user
+  // performed (i.e. if the user moves the notes around a lot before releasing
+  // the mouse, we still want a journal page that just moves the notes from the
+  // start position to the end position). It's possible to fix this on a case-
+  // by-case basis but I think that would result in messier code.
+  //
+  // Until we can come up with a solution to the above, I think it's best to
+  // keep this solution of mutating the local view model until we're ready to
+  // commit.
   void mutateLocalNotes(
       {required int? instrumentID,
       required Function(List<LocalNote> notes) mutator}) {
@@ -206,12 +229,16 @@ class PianoRollCubit extends Cubit<PianoRollState> {
 
     mutator(newNotes);
 
-    emit(PianoRollState(
-      activeInstrumentID: state.activeInstrumentID,
-      patternID: state.patternID,
-      projectID: state.projectID,
-      ticksPerQuarter: state.ticksPerQuarter,
+    emit(state.copyWith(
       notes: newNotes,
     ));
+  }
+
+  void setKeyHeight(double newKeyHeight) {
+    emit(state.copyWith(keyHeight: newKeyHeight));
+  }
+
+  void setKeyValueAtTop(double newKeyValueAtTop) {
+    emit(state.copyWith(keyValueAtTop: newKeyValueAtTop));
   }
 }
