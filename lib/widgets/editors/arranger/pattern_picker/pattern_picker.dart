@@ -58,7 +58,7 @@ class PatternPicker extends StatelessWidget {
                         child: Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(4),
-                            color: Theme.control.main.dark,
+                            color: Theme.panel.accent,
                           ),
                         ),
                       ),

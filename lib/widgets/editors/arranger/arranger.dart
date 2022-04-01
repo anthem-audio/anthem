@@ -50,36 +50,42 @@ class _ArrangerState extends State<Arranger> {
           providers: [
             ChangeNotifierProvider(create: (_) => TimeView(0, 3072)),
           ],
-          child: Padding(
-            padding: const EdgeInsets.all(6),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 26),
-                const SizedBox(height: 4),
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(top: 15),
-                        child: SizedBox(
-                          width: 126,
-                          child: BlocProvider<PatternPickerCubit>(
-                            create: (context) =>
-                                PatternPickerCubit(projectID: state.projectID),
-                            child: PatternPicker(),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              color: Theme.panel.main,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 26),
+                  const SizedBox(height: 4),
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 15),
+                          child: SizedBox(
+                            width: 126,
+                            child: BlocProvider<PatternPickerCubit>(
+                              create: (context) =>
+                                  PatternPickerCubit(projectID: state.projectID),
+                              child: PatternPicker(),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Expanded(
-                        child: ArrangerContent(),
-                      ),
-                    ],
+                        const SizedBox(width: 6),
+                        const Expanded(
+                          child: ArrangerContent(),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
