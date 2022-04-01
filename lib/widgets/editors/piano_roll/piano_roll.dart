@@ -42,7 +42,7 @@ import '../shared/timeline.dart';
 import 'piano_control.dart';
 
 const double minKeyHeight = 6;
-const double maxKeyHeight = 50;
+const double maxKeyHeight = 40;
 
 class PianoRoll extends StatefulWidget {
   const PianoRoll({
@@ -61,12 +61,6 @@ class _PianoRollState extends State<PianoRoll> {
       return MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => TimeView(0, 3072)),
-          ChangeNotifierProvider(
-            create: (context) => PianoRollLocalState(
-              keyHeight: 20,
-              keyValueAtTop: 62,
-            ),
-          )
         ],
         child: PianoRollNotificationHandler(
           child: Container(
@@ -103,30 +97,6 @@ class _PianoRollHeader extends StatelessWidget {
   }
 }
 
-class PianoRollLocalState with ChangeNotifier, DiagnosticableTreeMixin {
-  late double _keyHeight;
-  late double _keyValueAtTop;
-
-  double get keyHeight => _keyHeight;
-  double get keyValueAtTop => _keyValueAtTop;
-
-  PianoRollLocalState(
-      {required double keyHeight, required double keyValueAtTop}) {
-    _keyHeight = keyHeight;
-    _keyValueAtTop = keyValueAtTop;
-  }
-
-  void setKeyHeight(double value) {
-    _keyHeight = value;
-    notifyListeners();
-  }
-
-  void setKeyValueAtTop(double value) {
-    _keyValueAtTop = value;
-    notifyListeners();
-  }
-}
-
 class _PianoRollContent extends StatefulWidget {
   const _PianoRollContent({
     Key? key,
@@ -144,7 +114,8 @@ class _PianoRollContentState extends State<_PianoRollContent> {
   Widget build(BuildContext context) {
     return BlocBuilder<PianoRollCubit, PianoRollState>(
         builder: (context, state) {
-      // TODO: Should some of this be in the cubit state?
+      final cubit = BlocProvider.of<PianoRollCubit>(context);
+
       final project = Store.instance.projects[state.projectID];
       final pattern = project?.song.patterns[state.patternID];
 
@@ -154,8 +125,6 @@ class _PianoRollContentState extends State<_PianoRollContent> {
           (pattern?.timeSignatureChanges.length ?? 0) > 0 ? 42.0 : 21.0;
 
       final notes = state.notes;
-
-      final localState = context.watch<PianoRollLocalState>();
 
       return Panel(
         orientation: PanelOrientation.bottom,
@@ -172,9 +141,9 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                   VerticalScaleControl(
                     min: minKeyHeight,
                     max: maxKeyHeight,
-                    value: localState.keyHeight,
+                    value: state.keyHeight,
                     onChange: (height) {
-                      localState.setKeyHeight(height);
+                      cubit.setKeyHeight(height);
                     },
                   ),
                 ],
@@ -226,11 +195,11 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                                   SizedBox(
                                     width: pianoControlWidth,
                                     child: PianoControl(
-                                      keyValueAtTop: localState.keyValueAtTop,
-                                      keyHeight: localState.keyHeight,
+                                      keyValueAtTop: state.keyValueAtTop,
+                                      keyHeight: state.keyHeight,
                                       setKeyValueAtTop: (value) {
                                         setState(() {
-                                          localState.setKeyValueAtTop(value);
+                                          cubit.setKeyValueAtTop(value);
                                         });
                                       },
                                     ),
@@ -244,9 +213,9 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                                         fit: StackFit.expand,
                                         children: [
                                           PianoRollGrid(
-                                            keyHeight: localState.keyHeight,
+                                            keyHeight: state.keyHeight,
                                             keyValueAtTop:
-                                                localState.keyValueAtTop,
+                                                state.keyValueAtTop,
                                           ),
                                           ClipRect(
                                             child: CustomMultiChildLayout(
@@ -261,9 +230,9 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                                                   .toList(),
                                               delegate: NoteLayoutDelegate(
                                                 notes: notes,
-                                                keyHeight: localState.keyHeight,
+                                                keyHeight: state.keyHeight,
                                                 keyValueAtTop:
-                                                    localState.keyValueAtTop,
+                                                    state.keyValueAtTop,
                                                 timeViewStart: timeView.start,
                                                 timeViewEnd: timeView.end,
                                               ),

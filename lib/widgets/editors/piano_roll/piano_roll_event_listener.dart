@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,8 +18,10 @@
 */
 
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_notifications.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 
 import '../shared/helpers/time_helpers.dart';
@@ -36,15 +38,14 @@ class PianoRollEventListener extends StatelessWidget {
   Widget build(BuildContext context) {
     handlePointerDown(PointerDownEvent e) {
       final timeView = Provider.of<TimeView>(context, listen: false);
-      final localState =
-          Provider.of<PianoRollLocalState>(context, listen: false);
+      final cubit = BlocProvider.of<PianoRollCubit>(context, listen: false);
       final contentRenderBox = context.findRenderObject() as RenderBox;
       final pointerPos = contentRenderBox.globalToLocal(e.position);
 
       PianoRollPointerDownNotification(
         note: pixelsToKeyValue(
-            keyHeight: localState.keyHeight,
-            keyValueAtTop: localState.keyValueAtTop,
+            keyHeight: cubit.state.keyHeight,
+            keyValueAtTop: cubit.state.keyValueAtTop,
             pixelOffsetFromTop: pointerPos.dy),
         time: pixelsToTime(
             timeViewStart: timeView.start,
@@ -58,15 +59,14 @@ class PianoRollEventListener extends StatelessWidget {
 
     handlePointerMove(PointerMoveEvent e) {
       final timeView = Provider.of<TimeView>(context, listen: false);
-      final localState =
-          Provider.of<PianoRollLocalState>(context, listen: false);
+      final cubit = BlocProvider.of<PianoRollCubit>(context, listen: false);
       final contentRenderBox = context.findRenderObject() as RenderBox;
       final pointerPos = contentRenderBox.globalToLocal(e.position);
 
       PianoRollPointerMoveNotification(
         note: pixelsToKeyValue(
-            keyHeight: localState.keyHeight,
-            keyValueAtTop: localState.keyValueAtTop,
+            keyHeight: cubit.state.keyHeight,
+            keyValueAtTop: cubit.state.keyValueAtTop,
             pixelOffsetFromTop: pointerPos.dy),
         time: pixelsToTime(
             timeViewStart: timeView.start,
@@ -80,15 +80,14 @@ class PianoRollEventListener extends StatelessWidget {
 
     handlePointerUp(PointerUpEvent e) {
       final timeView = Provider.of<TimeView>(context, listen: false);
-      final localState =
-          Provider.of<PianoRollLocalState>(context, listen: false);
+      final cubit = BlocProvider.of<PianoRollCubit>(context, listen: false);
       final contentRenderBox = context.findRenderObject() as RenderBox;
       final pointerPos = contentRenderBox.globalToLocal(e.position);
 
       PianoRollPointerUpNotification(
         note: pixelsToKeyValue(
-            keyHeight: localState.keyHeight,
-            keyValueAtTop: localState.keyValueAtTop,
+            keyHeight: cubit.state.keyHeight,
+            keyValueAtTop: cubit.state.keyValueAtTop,
             pixelOffsetFromTop: pointerPos.dy),
         time: pixelsToTime(
             timeViewStart: timeView.start,
