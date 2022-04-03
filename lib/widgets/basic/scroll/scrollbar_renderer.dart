@@ -23,13 +23,26 @@ import '../../../theme.dart';
 import '../button.dart';
 import '../icon.dart';
 
-// Scroll forward/backward buttons
-const double _mainAxisButtonSize = 17;
+// Scroll forward/backward buttons (doesn't include divider)
+const double _mainAxisButtonSize = 16;
 
 enum ScrollbarDirection { horizontal, vertical }
 
+class ScrollbarChangeEvent {
+  final double handleStart;
+  final double handleEnd;
+
+  const ScrollbarChangeEvent({
+    required this.handleStart,
+    required this.handleEnd,
+  });
+}
+
 class ScrollbarRenderer extends StatefulWidget {
+  // When rendering, the handle will never be smaller than this
   final double minHandlePixelSize;
+
+  final double minHandleSize;
 
   // Size of the scroll region. The units don't matter, because the handle
   // position must be given in the same units.
@@ -40,13 +53,22 @@ class ScrollbarRenderer extends StatefulWidget {
   final double handleStart;
   final double handleEnd;
 
+  final bool canScrollPastStart;
+  final bool canScrollPastEnd;
+
+  final Function(ScrollbarChangeEvent event)? onChange;
+
   const ScrollbarRenderer({
     Key? key,
-    this.minHandlePixelSize = 20,
+    this.minHandlePixelSize = 24,
+    this.minHandleSize = 0,
     required this.scrollRegionStart,
     required this.scrollRegionEnd,
     required this.handleStart,
     required this.handleEnd,
+    this.onChange,
+    this.canScrollPastStart = false,
+    this.canScrollPastEnd = false,
   }) : super(key: key);
 
   @override
@@ -54,28 +76,44 @@ class ScrollbarRenderer extends StatefulWidget {
 }
 
 class _ScrollbarRendererState extends State<ScrollbarRenderer> {
-  bool _isThumbPressed = false;
-  double _localStartPos = -1;
-  double _scrollAreaStartPos = -1;
+  double startHandleStart = -1;
+  double startHandleEnd = -1;
+  double startPos = -1;
 
-  // void _handleDown(double pos, double containerMainAxisLength) {
-  //   _localStartPos = pos;
-  //   _scrollAreaStartPos = widget.controller.position.pixels;
-  // }
+  void _handleDown(double pos) {
+    startHandleStart = widget.handleStart;
+    startHandleEnd = widget.handleEnd;
+    startPos = pos;
+  }
 
-  // void _handleMove(double pos, double containerMainAxisLength) {
-  //   final delta = pos - _localStartPos;
-  //   final normalizedThumbSize = inside / (before + inside + after);
-  //   final normalizedDelta = delta / containerMainAxisLength;
-  //   final scrollAreaStart = widget.controller.position.minScrollExtent;
-  //   final scrollAreaEnd = widget.controller.position.maxScrollExtent;
-  //   final scrollAreaSize = scrollAreaEnd - scrollAreaStart;
-  //   final targetPos =
-  //       normalizedDelta * (scrollAreaSize * (1 / (1 - normalizedThumbSize))) +
-  //           _scrollAreaStartPos +
-  //           scrollAreaStart;
-  //   widget.controller.jumpTo(targetPos.clamp(scrollAreaStart, scrollAreaEnd));
-  // }
+  void _handleMove(double pos, double trackSize) {
+    final scrollRegionSize = widget.scrollRegionEnd - widget.scrollRegionStart;
+
+    // Delta since mouse down
+    final pixelDelta = pos - startPos;
+
+    final handleDelta = (pixelDelta / trackSize) * scrollRegionSize;
+
+    var handleStart = startHandleStart + handleDelta;
+    var handleEnd = startHandleEnd + handleDelta;
+
+    if (!widget.canScrollPastStart) {
+      final startOvershoot = (widget.scrollRegionStart - handleStart).clamp(0, double.infinity);
+      handleStart += startOvershoot;
+      handleEnd += startOvershoot;
+    }
+
+    if (!widget.canScrollPastEnd) {
+      final endOvershoot = (handleEnd - widget.scrollRegionEnd).clamp(0, double.infinity);
+      handleStart -= endOvershoot;
+      handleEnd -= endOvershoot;
+    }
+
+    widget.onChange?.call(ScrollbarChangeEvent(
+      handleStart: handleStart,
+      handleEnd: handleEnd,
+    ));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -256,22 +294,20 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
                 bottom: isHorizontal ? 1 : mainAxisSize - handleEnd,
                 child: GestureDetector(
                   onVerticalDragDown: (details) {
-                    // if (!isVertical) return;
-                    // _handleDown(
-                    //     details.localPosition.dy, context.size?.height ?? 1);
+                    if (!isVertical) return;
+                    _handleDown(details.localPosition.dy);
                   },
                   onVerticalDragUpdate: (details) {
-                    // if (!isVertical) return;
-                    // _handleMove(
-                    //     details.localPosition.dy, context.size?.height ?? 1);
+                    if (!isVertical) return;
+                    _handleMove(details.localPosition.dy, trackSize);
                   },
                   onHorizontalDragDown: (details) {
-                    // if (!isHorizontal) return;
-                    // _handleDown(details.localPosition.dx, context.size?.width ?? 1);
+                    if (!isHorizontal) return;
+                    _handleDown(details.localPosition.dx);
                   },
                   onHorizontalDragUpdate: (details) {
-                    // if (!isHorizontal) return;
-                    // _handleMove(details.localPosition.dx, context.size?.width ?? 1);
+                    if (!isHorizontal) return;
+                    _handleMove(details.localPosition.dx, trackSize);
                   },
                   child: isHorizontal
                       ? Row(
