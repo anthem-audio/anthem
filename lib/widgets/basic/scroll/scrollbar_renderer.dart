@@ -23,18 +23,30 @@ import '../../../theme.dart';
 import '../button.dart';
 import '../icon.dart';
 
+// Scroll forward/backward buttons
 const double _mainAxisButtonSize = 17;
 
 enum ScrollbarDirection { horizontal, vertical }
 
 class ScrollbarRenderer extends StatefulWidget {
-  final double? width;
-  final double? height;
+  final double minHandlePixelSize;
+
+  // Size of the scroll region. The units don't matter, because the handle
+  // position must be given in the same units.
+  final double scrollRegionStart;
+  final double scrollRegionEnd;
+
+  // Size of the handle, relative to the scroll region.
+  final double handleStart;
+  final double handleEnd;
 
   const ScrollbarRenderer({
     Key? key,
-    this.width,
-    this.height,
+    this.minHandlePixelSize = 20,
+    required this.scrollRegionStart,
+    required this.scrollRegionEnd,
+    required this.handleStart,
+    required this.handleEnd,
   }) : super(key: key);
 
   @override
@@ -45,10 +57,6 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
   bool _isThumbPressed = false;
   double _localStartPos = -1;
   double _scrollAreaStartPos = -1;
-
-  int before = 0;
-  int inside = 5;
-  int after = 2;
 
   // void _handleDown(double pos, double containerMainAxisLength) {
   //   _localStartPos = pos;
@@ -76,12 +84,50 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
         final isVertical = constraints.maxHeight > constraints.maxWidth;
         final isHorizontal = constraints.maxWidth > constraints.maxHeight;
 
-        final flexChildren = <Widget>[];
-        if (before > 0) {
-          flexChildren.add(Spacer(
-            flex: before,
-          ));
+        // Calculate handle start & end position
+        final mainAxisSize =
+            isHorizontal ? constraints.maxWidth : constraints.maxHeight;
+        final trackSize = mainAxisSize - 2 * _mainAxisButtonSize;
+
+        final scrollRegionSize =
+            widget.scrollRegionEnd - widget.scrollRegionStart;
+        final normalizedHandleStart =
+            (widget.handleStart - widget.scrollRegionStart) / scrollRegionSize;
+        final normalizedHandleEnd =
+            (widget.handleEnd - widget.scrollRegionStart) / scrollRegionSize;
+
+        var handleStart =
+            mainAxisSize * normalizedHandleStart + _mainAxisButtonSize;
+        var handleEnd =
+            mainAxisSize * normalizedHandleEnd + _mainAxisButtonSize;
+
+        // Ensure handle size is at least the supplied minimum
+        if (handleEnd - handleStart < widget.minHandlePixelSize) {
+          final extraSizeNeeded =
+              widget.minHandlePixelSize - (handleEnd - handleStart);
+
+          handleEnd += extraSizeNeeded / 2;
+          handleStart -= extraSizeNeeded / 2;
         }
+
+        // Correct for out of bounds
+        if (handleStart < _mainAxisButtonSize) {
+          handleStart = _mainAxisButtonSize;
+        }
+        if (handleEnd > _mainAxisButtonSize + trackSize) {
+          handleEnd = _mainAxisButtonSize + trackSize;
+        }
+        if (handleStart >
+            _mainAxisButtonSize + trackSize - widget.minHandlePixelSize) {
+          handleStart =
+              _mainAxisButtonSize + trackSize - widget.minHandlePixelSize;
+        }
+        if (handleEnd < _mainAxisButtonSize + widget.minHandlePixelSize) {
+          handleEnd = _mainAxisButtonSize + widget.minHandlePixelSize;
+        }
+
+        // Create flex children for handle
+        final flexChildren = <Widget>[];
 
         final border = Container(
           width: isHorizontal ? 1 : null,
@@ -89,25 +135,22 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
           color: Theme.panel.border,
         );
 
+        final isDisabled = widget.handleStart <= widget.scrollRegionStart &&
+            widget.handleEnd >= widget.scrollRegionEnd;
+
         flexChildren.addAll([
           border,
           Flexible(
-            flex: inside,
+            flex: 1,
             child: Button(
               hideBorder: true,
               expand: true,
               borderRadius: BorderRadius.circular(1),
+              variant: isDisabled ? ButtonVariant.label : ButtonVariant.dark,
             ),
-            // child: Container(color: Color(0xFFFFFFFF)),
           ),
           border,
         ]);
-
-        if (after > 0) {
-          flexChildren.add(
-            Spacer(flex: after),
-          );
-        }
 
         return ClipRRect(
           borderRadius: BorderRadius.circular(4),
@@ -207,10 +250,10 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
 
               // Scrollbar track with handle
               Positioned(
-                left: isVertical ? 1 : _mainAxisButtonSize - 1,
-                right: isVertical ? 1 : _mainAxisButtonSize - 1,
-                top: isHorizontal ? 1 : _mainAxisButtonSize - 1,
-                bottom: isHorizontal ? 1 : _mainAxisButtonSize - 1,
+                left: isVertical ? 1 : handleStart,
+                right: isVertical ? 1 : mainAxisSize - handleEnd,
+                top: isHorizontal ? 1 : handleStart,
+                bottom: isHorizontal ? 1 : mainAxisSize - handleEnd,
                 child: GestureDetector(
                   onVerticalDragDown: (details) {
                     // if (!isVertical) return;

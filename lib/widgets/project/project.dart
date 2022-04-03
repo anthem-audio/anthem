@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -45,7 +45,7 @@ class Project extends StatelessWidget {
             projectID: state.id,
           ),
           const SizedBox(
-            height: 2,
+            height: 3,
           ),
           Expanded(
             child: Panel(
@@ -85,11 +85,14 @@ class Project extends StatelessWidget {
             ),
           ),
           const SizedBox(
-            height: 2,
+            height: 3,
           ),
           Container(
             height: 42,
-            color: Theme.panel.main,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              color: Theme.panel.main,
+            ),
           )
         ],
       );

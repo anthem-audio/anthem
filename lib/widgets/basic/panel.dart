@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -87,7 +87,7 @@ class _PanelState extends State<Panel> {
     final contentHugTop = horizontal || !panelFirst;
     final contentHugBottom = horizontal || panelFirst;
 
-    final separatorSize = widget.separatorSize ?? 2.0;
+    final separatorSize = widget.separatorSize ?? 3.0;
     const handleSize = 10.0;
 
     var handleLeft =

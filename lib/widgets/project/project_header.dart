@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -45,7 +45,7 @@ class ProjectHeader extends StatelessWidget {
         height: 40,
         decoration: BoxDecoration(
           borderRadius: const BorderRadius.vertical(
-            bottom: Radius.circular(2),
+            bottom: Radius.circular(4),
           ),
           color: Theme.panel.accent,
         ),
