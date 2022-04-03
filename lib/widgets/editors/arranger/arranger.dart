@@ -140,13 +140,23 @@ class ArrangerContent extends StatelessWidget {
                           SizedBox(
                             width: 400,
                             height: 26,
-                            child: ScrollbarRenderer(),
+                            child: ScrollbarRenderer(
+                              scrollRegionStart: 0,
+                              scrollRegionEnd: 1,
+                              handleStart: 0.2,
+                              handleEnd: 0.5,
+                            ),
                           ),
                           SizedBox(height: 8),
                           SizedBox(
                             width: 400,
                             height: 17,
-                            child: ScrollbarRenderer(),
+                            child: ScrollbarRenderer(
+                              scrollRegionStart: 0,
+                              scrollRegionEnd: 1,
+                              handleStart: 0,
+                              handleEnd: 1,
+                            ),
                           ),
                         ],
                       ),

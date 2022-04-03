@@ -215,8 +215,7 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                                         children: [
                                           PianoRollGrid(
                                             keyHeight: state.keyHeight,
-                                            keyValueAtTop:
-                                                state.keyValueAtTop,
+                                            keyValueAtTop: state.keyValueAtTop,
                                           ),
                                           ClipRect(
                                             child: CustomMultiChildLayout(
@@ -253,7 +252,15 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                   ),
                   // Vertical scrollbar
                   const SizedBox(width: 4),
-                  const SizedBox(width: 17, child: ScrollbarRenderer()),
+                  const SizedBox(
+                    width: 17,
+                    child: ScrollbarRenderer(
+                      scrollRegionStart: 0,
+                      scrollRegionEnd: 1,
+                      handleStart: 0.2,
+                      handleEnd: 0.3,
+                    ),
+                  ),
                 ],
               ),
             ),
