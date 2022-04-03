@@ -98,15 +98,21 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
     var handleEnd = startHandleEnd + handleDelta;
 
     if (!widget.canScrollPastStart) {
-      final startOvershoot = (widget.scrollRegionStart - handleStart).clamp(0, double.infinity);
+      final startOvershoot =
+          (widget.scrollRegionStart - handleStart).clamp(0, double.infinity);
       handleStart += startOvershoot;
       handleEnd += startOvershoot;
     }
 
     if (!widget.canScrollPastEnd) {
-      final endOvershoot = (handleEnd - widget.scrollRegionEnd).clamp(0, double.infinity);
+      final endOvershoot =
+          (handleEnd - widget.scrollRegionEnd).clamp(0, double.infinity);
       handleStart -= endOvershoot;
       handleEnd -= endOvershoot;
+    }
+
+    if (handleStart == widget.handleStart && handleEnd == widget.handleEnd) {
+      return;
     }
 
     widget.onChange?.call(ScrollbarChangeEvent(

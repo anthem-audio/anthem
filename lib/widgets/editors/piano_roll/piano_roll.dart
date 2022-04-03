@@ -44,6 +44,9 @@ import 'piano_control.dart';
 const double minKeyHeight = 6;
 const double maxKeyHeight = 40;
 
+const double minKeyValue = 0;
+const double maxKeyValue = 128;
+
 class PianoRoll extends StatefulWidget {
   const PianoRoll({
     Key? key,
@@ -252,15 +255,22 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                   ),
                   // Vertical scrollbar
                   const SizedBox(width: 4),
-                  const SizedBox(
-                    width: 17,
-                    child: ScrollbarRenderer(
-                      scrollRegionStart: 0,
-                      scrollRegionEnd: 1,
-                      handleStart: 0.2,
-                      handleEnd: 0.3,
-                    ),
-                  ),
+                  LayoutBuilder(builder: (context, constraints) {
+                    return SizedBox(
+                      width: 17,
+                      child: ScrollbarRenderer(
+                        scrollRegionStart: minKeyValue,
+                        scrollRegionEnd: maxKeyValue,
+                        handleStart: maxKeyValue - state.keyValueAtTop,
+                        handleEnd: maxKeyValue -
+                            (state.keyValueAtTop +
+                                constraints.maxHeight / state.keyHeight),
+                        onChange: (event) {
+                          cubit.setKeyValueAtTop(maxKeyValue - event.handleStart);
+                        },
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),

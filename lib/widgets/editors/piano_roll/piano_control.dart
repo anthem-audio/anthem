@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/main_window/main_window_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
@@ -91,27 +92,15 @@ class _PianoControlState extends State<PianoControl> {
           return LayoutId(id: note, child: child);
         }).toList();
 
-        return Listener(
-          onPointerDown: (e) {
-            startPixelValue = e.localPosition.dy;
-            startTopKeyValue = widget.keyValueAtTop;
-            startKeyHeightValue = widget.keyHeight;
-          },
-          onPointerMove: (e) {
-            final keyDelta =
-                (e.localPosition.dy - startPixelValue) / widget.keyHeight;
-            widget.setKeyValueAtTop(startTopKeyValue + keyDelta);
-          },
-          child: ClipRect(
-            child: CustomMultiChildLayout(
-              delegate: KeyLayoutDelegate(
-                keyHeight: widget.keyHeight,
-                keyValueAtTop: widget.keyValueAtTop,
-                notes: notes,
-                parentHeight: constraints.maxHeight,
-              ),
-              children: noteWidgets,
+        return ClipRect(
+          child: CustomMultiChildLayout(
+            delegate: KeyLayoutDelegate(
+              keyHeight: widget.keyHeight,
+              keyValueAtTop: widget.keyValueAtTop,
+              notes: notes,
+              parentHeight: constraints.maxHeight,
             ),
+            children: noteWidgets,
           ),
         );
       },
@@ -182,10 +171,8 @@ class _WhiteKey extends StatelessWidget {
     final widgetHeight =
         notchType == NotchType.both ? keyHeight * 2 : keyHeight * 1.5;
 
-    // 41 / 22
-
-    // 128 here is arbitrary
-    final double opacity = keyNumber < 0 || keyNumber > 128 ? 0.7 : 1;
+    final double opacity =
+        keyNumber < minKeyValue || keyNumber > maxKeyValue ? 0.7 : 1;
 
     return Container(
       height: widgetHeight - 1,
