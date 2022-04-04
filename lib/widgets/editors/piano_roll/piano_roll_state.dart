@@ -30,6 +30,7 @@ class PianoRollState with _$PianoRollState {
     required List<LocalNote> notes,
     required double keyHeight,
     required double keyValueAtTop,
+    required int lastContent, // tick position of the last note end
   }) = _PianoRollState;
 }
 
