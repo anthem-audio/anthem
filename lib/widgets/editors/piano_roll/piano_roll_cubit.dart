@@ -18,6 +18,7 @@
 */
 
 import 'dart:async';
+import 'dart:math';
 
 import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/commands/state_changes.dart';
@@ -27,6 +28,8 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+
+import '../../../model/time_signature.dart';
 
 part 'piano_roll_state.dart';
 part 'piano_roll_cubit.freezed.dart';
@@ -41,15 +44,22 @@ class PianoRollCubit extends Cubit<PianoRollState> {
 
   PianoRollCubit({required int projectID})
       : super(
-          PianoRollState(
-            projectID: projectID,
-            ticksPerQuarter:
-                Store.instance.projects[projectID]!.song.ticksPerQuarter,
-            notes: const [],
-            keyHeight: 20,
-            keyValueAtTop:
-                63.95, // Hack: cuts off the top horizontal line. Otherwise the default view looks off
-          ),
+          (() {
+            final project = Store.instance.projects[projectID]!;
+
+            return PianoRollState(
+              projectID: projectID,
+              ticksPerQuarter: project.song.ticksPerQuarter,
+              notes: const [],
+              keyHeight: 20,
+              keyValueAtTop:
+                  63.95, // Hack: cuts off the top horizontal line. Otherwise the default view looks off
+              lastContent: project.song.ticksPerQuarter *
+                  // TODO: Use actual project time signature
+                  4 * // 4/4 time signature
+                  8, // 8 bars
+            );
+          })(),
         ) {
     project = Store.instance.projects[projectID]!;
     _updateActivePatternSub = project.stateChangeStream
@@ -77,20 +87,36 @@ class PianoRollCubit extends Cubit<PianoRollState> {
     final patternID = project.song.activePatternID;
     final pattern = project.song.patterns[patternID];
 
+    final List<LocalNote> notes =
+        pattern == null || state.activeInstrumentID == null
+            ? []
+            : _getLocalNotes(pattern.id, state.activeInstrumentID!);
+
     emit(state.copyWith(
       patternID: patternID,
-      notes: pattern == null || state.activeInstrumentID == null
-          ? []
-          : _getLocalNotes(pattern.id, state.activeInstrumentID!),
+      notes: notes,
+      lastContent: _getLastContent(
+        notes,
+        state.ticksPerQuarter,
+        TimeSignatureModel(4, 4),
+      ),
     ));
   }
 
   _updateActiveInstrument(GeneratorStateChange change) {
+    final List<LocalNote> notes =
+        state.patternID == null || project.song.activeGeneratorID == null
+            ? []
+            : _getLocalNotes(state.patternID!, project.song.activeGeneratorID!);
+
     emit(state.copyWith(
       activeInstrumentID: project.song.activeGeneratorID,
-      notes: state.patternID == null || project.song.activeGeneratorID == null
-          ? []
-          : _getLocalNotes(state.patternID!, project.song.activeGeneratorID!),
+      notes: notes,
+      lastContent: _getLastContent(
+        notes,
+        state.ticksPerQuarter,
+        TimeSignatureModel(4, 4),
+      ),
     ));
   }
 
@@ -231,6 +257,11 @@ class PianoRollCubit extends Cubit<PianoRollState> {
 
     emit(state.copyWith(
       notes: newNotes,
+      lastContent: _getLastContent(
+        newNotes,
+        state.ticksPerQuarter,
+        TimeSignatureModel(4, 4), // TODO: Use actual time signature
+      ),
     ));
   }
 
@@ -241,4 +272,14 @@ class PianoRollCubit extends Cubit<PianoRollState> {
   void setKeyValueAtTop(double newKeyValueAtTop) {
     emit(state.copyWith(keyValueAtTop: newKeyValueAtTop));
   }
+}
+
+int _getLastContent(List<LocalNote> notes, int ticksPerQuarter,
+    TimeSignatureModel timeSignature) {
+  final ticksPerBar = ticksPerQuarter ~/
+      (timeSignature.denominator ~/ 4) *
+      timeSignature.numerator;
+  final lastContent = notes.fold<int>(0,
+      (previousValue, note) => max(previousValue, (note.offset + note.length)));
+  return (lastContent / (ticksPerBar * 4)).ceil() * ticksPerBar * 4;
 }

@@ -139,7 +139,19 @@ class _PianoRollContentState extends State<_PianoRollContent> {
               height: 26,
               child: Row(
                 children: [
-                  const Expanded(child: SizedBox()),
+                  SizedBox(width: pianoControlWidth + 1),
+                  Expanded(child: ScrollbarRenderer(
+                    scrollRegionStart: 0,
+                    scrollRegionEnd: state.lastContent.toDouble(),
+                    handleStart: timeView.start,
+                    handleEnd: timeView.end,
+                    canScrollPastEnd: true,
+                    minHandleSize: state.ticksPerQuarter * 4, // TODO: time signature
+                    onChange: (event) {
+                      timeView.setStart(event.handleStart);
+                      timeView.setEnd(event.handleEnd);
+                    },
+                  ),),
                   const SizedBox(width: 4),
                   VerticalScaleControl(
                     min: minKeyHeight,
@@ -263,8 +275,8 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                         scrollRegionEnd: maxKeyValue,
                         handleStart: maxKeyValue - state.keyValueAtTop,
                         handleEnd: maxKeyValue -
-                            (state.keyValueAtTop +
-                                constraints.maxHeight / state.keyHeight),
+                            state.keyValueAtTop +
+                                constraints.maxHeight / state.keyHeight,
                         onChange: (event) {
                           cubit.setKeyValueAtTop(maxKeyValue - event.handleStart);
                         },

@@ -128,10 +128,11 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
         final isVertical = constraints.maxHeight > constraints.maxWidth;
         final isHorizontal = constraints.maxWidth > constraints.maxHeight;
 
-        // Calculate handle start & end position
         final mainAxisSize =
             isHorizontal ? constraints.maxWidth : constraints.maxHeight;
         final trackSize = mainAxisSize - 2 * _mainAxisButtonSize;
+
+        // Calculate handle start & end position
 
         final scrollRegionSize =
             widget.scrollRegionEnd - widget.scrollRegionStart;
@@ -141,9 +142,8 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
             (widget.handleEnd - widget.scrollRegionStart) / scrollRegionSize;
 
         var handleStart =
-            mainAxisSize * normalizedHandleStart + _mainAxisButtonSize;
-        var handleEnd =
-            mainAxisSize * normalizedHandleEnd + _mainAxisButtonSize;
+            trackSize * normalizedHandleStart + _mainAxisButtonSize;
+        var handleEnd = trackSize * normalizedHandleEnd + _mainAxisButtonSize;
 
         // Ensure handle size is at least the supplied minimum
         if (handleEnd - handleStart < widget.minHandlePixelSize) {
