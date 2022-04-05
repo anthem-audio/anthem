@@ -123,6 +123,10 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.scrollRegionEnd - widget.scrollRegionStart == 0) {
+      throw ArgumentError("Scroll region must have a nonzero size.");
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final isVertical = constraints.maxHeight > constraints.maxWidth;

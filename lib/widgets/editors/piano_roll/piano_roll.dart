@@ -140,18 +140,21 @@ class _PianoRollContentState extends State<_PianoRollContent> {
               child: Row(
                 children: [
                   SizedBox(width: pianoControlWidth + 1),
-                  Expanded(child: ScrollbarRenderer(
-                    scrollRegionStart: 0,
-                    scrollRegionEnd: state.lastContent.toDouble(),
-                    handleStart: timeView.start,
-                    handleEnd: timeView.end,
-                    canScrollPastEnd: true,
-                    minHandleSize: state.ticksPerQuarter * 4, // TODO: time signature
-                    onChange: (event) {
-                      timeView.setStart(event.handleStart);
-                      timeView.setEnd(event.handleEnd);
-                    },
-                  ),),
+                  Expanded(
+                    child: ScrollbarRenderer(
+                      scrollRegionStart: 0,
+                      scrollRegionEnd: state.lastContent.toDouble(),
+                      handleStart: timeView.start,
+                      handleEnd: timeView.end,
+                      canScrollPastEnd: true,
+                      minHandleSize:
+                          state.ticksPerQuarter * 4, // TODO: time signature
+                      onChange: (event) {
+                        timeView.setStart(event.handleStart);
+                        timeView.setEnd(event.handleEnd);
+                      },
+                    ),
+                  ),
                   const SizedBox(width: 4),
                   VerticalScaleControl(
                     min: minKeyHeight,
@@ -267,22 +270,25 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                   ),
                   // Vertical scrollbar
                   const SizedBox(width: 4),
-                  LayoutBuilder(builder: (context, constraints) {
-                    return SizedBox(
-                      width: 17,
-                      child: ScrollbarRenderer(
-                        scrollRegionStart: minKeyValue,
-                        scrollRegionEnd: maxKeyValue,
-                        handleStart: maxKeyValue - state.keyValueAtTop,
-                        handleEnd: maxKeyValue -
-                            state.keyValueAtTop +
-                                constraints.maxHeight / state.keyHeight,
-                        onChange: (event) {
-                          cubit.setKeyValueAtTop(maxKeyValue - event.handleStart);
-                        },
-                      ),
-                    );
-                  }),
+                  SizedBox(
+                    width: 17,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return ScrollbarRenderer(
+                          scrollRegionStart: minKeyValue,
+                          scrollRegionEnd: maxKeyValue,
+                          handleStart: maxKeyValue - state.keyValueAtTop,
+                          handleEnd: maxKeyValue -
+                              state.keyValueAtTop +
+                              constraints.maxHeight / state.keyHeight,
+                          onChange: (event) {
+                            cubit.setKeyValueAtTop(
+                                maxKeyValue - event.handleStart);
+                          },
+                        );
+                      },
+                    ),
+                  ),
                 ],
               ),
             ),

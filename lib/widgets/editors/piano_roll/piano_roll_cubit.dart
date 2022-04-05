@@ -274,12 +274,22 @@ class PianoRollCubit extends Cubit<PianoRollState> {
   }
 }
 
+// Gets the time position of the end of the last note, rounded upward to the
+// nearest barMultiple bars.
 int _getLastContent(List<LocalNote> notes, int ticksPerQuarter,
     TimeSignatureModel timeSignature) {
+  const barMultiple = 4;
+
   final ticksPerBar = ticksPerQuarter ~/
       (timeSignature.denominator ~/ 4) *
       timeSignature.numerator;
-  final lastContent = notes.fold<int>(0,
-      (previousValue, note) => max(previousValue, (note.offset + note.length)));
-  return (lastContent / (ticksPerBar * 4)).ceil() * ticksPerBar * 4;
+  final lastContent = 
+      notes.fold<int>(
+          ticksPerBar * barMultiple * 4,
+          (previousValue, note) =>
+              max(previousValue, (note.offset + note.length)));
+
+  return (lastContent / (ticksPerBar * barMultiple)).ceil() *
+      ticksPerBar *
+      barMultiple;
 }
