@@ -19,19 +19,59 @@
 
 import 'dart:convert';
 
+import 'package:anthem/helpers/get_id.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'arrangement.g.dart';
 
 @JsonSerializable()
 class ArrangementModel {
-  ArrangementModel();
+  late int id;
+  late Map<int, TrackModel> tracks;
+  late List<int> trackOrder;
+  String name;
+
+  ArrangementModel({required this.name, Map<int, TrackModel>? tracks, List<int>? trackOrder}) {
+    if ((tracks == null && trackOrder != null) ||
+        (tracks != null && trackOrder == null)) {
+      throw ArgumentError(
+          "tracks and trackOrder must either both be null or both be defined.");
+    }
+
+    final Map<int, TrackModel> initTracks = {};
+    final List<int> initTrackOrder = [];
+
+    if (tracks != null) {
+      for (var i = 1; i <= 200; i++) {
+        final track = TrackModel(name: "Track $i");
+        initTracks[track.id] = track;
+        initTrackOrder.add(track.id);
+      }
+    }
+
+    id = getID();
+    this.tracks = tracks ?? initTracks;
+    this.trackOrder = trackOrder ?? initTrackOrder;
+  }
 
   factory ArrangementModel.fromJson(Map<String, dynamic> json) =>
-    _$ArrangementModelFromJson(json);
+      _$ArrangementModelFromJson(json);
 
   Map<String, dynamic> toJson() => _$ArrangementModelToJson(this);
 
   @override
   String toString() => json.encode(toJson());
+}
+
+@JsonSerializable()
+class TrackModel {
+  int id;
+  String name;
+
+  TrackModel({required this.name}) : id = getID();
+
+  factory TrackModel.fromJson(Map<String, dynamic> json) =>
+      _$TrackModelFromJson(json);
+
+  Map<String, dynamic> toJson() => _$TrackModelToJson(this);
 }

@@ -21,10 +21,19 @@ import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import '../../../model/store.dart';
+
 part 'arranger_state.dart';
 part 'arranger_cubit.freezed.dart';
 
 class ArrangerCubit extends Cubit<ArrangerState> {
   ArrangerCubit({required int projectID})
-      : super(ArrangerState(projectID: projectID)) {}
+      : super((() {
+          final project = Store.instance.projects[projectID]!;
+          return ArrangerState(
+            projectID: projectID,
+            activeArrangementID: project.song.activeArrangementID,
+            trackIDs: project.song.arrangementOrder,
+          );
+        })());
 }
