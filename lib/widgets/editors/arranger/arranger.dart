@@ -20,6 +20,8 @@
 import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker_cubit.dart';
+import 'package:anthem/widgets/editors/arranger/track_header.dart';
+import 'package:anthem/widgets/editors/arranger/track_header_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
@@ -78,7 +80,7 @@ class _ArrangerState extends State<Arranger> {
                         ),
                         const SizedBox(width: 6),
                         const Expanded(
-                          child: ArrangerContent(),
+                          child: _ArrangerContent(),
                         ),
                       ],
                     ),
@@ -94,11 +96,13 @@ class _ArrangerState extends State<Arranger> {
 }
 
 // Actual content view of the arranger (timeline + clips + etc)
-class ArrangerContent extends StatelessWidget {
-  const ArrangerContent({Key? key}) : super(key: key);
+class _ArrangerContent extends StatelessWidget {
+  const _ArrangerContent({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    const trackHeaderWidth = 130.0;
+
     return BlocBuilder<ArrangerCubit, ArrangerState>(
       builder: (context, state) {
         return Container(
@@ -115,7 +119,7 @@ class ArrangerContent extends StatelessWidget {
                   height: 44,
                   child: Row(
                     children: [
-                      const SizedBox(width: 130),
+                      const SizedBox(width: trackHeaderWidth),
                       Container(width: 1, color: Theme.panel.border),
                       Expanded(
                         child: BlocProvider<TimelineCubit>(
@@ -131,41 +135,81 @@ class ArrangerContent extends StatelessWidget {
                 ),
                 Container(height: 1, color: Theme.panel.border),
                 Expanded(
-                  child: Container(
-                    color: Theme.panel.accent,
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          SizedBox(
-                            width: 400,
-                            height: 26,
-                            child: ScrollbarRenderer(
-                              scrollRegionStart: 0,
-                              scrollRegionEnd: 1,
-                              handleStart: 0.2,
-                              handleEnd: 0.5,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          SizedBox(
-                            width: 400,
-                            height: 17,
-                            child: ScrollbarRenderer(
-                              scrollRegionStart: 0,
-                              scrollRegionEnd: 1,
-                              handleStart: 0,
-                              handleEnd: 1,
-                            ),
-                          ),
-                        ],
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(
+                        width: trackHeaderWidth,
+                        child: _TrackHeaders(),
                       ),
-                    ),
+                      Container(width: 1, color: Theme.panel.border),
+                      const Expanded(
+                        child: SizedBox(),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
+        );
+      },
+    );
+  }
+}
+
+class _TrackHeaders extends StatelessWidget {
+  const _TrackHeaders({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ArrangerCubit, ArrangerState>(
+      builder: (context, state) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            List<Widget> headers = [];
+            List<Widget> resizeHandles = [];
+
+            const scrollPosition = 0.0; // TODO
+
+            var trackPositionPointer = -scrollPosition;
+
+            for (final trackID in state.trackIDs) {
+              final trackHeight = getTrackHeight(
+                state.baseTrackHeight,
+                state.trackHeightModifiers[trackID]!,
+              );
+
+              if (trackPositionPointer < constraints.maxHeight &&
+                  trackPositionPointer + trackHeight > 0) {
+                headers.add(
+                  Positioned(
+                    top: trackPositionPointer,
+                    left: 0,
+                    right: 0,
+                    child: SizedBox(
+                      height: trackHeight - 1,
+                      child: BlocProvider<TrackHeaderCubit>(
+                        create: (context) {
+                          return TrackHeaderCubit(
+                            projectID: state.projectID,
+                            trackID: trackID,
+                          );
+                        },
+                        child: const TrackHeader(),
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              if (trackPositionPointer >= constraints.maxHeight) break;
+
+              trackPositionPointer += trackHeight;
+            }
+
+            return ClipRect(child: Stack(children: headers + resizeHandles));
+          },
         );
       },
     );

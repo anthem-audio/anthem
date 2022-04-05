@@ -17,16 +17,24 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'arranger_cubit.dart';
+import 'package:anthem/widgets/editors/arranger/track_header_cubit.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-@freezed
-class ArrangerState with _$ArrangerState {
-  factory ArrangerState({
-    required int projectID,
-    required int? activeArrangementID,
-    required List<int> trackIDs,
-    required double baseTrackHeight,
-    required Map<int, double> trackHeightModifiers,
-    required double scrollAreaHeight,
-  }) = _ArrangerState;
+import '../../../theme.dart';
+
+class TrackHeader extends StatelessWidget {
+  const TrackHeader({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<TrackHeaderCubit, TrackHeaderState>(
+        builder: (context, state) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Theme.panel.accent,
+        ),
+      );
+    });
+  }
 }
