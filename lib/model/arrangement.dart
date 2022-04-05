@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,30 +19,18 @@
 
 import 'dart:convert';
 
-import 'package:anthem/helpers/get_id.dart';
 import 'package:json_annotation/json_annotation.dart';
 
-part 'note.g.dart';
+part 'arrangement.g.dart';
 
 @JsonSerializable()
-class NoteModel {
-  int id;
-  int key;
-  int velocity;
-  int length;
-  int offset;
+class ArrangementModel {
+  ArrangementModel();
 
-  NoteModel({
-    required this.key,
-    required this.velocity,
-    required this.length,
-    required this.offset,
-  }) : id = getID();
+  factory ArrangementModel.fromJson(Map<String, dynamic> json) =>
+    _$ArrangementModelFromJson(json);
 
-  factory NoteModel.fromJson(Map<String, dynamic> json) =>
-      _$NoteModelFromJson(json);
-
-  Map<String, dynamic> toJson() => _$NoteModelToJson(this);
+  Map<String, dynamic> toJson() => _$ArrangementModelToJson(this);
 
   @override
   String toString() => json.encode(toJson());

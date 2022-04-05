@@ -20,10 +20,11 @@
 import 'dart:math';
 
 import 'package:anthem/model/note.dart';
+import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
+import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_notification_handler.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -31,10 +32,20 @@ import 'package:provider/provider.dart';
 
 import '../../../model/store.dart';
 import '../../../theme.dart';
+import '../../basic/panel.dart';
+import '../shared/helpers/time_helpers.dart';
+import '../shared/helpers/types.dart';
+import '../shared/timeline_cubit.dart';
 import 'helpers.dart';
 import 'piano_roll_grid.dart';
-import 'timeline.dart';
+import '../shared/timeline.dart';
 import 'piano_control.dart';
+
+const double minKeyHeight = 6;
+const double maxKeyHeight = 40;
+
+const double minKeyValue = 0;
+const double maxKeyValue = 128;
 
 class PianoRoll extends StatefulWidget {
   const PianoRoll({
@@ -53,21 +64,26 @@ class _PianoRollState extends State<PianoRoll> {
       return MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => TimeView(0, 3072)),
-          ChangeNotifierProvider(
-            create: (context) => PianoRollLocalState(
-              keyHeight: 20,
-              keyValueAtTop: 62,
-            ),
-          )
         ],
         child: PianoRollNotificationHandler(
-          child: Column(
-            children: [
-              _PianoRollHeader(),
-              Expanded(
-                child: _PianoRollContent(),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              color: Theme.panel.main,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _PianoRollHeader(),
+                  const SizedBox(height: 4),
+                  const Expanded(
+                    child: _PianoRollContent(),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       );
@@ -78,40 +94,9 @@ class _PianoRollState extends State<PianoRoll> {
 class _PianoRollHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.panel.main,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(2),
-          topRight: Radius.circular(2),
-        ),
-      ),
-      height: 42,
+    return const SizedBox(
+      height: 26,
     );
-  }
-}
-
-class PianoRollLocalState with ChangeNotifier, DiagnosticableTreeMixin {
-  late double _keyHeight;
-  late double _keyValueAtTop;
-
-  double get keyHeight => _keyHeight;
-  double get keyValueAtTop => _keyValueAtTop;
-
-  PianoRollLocalState(
-      {required double keyHeight, required double keyValueAtTop}) {
-    _keyHeight = keyHeight;
-    _keyValueAtTop = keyValueAtTop;
-  }
-
-  void setKeyHeight(double value) {
-    _keyHeight = value;
-    notifyListeners();
-  }
-
-  void setKeyValueAtTop(double value) {
-    _keyValueAtTop = value;
-    notifyListeners();
   }
 }
 
@@ -125,14 +110,15 @@ class _PianoRollContent extends StatefulWidget {
 }
 
 class _PianoRollContentState extends State<_PianoRollContent> {
-  double footerHeight = (61);
-  double pianoControlWidth = (103);
+  double footerHeight = 61;
+  double pianoControlWidth = 69;
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<PianoRollCubit, PianoRollState>(
         builder: (context, state) {
-      // TODO: Should some of this be in the cubit state?
+      final cubit = BlocProvider.of<PianoRollCubit>(context);
+
       final project = Store.instance.projects[state.projectID];
       final pattern = project?.song.patterns[state.patternID];
 
@@ -143,105 +129,177 @@ class _PianoRollContentState extends State<_PianoRollContent> {
 
       final notes = state.notes;
 
-      final localState = context.watch<PianoRollLocalState>();
-
-      return Column(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                // Piano control
-                SizedBox(
-                  width: pianoControlWidth,
-                  child: Column(
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Theme.panel.main,
-                          borderRadius: const BorderRadius.only(
-                            bottomLeft: Radius.circular(1),
-                            bottomRight: Radius.circular(1),
-                          ),
-                        ),
-                        height: timelineHeight + 1,
-                      ),
-                      const SizedBox(height: 1),
-                      Expanded(
-                        child: PianoControl(
-                          keyValueAtTop: localState.keyValueAtTop,
-                          keyHeight: localState.keyHeight,
-                          setKeyValueAtTop: (value) {
-                            setState(() {
-                              localState.setKeyValueAtTop(value);
-                            });
-                          },
-                          setKeyHeight: (value) {
-                            localState.setKeyHeight(value);
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 1),
-                    ],
-                  ),
-                ),
-                // Timeline and main piano roll render area
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(1, 1, 0, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        SizedBox(
-                          height: timelineHeight,
-                          child: Timeline(
-                            pattern: pattern,
-                            ticksPerQuarter: state.ticksPerQuarter,
-                          ),
-                        ),
-                        Expanded(
-                          child: PianoRollEventListener(
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                PianoRollGrid(
-                                  keyHeight: localState.keyHeight,
-                                  keyValueAtTop: localState.keyValueAtTop,
-                                ),
-                                ClipRect(
-                                  child: CustomMultiChildLayout(
-                                    children: notes
-                                        .map(
-                                          (note) => LayoutId(
-                                            id: note.id,
-                                            child: NoteWidget(noteID: note.id),
-                                          ),
-                                        )
-                                        .toList(),
-                                    delegate: NoteLayoutDelegate(
-                                      notes: notes,
-                                      keyHeight: localState.keyHeight,
-                                      keyValueAtTop: localState.keyValueAtTop,
-                                      timeViewStart: timeView.start,
-                                      timeViewEnd: timeView.end,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+      return Panel(
+        orientation: PanelOrientation.bottom,
+        panelStartSize: 89,
+        separatorSize: 6,
+        child: Column(
+          children: [
+            SizedBox(
+              height: 26,
+              child: Row(
+                children: [
+                  SizedBox(width: pianoControlWidth + 1),
+                  Expanded(
+                    child: ScrollbarRenderer(
+                      scrollRegionStart: 0,
+                      scrollRegionEnd: state.lastContent.toDouble(),
+                      handleStart: timeView.start,
+                      handleEnd: timeView.end,
+                      canScrollPastEnd: true,
+                      minHandleSize:
+                          state.ticksPerQuarter * 4, // TODO: time signature
+                      onChange: (event) {
+                        timeView.setStart(event.handleStart);
+                        timeView.setEnd(event.handleEnd);
+                      },
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 4),
+                  VerticalScaleControl(
+                    min: minKeyHeight,
+                    max: maxKeyHeight,
+                    value: state.keyHeight,
+                    onChange: (height) {
+                      cubit.setKeyHeight(height);
+                    },
+                  ),
+                ],
+              ),
             ),
+            const SizedBox(height: 4),
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Theme.panel.border),
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(4)),
+                      ),
+                      child: ClipRRect(
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(4)),
+                        child: Column(
+                          children: [
+                            // Timeline
+                            SizedBox(
+                              height: timelineHeight,
+                              child: Row(
+                                children: [
+                                  SizedBox(width: pianoControlWidth),
+                                  Container(
+                                      color: Theme.panel.border, width: 1),
+                                  Expanded(
+                                    child: BlocProvider<TimelineCubit>(
+                                      create: (context) => TimelineCubit(
+                                        projectID: state.projectID,
+                                        timelineType:
+                                            TimelineType.patternTimeline,
+                                      ),
+                                      child: const Timeline(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(color: Theme.panel.border, height: 1),
+                            Expanded(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // Piano control
+                                  SizedBox(
+                                    width: pianoControlWidth,
+                                    child: PianoControl(
+                                      keyValueAtTop: state.keyValueAtTop,
+                                      keyHeight: state.keyHeight,
+                                      setKeyValueAtTop: (value) {
+                                        setState(() {
+                                          cubit.setKeyValueAtTop(value);
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  Container(
+                                      color: Theme.panel.border, width: 1),
+                                  // Main piano roll render area
+                                  Expanded(
+                                    child: PianoRollEventListener(
+                                      child: Stack(
+                                        fit: StackFit.expand,
+                                        children: [
+                                          PianoRollGrid(
+                                            keyHeight: state.keyHeight,
+                                            keyValueAtTop: state.keyValueAtTop,
+                                          ),
+                                          ClipRect(
+                                            child: CustomMultiChildLayout(
+                                              children: notes
+                                                  .map(
+                                                    (note) => LayoutId(
+                                                      id: note.id,
+                                                      child: NoteWidget(
+                                                          noteID: note.id),
+                                                    ),
+                                                  )
+                                                  .toList(),
+                                              delegate: NoteLayoutDelegate(
+                                                notes: notes,
+                                                keyHeight: state.keyHeight,
+                                                keyValueAtTop:
+                                                    state.keyValueAtTop,
+                                                timeViewStart: timeView.start,
+                                                timeViewEnd: timeView.end,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Vertical scrollbar
+                  const SizedBox(width: 4),
+                  SizedBox(
+                    width: 17,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return ScrollbarRenderer(
+                          scrollRegionStart: minKeyValue,
+                          scrollRegionEnd: maxKeyValue,
+                          handleStart: maxKeyValue - state.keyValueAtTop,
+                          handleEnd: maxKeyValue -
+                              state.keyValueAtTop +
+                              constraints.maxHeight / state.keyHeight,
+                          onChange: (event) {
+                            cubit.setKeyValueAtTop(
+                                maxKeyValue - event.handleStart);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        panelContent: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Theme.panel.border),
+            borderRadius: const BorderRadius.all(Radius.circular(4)),
           ),
-          Container(
-            color: Theme.panel.main,
-            height: footerHeight,
-          ),
-        ],
+        ),
       );
     });
   }
@@ -360,7 +418,9 @@ class _NoteWidgetState extends State<NoteWidget> {
         },
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF07D2D4).withOpacity(isHovered ? 0.5 : 0.33),
+            color: HSLColor.fromAHSL(
+                    1, 166, isHovered ? 0.4 : 0.46, isHovered ? 0.35 : 0.31)
+                .toColor(),
             borderRadius: const BorderRadius.all(Radius.circular(1)),
           ),
         ),

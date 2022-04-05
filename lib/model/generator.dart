@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -35,19 +35,6 @@ abstract class GeneratorModel {
     required this.name,
     required this.color,
   }) : id = getID();
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(other, this)) return true;
-
-    return other is GeneratorModel &&
-        other.id == id &&
-        other.name == name &&
-        other.color == color;
-  }
-
-  @override
-  int get hashCode => id.hashCode ^ name.hashCode ^ color.hashCode;
 }
 
 @JsonSerializable()

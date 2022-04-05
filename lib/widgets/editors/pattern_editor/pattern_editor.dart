@@ -65,10 +65,10 @@ class _PatternEditorState extends State<PatternEditor> {
           return true;
         },
         child: SizeChangedLayoutNotifier(
-          child: Background(
-            type: BackgroundType.dark,
-            borderRadius: const BorderRadius.all(
-              Radius.circular(2),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              color: Theme.panel.main,
             ),
             child: Padding(
               padding: const EdgeInsets.all(6.0),
@@ -149,7 +149,7 @@ class _PatternEditorState extends State<PatternEditor> {
                                         state.generatorIDList.map<Widget>((id) {
                                       final instrument = state.instruments[id];
                                       final controller = state.controllers[id];
-
+          
                                       // TODO: provide type to child
                                       if (instrument != null) {
                                         return BlocProvider(
@@ -162,7 +162,7 @@ class _PatternEditorState extends State<PatternEditor> {
                                           child: const GeneratorRow(),
                                         );
                                       }
-
+          
                                       if (controller != null) {
                                         return Padding(
                                           padding:
@@ -178,7 +178,7 @@ class _PatternEditorState extends State<PatternEditor> {
                                           ),
                                         );
                                       }
-
+          
                                       throw Error();
                                     }).toList(),
                                   ),
@@ -205,6 +205,8 @@ class _PatternEditorState extends State<PatternEditor> {
                         const SizedBox(width: 136),
                         Button(
                           width: 105,
+                          contentPadding: EdgeInsets.zero,
+                          startIcon: Icons.add,
                           onPress: () {
                             context.read<PatternEditorCubit>().addInstrument(
                                   "Instrument ${(Random()).nextInt(100).toString()}",
