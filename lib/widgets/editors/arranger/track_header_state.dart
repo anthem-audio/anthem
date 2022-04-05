@@ -17,16 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'arranger_cubit.dart';
+part of 'track_header_cubit.dart';
 
 @freezed
-class ArrangerState with _$ArrangerState {
-  factory ArrangerState({
+class TrackHeaderState with _$TrackHeaderState {
+  factory TrackHeaderState({
     required int projectID,
-    required int? activeArrangementID,
-    required List<int> trackIDs,
-    required double baseTrackHeight,
-    required Map<int, double> trackHeightModifiers,
-    required double scrollAreaHeight,
-  }) = _ArrangerState;
+    required int trackID,
+  }) = _TrackHeaderState;
 }

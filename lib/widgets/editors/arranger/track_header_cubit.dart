@@ -17,16 +17,18 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'arranger_cubit.dart';
+import 'package:bloc/bloc.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-@freezed
-class ArrangerState with _$ArrangerState {
-  factory ArrangerState({
+part 'track_header_state.dart';
+part 'track_header_cubit.freezed.dart';
+
+class TrackHeaderCubit extends Cubit<TrackHeaderState> {
+  TrackHeaderCubit({
     required int projectID,
-    required int? activeArrangementID,
-    required List<int> trackIDs,
-    required double baseTrackHeight,
-    required Map<int, double> trackHeightModifiers,
-    required double scrollAreaHeight,
-  }) = _ArrangerState;
+    required int trackID,
+  }) : super(TrackHeaderState(
+          projectID: projectID,
+          trackID: trackID,
+        ));
 }

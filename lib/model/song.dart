@@ -46,6 +46,9 @@ class SongModel {
   late List<int> arrangementOrder;
   int? activeArrangementID;
 
+  late Map<int, TrackModel> tracks;
+  late List<int> trackOrder;
+
   @JsonKey(ignore: true)
   StreamController<StateChange>? _changeStreamController;
 
@@ -61,6 +64,18 @@ class SongModel {
     arrangements = {arrangement.id: arrangement};
     arrangementOrder = [arrangement.id];
     activeArrangementID = arrangement.id;
+
+    final Map<int, TrackModel> initTracks = {};
+    final List<int> initTrackOrder = [];
+
+    for (var i = 1; i <= 200; i++) {
+      final track = TrackModel(name: "Track $i");
+      initTracks[track.id] = track;
+      initTrackOrder.add(track.id);
+    }
+
+    tracks = initTracks;
+    trackOrder = initTrackOrder;
   }
 
   factory SongModel.fromJson(Map<String, dynamic> json) =>

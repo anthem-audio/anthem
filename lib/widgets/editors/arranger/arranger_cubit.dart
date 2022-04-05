@@ -18,7 +18,6 @@
 */
 
 import 'package:bloc/bloc.dart';
-import 'package:flutter/widgets.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../../model/store.dart';
@@ -30,10 +29,40 @@ class ArrangerCubit extends Cubit<ArrangerState> {
   ArrangerCubit({required int projectID})
       : super((() {
           final project = Store.instance.projects[projectID]!;
+          final arrangement =
+              project.song.arrangements[project.song.activeArrangementID]!;
+          const defaultTrackHeight = 45.0;
+
+          final Map<int, double> trackHeightModifiers = {};
+          for (final trackID in project.song.trackOrder) {
+            trackHeightModifiers[trackID] = 0;
+          }
+
           return ArrangerState(
             projectID: projectID,
-            activeArrangementID: project.song.activeArrangementID,
-            trackIDs: project.song.arrangementOrder,
+            activeArrangementID: arrangement.id,
+            trackIDs: project.song.trackOrder,
+            baseTrackHeight: defaultTrackHeight,
+            scrollAreaHeight:
+                getScrollAreaHeight(defaultTrackHeight, trackHeightModifiers),
+            trackHeightModifiers: trackHeightModifiers,
           );
         })());
+}
+
+const minTrackHeight = 12.0;
+const maxTrackHeight = 150.0;
+
+double getTrackHeight(double baseTrackHeight, double trackHeightModifier) {
+  return (baseTrackHeight + trackHeightModifier)
+      .clamp(minTrackHeight, maxTrackHeight);
+}
+
+double getScrollAreaHeight(
+    double baseTrackHeight, Map<int, double> trackHeightModifiers) {
+  return trackHeightModifiers.entries.fold(
+    0,
+    (previousValue, element) =>
+        previousValue + getTrackHeight(baseTrackHeight, element.value),
+  );
 }
