@@ -21,5 +21,9 @@ part of 'arranger_cubit.dart';
 
 @freezed
 class ArrangerState with _$ArrangerState {
-  factory ArrangerState({required int projectID}) = _ArrangerState;
+  factory ArrangerState({
+    required int projectID,
+    required int? activeArrangementID,
+    required List<int> trackIDs,
+  }) = _ArrangerState;
 }

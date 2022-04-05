@@ -27,16 +27,24 @@ import 'package:anthem/model/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:json_annotation/json_annotation.dart';
 
+import 'arrangement.dart';
+
 part 'song.g.dart';
 
 @JsonSerializable()
 class SongModel {
   int id;
   int ticksPerQuarter = 96; // TODO
+
   Map<int, PatternModel> patterns;
   List<int> patternOrder;
   int? activePatternID;
+
   int? activeGeneratorID;
+
+  late Map<int, ArrangementModel> arrangements;
+  late List<int> arrangementOrder;
+  int? activeArrangementID;
 
   @JsonKey(ignore: true)
   StreamController<StateChange>? _changeStreamController;
@@ -48,7 +56,12 @@ class SongModel {
       : id = getID(),
         ticksPerQuarter = 96,
         patterns = HashMap(),
-        patternOrder = [];
+        patternOrder = [] {
+    final arrangement = ArrangementModel(name: "Arrangement 1");
+    arrangements = {arrangement.id: arrangement};
+    arrangementOrder = [arrangement.id];
+    activeArrangementID = arrangement.id;
+  }
 
   factory SongModel.fromJson(Map<String, dynamic> json) =>
       _$SongModelFromJson(json);
