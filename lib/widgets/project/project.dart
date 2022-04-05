@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -45,13 +45,14 @@ class Project extends StatelessWidget {
             projectID: state.id,
           ),
           const SizedBox(
-            height: 2,
+            height: 3,
           ),
           Expanded(
             child: Panel(
               orientation: PanelOrientation.left,
               // left panel
               panelContent: const ProjectExplorer(),
+              hidden: true,
 
               child: Panel(
                 hidden: true,
@@ -68,12 +69,9 @@ class Project extends StatelessWidget {
                   ),
                   child: Panel(
                     orientation: PanelOrientation.left,
-                    child: Container(
-                      color: Theme.panel.main,
-                      child: BlocProvider<ArrangerCubit>(
-                        create: (context) => ArrangerCubit(projectID: state.id),
-                        child: Arranger(),
-                      ),
+                    child: BlocProvider<ArrangerCubit>(
+                      create: (context) => ArrangerCubit(projectID: state.id),
+                      child: const Arranger(),
                     ),
                     // pattern editor
                     panelContent: BlocProvider<PatternEditorCubit>(
@@ -87,11 +85,14 @@ class Project extends StatelessWidget {
             ),
           ),
           const SizedBox(
-            height: 2,
+            height: 3,
           ),
           Container(
             height: 42,
-            color: Theme.panel.main,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              color: Theme.panel.main,
+            ),
           )
         ],
       );

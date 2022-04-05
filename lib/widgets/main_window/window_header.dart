@@ -46,6 +46,8 @@ class WindowHeader extends StatefulWidget {
 class _WindowHeaderState extends State<WindowHeader> {
   @override
   Widget build(BuildContext context) {
+    var isFirstTab = true;
+
     return SizedBox(
       height: 29,
       child: Row(
@@ -53,7 +55,7 @@ class _WindowHeaderState extends State<WindowHeader> {
         children: widget.tabs.map<Widget>(
               (tab) {
                 final isActiveProject = tab.id == widget.selectedTabID;
-                return GestureDetector(
+                final result = GestureDetector(
                   onTap: () {
                     widget.setActiveProject(tab.id);
                   },
@@ -67,11 +69,15 @@ class _WindowHeaderState extends State<WindowHeader> {
                             ? Theme.panel.accent
                             : Theme.panel.main,
                         borderRadius: isActiveProject
-                            ? const BorderRadius.only(
-                                topLeft: Radius.circular(2),
-                                topRight: Radius.circular(2))
-                            : const BorderRadius.all(
-                                Radius.circular(2),
+                            ? BorderRadius.only(
+                                topLeft: Radius.circular(isFirstTab ? 4 : 2),
+                                topRight: const Radius.circular(2))
+                            : BorderRadius.only(
+                                // TODO: This should only be on the logo button, but we don't have one yet
+                                topLeft: Radius.circular(isFirstTab ? 4 : 1),
+                                topRight: const Radius.circular(1),
+                                bottomRight: const Radius.circular(1),
+                                bottomLeft: const Radius.circular(1),
                               ),
                       ),
                       child: Row(
@@ -101,6 +107,10 @@ class _WindowHeaderState extends State<WindowHeader> {
                     ),
                   ),
                 );
+
+                isFirstTab = false;
+
+                return result;
               },
             ).toList() +
             [
@@ -110,8 +120,11 @@ class _WindowHeaderState extends State<WindowHeader> {
                     child: Container(
                       decoration: BoxDecoration(
                         color: Theme.panel.main,
-                        borderRadius: const BorderRadius.all(
-                          Radius.circular(2),
+                        borderRadius: const BorderRadius.only(
+                          topRight: Radius.circular(4),
+                          topLeft: Radius.circular(2),
+                          bottomLeft: Radius.circular(1),
+                          bottomRight: Radius.circular(1),
                         ),
                       ),
                     ),

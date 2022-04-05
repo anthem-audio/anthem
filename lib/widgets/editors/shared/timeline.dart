@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,105 +19,107 @@
 
 import 'dart:math';
 
-import 'package:anthem/model/pattern.dart';
 import 'package:anthem/model/time_signature.dart';
+import 'package:anthem/widgets/editors/shared/timeline_cubit.dart';
 import 'package:anthem/widgets/main_window/main_window_cubit.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:provider/provider.dart';
 
 import '../../../theme.dart';
-import 'helpers.dart';
+import '../piano_roll/helpers.dart';
+import 'helpers/time_helpers.dart';
+import 'helpers/types.dart';
 
 class Timeline extends StatefulWidget {
-  const Timeline({
-    Key? key,
-    required this.pattern,
-    required this.ticksPerQuarter,
-  }) : super(key: key);
-
-  final PatternModel? pattern;
-  final int ticksPerQuarter;
+  const Timeline({Key? key}) : super(key: key);
 
   @override
   State<Timeline> createState() => _TimelineState();
 }
 
 class _TimelineState extends State<Timeline> {
-  double startPixelValue = -1.0;
-  double startTimeViewStartValue = -1.0;
-  double startTimeViewEndValue = -1.0;
+  double dragStartPixelValue = -1.0;
+  double dragStartTimeViewStartValue = -1.0;
+  double dragStartTimeViewEndValue = -1.0;
 
   @override
   Widget build(BuildContext context) {
-    var timeView = context.watch<TimeView>();
+    return BlocBuilder<TimelineCubit, TimelineState>(
+      builder: (context, state) {
+        var timeView = context.watch<TimeView>();
 
-    return Listener(
-      onPointerDown: (e) {
-        startPixelValue = e.localPosition.dx;
-        startTimeViewStartValue = timeView.start;
-        startTimeViewEndValue = timeView.end;
-      },
-      onPointerMove: (e) {
-        final keyboardModifiers =
-            Provider.of<KeyboardModifiers>(context, listen: false);
-        if (!keyboardModifiers.alt) {
-          final viewWidth = context.size?.width;
-          if (viewWidth == null) return;
+        return Listener(
+          onPointerDown: (e) {
+            dragStartPixelValue = e.localPosition.dx;
+            dragStartTimeViewStartValue = timeView.start;
+            dragStartTimeViewEndValue = timeView.end;
+          },
+          onPointerMove: (e) {
+            final keyboardModifiers =
+                Provider.of<KeyboardModifiers>(context, listen: false);
+            if (!keyboardModifiers.alt) {
+              final viewWidth = context.size?.width;
+              if (viewWidth == null) return;
 
-          var pixelsPerTick = viewWidth / (timeView.end - timeView.start);
-          final tickDelta =
-              (e.localPosition.dx - startPixelValue) / pixelsPerTick;
-          timeView.setStart(startTimeViewStartValue - tickDelta);
-          timeView.setEnd(startTimeViewEndValue - tickDelta);
-        } else {
-          final oldSize = startTimeViewEndValue - startTimeViewStartValue;
-          final newSize =
-              oldSize * pow(2, 0.01 * (startPixelValue - e.localPosition.dx));
-          final delta = newSize - oldSize;
-          timeView.setStart(startTimeViewStartValue - delta * 0.5);
-          timeView.setEnd(startTimeViewEndValue + delta * 0.5);
-        }
-      },
-      child: ClipRect(
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Container(
-              color: Theme.panel.main,
-              child: ClipRect(
-                child: CustomPaint(
-                  painter: TimelinePainter(
-                    timeViewStart: timeView.start,
-                    timeViewEnd: timeView.end,
-                    pattern: widget.pattern,
-                    ticksPerQuarter: widget.ticksPerQuarter,
+              var pixelsPerTick = viewWidth / (timeView.end - timeView.start);
+              final tickDelta =
+                  (e.localPosition.dx - dragStartPixelValue) / pixelsPerTick;
+              timeView.setStart(dragStartTimeViewStartValue - tickDelta);
+              timeView.setEnd(dragStartTimeViewEndValue - tickDelta);
+            } else {
+              final oldSize =
+                  dragStartTimeViewEndValue - dragStartTimeViewStartValue;
+              final newSize = oldSize *
+                  pow(2, 0.01 * (dragStartPixelValue - e.localPosition.dx));
+              final delta = newSize - oldSize;
+              timeView.setStart(dragStartTimeViewStartValue - delta * 0.5);
+              timeView.setEnd(dragStartTimeViewEndValue + delta * 0.5);
+            }
+          },
+          child: ClipRect(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Container(
+                  color: Theme.panel.accent,
+                  child: ClipRect(
+                    child: CustomPaint(
+                      painter: TimelinePainter(
+                        timeViewStart: timeView.start,
+                        timeViewEnd: timeView.end,
+                        ticksPerQuarter: state.ticksPerQuarter,
+                        defaultTimeSignature: state.defaultTimeSignature,
+                        timeSignatureChanges: state.timeSignatureChanges,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                CustomMultiChildLayout(
+                  children: (state.timeSignatureChanges)
+                      .map(
+                        (change) => LayoutId(
+                          id: change.offset,
+                          child: TimelineLabel(
+                            text:
+                                "${change.timeSignature.numerator}/${change.timeSignature.denominator}",
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  delegate: TimeSignatureLabelLayoutDelegate(
+                    timeSignatureChanges: state.timeSignatureChanges,
+                    timeViewStart: timeView.start,
+                    timeViewEnd: timeView.end,
+                    // viewPixelWidth:
+                  ),
+                ),
+              ],
             ),
-            CustomMultiChildLayout(
-              children: (widget.pattern?.timeSignatureChanges ?? [])
-                  .map(
-                    (change) => LayoutId(
-                      id: change.offset,
-                      child: TimelineLabel(
-                          text:
-                              "${change.timeSignature.numerator}/${change.timeSignature.denominator}"),
-                    ),
-                  )
-                  .toList(),
-              delegate: TimeSignatureLabelLayoutDelegate(
-                timeSignatureChanges:
-                    widget.pattern?.timeSignatureChanges ?? [],
-                timeViewStart: timeView.start,
-                timeViewEnd: timeView.end,
-                // viewPixelWidth:
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -202,14 +204,16 @@ class TimelinePainter extends CustomPainter {
   TimelinePainter({
     required this.timeViewStart,
     required this.timeViewEnd,
-    required this.pattern,
     required this.ticksPerQuarter,
+    required this.defaultTimeSignature,
+    required this.timeSignatureChanges,
   });
 
   final double timeViewStart;
   final double timeViewEnd;
-  final PatternModel? pattern;
   final int ticksPerQuarter;
+  final TimeSignatureModel defaultTimeSignature;
+  final List<TimeSignatureChangeModel> timeSignatureChanges;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -217,8 +221,8 @@ class TimelinePainter extends CustomPainter {
       viewWidthInPixels: size.width,
       minPixelsPerSection: 32,
       snap: BarSnap(),
-      defaultTimeSignature: pattern?.defaultTimeSignature,
-      timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
+      defaultTimeSignature: defaultTimeSignature,
+      timeSignatureChanges: timeSignatureChanges,
       ticksPerQuarter: ticksPerQuarter,
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
@@ -229,18 +233,17 @@ class TimelinePainter extends CustomPainter {
         (timeViewStart / divisionChanges[0].divisionRenderSize).floor() *
             divisionChanges[0].divisionRenderSize;
     var barNumber = divisionChanges[0].startLabel;
-    if (timePtr < 0) {
-      barNumber += (timePtr /
-              (divisionChanges[0].divisionRenderSize /
-                  divisionChanges[0].distanceBetween))
-          .floor();
-    }
+
+    barNumber += (timePtr /
+            (divisionChanges[0].divisionRenderSize /
+                divisionChanges[0].distanceBetween))
+        .floor();
 
     while (timePtr < timeViewEnd) {
       // This shouldn't happen, but safety first
       if (i >= divisionChanges.length) break;
 
-      var thisDivision = divisionChanges[i];
+      final thisDivision = divisionChanges[i];
       var nextDivisionStart = 0x7FFFFFFFFFFFFFFF; // int max
 
       if (i < divisionChanges.length - 1) {
@@ -255,14 +258,14 @@ class TimelinePainter extends CustomPainter {
       }
 
       while (timePtr < nextDivisionStart && timePtr < timeViewEnd) {
-        var x = timeToPixels(
+        final x = timeToPixels(
             timeViewStart: timeViewStart,
             timeViewEnd: timeViewEnd,
             viewPixelWidth: size.width,
             time: timePtr.toDouble());
 
         TextSpan span = TextSpan(
-            style: TextStyle(color: const Color(0xFFFFFFFF).withOpacity(0.6)),
+            style: TextStyle(color: Theme.text.main),
             text: barNumber.toString());
         TextPainter textPainter = TextPainter(
             text: span,

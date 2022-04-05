@@ -18,6 +18,7 @@
 */
 
 import 'dart:async';
+import 'dart:math';
 
 import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/commands/state_changes.dart';
@@ -27,6 +28,8 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+
+import '../../../model/time_signature.dart';
 
 part 'piano_roll_state.dart';
 part 'piano_roll_cubit.freezed.dart';
@@ -41,12 +44,22 @@ class PianoRollCubit extends Cubit<PianoRollState> {
 
   PianoRollCubit({required int projectID})
       : super(
-          PianoRollState(
-            projectID: projectID,
-            ticksPerQuarter:
-                Store.instance.projects[projectID]!.song.ticksPerQuarter,
-            notes: const [],
-          ),
+          (() {
+            final project = Store.instance.projects[projectID]!;
+
+            return PianoRollState(
+              projectID: projectID,
+              ticksPerQuarter: project.song.ticksPerQuarter,
+              notes: const [],
+              keyHeight: 20,
+              keyValueAtTop:
+                  63.95, // Hack: cuts off the top horizontal line. Otherwise the default view looks off
+              lastContent: project.song.ticksPerQuarter *
+                  // TODO: Use actual project time signature
+                  4 * // 4/4 time signature
+                  8, // 8 bars
+            );
+          })(),
         ) {
     project = Store.instance.projects[projectID]!;
     _updateActivePatternSub = project.stateChangeStream
@@ -74,20 +87,36 @@ class PianoRollCubit extends Cubit<PianoRollState> {
     final patternID = project.song.activePatternID;
     final pattern = project.song.patterns[patternID];
 
+    final List<LocalNote> notes =
+        pattern == null || state.activeInstrumentID == null
+            ? []
+            : _getLocalNotes(pattern.id, state.activeInstrumentID!);
+
     emit(state.copyWith(
       patternID: patternID,
-      notes: pattern == null || state.activeInstrumentID == null
-          ? []
-          : _getLocalNotes(pattern.id, state.activeInstrumentID!),
+      notes: notes,
+      lastContent: _getLastContent(
+        notes,
+        state.ticksPerQuarter,
+        TimeSignatureModel(4, 4),
+      ),
     ));
   }
 
   _updateActiveInstrument(GeneratorStateChange change) {
+    final List<LocalNote> notes =
+        state.patternID == null || project.song.activeGeneratorID == null
+            ? []
+            : _getLocalNotes(state.patternID!, project.song.activeGeneratorID!);
+
     emit(state.copyWith(
       activeInstrumentID: project.song.activeGeneratorID,
-      notes: state.patternID == null || project.song.activeGeneratorID == null
-          ? []
-          : _getLocalNotes(state.patternID!, project.song.activeGeneratorID!),
+      notes: notes,
+      lastContent: _getLastContent(
+        notes,
+        state.ticksPerQuarter,
+        TimeSignatureModel(4, 4),
+      ),
     ));
   }
 
@@ -195,6 +224,26 @@ class PianoRollCubit extends Cubit<PianoRollState> {
     ));
   }
 
+  // Used to affect the notes in the view model without changing the main
+  // model. This is used for in-progress operations. For example, if the user
+  // selects a group of notes, presses mouse down, and moves the notes around,
+  // mutateLocalNotes() is called. On mouse up, moveNote is called above. This
+  // is useful because moveNote pushes a command to the undo/redo queue,
+  // whereas this does not.
+  //
+  // It might be possible to handle this at the app model level. This would
+  // have the advantage of allowing in-progress updates to affect other things
+  // like clip renderers and property panels, but I haven't thought of a way to
+  // generalize a fix for the undo/redo issue. We can use journal pages, but we
+  // also don't want pages to contain every in-progress action the user
+  // performed (i.e. if the user moves the notes around a lot before releasing
+  // the mouse, we still want a journal page that just moves the notes from the
+  // start position to the end position). It's possible to fix this on a case-
+  // by-case basis but I think that would result in messier code.
+  //
+  // Until we can come up with a solution to the above, I think it's best to
+  // keep this solution of mutating the local view model until we're ready to
+  // commit.
   void mutateLocalNotes(
       {required int? instrumentID,
       required Function(List<LocalNote> notes) mutator}) {
@@ -206,12 +255,41 @@ class PianoRollCubit extends Cubit<PianoRollState> {
 
     mutator(newNotes);
 
-    emit(PianoRollState(
-      activeInstrumentID: state.activeInstrumentID,
-      patternID: state.patternID,
-      projectID: state.projectID,
-      ticksPerQuarter: state.ticksPerQuarter,
+    emit(state.copyWith(
       notes: newNotes,
+      lastContent: _getLastContent(
+        newNotes,
+        state.ticksPerQuarter,
+        TimeSignatureModel(4, 4), // TODO: Use actual time signature
+      ),
     ));
   }
+
+  void setKeyHeight(double newKeyHeight) {
+    emit(state.copyWith(keyHeight: newKeyHeight));
+  }
+
+  void setKeyValueAtTop(double newKeyValueAtTop) {
+    emit(state.copyWith(keyValueAtTop: newKeyValueAtTop));
+  }
+}
+
+// Gets the time position of the end of the last note, rounded upward to the
+// nearest barMultiple bars.
+int _getLastContent(List<LocalNote> notes, int ticksPerQuarter,
+    TimeSignatureModel timeSignature) {
+  const barMultiple = 4;
+
+  final ticksPerBar = ticksPerQuarter ~/
+      (timeSignature.denominator ~/ 4) *
+      timeSignature.numerator;
+  final lastContent = 
+      notes.fold<int>(
+          ticksPerBar * barMultiple * 4,
+          (previousValue, note) =>
+              max(previousValue, (note.offset + note.length)));
+
+  return (lastContent / (ticksPerBar * barMultiple)).ceil() *
+      ticksPerBar *
+      barMultiple;
 }

@@ -136,6 +136,8 @@ class Button extends StatefulWidget {
   final Color? backgroundPressColor;
   final bool? hideBorder;
   final bool? expand;
+  final EdgeInsets contentPadding;
+  final BorderRadius? borderRadius;
 
   const Button({
     Key? key,
@@ -152,6 +154,8 @@ class Button extends StatefulWidget {
     this.backgroundPressColor,
     this.hideBorder,
     this.expand,
+    this.contentPadding = const EdgeInsets.all(5),
+    this.borderRadius,
   }) : super(key: key);
 
   @override
@@ -256,16 +260,27 @@ class _ButtonState extends State<Button> {
       );
     }
 
+    final Widget buttonContent;
+
+    final iconOnly = widget.startIcon != null && widget.text == null;
+
+    // Hack to fix row overflow in some icon button cases
+    if (iconOnly) {
+      buttonContent = innerRowChildren[0];
+    } else {
+      buttonContent = Row(
+        children: rowChildren,
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: widget.endIcon == null
+            ? MainAxisAlignment.spaceAround
+            : MainAxisAlignment.spaceBetween,
+      );
+    }
+
     final List<Widget> stackChildren = [
       Padding(
-        padding: const EdgeInsets.all(5),
-        child: Row(
-          children: rowChildren,
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: widget.endIcon == null
-              ? MainAxisAlignment.spaceAround
-              : MainAxisAlignment.spaceBetween,
-        ),
+        padding: widget.contentPadding,
+        child: buttonContent,
       ),
     ];
 
@@ -317,7 +332,7 @@ class _ButtonState extends State<Button> {
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: widget.borderRadius ?? BorderRadius.circular(4),
             border: widget.hideBorder == true
                 ? null
                 : Border.all(
@@ -328,7 +343,9 @@ class _ButtonState extends State<Button> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(1),
             child: Stack(
-              fit: widget.expand != null ? StackFit.expand : StackFit.passthrough,
+              fit: widget.expand != null
+                  ? StackFit.expand
+                  : StackFit.passthrough,
               children: stackChildren,
             ),
           ),

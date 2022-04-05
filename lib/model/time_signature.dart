@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -40,18 +40,6 @@ class TimeSignatureModel {
 
   @override
   String toString() => json.encode(toJson());
-
-  @override
-  operator ==(Object other) {
-    if (identical(other, this)) return true;
-
-    return other is TimeSignatureModel &&
-        other.numerator == numerator &&
-        other.denominator == denominator;
-  }
-
-  @override
-  int get hashCode => numerator.hashCode ^ denominator.hashCode;
 }
 
 @JsonSerializable()
@@ -71,16 +59,4 @@ class TimeSignatureChangeModel {
 
   @override
   String toString() => json.encode(toJson());
-
-  @override
-  operator ==(Object other) {
-    if (identical(other, this)) return true;
-
-    return other is TimeSignatureChangeModel &&
-        other.timeSignature == timeSignature &&
-        other.offset == offset;
-  }
-
-  @override
-  int get hashCode => timeSignature.hashCode ^ offset.hashCode;
 }

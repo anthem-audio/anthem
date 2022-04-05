@@ -17,33 +17,4 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:convert';
 
-import 'package:anthem/helpers/get_id.dart';
-import 'package:json_annotation/json_annotation.dart';
-
-part 'note.g.dart';
-
-@JsonSerializable()
-class NoteModel {
-  int id;
-  int key;
-  int velocity;
-  int length;
-  int offset;
-
-  NoteModel({
-    required this.key,
-    required this.velocity,
-    required this.length,
-    required this.offset,
-  }) : id = getID();
-
-  factory NoteModel.fromJson(Map<String, dynamic> json) =>
-      _$NoteModelFromJson(json);
-
-  Map<String, dynamic> toJson() => _$NoteModelToJson(this);
-
-  @override
-  String toString() => json.encode(toJson());
-}

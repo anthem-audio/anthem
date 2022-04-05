@@ -28,13 +28,14 @@ class Theme {
   static _Control control = _Control();
   static _Text text = _Text();
   static Color separator = white.withOpacity(0.12);
+  static _Grid grid = _Grid();
 }
 
 class _Panel {
   Color main = const Color(0xFF353E45);
   Color accent = const Color(0xFF3D484F);
   Color accentDark = const Color(0xFF313A40);
-  Color border = const Color.fromARGB(255, 41, 49, 54);
+  Color border = const Color(0xFF293136);
 }
 
 class _Primary {
@@ -55,7 +56,7 @@ class _Control {
 }
 
 class _Text {
-  Color main = white.withOpacity(0.7);
+  Color main = const Color(0xFF9DB9CC);
 }
 
 class _ByBackgroundType {
@@ -63,4 +64,13 @@ class _ByBackgroundType {
   Color light;
 
   _ByBackgroundType({required this.dark, required this.light});
+}
+
+// For grid lines in editors
+class _Grid {
+  Color major = const Color(0xFF242A2E);
+  Color minor = const Color(0xFF2B3237);
+  Color accent = const Color(0xFF0F1113);
+  Color backgroundLight = const Color(0xFF394349);
+  Color backgroundDark = const Color(0xFF333D43);
 }

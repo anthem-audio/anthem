@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -37,6 +37,8 @@ class Panel extends StatefulWidget {
   final Widget child;
   final PanelOrientation orientation;
   final bool? hidden;
+  final double? panelStartSize;
+  final double? separatorSize;
 
   const Panel({
     Key? key,
@@ -44,6 +46,8 @@ class Panel extends StatefulWidget {
     required this.child,
     required this.orientation,
     this.hidden,
+    this.panelStartSize,
+    this.separatorSize,
   }) : super(key: key);
 
   @override
@@ -53,15 +57,19 @@ class Panel extends StatefulWidget {
 const defaultPanelSize = 300.0;
 
 class _PanelState extends State<Panel> {
-  double panelSize = defaultPanelSize;
+  double panelSize = -1;
 
   // event variables, not used during render
   bool mouseDown = false;
   double startPos = -1;
-  double startSize = defaultPanelSize;
+  double startSize = -1;
 
   @override
   Widget build(BuildContext context) {
+    if (panelSize < 0) {
+      panelSize = widget.panelStartSize ?? defaultPanelSize;
+    }
+
     if (widget.hidden == true) {
       return widget.child;
     }
@@ -79,7 +87,7 @@ class _PanelState extends State<Panel> {
     final contentHugTop = horizontal || !panelFirst;
     final contentHugBottom = horizontal || panelFirst;
 
-    const separatorSize = 2.0;
+    final separatorSize = widget.separatorSize ?? 3.0;
     const handleSize = 10.0;
 
     var handleLeft =

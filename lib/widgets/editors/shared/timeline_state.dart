@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,33 +17,16 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:convert';
+part of 'timeline_cubit.dart';
 
-import 'package:anthem/helpers/get_id.dart';
-import 'package:json_annotation/json_annotation.dart';
+@freezed
+class TimelineState with _$TimelineState {
 
-part 'note.g.dart';
-
-@JsonSerializable()
-class NoteModel {
-  int id;
-  int key;
-  int velocity;
-  int length;
-  int offset;
-
-  NoteModel({
-    required this.key,
-    required this.velocity,
-    required this.length,
-    required this.offset,
-  }) : id = getID();
-
-  factory NoteModel.fromJson(Map<String, dynamic> json) =>
-      _$NoteModelFromJson(json);
-
-  Map<String, dynamic> toJson() => _$NoteModelToJson(this);
-
-  @override
-  String toString() => json.encode(toJson());
+  factory TimelineState({
+    required int? patternID,
+    required int? arrangementID,
+    required int ticksPerQuarter,
+    required TimeSignatureModel defaultTimeSignature,
+    required List<TimeSignatureChangeModel> timeSignatureChanges,
+  }) = _TimelineState;
 }
