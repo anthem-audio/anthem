@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
 import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker_cubit.dart';
@@ -31,6 +32,8 @@ import '../../basic/scroll/scrollbar_renderer.dart';
 import '../shared/helpers/types.dart';
 import '../shared/timeline.dart';
 import '../shared/timeline_cubit.dart';
+
+const _timelineHeight = 44.0;
 
 class Arranger extends StatefulWidget {
   const Arranger({Key? key}) : super(key: key);
@@ -51,44 +54,92 @@ class _ArrangerState extends State<Arranger> {
           providers: [
             ChangeNotifierProvider(create: (_) => TimeView(0, 3072)),
           ],
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              color: Theme.panel.main,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 26),
-                  const SizedBox(height: 4),
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 15),
-                          child: SizedBox(
-                            width: 126,
-                            child: BlocProvider<PatternPickerCubit>(
-                              create: (context) => PatternPickerCubit(
-                                  projectID: state.projectID),
-                              child: PatternPicker(),
+          builder: (context, widget) {
+            final cubit = BlocProvider.of<ArrangerCubit>(context);
+            final timeView = Provider.of<TimeView>(context);
+
+            return Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                color: Theme.panel.main,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      height: 26,
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 263),
+                          Expanded(
+                            child: ScrollbarRenderer(
+                              scrollRegionStart: 0,
+                              scrollRegionEnd: 10000, // TODO
+                              handleStart: timeView.start,
+                              handleEnd: timeView.end,
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Expanded(
-                          child: _ArrangerContent(),
-                        ),
-                      ],
+                          const SizedBox(width: 4),
+                          VerticalScaleControl(
+                            min: minTrackHeight,
+                            max: maxTrackHeight,
+                            value: state.baseTrackHeight,
+                            onChange: (newHeight) {
+                              cubit.setBaseTrackHeight(newHeight);
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Expanded(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(top: 15),
+                            child: SizedBox(
+                              width: 126,
+                              child: BlocProvider<PatternPickerCubit>(
+                                create: (context) => PatternPickerCubit(
+                                    projectID: state.projectID),
+                                child: PatternPicker(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Expanded(
+                            child: _ArrangerContent(),
+                          ),
+                          const SizedBox(width: 4),
+                          SizedBox(
+                            width: 17,
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                return ScrollbarRenderer(
+                                  scrollRegionStart: 0,
+                                  scrollRegionEnd: state.scrollAreaHeight,
+                                  handleStart: state.verticalScrollPosition,
+                                  handleEnd: state.verticalScrollPosition +
+                                      constraints.maxHeight,
+                                  onChange: (event) {
+                                    cubit.setVerticalScrollPosition(
+                                        event.handleStart);
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -116,7 +167,7 @@ class _ArrangerContent extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SizedBox(
-                  height: 44,
+                  height: _timelineHeight,
                   child: Row(
                     children: [
                       const SizedBox(width: trackHeaderWidth),
@@ -170,9 +221,7 @@ class _TrackHeaders extends StatelessWidget {
             List<Widget> headers = [];
             List<Widget> resizeHandles = [];
 
-            const scrollPosition = 0.0; // TODO
-
-            var trackPositionPointer = -scrollPosition;
+            var trackPositionPointer = -state.verticalScrollPosition;
 
             for (final trackID in state.trackIDs) {
               final trackHeight = getTrackHeight(

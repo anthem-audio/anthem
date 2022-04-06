@@ -33,6 +33,7 @@ class TrackHeader extends StatelessWidget {
       return Container(
         decoration: BoxDecoration(
           color: Theme.panel.accent,
+          borderRadius: BorderRadius.circular(1),
         ),
       );
     });
