@@ -25,6 +25,9 @@ import '../../../model/store.dart';
 part 'arranger_state.dart';
 part 'arranger_cubit.freezed.dart';
 
+const minTrackHeight = 25.0;
+const maxTrackHeight = 150.0;
+
 class ArrangerCubit extends Cubit<ArrangerState> {
   ArrangerCubit({required int projectID})
       : super((() {
@@ -35,7 +38,7 @@ class ArrangerCubit extends Cubit<ArrangerState> {
 
           final Map<int, double> trackHeightModifiers = {};
           for (final trackID in project.song.trackOrder) {
-            trackHeightModifiers[trackID] = 0;
+            trackHeightModifiers[trackID] = 1;
           }
 
           return ArrangerState(
@@ -48,13 +51,28 @@ class ArrangerCubit extends Cubit<ArrangerState> {
             trackHeightModifiers: trackHeightModifiers,
           );
         })());
+
+  void setBaseTrackHeight(double newTrackHeight) {
+    final oldTrackHeight = state.baseTrackHeight;
+    final oldVerticalScrollPosition = state.verticalScrollPosition;
+    emit(
+      state.copyWith(
+        baseTrackHeight: newTrackHeight,
+        verticalScrollPosition:
+            oldVerticalScrollPosition * (newTrackHeight / oldTrackHeight),
+        scrollAreaHeight:
+            getScrollAreaHeight(newTrackHeight, state.trackHeightModifiers),
+      ),
+    );
+  }
+
+  void setVerticalScrollPosition(double position) {
+    emit(state.copyWith(verticalScrollPosition: position));
+  }
 }
 
-const minTrackHeight = 12.0;
-const maxTrackHeight = 150.0;
-
 double getTrackHeight(double baseTrackHeight, double trackHeightModifier) {
-  return (baseTrackHeight + trackHeightModifier)
+  return (baseTrackHeight * trackHeightModifier)
       .clamp(minTrackHeight, maxTrackHeight);
 }
 

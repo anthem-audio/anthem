@@ -28,5 +28,6 @@ class ArrangerState with _$ArrangerState {
     required double baseTrackHeight,
     required Map<int, double> trackHeightModifiers,
     required double scrollAreaHeight,
+    @Default(0) double verticalScrollPosition,
   }) = _ArrangerState;
 }
