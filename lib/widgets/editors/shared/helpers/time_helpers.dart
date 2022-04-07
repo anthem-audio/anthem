@@ -21,6 +21,9 @@ import 'package:anthem/model/time_signature.dart';
 
 import 'types.dart';
 
+const minorMinPixels = 8.0;
+const majorMinPixels = 20.0;
+
 double timeToPixels({
   required double timeViewStart,
   required double timeViewEnd,
