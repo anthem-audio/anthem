@@ -127,17 +127,21 @@ class Button extends StatefulWidget {
   final String? text;
   final IconDef? startIcon;
   final IconDef? endIcon;
+
   final double? width;
   final double? height;
+  final bool? expand;
+  final EdgeInsets contentPadding;
+
   final bool? showMenuIndicator;
-  final Function? onPress;
   final Color? backgroundColor;
   final Color? backgroundHoverColor;
   final Color? backgroundPressColor;
   final bool? hideBorder;
-  final bool? expand;
-  final EdgeInsets contentPadding;
   final BorderRadius? borderRadius;
+
+  final Function? onPress;
+  final bool? toggleState;
 
   const Button({
     Key? key,
@@ -147,15 +151,16 @@ class Button extends StatefulWidget {
     this.endIcon,
     this.width,
     this.height,
+    this.expand,
+    this.contentPadding = const EdgeInsets.all(5),
     this.showMenuIndicator,
-    this.onPress,
     this.backgroundColor,
     this.backgroundHoverColor,
     this.backgroundPressColor,
     this.hideBorder,
-    this.expand,
-    this.contentPadding = const EdgeInsets.all(5),
     this.borderRadius,
+    this.onPress,
+    this.toggleState,
   }) : super(key: key);
 
   @override
@@ -194,21 +199,23 @@ class _ButtonState extends State<Button> {
         break;
     }
 
-    var backgroundColor = theme.background.getColor(hovered, pressed);
+    final toggleState = pressed || (widget.toggleState ?? false);
 
-    if (!hovered && !pressed && widget.backgroundColor != null) {
+    var backgroundColor = theme.background.getColor(hovered, toggleState);
+
+    if (!hovered && !toggleState && widget.backgroundColor != null) {
       backgroundColor = widget.backgroundColor!;
     }
 
-    if (hovered && !pressed && widget.backgroundHoverColor != null) {
+    if (hovered && !toggleState && widget.backgroundHoverColor != null) {
       backgroundColor = widget.backgroundHoverColor!;
     }
 
-    if (pressed && widget.backgroundHoverColor != null) {
+    if (toggleState && widget.backgroundHoverColor != null) {
       backgroundColor = widget.backgroundHoverColor!;
     }
 
-    final textColor = theme.text.getColor(hovered, pressed);
+    final textColor = theme.text.getColor(hovered, toggleState);
 
     final List<Widget> innerRowChildren = [];
     final List<Widget> rowChildren = [];
@@ -302,6 +309,7 @@ class _ButtonState extends State<Button> {
     }
 
     return MouseRegion(
+      cursor: SystemMouseCursors.click,
       onEnter: (e) {
         if (!mounted) return;
         setState(() {

@@ -24,5 +24,6 @@ class TrackHeaderState with _$TrackHeaderState {
   factory TrackHeaderState({
     required int projectID,
     required int trackID,
+    required String trackName,
   }) = _TrackHeaderState;
 }

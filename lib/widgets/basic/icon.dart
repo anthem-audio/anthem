@@ -36,6 +36,7 @@ class Icons {
   static IconDef save = const IconDef("assets/icons/edit/save.svg");
   static IconDef undo = const IconDef("assets/icons/edit/undo.svg");
   static IconDef add = const IconDef("assets/icons/scrollbar/add.svg");
+  static IconDef mute = const IconDef("assets/icons/power.svg");
   static _ScrollbarIcons scrollbar = _ScrollbarIcons();
 }
 

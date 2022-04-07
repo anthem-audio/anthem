@@ -22,6 +22,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../theme.dart';
+import '../../basic/button.dart';
+import '../../basic/icon.dart';
 
 class TrackHeader extends StatelessWidget {
   const TrackHeader({Key? key}) : super(key: key);
@@ -30,12 +32,49 @@ class TrackHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<TrackHeaderCubit, TrackHeaderState>(
         builder: (context, state) {
-      return Container(
-        decoration: BoxDecoration(
-          color: Theme.panel.accent,
-          borderRadius: BorderRadius.circular(1),
-        ),
-      );
+      return LayoutBuilder(builder: (context, constraints) {
+        final height = constraints.maxHeight;
+        const fontSize = 11.0;
+
+        // Hacky way to make sure it's centered when the row is small
+        final double verticalPadding =
+            8.0.clamp(0, (height - fontSize - 5) / 2);
+
+        return Container(
+            decoration: BoxDecoration(
+              color: Theme.panel.accent,
+              borderRadius: BorderRadius.circular(1),
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  left: 8,
+                  top: verticalPadding,
+                  child: Text(
+                    state.trackName,
+                    style: TextStyle(
+                      color: Theme.text.main,
+                      fontSize: fontSize,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Button(
+                    variant: ButtonVariant.label,
+                    startIcon: Icons.mute,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: verticalPadding,
+                    ),
+                    hideBorder: true,
+                    toggleState: true,
+                  ),
+                ),
+              ],
+            ));
+      });
     });
   }
 }

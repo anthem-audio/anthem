@@ -20,6 +20,8 @@
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import '../../../model/store.dart';
+
 part 'track_header_state.dart';
 part 'track_header_cubit.freezed.dart';
 
@@ -27,8 +29,13 @@ class TrackHeaderCubit extends Cubit<TrackHeaderState> {
   TrackHeaderCubit({
     required int projectID,
     required int trackID,
-  }) : super(TrackHeaderState(
-          projectID: projectID,
-          trackID: trackID,
-        ));
+  }) : super((() {
+          final project = Store.instance.projects[projectID]!;
+
+          return TrackHeaderState(
+            projectID: projectID,
+            trackID: trackID,
+            trackName: project.song.tracks[trackID]!.name,
+          );
+        })());
 }
