@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
@@ -49,6 +50,8 @@ class ArrangerBackgroundPainter extends CustomPainter {
     var accentLinePaint = Paint()..color = Theme.grid.accent;
     var majorLinePaint = Paint()..color = Theme.grid.major;
     var minorLinePaint = Paint()..color = Theme.grid.minor;
+
+    // Vertical lines
 
     final minorDivisionChanges = getDivisionChanges(
       viewWidthInPixels: size.width,
@@ -109,6 +112,25 @@ class ArrangerBackgroundPainter extends CustomPainter {
       size: size,
       paint: accentLinePaint,
     );
+
+    // Horizontal lines
+
+    var verticalPositionPointer = -verticalScrollPosition - 1;
+
+    for (final trackID in trackIDs) {
+      final trackHeight =
+          getTrackHeight(baseTrackHeight, trackHeightModifiers[trackID]!);
+
+      verticalPositionPointer += trackHeight;
+
+      if (verticalPositionPointer < 0) continue;
+      if (verticalPositionPointer > size.height) break;
+
+      canvas.drawRect(
+        Rect.fromLTWH(0, verticalPositionPointer, size.width, 1),
+        majorLinePaint,
+      );
+    }
   }
 
   @override
