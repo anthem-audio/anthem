@@ -49,6 +49,7 @@ class ArrangerCubit extends Cubit<ArrangerState> {
             scrollAreaHeight:
                 getScrollAreaHeight(defaultTrackHeight, trackHeightModifiers),
             trackHeightModifiers: trackHeightModifiers,
+            ticksPerQuarter: project.song.ticksPerQuarter,
           );
         })());
 

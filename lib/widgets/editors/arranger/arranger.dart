@@ -32,6 +32,7 @@ import '../../basic/scroll/scrollbar_renderer.dart';
 import '../shared/helpers/types.dart';
 import '../shared/timeline.dart';
 import '../shared/timeline_cubit.dart';
+import 'arranger_grid.dart';
 
 const _timelineHeight = 44.0;
 
@@ -123,7 +124,8 @@ class _ArrangerState extends State<Arranger> {
                                   scrollRegionEnd: state.scrollAreaHeight,
                                   handleStart: state.verticalScrollPosition,
                                   handleEnd: state.verticalScrollPosition +
-                                      constraints.maxHeight - _timelineHeight,
+                                      constraints.maxHeight -
+                                      _timelineHeight,
                                   onChange: (event) {
                                     cubit.setVerticalScrollPosition(
                                         event.handleStart);
@@ -156,6 +158,8 @@ class _ArrangerContent extends StatelessWidget {
 
     return BlocBuilder<ArrangerCubit, ArrangerState>(
       builder: (context, state) {
+        final timeView = Provider.of<TimeView>(context);
+
         return Container(
           decoration: BoxDecoration(
             border: Border.all(color: Theme.panel.border),
@@ -194,8 +198,21 @@ class _ArrangerContent extends StatelessWidget {
                         child: _TrackHeaders(),
                       ),
                       Container(width: 1, color: Theme.panel.border),
-                      const Expanded(
-                        child: SizedBox(),
+                      Expanded(
+                        child: ClipRect(
+                          child: CustomPaint(
+                            painter: ArrangerBackgroundPainter(
+                              baseTrackHeight: state.baseTrackHeight,
+                              verticalScrollPosition:
+                                  state.verticalScrollPosition,
+                              trackHeightModifiers: state.trackHeightModifiers,
+                              trackIDs: state.trackIDs,
+                              timeViewStart: timeView.start,
+                              timeViewEnd: timeView.end,
+                              ticksPerQuarter: state.ticksPerQuarter,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -236,7 +253,7 @@ class _TrackHeadersState extends State<_TrackHeaders> {
 
             for (final trackID in state.trackIDs) {
               final trackIDStr = trackID.toString();
-              
+
               final heightModifier = state.trackHeightModifiers[trackID]!;
 
               final trackHeight = getTrackHeight(
@@ -290,8 +307,9 @@ class _TrackHeadersState extends State<_TrackHeaders> {
                             final newPixelHeight =
                                 (event.position.dy - startY + startPixelHeight)
                                     .clamp(minTrackHeight, maxTrackHeight);
-                            final newModifier =
-                                newPixelHeight / startPixelHeight * startModifier;
+                            final newModifier = newPixelHeight /
+                                startPixelHeight *
+                                startModifier;
                             cubit.setHeightModifier(trackID, newModifier);
                           },
                           // Hack: Listener callbacks do nothing unless this is

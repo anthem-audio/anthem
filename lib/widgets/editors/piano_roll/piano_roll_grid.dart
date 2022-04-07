@@ -128,7 +128,7 @@ class PianoRollBackgroundPainter extends CustomPainter {
 
     var minorDivisionChanges = getDivisionChanges(
       viewWidthInPixels: size.width,
-      minPixelsPerSection: 8,
+      minPixelsPerSection: minorMinPixels,
       snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
       defaultTimeSignature: pattern?.defaultTimeSignature,
       timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
@@ -148,7 +148,7 @@ class PianoRollBackgroundPainter extends CustomPainter {
 
     var majorDivisionChanges = getDivisionChanges(
       viewWidthInPixels: size.width,
-      minPixelsPerSection: 20,
+      minPixelsPerSection: majorMinPixels,
       snap: DivisionSnap(division: Division(multiplier: 1, divisor: 1)),
       defaultTimeSignature: pattern?.defaultTimeSignature,
       timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
@@ -168,7 +168,7 @@ class PianoRollBackgroundPainter extends CustomPainter {
 
     var barDivisionChanges = getDivisionChanges(
       viewWidthInPixels: size.width,
-      minPixelsPerSection: 20,
+      minPixelsPerSection: majorMinPixels,
       snap: BarSnap(),
       defaultTimeSignature: pattern?.defaultTimeSignature,
       timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
