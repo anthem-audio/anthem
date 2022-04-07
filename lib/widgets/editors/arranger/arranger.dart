@@ -83,7 +83,7 @@ class _ArrangerState extends State<Arranger> {
                           ),
                           const SizedBox(width: 4),
                           VerticalScaleControl(
-                            min: minTrackHeight,
+                            min: 0,
                             max: maxTrackHeight,
                             value: state.baseTrackHeight,
                             onChange: (newHeight) {
@@ -123,7 +123,7 @@ class _ArrangerState extends State<Arranger> {
                                   scrollRegionEnd: state.scrollAreaHeight,
                                   handleStart: state.verticalScrollPosition,
                                   handleEnd: state.verticalScrollPosition +
-                                      constraints.maxHeight,
+                                      constraints.maxHeight - _timelineHeight,
                                   onChange: (event) {
                                     cubit.setVerticalScrollPosition(
                                         event.handleStart);
@@ -209,8 +209,17 @@ class _ArrangerContent extends StatelessWidget {
   }
 }
 
-class _TrackHeaders extends StatelessWidget {
+class _TrackHeaders extends StatefulWidget {
   const _TrackHeaders({Key? key}) : super(key: key);
+
+  @override
+  State<_TrackHeaders> createState() => _TrackHeadersState();
+}
+
+class _TrackHeadersState extends State<_TrackHeaders> {
+  double startPixelHeight = -1;
+  double startModifier = -1;
+  double startY = -1;
 
   @override
   Widget build(BuildContext context) {
@@ -218,21 +227,28 @@ class _TrackHeaders extends StatelessWidget {
       builder: (context, state) {
         return LayoutBuilder(
           builder: (context, constraints) {
+            final cubit = Provider.of<ArrangerCubit>(context);
+
             List<Widget> headers = [];
             List<Widget> resizeHandles = [];
 
             var trackPositionPointer = -state.verticalScrollPosition;
 
             for (final trackID in state.trackIDs) {
+              final trackIDStr = trackID.toString();
+              
+              final heightModifier = state.trackHeightModifiers[trackID]!;
+
               final trackHeight = getTrackHeight(
                 state.baseTrackHeight,
-                state.trackHeightModifiers[trackID]!,
+                heightModifier,
               );
 
               if (trackPositionPointer < constraints.maxHeight &&
                   trackPositionPointer + trackHeight > 0) {
                 headers.add(
                   Positioned(
+                    key: Key(trackIDStr),
                     top: trackPositionPointer,
                     left: 0,
                     right: 0,
@@ -246,6 +262,42 @@ class _TrackHeaders extends StatelessWidget {
                           );
                         },
                         child: const TrackHeader(),
+                      ),
+                    ),
+                  ),
+                );
+                const resizeHandleHeight = 10.0;
+                resizeHandles.add(
+                  Positioned(
+                    key: Key("$trackIDStr-handle"),
+                    left: 0,
+                    right: 0,
+                    top: trackPositionPointer +
+                        trackHeight -
+                        1 -
+                        resizeHandleHeight / 2,
+                    child: SizedBox(
+                      height: resizeHandleHeight,
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.resizeUpDown,
+                        child: Listener(
+                          onPointerDown: (event) {
+                            startPixelHeight = trackHeight;
+                            startModifier = heightModifier;
+                            startY = event.position.dy;
+                          },
+                          onPointerMove: (event) {
+                            final newPixelHeight =
+                                (event.position.dy - startY + startPixelHeight)
+                                    .clamp(minTrackHeight, maxTrackHeight);
+                            final newModifier =
+                                newPixelHeight / startPixelHeight * startModifier;
+                            cubit.setHeightModifier(trackID, newModifier);
+                          },
+                          // Hack: Listener callbacks do nothing unless this is
+                          // here
+                          child: Container(color: const Color(0x00000000)),
+                        ),
                       ),
                     ),
                   ),
