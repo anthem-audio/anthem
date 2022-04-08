@@ -18,8 +18,8 @@
 */
 
 import 'package:anthem/commands/state_changes.dart';
-import 'package:anthem/model/note.dart';
-import 'package:anthem/model/pattern.dart';
+import 'package:anthem/model/pattern/note.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 
 import 'command.dart';

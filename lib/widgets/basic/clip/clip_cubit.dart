@@ -19,16 +19,14 @@
 
 import 'dart:async';
 
+import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/model/pattern/pattern.dart';
+import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/anthem_color.dart';
+import 'package:anthem/model/store.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:bloc/bloc.dart';
-import 'package:flutter/widgets.dart';
 
-import '../../../commands/state_changes.dart';
-import '../../../model/note.dart';
-import '../../../model/pattern.dart';
-import '../../../model/project.dart';
-import '../../../model/shared/anthem_color.dart';
-import '../../../model/store.dart';
 import 'clip_notes.dart';
 
 part 'clip_state.dart';

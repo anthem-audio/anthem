@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/note.dart';
+import 'package:anthem/model/pattern/note.dart';
 import 'package:flutter/widgets.dart';
 
 class ClipNoteModel {

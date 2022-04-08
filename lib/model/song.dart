@@ -23,11 +23,11 @@ import 'dart:convert';
 
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/get_id.dart';
-import 'package:anthem/model/pattern.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:json_annotation/json_annotation.dart';
 
-import 'arrangement.dart';
+import 'arrangement/arrangement.dart';
 
 part 'song.g.dart';
 
@@ -105,4 +105,17 @@ class SongModel {
     _changeStreamController!
         .add(ActivePatternSet(projectID: _project!.id, patternID: patternID));
   }
+}
+
+@JsonSerializable()
+class TrackModel {
+  int id;
+  String name;
+
+  TrackModel({required this.name}) : id = getID();
+
+  factory TrackModel.fromJson(Map<String, dynamic> json) =>
+      _$TrackModelFromJson(json);
+
+  Map<String, dynamic> toJson() => _$TrackModelToJson(this);
 }

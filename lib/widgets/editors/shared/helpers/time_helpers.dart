@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/time_signature.dart';
+import 'package:anthem/model/shared/time_signature.dart';
 
 import 'types.dart';
 
