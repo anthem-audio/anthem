@@ -47,71 +47,9 @@ class ArrangerBackgroundPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    var accentLinePaint = Paint()..color = Theme.grid.accent;
-    var majorLinePaint = Paint()..color = Theme.grid.major;
-    var minorLinePaint = Paint()..color = Theme.grid.minor;
-
-    // Vertical lines
-
-    final minorDivisionChanges = getDivisionChanges(
-      viewWidthInPixels: size.width,
-      minPixelsPerSection: minorMinPixels,
-      snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
-      defaultTimeSignature: TimeSignatureModel(4, 4), // TODO
-      timeSignatureChanges: [],
-      ticksPerQuarter: ticksPerQuarter,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-    );
-
-    paintVerticalLines(
-      canvas: canvas,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-      divisionChanges: minorDivisionChanges,
-      size: size,
-      paint: minorLinePaint,
-    );
-
-    final majorDivisionChanges = getDivisionChanges(
-      viewWidthInPixels: size.width,
-      minPixelsPerSection: majorMinPixels,
-      snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
-      defaultTimeSignature: TimeSignatureModel(4, 4),
-      timeSignatureChanges: [],
-      ticksPerQuarter: ticksPerQuarter,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-    );
-
-    paintVerticalLines(
-      canvas: canvas,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-      divisionChanges: majorDivisionChanges,
-      size: size,
-      paint: majorLinePaint,
-    );
-
-    final barDivisionChanges = getDivisionChanges(
-      viewWidthInPixels: size.width,
-      minPixelsPerSection: majorMinPixels,
-      snap: BarSnap(),
-      defaultTimeSignature: TimeSignatureModel(4, 4),
-      timeSignatureChanges: [],
-      ticksPerQuarter: ticksPerQuarter,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-    );
-
-    paintVerticalLines(
-      canvas: canvas,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-      divisionChanges: barDivisionChanges,
-      size: size,
-      paint: accentLinePaint,
-    );
+    // final accentLinePaint = Paint()..color = Theme.grid.accent;
+    final majorLinePaint = Paint()..color = Theme.grid.major;
+    // final minorLinePaint = Paint()..color = Theme.grid.minor;
 
     // Horizontal lines
 
@@ -131,6 +69,19 @@ class ArrangerBackgroundPainter extends CustomPainter {
         majorLinePaint,
       );
     }
+
+    // Vertical lines
+
+    paintTimeGrid(
+      canvas: canvas,
+      size: size,
+      snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+      baseTimeSignature: TimeSignatureModel(4, 4),
+      timeSignatureChanges: [],
+      ticksPerQuarter: ticksPerQuarter,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+    );
   }
 
   @override

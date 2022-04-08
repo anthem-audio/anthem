@@ -43,7 +43,9 @@ double pixelsToTime({
 }) {
   final timeViewWidth = timeViewEnd - timeViewStart;
   return (pixelOffsetFromLeft / viewPixelWidth) * timeViewWidth + timeViewStart;
-}// This is ported from Rust. I don't know what I was doing, but the naming here
+}
+
+// This is ported from Rust. I don't know what I was doing, but the naming here
 // is confusing. Why doesn't this contain a Division? Should it? I don't want
 // to think this through now, so I'm leaving a note.
 
@@ -59,7 +61,12 @@ class DivisionChange {
   Time offset;
   Time divisionRenderSize;
   Time divisionSnapSize;
+
+  // Number of input units (snap) skipped for each division. Sometimes this is 1, but
+  // sometimes (always when zoomed far out) this is higher.
   int distanceBetween;
+
+  // For bar rendering. The bar number at the beginning of the first division (?)
   int startLabel;
 }
 
