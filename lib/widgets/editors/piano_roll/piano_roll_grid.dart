@@ -17,13 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/pattern.dart';
+import 'package:anthem/model/pattern/pattern.dart';
+import 'package:anthem/model/store.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../model/store.dart';
-import '../../../theme.dart';
 import '../shared/helpers/grid_paint_helpers.dart';
 import '../shared/helpers/time_helpers.dart';
 import '../shared/helpers/types.dart';

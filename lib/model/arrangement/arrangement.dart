@@ -41,16 +41,3 @@ class ArrangementModel {
   @override
   String toString() => json.encode(toJson());
 }
-
-@JsonSerializable()
-class TrackModel {
-  int id;
-  String name;
-
-  TrackModel({required this.name}) : id = getID();
-
-  factory TrackModel.fromJson(Map<String, dynamic> json) =>
-      _$TrackModelFromJson(json);
-
-  Map<String, dynamic> toJson() => _$TrackModelToJson(this);
-}

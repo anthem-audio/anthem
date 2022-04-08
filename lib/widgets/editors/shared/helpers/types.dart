@@ -17,9 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/shared/time_signature.dart';
 import 'package:flutter/foundation.dart';
-
-import '../../../../model/time_signature.dart';
 
 class TimeView with ChangeNotifier, DiagnosticableTreeMixin {
   TimeView(this._start, this._end);

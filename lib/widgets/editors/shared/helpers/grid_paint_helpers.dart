@@ -19,11 +19,10 @@
 
 import 'dart:ui';
 
+import 'package:anthem/model/shared/time_signature.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
-
-import '../../../../model/time_signature.dart';
-import '../../../../theme.dart';
 
 // All vertical lines plus every-four-bars shading
 void paintTimeGrid({

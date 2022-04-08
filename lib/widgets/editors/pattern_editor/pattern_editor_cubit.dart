@@ -24,7 +24,7 @@ import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/commands/project_commands.dart';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/get_id.dart';
-import 'package:anthem/model/pattern.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';

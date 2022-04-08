@@ -17,14 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/shared/time_signature.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
-import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
-
-import '../../../model/time_signature.dart';
-import '../../../theme.dart';
 
 class ArrangerBackgroundPainter extends CustomPainter {
   final double baseTrackHeight;
