@@ -43,7 +43,8 @@ class PianoRollGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<PianoRollCubit, PianoRollState>(
         builder: (context, state) {
-      final pattern = Store.instance.projects[state.projectID]?.song.patterns[state.patternID];
+      final pattern = Store
+          .instance.projects[state.projectID]?.song.patterns[state.patternID];
       final timeView = context.watch<TimeView>();
 
       return ClipRect(
@@ -83,17 +84,12 @@ class PianoRollBackgroundPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
-    var accentLinePaint = Paint()
-      ..color = Theme.grid.accent;
-    var majorLinePaint = Paint()
-      ..color = Theme.grid.major;
-    var minorLinePaint = Paint()
-      ..color = Theme.grid.minor;
-    
-    var lightBackgroundPaint = Paint()
-      ..color = Theme.grid.backgroundLight;
-    var darkBackgroundPaint = Paint()
-      ..color = Theme.grid.backgroundDark;
+    var accentLinePaint = Paint()..color = Theme.grid.accent;
+    var majorLinePaint = Paint()..color = Theme.grid.major;
+    var minorLinePaint = Paint()..color = Theme.grid.minor;
+
+    var lightBackgroundPaint = Paint()..color = Theme.grid.backgroundLight;
+    var darkBackgroundPaint = Paint()..color = Theme.grid.backgroundDark;
 
     // Background
 
@@ -108,8 +104,7 @@ class PianoRollBackgroundPainter extends CustomPainter {
       final backgroundStripRect = Rect.fromLTWH(0, y, size.width, keyHeight);
       if (keyType == KeyType.white) {
         canvas.drawRect(backgroundStripRect, lightBackgroundPaint);
-      }
-      else {
+      } else {
         canvas.drawRect(backgroundStripRect, darkBackgroundPaint);
       }
       keyNum--;
@@ -120,70 +115,22 @@ class PianoRollBackgroundPainter extends CustomPainter {
     var linePointer = ((keyValueAtTop * keyHeight) % keyHeight);
 
     while (linePointer < size.height) {
-      canvas.drawRect(Rect.fromLTWH(0, linePointer, size.width, 1), minorLinePaint);
+      canvas.drawRect(
+          Rect.fromLTWH(0, linePointer, size.width, 1), minorLinePaint);
       linePointer += keyHeight;
     }
 
     // Vertical lines
 
-    var minorDivisionChanges = getDivisionChanges(
-      viewWidthInPixels: size.width,
-      minPixelsPerSection: minorMinPixels,
+    paintTimeGrid(
+      canvas: canvas,
+      size: size,
+      ticksPerQuarter: ticksPerQuarter,
       snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
-      defaultTimeSignature: pattern?.defaultTimeSignature,
+      baseTimeSignature: pattern?.defaultTimeSignature,
       timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
-      ticksPerQuarter: ticksPerQuarter,
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
-    );
-
-    paintVerticalLines(
-      canvas: canvas,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-      divisionChanges: minorDivisionChanges,
-      size: size,
-      paint: minorLinePaint,
-    );
-
-    var majorDivisionChanges = getDivisionChanges(
-      viewWidthInPixels: size.width,
-      minPixelsPerSection: majorMinPixels,
-      snap: DivisionSnap(division: Division(multiplier: 1, divisor: 1)),
-      defaultTimeSignature: pattern?.defaultTimeSignature,
-      timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
-      ticksPerQuarter: ticksPerQuarter,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-    );
-
-    paintVerticalLines(
-      canvas: canvas,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-      divisionChanges: majorDivisionChanges,
-      size: size,
-      paint: majorLinePaint,
-    );
-
-    var barDivisionChanges = getDivisionChanges(
-      viewWidthInPixels: size.width,
-      minPixelsPerSection: majorMinPixels,
-      snap: BarSnap(),
-      defaultTimeSignature: pattern?.defaultTimeSignature,
-      timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
-      ticksPerQuarter: ticksPerQuarter,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-    );
-
-    paintVerticalLines(
-      canvas: canvas,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-      divisionChanges: barDivisionChanges,
-      size: size,
-      paint: accentLinePaint,
     );
   }
 

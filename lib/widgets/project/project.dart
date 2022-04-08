@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/model/store.dart';
+import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart';
@@ -28,6 +29,7 @@ import 'package:anthem/widgets/project_explorer/project_explorer.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../basic/button.dart';
 import '../editors/arranger/arranger.dart';
 import '../editors/arranger/arranger_cubit.dart';
 import 'project_header.dart';
