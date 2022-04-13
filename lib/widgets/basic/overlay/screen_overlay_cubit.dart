@@ -24,14 +24,28 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'screen_overlay_state.dart';
 part 'screen_overlay_cubit.freezed.dart';
 
+class ScreenOverlayEntry {
+  Widget Function(BuildContext) builder;
+
+  ScreenOverlayEntry({required this.builder});
+}
+
 class ScreenOverlayCubit extends Cubit<ScreenOverlayState> {
   ScreenOverlayCubit() : super(ScreenOverlayState());
 
-  void add(Widget widget, {edgeInsets}) {
-    emit(state.copyWith(widgets: [...state.widgets, widget]));
+  void add(ScreenOverlayEntry entry) {
+    emit(state.copyWith(entries: [...state.entries, entry]));
+  }
+
+  void remove(ScreenOverlayEntry entry) {
+    emit(
+      state.copyWith(
+        entries: state.entries.whereNot((element) => element == entry).toList(),
+      ),
+    );
   }
 
   void clear() {
-    emit(state.copyWith(widgets: []));
+    emit(state.copyWith(entries: []));
   }
 }

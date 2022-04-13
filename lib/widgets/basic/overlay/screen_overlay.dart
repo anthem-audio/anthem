@@ -46,7 +46,7 @@ class ScreenOverlay extends StatelessWidget {
               Positioned.fill(
                 child: child,
               ),
-              state.widgets.isNotEmpty
+              state.entries.isNotEmpty
                   ? Positioned.fill(
                       child: Listener(
                         onPointerUp: (event) {
@@ -57,7 +57,9 @@ class ScreenOverlay extends StatelessWidget {
                     )
                   : null,
             ].whereNotNull().toList() +
-            state.widgets;
+            state.entries
+                .map<Widget>((entry) => entry.builder(context))
+                .toList();
 
         return Stack(
           children: stackChildren,
