@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/basic/overlay/screen_overlay.dart';
+import 'package:anthem/widgets/basic/overlay/screen_overlay_cubit.dart';
 import 'package:anthem/widgets/main_window/tab_content_switcher.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/main_window/window_header.dart';
@@ -40,55 +42,60 @@ class _MainWindowState extends State<MainWindow> {
   Widget build(BuildContext context) {
     return BlocBuilder<MainWindowCubit, MainWindowState>(
         builder: (context, state) {
-      return RawKeyboardListener(
-        focusNode: FocusNode(),
-        autofocus: true,
-        onKey: (e) {
-          final type = e.runtimeType.toString();
+      return BlocProvider<ScreenOverlayCubit>(
+        create: (context) => ScreenOverlayCubit(),
+        child: ScreenOverlay(
+          child: RawKeyboardListener(
+            focusNode: FocusNode(),
+            autofocus: true,
+            onKey: (e) {
+              final type = e.runtimeType.toString();
 
-          final keyDown = type == 'RawKeyDownEvent';
-          final keyUp = type == 'RawKeyUpEvent';
+              final keyDown = type == 'RawKeyDownEvent';
+              final keyUp = type == 'RawKeyUpEvent';
 
-          final ctrl = e.logicalKey.keyLabel == "Control Left" ||
-              e.logicalKey.keyLabel == "Control Right";
-          final alt = e.logicalKey.keyLabel == "Alt Left" ||
-              e.logicalKey.keyLabel == "Alt Right";
-          final shift = e.logicalKey.keyLabel == "Shift Left" ||
-              e.logicalKey.keyLabel == "Shift Right";
+              final ctrl = e.logicalKey.keyLabel == "Control Left" ||
+                  e.logicalKey.keyLabel == "Control Right";
+              final alt = e.logicalKey.keyLabel == "Alt Left" ||
+                  e.logicalKey.keyLabel == "Alt Right";
+              final shift = e.logicalKey.keyLabel == "Shift Left" ||
+                  e.logicalKey.keyLabel == "Shift Right";
 
-          final keyboardModifiers =
-              Provider.of<KeyboardModifiers>(context, listen: false);
+              final keyboardModifiers =
+                  Provider.of<KeyboardModifiers>(context, listen: false);
 
-          if (ctrl && keyDown) keyboardModifiers.setCtrl(true);
-          if (ctrl && keyUp) keyboardModifiers.setCtrl(false);
-          if (alt && keyDown) keyboardModifiers.setAlt(true);
-          if (alt && keyUp) keyboardModifiers.setAlt(false);
-          if (shift && keyDown) keyboardModifiers.setShift(true);
-          if (shift && keyUp) keyboardModifiers.setShift(false);
-        },
-        child: Container(
-          color: const Color(0xFF2A3237),
-          child: Padding(
-            padding: const EdgeInsets.all(3),
-            child: Column(
-              children: [
-                WindowHeader(
-                  selectedTabID: state.selectedTabID,
-                  tabs: state.tabs,
-                  setActiveProject: (int id) {
-                    context.read<MainWindowCubit>().switchTab(id);
-                  },
-                  closeProject: (int id) {
-                    context.read<MainWindowCubit>().closeProject(id);
-                  },
+              if (ctrl && keyDown) keyboardModifiers.setCtrl(true);
+              if (ctrl && keyUp) keyboardModifiers.setCtrl(false);
+              if (alt && keyDown) keyboardModifiers.setAlt(true);
+              if (alt && keyUp) keyboardModifiers.setAlt(false);
+              if (shift && keyDown) keyboardModifiers.setShift(true);
+              if (shift && keyUp) keyboardModifiers.setShift(false);
+            },
+            child: Container(
+              color: const Color(0xFF2A3237),
+              child: Padding(
+                padding: const EdgeInsets.all(3),
+                child: Column(
+                  children: [
+                    WindowHeader(
+                      selectedTabID: state.selectedTabID,
+                      tabs: state.tabs,
+                      setActiveProject: (int id) {
+                        context.read<MainWindowCubit>().switchTab(id);
+                      },
+                      closeProject: (int id) {
+                        context.read<MainWindowCubit>().closeProject(id);
+                      },
+                    ),
+                    Expanded(
+                      child: TabContentSwitcher(
+                        tabs: state.tabs,
+                        selectedTabID: state.selectedTabID,
+                      ),
+                    ),
+                  ],
                 ),
-                Expanded(
-                  child: TabContentSwitcher(
-                    tabs: state.tabs,
-                    selectedTabID: state.selectedTabID,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
