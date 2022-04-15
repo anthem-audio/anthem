@@ -19,8 +19,8 @@
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:collection/collection.dart';
 
-import '../../theme.dart';
 import 'button.dart';
 import 'icon.dart';
 import 'menu/menu.dart';
@@ -68,7 +68,7 @@ class _DropdownState extends State<Dropdown> {
                       }))
                   .toList() +
               [
-                Separator(),
+                widget.items.isNotEmpty ? Separator() : null,
                 MenuItem(
                   text: "(none)",
                   onSelected: () {
@@ -78,7 +78,7 @@ class _DropdownState extends State<Dropdown> {
                     widget.onChanged?.call(null);
                   },
                 )
-              ],
+              ].whereNotNull().toList(),
         ),
         child: Button(
           onPress: () {
