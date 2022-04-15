@@ -39,7 +39,7 @@ class _Panel {
 }
 
 class _Primary {
-  Color main = const Color(0xFF07D2D4);
+  Color main = const Color(0xFF25C29D);
 }
 
 class _Control {
