@@ -22,16 +22,17 @@ import 'dart:convert';
 import 'package:anthem/helpers/get_id.dart';
 import 'package:json_annotation/json_annotation.dart';
 
+import 'clip.dart';
+
 part 'arrangement.g.dart';
 
 @JsonSerializable()
 class ArrangementModel {
-  late int id;
+  int id = getID();
   String name;
+  Map<int, ClipModel> clips = {};
 
-  ArrangementModel({required this.name}) {
-    id = getID();
-  }
+  ArrangementModel({required this.name});
 
   factory ArrangementModel.fromJson(Map<String, dynamic> json) =>
       _$ArrangementModelFromJson(json);

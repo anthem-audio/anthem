@@ -41,9 +41,19 @@ class ArrangerCubit extends Cubit<ArrangerState> {
             trackHeightModifiers[trackID] = 1;
           }
 
+          final arrangementIDs = [...project.song.arrangementOrder];
+
+          final Map<int, String> arrangementNames = {};
+
+          for (final id in arrangementIDs) {
+            arrangementNames[id] = project.song.arrangements[id]!.name;
+          }
+
           return ArrangerState(
             projectID: projectID,
             activeArrangementID: arrangement.id,
+            arrangementIDs: arrangementIDs,
+            arrangementNames: arrangementNames,
             trackIDs: project.song.trackOrder,
             baseTrackHeight: defaultTrackHeight,
             scrollAreaHeight:
@@ -54,7 +64,8 @@ class ArrangerCubit extends Cubit<ArrangerState> {
         })());
 
   void setBaseTrackHeight(double newTrackHeight) {
-    final oldTrackHeight = state.baseTrackHeight.clamp(minTrackHeight, maxTrackHeight);
+    final oldTrackHeight =
+        state.baseTrackHeight.clamp(minTrackHeight, maxTrackHeight);
     final oldVerticalScrollPosition = state.verticalScrollPosition;
     emit(
       state.copyWith(

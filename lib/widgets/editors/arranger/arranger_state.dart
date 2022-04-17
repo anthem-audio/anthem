@@ -23,10 +23,15 @@ part of 'arranger_cubit.dart';
 class ArrangerState with _$ArrangerState {
   factory ArrangerState({
     required int projectID,
+
     required int? activeArrangementID,
+    required List<int> arrangementIDs,
+    required Map<int, String> arrangementNames,
+
     required List<int> trackIDs,
     required double baseTrackHeight,
     required Map<int, double> trackHeightModifiers,
+
     required double scrollAreaHeight,
     @Default(0) double verticalScrollPosition,
     required int ticksPerQuarter,
