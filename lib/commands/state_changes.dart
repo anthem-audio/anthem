@@ -17,43 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+part 'project_state_changes.dart';
+part 'pattern_state_changes.dart';
+part 'arrangement_state_changes.dart';
+
 abstract class StateChange {}
-
-/*
- * Base classes
- */
-
-abstract class ProjectStateChange extends StateChange {
-  int projectID;
-
-  ProjectStateChange({required this.projectID});
-}
-
-abstract class GeneratorStateChange extends ProjectStateChange {
-  int? generatorID;
-
-  GeneratorStateChange({required int projectID, required this.generatorID})
-      : super(projectID: projectID);
-}
-
-abstract class PatternStateChange extends ProjectStateChange {
-  int? patternID;
-
-  PatternStateChange({required int projectID, required this.patternID})
-      : super(projectID: projectID);
-}
-
-abstract class NoteStateChange extends PatternStateChange {
-  int generatorID;
-  int noteID;
-
-  NoteStateChange({
-    required int projectID,
-    required int patternID,
-    required this.generatorID,
-    required this.noteID,
-  }) : super(projectID: projectID, patternID: patternID);
-}
 
 /*
  * Special
@@ -93,110 +61,4 @@ class JournalEntryStarted extends ProjectStateChange {
 
 class JournalEntryCommitted extends ProjectStateChange {
   JournalEntryCommitted({required int projectID}) : super(projectID: projectID);
-}
-
-/*
- * Project
- */
-
-class GeneratorAdded extends GeneratorStateChange {
-  GeneratorAdded({
-    required int projectID,
-    required int generatorID,
-  }) : super(projectID: projectID, generatorID: generatorID);
-}
-
-class GeneratorRemoved extends GeneratorStateChange {
-  GeneratorRemoved({
-    required int projectID,
-    required int generatorID,
-  }) : super(projectID: projectID, generatorID: generatorID);
-}
-
-class ActiveGeneratorSet extends GeneratorStateChange {
-  ActiveGeneratorSet({
-    required int projectID,
-    required int? generatorID,
-  }) : super(projectID: projectID, generatorID: generatorID);
-}
-
-class PatternAdded extends PatternStateChange {
-  PatternAdded({
-    required int projectID,
-    required int patternID,
-  }) : super(projectID: projectID, patternID: patternID);
-}
-
-class PatternDeleted extends PatternStateChange {
-  PatternDeleted({
-    required int projectID,
-    required int patternID,
-  }) : super(projectID: projectID, patternID: patternID);
-}
-
-class ActivePatternSet extends PatternStateChange {
-  ActivePatternSet({
-    required int projectID,
-    required int? patternID,
-  }) : super(projectID: projectID, patternID: patternID);
-}
-
-/*
- * Pattern
- */
-
-class NoteAdded extends NoteStateChange {
-  NoteAdded({
-    required int projectID,
-    required int patternID,
-    required int generatorID,
-    required int noteID,
-  }) : super(
-          projectID: projectID,
-          patternID: patternID,
-          generatorID: generatorID,
-          noteID: noteID,
-        );
-}
-
-class NoteDeleted extends NoteStateChange {
-  NoteDeleted({
-    required int projectID,
-    required int patternID,
-    required int generatorID,
-    required int noteID,
-  }) : super(
-          projectID: projectID,
-          patternID: patternID,
-          generatorID: generatorID,
-          noteID: noteID,
-        );
-}
-
-class NoteMoved extends NoteStateChange {
-  NoteMoved({
-    required int projectID,
-    required int patternID,
-    required int generatorID,
-    required int noteID,
-  }) : super(
-          projectID: projectID,
-          patternID: patternID,
-          generatorID: generatorID,
-          noteID: noteID,
-        );
-}
-
-class NoteResized extends NoteStateChange {
-  NoteResized({
-    required int projectID,
-    required int patternID,
-    required int generatorID,
-    required int noteID,
-  }) : super(
-          projectID: projectID,
-          patternID: patternID,
-          generatorID: generatorID,
-          noteID: noteID,
-        );
 }
