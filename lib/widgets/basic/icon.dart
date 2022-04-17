@@ -28,7 +28,7 @@ class IconDef {
 
 class Icons {
   static IconDef arrowDown =
-      const IconDef("assets/icons/small/arrow_down_selectbtn.svg");
+      const IconDef("assets/icons/misc/dropdown_arrow___down.svg");
   static IconDef close = const IconDef("assets/icons/small/close.svg");
   static IconDef hamburger = const IconDef("assets/icons/misc/hamburgner.svg");
   static IconDef kebab = const IconDef("assets/icons/misc.svg");
@@ -38,6 +38,7 @@ class Icons {
   static IconDef add = const IconDef("assets/icons/scrollbar/add.svg");
   static IconDef mute = const IconDef("assets/icons/power.svg");
   static _ScrollbarIcons scrollbar = _ScrollbarIcons();
+  static _ToolIcons tools = _ToolIcons();
 }
 
 class _ScrollbarIcons {
@@ -45,6 +46,13 @@ class _ScrollbarIcons {
   IconDef arrowLeft = const IconDef("assets/icons/scrollbar/arrow_left.svg");
   IconDef arrowRight = const IconDef("assets/icons/scrollbar/arrow_right.svg");
   IconDef arrowUp = const IconDef("assets/icons/scrollbar/arrow_up.svg");
+}
+
+class _ToolIcons {
+  IconDef cut = const IconDef("assets/icons/tools/cut.svg");
+  IconDef erase = const IconDef("assets/icons/tools/erase.svg");
+  IconDef pencil = const IconDef("assets/icons/tools/pencil.svg");
+  IconDef select = const IconDef("assets/icons/tools/select.svg");
 }
 
 class SvgIcon extends StatelessWidget {
