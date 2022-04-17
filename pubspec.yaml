@@ -96,6 +96,7 @@ flutter:
   - assets/icons/options/
   - assets/icons/scrollbar/
   - assets/icons/small/
+  - assets/icons/tools/
   - assets/icons/topbar/
 
   # An image asset can refer to one or more resolution-specific "variants", see
