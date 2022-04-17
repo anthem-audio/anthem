@@ -17,7 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
+import 'package:anthem/widgets/basic/dropdown.dart';
+import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker_cubit.dart';
@@ -73,7 +76,71 @@ class _ArrangerState extends State<Arranger> {
                       height: 26,
                       child: Row(
                         children: [
-                          const SizedBox(width: 263),
+                          SizedBox(
+                            width: 263,
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Button(
+                                  width: 26,
+                                  startIcon: Icons.kebab,
+                                ),
+                                // const SizedBox(width: 4),
+                                // const SizedBox(
+                                //   width: 39,
+                                //   child: Dropdown(
+                                //       // items: [DropdownItem(),],
+                                //       ),
+                                // ),
+                                const SizedBox(width: 4),
+                                SizedBox(
+                                  width: 39,
+                                  child: Dropdown(
+                                    showNameOnButton: false,
+                                    allowNoSelection: false,
+                                    items: [
+                                      DropdownItem(
+                                        id: "pencil",
+                                        name: "Pencil",
+                                        icon: Icons.tools.pencil,
+                                      ),
+                                      DropdownItem(
+                                        id: "erase",
+                                        name: "Eraser",
+                                        icon: Icons.tools.erase,
+                                      ),
+                                      DropdownItem(
+                                        id: "cut",
+                                        name: "Cut",
+                                        icon: Icons.tools.cut,
+                                      ),
+                                      DropdownItem(
+                                        id: "select",
+                                        name: "Select",
+                                        icon: Icons.tools.select,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Dropdown(
+                                    selectedID: state.activeArrangementID.toString(),
+                                    items: state.arrangementIDs
+                                        .map<DropdownItem>(
+                                          (id) => DropdownItem(
+                                            id: id.toString(),
+                                            name: state.arrangementNames[id]!,
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
+                                  fit: FlexFit.tight,
+                                ),
+                                const SizedBox(width: 4),
+                              ],
+                            ),
+                          ),
                           Expanded(
                             child: ScrollbarRenderer(
                               scrollRegionStart: 0,
