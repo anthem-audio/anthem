@@ -220,13 +220,33 @@ class _ButtonState extends State<Button> {
     final List<Widget> innerRowChildren = [];
     final List<Widget> rowChildren = [];
 
-    if (widget.startIcon != null) {
-      innerRowChildren.add(
-        SvgIcon(
-          widget.startIcon!,
-          color: textColor,
-        ),
-      );
+    final startIconWidget = widget.startIcon != null
+        ? SvgIcon(
+            widget.startIcon!,
+            color: textColor,
+          )
+        : null;
+
+    final textWidget = widget.text != null
+        ? Text(
+            widget.text!,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 11,
+            ),
+            overflow: TextOverflow.ellipsis,
+          )
+        : null;
+
+    final endIconWidget = widget.endIcon != null
+        ? SvgIcon(
+            widget.endIcon!,
+            color: textColor,
+          )
+        : null;
+
+    if (startIconWidget != null) {
+      innerRowChildren.add(startIconWidget);
       if (widget.text != null) {
         innerRowChildren.add(
           const SizedBox(width: 4),
@@ -242,38 +262,48 @@ class _ButtonState extends State<Button> {
       ),
     );
 
-    if (widget.text != null) {
-      innerRowChildren.add(
-        Text(
-          widget.text!,
-          style: TextStyle(
-            color: textColor,
-            fontSize: 11,
-          ),
-          overflow: TextOverflow.ellipsis,
-        ),
-      );
+    if (textWidget != null) {
+      innerRowChildren.add(textWidget);
     }
 
-    if (widget.endIcon != null) {
+    if (endIconWidget != null) {
       rowChildren.addAll(
         [
           const SizedBox(width: 4),
-          SvgIcon(
-            widget.endIcon!,
-            color: textColor,
-          ),
+          endIconWidget,
         ],
       );
     }
 
     final Widget buttonContent;
 
-    final iconOnly = widget.startIcon != null && widget.text == null;
+    final startIconOnly = startIconWidget != null &&
+        textWidget == null &&
+        endIconWidget == null;
+    final startAndEndIconOnly = startIconWidget != null &&
+        textWidget == null &&
+        endIconWidget != null;
 
     // Hack to fix row overflow in some icon button cases
-    if (iconOnly) {
-      buttonContent = innerRowChildren[0];
+    if (startIconOnly) {
+      buttonContent = startIconWidget!;
+    } else if (startAndEndIconOnly) {
+      buttonContent = Stack(
+        children: [
+          Positioned(
+            top: 0,
+            left: 0,
+            bottom: 0,
+            child: Center(child: startIconWidget!),
+          ),
+          Positioned(
+            top: 0,
+            right: 0,
+            bottom: 0,
+            child: Center(child: endIconWidget!),
+          ),
+        ],
+      );
     } else {
       buttonContent = Row(
         children: rowChildren,
