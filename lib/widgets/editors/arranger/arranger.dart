@@ -98,34 +98,48 @@ class _ArrangerState extends State<Arranger> {
                                   child: Dropdown(
                                     showNameOnButton: false,
                                     allowNoSelection: false,
+                                    selectedID: EditorTool.values
+                                        .firstWhere(
+                                          (tool) =>
+                                              tool.name == state.tool.name,
+                                        )
+                                        .name,
                                     items: [
                                       DropdownItem(
-                                        id: "pencil",
+                                        id: EditorTool.pencil.name,
                                         name: "Pencil",
                                         icon: Icons.tools.pencil,
                                       ),
                                       DropdownItem(
-                                        id: "erase",
+                                        id: EditorTool.eraser.name,
                                         name: "Eraser",
                                         icon: Icons.tools.erase,
                                       ),
                                       DropdownItem(
-                                        id: "cut",
-                                        name: "Cut",
-                                        icon: Icons.tools.cut,
-                                      ),
-                                      DropdownItem(
-                                        id: "select",
+                                        id: EditorTool.select.name,
                                         name: "Select",
                                         icon: Icons.tools.select,
                                       ),
+                                      DropdownItem(
+                                        id: EditorTool.cut.name,
+                                        name: "Cut",
+                                        icon: Icons.tools.cut,
+                                      ),
                                     ],
+                                    onChanged: (id) {
+                                      cubit.setTool(
+                                        EditorTool.values.firstWhere(
+                                          (tool) => tool.name == id,
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ),
                                 const SizedBox(width: 4),
                                 Flexible(
                                   child: Dropdown(
-                                    selectedID: state.activeArrangementID.toString(),
+                                    selectedID:
+                                        state.activeArrangementID.toString(),
                                     items: state.arrangementIDs
                                         .map<DropdownItem>(
                                           (id) => DropdownItem(

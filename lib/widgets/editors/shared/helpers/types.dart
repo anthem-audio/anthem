@@ -20,6 +20,10 @@
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:flutter/foundation.dart';
 
+//
+// Time-related types
+//
+
 class TimeView with ChangeNotifier, DiagnosticableTreeMixin {
   TimeView(this._start, this._end);
 
@@ -66,3 +70,14 @@ class DivisionSnap extends Snap {
 }
 
 typedef Time = int;
+
+//
+// Misc
+//
+
+enum EditorTool {
+  pencil,
+  eraser,
+  select,
+  cut,
+}
