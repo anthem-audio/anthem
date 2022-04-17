@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -88,6 +89,12 @@ class ArrangerCubit extends Cubit<ArrangerState> {
         ...state.trackHeightModifiers,
         trackID: newModifier
       }),
+    );
+  }
+
+  void setTool(EditorTool tool) {
+    emit(
+      state.copyWith(tool: tool),
     );
   }
 }
