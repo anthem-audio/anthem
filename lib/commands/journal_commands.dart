@@ -37,7 +37,7 @@ class JournalPageCommand extends Command {
 
   @override
   List<StateChange> rollback() {
-    return commands
+    return commands.reversed
         .map((command) => command.rollback())
         .expand((e) => e)
         .toList();

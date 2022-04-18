@@ -293,6 +293,7 @@ class _ArrangerContent extends StatelessWidget {
                                     constraints.maxWidth,
                                     constraints.maxHeight,
                                   ),
+                                  timeView,
                                 );
                               },
                               child: CustomPaint(

@@ -44,8 +44,8 @@ class ClipAdded extends ArrangementStateChange {
         );
 }
 
-class ClipRemoved extends ArrangementStateChange {
-  ClipRemoved({
+class ClipDeleted extends ArrangementStateChange {
+  ClipDeleted({
     required int projectID,
     required int? arrangementID,
   }) : super(
