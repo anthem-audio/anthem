@@ -17,18 +17,24 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/commands/arrangement_commands.dart';
+import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/model/project.dart';
+import 'package:anthem/model/store.dart';
+import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import '../../../model/store.dart';
 import 'helpers.dart';
 
 part 'arranger_state.dart';
 part 'arranger_cubit.freezed.dart';
 
 class ArrangerCubit extends Cubit<ArrangerState> {
+  late final ProjectModel project;
+
   ArrangerCubit({required int projectID})
       : super((() {
           final project = Store.instance.projects[projectID]!;
@@ -60,8 +66,40 @@ class ArrangerCubit extends Cubit<ArrangerState> {
                 getScrollAreaHeight(defaultTrackHeight, trackHeightModifiers),
             trackHeightModifiers: trackHeightModifiers,
             ticksPerQuarter: project.song.ticksPerQuarter,
+            clipIDs: arrangement.clips.keys.toList(),
           );
-        })());
+        })()) {
+    project = Store.instance.projects[projectID]!;
+    project.stateChangeStream.listen(_onModelChanged);
+  }
+
+  void _onModelChanged(List<StateChange> changes) {
+    var didClipsChange = false;
+
+    for (final change in changes) {
+      if (change is ClipAdded || change is ClipDeleted) {
+        if ((change as ArrangementStateChange).arrangementID !=
+            state.activeArrangementID) {
+          continue;
+        }
+        didClipsChange = true;
+      }
+    }
+
+    ArrangerState? newState;
+
+    if (didClipsChange) {
+      newState = (newState ?? state).copyWith(
+        clipIDs: project
+            .song.arrangements[state.activeArrangementID]!.clips.keys
+            .toList(),
+      );
+    }
+
+    if (newState != null) {
+      emit(newState);
+    }
+  }
 
   void setBaseTrackHeight(double newTrackHeight) {
     final oldTrackHeight =
@@ -97,8 +135,32 @@ class ArrangerCubit extends Cubit<ArrangerState> {
     );
   }
 
-  void handleMouseDown(Offset offset, Size editorSize) {
-    print(offset);
-    print(editorSize);
+  void handleMouseDown(Offset offset, Size editorSize, TimeView timeView) {
+    if (state.activeArrangementID == null) return;
+
+    final trackIndex = getTrackIndex(
+      yOffset: offset.dy,
+      editorHeight: editorSize.height,
+      baseTrackHeight: state.baseTrackHeight,
+      trackHeightModifiers: state.trackHeightModifiers,
+      trackOrder: state.trackIDs,
+      scrollPosition: state.verticalScrollPosition,
+    );
+    if (trackIndex.isInfinite) return;
+
+    final time = pixelsToTime(
+      timeViewStart: timeView.start,
+      timeViewEnd: timeView.end,
+      viewPixelWidth: editorSize.width,
+      pixelOffsetFromLeft: offset.dx,
+    );
+
+    project.execute(AddClipCommand(
+      project: project,
+      arrangementID: state.activeArrangementID!,
+      trackID: state.trackIDs[trackIndex.floor()],
+      patternID: project.song.patterns[project.song.patternOrder[0]]!.id,
+      offset: time.floor(),
+    ));
   }
 }

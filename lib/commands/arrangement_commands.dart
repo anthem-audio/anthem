@@ -58,6 +58,6 @@ class AddClipCommand extends Command {
   List<StateChange> rollback() {
     project.song.arrangements[arrangementID]!.clips.remove(clipID);
 
-    return [ClipRemoved(projectID: project.id, arrangementID: arrangementID)];
+    return [ClipDeleted(projectID: project.id, arrangementID: arrangementID)];
   }
 }

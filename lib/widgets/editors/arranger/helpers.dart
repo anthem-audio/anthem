@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:ui';
+
 const minTrackHeight = 25.0;
 const maxTrackHeight = 150.0;
 
@@ -41,6 +43,35 @@ double getScrollAreaHeight(
 /// Gets the track index plus a [0 - 1) offset from the top of the track, given
 /// a y-offset from the top of the screen and some info about the state of the
 /// arranger.
-// double getTrackIndex() {
-//   return 0;
-// }
+double getTrackIndex({
+  required double yOffset,
+  required double editorHeight,
+  required double baseTrackHeight,
+  required List<int> trackOrder,
+  required Map<int, double> trackHeightModifiers,
+  required double scrollPosition,
+}) {
+  // yOffset relative to scroll area start
+  final yScrollAreaOffset = yOffset + scrollPosition;
+
+  if (yScrollAreaOffset < 0) return double.negativeInfinity;
+
+  double yPixelPointer = 0;
+  double yIndexPointer = 0;
+
+  for (final trackID in trackOrder) {
+    final trackHeight = getTrackHeight(
+      baseTrackHeight,
+      trackHeightModifiers[trackID]!,
+    );
+
+    if (yPixelPointer + trackHeight > yScrollAreaOffset) {
+      return yIndexPointer + (yScrollAreaOffset - yPixelPointer) / trackHeight;
+    }
+
+    yPixelPointer += trackHeight;
+    yIndexPointer++;
+  }
+
+  return double.infinity;
+}
