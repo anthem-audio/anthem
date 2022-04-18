@@ -17,25 +17,26 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/icon.dart';
+import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker_cubit.dart';
 import 'package:anthem/widgets/editors/arranger/track_header.dart';
 import 'package:anthem/widgets/editors/arranger/track_header_cubit.dart';
+import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:anthem/widgets/editors/shared/timeline.dart';
+import 'package:anthem/widgets/editors/shared/timeline_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 
-import '../../../theme.dart';
-import '../../basic/scroll/scrollbar_renderer.dart';
-import '../shared/helpers/types.dart';
-import '../shared/timeline.dart';
-import '../shared/timeline_cubit.dart';
 import 'arranger_grid.dart';
+import 'helpers.dart';
 
 const _timelineHeight = 44.0;
 
@@ -239,6 +240,8 @@ class _ArrangerContent extends StatelessWidget {
 
     return BlocBuilder<ArrangerCubit, ArrangerState>(
       builder: (context, state) {
+        final cubit = BlocProvider.of<ArrangerCubit>(context);
+
         final timeView = Provider.of<TimeView>(context);
 
         return Container(
@@ -281,18 +284,32 @@ class _ArrangerContent extends StatelessWidget {
                       Container(width: 1, color: Theme.panel.border),
                       Expanded(
                         child: ClipRect(
-                          child: CustomPaint(
-                            painter: ArrangerBackgroundPainter(
-                              baseTrackHeight: state.baseTrackHeight,
-                              verticalScrollPosition:
-                                  state.verticalScrollPosition,
-                              trackHeightModifiers: state.trackHeightModifiers,
-                              trackIDs: state.trackIDs,
-                              timeViewStart: timeView.start,
-                              timeViewEnd: timeView.end,
-                              ticksPerQuarter: state.ticksPerQuarter,
-                            ),
-                          ),
+                          child: LayoutBuilder(builder: (context, constraints) {
+                            return Listener(
+                              onPointerDown: (event) {
+                                cubit.handleMouseDown(
+                                  event.localPosition,
+                                  Size(
+                                    constraints.maxWidth,
+                                    constraints.maxHeight,
+                                  ),
+                                );
+                              },
+                              child: CustomPaint(
+                                painter: ArrangerBackgroundPainter(
+                                  baseTrackHeight: state.baseTrackHeight,
+                                  verticalScrollPosition:
+                                      state.verticalScrollPosition,
+                                  trackHeightModifiers:
+                                      state.trackHeightModifiers,
+                                  trackIDs: state.trackIDs,
+                                  timeViewStart: timeView.start,
+                                  timeViewEnd: timeView.end,
+                                  ticksPerQuarter: state.ticksPerQuarter,
+                                ),
+                              ),
+                            );
+                          }),
                         ),
                       ),
                     ],

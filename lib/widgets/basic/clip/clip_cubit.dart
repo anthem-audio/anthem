@@ -37,9 +37,6 @@ class ClipCubit extends Cubit<ClipState> {
   late final ProjectModel project;
   late final PatternModel pattern;
 
-  // ignore: unused_field
-  late final StreamSubscription<PatternStateChange> _updatePatternSub;
-
   ClipCubit({required int projectID, required int patternID})
       : super((() {
           final pattern =
@@ -52,15 +49,19 @@ class ClipCubit extends Cubit<ClipState> {
         })()) {
     project = Store.instance.projects[projectID]!;
     pattern = project.song.patterns[patternID]!;
-    _updatePatternSub = project.stateChangeStream
-        .where((change) =>
-            change is NoteStateChange && change.patternID == patternID)
-        .map((change) => change as PatternStateChange)
-        .listen(_updatePattern);
+    project.stateChangeStream.listen(_onModelChanged);
   }
 
-  _updatePattern(PatternStateChange change) {
-    emit(state.copyWith(notes: _getClipNotes(pattern)));
+  _onModelChanged(List<StateChange> changes) {
+    var updateNotes = false;
+
+    changes.whereType<NoteStateChange>().forEach((change) {
+      updateNotes = true;
+    });
+
+    if (updateNotes) {
+      emit(state.copyWith(notes: _getClipNotes(pattern)));
+    }
   }
 }
 

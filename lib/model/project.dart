@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -57,11 +57,11 @@ class ProjectModel {
   bool _journalPageActive = false;
 
   @JsonKey(ignore: true)
-  final StreamController<StateChange> _stateChangeStreamController =
+  final StreamController<List<StateChange>> _stateChangeStreamController =
       StreamController.broadcast();
 
   @JsonKey(ignore: true)
-  late Stream<StateChange> stateChangeStream;
+  late Stream<List<StateChange>> stateChangeStream;
 
   @JsonKey(ignore: true)
   bool isSaved = false;
@@ -95,14 +95,8 @@ class ProjectModel {
   @override
   String toString() => json.encode(toJson());
 
-  void _dispatch(StateChange change) {
-    if (change is MultipleThingsChanged) {
-      for (var change in change.changes) {
-        _stateChangeStreamController.add(change);
-      }
-    } else {
-      _stateChangeStreamController.add(change);
-    }
+  void _dispatch(List<StateChange> changes) {
+    _stateChangeStreamController.add(changes);
   }
 
   void execute(Command command) {

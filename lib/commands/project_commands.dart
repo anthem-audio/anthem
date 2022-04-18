@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -48,17 +48,17 @@ class AddInstrumentCommand extends Command {
   }) : super(project);
 
   @override
-  StateChange execute() {
+  List<StateChange> execute() {
     project.generatorList.add(instrumentID);
     project.instruments[instrumentID] =
         InstrumentModel(name: name, color: color);
-    return GeneratorAdded(projectID: project.id, generatorID: instrumentID);
+    return [GeneratorAdded(projectID: project.id, generatorID: instrumentID)];
   }
 
   @override
-  StateChange rollback() {
+  List<StateChange> rollback() {
     _removeGenerator(project, instrumentID);
-    return GeneratorRemoved(projectID: project.id, generatorID: instrumentID);
+    return [GeneratorRemoved(projectID: project.id, generatorID: instrumentID)];
   }
 }
 
@@ -75,16 +75,16 @@ class AddControllerCommand extends Command {
   }) : super(project);
 
   @override
-  StateChange execute() {
+  List<StateChange> execute() {
     project.generatorList.add(controllerID);
     project.controllers[controllerID] =
         ControllerModel(name: name, color: color);
-    return GeneratorAdded(projectID: project.id, generatorID: controllerID);
+    return [GeneratorAdded(projectID: project.id, generatorID: controllerID)];
   }
 
   @override
-  StateChange rollback() {
+  List<StateChange> rollback() {
     _removeGenerator(project, controllerID);
-    return GeneratorRemoved(projectID: project.id, generatorID: controllerID);
+    return [GeneratorRemoved(projectID: project.id, generatorID: controllerID)];
   }
 }

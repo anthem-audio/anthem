@@ -19,10 +19,11 @@
 
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
+
+import 'helpers.dart';
 
 class ArrangerBackgroundPainter extends CustomPainter {
   final double baseTrackHeight;
@@ -54,8 +55,10 @@ class ArrangerBackgroundPainter extends CustomPainter {
     var verticalPositionPointer = -verticalScrollPosition - 1;
 
     for (final trackID in trackIDs) {
-      final trackHeight =
-          getTrackHeight(baseTrackHeight, trackHeightModifiers[trackID]!);
+      final trackHeight = getTrackHeight(
+        baseTrackHeight,
+        trackHeightModifiers[trackID]!,
+      );
 
       verticalPositionPointer += trackHeight;
 

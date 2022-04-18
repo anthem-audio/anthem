@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,18 +22,6 @@ part 'pattern_state_changes.dart';
 part 'arrangement_state_changes.dart';
 
 abstract class StateChange {}
-
-/*
- * Special
- */
-
-class NothingChanged extends StateChange {}
-
-class MultipleThingsChanged extends StateChange {
-  List<StateChange> changes;
-
-  MultipleThingsChanged(this.changes);
-}
 
 /*
  * App

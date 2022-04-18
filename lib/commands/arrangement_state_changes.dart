@@ -23,6 +23,33 @@ part of 'state_changes.dart';
  * Base classes
  */
 
+abstract class ArrangementStateChange extends ProjectStateChange {
+  int? arrangementID;
+
+  ArrangementStateChange({required int projectID, required this.arrangementID})
+      : super(projectID: projectID);
+}
+
 /*
  * State changes
  */
+
+class ClipAdded extends ArrangementStateChange {
+  ClipAdded({
+    required int projectID,
+    required int? arrangementID,
+  }) : super(
+          projectID: projectID,
+          arrangementID: arrangementID,
+        );
+}
+
+class ClipRemoved extends ArrangementStateChange {
+  ClipRemoved({
+    required int projectID,
+    required int? arrangementID,
+  }) : super(
+          projectID: projectID,
+          arrangementID: arrangementID,
+        );
+}

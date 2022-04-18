@@ -19,15 +19,14 @@
 
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:bloc/bloc.dart';
+import 'package:flutter/widgets.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../../model/store.dart';
+import 'helpers.dart';
 
 part 'arranger_state.dart';
 part 'arranger_cubit.freezed.dart';
-
-const minTrackHeight = 25.0;
-const maxTrackHeight = 150.0;
 
 class ArrangerCubit extends Cubit<ArrangerState> {
   ArrangerCubit({required int projectID})
@@ -97,18 +96,9 @@ class ArrangerCubit extends Cubit<ArrangerState> {
       state.copyWith(tool: tool),
     );
   }
-}
 
-double getTrackHeight(double baseTrackHeight, double trackHeightModifier) {
-  return (baseTrackHeight * trackHeightModifier)
-      .clamp(minTrackHeight, maxTrackHeight);
-}
-
-double getScrollAreaHeight(
-    double baseTrackHeight, Map<int, double> trackHeightModifiers) {
-  return trackHeightModifiers.entries.fold(
-    0,
-    (previousValue, element) =>
-        previousValue + getTrackHeight(baseTrackHeight, element.value),
-  );
+  void handleMouseDown(Offset offset, Size editorSize) {
+    print(offset);
+    print(editorSize);
+  }
 }

@@ -50,7 +50,7 @@ class SongModel {
   late List<int> trackOrder;
 
   @JsonKey(ignore: true)
-  StreamController<StateChange>? _changeStreamController;
+  StreamController<List<StateChange>>? _changeStreamController;
 
   @JsonKey(ignore: true)
   ProjectModel? _project;
@@ -88,7 +88,7 @@ class SongModel {
 
   void hydrate({
     required ProjectModel project,
-    required StreamController<StateChange> changeStreamController,
+    required StreamController<List<StateChange>> changeStreamController,
   }) {
     _project = project;
     _changeStreamController = changeStreamController;
@@ -96,14 +96,15 @@ class SongModel {
 
   void setActiveGenerator(int? generatorID) {
     activeGeneratorID = generatorID;
-    _changeStreamController!.add(
-        ActiveGeneratorSet(projectID: _project!.id, generatorID: generatorID));
+    _changeStreamController!.add([
+      ActiveGeneratorSet(projectID: _project!.id, generatorID: generatorID)
+    ]);
   }
 
   void setActivePattern(int? patternID) {
     activePatternID = patternID;
     _changeStreamController!
-        .add(ActivePatternSet(projectID: _project!.id, patternID: patternID));
+        .add([ActivePatternSet(projectID: _project!.id, patternID: patternID)]);
   }
 }
 
