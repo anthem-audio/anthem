@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -24,8 +24,10 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'project_state.dart';
+part 'project_cubit.freezed.dart';
 
 class ProjectCubit extends Cubit<ProjectState> {
   // ignore: unused_field
@@ -33,26 +35,8 @@ class ProjectCubit extends Cubit<ProjectState> {
 
   late final ProjectModel project;
 
-  ProjectCubit({required int id})
-      : super(
-          ProjectState(
-            id: id,
-            activeGeneratorID: null,
-          ),
-        ) {
+  ProjectCubit({required int id}) : super(ProjectState(id: id)) {
     project = Store.instance.projects[id]!;
-
-    _updateActiveGeneratorSub = project.stateChangeStream
-        .where((change) => change is ActiveGeneratorSet)
-        .map((change) => change as ActiveGeneratorSet)
-        .listen(_updateActiveGenerator);
-  }
-
-  _updateActiveGenerator(ActiveGeneratorSet change) {
-    emit(
-      ProjectState(
-          id: state.id, activeGeneratorID: project.song.activeGeneratorID),
-    );
   }
 
   void undo() {

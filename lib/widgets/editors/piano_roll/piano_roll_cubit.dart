@@ -34,11 +34,6 @@ part 'piano_roll_state.dart';
 part 'piano_roll_cubit.freezed.dart';
 
 class PianoRollCubit extends Cubit<PianoRollState> {
-  // ignore: unused_field
-  late final StreamSubscription<StateChange> _updateActivePatternSub;
-  late final StreamSubscription<GeneratorStateChange>
-      // ignore: unused_field
-      _updateActiveInstrumentSub;
   late final ProjectModel project;
 
   PianoRollCubit({required int projectID})
@@ -61,19 +56,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
           })(),
         ) {
     project = Store.instance.projects[projectID]!;
-    _updateActivePatternSub = project.stateChangeStream
-        .where((event) =>
-            event is ActivePatternSet ||
-            event is NoteAdded ||
-            event is NoteDeleted ||
-            event is NoteMoved ||
-            event is NoteResized ||
-            event is ActiveGeneratorSet)
-        .listen(_updateActivePattern);
-    _updateActiveInstrumentSub = project.stateChangeStream
-        .where((event) => event is ActiveGeneratorSet)
-        .map((event) => event as ActiveGeneratorSet)
-        .listen(_updateActiveInstrument);
+    project.stateChangeStream.listen(_onModelChanged);
   }
 
   List<LocalNote> _getLocalNotes(int patternID, int generatorID) {
@@ -82,41 +65,67 @@ class PianoRollCubit extends Cubit<PianoRollState> {
         .toList();
   }
 
-  _updateActivePattern(StateChange change) {
-    final patternID = project.song.activePatternID;
-    final pattern = project.song.patterns[patternID];
+  _onModelChanged(List<StateChange> changes) {
+    var updateActivePattern = false;
+    var updateActiveGenerator = false;
 
-    final List<LocalNote> notes =
-        pattern == null || state.activeInstrumentID == null
-            ? []
-            : _getLocalNotes(pattern.id, state.activeInstrumentID!);
+    for (final change in changes) {
+      if (change is ActivePatternSet ||
+          change is NoteAdded ||
+          change is NoteDeleted ||
+          change is NoteMoved ||
+          change is NoteResized ||
+          change is ActiveGeneratorSet) {
+        updateActivePattern = true;
+      }
 
-    emit(state.copyWith(
-      patternID: patternID,
-      notes: notes,
-      lastContent: _getLastContentPlusPadding(
-        notes,
-        state.ticksPerQuarter,
-        TimeSignatureModel(4, 4),
-      ),
-    ));
-  }
+      if (change is ActiveGeneratorSet) {
+        updateActiveGenerator = true;
+      }
+    }
 
-  _updateActiveInstrument(GeneratorStateChange change) {
-    final List<LocalNote> notes =
-        state.patternID == null || project.song.activeGeneratorID == null
-            ? []
-            : _getLocalNotes(state.patternID!, project.song.activeGeneratorID!);
+    PianoRollState? newState;
 
-    emit(state.copyWith(
-      activeInstrumentID: project.song.activeGeneratorID,
-      notes: notes,
-      lastContent: _getLastContentPlusPadding(
-        notes,
-        state.ticksPerQuarter,
-        TimeSignatureModel(4, 4),
-      ),
-    ));
+    if (updateActivePattern) {
+      final patternID = project.song.activePatternID;
+      final pattern = project.song.patterns[patternID];
+
+      final List<LocalNote> notes =
+          pattern == null || state.activeInstrumentID == null
+              ? []
+              : _getLocalNotes(pattern.id, state.activeInstrumentID!);
+
+      newState = (newState ?? state).copyWith(
+        patternID: patternID,
+        notes: notes,
+        lastContent: _getLastContentPlusPadding(
+          notes,
+          state.ticksPerQuarter,
+          TimeSignatureModel(4, 4),
+        ),
+      );
+    }
+
+    if (updateActiveGenerator) {
+      final List<LocalNote> notes = state.patternID == null ||
+              project.song.activeGeneratorID == null
+          ? []
+          : _getLocalNotes(state.patternID!, project.song.activeGeneratorID!);
+
+      newState = (newState ?? state).copyWith(
+        activeInstrumentID: project.song.activeGeneratorID,
+        notes: notes,
+        lastContent: _getLastContentPlusPadding(
+          notes,
+          state.ticksPerQuarter,
+          TimeSignatureModel(4, 4),
+        ),
+      );
+    }
+
+    if (newState != null) {
+      emit(newState);
+    }
   }
 
   NoteModel? _getNote(int? instrumentID, int noteID) {

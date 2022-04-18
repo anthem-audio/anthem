@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -28,14 +28,18 @@ class JournalPageCommand extends Command {
   JournalPageCommand(ProjectModel project, this.commands) : super(project);
 
   @override
-  StateChange execute() {
-    return MultipleThingsChanged(
-        commands.map((command) => command.execute()).toList());
+  List<StateChange> execute() {
+    return commands
+        .map((command) => command.execute())
+        .expand((e) => e)
+        .toList();
   }
 
   @override
-  StateChange rollback() {
-    return MultipleThingsChanged(
-        commands.reversed.map((command) => command.rollback()).toList());
+  List<StateChange> rollback() {
+    return commands
+        .map((command) => command.rollback())
+        .expand((e) => e)
+        .toList();
   }
 }

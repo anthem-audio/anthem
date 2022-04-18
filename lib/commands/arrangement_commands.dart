@@ -18,23 +18,46 @@
 */
 
 import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/project.dart';
 
 import 'command.dart';
 
 /// Add a clip to an arrangement
 class AddClipCommand extends Command {
-  AddClipCommand(ProjectModel project) : super(project);
+  int arrangementID;
+  int trackID;
+  int patternID;
+  int offset;
+  int clipID = getID();
+  TimeViewModel? timeView;
+
+  AddClipCommand({
+    required ProjectModel project,
+    required this.arrangementID,
+    required this.trackID,
+    required this.patternID,
+    required this.offset,
+    this.timeView,
+  }) : super(project);
 
   @override
-  StateChange execute() {
-    // TODO: implement execute
-    throw UnimplementedError();
+  List<StateChange> execute() {
+    project.song.arrangements[arrangementID]!.clips[clipID] = ClipModel(
+      offset: offset,
+      patternID: patternID,
+      trackID: trackID,
+      timeView: timeView,
+    );
+
+    return [ClipAdded(projectID: project.id, arrangementID: arrangementID)];
   }
 
   @override
-  StateChange rollback() {
-    // TODO: implement rollback
-    throw UnimplementedError();
+  List<StateChange> rollback() {
+    project.song.arrangements[arrangementID]!.clips.remove(clipID);
+
+    return [ClipRemoved(projectID: project.id, arrangementID: arrangementID)];
   }
 }

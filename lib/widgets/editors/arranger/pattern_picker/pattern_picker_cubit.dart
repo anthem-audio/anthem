@@ -24,6 +24,7 @@ import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
+import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -35,8 +36,6 @@ List<int> getPatternIDs(ProjectModel? project) {
 }
 
 class PatternPickerCubit extends Cubit<PatternPickerState> {
-  // ignore: unused_field
-  late final StreamSubscription<PatternStateChange> _updatePatternsSub;
   late final ProjectModel project;
 
   PatternPickerCubit({required int projectID})
@@ -48,14 +47,28 @@ class PatternPickerCubit extends Cubit<PatternPickerState> {
           patternHeight: 50,
         )) {
     project = Store.instance.projects[projectID]!;
-    _updatePatternsSub = project.stateChangeStream
-        .where((change) => change is PatternAdded || change is PatternDeleted)
-        .map((change) => change as PatternStateChange)
-        .listen(_updatePatternList);
+    project.stateChangeStream.listen(_onModelChanged);
   }
 
-  _updatePatternList(PatternStateChange change) {
-    emit(state.copyWith(patternIDs: getPatternIDs(project)));
+  _onModelChanged(List<StateChange> changes) {
+    var patternListChanged = false;
+
+    for (final change in changes) {
+      if (change is PatternAdded || change is PatternDeleted) {
+        patternListChanged = true;
+      }
+    }
+
+    PatternPickerState? newState;
+
+    if (patternListChanged) {
+      newState =
+          (newState ?? state).copyWith(patternIDs: getPatternIDs(project));
+    }
+
+    if (newState != null) {
+      emit(newState);
+    }
   }
 
   setPatternHeight(double height) {
