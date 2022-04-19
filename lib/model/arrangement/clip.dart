@@ -54,4 +54,8 @@ class TimeViewModel {
       _$TimeViewModelFromJson(json);
 
   Map<String, dynamic> toJson() => _$TimeViewModelToJson(this);
+
+  int get width {
+    return end - start;
+  }
 }

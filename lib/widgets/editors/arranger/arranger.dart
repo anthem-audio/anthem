@@ -19,11 +19,14 @@
 
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/clip/clip.dart';
+import 'package:anthem/widgets/basic/clip/clip_cubit.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
+import 'package:anthem/widgets/editors/arranger/clip_layout_delegate.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker_cubit.dart';
 import 'package:anthem/widgets/editors/arranger/track_header.dart';
@@ -296,18 +299,75 @@ class _ArrangerContent extends StatelessWidget {
                                   timeView,
                                 );
                               },
-                              child: CustomPaint(
-                                painter: ArrangerBackgroundPainter(
-                                  baseTrackHeight: state.baseTrackHeight,
-                                  verticalScrollPosition:
-                                      state.verticalScrollPosition,
-                                  trackHeightModifiers:
-                                      state.trackHeightModifiers,
-                                  trackIDs: state.trackIDs,
-                                  timeViewStart: timeView.start,
-                                  timeViewEnd: timeView.end,
-                                  ticksPerQuarter: state.ticksPerQuarter,
-                                ),
+                              child: Stack(
+                                children: [
+                                  Positioned.fill(
+                                    child: CustomPaint(
+                                      painter: ArrangerBackgroundPainter(
+                                        baseTrackHeight: state.baseTrackHeight,
+                                        verticalScrollPosition:
+                                            state.verticalScrollPosition,
+                                        trackHeightModifiers:
+                                            state.trackHeightModifiers,
+                                        trackIDs: state.trackIDs,
+                                        timeViewStart: timeView.start,
+                                        timeViewEnd: timeView.end,
+                                        ticksPerQuarter: state.ticksPerQuarter,
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned.fill(
+                                    child: state.activeArrangementID == null
+                                        ? const SizedBox()
+                                        : CustomMultiChildLayout(
+                                            delegate: ClipLayoutDelegate(
+                                              baseTrackHeight:
+                                                  state.baseTrackHeight,
+                                              trackHeightModifiers:
+                                                  state.trackHeightModifiers,
+                                              timeViewStart: timeView.start,
+                                              timeViewEnd: timeView.end,
+                                              project: cubit.project,
+                                              trackIDs: state.trackIDs,
+                                              clipIDs: state.clipIDs,
+                                              arrangementID:
+                                                  state.activeArrangementID!,
+                                              verticalScrollPosition:
+                                                  state.verticalScrollPosition,
+                                            ),
+                                            children: state.clipIDs.map<Widget>(
+                                              (id) {
+                                                final clipModel = cubit
+                                                    .project
+                                                    .song
+                                                    .arrangements[state
+                                                        .activeArrangementID]!
+                                                    .clips[id]!;
+
+                                                return LayoutId(
+                                                  key: Key(id.toString()),
+                                                  id: id,
+                                                  child:
+                                                      BlocProvider<ClipCubit>(
+                                                    create: (context) =>
+                                                        ClipCubit(
+                                                      projectID:
+                                                          state.projectID,
+                                                      patternID:
+                                                          clipModel.patternID,
+                                                    ),
+                                                    child: Clip(
+                                                      ticksPerPixel: timeView
+                                                              .width /
+                                                          constraints.maxWidth,
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            ).toList(),
+                                          ),
+                                  ),
+                                ],
                               ),
                             );
                           }),
