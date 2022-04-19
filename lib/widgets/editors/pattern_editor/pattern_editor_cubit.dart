@@ -17,74 +17,77 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:async';
-import 'dart:collection';
-
 import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/commands/project_commands.dart';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/get_id.dart';
-import 'package:anthem/model/pattern.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
-import 'package:optional/optional.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'pattern_editor_state.dart';
 part 'pattern_editor_cubit.freezed.dart';
 
 class PatternEditorCubit extends Cubit<PatternEditorState> {
-  // ignore: unused_field
-  late final StreamSubscription<ActivePatternSet> _updateActivePatternSub;
-  // ignore: unused_field
-  late final StreamSubscription<PatternStateChange> _updatePatternListSub;
-  // ignore: unused_field
-  late final StreamSubscription<GeneratorStateChange> _updateGeneratorListSub;
-
   final ProjectModel project;
 
   PatternEditorCubit({required this.project})
       : super(PatternEditorState(projectID: project.id)) {
-    _updateActivePatternSub = project.stateChangeStream
-        .where((change) => change is ActivePatternSet)
-        .map((change) => change as ActivePatternSet)
-        .listen(_updateActivePattern);
-    _updatePatternListSub = project.stateChangeStream
-        .where((change) => change is PatternAdded || change is PatternDeleted)
-        .map((change) => change as PatternStateChange)
-        .listen(_updatePatternList);
-    _updateGeneratorListSub = project.stateChangeStream
-        .where(
-            (change) => change is GeneratorAdded || change is GeneratorRemoved)
-        .map((change) => change as GeneratorStateChange)
-        .listen(_updateGeneratorList);
+    project.stateChangeStream.listen(_onModelChanged);
   }
 
-  _updateActivePattern(ActivePatternSet change) {
-    emit(state.copyWith(
-      activePatternID: project.song.activePatternID,
-    ));
-  }
+  _onModelChanged(List<StateChange> changes) {
+    var updateActivePattern = false;
+    var updatePatternList = false;
+    var updateGeneratorList = false;
 
-  _updatePatternList(PatternStateChange _reply) {
-    emit(state.copyWith(
-        patternList: project.song.patternOrder
-            .map(
-              (id) => PatternListItem(
-                  id: id, name: project.song.patterns[id]?.name ?? ""),
-            )
-            .toList()));
-  }
+    for (final change in changes) {
+      if (change is ActivePatternSet) {
+        updateActivePattern = true;
+      }
 
-  _updateGeneratorList(GeneratorStateChange _reply) {
-    emit(state.copyWith(
-      controllers: project.controllers
-          .map((key, value) => MapEntry(key, GeneratorListItem(id: value.id))),
-      generatorIDList: project.generatorList,
-      instruments: project.instruments
-          .map((key, value) => MapEntry(key, GeneratorListItem(id: value.id))),
-    ));
+      if (change is PatternAdded || change is PatternDeleted) {
+        updatePatternList = true;
+      }
+
+      if (change is GeneratorAdded || change is GeneratorRemoved) {
+        updateGeneratorList = true;
+      }
+    }
+
+    PatternEditorState? newState;
+
+    if (updateActivePattern) {
+      newState = (newState ?? state).copyWith(
+        activePatternID: project.song.activePatternID,
+      );
+    }
+
+    if (updatePatternList) {
+      newState = (newState ?? state).copyWith(
+          patternList: project.song.patternOrder
+              .map(
+                (id) => PatternListItem(
+                    id: id, name: project.song.patterns[id]?.name ?? ""),
+              )
+              .toList());
+    }
+
+    if (updateGeneratorList) {
+      newState = (newState ?? state).copyWith(
+        controllers: project.controllers.map(
+            (key, value) => MapEntry(key, GeneratorListItem(id: value.id))),
+        generatorIDList: project.generatorList,
+        instruments: project.instruments.map(
+            (key, value) => MapEntry(key, GeneratorListItem(id: value.id))),
+      );
+    }
+
+    if (newState != null) {
+      emit(newState);
+    }
   }
 
   int addPattern(String name) {

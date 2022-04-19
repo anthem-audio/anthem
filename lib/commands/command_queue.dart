@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -31,32 +31,20 @@ class CommandQueue {
     commandPointer++;
   }
 
-  StateChange executeAndPush(Command command) {
+  List<StateChange> executeAndPush(Command command) {
     push(command);
     return command.execute();
   }
 
-  StateChange undo() {
-    if (commandPointer - 1 < 0) return NothingChanged();
+  List<StateChange> undo() {
+    if (commandPointer - 1 < 0) return [];
     commandPointer--;
     return commands[commandPointer].rollback();
   }
 
-  StateChange redo() {
-    if (commandPointer + 1 > commands.length) return NothingChanged();
+  List<StateChange> redo() {
+    if (commandPointer + 1 > commands.length) return [];
     commandPointer++;
     return commands[commandPointer - 1].execute();
   }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(other, this)) return true;
-
-    return other is CommandQueue &&
-        other.commands == commands &&
-        other.commandPointer == commandPointer;
-  }
-
-  @override
-  int get hashCode => commands.hashCode ^ commandPointer.hashCode;
 }

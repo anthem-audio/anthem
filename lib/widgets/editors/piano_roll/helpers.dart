@@ -17,11 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/time_signature.dart';
-import 'package:flutter/foundation.dart';
-
-import '../shared/helpers/types.dart';
-
 enum KeyType { black, white }
 enum NotchType { above, below, both }
 

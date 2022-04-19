@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -56,13 +56,14 @@ class MenuRenderer extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0x00000000).withOpacity(0.7),
+        color: Theme.panel.accentDark,
+        border: Border.all(color: Theme.panel.border),
         borderRadius: const BorderRadius.all(
-          Radius.circular(padding),
+          Radius.circular(4),
         ),
       ),
-      width: widest + padding * 2,
-      height: height + padding * 2,
+      width: widest + (padding + 1) * 2,
+      height: height + (padding + 1) * 2,
       child: Padding(
         padding: const EdgeInsets.only(top: padding, bottom: padding),
         child: Column(

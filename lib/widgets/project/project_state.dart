@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,24 +19,10 @@
 
 part of 'project_cubit.dart';
 
-@immutable
-class ProjectState {
-  final int id;
-  final int? activeGeneratorID;
+@freezed
+class ProjectState with _$ProjectState {
 
-  const ProjectState({
-    required this.id,
-    required this.activeGeneratorID,
-  });
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ProjectState &&
-          other.id == id &&
-          other.activeGeneratorID == activeGeneratorID;
-
-  @override
-  int get hashCode =>
-      id.hashCode ^ activeGeneratorID.hashCode;
+  factory ProjectState({
+    required int id,
+  }) = _ProjectState;
 }

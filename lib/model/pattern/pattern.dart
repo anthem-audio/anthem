@@ -22,9 +22,9 @@ import 'dart:convert';
 
 import 'package:anthem/helpers/get_id.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
-import 'package:anthem/model/time_signature.dart';
 import 'package:json_annotation/json_annotation.dart';
 
+import '../shared/time_signature.dart';
 import 'note.dart';
 
 part 'pattern.g.dart';

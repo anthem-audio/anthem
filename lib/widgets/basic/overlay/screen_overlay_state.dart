@@ -17,21 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:convert';
+part of 'screen_overlay_cubit.dart';
 
-import 'package:json_annotation/json_annotation.dart';
+@freezed
+class ScreenOverlayState with _$ScreenOverlayState {
 
-part 'arrangement.g.dart';
-
-@JsonSerializable()
-class ArrangementModel {
-  ArrangementModel();
-
-  factory ArrangementModel.fromJson(Map<String, dynamic> json) =>
-    _$ArrangementModelFromJson(json);
-
-  Map<String, dynamic> toJson() => _$ArrangementModelToJson(this);
-
-  @override
-  String toString() => json.encode(toJson());
+  factory ScreenOverlayState({
+    @Default([]) List<ScreenOverlayEntry> entries,
+  }) = _ScreenOverlayState;
 }

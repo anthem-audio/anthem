@@ -17,14 +17,149 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/commands/arrangement_commands.dart';
+import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/model/project.dart';
+import 'package:anthem/model/store.dart';
+import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
+import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+
+import 'helpers.dart';
 
 part 'arranger_state.dart';
 part 'arranger_cubit.freezed.dart';
 
 class ArrangerCubit extends Cubit<ArrangerState> {
+  late final ProjectModel project;
+
   ArrangerCubit({required int projectID})
-      : super(ArrangerState(projectID: projectID)) {}
+      : super((() {
+          final project = Store.instance.projects[projectID]!;
+          final arrangement =
+              project.song.arrangements[project.song.activeArrangementID]!;
+          const defaultTrackHeight = 45.0;
+
+          final Map<int, double> trackHeightModifiers = {};
+          for (final trackID in project.song.trackOrder) {
+            trackHeightModifiers[trackID] = 1;
+          }
+
+          final arrangementIDs = [...project.song.arrangementOrder];
+
+          final Map<int, String> arrangementNames = {};
+
+          for (final id in arrangementIDs) {
+            arrangementNames[id] = project.song.arrangements[id]!.name;
+          }
+
+          return ArrangerState(
+            projectID: projectID,
+            activeArrangementID: arrangement.id,
+            arrangementIDs: arrangementIDs,
+            arrangementNames: arrangementNames,
+            trackIDs: project.song.trackOrder,
+            baseTrackHeight: defaultTrackHeight,
+            scrollAreaHeight:
+                getScrollAreaHeight(defaultTrackHeight, trackHeightModifiers),
+            trackHeightModifiers: trackHeightModifiers,
+            ticksPerQuarter: project.song.ticksPerQuarter,
+            clipIDs: arrangement.clips.keys.toList(),
+          );
+        })()) {
+    project = Store.instance.projects[projectID]!;
+    project.stateChangeStream.listen(_onModelChanged);
+  }
+
+  void _onModelChanged(List<StateChange> changes) {
+    var didClipsChange = false;
+
+    for (final change in changes) {
+      if (change is ClipAdded || change is ClipDeleted) {
+        if ((change as ArrangementStateChange).arrangementID !=
+            state.activeArrangementID) {
+          continue;
+        }
+        didClipsChange = true;
+      }
+    }
+
+    ArrangerState? newState;
+
+    if (didClipsChange) {
+      newState = (newState ?? state).copyWith(
+        clipIDs: project
+            .song.arrangements[state.activeArrangementID]!.clips.keys
+            .toList(),
+      );
+    }
+
+    if (newState != null) {
+      emit(newState);
+    }
+  }
+
+  void setBaseTrackHeight(double newTrackHeight) {
+    final oldTrackHeight =
+        state.baseTrackHeight.clamp(minTrackHeight, maxTrackHeight);
+    final oldVerticalScrollPosition = state.verticalScrollPosition;
+    emit(
+      state.copyWith(
+        baseTrackHeight: newTrackHeight,
+        verticalScrollPosition:
+            oldVerticalScrollPosition * (newTrackHeight / oldTrackHeight),
+        scrollAreaHeight:
+            getScrollAreaHeight(newTrackHeight, state.trackHeightModifiers),
+      ),
+    );
+  }
+
+  void setVerticalScrollPosition(double position) {
+    emit(state.copyWith(verticalScrollPosition: position));
+  }
+
+  void setHeightModifier(int trackID, double newModifier) {
+    emit(
+      state.copyWith(trackHeightModifiers: {
+        ...state.trackHeightModifiers,
+        trackID: newModifier
+      }),
+    );
+  }
+
+  void setTool(EditorTool tool) {
+    emit(
+      state.copyWith(tool: tool),
+    );
+  }
+
+  void handleMouseDown(Offset offset, Size editorSize, TimeView timeView) {
+    if (state.activeArrangementID == null) return;
+
+    final trackIndex = posToTrackIndex(
+      yOffset: offset.dy,
+      baseTrackHeight: state.baseTrackHeight,
+      trackHeightModifiers: state.trackHeightModifiers,
+      trackOrder: state.trackIDs,
+      scrollPosition: state.verticalScrollPosition,
+    );
+    if (trackIndex.isInfinite) return;
+
+    final time = pixelsToTime(
+      timeViewStart: timeView.start,
+      timeViewEnd: timeView.end,
+      viewPixelWidth: editorSize.width,
+      pixelOffsetFromLeft: offset.dx,
+    );
+
+    project.execute(AddClipCommand(
+      project: project,
+      arrangementID: state.activeArrangementID!,
+      trackID: state.trackIDs[trackIndex.floor()],
+      patternID: project.song.patterns[project.song.patternOrder[0]]!.id,
+      offset: time.floor(),
+    ));
+  }
 }

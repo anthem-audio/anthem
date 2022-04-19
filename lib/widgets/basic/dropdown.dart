@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,8 +19,8 @@
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:collection/collection.dart';
 
-import '../../theme.dart';
 import 'button.dart';
 import 'icon.dart';
 import 'menu/menu.dart';
@@ -32,6 +32,9 @@ class Dropdown extends StatefulWidget {
   final String? selectedID;
   final List<DropdownItem> items;
   final Function(String?)? onChanged;
+  final bool showNameOnButton;
+  /// Whether or not to add a (none) option to the dropdown
+  final bool allowNoSelection;
 
   const Dropdown({
     Key? key,
@@ -40,6 +43,8 @@ class Dropdown extends StatefulWidget {
     this.selectedID,
     this.items = const [],
     this.onChanged,
+    this.showNameOnButton = true,
+    this.allowNoSelection = true,
   }) : super(key: key);
 
   @override
@@ -54,6 +59,11 @@ class _DropdownState extends State<Dropdown> {
     final menuController = MenuController();
     final selectedID = widget.selectedID ?? localSelectedID;
 
+    final selectedItem = widget.items.firstWhere(
+      (element) => element.id == selectedID,
+      orElse: () => const DropdownItem(id: "", name: "(none)"),
+    );
+
     return Menu(
         menuController: menuController,
         menuDef: MenuDef(
@@ -67,18 +77,20 @@ class _DropdownState extends State<Dropdown> {
                         widget.onChanged?.call(item.id);
                       }))
                   .toList() +
-              [
-                Separator(),
-                MenuItem(
-                  text: "(none)",
-                  onSelected: () {
-                    setState(() {
-                      localSelectedID = null;
-                    });
-                    widget.onChanged?.call(null);
-                  },
-                )
-              ],
+              (!widget.allowNoSelection
+                  ? []
+                  : [
+                      widget.items.isNotEmpty ? Separator() : null,
+                      MenuItem(
+                        text: "(none)",
+                        onSelected: () {
+                          setState(() {
+                            localSelectedID = null;
+                          });
+                          widget.onChanged?.call(null);
+                        },
+                      )
+                    ].whereNotNull().toList()),
         ),
         child: Button(
           onPress: () {
@@ -86,10 +98,8 @@ class _DropdownState extends State<Dropdown> {
           },
           width: widget.width,
           height: widget.height,
-          text: widget.items
-              .firstWhere((element) => element.id == selectedID,
-                  orElse: () => const DropdownItem(id: "", name: "(none)"))
-              .name,
+          text: widget.showNameOnButton ? selectedItem.name : null,
+          startIcon: selectedItem.icon,
           endIcon: Icons.arrowDown,
 
           // child: Padding(
@@ -124,7 +134,8 @@ class _DropdownState extends State<Dropdown> {
 @immutable
 class DropdownItem {
   final String id;
-  final String name;
+  final String? name;
+  final IconDef? icon;
 
-  const DropdownItem({required this.id, required this.name});
+  const DropdownItem({required this.id, this.name, this.icon});
 }
