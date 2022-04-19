@@ -43,9 +43,8 @@ double getScrollAreaHeight(
 /// Gets the track index plus a [0 - 1) offset from the top of the track, given
 /// a y-offset from the top of the screen and some info about the state of the
 /// arranger.
-double getTrackIndex({
+double posToTrackIndex({
   required double yOffset,
-  required double editorHeight,
   required double baseTrackHeight,
   required List<int> trackOrder,
   required Map<int, double> trackHeightModifiers,
@@ -74,4 +73,29 @@ double getTrackIndex({
   }
 
   return double.infinity;
+}
+
+/// Inverse of `posToTrackIndex()`
+double trackIndexToPos({
+  required double trackIndex,
+  required double baseTrackHeight,
+  required List<int> trackOrder,
+  required Map<int, double> trackHeightModifiers,
+  required double scrollPosition,
+}) {
+  double yPixelPointer = -scrollPosition;
+  double yIndexPointer = 0;
+
+  for (final trackID in trackOrder) {
+    final trackHeight = getTrackHeight(baseTrackHeight, trackHeightModifiers[trackID]!);
+
+    if (yIndexPointer + 1 > trackIndex) {
+      return yPixelPointer + trackHeight * (trackIndex - yIndexPointer);
+    }
+
+    yPixelPointer += trackHeight;
+    yIndexPointer++;
+  }
+
+  return yPixelPointer;
 }

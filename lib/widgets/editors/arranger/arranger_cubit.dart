@@ -138,9 +138,8 @@ class ArrangerCubit extends Cubit<ArrangerState> {
   void handleMouseDown(Offset offset, Size editorSize, TimeView timeView) {
     if (state.activeArrangementID == null) return;
 
-    final trackIndex = getTrackIndex(
+    final trackIndex = posToTrackIndex(
       yOffset: offset.dy,
-      editorHeight: editorSize.height,
       baseTrackHeight: state.baseTrackHeight,
       trackHeightModifiers: state.trackHeightModifiers,
       trackOrder: state.trackIDs,

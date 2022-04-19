@@ -42,6 +42,8 @@ class TimeView with ChangeNotifier, DiagnosticableTreeMixin {
 
   double _start;
   double _end;
+
+  double get width => _end - _start;
 }
 
 class Division {
