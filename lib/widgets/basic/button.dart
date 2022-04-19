@@ -127,17 +127,21 @@ class Button extends StatefulWidget {
   final String? text;
   final IconDef? startIcon;
   final IconDef? endIcon;
+
   final double? width;
   final double? height;
+  final bool? expand;
+  final EdgeInsets contentPadding;
+
   final bool? showMenuIndicator;
-  final Function? onPress;
   final Color? backgroundColor;
   final Color? backgroundHoverColor;
   final Color? backgroundPressColor;
   final bool? hideBorder;
-  final bool? expand;
-  final EdgeInsets contentPadding;
   final BorderRadius? borderRadius;
+
+  final Function? onPress;
+  final bool? toggleState;
 
   const Button({
     Key? key,
@@ -147,15 +151,16 @@ class Button extends StatefulWidget {
     this.endIcon,
     this.width,
     this.height,
+    this.expand,
+    this.contentPadding = const EdgeInsets.all(5),
     this.showMenuIndicator,
-    this.onPress,
     this.backgroundColor,
     this.backgroundHoverColor,
     this.backgroundPressColor,
     this.hideBorder,
-    this.expand,
-    this.contentPadding = const EdgeInsets.all(5),
     this.borderRadius,
+    this.onPress,
+    this.toggleState,
   }) : super(key: key);
 
   @override
@@ -194,32 +199,54 @@ class _ButtonState extends State<Button> {
         break;
     }
 
-    var backgroundColor = theme.background.getColor(hovered, pressed);
+    final toggleState = pressed || (widget.toggleState ?? false);
 
-    if (!hovered && !pressed && widget.backgroundColor != null) {
+    var backgroundColor = theme.background.getColor(hovered, toggleState);
+
+    if (!hovered && !toggleState && widget.backgroundColor != null) {
       backgroundColor = widget.backgroundColor!;
     }
 
-    if (hovered && !pressed && widget.backgroundHoverColor != null) {
+    if (hovered && !toggleState && widget.backgroundHoverColor != null) {
       backgroundColor = widget.backgroundHoverColor!;
     }
 
-    if (pressed && widget.backgroundHoverColor != null) {
+    if (toggleState && widget.backgroundHoverColor != null) {
       backgroundColor = widget.backgroundHoverColor!;
     }
 
-    final textColor = theme.text.getColor(hovered, pressed);
+    final textColor = theme.text.getColor(hovered, toggleState);
 
     final List<Widget> innerRowChildren = [];
     final List<Widget> rowChildren = [];
 
-    if (widget.startIcon != null) {
-      innerRowChildren.add(
-        SvgIcon(
-          widget.startIcon!,
-          color: textColor,
-        ),
-      );
+    final startIconWidget = widget.startIcon != null
+        ? SvgIcon(
+            widget.startIcon!,
+            color: textColor,
+          )
+        : null;
+
+    final textWidget = widget.text != null
+        ? Text(
+            widget.text!,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 11,
+            ),
+            overflow: TextOverflow.ellipsis,
+          )
+        : null;
+
+    final endIconWidget = widget.endIcon != null
+        ? SvgIcon(
+            widget.endIcon!,
+            color: textColor,
+          )
+        : null;
+
+    if (startIconWidget != null) {
+      innerRowChildren.add(startIconWidget);
       if (widget.text != null) {
         innerRowChildren.add(
           const SizedBox(width: 4),
@@ -235,38 +262,48 @@ class _ButtonState extends State<Button> {
       ),
     );
 
-    if (widget.text != null) {
-      innerRowChildren.add(
-        Text(
-          widget.text!,
-          style: TextStyle(
-            color: textColor,
-            fontSize: 11,
-          ),
-          overflow: TextOverflow.ellipsis,
-        ),
-      );
+    if (textWidget != null) {
+      innerRowChildren.add(textWidget);
     }
 
-    if (widget.endIcon != null) {
+    if (endIconWidget != null) {
       rowChildren.addAll(
         [
           const SizedBox(width: 4),
-          SvgIcon(
-            widget.endIcon!,
-            color: textColor,
-          ),
+          endIconWidget,
         ],
       );
     }
 
     final Widget buttonContent;
 
-    final iconOnly = widget.startIcon != null && widget.text == null;
+    final startIconOnly = startIconWidget != null &&
+        textWidget == null &&
+        endIconWidget == null;
+    final startAndEndIconOnly = startIconWidget != null &&
+        textWidget == null &&
+        endIconWidget != null;
 
     // Hack to fix row overflow in some icon button cases
-    if (iconOnly) {
-      buttonContent = innerRowChildren[0];
+    if (startIconOnly) {
+      buttonContent = startIconWidget!;
+    } else if (startAndEndIconOnly) {
+      buttonContent = Stack(
+        children: [
+          Positioned(
+            top: 0,
+            left: 0,
+            bottom: 0,
+            child: Center(child: startIconWidget!),
+          ),
+          Positioned(
+            top: 0,
+            right: 0,
+            bottom: 0,
+            child: Center(child: endIconWidget!),
+          ),
+        ],
+      );
     } else {
       buttonContent = Row(
         children: rowChildren,
@@ -302,6 +339,7 @@ class _ButtonState extends State<Button> {
     }
 
     return MouseRegion(
+      cursor: SystemMouseCursors.click,
       onEnter: (e) {
         if (!mounted) return;
         setState(() {

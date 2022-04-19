@@ -25,7 +25,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../model/shared/anthem_color.dart';
 
 class Clip extends StatelessWidget {
-  const Clip({Key? key}) : super(key: key);
+  final double ticksPerPixel;
+
+  const Clip({Key? key, required this.ticksPerPixel}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +65,7 @@ class Clip extends StatelessWidget {
                   child: ClipNotes(
                     color: getContentColor(state.color),
                     timeViewStart: 0,
-                    ticksPerPixel: 5,
+                    ticksPerPixel: ticksPerPixel,
                     notes: state.notes,
                   ),
                 )),

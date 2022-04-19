@@ -17,9 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/shared/time_signature.dart';
 import 'package:flutter/foundation.dart';
 
-import '../../../../model/time_signature.dart';
+//
+// Time-related types
+//
 
 class TimeView with ChangeNotifier, DiagnosticableTreeMixin {
   TimeView(this._start, this._end);
@@ -39,6 +42,8 @@ class TimeView with ChangeNotifier, DiagnosticableTreeMixin {
 
   double _start;
   double _end;
+
+  double get width => _end - _start;
 }
 
 class Division {
@@ -67,3 +72,14 @@ class DivisionSnap extends Snap {
 }
 
 typedef Time = int;
+
+//
+// Misc
+//
+
+enum EditorTool {
+  pencil,
+  eraser,
+  select,
+  cut,
+}

@@ -23,9 +23,11 @@ import 'dart:convert';
 
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/get_id.dart';
-import 'package:anthem/model/pattern.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:json_annotation/json_annotation.dart';
+
+import 'arrangement/arrangement.dart';
 
 part 'song.g.dart';
 
@@ -33,13 +35,22 @@ part 'song.g.dart';
 class SongModel {
   int id;
   int ticksPerQuarter = 96; // TODO
+
   Map<int, PatternModel> patterns;
   List<int> patternOrder;
   int? activePatternID;
+
   int? activeGeneratorID;
 
+  late Map<int, ArrangementModel> arrangements;
+  late List<int> arrangementOrder;
+  int? activeArrangementID;
+
+  late Map<int, TrackModel> tracks;
+  late List<int> trackOrder;
+
   @JsonKey(ignore: true)
-  StreamController<StateChange>? _changeStreamController;
+  StreamController<List<StateChange>>? _changeStreamController;
 
   @JsonKey(ignore: true)
   ProjectModel? _project;
@@ -48,7 +59,24 @@ class SongModel {
       : id = getID(),
         ticksPerQuarter = 96,
         patterns = HashMap(),
-        patternOrder = [];
+        patternOrder = [] {
+    final arrangement = ArrangementModel(name: "Arrangement 1");
+    arrangements = {arrangement.id: arrangement};
+    arrangementOrder = [arrangement.id];
+    activeArrangementID = arrangement.id;
+
+    final Map<int, TrackModel> initTracks = {};
+    final List<int> initTrackOrder = [];
+
+    for (var i = 1; i <= 200; i++) {
+      final track = TrackModel(name: "Track $i");
+      initTracks[track.id] = track;
+      initTrackOrder.add(track.id);
+    }
+
+    tracks = initTracks;
+    trackOrder = initTrackOrder;
+  }
 
   factory SongModel.fromJson(Map<String, dynamic> json) =>
       _$SongModelFromJson(json);
@@ -60,7 +88,7 @@ class SongModel {
 
   void hydrate({
     required ProjectModel project,
-    required StreamController<StateChange> changeStreamController,
+    required StreamController<List<StateChange>> changeStreamController,
   }) {
     _project = project;
     _changeStreamController = changeStreamController;
@@ -68,13 +96,27 @@ class SongModel {
 
   void setActiveGenerator(int? generatorID) {
     activeGeneratorID = generatorID;
-    _changeStreamController!.add(
-        ActiveGeneratorSet(projectID: _project!.id, generatorID: generatorID));
+    _changeStreamController!.add([
+      ActiveGeneratorSet(projectID: _project!.id, generatorID: generatorID)
+    ]);
   }
 
   void setActivePattern(int? patternID) {
     activePatternID = patternID;
     _changeStreamController!
-        .add(ActivePatternSet(projectID: _project!.id, patternID: patternID));
+        .add([ActivePatternSet(projectID: _project!.id, patternID: patternID)]);
   }
+}
+
+@JsonSerializable()
+class TrackModel {
+  int id;
+  String name;
+
+  TrackModel({required this.name}) : id = getID();
+
+  factory TrackModel.fromJson(Map<String, dynamic> json) =>
+      _$TrackModelFromJson(json);
+
+  Map<String, dynamic> toJson() => _$TrackModelToJson(this);
 }

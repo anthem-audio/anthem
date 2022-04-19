@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,14 +17,28 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/commands/state_changes.dart';
-import 'package:anthem/model/project.dart';
+import 'dart:convert';
 
-abstract class Command {
-  ProjectModel project;
+import 'package:anthem/helpers/get_id.dart';
+import 'package:json_annotation/json_annotation.dart';
 
-  List<StateChange> execute();
-  List<StateChange> rollback();
+import 'clip.dart';
 
-  Command(this.project);
+part 'arrangement.g.dart';
+
+@JsonSerializable()
+class ArrangementModel {
+  int id = getID();
+  String name;
+  Map<int, ClipModel> clips = {};
+
+  ArrangementModel({required this.name});
+
+  factory ArrangementModel.fromJson(Map<String, dynamic> json) =>
+      _$ArrangementModelFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ArrangementModelToJson(this);
+
+  @override
+  String toString() => json.encode(toJson());
 }

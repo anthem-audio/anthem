@@ -29,6 +29,9 @@ class AppModel {
 
   final StreamController<StateChange> _stateChangeStreamController =
       StreamController.broadcast();
+
+  /// Contains globally-relevant state changes. Most state changes will be on
+  /// the `stateChangeStream` in each `ProjectModel`.
   late Stream<StateChange> stateChangeStream;
 
   AppModel()

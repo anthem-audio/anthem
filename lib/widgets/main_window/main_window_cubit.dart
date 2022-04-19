@@ -31,20 +31,16 @@ import 'package:file_picker/file_picker.dart';
 part 'main_window_state.dart';
 
 class MainWindowCubit extends Cubit<MainWindowState> {
-  // ignore: unused_field
-  late final StreamSubscription<ProjectStateChange> _updateSub;
-  // ignore: unused_field
-  late final StreamSubscription<ProjectStateChange> _flushSub;
 
   MainWindowCubit()
       : super(MainWindowState(
             tabs: _getTabs(), selectedTabID: Store.instance.activeProjectID)) {
-    _updateSub = Store.instance.stateChangeStream
+    Store.instance.stateChangeStream
         .where((change) => change is ActiveProjectChanged)
         .map((change) => change as ActiveProjectChanged)
         .listen(_updateActiveTab);
 
-    _flushSub = Store.instance.stateChangeStream
+    Store.instance.stateChangeStream
         .where((change) => change is ProjectAdded || change is ProjectClosed)
         .map((change) => change as ProjectStateChange)
         .listen(_updateTabList);

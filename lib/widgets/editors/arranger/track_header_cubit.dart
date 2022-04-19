@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,14 +17,25 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/commands/state_changes.dart';
-import 'package:anthem/model/project.dart';
+import 'package:bloc/bloc.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-abstract class Command {
-  ProjectModel project;
+import '../../../model/store.dart';
 
-  List<StateChange> execute();
-  List<StateChange> rollback();
+part 'track_header_state.dart';
+part 'track_header_cubit.freezed.dart';
 
-  Command(this.project);
+class TrackHeaderCubit extends Cubit<TrackHeaderState> {
+  TrackHeaderCubit({
+    required int projectID,
+    required int trackID,
+  }) : super((() {
+          final project = Store.instance.projects[projectID]!;
+
+          return TrackHeaderState(
+            projectID: projectID,
+            trackID: trackID,
+            trackName: project.song.tracks[trackID]!.name,
+          );
+        })());
 }

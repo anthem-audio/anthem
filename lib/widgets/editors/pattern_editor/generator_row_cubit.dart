@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:async';
-
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
@@ -31,10 +29,6 @@ part 'generator_row_state.dart';
 part 'generator_row_cubit.freezed.dart';
 
 class GeneratorRowCubit extends Cubit<GeneratorRowState> {
-  // ignore: unused_field
-  late final StreamSubscription<NoteStateChange> _updateNotesSub;
-  // ignore: unused_field
-  late final StreamSubscription<PatternStateChange> _changePatternSub;
   late final ProjectModel project;
 
   GeneratorRowCubit({
@@ -63,45 +57,57 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
           })(),
         ) {
     project = Store.instance.projects[projectID]!;
-    _updateNotesSub = project.stateChangeStream
-        // .where((change) => change is NoteAdded || change is NoteDeleted)
-        .where((change) {
-          return change is NoteAdded || change is NoteDeleted;
-        })
-        .map((change) => change as NoteStateChange)
-        .listen(_updateNotes);
-    _changePatternSub = project.stateChangeStream
-        // .where((change) => change is ActivePatternSet)
-        .where((change) {
-          return change is ActivePatternSet;
-        })
-        .map((change) => change as PatternStateChange)
-        .listen(_changePattern);
+    project.stateChangeStream.listen(_onModelChanged);
   }
 
-  _changePattern(PatternStateChange change) {
-    final pattern = project.song.patterns[change.patternID];
+  _onModelChanged(List<StateChange> changes) {
+    var updateActivePattern = false;
+    var updateNotes = false;
 
-    emit(state.copyWith(
-      patternID: change.patternID,
-      clipNotes: pattern?.notes[state.generatorID]
-          ?.map((note) => ClipNoteModel.fromNoteModel(note))
-          .toList() ?? [],
-    ));
-  }
+    for (final change in changes) {
+      if (change is ActivePatternSet) {
+        updateActivePattern = true;
+      }
 
-  _updateNotes(NoteStateChange change) {
-    if (state.patternID != change.patternID ||
-        state.generatorID != change.generatorID) {
-      return;
+      final isNoteChange = change is NoteAdded || change is NoteDeleted;
+      if (isNoteChange) {
+        final noteChange = change as NoteStateChange;
+        final isRelevant = state.patternID == noteChange.patternID &&
+            state.generatorID == noteChange.generatorID;
+        if (isRelevant) {
+          updateNotes = true;
+        }
+      }
     }
 
-    final pattern = project.song.patterns[change.patternID];
+    GeneratorRowState? newState;
 
-    emit(state.copyWith(
-      clipNotes: pattern?.notes[state.generatorID]
-          ?.map((note) => ClipNoteModel.fromNoteModel(note))
-          .toList() ?? [],
-    ));
+    if (updateActivePattern) {
+      final newPatternID = project.song.activePatternID;
+      final pattern = project.song.patterns[newPatternID];
+
+      newState = (newState ?? state).copyWith(
+        patternID: newPatternID,
+        clipNotes: pattern?.notes[state.generatorID]
+                ?.map((note) => ClipNoteModel.fromNoteModel(note))
+                .toList() ??
+            [],
+      );
+    }
+
+    if (updateNotes) {
+      final pattern = project.song.patterns[project.song.activePatternID];
+
+      newState = (newState ?? state).copyWith(
+        clipNotes: pattern?.notes[state.generatorID]
+                ?.map((note) => ClipNoteModel.fromNoteModel(note))
+                .toList() ??
+            [],
+      );
+    }
+
+    if (newState != null) {
+      emit(newState);
+    }
   }
 }

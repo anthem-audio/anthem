@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,14 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/commands/state_changes.dart';
-import 'package:anthem/model/project.dart';
+part of 'track_header_cubit.dart';
 
-abstract class Command {
-  ProjectModel project;
-
-  List<StateChange> execute();
-  List<StateChange> rollback();
-
-  Command(this.project);
+@freezed
+class TrackHeaderState with _$TrackHeaderState {
+  factory TrackHeaderState({
+    required int projectID,
+    required int trackID,
+    required String trackName,
+  }) = _TrackHeaderState;
 }

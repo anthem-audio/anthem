@@ -19,8 +19,11 @@
 
 import 'dart:math';
 
-import 'package:anthem/model/note.dart';
+import 'package:anthem/model/pattern/note.dart';
+import 'package:anthem/model/store.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
+import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart';
@@ -30,9 +33,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:provider/provider.dart';
 
-import '../../../model/store.dart';
-import '../../../theme.dart';
-import '../../basic/panel.dart';
 import '../shared/helpers/time_helpers.dart';
 import '../shared/helpers/types.dart';
 import '../shared/timeline_cubit.dart';

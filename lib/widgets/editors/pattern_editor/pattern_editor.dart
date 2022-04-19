@@ -95,10 +95,9 @@ class _PatternEditorState extends State<PatternEditor> {
                           ],
                         ),
                         child: Button(
-                          // width: 28,
-                          // height: 28,
+                          width: 26,
+                          height: 26,
                           startIcon: Icons.kebab,
-                          showMenuIndicator: true,
                           onPress: () {
                             menuController.open?.call();
                           },
@@ -107,7 +106,7 @@ class _PatternEditorState extends State<PatternEditor> {
                       const SizedBox(width: 4),
                       Dropdown(
                         width: 169,
-                        height: 28,
+                        height: 26,
                         items: state.patternList.map(
                           (item) {
                             return DropdownItem(

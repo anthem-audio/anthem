@@ -19,7 +19,8 @@
 
 import 'dart:math';
 
-import 'package:anthem/model/time_signature.dart';
+import 'package:anthem/model/shared/time_signature.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/shared/timeline_cubit.dart';
 import 'package:anthem/widgets/main_window/main_window_cubit.dart';
 import 'package:flutter/widgets.dart';
@@ -27,7 +28,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:provider/provider.dart';
 
-import '../../../theme.dart';
 import '../piano_roll/helpers.dart';
 import 'helpers/time_helpers.dart';
 import 'helpers/types.dart';

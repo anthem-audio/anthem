@@ -39,7 +39,7 @@ class _Panel {
 }
 
 class _Primary {
-  Color main = const Color(0xFF07D2D4);
+  Color main = const Color(0xFF25C29D);
 }
 
 class _Control {
@@ -73,4 +73,5 @@ class _Grid {
   Color accent = const Color(0xFF0F1113);
   Color backgroundLight = const Color(0xFF394349);
   Color backgroundDark = const Color(0xFF333D43);
+  Color shaded = const Color(0x11000000);
 }

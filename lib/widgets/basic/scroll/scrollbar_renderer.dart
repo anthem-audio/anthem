@@ -296,28 +296,24 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
                 ),
               ),
 
-              // Scrollbar track with handle
+              // Scrollbar handle
               Positioned(
                 left: isVertical ? 1 : handleStart,
                 right: isVertical ? 1 : mainAxisSize - handleEnd,
                 top: isHorizontal ? 1 : handleStart,
                 bottom: isHorizontal ? 1 : mainAxisSize - handleEnd,
-                child: GestureDetector(
-                  onVerticalDragDown: (details) {
-                    if (!isVertical) return;
-                    _handleDown(details.localPosition.dy);
+                child: Listener(
+                  onPointerDown: (event) {
+                    _handleDown(isHorizontal
+                        ? event.localPosition.dx
+                        : event.localPosition.dy);
                   },
-                  onVerticalDragUpdate: (details) {
-                    if (!isVertical) return;
-                    _handleMove(details.localPosition.dy, trackSize);
-                  },
-                  onHorizontalDragDown: (details) {
-                    if (!isHorizontal) return;
-                    _handleDown(details.localPosition.dx);
-                  },
-                  onHorizontalDragUpdate: (details) {
-                    if (!isHorizontal) return;
-                    _handleMove(details.localPosition.dx, trackSize);
+                  onPointerMove: (event) {
+                    _handleMove(
+                        isHorizontal
+                            ? event.localPosition.dx
+                            : event.localPosition.dy,
+                        trackSize);
                   },
                   child: isHorizontal
                       ? Row(
