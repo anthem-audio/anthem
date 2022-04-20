@@ -39,13 +39,15 @@ class ClipCubit extends Cubit<ClipState> {
 
   ClipCubit({required int projectID, required int patternID})
       : super((() {
-          final pattern =
-              Store.instance.projects[projectID]!.song.patterns[patternID]!;
+          final project = Store.instance.projects[projectID]!;
+          final pattern = project.song.patterns[patternID]!;
           return ClipState(
-            notes: _getClipNotes(pattern),
-            patternName: pattern.name,
-            color: pattern.color,
-          );
+              notes: _getClipNotes(pattern),
+              patternName: pattern.name,
+              color: pattern.color,
+              contentWidth: pattern.getWidth(
+                ticksPerQuarter: project.song.ticksPerQuarter,
+              ));
         })()) {
     project = Store.instance.projects[projectID]!;
     pattern = project.song.patterns[patternID]!;
@@ -60,7 +62,12 @@ class ClipCubit extends Cubit<ClipState> {
     });
 
     if (updateNotes) {
-      emit(state.copyWith(notes: _getClipNotes(pattern)));
+      emit(state.copyWith(
+        notes: _getClipNotes(pattern),
+        contentWidth: pattern.getWidth(
+          ticksPerQuarter: project.song.ticksPerQuarter,
+        ),
+      ));
     }
   }
 }

@@ -27,6 +27,7 @@ import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
 import 'package:anthem/widgets/editors/arranger/clip_layout_delegate.dart';
+import 'package:anthem/widgets/editors/arranger/clip_sizer.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker_cubit.dart';
 import 'package:anthem/widgets/editors/arranger/track_header.dart';
@@ -288,6 +289,75 @@ class _ArrangerContent extends StatelessWidget {
                       Expanded(
                         child: ClipRect(
                           child: LayoutBuilder(builder: (context, constraints) {
+                            final grid = Positioned.fill(
+                              child: CustomPaint(
+                                painter: ArrangerBackgroundPainter(
+                                  baseTrackHeight: state.baseTrackHeight,
+                                  verticalScrollPosition:
+                                      state.verticalScrollPosition,
+                                  trackHeightModifiers:
+                                      state.trackHeightModifiers,
+                                  trackIDs: state.trackIDs,
+                                  timeViewStart: timeView.start,
+                                  timeViewEnd: timeView.end,
+                                  ticksPerQuarter: state.ticksPerQuarter,
+                                ),
+                              ),
+                            );
+
+                            final clips = Positioned.fill(
+                              child: state.activeArrangementID == null
+                                  ? const SizedBox()
+                                  : CustomMultiChildLayout(
+                                      delegate: ClipLayoutDelegate(
+                                        baseTrackHeight: state.baseTrackHeight,
+                                        trackHeightModifiers:
+                                            state.trackHeightModifiers,
+                                        timeViewStart: timeView.start,
+                                        timeViewEnd: timeView.end,
+                                        project: cubit.project,
+                                        trackIDs: state.trackIDs,
+                                        clipIDs: state.clipIDs,
+                                        arrangementID:
+                                            state.activeArrangementID!,
+                                        verticalScrollPosition:
+                                            state.verticalScrollPosition,
+                                      ),
+                                      children: state.clipIDs.map<Widget>(
+                                        (id) {
+                                          final clipModel = cubit
+                                              .project
+                                              .song
+                                              .arrangements[
+                                                  state.activeArrangementID]!
+                                              .clips[id]!;
+
+                                          return LayoutId(
+                                            key: Key(id.toString()),
+                                            id: id,
+                                            child: BlocProvider<ClipCubit>(
+                                              create: (context) => ClipCubit(
+                                                projectID: state.projectID,
+                                                patternID: clipModel.patternID,
+                                              ),
+                                              child: ClipSizer(
+                                                editorWidth:
+                                                    constraints.maxWidth,
+                                                timeViewStart: timeView.start,
+                                                timeViewEnd: timeView.end,
+                                                child: Clip(
+                                                  ticksPerPixel:
+                                                      timeView.width /
+                                                          constraints.maxWidth,
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ).toList(),
+                                    ),
+                            );
+
                             return Listener(
                               onPointerDown: (event) {
                                 cubit.handleMouseDown(
@@ -300,74 +370,7 @@ class _ArrangerContent extends StatelessWidget {
                                 );
                               },
                               child: Stack(
-                                children: [
-                                  Positioned.fill(
-                                    child: CustomPaint(
-                                      painter: ArrangerBackgroundPainter(
-                                        baseTrackHeight: state.baseTrackHeight,
-                                        verticalScrollPosition:
-                                            state.verticalScrollPosition,
-                                        trackHeightModifiers:
-                                            state.trackHeightModifiers,
-                                        trackIDs: state.trackIDs,
-                                        timeViewStart: timeView.start,
-                                        timeViewEnd: timeView.end,
-                                        ticksPerQuarter: state.ticksPerQuarter,
-                                      ),
-                                    ),
-                                  ),
-                                  Positioned.fill(
-                                    child: state.activeArrangementID == null
-                                        ? const SizedBox()
-                                        : CustomMultiChildLayout(
-                                            delegate: ClipLayoutDelegate(
-                                              baseTrackHeight:
-                                                  state.baseTrackHeight,
-                                              trackHeightModifiers:
-                                                  state.trackHeightModifiers,
-                                              timeViewStart: timeView.start,
-                                              timeViewEnd: timeView.end,
-                                              project: cubit.project,
-                                              trackIDs: state.trackIDs,
-                                              clipIDs: state.clipIDs,
-                                              arrangementID:
-                                                  state.activeArrangementID!,
-                                              verticalScrollPosition:
-                                                  state.verticalScrollPosition,
-                                            ),
-                                            children: state.clipIDs.map<Widget>(
-                                              (id) {
-                                                final clipModel = cubit
-                                                    .project
-                                                    .song
-                                                    .arrangements[state
-                                                        .activeArrangementID]!
-                                                    .clips[id]!;
-
-                                                return LayoutId(
-                                                  key: Key(id.toString()),
-                                                  id: id,
-                                                  child:
-                                                      BlocProvider<ClipCubit>(
-                                                    create: (context) =>
-                                                        ClipCubit(
-                                                      projectID:
-                                                          state.projectID,
-                                                      patternID:
-                                                          clipModel.patternID,
-                                                    ),
-                                                    child: Clip(
-                                                      ticksPerPixel: timeView
-                                                              .width /
-                                                          constraints.maxWidth,
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            ).toList(),
-                                          ),
-                                  ),
-                                ],
+                                children: [grid, clips],
                               ),
                             );
                           }),

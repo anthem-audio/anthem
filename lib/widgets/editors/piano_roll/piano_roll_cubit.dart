@@ -98,15 +98,19 @@ class PianoRollCubit extends Cubit<PianoRollState> {
       newState = (newState ?? state).copyWith(
         patternID: patternID,
         notes: notes,
-        lastContent: _getLastContentPlusPadding(
-          notes,
-          state.ticksPerQuarter,
-          TimeSignatureModel(4, 4),
-        ),
+        lastContent: pattern?.getWidth(
+              ticksPerQuarter: state.ticksPerQuarter,
+              barMultiple: 4,
+              minPaddingInBarMultiples: 4,
+            ) ??
+            state.ticksPerQuarter * 4 * 8,
       );
     }
 
     if (updateActiveGenerator) {
+      final patternID = (newState ?? state).patternID;
+      final pattern = project.song.patterns[patternID];
+
       final List<LocalNote> notes = state.patternID == null ||
               project.song.activeGeneratorID == null
           ? []
@@ -115,11 +119,12 @@ class PianoRollCubit extends Cubit<PianoRollState> {
       newState = (newState ?? state).copyWith(
         activeInstrumentID: project.song.activeGeneratorID,
         notes: notes,
-        lastContent: _getLastContentPlusPadding(
-          notes,
-          state.ticksPerQuarter,
-          TimeSignatureModel(4, 4),
-        ),
+        lastContent: pattern?.getWidth(
+              ticksPerQuarter: state.ticksPerQuarter,
+              barMultiple: 4,
+              minPaddingInBarMultiples: 4,
+            ) ??
+            state.ticksPerQuarter * 4 * 8,
       );
     }
 
@@ -259,16 +264,18 @@ class PianoRollCubit extends Cubit<PianoRollState> {
       return;
     }
 
+    final pattern = project.song.patterns[state.patternID]!;
+
     final newNotes = [...state.notes];
 
     mutator(newNotes);
 
     emit(state.copyWith(
       notes: newNotes,
-      lastContent: _getLastContentPlusPadding(
-        newNotes,
-        state.ticksPerQuarter,
-        TimeSignatureModel(4, 4), // TODO: Use actual time signature
+      lastContent: pattern.getWidth(
+        ticksPerQuarter: state.ticksPerQuarter,
+        barMultiple: 4,
+        minPaddingInBarMultiples: 4,
       ),
     ));
   }
@@ -280,21 +287,4 @@ class PianoRollCubit extends Cubit<PianoRollState> {
   void setKeyValueAtTop(double newKeyValueAtTop) {
     emit(state.copyWith(keyValueAtTop: newKeyValueAtTop));
   }
-}
-
-// Gets the time position of the end of the last note, rounded upward to the
-// nearest barMultiple bars.
-int _getLastContentPlusPadding(List<LocalNote> notes, int ticksPerQuarter,
-    TimeSignatureModel timeSignature) {
-  const barMultiple = 4;
-
-  final ticksPerBar = ticksPerQuarter ~/
-      (timeSignature.denominator ~/ 4) *
-      timeSignature.numerator;
-  final lastContent = notes.fold<int>(ticksPerBar * barMultiple * 4,
-      (previousValue, note) => max(previousValue, (note.offset + note.length)));
-
-  return (max(lastContent, 1) / (ticksPerBar * barMultiple)).ceil() *
-      ticksPerBar *
-      barMultiple;
 }
