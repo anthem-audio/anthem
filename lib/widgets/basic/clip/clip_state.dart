@@ -25,5 +25,6 @@ class ClipState with _$ClipState {
     required List<ClipNoteModel> notes,
     required String patternName,
     required AnthemColor color,
+    required int contentWidth,
   }) = _ClipState;
 }

@@ -19,6 +19,7 @@
 
 import 'dart:collection';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:anthem/helpers/get_id.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
@@ -63,4 +64,27 @@ class PatternModel {
 
   @override
   String toString() => json.encode(toJson());
+
+  /// Gets the time position of the end of the last item in this pattern
+  /// (note, audio clip, automation point), rounded upward to the nearest
+  /// `barMultiple` bars.
+  int getWidth({
+    required int ticksPerQuarter,
+    int barMultiple = 1,
+    int minPaddingInBarMultiples = 1,
+  }) {
+    // TODO: Time signature changes
+
+    final ticksPerBar = ticksPerQuarter ~/
+        (defaultTimeSignature.denominator ~/ 4) *
+        defaultTimeSignature.numerator;
+    final lastContent = notes.values.expand((e) => e).fold<int>(
+        ticksPerBar * barMultiple * minPaddingInBarMultiples,
+        (previousValue, note) =>
+            max(previousValue, (note.offset + note.length)));
+
+    return (max(lastContent, 1) / (ticksPerBar * barMultiple)).ceil() *
+        ticksPerBar *
+        barMultiple;
+  }
 }
