@@ -22,26 +22,26 @@ part of 'arranger_cubit.dart';
 @freezed
 class ArrangerState with _$ArrangerState {
   factory ArrangerState({
-    required int projectID,
+    required ID projectID,
 
-    required int? activeArrangementID,
-    required List<int> arrangementIDs,
-    required Map<int, String> arrangementNames,
+    required ID? activeArrangementID,
+    required List<ID> arrangementIDs,
+    required Map<ID, String> arrangementNames,
 
     // List of track IDs which implicitly encodes track order
-    required List<int> trackIDs,
+    required List<ID> trackIDs,
     // Base track height
     required double baseTrackHeight,
     // Per-track modifier that is multiplied by baseTrackHeight and clamped to
     // get the actual height for each track
-    required Map<int, double> trackHeightModifiers,
+    required Map<ID, double> trackHeightModifiers,
 
     // Total height of the entire scrollable region
     required double scrollAreaHeight,
     // Vertical scroll position, in pixels
     @Default(0) double verticalScrollPosition,
 
-    required List<int> clipIDs,
+    required List<ID> clipIDs,
 
     required int ticksPerQuarter,
 

@@ -20,7 +20,7 @@
 import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/commands/project_commands.dart';
 import 'package:anthem/commands/state_changes.dart';
-import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:bloc/bloc.dart';
@@ -90,7 +90,7 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
     }
   }
 
-  int addPattern(String name) {
+  ID addPattern(String name) {
     final pattern = PatternModel(name);
     project.execute(AddPatternCommand(
       project: project,
@@ -100,7 +100,7 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
     return pattern.id;
   }
 
-  void deletePattern(int patternID) {
+  void deletePattern(ID patternID) {
     project.execute(DeletePatternCommand(
       project: project,
       pattern: project.song.patterns[patternID]!,
@@ -126,11 +126,11 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
     ));
   }
 
-  void removeGenerator(int id) {
+  void removeGenerator(ID id) {
     throw UnimplementedError();
   }
 
-  void setActivePattern(int id) {
+  void setActivePattern(ID id) {
     project.song.setActivePattern(id);
   }
 }

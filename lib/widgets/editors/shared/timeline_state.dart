@@ -23,8 +23,8 @@ part of 'timeline_cubit.dart';
 class TimelineState with _$TimelineState {
 
   factory TimelineState({
-    required int? patternID,
-    required int? arrangementID,
+    required ID? patternID,
+    required ID? arrangementID,
     required int ticksPerQuarter,
     required TimeSignatureModel defaultTimeSignature,
     required List<TimeSignatureChangeModel> timeSignatureChanges,

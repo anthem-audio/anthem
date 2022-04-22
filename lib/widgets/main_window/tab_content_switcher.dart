@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/project/project_wrapper.dart';
 import 'package:flutter/widgets.dart';
 
@@ -24,7 +25,7 @@ import 'main_window_cubit.dart';
 
 class TabContentSwitcher extends StatelessWidget {
   final List<TabDef> tabs;
-  final int selectedTabID;
+  final ID selectedTabID;
 
   const TabContentSwitcher({
     Key? key,

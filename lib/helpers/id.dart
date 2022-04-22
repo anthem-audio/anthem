@@ -17,13 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'track_header_cubit.dart';
+import 'package:nanoid/nanoid.dart';
 
-@freezed
-class TrackHeaderState with _$TrackHeaderState {
-  factory TrackHeaderState({
-    required ID projectID,
-    required ID trackID,
-    required String trackName,
-  }) = _TrackHeaderState;
+typedef ID = String;
+
+ID getID() {
+  return nanoid(14);
 }

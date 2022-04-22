@@ -25,7 +25,7 @@ import 'package:anthem/commands/command.dart';
 import 'package:anthem/commands/command_queue.dart';
 import 'package:anthem/commands/journal_commands.dart';
 import 'package:anthem/commands/state_changes.dart';
-import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/song.dart';
 import 'package:json_annotation/json_annotation.dart';
 
@@ -37,12 +37,12 @@ part 'project.g.dart';
 class ProjectModel {
   late SongModel song;
 
-  Map<int, InstrumentModel> instruments;
-  Map<int, ControllerModel> controllers;
-  List<int> generatorList;
+  Map<ID, InstrumentModel> instruments;
+  Map<ID, ControllerModel> controllers;
+  List<ID> generatorList;
 
   @JsonKey(ignore: true)
-  int id;
+  String id;
 
   @JsonKey(ignore: true)
   String? filePath;

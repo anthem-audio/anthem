@@ -19,6 +19,7 @@
 
 import 'dart:math';
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
@@ -377,7 +378,7 @@ class NoteLayoutDelegate extends MultiChildLayoutDelegate {
 class NoteWidget extends StatefulWidget {
   const NoteWidget({Key? key, required this.noteID}) : super(key: key);
 
-  final int noteID;
+  final ID noteID;
 
   @override
   State<NoteWidget> createState() => _NoteWidgetState();

@@ -20,7 +20,7 @@
 part of 'state_changes.dart';
 
 abstract class ProjectStateChange extends StateChange {
-  int projectID;
+  ID projectID;
 
   ProjectStateChange({required this.projectID});
 }
@@ -31,42 +31,42 @@ abstract class ProjectStateChange extends StateChange {
 
 class GeneratorAdded extends GeneratorStateChange {
   GeneratorAdded({
-    required int projectID,
-    required int generatorID,
+    required ID projectID,
+    required ID generatorID,
   }) : super(projectID: projectID, generatorID: generatorID);
 }
 
 class GeneratorRemoved extends GeneratorStateChange {
   GeneratorRemoved({
-    required int projectID,
-    required int generatorID,
+    required ID projectID,
+    required ID generatorID,
   }) : super(projectID: projectID, generatorID: generatorID);
 }
 
 class ActiveGeneratorSet extends GeneratorStateChange {
   ActiveGeneratorSet({
-    required int projectID,
-    required int? generatorID,
+    required ID projectID,
+    required ID? generatorID,
   }) : super(projectID: projectID, generatorID: generatorID);
 }
 
 class PatternAdded extends PatternStateChange {
   PatternAdded({
-    required int projectID,
-    required int patternID,
+    required ID projectID,
+    required ID patternID,
   }) : super(projectID: projectID, patternID: patternID);
 }
 
 class PatternDeleted extends PatternStateChange {
   PatternDeleted({
-    required int projectID,
-    required int patternID,
+    required ID projectID,
+    required ID patternID,
   }) : super(projectID: projectID, patternID: patternID);
 }
 
 class ActivePatternSet extends PatternStateChange {
   ActivePatternSet({
-    required int projectID,
-    required int? patternID,
+    required ID projectID,
+    required ID? patternID,
   }) : super(projectID: projectID, patternID: patternID);
 }

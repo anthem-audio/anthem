@@ -19,6 +19,8 @@
 
 import 'dart:ui';
 
+import 'package:anthem/helpers/id.dart';
+
 const minTrackHeight = 25.0;
 const maxTrackHeight = 150.0;
 
@@ -31,7 +33,7 @@ double getTrackHeight(double baseTrackHeight, double trackHeightModifier) {
 
 double getScrollAreaHeight(
   double baseTrackHeight,
-  Map<int, double> trackHeightModifiers,
+  Map<ID, double> trackHeightModifiers,
 ) {
   return trackHeightModifiers.entries.fold(
     0,
@@ -46,8 +48,8 @@ double getScrollAreaHeight(
 double posToTrackIndex({
   required double yOffset,
   required double baseTrackHeight,
-  required List<int> trackOrder,
-  required Map<int, double> trackHeightModifiers,
+  required List<ID> trackOrder,
+  required Map<ID, double> trackHeightModifiers,
   required double scrollPosition,
 }) {
   // yOffset relative to scroll area start
@@ -79,8 +81,8 @@ double posToTrackIndex({
 double trackIndexToPos({
   required double trackIndex,
   required double baseTrackHeight,
-  required List<int> trackOrder,
-  required Map<int, double> trackHeightModifiers,
+  required List<ID> trackOrder,
+  required Map<ID, double> trackHeightModifiers,
   required double scrollPosition,
 }) {
   double yPixelPointer = -scrollPosition;

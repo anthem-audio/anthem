@@ -24,26 +24,26 @@ part of 'state_changes.dart';
  */
 
 abstract class GeneratorStateChange extends ProjectStateChange {
-  int? generatorID;
+  ID? generatorID;
 
-  GeneratorStateChange({required int projectID, required this.generatorID})
+  GeneratorStateChange({required ID projectID, required this.generatorID})
       : super(projectID: projectID);
 }
 
 abstract class PatternStateChange extends ProjectStateChange {
-  int? patternID;
+  ID? patternID;
 
-  PatternStateChange({required int projectID, required this.patternID})
+  PatternStateChange({required ID projectID, required this.patternID})
       : super(projectID: projectID);
 }
 
 abstract class NoteStateChange extends PatternStateChange {
-  int generatorID;
-  int noteID;
+  ID generatorID;
+  ID noteID;
 
   NoteStateChange({
-    required int projectID,
-    required int patternID,
+    required ID projectID,
+    required ID patternID,
     required this.generatorID,
     required this.noteID,
   }) : super(projectID: projectID, patternID: patternID);
@@ -55,10 +55,10 @@ abstract class NoteStateChange extends PatternStateChange {
 
 class NoteAdded extends NoteStateChange {
   NoteAdded({
-    required int projectID,
-    required int patternID,
-    required int generatorID,
-    required int noteID,
+    required ID projectID,
+    required ID patternID,
+    required ID generatorID,
+    required ID noteID,
   }) : super(
           projectID: projectID,
           patternID: patternID,
@@ -69,10 +69,10 @@ class NoteAdded extends NoteStateChange {
 
 class NoteDeleted extends NoteStateChange {
   NoteDeleted({
-    required int projectID,
-    required int patternID,
-    required int generatorID,
-    required int noteID,
+    required ID projectID,
+    required ID patternID,
+    required ID generatorID,
+    required ID noteID,
   }) : super(
           projectID: projectID,
           patternID: patternID,
@@ -83,10 +83,10 @@ class NoteDeleted extends NoteStateChange {
 
 class NoteMoved extends NoteStateChange {
   NoteMoved({
-    required int projectID,
-    required int patternID,
-    required int generatorID,
-    required int noteID,
+    required ID projectID,
+    required ID patternID,
+    required ID generatorID,
+    required ID noteID,
   }) : super(
           projectID: projectID,
           patternID: patternID,
@@ -97,10 +97,10 @@ class NoteMoved extends NoteStateChange {
 
 class NoteResized extends NoteStateChange {
   NoteResized({
-    required int projectID,
-    required int patternID,
-    required int generatorID,
-    required int noteID,
+    required ID projectID,
+    required ID patternID,
+    required ID generatorID,
+    required ID noteID,
   }) : super(
           projectID: projectID,
           patternID: patternID,
