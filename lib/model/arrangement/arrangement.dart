@@ -18,8 +18,12 @@
 */
 
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/hydratable.dart';
+import 'package:anthem/model/shared/time_signature.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 import 'clip.dart';
@@ -27,12 +31,13 @@ import 'clip.dart';
 part 'arrangement.g.dart';
 
 @JsonSerializable()
-class ArrangementModel {
-  String id = getID();
+class ArrangementModel extends Hydratable {
+  ID id = getID();
   String name;
   Map<ID, ClipModel> clips = {};
+  TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
 
-  ArrangementModel({required this.name});
+  ArrangementModel({required this.name}) : super();
 
   factory ArrangementModel.fromJson(Map<String, dynamic> json) =>
       _$ArrangementModelFromJson(json);
@@ -41,4 +46,37 @@ class ArrangementModel {
 
   @override
   String toString() => json.encode(toJson());
+
+  void hydrate({required ProjectModel project}) {
+    for (final clip in clips.values) {
+      clip.hydrate(project: project);
+    }
+    isHydrated = true;
+  }
+
+  /// Gets the time position of the end of the last clip in this arrangement,
+  /// rounded upward to the nearest `barMultiple` bars.
+  int getWidth({
+    required ProjectModel project,
+    required int ticksPerQuarter,
+    int barMultiple = 4,
+    int minPaddingInBarMultiples = 4,
+  }) {
+    // TODO: Time signature changes
+
+    final ticksPerBar = ticksPerQuarter ~/
+        (defaultTimeSignature.denominator ~/ 4) *
+        defaultTimeSignature.numerator;
+    final lastContent = clips.values.fold<int>(
+      ticksPerBar * barMultiple * minPaddingInBarMultiples,
+      (previousValue, clip) => max(
+        previousValue,
+        clip.offset + clip.getWidth(),
+      ),
+    );
+
+    return (max(lastContent, 1) / (ticksPerBar * barMultiple)).ceil() *
+        ticksPerBar *
+        barMultiple;
+  }
 }

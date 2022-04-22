@@ -106,7 +106,7 @@ class PatternPicker extends StatelessWidget {
                                           height: state.patternHeight,
                                           child: BlocProvider(
                                             create: (context) {
-                                              return ClipCubit(
+                                              return ClipCubit.fromPatternID(
                                                 projectID: state.projectID,
                                                 patternID: patternID,
                                               );

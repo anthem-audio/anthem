@@ -1,0 +1,119 @@
+/*
+  Copyright (C) 2022 Joshua Wade
+
+  This file is part of Anthem.
+
+  Anthem is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Anthem is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+*/
+
+import 'package:anthem/model/song.dart';
+import 'package:flutter/foundation.dart';
+
+/// ## Context
+/// 
+/// Deserialization from project files is handled using the `json_serializable`
+/// library. This saves a lot of boilerplate code, but a limitation of the
+/// approach is that some object properties (the state change stream controller
+/// in `ProjectModel`, for example) cannot be serialized and so are not
+/// recreated when the model is deserialized. In addition, some models contain
+/// convenience references to other model items which they do not own, and as
+/// such are not serialized - for example, a `ClipModel` has a reference to a
+/// `PatternModel` for convenience.
+/// 
+/// The solution to this is to separate model construction into two steps: a
+/// construction step and a hydration step. The construction step is run
+/// either during deserialization by `json_serializable`'s auto-generated model
+/// factory, or explicitly by (usually) a `Command`. The hydration step must be
+/// run immediately after. `ProjectModel` has a hydrate function that
+/// recursively hydrates the whole model, and is must be run after the project
+/// is deserialized. In all other cases, constructed models must be hydrated
+/// immediately after construction.
+/// 
+/// ## Description
+/// 
+/// This class exists to make it easier to track issues caused by not hydrating
+/// models after constructing them. It is meant to be used as a base class.
+/// 
+/// This class does three things:
+///   1. It provides an `isHydrated` flag, which should be overridden by the
+///      consuming class.
+///   2. On construction, it asynchronously schedules some code to run, which
+///      will be run after the class is constructed and the current batch of
+///      work is completed. This means it should also be run after any
+///      immediate `hydrate()` calls. This code checks if the `isHydrated`
+///      flag is true, and if not it logs a warning to the console.
+///   3. It provides an `assertHydrated()` method, which checks the hydration
+///      state and throws an error if the model is not hydrated.
+/// 
+/// ## Example
+/// 
+/// ```dart
+/// class SomeModel extends Hydratable {
+///   // ...
+/// 
+///   @JsonKey(ignore: true)
+///   String? _someValue;
+/// 
+///   String get someValue {
+///     assertHydrated();
+///     return _someValue!;
+///   }
+/// 
+///   void hydrate(String myValue) {
+///     _someValue = myValue;
+///   }
+/// 
+///   @override
+///   bool get isHydrated => _someValue != null;
+/// }
+/// 
+/// // Good
+/// final model = SomeModel()..hydrate("my value");
+/// 
+/// // Bad
+/// final model = SomeModel();
+/// // ... forgot to call model.hydrate();
+/// // When running in debug mode, this will cause a warning to be logged to
+/// // the console.
+/// ```
+class Hydratable {
+  bool isHydrated = false;
+
+  /// Checks that isHydrated is true after construction. It is expected that the
+  /// the inheriting class will set this flag in its `hydrate()` function. This
+  /// base class exists to make it easy to find missing `hydrate()` calls in
+  /// consuming code.
+  Hydratable() {
+    // Only run this check in debug mode
+    if (kDebugMode) {
+      void check() async {
+        if (!isHydrated) {
+          // ignore: avoid_print
+          print(_getHydrationWarning());
+        }
+      }
+
+      Future.delayed(const Duration(seconds: 0), check);
+    }
+  }
+
+  void assertHydrated() {
+    if (!isHydrated) {
+      throw Exception(_getHydrationError());
+    }
+  }
+
+  String _getHydrationWarning() => "WARNING: $runtimeType was not hydrated after being constructed. See lib/model/shared/hydratable.dart for more info.";
+  String _getHydrationError() => "Expected $runtimeType to be hydrated, but it was not. You may be missing a call to $runtimeType.hydrate().";
+}

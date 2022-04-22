@@ -338,7 +338,9 @@ class _ArrangerContent extends StatelessWidget {
                                             child: BlocProvider<ClipCubit>(
                                               create: (context) => ClipCubit(
                                                 projectID: state.projectID,
-                                                patternID: clipModel.patternID,
+                                                arrangementID:
+                                                    state.activeArrangementID!,
+                                                clipID: id,
                                               ),
                                               child: ClipSizer(
                                                 editorWidth:
