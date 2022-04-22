@@ -37,7 +37,22 @@ class ArrangementModel extends Hydratable {
   Map<ID, ClipModel> clips = {};
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
 
+  @JsonKey(ignore: true)
+  ProjectModel? _project;
+
+  ProjectModel get project {
+    assertHydrated();
+    return _project!;
+  }
+
   ArrangementModel({required this.name}) : super();
+
+  ArrangementModel.create({
+    required this.name,
+    required ProjectModel project,
+  }) : super() {
+    hydrate(project: project);
+  }
 
   factory ArrangementModel.fromJson(Map<String, dynamic> json) =>
       _$ArrangementModelFromJson(json);
@@ -48,6 +63,7 @@ class ArrangementModel extends Hydratable {
   String toString() => json.encode(toJson());
 
   void hydrate({required ProjectModel project}) {
+    _project = project;
     for (final clip in clips.values) {
       clip.hydrate(project: project);
     }
@@ -57,14 +73,12 @@ class ArrangementModel extends Hydratable {
   /// Gets the time position of the end of the last clip in this arrangement,
   /// rounded upward to the nearest `barMultiple` bars.
   int getWidth({
-    required ProjectModel project,
-    required int ticksPerQuarter,
     int barMultiple = 4,
     int minPaddingInBarMultiples = 4,
   }) {
     // TODO: Time signature changes
 
-    final ticksPerBar = ticksPerQuarter ~/
+    final ticksPerBar = project.song.ticksPerQuarter ~/
         (defaultTimeSignature.denominator ~/ 4) *
         defaultTimeSignature.numerator;
     final lastContent = clips.values.fold<int>(

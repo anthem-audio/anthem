@@ -79,7 +79,7 @@ class PatternPickerCubit extends Cubit<PatternPickerState> {
     project.execute(
       AddPatternCommand(
         project: project,
-        pattern: PatternModel(name),
+        pattern: PatternModel.create(name: name, project: project),
         index: project.song.patternOrder.length,
       ),
     );

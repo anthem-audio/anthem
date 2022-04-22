@@ -68,8 +68,14 @@ class SongModel extends Hydratable {
 
   SongModel() : super();
 
-  SongModel.newProject() : super() {
-    final arrangement = ArrangementModel(name: "Arrangement 1");
+  SongModel.create({
+    required ProjectModel project,
+    required StreamController<List<StateChange>> stateChangeStreamController,
+  }) : super() {
+    final arrangement = ArrangementModel.create(
+      name: "Arrangement 1",
+      project: project,
+    );
     arrangements = {arrangement.id: arrangement};
     arrangementOrder = [arrangement.id];
     activeArrangementID = arrangement.id;
@@ -85,6 +91,11 @@ class SongModel extends Hydratable {
 
     tracks = initTracks;
     trackOrder = initTrackOrder;
+
+    hydrate(
+      project: project,
+      changeStreamController: stateChangeStreamController,
+    );
   }
 
   factory SongModel.fromJson(Map<String, dynamic> json) =>
@@ -101,9 +112,15 @@ class SongModel extends Hydratable {
   }) {
     _project = project;
     _changeStreamController = changeStreamController;
+
     for (final arrangement in arrangements.values) {
       arrangement.hydrate(project: project);
     }
+
+    for (final pattern in patterns.values) {
+      pattern.hydrate(project: project);
+    }
+
     isHydrated = true;
   }
 

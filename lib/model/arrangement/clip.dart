@@ -48,12 +48,23 @@ class ClipModel extends Hydratable {
     return _pattern!;
   }
 
+  /// Used for deserialization. Use ClipModel.create() instead.
   ClipModel({
     this.timeView,
     required this.patternID,
     required this.trackID,
     required this.offset,
   }) : super();
+
+  ClipModel.create({
+    this.timeView,
+    required this.patternID,
+    required this.trackID,
+    required this.offset,
+    required ProjectModel project,
+  }) : super() {
+    hydrate(project: project);
+  }
 
   factory ClipModel.fromJson(Map<String, dynamic> json) =>
       _$ClipModelFromJson(json);
@@ -73,7 +84,7 @@ class ClipModel extends Hydratable {
       return timeView!.end - timeView!.start;
     }
 
-    return pattern.getWidth(ticksPerQuarter: project.song.ticksPerQuarter);
+    return pattern.getWidth();
   }
 }
 
