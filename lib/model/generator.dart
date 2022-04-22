@@ -20,13 +20,13 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:anthem/helpers/convert.dart';
-import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'generator.g.dart';
 
 abstract class GeneratorModel {
-  int id;
+  String id;
   String name;
   @JsonKey(toJson: ColorConvert.colorToInt, fromJson: ColorConvert.intToColor)
   Color color;

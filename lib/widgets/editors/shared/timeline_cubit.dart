@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
@@ -39,11 +40,11 @@ class TimelineCubit extends Cubit<TimelineState> {
 
   TimelineCubit({
     required this.timelineType,
-    required int projectID,
+    required ID projectID,
   }) : super((() {
           final project = Store.instance.projects[projectID]!;
 
-          int? patternID;
+          ID? patternID;
           PatternModel? pattern;
           var defaultTimeSignature = TimeSignatureModel(4, 4);
           List<TimeSignatureChangeModel> timeSignatureChanges = [];

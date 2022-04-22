@@ -19,6 +19,7 @@
 
 import 'package:anthem/commands/arrangement_commands.dart';
 import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
@@ -35,21 +36,21 @@ part 'arranger_cubit.freezed.dart';
 class ArrangerCubit extends Cubit<ArrangerState> {
   late final ProjectModel project;
 
-  ArrangerCubit({required int projectID})
+  ArrangerCubit({required ID projectID})
       : super((() {
           final project = Store.instance.projects[projectID]!;
           final arrangement =
               project.song.arrangements[project.song.activeArrangementID]!;
           const defaultTrackHeight = 45.0;
 
-          final Map<int, double> trackHeightModifiers = {};
+          final Map<ID, double> trackHeightModifiers = {};
           for (final trackID in project.song.trackOrder) {
             trackHeightModifiers[trackID] = 1;
           }
 
           final arrangementIDs = [...project.song.arrangementOrder];
 
-          final Map<int, String> arrangementNames = {};
+          final Map<ID, String> arrangementNames = {};
 
           for (final id in arrangementIDs) {
             arrangementNames[id] = project.song.arrangements[id]!.name;
@@ -120,7 +121,7 @@ class ArrangerCubit extends Cubit<ArrangerState> {
     emit(state.copyWith(verticalScrollPosition: position));
   }
 
-  void setHeightModifier(int trackID, double newModifier) {
+  void setHeightModifier(ID trackID, double newModifier) {
     emit(
       state.copyWith(trackHeightModifiers: {
         ...state.trackHeightModifiers,

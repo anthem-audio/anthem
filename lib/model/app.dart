@@ -20,12 +20,13 @@
 import 'dart:async';
 
 import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 
 class AppModel {
-  Map<int, ProjectModel> projects;
-  List<int> projectOrder;
-  int activeProjectID;
+  Map<ID, ProjectModel> projects;
+  List<ID> projectOrder;
+  ID activeProjectID;
 
   final StreamController<StateChange> _stateChangeStreamController =
       StreamController.broadcast();
@@ -37,7 +38,7 @@ class AppModel {
   AppModel()
       : projects = {},
         projectOrder = [],
-        activeProjectID = -1 {
+        activeProjectID = "" {
     stateChangeStream = _stateChangeStreamController.stream;
   }
 
@@ -48,13 +49,13 @@ class AppModel {
     _stateChangeStreamController.add(ProjectAdded(projectID: project.id));
   }
 
-  void setActiveProject(int projectID) {
+  void setActiveProject(ID projectID) {
     activeProjectID = projectID;
     _stateChangeStreamController
         .add(ActiveProjectChanged(projectID: projectID));
   }
 
-  void closeProject(int projectID) {
+  void closeProject(ID projectID) {
     projects.remove(projectID);
     projectOrder.removeWhere((element) => element == projectID);
     if (activeProjectID == projectID && projectOrder.isNotEmpty) {

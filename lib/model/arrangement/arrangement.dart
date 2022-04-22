@@ -19,7 +19,7 @@
 
 import 'dart:convert';
 
-import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 import 'clip.dart';
@@ -28,9 +28,9 @@ part 'arrangement.g.dart';
 
 @JsonSerializable()
 class ArrangementModel {
-  int id = getID();
+  String id = getID();
   String name;
-  Map<int, ClipModel> clips = {};
+  Map<ID, ClipModel> clips = {};
 
   ArrangementModel({required this.name});
 

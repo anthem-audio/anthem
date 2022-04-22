@@ -23,6 +23,6 @@ part of 'project_cubit.dart';
 class ProjectState with _$ProjectState {
 
   factory ProjectState({
-    required int id,
+    required ID id,
   }) = _ProjectState;
 }

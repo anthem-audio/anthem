@@ -22,7 +22,7 @@ import 'dart:collection';
 import 'dart:convert';
 
 import 'package:anthem/commands/state_changes.dart';
-import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:json_annotation/json_annotation.dart';
@@ -33,21 +33,21 @@ part 'song.g.dart';
 
 @JsonSerializable()
 class SongModel {
-  int id;
+  ID id;
   int ticksPerQuarter = 96; // TODO
 
-  Map<int, PatternModel> patterns;
-  List<int> patternOrder;
-  int? activePatternID;
+  Map<ID, PatternModel> patterns;
+  List<ID> patternOrder;
+  ID? activePatternID;
 
-  int? activeGeneratorID;
+  ID? activeGeneratorID;
 
-  late Map<int, ArrangementModel> arrangements;
-  late List<int> arrangementOrder;
-  int? activeArrangementID;
+  late Map<ID, ArrangementModel> arrangements;
+  late List<ID> arrangementOrder;
+  ID? activeArrangementID;
 
-  late Map<int, TrackModel> tracks;
-  late List<int> trackOrder;
+  late Map<ID, TrackModel> tracks;
+  late List<ID> trackOrder;
 
   @JsonKey(ignore: true)
   StreamController<List<StateChange>>? _changeStreamController;
@@ -65,8 +65,8 @@ class SongModel {
     arrangementOrder = [arrangement.id];
     activeArrangementID = arrangement.id;
 
-    final Map<int, TrackModel> initTracks = {};
-    final List<int> initTrackOrder = [];
+    final Map<ID, TrackModel> initTracks = {};
+    final List<ID> initTrackOrder = [];
 
     for (var i = 1; i <= 200; i++) {
       final track = TrackModel(name: "Track $i");
@@ -94,14 +94,14 @@ class SongModel {
     _changeStreamController = changeStreamController;
   }
 
-  void setActiveGenerator(int? generatorID) {
+  void setActiveGenerator(ID? generatorID) {
     activeGeneratorID = generatorID;
     _changeStreamController!.add([
       ActiveGeneratorSet(projectID: _project!.id, generatorID: generatorID)
     ]);
   }
 
-  void setActivePattern(int? patternID) {
+  void setActivePattern(ID? patternID) {
     activePatternID = patternID;
     _changeStreamController!
         .add([ActivePatternSet(projectID: _project!.id, patternID: patternID)]);
@@ -110,7 +110,7 @@ class SongModel {
 
 @JsonSerializable()
 class TrackModel {
-  int id;
+  ID id;
   String name;
 
   TrackModel({required this.name}) : id = getID();

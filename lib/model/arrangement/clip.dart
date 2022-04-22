@@ -17,17 +17,17 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'clip.g.dart';
 
 @JsonSerializable()
 class ClipModel {
-  int clipID = getID();
+  String id = getID();
   TimeViewModel? timeView; // If null, we snap to content
-  int patternID;
-  int trackID;
+  ID patternID;
+  ID trackID;
   int offset;
 
   ClipModel({

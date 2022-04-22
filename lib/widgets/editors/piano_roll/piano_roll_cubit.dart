@@ -22,7 +22,7 @@ import 'dart:math';
 
 import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/commands/state_changes.dart';
-import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
@@ -36,7 +36,7 @@ part 'piano_roll_cubit.freezed.dart';
 class PianoRollCubit extends Cubit<PianoRollState> {
   late final ProjectModel project;
 
-  PianoRollCubit({required int projectID})
+  PianoRollCubit({required ID projectID})
       : super(
           (() {
             final project = Store.instance.projects[projectID]!;
@@ -59,7 +59,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
     project.stateChangeStream.listen(_onModelChanged);
   }
 
-  List<LocalNote> _getLocalNotes(int patternID, int generatorID) {
+  List<LocalNote> _getLocalNotes(ID patternID, ID generatorID) {
     return (project.song.patterns[patternID]!.notes[generatorID] ?? [])
         .map((modelNote) => LocalNote.fromNote(modelNote))
         .toList();
@@ -133,7 +133,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
     }
   }
 
-  NoteModel? _getNote(int? instrumentID, int noteID) {
+  NoteModel? _getNote(ID? instrumentID, ID noteID) {
     final pattern = project.song.patterns[state.patternID];
     final noteList = pattern?.notes[instrumentID];
     NoteModel? note;
@@ -146,7 +146,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
   }
 
   void addNote({
-    required int? instrumentID,
+    required ID? instrumentID,
     required int key,
     required int velocity,
     required int length,
@@ -177,7 +177,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
     ));
   }
 
-  void removeNote({required int? instrumentID, required int noteID}) {
+  void removeNote({required ID? instrumentID, required ID noteID}) {
     final note = _getNote(instrumentID, noteID);
 
     if (state.patternID == null || instrumentID == null || note == null) {
@@ -193,8 +193,8 @@ class PianoRollCubit extends Cubit<PianoRollState> {
   }
 
   void moveNote({
-    required int? instrumentID,
-    required int noteID,
+    required ID? instrumentID,
+    required ID noteID,
     required int key,
     required int offset,
   }) {
@@ -217,8 +217,8 @@ class PianoRollCubit extends Cubit<PianoRollState> {
   }
 
   void resizeNote({
-    required int? instrumentID,
-    required int noteID,
+    required ID? instrumentID,
+    required ID noteID,
     required int length,
   }) {
     final note = _getNote(instrumentID, noteID);

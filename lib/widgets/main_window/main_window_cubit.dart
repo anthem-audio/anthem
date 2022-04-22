@@ -22,6 +22,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:bloc/bloc.dart';
@@ -68,22 +69,22 @@ class MainWindowCubit extends Cubit<MainWindowState> {
     ));
   }
 
-  void switchTab(int newTabID) => Store.instance.setActiveProject(newTabID);
+  void switchTab(ID newTabID) => Store.instance.setActiveProject(newTabID);
 
   // Returns the ID of the new tab
-  int newProject() {
+  ID newProject() {
     ProjectModel project = ProjectModel();
     project.hydrate();
     Store.instance.addProject(project);
     return project.id;
   }
 
-  void closeProject(int projectID) => Store.instance.closeProject(projectID);
+  void closeProject(ID projectID) => Store.instance.closeProject(projectID);
 
   /// Returns the ID of the loaded project, or null if the project load failed
   /// or was cancelled
   /// TODO: Granular error handling
-  Future<int?> loadProject() async {
+  Future<ID?> loadProject() async {
     try {
       final path = (await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -104,7 +105,7 @@ class MainWindowCubit extends Cubit<MainWindowState> {
     }
   }
 
-  Future<void> saveProject(int projectID, bool alwaysUseFilePicker) async {
+  Future<void> saveProject(ID projectID, bool alwaysUseFilePicker) async {
     try {
       final project = Store.instance.projects[projectID]!;
 

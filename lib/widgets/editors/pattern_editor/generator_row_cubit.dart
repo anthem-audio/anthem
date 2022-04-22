@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes.dart';
@@ -32,9 +33,9 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
   late final ProjectModel project;
 
   GeneratorRowCubit({
-    required int projectID,
-    required int? patternID,
-    required int generatorID,
+    required ID projectID,
+    required ID? patternID,
+    required ID generatorID,
   }) : super(
           (() {
             final project = Store.instance.projects[projectID]!;

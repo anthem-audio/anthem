@@ -18,7 +18,7 @@
 */
 
 import 'package:anthem/commands/state_changes.dart';
-import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/project.dart';
 
@@ -26,11 +26,11 @@ import 'command.dart';
 
 /// Add a clip to an arrangement
 class AddClipCommand extends Command {
-  int arrangementID;
-  int trackID;
-  int patternID;
+  ID arrangementID;
+  ID trackID;
+  ID patternID;
   int offset;
-  int clipID = getID();
+  ID clipID = getID();
   TimeViewModel? timeView;
 
   AddClipCommand({

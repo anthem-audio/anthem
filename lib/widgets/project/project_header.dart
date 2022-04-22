@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
@@ -30,7 +31,7 @@ import '../basic/icon.dart';
 import '../main_window/main_window_cubit.dart';
 
 class ProjectHeader extends StatelessWidget {
-  final int projectID;
+  final ID projectID;
 
   const ProjectHeader({Key? key, required this.projectID}) : super(key: key);
 

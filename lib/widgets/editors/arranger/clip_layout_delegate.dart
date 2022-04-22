@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
@@ -25,12 +26,12 @@ import 'package:flutter/widgets.dart';
 class ClipLayoutDelegate extends MultiChildLayoutDelegate {
   double timeViewStart;
   double timeViewEnd;
-  List<int> trackIDs;
+  List<ID> trackIDs;
   double baseTrackHeight;
-  Map<int, double> trackHeightModifiers;
-  List<int> clipIDs;
+  Map<ID, double> trackHeightModifiers;
+  List<ID> clipIDs;
   ProjectModel project;
-  int arrangementID;
+  ID arrangementID;
   double verticalScrollPosition;
 
   ClipLayoutDelegate({

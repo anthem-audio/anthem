@@ -20,6 +20,7 @@
 import 'dart:async';
 
 import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
@@ -37,7 +38,7 @@ class ClipCubit extends Cubit<ClipState> {
   late final ProjectModel project;
   late final PatternModel pattern;
 
-  ClipCubit({required int projectID, required int patternID})
+  ClipCubit({required ID projectID, required ID patternID})
       : super((() {
           final project = Store.instance.projects[projectID]!;
           final pattern = project.song.patterns[patternID]!;

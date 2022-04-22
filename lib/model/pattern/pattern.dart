@@ -21,7 +21,7 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:json_annotation/json_annotation.dart';
 
@@ -34,12 +34,12 @@ double _hueGen = 0;
 
 @JsonSerializable()
 class PatternModel {
-  int id;
+  ID id;
 
   String name;
   AnthemColor color;
 
-  Map<int, List<NoteModel>> notes;
+  Map<ID, List<NoteModel>> notes;
   List<TimeSignatureChangeModel> timeSignatureChanges;
   TimeSignatureModel defaultTimeSignature; // TODO: Just pull from project??
 
