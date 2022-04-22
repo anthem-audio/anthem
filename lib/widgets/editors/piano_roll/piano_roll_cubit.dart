@@ -99,7 +99,6 @@ class PianoRollCubit extends Cubit<PianoRollState> {
         patternID: patternID,
         notes: notes,
         lastContent: pattern?.getWidth(
-              ticksPerQuarter: state.ticksPerQuarter,
               barMultiple: 4,
               minPaddingInBarMultiples: 4,
             ) ??
@@ -120,7 +119,6 @@ class PianoRollCubit extends Cubit<PianoRollState> {
         activeInstrumentID: project.song.activeGeneratorID,
         notes: notes,
         lastContent: pattern?.getWidth(
-              ticksPerQuarter: state.ticksPerQuarter,
               barMultiple: 4,
               minPaddingInBarMultiples: 4,
             ) ??
@@ -273,7 +271,6 @@ class PianoRollCubit extends Cubit<PianoRollState> {
     emit(state.copyWith(
       notes: newNotes,
       lastContent: pattern.getWidth(
-        ticksPerQuarter: state.ticksPerQuarter,
         barMultiple: 4,
         minPaddingInBarMultiples: 4,
       ),

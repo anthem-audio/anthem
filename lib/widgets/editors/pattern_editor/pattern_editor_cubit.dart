@@ -91,7 +91,7 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
   }
 
   ID addPattern(String name) {
-    final pattern = PatternModel(name);
+    final pattern = PatternModel.create(name: name, project: project);
     project.execute(AddPatternCommand(
       project: project,
       pattern: pattern,

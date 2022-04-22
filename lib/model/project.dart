@@ -73,9 +73,16 @@ class ProjectModel extends Hydratable {
     stateChangeStream = _stateChangeStreamController.stream;
   }
 
-  ProjectModel.newProject() : super() {
+  ProjectModel.create() : super() {
     stateChangeStream = _stateChangeStreamController.stream;
-    song = SongModel.newProject();
+    song = SongModel.create(
+      project: this,
+      stateChangeStreamController: _stateChangeStreamController,
+    );
+
+    // We don't need to hydrate here. All `SomeModel.Create()` functions should
+    // call hydrate().
+    isHydrated = true;
   }
 
   factory ProjectModel.fromJson(Map<String, dynamic> json) {

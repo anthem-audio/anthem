@@ -72,7 +72,7 @@ class MainWindowCubit extends Cubit<MainWindowState> {
 
   // Returns the ID of the new tab
   ID newProject() {
-    ProjectModel project = ProjectModel.newProject()..hydrate();
+    ProjectModel project = ProjectModel.create();
     Store.instance.addProject(project);
     return project.id;
   }
