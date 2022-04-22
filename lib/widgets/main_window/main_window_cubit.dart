@@ -32,7 +32,6 @@ import 'package:file_picker/file_picker.dart';
 part 'main_window_state.dart';
 
 class MainWindowCubit extends Cubit<MainWindowState> {
-
   MainWindowCubit()
       : super(MainWindowState(
             tabs: _getTabs(), selectedTabID: Store.instance.activeProjectID)) {
@@ -73,8 +72,7 @@ class MainWindowCubit extends Cubit<MainWindowState> {
 
   // Returns the ID of the new tab
   ID newProject() {
-    ProjectModel project = ProjectModel();
-    project.hydrate();
+    ProjectModel project = ProjectModel.newProject()..hydrate();
     Store.instance.addProject(project);
     return project.id;
   }
@@ -95,8 +93,7 @@ class MainWindowCubit extends Cubit<MainWindowState> {
       if (path == null) return null;
       final file = await File(path).readAsString();
 
-      final project = ProjectModel.fromJson(json.decode(file));
-      project.hydrate();
+      final project = ProjectModel.fromJson(json.decode(file))..hydrate();
       Store.instance.addProject(project);
 
       return project.id;

@@ -44,12 +44,14 @@ class AddClipCommand extends Command {
 
   @override
   List<StateChange> execute() {
-    project.song.arrangements[arrangementID]!.clips[clipID] = ClipModel(
+    final clipModel = ClipModel(
       offset: offset,
       patternID: patternID,
       trackID: trackID,
       timeView: timeView,
-    );
+    )..hydrate(project: project);
+
+    project.song.arrangements[arrangementID]!.clips[clipID] = clipModel;
 
     return [ClipAdded(projectID: project.id, arrangementID: arrangementID)];
   }

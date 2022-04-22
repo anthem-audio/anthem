@@ -28,16 +28,17 @@ import 'package:anthem/model/project.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 import 'arrangement/arrangement.dart';
+import 'shared/hydratable.dart';
 
 part 'song.g.dart';
 
 @JsonSerializable()
-class SongModel {
-  ID id;
+class SongModel extends Hydratable {
+  ID id = getID();
   int ticksPerQuarter = 96; // TODO
 
-  Map<ID, PatternModel> patterns;
-  List<ID> patternOrder;
+  Map<ID, PatternModel> patterns = HashMap();
+  List<ID> patternOrder = [];
   ID? activePatternID;
 
   ID? activeGeneratorID;
@@ -52,14 +53,22 @@ class SongModel {
   @JsonKey(ignore: true)
   StreamController<List<StateChange>>? _changeStreamController;
 
+  StreamController<List<StateChange>> get changeStreamController {
+    assertHydrated();
+    return _changeStreamController!;
+  }
+
   @JsonKey(ignore: true)
   ProjectModel? _project;
 
-  SongModel()
-      : id = getID(),
-        ticksPerQuarter = 96,
-        patterns = HashMap(),
-        patternOrder = [] {
+  ProjectModel get project {
+    assertHydrated();
+    return _project!;
+  }
+
+  SongModel() : super();
+
+  SongModel.newProject() : super() {
     final arrangement = ArrangementModel(name: "Arrangement 1");
     arrangements = {arrangement.id: arrangement};
     arrangementOrder = [arrangement.id];
@@ -92,6 +101,10 @@ class SongModel {
   }) {
     _project = project;
     _changeStreamController = changeStreamController;
+    for (final arrangement in arrangements.values) {
+      arrangement.hydrate(project: project);
+    }
+    isHydrated = true;
   }
 
   void setActiveGenerator(ID? generatorID) {

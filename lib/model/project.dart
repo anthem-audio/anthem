@@ -30,19 +30,20 @@ import 'package:anthem/model/song.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 import 'generator.dart';
+import 'shared/hydratable.dart';
 
 part 'project.g.dart';
 
 @JsonSerializable()
-class ProjectModel {
+class ProjectModel extends Hydratable {
   late SongModel song;
 
-  Map<ID, InstrumentModel> instruments;
-  Map<ID, ControllerModel> controllers;
-  List<ID> generatorList;
+  Map<ID, InstrumentModel> instruments = HashMap();
+  Map<ID, ControllerModel> controllers = HashMap();
+  List<ID> generatorList = [];
 
   @JsonKey(ignore: true)
-  String id;
+  ID id = getID();
 
   @JsonKey(ignore: true)
   String? filePath;
@@ -66,13 +67,15 @@ class ProjectModel {
   @JsonKey(ignore: true)
   bool isSaved = false;
 
-  ProjectModel()
-      : id = getID(),
-        instruments = HashMap(),
-        controllers = HashMap(),
-        generatorList = [] {
+  // This method is used for deserialization and so doesn't create new child
+  // models.
+  ProjectModel() : super() {
     stateChangeStream = _stateChangeStreamController.stream;
-    song = SongModel();
+  }
+
+  ProjectModel.newProject() : super() {
+    stateChangeStream = _stateChangeStreamController.stream;
+    song = SongModel.newProject();
   }
 
   factory ProjectModel.fromJson(Map<String, dynamic> json) {
@@ -88,6 +91,7 @@ class ProjectModel {
       project: this,
       changeStreamController: _stateChangeStreamController,
     );
+    isHydrated = true;
   }
 
   Map<String, dynamic> toJson() => _$ProjectModelToJson(this);
