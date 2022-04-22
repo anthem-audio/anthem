@@ -68,6 +68,7 @@ class _VerticalScaleControlState extends State<VerticalScaleControl> {
           });
         },
         child: ControlMouseHandler(
+          allowHorizontalJump: false,
           onStart: () {
             setState(() {
             isPressed = true;

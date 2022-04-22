@@ -45,12 +45,17 @@ class ControlMouseHandler extends StatefulWidget {
   final Function(ControlMouseEvent event)? onEnd;
   final Function(ControlMouseEvent event)? onChange;
 
+  final bool allowHorizontalJump;
+  final bool allowVerticalJump;
+
   const ControlMouseHandler({
     Key? key,
     this.child,
     this.onStart,
     this.onEnd,
     this.onChange,
+    this.allowHorizontalJump = true,
+    this.allowVerticalJump = true,
   }) : super(key: key);
 
   @override
@@ -160,50 +165,58 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
                 verticalAxisState == _AxisHandlerStatus.waitingForPositiveJump;
 
         // Horizontal axis jump detection
-        if (horizontalAxisState == _AxisHandlerStatus.waitingForNegativeJump ||
-            horizontalAxisState == _AxisHandlerStatus.waitingForPositiveJump) {
+        if (widget.allowHorizontalJump) {
           if (horizontalAxisState ==
-                  _AxisHandlerStatus.waitingForNegativeJump &&
-              !isInRightJumpDetectZone) {
-            horizontalAxisState = _AxisHandlerStatus.idle;
-          }
-          if (horizontalAxisState ==
-                  _AxisHandlerStatus.waitingForPositiveJump &&
-              !isInLeftJumpDetectZone) {
-            horizontalAxisState = _AxisHandlerStatus.idle;
-          }
-        } else if (horizontalAxisState == _AxisHandlerStatus.idle) {
-          accumulatorX += dx;
+                  _AxisHandlerStatus.waitingForNegativeJump ||
+              horizontalAxisState ==
+                  _AxisHandlerStatus.waitingForPositiveJump) {
+            if (horizontalAxisState ==
+                    _AxisHandlerStatus.waitingForNegativeJump &&
+                !isInRightJumpDetectZone) {
+              horizontalAxisState = _AxisHandlerStatus.idle;
+            }
+            if (horizontalAxisState ==
+                    _AxisHandlerStatus.waitingForPositiveJump &&
+                !isInLeftJumpDetectZone) {
+              horizontalAxisState = _AxisHandlerStatus.idle;
+            }
+          } else if (horizontalAxisState == _AxisHandlerStatus.idle) {
+            accumulatorX += dx;
 
-          if (isInLeftJumpDetectZone) {
-            horizontalAxisState = _AxisHandlerStatus.waitingForPositiveJump;
-            xJumpDirection = _JumpDirection.positive;
-          } else if (isInRightJumpDetectZone) {
-            horizontalAxisState = _AxisHandlerStatus.waitingForNegativeJump;
-            xJumpDirection = _JumpDirection.negative;
+            if (isInLeftJumpDetectZone) {
+              horizontalAxisState = _AxisHandlerStatus.waitingForPositiveJump;
+              xJumpDirection = _JumpDirection.positive;
+            } else if (isInRightJumpDetectZone) {
+              horizontalAxisState = _AxisHandlerStatus.waitingForNegativeJump;
+              xJumpDirection = _JumpDirection.negative;
+            }
           }
         }
 
         // Vertical axis jump detection
-        if (verticalAxisState == _AxisHandlerStatus.waitingForNegativeJump ||
-            verticalAxisState == _AxisHandlerStatus.waitingForPositiveJump) {
-          if (verticalAxisState == _AxisHandlerStatus.waitingForNegativeJump &&
-              !isInBottomJumpDetectZone) {
-            verticalAxisState = _AxisHandlerStatus.idle;
-          }
-          if (verticalAxisState == _AxisHandlerStatus.waitingForPositiveJump &&
-              !isInTopJumpDetectZone) {
-            verticalAxisState = _AxisHandlerStatus.idle;
-          }
-        } else if (verticalAxisState == _AxisHandlerStatus.idle) {
-          accumulatorY += dy;
+        if (widget.allowVerticalJump) {
+          if (verticalAxisState == _AxisHandlerStatus.waitingForNegativeJump ||
+              verticalAxisState == _AxisHandlerStatus.waitingForPositiveJump) {
+            if (verticalAxisState ==
+                    _AxisHandlerStatus.waitingForNegativeJump &&
+                !isInBottomJumpDetectZone) {
+              verticalAxisState = _AxisHandlerStatus.idle;
+            }
+            if (verticalAxisState ==
+                    _AxisHandlerStatus.waitingForPositiveJump &&
+                !isInTopJumpDetectZone) {
+              verticalAxisState = _AxisHandlerStatus.idle;
+            }
+          } else if (verticalAxisState == _AxisHandlerStatus.idle) {
+            accumulatorY += dy;
 
-          if (isInTopJumpDetectZone) {
-            verticalAxisState = _AxisHandlerStatus.waitingForPositiveJump;
-            yJumpDirection = _JumpDirection.positive;
-          } else if (isInBottomJumpDetectZone) {
-            verticalAxisState = _AxisHandlerStatus.waitingForNegativeJump;
-            yJumpDirection = _JumpDirection.negative;
+            if (isInTopJumpDetectZone) {
+              verticalAxisState = _AxisHandlerStatus.waitingForPositiveJump;
+              yJumpDirection = _JumpDirection.positive;
+            } else if (isInBottomJumpDetectZone) {
+              verticalAxisState = _AxisHandlerStatus.waitingForNegativeJump;
+              yJumpDirection = _JumpDirection.negative;
+            }
           }
         }
 
