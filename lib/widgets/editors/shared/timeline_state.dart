@@ -19,7 +19,8 @@
 
 part of 'timeline_cubit.dart';
 
-@freezed
+// Workaround for https://github.com/rrousselGit/freezed/issues/653
+@Freezed(makeCollectionsUnmodifiable: false)
 class TimelineState with _$TimelineState {
 
   factory TimelineState({

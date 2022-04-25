@@ -19,7 +19,8 @@
 
 part of 'pattern_editor_cubit.dart';
 
-@freezed
+// Workaround for https://github.com/rrousselGit/freezed/issues/653
+@Freezed(makeCollectionsUnmodifiable: false)
 class PatternEditorState with _$PatternEditorState {
   factory PatternEditorState({
     required ID projectID,
@@ -31,13 +32,15 @@ class PatternEditorState with _$PatternEditorState {
   }) = _PatternEditorState;
 }
 
-@freezed
+// Workaround for https://github.com/rrousselGit/freezed/issues/653
+@Freezed(makeCollectionsUnmodifiable: false)
 class PatternListItem with _$PatternListItem {
   factory PatternListItem({required ID id, required String name}) =
       _PatternListItem;
 }
 
-@freezed
+// Workaround for https://github.com/rrousselGit/freezed/issues/653
+@Freezed(makeCollectionsUnmodifiable: false)
 class GeneratorListItem with _$GeneratorListItem {
   factory GeneratorListItem({required ID id}) = _GeneratorListItem;
 }

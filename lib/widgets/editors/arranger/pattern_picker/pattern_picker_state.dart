@@ -1,6 +1,7 @@
 part of 'pattern_picker_cubit.dart';
 
-@freezed
+// Workaround for https://github.com/rrousselGit/freezed/issues/653
+@Freezed(makeCollectionsUnmodifiable: false)
 class PatternPickerState with _$PatternPickerState {
   factory PatternPickerState({
     required ID projectID,

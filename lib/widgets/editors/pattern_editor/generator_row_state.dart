@@ -19,7 +19,8 @@
 
 part of 'generator_row_cubit.dart';
 
-@freezed
+// Workaround for https://github.com/rrousselGit/freezed/issues/653
+@Freezed(makeCollectionsUnmodifiable: false)
 class GeneratorRowState with _$GeneratorRowState {
   factory GeneratorRowState({
     required ID generatorID,

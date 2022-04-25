@@ -19,7 +19,8 @@
 
 part of 'arranger_cubit.dart';
 
-@freezed
+// Workaround for https://github.com/rrousselGit/freezed/issues/653
+@Freezed(makeCollectionsUnmodifiable: false)
 class ArrangerState with _$ArrangerState {
   factory ArrangerState({
     required ID projectID,
