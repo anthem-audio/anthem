@@ -19,7 +19,8 @@
 
 part of 'project_cubit.dart';
 
-@freezed
+// Workaround for https://github.com/rrousselGit/freezed/issues/653
+@Freezed(makeCollectionsUnmodifiable: false)
 class ProjectState with _$ProjectState {
 
   factory ProjectState({
