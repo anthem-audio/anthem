@@ -18,11 +18,8 @@
 */
 
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
-import 'package:anthem/widgets/main_window/main_window_cubit.dart';
 import 'package:flutter/widgets.dart';
-import 'package:provider/provider.dart';
 
-import '../../../theme.dart';
 import 'helpers.dart';
 
 class DragInfo {

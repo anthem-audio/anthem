@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/song.dart';
 import 'package:flutter/foundation.dart';
 
 /// ## Context
