@@ -77,14 +77,19 @@ class ArrangerCubit extends Cubit<ArrangerState> {
 
   void _onModelChanged(List<StateChange> changes) {
     var didClipsChange = false;
+    var didSelectedArrangementChange = false;
+    var didArrangementListChange = false;
 
     for (final change in changes) {
-      if (change is ClipAdded || change is ClipDeleted) {
-        if ((change as ArrangementStateChange).arrangementID !=
-            state.activeArrangementID) {
-          continue;
-        }
+      final relatesToSelectedArrangement =change is ArrangementStateChange &&
+          change.arrangementID == state.activeArrangementID;
+
+      if (relatesToSelectedArrangement && (change is ClipAdded || change is ClipDeleted)) {
         didClipsChange = true;
+      }
+
+      if (change is ArrangementAdded || change is ArrangementDeleted) {
+        didArrangementListChange = true;
       }
     }
 
@@ -98,9 +103,32 @@ class ArrangerCubit extends Cubit<ArrangerState> {
       );
     }
 
+    if (didArrangementListChange) {
+      newState = (newState ?? state).copyWith(
+        arrangementIDs: [...project.song.arrangementOrder],
+        arrangementNames: project.song.arrangements.map(
+          (id, arrangement) => MapEntry(id, arrangement.name),
+        ),
+      );
+    }
+
     if (newState != null) {
       emit(newState);
     }
+  }
+
+  void addArrangement() {
+    var arrangementNumber = state.arrangementIDs.length;
+    String arrangementName;
+
+    do {
+      arrangementNumber++;
+      arrangementName = "Arrangement $arrangementNumber";
+    } while (state.arrangementNames.containsValue(arrangementName));
+
+    project.execute(
+      AddArrangementCommand(project: project, arrangementName: arrangementName),
+    );
   }
 
   void setBaseTrackHeight(double trackHeight) {

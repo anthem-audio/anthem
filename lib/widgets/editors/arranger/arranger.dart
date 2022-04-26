@@ -24,6 +24,8 @@ import 'package:anthem/widgets/basic/clip/clip_cubit.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/icon.dart';
+import 'package:anthem/widgets/basic/menu/menu.dart';
+import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
 import 'package:anthem/widgets/editors/arranger/clip_layout_delegate.dart';
@@ -64,6 +66,8 @@ class _ArrangerState extends State<Arranger> {
             ChangeNotifierProvider(create: (_) => TimeView(0, 3072)),
           ],
           builder: (context, widget) {
+            final menuController = MenuController();
+
             final cubit = BlocProvider.of<ArrangerCubit>(context);
             final timeView = Provider.of<TimeView>(context);
 
@@ -86,9 +90,23 @@ class _ArrangerState extends State<Arranger> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Button(
-                                  width: 26,
-                                  startIcon: Icons.kebab,
+                                Menu(
+                                  menuDef: MenuDef(
+                                    children: [
+                                      MenuItem(
+                                        text: "New arrangement",
+                                        onSelected: () {
+                                          cubit.addArrangement();
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  menuController: menuController,
+                                  child: Button(
+                                    width: 26,
+                                    startIcon: Icons.kebab,
+                                    onPress: () => menuController.open?.call(),
+                                  ),
                                 ),
                                 // const SizedBox(width: 4),
                                 // const SizedBox(
@@ -163,7 +181,8 @@ class _ArrangerState extends State<Arranger> {
                           Expanded(
                             child: ScrollbarRenderer(
                               scrollRegionStart: 0,
-                              scrollRegionEnd: state.arrangementWidth.toDouble(),
+                              scrollRegionEnd:
+                                  state.arrangementWidth.toDouble(),
                               handleStart: timeView.start,
                               handleEnd: timeView.end,
                               canScrollPastEnd: true,

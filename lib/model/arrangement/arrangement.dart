@@ -32,7 +32,7 @@ part 'arrangement.g.dart';
 
 @JsonSerializable()
 class ArrangementModel extends Hydratable {
-  ID id = getID();
+  ID id;
   String name;
   Map<ID, ClipModel> clips = {};
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
@@ -45,10 +45,14 @@ class ArrangementModel extends Hydratable {
     return _project!;
   }
 
-  ArrangementModel({required this.name}) : super();
+  ArrangementModel({
+    required this.name,
+    required this.id,
+  }) : super();
 
   ArrangementModel.create({
     required this.name,
+    required this.id,
     required ProjectModel project,
   }) : super() {
     hydrate(project: project);
