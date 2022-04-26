@@ -42,6 +42,8 @@ class ArrangerState with _$ArrangerState {
     // Vertical scroll position, in pixels
     @Default(0) double verticalScrollPosition,
 
+    required int arrangementWidth,
+
     required List<ID> clipIDs,
 
     required int ticksPerQuarter,

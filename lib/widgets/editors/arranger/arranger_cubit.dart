@@ -68,6 +68,7 @@ class ArrangerCubit extends Cubit<ArrangerState> {
             trackHeightModifiers: trackHeightModifiers,
             ticksPerQuarter: project.song.ticksPerQuarter,
             clipIDs: arrangement.clips.keys.toList(),
+            arrangementWidth: arrangement.getWidth(),
           );
         })()) {
     project = Store.instance.projects[projectID]!;
@@ -90,10 +91,10 @@ class ArrangerCubit extends Cubit<ArrangerState> {
     ArrangerState? newState;
 
     if (didClipsChange) {
+      final arrangement = project.song.arrangements[state.activeArrangementID]!;
       newState = (newState ?? state).copyWith(
-        clipIDs: project
-            .song.arrangements[state.activeArrangementID]!.clips.keys
-            .toList(),
+        clipIDs: arrangement.clips.keys.toList(),
+        arrangementWidth: arrangement.getWidth(),
       );
     }
 

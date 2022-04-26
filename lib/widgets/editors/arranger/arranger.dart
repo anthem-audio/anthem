@@ -163,9 +163,14 @@ class _ArrangerState extends State<Arranger> {
                           Expanded(
                             child: ScrollbarRenderer(
                               scrollRegionStart: 0,
-                              scrollRegionEnd: 10000, // TODO
+                              scrollRegionEnd: state.arrangementWidth.toDouble(),
                               handleStart: timeView.start,
                               handleEnd: timeView.end,
+                              canScrollPastEnd: true,
+                              onChange: (event) {
+                                timeView.setStart(event.handleStart);
+                                timeView.setEnd(event.handleEnd);
+                              },
                             ),
                           ),
                           const SizedBox(width: 4),
@@ -325,13 +330,6 @@ class _ArrangerContent extends StatelessWidget {
                                       ),
                                       children: state.clipIDs.map<Widget>(
                                         (id) {
-                                          final clipModel = cubit
-                                              .project
-                                              .song
-                                              .arrangements[
-                                                  state.activeArrangementID]!
-                                              .clips[id]!;
-
                                           return LayoutId(
                                             key: Key(id.toString()),
                                             id: id,
