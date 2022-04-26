@@ -102,9 +102,10 @@ class ArrangerCubit extends Cubit<ArrangerState> {
     }
   }
 
-  void setBaseTrackHeight(double newTrackHeight) {
+  void setBaseTrackHeight(double trackHeight) {
     final oldTrackHeight =
         state.baseTrackHeight.clamp(minTrackHeight, maxTrackHeight);
+    final newTrackHeight = trackHeight.clamp(minTrackHeight, maxTrackHeight);
     final oldVerticalScrollPosition = state.verticalScrollPosition;
     emit(
       state.copyWith(
