@@ -74,6 +74,7 @@ class SongModel extends Hydratable {
   }) : super() {
     final arrangement = ArrangementModel.create(
       name: "Arrangement 1",
+      id: getID(),
       project: project,
     );
     arrangements = {arrangement.id: arrangement};

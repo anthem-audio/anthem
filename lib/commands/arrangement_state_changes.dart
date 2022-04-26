@@ -24,7 +24,7 @@ part of 'state_changes.dart';
  */
 
 abstract class ArrangementStateChange extends ProjectStateChange {
-  ID? arrangementID;
+  ID arrangementID;
 
   ArrangementStateChange({required ID projectID, required this.arrangementID})
       : super(projectID: projectID);
@@ -37,7 +37,7 @@ abstract class ArrangementStateChange extends ProjectStateChange {
 class ClipAdded extends ArrangementStateChange {
   ClipAdded({
     required ID projectID,
-    required ID? arrangementID,
+    required ID arrangementID,
   }) : super(
           projectID: projectID,
           arrangementID: arrangementID,
@@ -47,7 +47,27 @@ class ClipAdded extends ArrangementStateChange {
 class ClipDeleted extends ArrangementStateChange {
   ClipDeleted({
     required ID projectID,
-    required ID? arrangementID,
+    required ID arrangementID,
+  }) : super(
+          projectID: projectID,
+          arrangementID: arrangementID,
+        );
+}
+
+class ArrangementAdded extends ArrangementStateChange {
+  ArrangementAdded({
+    required ID projectID,
+    required ID arrangementID,
+  }) : super(
+          projectID: projectID,
+          arrangementID: arrangementID,
+        );
+}
+
+class ArrangementDeleted extends ArrangementStateChange {
+  ArrangementDeleted({
+    required ID projectID,
+    required ID arrangementID,
   }) : super(
           projectID: projectID,
           arrangementID: arrangementID,
