@@ -81,10 +81,11 @@ class ArrangerCubit extends Cubit<ArrangerState> {
     var didArrangementListChange = false;
 
     for (final change in changes) {
-      final relatesToSelectedArrangement =change is ArrangementStateChange &&
+      final relatesToSelectedArrangement = change is ArrangementStateChange &&
           change.arrangementID == state.activeArrangementID;
 
-      if (relatesToSelectedArrangement && (change is ClipAdded || change is ClipDeleted)) {
+      if (relatesToSelectedArrangement &&
+          (change is ClipAdded || change is ClipDeleted)) {
         didClipsChange = true;
       }
 
@@ -152,11 +153,17 @@ class ArrangerCubit extends Cubit<ArrangerState> {
   }
 
   void setHeightModifier(ID trackID, double newModifier) {
+    final newHeightModifiers = {
+      ...state.trackHeightModifiers,
+      trackID: newModifier,
+    };
+
     emit(
-      state.copyWith(trackHeightModifiers: {
-        ...state.trackHeightModifiers,
-        trackID: newModifier
-      }),
+      state.copyWith(
+        trackHeightModifiers: newHeightModifiers,
+        scrollAreaHeight:
+            getScrollAreaHeight(state.baseTrackHeight, newHeightModifiers),
+      ),
     );
   }
 
