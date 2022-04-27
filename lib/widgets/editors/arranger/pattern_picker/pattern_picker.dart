@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/button_tabs.dart';
 import 'package:anthem/widgets/basic/clip/clip.dart' as anthem_clip;
 import 'package:anthem/widgets/basic/clip/clip_cubit.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
@@ -54,13 +55,8 @@ class PatternPicker extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(4),
-                            color: Theme.panel.accent,
-                          ),
-                        ),
+                      const Expanded(
+                        child: ButtonTabs(),
                       ),
                       const SizedBox(width: 4),
                       VerticalScaleControl(
