@@ -54,7 +54,6 @@ class SongModel extends Hydratable {
   StreamController<List<StateChange>>? _changeStreamController;
 
   StreamController<List<StateChange>> get changeStreamController {
-    assertHydrated();
     return _changeStreamController!;
   }
 
@@ -62,7 +61,6 @@ class SongModel extends Hydratable {
   ProjectModel? _project;
 
   ProjectModel get project {
-    assertHydrated();
     return _project!;
   }
 
