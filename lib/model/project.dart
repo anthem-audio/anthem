@@ -91,6 +91,11 @@ class ProjectModel extends Hydratable {
     return model;
   }
 
+  Map<String, dynamic> toJson() => _$ProjectModelToJson(this);
+
+  @override
+  String toString() => json.encode(toJson());
+
   /// This function is run after deserialization. It allows us to do some setup
   /// that the deserialization step can't do for us.
   void hydrate() {
@@ -100,11 +105,6 @@ class ProjectModel extends Hydratable {
     );
     isHydrated = true;
   }
-
-  Map<String, dynamic> toJson() => _$ProjectModelToJson(this);
-
-  @override
-  String toString() => json.encode(toJson());
 
   void _dispatch(List<StateChange> changes) {
     _stateChangeStreamController.add(changes);

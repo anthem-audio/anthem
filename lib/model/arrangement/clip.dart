@@ -39,12 +39,10 @@ class ClipModel extends Hydratable {
   PatternModel? _pattern;
 
   ProjectModel get project {
-    assertHydrated();
     return _project!;
   }
 
   PatternModel get pattern {
-    assertHydrated();
     return _pattern!;
   }
 
@@ -74,10 +72,8 @@ class ClipModel extends Hydratable {
   void hydrate({required ProjectModel project}) {
     _project = project;
     _pattern = project.song.patterns[patternID]!;
+    isHydrated = true;
   }
-
-  @override
-  bool get isHydrated => _project != null && _pattern != null;
 
   int getWidth() {
     if (timeView != null) {

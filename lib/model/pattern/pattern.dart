@@ -50,7 +50,6 @@ class PatternModel extends Hydratable {
   ProjectModel? _project;
 
   ProjectModel get project {
-    assertHydrated();
     return _project!;
   }
 

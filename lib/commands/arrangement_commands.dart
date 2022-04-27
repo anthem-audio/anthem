@@ -46,11 +46,12 @@ class AddClipCommand extends Command {
   @override
   List<StateChange> execute() {
     final clipModel = ClipModel.create(
-        offset: offset,
-        patternID: patternID,
-        trackID: trackID,
-        timeView: timeView,
-        project: project);
+      offset: offset,
+      patternID: patternID,
+      trackID: trackID,
+      timeView: timeView,
+      project: project,
+    );
 
     project.song.arrangements[arrangementID]!.clips[clipID] = clipModel;
 
