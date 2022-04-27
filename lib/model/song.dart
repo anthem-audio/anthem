@@ -125,15 +125,23 @@ class SongModel extends Hydratable {
 
   void setActiveGenerator(ID? generatorID) {
     activeGeneratorID = generatorID;
-    _changeStreamController!.add([
-      ActiveGeneratorSet(projectID: _project!.id, generatorID: generatorID)
+    changeStreamController.add([
+      ActiveGeneratorChanged(projectID: _project!.id, generatorID: generatorID)
     ]);
   }
 
   void setActivePattern(ID? patternID) {
     activePatternID = patternID;
-    _changeStreamController!
-        .add([ActivePatternSet(projectID: _project!.id, patternID: patternID)]);
+    changeStreamController.add(
+        [ActivePatternChanged(projectID: _project!.id, patternID: patternID)]);
+  }
+
+  void setActiveArrangement(ID? arrangementID) {
+    activeArrangementID = arrangementID;
+    changeStreamController.add([
+      ActiveArrangementChanged(
+          projectID: _project!.id, arrangementID: arrangementID)
+    ]);
   }
 }
 

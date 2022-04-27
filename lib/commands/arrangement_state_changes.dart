@@ -24,7 +24,7 @@ part of 'state_changes.dart';
  */
 
 abstract class ArrangementStateChange extends ProjectStateChange {
-  ID arrangementID;
+  ID? arrangementID;
 
   ArrangementStateChange({required ID projectID, required this.arrangementID})
       : super(projectID: projectID);
@@ -68,6 +68,16 @@ class ArrangementDeleted extends ArrangementStateChange {
   ArrangementDeleted({
     required ID projectID,
     required ID arrangementID,
+  }) : super(
+          projectID: projectID,
+          arrangementID: arrangementID,
+        );
+}
+
+class ActiveArrangementChanged extends ArrangementStateChange {
+  ActiveArrangementChanged({
+    required ID projectID,
+    required ID? arrangementID,
   }) : super(
           projectID: projectID,
           arrangementID: arrangementID,

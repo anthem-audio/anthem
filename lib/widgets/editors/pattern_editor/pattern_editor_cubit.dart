@@ -44,7 +44,7 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
     var updateGeneratorList = false;
 
     for (final change in changes) {
-      if (change is ActivePatternSet) {
+      if (change is ActivePatternChanged) {
         updateActivePattern = true;
       }
 
