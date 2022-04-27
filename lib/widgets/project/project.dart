@@ -24,6 +24,7 @@ import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart'
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/project/project_cubit.dart';
+import 'package:anthem/widgets/project/project_footer.dart';
 import 'package:anthem/widgets/project_explorer/project_explorer.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -87,13 +88,7 @@ class Project extends StatelessWidget {
           const SizedBox(
             height: 3,
           ),
-          Container(
-            height: 42,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              color: Theme.panel.main,
-            ),
-          )
+          const ProjectFooter(),
         ],
       );
     });

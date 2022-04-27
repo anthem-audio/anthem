@@ -33,7 +33,6 @@ part 'clip_state.dart';
 part 'clip_cubit.freezed.dart';
 
 class ClipCubit extends Cubit<ClipState> {
-  // TODO: Allow this to optionally take a ClipModel
   late final ProjectModel project;
   late final PatternModel pattern;
   late final ClipModel? clip;
