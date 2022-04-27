@@ -66,7 +66,7 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
     var updateNotes = false;
 
     for (final change in changes) {
-      if (change is ActivePatternSet) {
+      if (change is ActivePatternChanged) {
         updateActivePattern = true;
       }
 

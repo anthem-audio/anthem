@@ -66,16 +66,16 @@ class PianoRollCubit extends Cubit<PianoRollState> {
     var updateActiveGenerator = false;
 
     for (final change in changes) {
-      if (change is ActivePatternSet ||
+      if (change is ActivePatternChanged ||
           change is NoteAdded ||
           change is NoteDeleted ||
           change is NoteMoved ||
           change is NoteResized ||
-          change is ActiveGeneratorSet) {
+          change is ActiveGeneratorChanged) {
         updateActivePattern = true;
       }
 
-      if (change is ActiveGeneratorSet) {
+      if (change is ActiveGeneratorChanged) {
         updateActiveGenerator = true;
       }
     }

@@ -77,7 +77,7 @@ class ArrangerCubit extends Cubit<ArrangerState> {
 
   void _onModelChanged(List<StateChange> changes) {
     var didClipsChange = false;
-    var didSelectedArrangementChange = false;
+    var didActiveArrangementChange = false;
     var didArrangementListChange = false;
 
     for (final change in changes) {
@@ -92,15 +92,20 @@ class ArrangerCubit extends Cubit<ArrangerState> {
       if (change is ArrangementAdded || change is ArrangementDeleted) {
         didArrangementListChange = true;
       }
+
+      if (change is ActiveArrangementChanged) {
+        didActiveArrangementChange = true;
+        didClipsChange = true;
+      }
     }
 
     ArrangerState? newState;
 
     if (didClipsChange) {
-      final arrangement = project.song.arrangements[state.activeArrangementID]!;
+      final arrangement = project.song.arrangements[project.song.activeArrangementID];
       newState = (newState ?? state).copyWith(
-        clipIDs: arrangement.clips.keys.toList(),
-        arrangementWidth: arrangement.getWidth(),
+        clipIDs: arrangement?.clips.keys.toList() ?? [],
+        arrangementWidth: arrangement?.getWidth() ?? project.song.ticksPerQuarter * 4 * 8,
       );
     }
 
@@ -111,6 +116,11 @@ class ArrangerCubit extends Cubit<ArrangerState> {
           (id, arrangement) => MapEntry(id, arrangement.name),
         ),
       );
+    }
+
+    if (didActiveArrangementChange) {
+      newState = (newState ?? state)
+          .copyWith(activeArrangementID: project.song.activeArrangementID);
     }
 
     if (newState != null) {
@@ -172,6 +182,10 @@ class ArrangerCubit extends Cubit<ArrangerState> {
     emit(
       state.copyWith(tool: tool),
     );
+  }
+
+  void setActiveArrangement(ID? arrangementID) {
+    project.song.setActiveArrangement(arrangementID);
   }
 
   void handleMouseDown(Offset offset, Size editorSize, TimeView timeView) {

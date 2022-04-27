@@ -43,8 +43,8 @@ class GeneratorRemoved extends GeneratorStateChange {
   }) : super(projectID: projectID, generatorID: generatorID);
 }
 
-class ActiveGeneratorSet extends GeneratorStateChange {
-  ActiveGeneratorSet({
+class ActiveGeneratorChanged extends GeneratorStateChange {
+  ActiveGeneratorChanged({
     required ID projectID,
     required ID? generatorID,
   }) : super(projectID: projectID, generatorID: generatorID);
@@ -64,8 +64,8 @@ class PatternDeleted extends PatternStateChange {
   }) : super(projectID: projectID, patternID: patternID);
 }
 
-class ActivePatternSet extends PatternStateChange {
-  ActivePatternSet({
+class ActivePatternChanged extends PatternStateChange {
+  ActivePatternChanged({
     required ID projectID,
     required ID? patternID,
   }) : super(projectID: projectID, patternID: patternID);
