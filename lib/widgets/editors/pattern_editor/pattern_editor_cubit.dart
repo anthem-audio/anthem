@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/commands/project_commands.dart';
 import 'package:anthem/commands/state_changes.dart';
@@ -33,9 +35,18 @@ part 'pattern_editor_cubit.freezed.dart';
 class PatternEditorCubit extends Cubit<PatternEditorState> {
   final ProjectModel project;
 
+  late final StreamSubscription<List<StateChange>> _stateChangeStream;
+
+  @override
+  Future<void> close() async {
+    await _stateChangeStream.cancel();
+
+    return super.close();
+  }
+
   PatternEditorCubit({required this.project})
       : super(PatternEditorState(projectID: project.id)) {
-    project.stateChangeStream.listen(_onModelChanged);
+    _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
   }
 
   _onModelChanged(List<StateChange> changes) {

@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
@@ -36,7 +38,17 @@ enum TimelineType {
 
 class TimelineCubit extends Cubit<TimelineState> {
   final TimelineType timelineType;
+
   late final ProjectModel project;
+
+  late final StreamSubscription<List<StateChange>> _stateChangeStream;
+
+  @override
+  Future<void> close() async {
+    await _stateChangeStream.cancel();
+
+    return super.close();
+  }
 
   TimelineCubit({
     required this.timelineType,
@@ -69,7 +81,7 @@ class TimelineCubit extends Cubit<TimelineState> {
         })()) {
     project = Store.instance.projects[projectID]!;
 
-    project.stateChangeStream.listen(_onModelChanged);
+    _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
   }
 
   _onModelChanged(List<StateChange> changes) {

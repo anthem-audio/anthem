@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:anthem/commands/arrangement_commands.dart';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
@@ -35,6 +37,15 @@ part 'arranger_cubit.freezed.dart';
 
 class ArrangerCubit extends Cubit<ArrangerState> {
   late final ProjectModel project;
+
+  late final StreamSubscription<List<StateChange>> _stateChangeStream;
+
+  @override
+  Future<void> close() async {
+    await _stateChangeStream.cancel();
+
+    return super.close();
+  }
 
   ArrangerCubit({required ID projectID})
       : super((() {
@@ -72,7 +83,7 @@ class ArrangerCubit extends Cubit<ArrangerState> {
           );
         })()) {
     project = Store.instance.projects[projectID]!;
-    project.stateChangeStream.listen(_onModelChanged);
+    _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
   }
 
   void _onModelChanged(List<StateChange> changes) {
@@ -102,10 +113,12 @@ class ArrangerCubit extends Cubit<ArrangerState> {
     ArrangerState? newState;
 
     if (didClipsChange) {
-      final arrangement = project.song.arrangements[project.song.activeArrangementID];
+      final arrangement =
+          project.song.arrangements[project.song.activeArrangementID];
       newState = (newState ?? state).copyWith(
         clipIDs: arrangement?.clips.keys.toList() ?? [],
-        arrangementWidth: arrangement?.getWidth() ?? project.song.ticksPerQuarter * 4 * 8,
+        arrangementWidth:
+            arrangement?.getWidth() ?? project.song.ticksPerQuarter * 4 * 8,
       );
     }
 

@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/clip.dart';
@@ -37,6 +39,8 @@ class ClipCubit extends Cubit<ClipState> {
   late final PatternModel pattern;
   late final ClipModel? clip;
 
+  late final StreamSubscription<List<StateChange>> _stateChangeStream;
+
   ClipCubit({
     required ID projectID,
     required ID arrangementID,
@@ -55,7 +59,7 @@ class ClipCubit extends Cubit<ClipState> {
     project = Store.instance.projects[projectID]!;
     clip = project.song.arrangements[arrangementID]!.clips[clipID];
     pattern = clip!.pattern;
-    project.stateChangeStream.listen(_onModelChanged);
+    _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
   }
 
   ClipCubit.fromPatternID({required ID projectID, required ID patternID})
@@ -88,6 +92,13 @@ class ClipCubit extends Cubit<ClipState> {
         contentWidth: clip?.getWidth() ?? pattern.getWidth(),
       ));
     }
+  }
+
+  @override
+  Future<void> close() async {
+    await _stateChangeStream.cancel();
+
+    return super.close();
   }
 }
 
