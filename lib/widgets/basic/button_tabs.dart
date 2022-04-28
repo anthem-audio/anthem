@@ -128,18 +128,24 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
                     ),
                   ),
                 ),
-                Positioned(
-                  top: 0,
-                  bottom: 0,
-                  left: selectedItemStart,
-                  right: rowWidth - selectedItemEnd,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Theme.panel.border),
-                      borderRadius: BorderRadius.circular(4),
-                      color: Theme.panel.accent,
-                    ),
-                  ),
+                Builder(
+                  builder: (context) {
+                    return AnimatedPositioned(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOutExpo,
+                      top: 0,
+                      bottom: 0,
+                      left: selectedItemStart,
+                      right: rowWidth - selectedItemEnd,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Theme.panel.border),
+                          borderRadius: BorderRadius.circular(4),
+                          color: Theme.panel.accent,
+                        ),
+                      ),
+                    );
+                  }
                 ),
                 Positioned.fill(
                   child: Row(
