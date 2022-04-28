@@ -21,6 +21,10 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/control_mouse_handler.dart';
 import 'package:flutter/widgets.dart';
 
+// The user will need to drag the mouse this many pixels to get from
+// VerticalScaleControl.min to VerticalScaleControl.max
+const mouseMoveAreaHeight = 250;
+
 class VerticalScaleControl extends StatefulWidget {
   final double min;
   final double max;
@@ -43,6 +47,8 @@ class _VerticalScaleControlState extends State<VerticalScaleControl> {
   final double handleHeight = 7;
   bool isOver = false;
   bool isPressed = false;
+
+  double rawValue = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -70,24 +76,29 @@ class _VerticalScaleControlState extends State<VerticalScaleControl> {
         child: ControlMouseHandler(
           allowHorizontalJump: false,
           onStart: () {
+            rawValue = widget.value;
             setState(() {
-            isPressed = true;
-          });
+              isPressed = true;
+            });
           },
           onEnd: (event) {
             setState(() {
-            isPressed = false;
-          });
+              isPressed = false;
+            });
           },
           onChange: (event) {
-            widget.onChange((widget.value + event.delta.dy).clamp(widget.min, widget.max));
+            rawValue += (event.delta.dy / mouseMoveAreaHeight) *
+                (widget.max - widget.min);
+            widget.onChange((rawValue).clamp(widget.min, widget.max));
           },
           child: SizedBox(
             width: 17,
             child: Stack(
               children: [
                 Positioned(
-                  top: (1 - (widget.value - widget.min) / (widget.max - widget.min)) *
+                  top: (1 -
+                          (widget.value - widget.min) /
+                              (widget.max - widget.min)) *
                       (boxConstraints.maxHeight - handleHeight),
                   left: 0,
                   right: 0,
