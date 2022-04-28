@@ -25,5 +25,28 @@ class ProjectState with _$ProjectState {
 
   factory ProjectState({
     required ID id,
+    @Default(true) bool isPatternEditorVisible,
+    @Default(true) bool isAutomationMatrixVisible,
+    @Default(ProjectLayoutKind.arrange) ProjectLayoutKind layout,
+    @Default(ExplorerKind.file) ExplorerKind selectedExplorer,
+    @Default(EditorKind.detail) EditorKind selectedEditor,
   }) = _ProjectState;
+}
+
+enum ProjectLayoutKind {
+  arrange,
+  edit,
+  mix
+}
+
+enum ExplorerKind {
+  file,
+  project
+}
+
+enum EditorKind {
+  detail,
+  automation,
+  channelRack,
+  mixer,
 }

@@ -222,7 +222,7 @@ class _ButtonState extends State<Button> {
 
     final startIconWidget = widget.startIcon != null
         ? SvgIcon(
-            widget.startIcon!,
+            icon: widget.startIcon!,
             color: textColor,
           )
         : null;
@@ -240,7 +240,7 @@ class _ButtonState extends State<Button> {
 
     final endIconWidget = widget.endIcon != null
         ? SvgIcon(
-            widget.endIcon!,
+            icon: widget.endIcon!,
             color: textColor,
           )
         : null;
