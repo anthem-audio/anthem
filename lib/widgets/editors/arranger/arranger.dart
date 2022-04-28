@@ -37,6 +37,7 @@ import 'package:anthem/widgets/editors/arranger/track_header_cubit.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/timeline.dart';
 import 'package:anthem/widgets/editors/shared/timeline_cubit.dart';
+import 'package:anthem/widgets/editors/shared/tool_selector.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
@@ -99,6 +100,17 @@ class _ArrangerState extends State<Arranger> {
                                           cubit.addArrangement();
                                         },
                                       ),
+                                      Separator(),
+                                      MenuItem(
+                                        text: "Markers",
+                                        submenu: MenuDef(
+                                          children: [
+                                            MenuItem(
+                                              text: "Add time signature change",
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ],
                                   ),
                                   menuController: menuController,
@@ -108,55 +120,12 @@ class _ArrangerState extends State<Arranger> {
                                     onPress: () => menuController.open?.call(),
                                   ),
                                 ),
-                                // const SizedBox(width: 4),
-                                // const SizedBox(
-                                //   width: 39,
-                                //   child: Dropdown(
-                                //       // items: [DropdownItem(),],
-                                //       ),
-                                // ),
                                 const SizedBox(width: 4),
-                                SizedBox(
-                                  width: 39,
-                                  child: Dropdown(
-                                    showNameOnButton: false,
-                                    allowNoSelection: false,
-                                    selectedID: EditorTool.values
-                                        .firstWhere(
-                                          (tool) =>
-                                              tool.name == state.tool.name,
-                                        )
-                                        .name,
-                                    items: [
-                                      DropdownItem(
-                                        id: EditorTool.pencil.name,
-                                        name: "Pencil",
-                                        icon: Icons.tools.pencil,
-                                      ),
-                                      DropdownItem(
-                                        id: EditorTool.eraser.name,
-                                        name: "Eraser",
-                                        icon: Icons.tools.erase,
-                                      ),
-                                      DropdownItem(
-                                        id: EditorTool.select.name,
-                                        name: "Select",
-                                        icon: Icons.tools.select,
-                                      ),
-                                      DropdownItem(
-                                        id: EditorTool.cut.name,
-                                        name: "Cut",
-                                        icon: Icons.tools.cut,
-                                      ),
-                                    ],
-                                    onChanged: (id) {
-                                      cubit.setTool(
-                                        EditorTool.values.firstWhere(
-                                          (tool) => tool.name == id,
-                                        ),
-                                      );
-                                    },
-                                  ),
+                                ToolSelector(
+                                  selectedTool: state.tool,
+                                  setTool: (tool) {
+                                    cubit.setTool(tool);
+                                  },
                                 ),
                                 const SizedBox(width: 4),
                                 Flexible(
