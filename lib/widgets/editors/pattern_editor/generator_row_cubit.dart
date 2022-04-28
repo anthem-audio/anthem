@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
@@ -31,6 +33,15 @@ part 'generator_row_cubit.freezed.dart';
 
 class GeneratorRowCubit extends Cubit<GeneratorRowState> {
   late final ProjectModel project;
+
+  late final StreamSubscription<List<StateChange>> _stateChangeStream;
+
+  @override
+  Future<void> close() async {
+    await _stateChangeStream.cancel();
+
+    return super.close();
+  }
 
   GeneratorRowCubit({
     required ID projectID,
@@ -58,7 +69,7 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
           })(),
         ) {
     project = Store.instance.projects[projectID]!;
-    project.stateChangeStream.listen(_onModelChanged);
+    _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
   }
 
   _onModelChanged(List<StateChange> changes) {

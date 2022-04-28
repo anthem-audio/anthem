@@ -30,9 +30,6 @@ part 'project_state.dart';
 part 'project_cubit.freezed.dart';
 
 class ProjectCubit extends Cubit<ProjectState> {
-  // ignore: unused_field
-  late final StreamSubscription<StateChange> _updateActiveGeneratorSub;
-
   late final ProjectModel project;
 
   ProjectCubit({required ID id}) : super(ProjectState(id: id)) {

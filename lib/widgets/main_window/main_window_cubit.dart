@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -32,15 +32,28 @@ import 'package:file_picker/file_picker.dart';
 part 'main_window_state.dart';
 
 class MainWindowCubit extends Cubit<MainWindowState> {
+  late final StreamSubscription<ActiveProjectChanged> _activeProjectChangedSub;
+  late final StreamSubscription<ProjectStateChange> _projectListChangedSub;
+
+  late final StreamSubscription<List<StateChange>> _stateChangeStream;
+
+  @override
+  Future<void> close() async {
+    await _activeProjectChangedSub.cancel();
+    await _projectListChangedSub.cancel();
+
+    return super.close();
+  }
+
   MainWindowCubit()
       : super(MainWindowState(
             tabs: _getTabs(), selectedTabID: Store.instance.activeProjectID)) {
-    Store.instance.stateChangeStream
+    _activeProjectChangedSub = Store.instance.stateChangeStream
         .where((change) => change is ActiveProjectChanged)
         .map((change) => change as ActiveProjectChanged)
         .listen(_updateActiveTab);
 
-    Store.instance.stateChangeStream
+    _projectListChangedSub = Store.instance.stateChangeStream
         .where((change) => change is ProjectAdded || change is ProjectClosed)
         .map((change) => change as ProjectStateChange)
         .listen(_updateTabList);
