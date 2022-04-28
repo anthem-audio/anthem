@@ -7,5 +7,8 @@ class PatternPickerState with _$PatternPickerState {
     required ID projectID,
     required List<ID> patternIDs,
     required double patternHeight,
+    @Default(PatternFilterKind.midi) PatternFilterKind filterType,
   }) = _PatternPickerState;
 }
+
+enum PatternFilterKind { midi, audio, automation }

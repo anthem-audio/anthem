@@ -17,18 +17,18 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/widgets/basic/button.dart';
-import 'package:anthem/widgets/basic/button_tabs.dart';
-import 'package:anthem/widgets/basic/clip/clip.dart' as anthem_clip;
-import 'package:anthem/widgets/basic/clip/clip_cubit.dart';
-import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
-import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../theme.dart';
-import '../../../basic/icon.dart';
-import '../../../basic/scroll/scrollbar.dart';
+import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/button_tabs.dart';
+import 'package:anthem/widgets/basic/clip/clip.dart';
+import 'package:anthem/widgets/basic/clip/clip_cubit.dart';
+import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
+import 'package:anthem/widgets/basic/icon.dart';
+import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
+import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker_cubit.dart';
 
 class PatternPicker extends StatelessWidget {
   final ScrollController scrollController = ScrollController();
@@ -55,8 +55,23 @@ class PatternPicker extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Expanded(
-                        child: ButtonTabs(),
+                      Expanded(
+                        child: ButtonTabs(
+                          tabs: [
+                            ButtonTabDef.withIcon(
+                              icon: Icons.midi,
+                              id: PatternFilterKind.midi,
+                            ),
+                            ButtonTabDef.withIcon(
+                              icon: Icons.audio,
+                              id: PatternFilterKind.audio,
+                            ),
+                            ButtonTabDef.withIcon(
+                              icon: Icons.automation,
+                              id: PatternFilterKind.automation,
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(width: 4),
                       VerticalScaleControl(
@@ -107,7 +122,9 @@ class PatternPicker extends StatelessWidget {
                                                 patternID: patternID,
                                               );
                                             },
-                                            child: const anthem_clip.Clip(ticksPerPixel: 5),
+                                            child: const Clip(
+                                              ticksPerPixel: 5,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -138,7 +155,8 @@ class PatternPicker extends StatelessWidget {
                               variant: ButtonVariant.ghost,
                               contentPadding: const EdgeInsets.all(0),
                               onPress: () {
-                                final cubit = context.read<PatternPickerCubit>();
+                                final cubit =
+                                    context.read<PatternPickerCubit>();
                                 cubit.addPattern("Pattern");
                               },
                             ),
