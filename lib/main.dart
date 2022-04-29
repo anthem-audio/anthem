@@ -49,10 +49,10 @@ void main() async {
   runApp(const MyApp());
 
   doWhenWindowReady(() {
-    const initialSize = Size(800, 600);
-    appWindow.minSize = initialSize;
-    appWindow.size = initialSize;
-    appWindow.alignment = Alignment.center;
+    // const initialSize = Size(800, 600);
+    // appWindow.minSize = initialSize;
+    // appWindow.size = initialSize;
+    // appWindow.alignment = Alignment.center;
     appWindow.show();
   });
 }
