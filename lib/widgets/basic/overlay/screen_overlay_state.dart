@@ -24,6 +24,6 @@ part of 'screen_overlay_cubit.dart';
 class ScreenOverlayState with _$ScreenOverlayState {
 
   factory ScreenOverlayState({
-    @Default([]) List<ScreenOverlayEntry> entries,
+    @Default({}) Map<ID, ScreenOverlayEntry> entries,
   }) = _ScreenOverlayState;
 }

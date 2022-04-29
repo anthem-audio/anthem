@@ -57,7 +57,7 @@ class ScreenOverlay extends StatelessWidget {
                     )
                   : null,
             ].whereNotNull().toList() +
-            state.entries
+            state.entries.values
                 .map<Widget>((entry) => entry.builder(context))
                 .toList();
 
