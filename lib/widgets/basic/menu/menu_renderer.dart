@@ -19,8 +19,11 @@
 
 import 'dart:math';
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/measure_text.dart';
+import 'package:anthem/widgets/basic/overlay/screen_overlay_cubit.dart';
 import 'package:flutter/widgets.dart';
+import 'package:provider/provider.dart';
 
 import '../../../theme.dart';
 import 'menu_model.dart';
@@ -37,8 +40,13 @@ double getMenuItemHeight(GenericMenuItem menuItem) {
 
 class MenuRenderer extends StatelessWidget {
   final MenuDef menu;
+  final ID id;
 
-  const MenuRenderer({Key? key, required this.menu}) : super(key: key);
+  const MenuRenderer({
+    Key? key,
+    required this.menu,
+    required this.id,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -90,6 +98,8 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
 
   @override
   Widget build(BuildContext context) {
+    final screenOverlayCubit = Provider.of<ScreenOverlayCubit>(context);
+
     final height = getMenuItemHeight(widget.menuItem);
 
     if (widget.menuItem is MenuItem) {
@@ -108,7 +118,8 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
         child: GestureDetector(
           onTap: () {
             item.onSelected?.call();
-            CloseAllMenusNotification().dispatch(context);
+            // CloseAllMenusNotification().dispatch(context);
+            screenOverlayCubit.clear();
           },
           child: Container(
             color: hovered ? Theme.primary.main : null,
