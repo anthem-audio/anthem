@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,32 +20,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
-class ActiveMenus with ChangeNotifier, DiagnosticableTreeMixin {
-  List<MenuInstance> instances = [];
-
-  void mutateMenuInstances(
-    void Function(List<MenuInstance> menuInstances) mutator,
-  ) {
-    mutator(instances);
-    notifyListeners();
-  }
-}
-
 enum MenuAlignment { topLeft, topRight, bottomLeft, bottomRight }
-
-class MenuInstance {
-  MenuDef menu;
-  double x;
-  double y;
-  int id;
-
-  MenuInstance({
-    required this.menu,
-    required this.x,
-    required this.y,
-    required this.id,
-  });
-}
 
 class MenuDef {
   List<GenericMenuItem> children;
@@ -68,31 +43,4 @@ class MenuItem extends GenericMenuItem {
 
 class Separator extends GenericMenuItem {
   Separator() : super();
-}
-
-int _menuIdGen = 0;
-
-abstract class MenuNotification extends Notification {}
-
-class OpenMenuNotification extends MenuNotification {
-  final int id = _menuIdGen++;
-  final double x;
-  final double y;
-  final MenuDef menuDef;
-
-  OpenMenuNotification({
-    required this.x,
-    required this.y,
-    required this.menuDef,
-  }) : super();
-}
-
-class CloseMenuNotification extends MenuNotification {
-  int id;
-
-  CloseMenuNotification({required this.id}) : super();
-}
-
-class CloseAllMenusNotification extends MenuNotification {
-  CloseAllMenusNotification() : super();
 }
