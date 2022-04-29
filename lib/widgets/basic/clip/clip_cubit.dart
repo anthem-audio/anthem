@@ -20,6 +20,8 @@
 import 'dart:async';
 
 import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
@@ -33,22 +35,47 @@ part 'clip_state.dart';
 part 'clip_cubit.freezed.dart';
 
 class ClipCubit extends Cubit<ClipState> {
-  // TODO: Allow this to optionally take a ClipModel
   late final ProjectModel project;
   late final PatternModel pattern;
+  late final ClipModel? clip;
 
-  ClipCubit({required int projectID, required int patternID})
-      : super((() {
-          final pattern =
-              Store.instance.projects[projectID]!.song.patterns[patternID]!;
+  late final StreamSubscription<List<StateChange>> _stateChangeStream;
+
+  ClipCubit({
+    required ID projectID,
+    required ID arrangementID,
+    required ID clipID,
+  }) : super((() {
+          final project = Store.instance.projects[projectID]!;
+          final clip = project.song.arrangements[arrangementID]!.clips[clipID]!;
+          final pattern = project.song.patterns[clip.patternID]!;
           return ClipState(
             notes: _getClipNotes(pattern),
             patternName: pattern.name,
             color: pattern.color,
+            contentWidth: clip.getWidth(),
+          );
+        })()) {
+    project = Store.instance.projects[projectID]!;
+    clip = project.song.arrangements[arrangementID]!.clips[clipID];
+    pattern = clip!.pattern;
+    _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
+  }
+
+  ClipCubit.fromPatternID({required ID projectID, required ID patternID})
+      : super((() {
+          final project = Store.instance.projects[projectID]!;
+          final pattern = project.song.patterns[patternID]!;
+          return ClipState(
+            notes: _getClipNotes(pattern),
+            patternName: pattern.name,
+            color: pattern.color,
+            contentWidth: pattern.getWidth(),
           );
         })()) {
     project = Store.instance.projects[projectID]!;
     pattern = project.song.patterns[patternID]!;
+    clip = null;
     project.stateChangeStream.listen(_onModelChanged);
   }
 
@@ -60,8 +87,18 @@ class ClipCubit extends Cubit<ClipState> {
     });
 
     if (updateNotes) {
-      emit(state.copyWith(notes: _getClipNotes(pattern)));
+      emit(state.copyWith(
+        notes: _getClipNotes(pattern),
+        contentWidth: clip?.getWidth() ?? pattern.getWidth(),
+      ));
     }
+  }
+
+  @override
+  Future<void> close() async {
+    await _stateChangeStream.cancel();
+
+    return super.close();
   }
 }
 

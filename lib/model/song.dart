@@ -22,51 +22,65 @@ import 'dart:collection';
 import 'dart:convert';
 
 import 'package:anthem/commands/state_changes.dart';
-import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 import 'arrangement/arrangement.dart';
+import 'shared/hydratable.dart';
 
 part 'song.g.dart';
 
 @JsonSerializable()
-class SongModel {
-  int id;
+class SongModel extends Hydratable {
+  ID id = getID();
   int ticksPerQuarter = 96; // TODO
 
-  Map<int, PatternModel> patterns;
-  List<int> patternOrder;
-  int? activePatternID;
+  Map<ID, PatternModel> patterns = HashMap();
+  List<ID> patternOrder = [];
+  ID? activePatternID;
 
-  int? activeGeneratorID;
+  ID? activeGeneratorID;
 
-  late Map<int, ArrangementModel> arrangements;
-  late List<int> arrangementOrder;
-  int? activeArrangementID;
+  late Map<ID, ArrangementModel> arrangements;
+  late List<ID> arrangementOrder;
+  ID? activeArrangementID;
 
-  late Map<int, TrackModel> tracks;
-  late List<int> trackOrder;
+  late Map<ID, TrackModel> tracks;
+  late List<ID> trackOrder;
 
   @JsonKey(ignore: true)
   StreamController<List<StateChange>>? _changeStreamController;
 
+  StreamController<List<StateChange>> get changeStreamController {
+    return _changeStreamController!;
+  }
+
   @JsonKey(ignore: true)
   ProjectModel? _project;
 
-  SongModel()
-      : id = getID(),
-        ticksPerQuarter = 96,
-        patterns = HashMap(),
-        patternOrder = [] {
-    final arrangement = ArrangementModel(name: "Arrangement 1");
+  ProjectModel get project {
+    return _project!;
+  }
+
+  SongModel() : super();
+
+  SongModel.create({
+    required ProjectModel project,
+    required StreamController<List<StateChange>> stateChangeStreamController,
+  }) : super() {
+    final arrangement = ArrangementModel.create(
+      name: "Arrangement 1",
+      id: getID(),
+      project: project,
+    );
     arrangements = {arrangement.id: arrangement};
     arrangementOrder = [arrangement.id];
     activeArrangementID = arrangement.id;
 
-    final Map<int, TrackModel> initTracks = {};
-    final List<int> initTrackOrder = [];
+    final Map<ID, TrackModel> initTracks = {};
+    final List<ID> initTrackOrder = [];
 
     for (var i = 1; i <= 200; i++) {
       final track = TrackModel(name: "Track $i");
@@ -76,6 +90,11 @@ class SongModel {
 
     tracks = initTracks;
     trackOrder = initTrackOrder;
+
+    hydrate(
+      project: project,
+      changeStreamController: stateChangeStreamController,
+    );
   }
 
   factory SongModel.fromJson(Map<String, dynamic> json) =>
@@ -92,25 +111,43 @@ class SongModel {
   }) {
     _project = project;
     _changeStreamController = changeStreamController;
+
+    for (final arrangement in arrangements.values) {
+      arrangement.hydrate(project: project);
+    }
+
+    for (final pattern in patterns.values) {
+      pattern.hydrate(project: project);
+    }
+
+    isHydrated = true;
   }
 
-  void setActiveGenerator(int? generatorID) {
+  void setActiveGenerator(ID? generatorID) {
     activeGeneratorID = generatorID;
-    _changeStreamController!.add([
-      ActiveGeneratorSet(projectID: _project!.id, generatorID: generatorID)
+    changeStreamController.add([
+      ActiveGeneratorChanged(projectID: _project!.id, generatorID: generatorID)
     ]);
   }
 
-  void setActivePattern(int? patternID) {
+  void setActivePattern(ID? patternID) {
     activePatternID = patternID;
-    _changeStreamController!
-        .add([ActivePatternSet(projectID: _project!.id, patternID: patternID)]);
+    changeStreamController.add(
+        [ActivePatternChanged(projectID: _project!.id, patternID: patternID)]);
+  }
+
+  void setActiveArrangement(ID? arrangementID) {
+    activeArrangementID = arrangementID;
+    changeStreamController.add([
+      ActiveArrangementChanged(
+          projectID: _project!.id, arrangementID: arrangementID)
+    ]);
   }
 }
 
 @JsonSerializable()
 class TrackModel {
-  int id;
+  ID id;
   String name;
 
   TrackModel({required this.name}) : id = getID();

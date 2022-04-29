@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,7 +21,7 @@ part of 'main_window_cubit.dart';
 
 @immutable
 class MainWindowState {
-  final int selectedTabID;
+  final ID selectedTabID;
   final List<TabDef> tabs;
 
   const MainWindowState({required this.selectedTabID, required this.tabs});
@@ -39,7 +39,7 @@ class MainWindowState {
 
 @immutable
 class TabDef {
-  final int id;
+  final ID id;
   final String title;
 
   const TabDef({required this.id, required this.title});

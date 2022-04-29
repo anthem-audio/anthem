@@ -49,7 +49,7 @@ app.*.map.json
 
 assets/build/
 logs/
-generated/
+plugin/lib/generated
 
 # Hacky dependency thing from bindgen script
 /rust/src/dependencies/engine_model/*

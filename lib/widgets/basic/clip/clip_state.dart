@@ -19,11 +19,13 @@
 
 part of 'clip_cubit.dart';
 
-@freezed
+// Workaround for https://github.com/rrousselGit/freezed/issues/653
+@Freezed(makeCollectionsUnmodifiable: false)
 class ClipState with _$ClipState {
   factory ClipState({
     required List<ClipNoteModel> notes,
     required String patternName,
     required AnthemColor color,
+    required int contentWidth,
   }) = _ClipState;
 }

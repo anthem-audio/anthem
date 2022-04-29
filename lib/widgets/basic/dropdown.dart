@@ -18,7 +18,6 @@
 */
 
 import 'package:flutter/widgets.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:collection/collection.dart';
 
 import 'button.dart';

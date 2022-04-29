@@ -19,25 +19,28 @@
 
 part of 'pattern_editor_cubit.dart';
 
-@freezed
+// Workaround for https://github.com/rrousselGit/freezed/issues/653
+@Freezed(makeCollectionsUnmodifiable: false)
 class PatternEditorState with _$PatternEditorState {
   factory PatternEditorState({
-    required int projectID,
-    int? activePatternID,
+    required ID projectID,
+    ID? activePatternID,
     @Default([]) List<PatternListItem> patternList,
-    @Default({}) Map<int, GeneratorListItem> instruments,
-    @Default({}) Map<int, GeneratorListItem> controllers,
-    @Default([]) List<int> generatorIDList,
+    @Default({}) Map<ID, GeneratorListItem> instruments,
+    @Default({}) Map<ID, GeneratorListItem> controllers,
+    @Default([]) List<ID> generatorIDList,
   }) = _PatternEditorState;
 }
 
-@freezed
+// Workaround for https://github.com/rrousselGit/freezed/issues/653
+@Freezed(makeCollectionsUnmodifiable: false)
 class PatternListItem with _$PatternListItem {
-  factory PatternListItem({required int id, required String name}) =
+  factory PatternListItem({required ID id, required String name}) =
       _PatternListItem;
 }
 
-@freezed
+// Workaround for https://github.com/rrousselGit/freezed/issues/653
+@Freezed(makeCollectionsUnmodifiable: false)
 class GeneratorListItem with _$GeneratorListItem {
-  factory GeneratorListItem({required int id}) = _GeneratorListItem;
+  factory GeneratorListItem({required ID id}) = _GeneratorListItem;
 }

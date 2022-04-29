@@ -18,14 +18,12 @@
 */
 
 import 'dart:async';
-import 'dart:math';
 
 import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/commands/state_changes.dart';
-import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/model/store.dart';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -36,7 +34,16 @@ part 'piano_roll_cubit.freezed.dart';
 class PianoRollCubit extends Cubit<PianoRollState> {
   late final ProjectModel project;
 
-  PianoRollCubit({required int projectID})
+  late final StreamSubscription<List<StateChange>> _stateChangeStream;
+
+  @override
+  Future<void> close() async {
+    await _stateChangeStream.cancel();
+
+    return super.close();
+  }
+
+  PianoRollCubit({required ID projectID})
       : super(
           (() {
             final project = Store.instance.projects[projectID]!;
@@ -56,10 +63,10 @@ class PianoRollCubit extends Cubit<PianoRollState> {
           })(),
         ) {
     project = Store.instance.projects[projectID]!;
-    project.stateChangeStream.listen(_onModelChanged);
+    _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
   }
 
-  List<LocalNote> _getLocalNotes(int patternID, int generatorID) {
+  List<LocalNote> _getLocalNotes(ID patternID, ID generatorID) {
     return (project.song.patterns[patternID]!.notes[generatorID] ?? [])
         .map((modelNote) => LocalNote.fromNote(modelNote))
         .toList();
@@ -70,16 +77,16 @@ class PianoRollCubit extends Cubit<PianoRollState> {
     var updateActiveGenerator = false;
 
     for (final change in changes) {
-      if (change is ActivePatternSet ||
+      if (change is ActivePatternChanged ||
           change is NoteAdded ||
           change is NoteDeleted ||
           change is NoteMoved ||
           change is NoteResized ||
-          change is ActiveGeneratorSet) {
+          change is ActiveGeneratorChanged) {
         updateActivePattern = true;
       }
 
-      if (change is ActiveGeneratorSet) {
+      if (change is ActiveGeneratorChanged) {
         updateActiveGenerator = true;
       }
     }
@@ -98,15 +105,18 @@ class PianoRollCubit extends Cubit<PianoRollState> {
       newState = (newState ?? state).copyWith(
         patternID: patternID,
         notes: notes,
-        lastContent: _getLastContentPlusPadding(
-          notes,
-          state.ticksPerQuarter,
-          TimeSignatureModel(4, 4),
-        ),
+        lastContent: pattern?.getWidth(
+              barMultiple: 4,
+              minPaddingInBarMultiples: 4,
+            ) ??
+            state.ticksPerQuarter * 4 * 8,
       );
     }
 
     if (updateActiveGenerator) {
+      final patternID = (newState ?? state).patternID;
+      final pattern = project.song.patterns[patternID];
+
       final List<LocalNote> notes = state.patternID == null ||
               project.song.activeGeneratorID == null
           ? []
@@ -115,11 +125,11 @@ class PianoRollCubit extends Cubit<PianoRollState> {
       newState = (newState ?? state).copyWith(
         activeInstrumentID: project.song.activeGeneratorID,
         notes: notes,
-        lastContent: _getLastContentPlusPadding(
-          notes,
-          state.ticksPerQuarter,
-          TimeSignatureModel(4, 4),
-        ),
+        lastContent: pattern?.getWidth(
+              barMultiple: 4,
+              minPaddingInBarMultiples: 4,
+            ) ??
+            state.ticksPerQuarter * 4 * 8,
       );
     }
 
@@ -128,7 +138,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
     }
   }
 
-  NoteModel? _getNote(int? instrumentID, int noteID) {
+  NoteModel? _getNote(ID? instrumentID, ID noteID) {
     final pattern = project.song.patterns[state.patternID];
     final noteList = pattern?.notes[instrumentID];
     NoteModel? note;
@@ -141,7 +151,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
   }
 
   void addNote({
-    required int? instrumentID,
+    required ID? instrumentID,
     required int key,
     required int velocity,
     required int length,
@@ -172,7 +182,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
     ));
   }
 
-  void removeNote({required int? instrumentID, required int noteID}) {
+  void removeNote({required ID? instrumentID, required ID noteID}) {
     final note = _getNote(instrumentID, noteID);
 
     if (state.patternID == null || instrumentID == null || note == null) {
@@ -188,8 +198,8 @@ class PianoRollCubit extends Cubit<PianoRollState> {
   }
 
   void moveNote({
-    required int? instrumentID,
-    required int noteID,
+    required ID? instrumentID,
+    required ID noteID,
     required int key,
     required int offset,
   }) {
@@ -212,8 +222,8 @@ class PianoRollCubit extends Cubit<PianoRollState> {
   }
 
   void resizeNote({
-    required int? instrumentID,
-    required int noteID,
+    required ID? instrumentID,
+    required ID noteID,
     required int length,
   }) {
     final note = _getNote(instrumentID, noteID);
@@ -259,16 +269,17 @@ class PianoRollCubit extends Cubit<PianoRollState> {
       return;
     }
 
+    final pattern = project.song.patterns[state.patternID]!;
+
     final newNotes = [...state.notes];
 
     mutator(newNotes);
 
     emit(state.copyWith(
       notes: newNotes,
-      lastContent: _getLastContentPlusPadding(
-        newNotes,
-        state.ticksPerQuarter,
-        TimeSignatureModel(4, 4), // TODO: Use actual time signature
+      lastContent: pattern.getWidth(
+        barMultiple: 4,
+        minPaddingInBarMultiples: 4,
       ),
     ));
   }
@@ -280,21 +291,4 @@ class PianoRollCubit extends Cubit<PianoRollState> {
   void setKeyValueAtTop(double newKeyValueAtTop) {
     emit(state.copyWith(keyValueAtTop: newKeyValueAtTop));
   }
-}
-
-// Gets the time position of the end of the last note, rounded upward to the
-// nearest barMultiple bars.
-int _getLastContentPlusPadding(List<LocalNote> notes, int ticksPerQuarter,
-    TimeSignatureModel timeSignature) {
-  const barMultiple = 4;
-
-  final ticksPerBar = ticksPerQuarter ~/
-      (timeSignature.denominator ~/ 4) *
-      timeSignature.numerator;
-  final lastContent = notes.fold<int>(ticksPerBar * barMultiple * 4,
-      (previousValue, note) => max(previousValue, (note.offset + note.length)));
-
-  return (max(lastContent, 1) / (ticksPerBar * barMultiple)).ceil() *
-      ticksPerBar *
-      barMultiple;
 }

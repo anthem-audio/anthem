@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
@@ -26,10 +27,10 @@ import '../basic/icon.dart';
 import 'main_window_cubit.dart';
 
 class WindowHeader extends StatefulWidget {
-  final int selectedTabID;
+  final ID selectedTabID;
   final List<TabDef> tabs;
-  final Function(int) setActiveProject;
-  final Function(int) closeProject;
+  final Function(ID) setActiveProject;
+  final Function(ID) closeProject;
 
   const WindowHeader({
     Key? key,

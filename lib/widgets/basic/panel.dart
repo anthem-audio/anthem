@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 enum PanelOrientation { left, top, right, bottom }

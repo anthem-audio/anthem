@@ -20,10 +20,18 @@
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/model/project.dart';
 
+/// Base class for a command.
+/// 
+/// Anthem uses the command pattern for undo/redo. All undoable changes to the
+/// model should be performed via commands.
 abstract class Command {
   ProjectModel project;
 
+  /// Executes this command and returns a list of `StateChange`s describing
+  /// the resulting changes.
   List<StateChange> execute();
+  /// Undoes this command and returns a list of `StateChange`s describing the
+  /// resulting changes.
   List<StateChange> rollback();
 
   Command(this.project);

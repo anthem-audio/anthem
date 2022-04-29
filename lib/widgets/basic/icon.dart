@@ -27,16 +27,32 @@ class IconDef {
 }
 
 class Icons {
+  static IconDef add = const IconDef("assets/icons/scrollbar/add.svg");
   static IconDef arrowDown =
       const IconDef("assets/icons/misc/dropdown_arrow___down.svg");
+  static IconDef audio = const IconDef("assets/icons/audio.svg");
+  static IconDef automation = const IconDef("assets/icons/automation.svg");
+  static IconDef automationMatrixPanel =
+      const IconDef("assets/icons/bottom_bar/automation_panel.svg");
+  static IconDef browserPanel =
+      const IconDef("assets/icons/bottom_bar/browser_panel.svg");
+  static IconDef channelRack =
+      const IconDef("assets/icons/bottom_bar/instruments_effects_panel.svg");
   static IconDef close = const IconDef("assets/icons/small/close.svg");
+  static IconDef detailEditor =
+      const IconDef("assets/icons/bottom_bar/detail_editor.svg");
   static IconDef hamburger = const IconDef("assets/icons/misc/hamburgner.svg");
   static IconDef kebab = const IconDef("assets/icons/misc.svg");
+  static IconDef mixer = const IconDef("assets/icons/bottom_bar/mixer.svg");
+  static IconDef midi = const IconDef("assets/icons/midi.svg");
+  static IconDef mute = const IconDef("assets/icons/power.svg");
+  static IconDef patternEditor =
+      const IconDef("assets/icons/bottom_bar/pattern_editor.svg");
+  static IconDef projectPanel =
+      const IconDef("assets/icons/bottom_bar/project_panel_2.svg");
   static IconDef redo = const IconDef("assets/icons/edit/redo.svg");
   static IconDef save = const IconDef("assets/icons/edit/save.svg");
   static IconDef undo = const IconDef("assets/icons/edit/undo.svg");
-  static IconDef add = const IconDef("assets/icons/scrollbar/add.svg");
-  static IconDef mute = const IconDef("assets/icons/power.svg");
   static _ScrollbarIcons scrollbar = _ScrollbarIcons();
   static _ToolIcons tools = _ToolIcons();
 }
@@ -56,16 +72,16 @@ class _ToolIcons {
 }
 
 class SvgIcon extends StatelessWidget {
-  final IconDef iconDef;
+  final IconDef icon;
   final Color color;
 
-  const SvgIcon(this.iconDef, {Key? key, required this.color})
+  const SvgIcon({Key? key, required this.icon, required this.color})
       : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return SvgPicture.asset(
-      iconDef.path,
+      icon.path,
       color: color,
     );
   }

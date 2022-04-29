@@ -17,8 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:anthem/commands/arrangement_commands.dart';
 import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
@@ -35,21 +38,30 @@ part 'arranger_cubit.freezed.dart';
 class ArrangerCubit extends Cubit<ArrangerState> {
   late final ProjectModel project;
 
-  ArrangerCubit({required int projectID})
+  late final StreamSubscription<List<StateChange>> _stateChangeStream;
+
+  @override
+  Future<void> close() async {
+    await _stateChangeStream.cancel();
+
+    return super.close();
+  }
+
+  ArrangerCubit({required ID projectID})
       : super((() {
           final project = Store.instance.projects[projectID]!;
           final arrangement =
               project.song.arrangements[project.song.activeArrangementID]!;
           const defaultTrackHeight = 45.0;
 
-          final Map<int, double> trackHeightModifiers = {};
+          final Map<ID, double> trackHeightModifiers = {};
           for (final trackID in project.song.trackOrder) {
             trackHeightModifiers[trackID] = 1;
           }
 
           final arrangementIDs = [...project.song.arrangementOrder];
 
-          final Map<int, String> arrangementNames = {};
+          final Map<ID, String> arrangementNames = {};
 
           for (final id in arrangementIDs) {
             arrangementNames[id] = project.song.arrangements[id]!.name;
@@ -67,21 +79,33 @@ class ArrangerCubit extends Cubit<ArrangerState> {
             trackHeightModifiers: trackHeightModifiers,
             ticksPerQuarter: project.song.ticksPerQuarter,
             clipIDs: arrangement.clips.keys.toList(),
+            arrangementWidth: arrangement.getWidth(),
           );
         })()) {
     project = Store.instance.projects[projectID]!;
-    project.stateChangeStream.listen(_onModelChanged);
+    _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
   }
 
   void _onModelChanged(List<StateChange> changes) {
     var didClipsChange = false;
+    var didActiveArrangementChange = false;
+    var didArrangementListChange = false;
 
     for (final change in changes) {
-      if (change is ClipAdded || change is ClipDeleted) {
-        if ((change as ArrangementStateChange).arrangementID !=
-            state.activeArrangementID) {
-          continue;
-        }
+      final relatesToSelectedArrangement = change is ArrangementStateChange &&
+          change.arrangementID == state.activeArrangementID;
+
+      if (relatesToSelectedArrangement &&
+          (change is ClipAdded || change is ClipDeleted)) {
+        didClipsChange = true;
+      }
+
+      if (change is ArrangementAdded || change is ArrangementDeleted) {
+        didArrangementListChange = true;
+      }
+
+      if (change is ActiveArrangementChanged) {
+        didActiveArrangementChange = true;
         didClipsChange = true;
       }
     }
@@ -89,11 +113,27 @@ class ArrangerCubit extends Cubit<ArrangerState> {
     ArrangerState? newState;
 
     if (didClipsChange) {
+      final arrangement =
+          project.song.arrangements[project.song.activeArrangementID];
       newState = (newState ?? state).copyWith(
-        clipIDs: project
-            .song.arrangements[state.activeArrangementID]!.clips.keys
-            .toList(),
+        clipIDs: arrangement?.clips.keys.toList() ?? [],
+        arrangementWidth:
+            arrangement?.getWidth() ?? project.song.ticksPerQuarter * 4 * 8,
       );
+    }
+
+    if (didArrangementListChange) {
+      newState = (newState ?? state).copyWith(
+        arrangementIDs: [...project.song.arrangementOrder],
+        arrangementNames: project.song.arrangements.map(
+          (id, arrangement) => MapEntry(id, arrangement.name),
+        ),
+      );
+    }
+
+    if (didActiveArrangementChange) {
+      newState = (newState ?? state)
+          .copyWith(activeArrangementID: project.song.activeArrangementID);
     }
 
     if (newState != null) {
@@ -101,17 +141,33 @@ class ArrangerCubit extends Cubit<ArrangerState> {
     }
   }
 
-  void setBaseTrackHeight(double newTrackHeight) {
-    final oldTrackHeight =
+  void addArrangement() {
+    var arrangementNumber = state.arrangementIDs.length;
+    String arrangementName;
+
+    do {
+      arrangementNumber++;
+      arrangementName = "Arrangement $arrangementNumber";
+    } while (state.arrangementNames.containsValue(arrangementName));
+
+    project.execute(
+      AddArrangementCommand(project: project, arrangementName: arrangementName),
+    );
+  }
+
+  void setBaseTrackHeight(double trackHeight) {
+    final oldClampedTrackHeight =
         state.baseTrackHeight.clamp(minTrackHeight, maxTrackHeight);
     final oldVerticalScrollPosition = state.verticalScrollPosition;
+    final clampedTrackHeight =
+        trackHeight.clamp(minTrackHeight, maxTrackHeight);
     emit(
       state.copyWith(
-        baseTrackHeight: newTrackHeight,
-        verticalScrollPosition:
-            oldVerticalScrollPosition * (newTrackHeight / oldTrackHeight),
+        baseTrackHeight: trackHeight,
+        verticalScrollPosition: oldVerticalScrollPosition *
+            (clampedTrackHeight / oldClampedTrackHeight),
         scrollAreaHeight:
-            getScrollAreaHeight(newTrackHeight, state.trackHeightModifiers),
+            getScrollAreaHeight(clampedTrackHeight, state.trackHeightModifiers),
       ),
     );
   }
@@ -120,12 +176,18 @@ class ArrangerCubit extends Cubit<ArrangerState> {
     emit(state.copyWith(verticalScrollPosition: position));
   }
 
-  void setHeightModifier(int trackID, double newModifier) {
+  void setHeightModifier(ID trackID, double newModifier) {
+    final newHeightModifiers = {
+      ...state.trackHeightModifiers,
+      trackID: newModifier,
+    };
+
     emit(
-      state.copyWith(trackHeightModifiers: {
-        ...state.trackHeightModifiers,
-        trackID: newModifier
-      }),
+      state.copyWith(
+        trackHeightModifiers: newHeightModifiers,
+        scrollAreaHeight:
+            getScrollAreaHeight(state.baseTrackHeight, newHeightModifiers),
+      ),
     );
   }
 
@@ -133,6 +195,10 @@ class ArrangerCubit extends Cubit<ArrangerState> {
     emit(
       state.copyWith(tool: tool),
     );
+  }
+
+  void setActiveArrangement(ID? arrangementID) {
+    project.song.setActiveArrangement(arrangementID);
   }
 
   void handleMouseDown(Offset offset, Size editorSize, TimeView timeView) {

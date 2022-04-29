@@ -18,4 +18,12 @@ else {
     $BuildOutputDirectory = ".\rust\engine\target\debug"
 }
 
-Get-ChildItem $BuildOutputDirectory\anthem_engine.* -Exclude *.d | Copy-Item -Destination .\assets\build
+try {
+    mkdir .\assets\build\
+} catch {}
+
+$BuildFiles = Get-ChildItem $BuildOutputDirectory\anthem_engine.* -Exclude *.d
+foreach ($File in $BuildFiles) {
+    $FileName = [System.IO.Path]::GetFileName($File)
+    Copy-Item -Path $File -Destination .\assets\build\$FileName
+}

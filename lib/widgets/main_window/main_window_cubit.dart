@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,6 +22,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:bloc/bloc.dart';
@@ -31,16 +32,28 @@ import 'package:file_picker/file_picker.dart';
 part 'main_window_state.dart';
 
 class MainWindowCubit extends Cubit<MainWindowState> {
+  late final StreamSubscription<ActiveProjectChanged> _activeProjectChangedSub;
+  late final StreamSubscription<ProjectStateChange> _projectListChangedSub;
+
+  late final StreamSubscription<List<StateChange>> _stateChangeStream;
+
+  @override
+  Future<void> close() async {
+    await _activeProjectChangedSub.cancel();
+    await _projectListChangedSub.cancel();
+
+    return super.close();
+  }
 
   MainWindowCubit()
       : super(MainWindowState(
             tabs: _getTabs(), selectedTabID: Store.instance.activeProjectID)) {
-    Store.instance.stateChangeStream
+    _activeProjectChangedSub = Store.instance.stateChangeStream
         .where((change) => change is ActiveProjectChanged)
         .map((change) => change as ActiveProjectChanged)
         .listen(_updateActiveTab);
 
-    Store.instance.stateChangeStream
+    _projectListChangedSub = Store.instance.stateChangeStream
         .where((change) => change is ProjectAdded || change is ProjectClosed)
         .map((change) => change as ProjectStateChange)
         .listen(_updateTabList);
@@ -68,22 +81,21 @@ class MainWindowCubit extends Cubit<MainWindowState> {
     ));
   }
 
-  void switchTab(int newTabID) => Store.instance.setActiveProject(newTabID);
+  void switchTab(ID newTabID) => Store.instance.setActiveProject(newTabID);
 
   // Returns the ID of the new tab
-  int newProject() {
-    ProjectModel project = ProjectModel();
-    project.hydrate();
+  ID newProject() {
+    ProjectModel project = ProjectModel.create();
     Store.instance.addProject(project);
     return project.id;
   }
 
-  void closeProject(int projectID) => Store.instance.closeProject(projectID);
+  void closeProject(ID projectID) => Store.instance.closeProject(projectID);
 
   /// Returns the ID of the loaded project, or null if the project load failed
   /// or was cancelled
   /// TODO: Granular error handling
-  Future<int?> loadProject() async {
+  Future<ID?> loadProject() async {
     try {
       final path = (await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -94,8 +106,7 @@ class MainWindowCubit extends Cubit<MainWindowState> {
       if (path == null) return null;
       final file = await File(path).readAsString();
 
-      final project = ProjectModel.fromJson(json.decode(file));
-      project.hydrate();
+      final project = ProjectModel.fromJson(json.decode(file))..hydrate();
       Store.instance.addProject(project);
 
       return project.id;
@@ -104,7 +115,7 @@ class MainWindowCubit extends Cubit<MainWindowState> {
     }
   }
 
-  Future<void> saveProject(int projectID, bool alwaysUseFilePicker) async {
+  Future<void> saveProject(ID projectID, bool alwaysUseFilePicker) async {
     try {
       final project = Store.instance.projects[projectID]!;
 

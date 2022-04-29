@@ -82,7 +82,7 @@
 			"class $2State with _$$2State {",
 			"",
 			"  factory $2State({",
-			"    required int id,",
+			"    required String id,",
 			"  }) = _$2State;",
 			"}"
 		],
@@ -99,7 +99,7 @@
 			"part '$1_cubit.freezed.dart';",
 			"",
 			"class $2Cubit extends Cubit<$2State> {",
-			"  $2Cubit({required int id}) : super($2State(id: id)) {}",
+			"  $2Cubit({required String id}) : super($2State(id: id)) {}",
 			"}"
 		],
 	},

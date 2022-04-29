@@ -20,22 +20,19 @@
 import 'dart:async';
 
 import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:bloc/bloc.dart';
-import 'package:flutter/widgets.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'project_state.dart';
 part 'project_cubit.freezed.dart';
 
 class ProjectCubit extends Cubit<ProjectState> {
-  // ignore: unused_field
-  late final StreamSubscription<StateChange> _updateActiveGeneratorSub;
-
   late final ProjectModel project;
 
-  ProjectCubit({required int id}) : super(ProjectState(id: id)) {
+  ProjectCubit({required ID id}) : super(ProjectState(id: id)) {
     project = Store.instance.projects[id]!;
   }
 
@@ -55,5 +52,5 @@ class ProjectCubit extends Cubit<ProjectState> {
     project.commitJournalPage();
   }
 
-  void setActiveGeneratorID(int? id) => project.song.setActiveGenerator(id);
+  void setActiveGeneratorID(ID? id) => project.song.setActiveGenerator(id);
 }

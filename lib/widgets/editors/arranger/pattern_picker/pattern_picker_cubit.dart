@@ -21,24 +21,33 @@ import 'dart:async';
 
 import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
-import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'pattern_picker_state.dart';
 part 'pattern_picker_cubit.freezed.dart';
 
-List<int> getPatternIDs(ProjectModel? project) {
+List<ID> getPatternIDs(ProjectModel? project) {
   return [...project?.song.patternOrder ?? []];
 }
 
 class PatternPickerCubit extends Cubit<PatternPickerState> {
   late final ProjectModel project;
 
-  PatternPickerCubit({required int projectID})
+  late final StreamSubscription<List<StateChange>> _stateChangeStream;
+
+  @override
+  Future<void> close() async {
+    await _stateChangeStream.cancel();
+
+    return super.close();
+  }
+
+  PatternPickerCubit({required ID projectID})
       : super(PatternPickerState(
           projectID: projectID,
           patternIDs: getPatternIDs(
@@ -47,7 +56,7 @@ class PatternPickerCubit extends Cubit<PatternPickerState> {
           patternHeight: 50,
         )) {
     project = Store.instance.projects[projectID]!;
-    project.stateChangeStream.listen(_onModelChanged);
+    _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
   }
 
   _onModelChanged(List<StateChange> changes) {
@@ -79,7 +88,7 @@ class PatternPickerCubit extends Cubit<PatternPickerState> {
     project.execute(
       AddPatternCommand(
         project: project,
-        pattern: PatternModel(name),
+        pattern: PatternModel.create(name: name, project: project),
         index: project.song.patternOrder.length,
       ),
     );

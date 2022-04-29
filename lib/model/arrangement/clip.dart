@@ -17,30 +17,71 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/pattern/pattern.dart';
+import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/hydratable.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'clip.g.dart';
 
 @JsonSerializable()
-class ClipModel {
-  int clipID = getID();
+class ClipModel extends Hydratable {
+  ID clipID = getID();
   TimeViewModel? timeView; // If null, we snap to content
-  int patternID;
-  int trackID;
+  ID patternID;
+  ID trackID;
   int offset;
 
+  @JsonKey(ignore: true)
+  ProjectModel? _project;
+  @JsonKey(ignore: true)
+  PatternModel? _pattern;
+
+  ProjectModel get project {
+    return _project!;
+  }
+
+  PatternModel get pattern {
+    return _pattern!;
+  }
+
+  /// Used for deserialization. Use ClipModel.create() instead.
   ClipModel({
     this.timeView,
     required this.patternID,
     required this.trackID,
     required this.offset,
-  });
+  }) : super();
+
+  ClipModel.create({
+    this.timeView,
+    required this.patternID,
+    required this.trackID,
+    required this.offset,
+    required ProjectModel project,
+  }) : super() {
+    hydrate(project: project);
+  }
 
   factory ClipModel.fromJson(Map<String, dynamic> json) =>
       _$ClipModelFromJson(json);
 
   Map<String, dynamic> toJson() => _$ClipModelToJson(this);
+
+  void hydrate({required ProjectModel project}) {
+    _project = project;
+    _pattern = project.song.patterns[patternID]!;
+    isHydrated = true;
+  }
+
+  int getWidth() {
+    if (timeView != null) {
+      return timeView!.end - timeView!.start;
+    }
+
+    return pattern.getWidth();
+  }
 }
 
 @JsonSerializable()

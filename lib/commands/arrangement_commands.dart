@@ -18,7 +18,8 @@
 */
 
 import 'package:anthem/commands/state_changes.dart';
-import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/project.dart';
 
@@ -26,11 +27,11 @@ import 'command.dart';
 
 /// Add a clip to an arrangement
 class AddClipCommand extends Command {
-  int arrangementID;
-  int trackID;
-  int patternID;
+  ID arrangementID;
+  ID trackID;
+  ID patternID;
   int offset;
-  int clipID = getID();
+  ID clipID = getID();
   TimeViewModel? timeView;
 
   AddClipCommand({
@@ -44,12 +45,15 @@ class AddClipCommand extends Command {
 
   @override
   List<StateChange> execute() {
-    project.song.arrangements[arrangementID]!.clips[clipID] = ClipModel(
+    final clipModel = ClipModel.create(
       offset: offset,
       patternID: patternID,
       trackID: trackID,
       timeView: timeView,
+      project: project,
     );
+
+    project.song.arrangements[arrangementID]!.clips[clipID] = clipModel;
 
     return [ClipAdded(projectID: project.id, arrangementID: arrangementID)];
   }
@@ -59,5 +63,40 @@ class AddClipCommand extends Command {
     project.song.arrangements[arrangementID]!.clips.remove(clipID);
 
     return [ClipDeleted(projectID: project.id, arrangementID: arrangementID)];
+  }
+}
+
+class AddArrangementCommand extends Command {
+  ID arrangementID = getID();
+  String arrangementName;
+
+  AddArrangementCommand({
+    required ProjectModel project,
+    required this.arrangementName,
+  }) : super(project);
+
+  @override
+  List<StateChange> execute() {
+    final arrangement = ArrangementModel.create(
+      name: arrangementName,
+      id: arrangementID,
+      project: project,
+    );
+    project.song.arrangements[arrangementID] = arrangement;
+    project.song.arrangementOrder.add(arrangementID);
+
+    return [
+      ArrangementAdded(projectID: project.id, arrangementID: arrangementID),
+    ];
+  }
+
+  @override
+  List<StateChange> rollback() {
+    project.song.arrangements.remove(arrangementID);
+    project.song.arrangementOrder.removeLast();
+
+    return [
+      ArrangementDeleted(projectID: project.id, arrangementID: arrangementID),
+    ];
   }
 }

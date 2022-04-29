@@ -19,14 +19,14 @@
 
 import 'dart:convert';
 
-import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'note.g.dart';
 
 @JsonSerializable()
 class NoteModel {
-  int id;
+  String id;
   int key;
   int velocity;
   int length;
