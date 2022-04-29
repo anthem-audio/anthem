@@ -25,24 +25,25 @@ import 'package:anthem/commands/command.dart';
 import 'package:anthem/commands/command_queue.dart';
 import 'package:anthem/commands/journal_commands.dart';
 import 'package:anthem/commands/state_changes.dart';
-import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/song.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 import 'generator.dart';
+import 'shared/hydratable.dart';
 
 part 'project.g.dart';
 
 @JsonSerializable()
-class ProjectModel {
+class ProjectModel extends Hydratable {
   late SongModel song;
 
-  Map<int, InstrumentModel> instruments;
-  Map<int, ControllerModel> controllers;
-  List<int> generatorList;
+  Map<ID, InstrumentModel> instruments = HashMap();
+  Map<ID, ControllerModel> controllers = HashMap();
+  List<ID> generatorList = [];
 
   @JsonKey(ignore: true)
-  int id;
+  ID id = getID();
 
   @JsonKey(ignore: true)
   String? filePath;
@@ -66,13 +67,22 @@ class ProjectModel {
   @JsonKey(ignore: true)
   bool isSaved = false;
 
-  ProjectModel()
-      : id = getID(),
-        instruments = HashMap(),
-        controllers = HashMap(),
-        generatorList = [] {
+  // This method is used for deserialization and so doesn't create new child
+  // models.
+  ProjectModel() : super() {
     stateChangeStream = _stateChangeStreamController.stream;
-    song = SongModel();
+  }
+
+  ProjectModel.create() : super() {
+    stateChangeStream = _stateChangeStreamController.stream;
+    song = SongModel.create(
+      project: this,
+      stateChangeStreamController: _stateChangeStreamController,
+    );
+
+    // We don't need to hydrate here. All `SomeModel.Create()` functions should
+    // call hydrate().
+    isHydrated = true;
   }
 
   factory ProjectModel.fromJson(Map<String, dynamic> json) {
@@ -81,6 +91,11 @@ class ProjectModel {
     return model;
   }
 
+  Map<String, dynamic> toJson() => _$ProjectModelToJson(this);
+
+  @override
+  String toString() => json.encode(toJson());
+
   /// This function is run after deserialization. It allows us to do some setup
   /// that the deserialization step can't do for us.
   void hydrate() {
@@ -88,12 +103,8 @@ class ProjectModel {
       project: this,
       changeStreamController: _stateChangeStreamController,
     );
+    isHydrated = true;
   }
-
-  Map<String, dynamic> toJson() => _$ProjectModelToJson(this);
-
-  @override
-  String toString() => json.encode(toJson());
 
   void _dispatch(List<StateChange> changes) {
     _stateChangeStreamController.add(changes);

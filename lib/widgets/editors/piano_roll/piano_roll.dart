@@ -19,15 +19,21 @@
 
 import 'dart:math';
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
+import 'package:anthem/widgets/basic/icon.dart';
+import 'package:anthem/widgets/basic/menu/menu.dart';
+import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_notification_handler.dart';
+import 'package:anthem/widgets/editors/shared/tool_selector.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -94,9 +100,41 @@ class _PianoRollState extends State<PianoRoll> {
 class _PianoRollHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(
-      height: 26,
-    );
+    return BlocBuilder<PianoRollCubit, PianoRollState>(
+        builder: (context, state) {
+      final menuController = MenuController();
+
+      return SizedBox(
+        height: 26,
+        child: Row(
+          children: [
+            Menu(
+              menuDef: MenuDef(
+                children: [
+                  MenuItem(
+                    text: "Markers",
+                    onSelected: () {},
+                    submenu: MenuDef(
+                      children: [
+                        MenuItem(text: "Add time signature change",),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              menuController: menuController,
+              child: Button(
+                width: 26,
+                startIcon: Icons.kebab,
+                onPress: () => menuController.open?.call(),
+              ),
+            ),
+            const SizedBox(width: 4),
+            ToolSelector(selectedTool: EditorTool.pencil),
+          ],
+        ),
+      );
+    });
   }
 }
 
@@ -377,7 +415,7 @@ class NoteLayoutDelegate extends MultiChildLayoutDelegate {
 class NoteWidget extends StatefulWidget {
   const NoteWidget({Key? key, required this.noteID}) : super(key: key);
 
-  final int noteID;
+  final ID noteID;
 
   @override
   State<NoteWidget> createState() => _NoteWidgetState();

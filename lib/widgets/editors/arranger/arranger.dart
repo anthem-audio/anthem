@@ -24,9 +24,12 @@ import 'package:anthem/widgets/basic/clip/clip_cubit.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/icon.dart';
+import 'package:anthem/widgets/basic/menu/menu.dart';
+import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
 import 'package:anthem/widgets/editors/arranger/clip_layout_delegate.dart';
+import 'package:anthem/widgets/editors/arranger/clip_sizer.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker_cubit.dart';
 import 'package:anthem/widgets/editors/arranger/track_header.dart';
@@ -34,6 +37,7 @@ import 'package:anthem/widgets/editors/arranger/track_header_cubit.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/timeline.dart';
 import 'package:anthem/widgets/editors/shared/timeline_cubit.dart';
+import 'package:anthem/widgets/editors/shared/tool_selector.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
@@ -63,6 +67,8 @@ class _ArrangerState extends State<Arranger> {
             ChangeNotifierProvider(create: (_) => TimeView(0, 3072)),
           ],
           builder: (context, widget) {
+            final menuController = MenuController();
+
             final cubit = BlocProvider.of<ArrangerCubit>(context);
             final timeView = Provider.of<TimeView>(context);
 
@@ -85,59 +91,41 @@ class _ArrangerState extends State<Arranger> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Button(
-                                  width: 26,
-                                  startIcon: Icons.kebab,
-                                ),
-                                // const SizedBox(width: 4),
-                                // const SizedBox(
-                                //   width: 39,
-                                //   child: Dropdown(
-                                //       // items: [DropdownItem(),],
-                                //       ),
-                                // ),
-                                const SizedBox(width: 4),
-                                SizedBox(
-                                  width: 39,
-                                  child: Dropdown(
-                                    showNameOnButton: false,
-                                    allowNoSelection: false,
-                                    selectedID: EditorTool.values
-                                        .firstWhere(
-                                          (tool) =>
-                                              tool.name == state.tool.name,
-                                        )
-                                        .name,
-                                    items: [
-                                      DropdownItem(
-                                        id: EditorTool.pencil.name,
-                                        name: "Pencil",
-                                        icon: Icons.tools.pencil,
+                                Menu(
+                                  menuDef: MenuDef(
+                                    children: [
+                                      MenuItem(
+                                        text: "New arrangement",
+                                        onSelected: () {
+                                          cubit.addArrangement();
+                                        },
                                       ),
-                                      DropdownItem(
-                                        id: EditorTool.eraser.name,
-                                        name: "Eraser",
-                                        icon: Icons.tools.erase,
-                                      ),
-                                      DropdownItem(
-                                        id: EditorTool.select.name,
-                                        name: "Select",
-                                        icon: Icons.tools.select,
-                                      ),
-                                      DropdownItem(
-                                        id: EditorTool.cut.name,
-                                        name: "Cut",
-                                        icon: Icons.tools.cut,
+                                      Separator(),
+                                      MenuItem(
+                                        text: "Markers",
+                                        submenu: MenuDef(
+                                          children: [
+                                            MenuItem(
+                                              text: "Add time signature change",
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ],
-                                    onChanged: (id) {
-                                      cubit.setTool(
-                                        EditorTool.values.firstWhere(
-                                          (tool) => tool.name == id,
-                                        ),
-                                      );
-                                    },
                                   ),
+                                  menuController: menuController,
+                                  child: Button(
+                                    width: 26,
+                                    startIcon: Icons.kebab,
+                                    onPress: () => menuController.open?.call(),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                ToolSelector(
+                                  selectedTool: state.tool,
+                                  setTool: (tool) {
+                                    cubit.setTool(tool);
+                                  },
                                 ),
                                 const SizedBox(width: 4),
                                 Flexible(
@@ -152,6 +140,9 @@ class _ArrangerState extends State<Arranger> {
                                           ),
                                         )
                                         .toList(),
+                                    onChanged: (selectedID) {
+                                      cubit.setActiveArrangement(selectedID);
+                                    },
                                   ),
                                   fit: FlexFit.tight,
                                 ),
@@ -162,9 +153,15 @@ class _ArrangerState extends State<Arranger> {
                           Expanded(
                             child: ScrollbarRenderer(
                               scrollRegionStart: 0,
-                              scrollRegionEnd: 10000, // TODO
+                              scrollRegionEnd:
+                                  state.arrangementWidth.toDouble(),
                               handleStart: timeView.start,
                               handleEnd: timeView.end,
+                              canScrollPastEnd: true,
+                              onChange: (event) {
+                                timeView.setStart(event.handleStart);
+                                timeView.setEnd(event.handleEnd);
+                              },
                             ),
                           ),
                           const SizedBox(width: 4),
@@ -288,6 +285,70 @@ class _ArrangerContent extends StatelessWidget {
                       Expanded(
                         child: ClipRect(
                           child: LayoutBuilder(builder: (context, constraints) {
+                            final grid = Positioned.fill(
+                              child: CustomPaint(
+                                painter: ArrangerBackgroundPainter(
+                                  baseTrackHeight: state.baseTrackHeight,
+                                  verticalScrollPosition:
+                                      state.verticalScrollPosition,
+                                  trackHeightModifiers:
+                                      state.trackHeightModifiers,
+                                  trackIDs: state.trackIDs,
+                                  timeViewStart: timeView.start,
+                                  timeViewEnd: timeView.end,
+                                  ticksPerQuarter: state.ticksPerQuarter,
+                                ),
+                              ),
+                            );
+
+                            final clips = Positioned.fill(
+                              child: state.activeArrangementID == null
+                                  ? const SizedBox()
+                                  : CustomMultiChildLayout(
+                                      delegate: ClipLayoutDelegate(
+                                        baseTrackHeight: state.baseTrackHeight,
+                                        trackHeightModifiers:
+                                            state.trackHeightModifiers,
+                                        timeViewStart: timeView.start,
+                                        timeViewEnd: timeView.end,
+                                        project: cubit.project,
+                                        trackIDs: state.trackIDs,
+                                        clipIDs: state.clipIDs,
+                                        arrangementID:
+                                            state.activeArrangementID!,
+                                        verticalScrollPosition:
+                                            state.verticalScrollPosition,
+                                      ),
+                                      children: state.clipIDs.map<Widget>(
+                                        (id) {
+                                          return LayoutId(
+                                            key: Key(id.toString()),
+                                            id: id,
+                                            child: BlocProvider<ClipCubit>(
+                                              create: (context) => ClipCubit(
+                                                projectID: state.projectID,
+                                                arrangementID:
+                                                    state.activeArrangementID!,
+                                                clipID: id,
+                                              ),
+                                              child: ClipSizer(
+                                                editorWidth:
+                                                    constraints.maxWidth,
+                                                timeViewStart: timeView.start,
+                                                timeViewEnd: timeView.end,
+                                                child: Clip(
+                                                  ticksPerPixel:
+                                                      timeView.width /
+                                                          constraints.maxWidth,
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ).toList(),
+                                    ),
+                            );
+
                             return Listener(
                               onPointerDown: (event) {
                                 cubit.handleMouseDown(
@@ -300,74 +361,7 @@ class _ArrangerContent extends StatelessWidget {
                                 );
                               },
                               child: Stack(
-                                children: [
-                                  Positioned.fill(
-                                    child: CustomPaint(
-                                      painter: ArrangerBackgroundPainter(
-                                        baseTrackHeight: state.baseTrackHeight,
-                                        verticalScrollPosition:
-                                            state.verticalScrollPosition,
-                                        trackHeightModifiers:
-                                            state.trackHeightModifiers,
-                                        trackIDs: state.trackIDs,
-                                        timeViewStart: timeView.start,
-                                        timeViewEnd: timeView.end,
-                                        ticksPerQuarter: state.ticksPerQuarter,
-                                      ),
-                                    ),
-                                  ),
-                                  Positioned.fill(
-                                    child: state.activeArrangementID == null
-                                        ? const SizedBox()
-                                        : CustomMultiChildLayout(
-                                            delegate: ClipLayoutDelegate(
-                                              baseTrackHeight:
-                                                  state.baseTrackHeight,
-                                              trackHeightModifiers:
-                                                  state.trackHeightModifiers,
-                                              timeViewStart: timeView.start,
-                                              timeViewEnd: timeView.end,
-                                              project: cubit.project,
-                                              trackIDs: state.trackIDs,
-                                              clipIDs: state.clipIDs,
-                                              arrangementID:
-                                                  state.activeArrangementID!,
-                                              verticalScrollPosition:
-                                                  state.verticalScrollPosition,
-                                            ),
-                                            children: state.clipIDs.map<Widget>(
-                                              (id) {
-                                                final clipModel = cubit
-                                                    .project
-                                                    .song
-                                                    .arrangements[state
-                                                        .activeArrangementID]!
-                                                    .clips[id]!;
-
-                                                return LayoutId(
-                                                  key: Key(id.toString()),
-                                                  id: id,
-                                                  child:
-                                                      BlocProvider<ClipCubit>(
-                                                    create: (context) =>
-                                                        ClipCubit(
-                                                      projectID:
-                                                          state.projectID,
-                                                      patternID:
-                                                          clipModel.patternID,
-                                                    ),
-                                                    child: Clip(
-                                                      ticksPerPixel: timeView
-                                                              .width /
-                                                          constraints.maxWidth,
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            ).toList(),
-                                          ),
-                                  ),
-                                ],
+                                children: [grid, clips],
                               ),
                             );
                           }),

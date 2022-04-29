@@ -17,17 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'timeline_cubit.dart';
+import 'package:nanoid/nanoid.dart';
 
-// Workaround for https://github.com/rrousselGit/freezed/issues/653
-@Freezed(makeCollectionsUnmodifiable: false)
-class TimelineState with _$TimelineState {
+typedef ID = String;
 
-  factory TimelineState({
-    required ID? patternID,
-    required ID? arrangementID,
-    required int ticksPerQuarter,
-    required TimeSignatureModel defaultTimeSignature,
-    required List<TimeSignatureChangeModel> timeSignatureChanges,
-  }) = _TimelineState;
+ID getID() {
+  return nanoid(14);
 }

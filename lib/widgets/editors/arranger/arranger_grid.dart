@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
@@ -27,8 +28,8 @@ import 'helpers.dart';
 
 class ArrangerBackgroundPainter extends CustomPainter {
   final double baseTrackHeight;
-  final Map<int, double> trackHeightModifiers;
-  final List<int> trackIDs;
+  final Map<ID, double> trackHeightModifiers;
+  final List<ID> trackIDs;
   final double verticalScrollPosition;
   final double timeViewStart;
   final double timeViewEnd;

@@ -40,7 +40,7 @@ class ScreenOverlayCubit extends Cubit<ScreenOverlayState> {
   void remove(ScreenOverlayEntry entry) {
     emit(
       state.copyWith(
-        entries: state.entries.whereNot((element) => element == entry).toList(),
+        entries: state.entries.where((element) => element != entry).toList(),
       ),
     );
   }

@@ -19,14 +19,15 @@
 
 part of 'piano_roll_cubit.dart';
 
-@freezed
+// Workaround for https://github.com/rrousselGit/freezed/issues/653
+@Freezed(makeCollectionsUnmodifiable: false)
 class PianoRollState with _$PianoRollState {
 
   factory PianoRollState({
-    required int projectID,
-    int? patternID,
+    required ID projectID,
+    ID? patternID,
     required int ticksPerQuarter,
-    int? activeInstrumentID,
+    ID? activeInstrumentID,
     required List<LocalNote> notes,
     required double keyHeight,
     required double keyValueAtTop,
@@ -38,7 +39,7 @@ class PianoRollState with _$PianoRollState {
 // model note list updates.
 class LocalNote implements NoteModel {
   @override
-  late int id;
+  late ID id;
   @override
   late int key;
   @override

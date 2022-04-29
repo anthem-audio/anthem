@@ -18,7 +18,6 @@
 */
 
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
-import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -28,8 +27,6 @@ import '../../../model/store.dart';
 import '../shared/helpers/time_helpers.dart';
 import '../shared/helpers/types.dart';
 import 'piano_roll_notifications.dart';
-
-import 'helpers.dart';
 
 class PianoRollNotificationHandler extends StatelessWidget {
   const PianoRollNotificationHandler({Key? key, required this.child})

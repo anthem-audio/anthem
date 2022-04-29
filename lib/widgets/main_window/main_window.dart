@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_cubit.dart';
 import 'package:anthem/widgets/main_window/tab_content_switcher.dart';
@@ -80,10 +81,10 @@ class _MainWindowState extends State<MainWindow> {
                     WindowHeader(
                       selectedTabID: state.selectedTabID,
                       tabs: state.tabs,
-                      setActiveProject: (int id) {
+                      setActiveProject: (ID id) {
                         context.read<MainWindowCubit>().switchTab(id);
                       },
-                      closeProject: (int id) {
+                      closeProject: (ID id) {
                         context.read<MainWindowCubit>().closeProject(id);
                       },
                     ),

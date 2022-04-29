@@ -19,11 +19,12 @@
 
 part of 'track_header_cubit.dart';
 
-@freezed
+// Workaround for https://github.com/rrousselGit/freezed/issues/653
+@Freezed(makeCollectionsUnmodifiable: false)
 class TrackHeaderState with _$TrackHeaderState {
   factory TrackHeaderState({
-    required int projectID,
-    required int trackID,
+    required ID projectID,
+    required ID trackID,
     required String trackName,
   }) = _TrackHeaderState;
 }

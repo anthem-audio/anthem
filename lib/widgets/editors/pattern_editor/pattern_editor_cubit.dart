@@ -17,10 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/commands/project_commands.dart';
 import 'package:anthem/commands/state_changes.dart';
-import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:bloc/bloc.dart';
@@ -33,9 +35,18 @@ part 'pattern_editor_cubit.freezed.dart';
 class PatternEditorCubit extends Cubit<PatternEditorState> {
   final ProjectModel project;
 
+  late final StreamSubscription<List<StateChange>> _stateChangeStream;
+
+  @override
+  Future<void> close() async {
+    await _stateChangeStream.cancel();
+
+    return super.close();
+  }
+
   PatternEditorCubit({required this.project})
       : super(PatternEditorState(projectID: project.id)) {
-    project.stateChangeStream.listen(_onModelChanged);
+    _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
   }
 
   _onModelChanged(List<StateChange> changes) {
@@ -44,7 +55,7 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
     var updateGeneratorList = false;
 
     for (final change in changes) {
-      if (change is ActivePatternSet) {
+      if (change is ActivePatternChanged) {
         updateActivePattern = true;
       }
 
@@ -90,8 +101,8 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
     }
   }
 
-  int addPattern(String name) {
-    final pattern = PatternModel(name);
+  ID addPattern(String name) {
+    final pattern = PatternModel.create(name: name, project: project);
     project.execute(AddPatternCommand(
       project: project,
       pattern: pattern,
@@ -100,7 +111,7 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
     return pattern.id;
   }
 
-  void deletePattern(int patternID) {
+  void deletePattern(ID patternID) {
     project.execute(DeletePatternCommand(
       project: project,
       pattern: project.song.patterns[patternID]!,
@@ -126,11 +137,11 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
     ));
   }
 
-  void removeGenerator(int id) {
+  void removeGenerator(ID id) {
     throw UnimplementedError();
   }
 
-  void setActivePattern(int id) {
+  void setActivePattern(ID id) {
     project.song.setActivePattern(id);
   }
 }

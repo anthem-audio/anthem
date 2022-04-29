@@ -25,7 +25,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../shared/helpers/grid_paint_helpers.dart';
-import '../shared/helpers/time_helpers.dart';
 import '../shared/helpers/types.dart';
 import 'helpers.dart';
 
@@ -84,8 +83,6 @@ class PianoRollBackgroundPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
-    var accentLinePaint = Paint()..color = Theme.grid.accent;
-    var majorLinePaint = Paint()..color = Theme.grid.major;
     var minorLinePaint = Paint()..color = Theme.grid.minor;
 
     var lightBackgroundPaint = Paint()..color = Theme.grid.backgroundLight;

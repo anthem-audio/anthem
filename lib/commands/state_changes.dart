@@ -17,8 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
+
 part 'project_state_changes.dart';
 part 'pattern_state_changes.dart';
+
 part 'arrangement_state_changes.dart';
 
 abstract class StateChange {}
@@ -28,25 +31,25 @@ abstract class StateChange {}
  */
 
 class ProjectAdded extends ProjectStateChange {
-  ProjectAdded({required int projectID}) : super(projectID: projectID);
+  ProjectAdded({required ID projectID}) : super(projectID: projectID);
 }
 
 class ActiveProjectChanged extends ProjectStateChange {
-  ActiveProjectChanged({required int projectID}) : super(projectID: projectID);
+  ActiveProjectChanged({required ID projectID}) : super(projectID: projectID);
 }
 
 class ProjectClosed extends ProjectStateChange {
-  ProjectClosed({required int projectID}) : super(projectID: projectID);
+  ProjectClosed({required ID projectID}) : super(projectID: projectID);
 }
 
 class ProjectSaved extends ProjectStateChange {
-  ProjectSaved({required int projectID}) : super(projectID: projectID);
+  ProjectSaved({required ID projectID}) : super(projectID: projectID);
 }
 
 class JournalEntryStarted extends ProjectStateChange {
-  JournalEntryStarted({required int projectID}) : super(projectID: projectID);
+  JournalEntryStarted({required ID projectID}) : super(projectID: projectID);
 }
 
 class JournalEntryCommitted extends ProjectStateChange {
-  JournalEntryCommitted({required int projectID}) : super(projectID: projectID);
+  JournalEntryCommitted({required ID projectID}) : super(projectID: projectID);
 }

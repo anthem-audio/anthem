@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -27,8 +28,8 @@ part 'track_header_cubit.freezed.dart';
 
 class TrackHeaderCubit extends Cubit<TrackHeaderState> {
   TrackHeaderCubit({
-    required int projectID,
-    required int trackID,
+    required ID projectID,
+    required ID trackID,
   }) : super((() {
           final project = Store.instance.projects[projectID]!;
 

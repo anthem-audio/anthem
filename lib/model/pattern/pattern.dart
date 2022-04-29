@@ -19,9 +19,12 @@
 
 import 'dart:collection';
 import 'dart:convert';
+import 'dart:math';
 
-import 'package:anthem/helpers/get_id.dart';
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
+import 'package:anthem/model/shared/hydratable.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 import '../shared/time_signature.dart';
@@ -32,29 +35,40 @@ part 'pattern.g.dart';
 double _hueGen = 0;
 
 @JsonSerializable()
-class PatternModel {
-  int id;
+class PatternModel extends Hydratable {
+  ID id = getID();
 
-  String name;
-  AnthemColor color;
+  late String name;
+  late AnthemColor color;
 
-  Map<int, List<NoteModel>> notes;
-  List<TimeSignatureChangeModel> timeSignatureChanges;
-  TimeSignatureModel defaultTimeSignature; // TODO: Just pull from project??
+  Map<ID, List<NoteModel>> notes = HashMap();
+  List<TimeSignatureChangeModel> timeSignatureChanges = [];
+  late TimeSignatureModel
+      defaultTimeSignature; // TODO: Just pull from project??
 
-  PatternModel(this.name)
-      : id = getID(),
-        notes = HashMap(),
-        timeSignatureChanges = [],
-        defaultTimeSignature = TimeSignatureModel(4, 4),
-        color = AnthemColor(
-          hue: (() {
-            final result = _hueGen;
-            _hueGen = (_hueGen + 30) % 360;
-            return result;
-          })(),
-          brightnessModifier: 0,
-        );
+  @JsonKey(ignore: true)
+  ProjectModel? _project;
+
+  ProjectModel get project {
+    return _project!;
+  }
+
+  /// For deserialization. Use `PatternModel.create()` instead.
+  PatternModel();
+
+  PatternModel.create({
+    required this.name,
+    required ProjectModel project,
+  }) {
+    defaultTimeSignature = TimeSignatureModel(4, 4);
+    final hue = _hueGen;
+    _hueGen = (_hueGen + 30) % 360;
+    color = AnthemColor(
+      hue: hue,
+      brightnessModifier: 0,
+    );
+    hydrate(project: project);
+  }
 
   factory PatternModel.fromJson(Map<String, dynamic> json) =>
       _$PatternModelFromJson(json);
@@ -63,4 +77,31 @@ class PatternModel {
 
   @override
   String toString() => json.encode(toJson());
+
+  void hydrate({required ProjectModel project}) {
+    _project = project;
+    isHydrated = true;
+  }
+
+  /// Gets the time position of the end of the last item in this pattern
+  /// (note, audio clip, automation point), rounded upward to the nearest
+  /// `barMultiple` bars.
+  int getWidth({
+    int barMultiple = 1,
+    int minPaddingInBarMultiples = 1,
+  }) {
+    // TODO: Time signature changes
+
+    final ticksPerBar = project.song.ticksPerQuarter ~/
+        (defaultTimeSignature.denominator ~/ 4) *
+        defaultTimeSignature.numerator;
+    final lastContent = notes.values.expand((e) => e).fold<int>(
+        ticksPerBar * barMultiple * minPaddingInBarMultiples,
+        (previousValue, note) =>
+            max(previousValue, (note.offset + note.length)));
+
+    return (max(lastContent, 1) / (ticksPerBar * barMultiple)).ceil() *
+        ticksPerBar *
+        barMultiple;
+  }
 }

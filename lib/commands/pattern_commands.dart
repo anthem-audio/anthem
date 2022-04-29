@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -35,7 +36,7 @@ void _addPatternToProject(
 
 void _removePatternFromProject(
   ProjectModel project,
-  int patternID,
+  ID patternID,
 ) {
   project.song.patternOrder.removeWhere((element) => element == patternID);
   project.song.patterns.remove(patternID);
@@ -109,7 +110,7 @@ class DeletePatternCommand extends Command {
 
 void _addNote(
   PatternModel pattern,
-  int generatorID,
+  ID generatorID,
   NoteModel note,
 ) {
   if (!pattern.notes.containsKey(generatorID)) {
@@ -121,24 +122,24 @@ void _addNote(
 
 void _removeNote(
   PatternModel pattern,
-  int generatorID,
-  int noteID,
+  ID generatorID,
+  ID noteID,
 ) {
   pattern.notes[generatorID]!.removeWhere((element) => element.id == noteID);
 }
 
 NoteModel _getNote(
   PatternModel pattern,
-  int generatorID,
-  int noteID,
+  ID generatorID,
+  ID noteID,
 ) {
   return pattern.notes[generatorID]!
       .firstWhere((element) => element.id == noteID);
 }
 
 class AddNoteCommand extends Command {
-  int patternID;
-  int generatorID;
+  ID patternID;
+  ID generatorID;
   NoteModel note;
 
   AddNoteCommand({
@@ -190,8 +191,8 @@ class AddNoteCommand extends Command {
 }
 
 class DeleteNoteCommand extends Command {
-  int patternID;
-  int generatorID;
+  ID patternID;
+  ID generatorID;
   NoteModel note;
 
   DeleteNoteCommand({
@@ -243,9 +244,9 @@ class DeleteNoteCommand extends Command {
 }
 
 class MoveNoteCommand extends Command {
-  int patternID;
-  int generatorID;
-  int noteID;
+  ID patternID;
+  ID generatorID;
+  ID noteID;
   int oldKey;
   int newKey;
   int oldOffset;
@@ -310,9 +311,9 @@ class MoveNoteCommand extends Command {
 }
 
 class ResizeNoteCommand extends Command {
-  int patternID;
-  int generatorID;
-  int noteID;
+  ID patternID;
+  ID generatorID;
+  ID noteID;
   int oldLength;
   int newLength;
 

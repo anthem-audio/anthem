@@ -20,12 +20,13 @@
 import 'dart:ui';
 
 import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/project.dart';
 
 import 'command.dart';
 
-void _removeGenerator(ProjectModel project, int generatorID) {
+void _removeGenerator(ProjectModel project, ID generatorID) {
   project.generatorList.removeWhere((element) => element == generatorID);
   if (project.instruments.containsKey(generatorID)) {
     project.instruments.remove(generatorID);
@@ -36,7 +37,7 @@ void _removeGenerator(ProjectModel project, int generatorID) {
 }
 
 class AddInstrumentCommand extends Command {
-  int instrumentID;
+  ID instrumentID;
   String name;
   Color color;
 
@@ -63,7 +64,7 @@ class AddInstrumentCommand extends Command {
 }
 
 class AddControllerCommand extends Command {
-  int controllerID;
+  ID controllerID;
   String name;
   Color color;
 
