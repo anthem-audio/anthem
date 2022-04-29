@@ -118,7 +118,6 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
         child: GestureDetector(
           onTap: () {
             item.onSelected?.call();
-            // CloseAllMenusNotification().dispatch(context);
             screenOverlayCubit.clear();
           },
           child: Container(
