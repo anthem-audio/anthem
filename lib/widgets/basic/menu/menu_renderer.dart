@@ -21,20 +21,25 @@ import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/measure_text.dart';
+import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
-import '../../../theme.dart';
 import 'menu_model.dart';
 
-const menuItemHeight = 25.0;
-const separatorHeight = 13.0;
-const padding = 12.0;
+class _Constants {
+  static const double submenuArrowWidth = 8.0;
+  static const double padding = 12.0;
+  static const double fontSize = 11.0;
+  static const double separatorHeight = 13.0;
+  static const double menuItemHeight = 25.0;
+}
 
 double getMenuItemHeight(GenericMenuItem menuItem) {
-  if (menuItem is MenuItem) return menuItemHeight;
-  if (menuItem is Separator) return separatorHeight;
+  if (menuItem is MenuItem) return _Constants.menuItemHeight;
+  if (menuItem is Separator) return _Constants.separatorHeight;
   return 0;
 }
 
@@ -50,14 +55,20 @@ class MenuRenderer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final widest = menu.children
-        .whereType<MenuItem>()
-        .map((child) => measureText(
-              text: child.text,
-              textStyle: const TextStyle(),
-              context: context,
-            ).width)
-        .fold<double>(0, (value, element) => max(value, element));
+    final hasSubmenu = menu.children.whereType<MenuItem>().fold<bool>(false,
+        (previousValue, element) => previousValue || element.submenu != null);
+
+    final widest = menu.children.whereType<MenuItem>().map((child) {
+      final labelWidth = measureText(
+        text: child.text,
+        textStyle: const TextStyle(fontSize: _Constants.fontSize),
+        context: context,
+      ).width;
+      var submenuArrowWidth =
+          hasSubmenu ? _Constants.padding + _Constants.submenuArrowWidth : 0;
+      // The 2px extra here is due to the border from the hover effect
+      return labelWidth + submenuArrowWidth + 2;
+    }).fold<double>(0, (value, element) => max(value, element));
 
     final height = menu.children.fold<double>(
         0, (value, element) => value + getMenuItemHeight(element));
@@ -70,10 +81,11 @@ class MenuRenderer extends StatelessWidget {
           Radius.circular(4),
         ),
       ),
-      width: widest + (padding + 1) * 2,
-      height: height + (padding + 1) * 2,
+      width: widest + (_Constants.padding + 1) * 2,
+      height: height + (_Constants.padding + 1) * 2,
       child: Padding(
-        padding: const EdgeInsets.only(top: padding, bottom: padding),
+        padding: const EdgeInsets.only(
+            top: _Constants.padding, bottom: _Constants.padding),
         child: Column(
           children: menu.children
               .map((child) => MenuItemRenderer(menuItem: child))
@@ -104,6 +116,33 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
 
     if (widget.menuItem is MenuItem) {
       final item = widget.menuItem as MenuItem;
+
+      final rowChildren = [
+        Text(
+          item.text,
+          style: TextStyle(
+            color: Theme.text.main,
+            fontSize: _Constants.fontSize,
+          ),
+        ),
+        const Expanded(child: SizedBox()),
+      ];
+
+      if (item.submenu != null) {
+        rowChildren.add(const SizedBox(width: _Constants.padding));
+        rowChildren.add(SizedBox(
+          width: _Constants.submenuArrowWidth,
+          child: Transform.rotate(
+            angle: -pi / 2,
+            alignment: Alignment.center,
+            child: SvgIcon(
+              icon: Icons.arrowDown,
+              color: Theme.text.main,
+            ),
+          ),
+        ));
+      }
+
       return MouseRegion(
         onEnter: (e) {
           setState(() {
@@ -121,13 +160,22 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
             screenOverlayCubit.clear();
           },
           child: Container(
-            color: hovered ? Theme.primary.main : null,
+            decoration: BoxDecoration(
+              color: hovered ? Theme.primary.subtle : null,
+              // This adds 2px to the width of the menu
+              border: hovered
+                  ? Border.all(color: Theme.primary.subtleBorder)
+                  : Border.all(color: const Color(0x00000000)),
+              borderRadius: BorderRadius.circular(4),
+            ),
             height: height,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: padding),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(item.text),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: _Constants.padding),
+              child: Row(
+                mainAxisSize: MainAxisSize.max,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: rowChildren,
               ),
             ),
           ),
@@ -140,8 +188,8 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
         height: height,
         child: Padding(
           padding: EdgeInsets.symmetric(
-            horizontal: padding,
-            vertical: (separatorHeight / 2).floor().toDouble(),
+            horizontal: _Constants.padding,
+            vertical: (_Constants.separatorHeight / 2).floor().toDouble(),
           ),
           child: Container(
             color: Theme.separator,

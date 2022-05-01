@@ -40,6 +40,8 @@ class _Panel {
 
 class _Primary {
   Color main = const Color(0xFF25C29D);
+  Color subtle = const Color(0xFF20A888).withOpacity(0.11);
+  Color subtleBorder = const Color(0xFF25C29D).withOpacity(0.38);
 }
 
 class _Control {

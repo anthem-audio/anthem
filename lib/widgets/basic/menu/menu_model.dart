@@ -32,12 +32,11 @@ class GenericMenuItem {}
 
 class MenuItem extends GenericMenuItem {
   late String text;
-  late MenuDef submenu;
+  late MenuDef? submenu;
   VoidCallback? onSelected;
 
-  MenuItem({String? text, MenuDef? submenu, this.onSelected}) : super() {
+  MenuItem({String? text, this.submenu, this.onSelected}) : super() {
     this.text = text ?? "";
-    this.submenu = submenu ?? MenuDef(children: []);
   }
 }
 
