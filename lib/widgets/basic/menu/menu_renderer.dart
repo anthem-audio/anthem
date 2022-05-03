@@ -107,6 +107,7 @@ class MenuItemRenderer extends StatefulWidget {
 
 class _MenuItemRendererState extends State<MenuItemRenderer> {
   bool hovered = false;
+  ID? submenuKey; // If there's no open submenu, this is null
 
   @override
   Widget build(BuildContext context) {
@@ -157,7 +158,29 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
         child: GestureDetector(
           onTap: () {
             item.onSelected?.call();
-            screenOverlayCubit.clear();
+            if (item.submenu == null) {
+              screenOverlayCubit.clear();
+            } else {
+              final position =
+                  (context.findRenderObject() as RenderBox).localToGlobal(
+                const Offset(0, 0),
+              );
+              final size = context.size!;
+
+              submenuKey = getID();
+
+              screenOverlayCubit.add(submenuKey!, ScreenOverlayEntry(
+                builder: (screenOverlayContext) {
+                  return Positioned(
+                    left: position.dx + size.width,
+                    top: position.dy -
+                        _Constants.padding -
+                        1, // -1 to account for menu border
+                    child: MenuRenderer(id: submenuKey!, menu: item.submenu!),
+                  );
+                },
+              ));
+            }
           },
           child: Container(
             decoration: BoxDecoration(
