@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
 import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
@@ -35,6 +36,9 @@ class _Constants {
   static const double fontSize = 11.0;
   static const double separatorHeight = 13.0;
   static const double menuItemHeight = 25.0;
+
+  static const Duration hoverOpenDuration = Duration(milliseconds: 500);
+  static const Duration hoverCloseDuration = Duration(milliseconds: 500);
 }
 
 double getMenuItemHeight(GenericMenuItem menuItem) {
@@ -107,7 +111,14 @@ class MenuItemRenderer extends StatefulWidget {
 
 class _MenuItemRendererState extends State<MenuItemRenderer> {
   bool hovered = false;
-  ID? submenuKey; // If there's no open submenu, this is null
+  bool submenuOpen = false;
+
+  // If there's no open submenu, this is null
+  ID? submenuKey;
+
+  // This will be defined if the user has hovered an item with a submenu but
+  // the submenu hasn't opened yet
+  Timer? hoverTimer;
 
   @override
   Widget build(BuildContext context) {
@@ -149,11 +160,23 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
           setState(() {
             hovered = true;
           });
+          if (item.submenu != null && !submenuOpen) {
+            hoverTimer = Timer(_Constants.hoverOpenDuration, () {
+              openSubmenu(
+                context: context,
+                screenOverlayCubit: screenOverlayCubit,
+                item: item,
+              );
+
+              hoverTimer = null;
+            });
+          }
         },
         onExit: (e) {
           setState(() {
             hovered = false;
           });
+          hoverTimer?.cancel();
         },
         child: GestureDetector(
           onTap: () {
@@ -161,32 +184,18 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
             if (item.submenu == null) {
               screenOverlayCubit.clear();
             } else {
-              final position =
-                  (context.findRenderObject() as RenderBox).localToGlobal(
-                const Offset(0, 0),
+              openSubmenu(
+                context: context,
+                screenOverlayCubit: screenOverlayCubit,
+                item: item,
               );
-              final size = context.size!;
-
-              submenuKey = getID();
-
-              screenOverlayCubit.add(submenuKey!, ScreenOverlayEntry(
-                builder: (screenOverlayContext) {
-                  return Positioned(
-                    left: position.dx + size.width,
-                    top: position.dy -
-                        _Constants.padding -
-                        1, // -1 to account for menu border
-                    child: MenuRenderer(id: submenuKey!, menu: item.submenu!),
-                  );
-                },
-              ));
             }
           },
           child: Container(
             decoration: BoxDecoration(
-              color: hovered ? Theme.primary.subtle : null,
+              color: hovered || submenuOpen ? Theme.primary.subtle : null,
               // This adds 2px to the width of the menu
-              border: hovered
+              border: hovered || submenuOpen
                   ? Border.all(color: Theme.primary.subtleBorder)
                   : Border.all(color: const Color(0x00000000)),
               borderRadius: BorderRadius.circular(4),
@@ -222,5 +231,34 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
     }
 
     return const SizedBox();
+  }
+
+  void openSubmenu({
+    required BuildContext context,
+    required ScreenOverlayCubit screenOverlayCubit,
+    required MenuItem item,
+  }) {
+    final position = (context.findRenderObject() as RenderBox).localToGlobal(
+      const Offset(0, 0),
+    );
+    final size = context.size!;
+
+    submenuKey = getID();
+
+    screenOverlayCubit.add(submenuKey!, ScreenOverlayEntry(
+      builder: (screenOverlayContext) {
+        return Positioned(
+          left: position.dx + size.width,
+          top: position.dy -
+              _Constants.padding -
+              1, // -1 to account for menu border
+          child: MenuRenderer(id: submenuKey!, menu: item.submenu!),
+        );
+      },
+    ));
+
+    setState(() {
+      submenuOpen = true;
+    });
   }
 }
