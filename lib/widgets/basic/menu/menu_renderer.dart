@@ -47,7 +47,7 @@ double getMenuItemHeight(GenericMenuItem menuItem) {
   return 0;
 }
 
-class MenuRenderer extends StatelessWidget {
+class MenuRenderer extends StatefulWidget {
   final MenuDef menu;
   final ID id;
 
@@ -58,11 +58,19 @@ class MenuRenderer extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<MenuRenderer> createState() => _MenuRendererState();
+}
+
+class _MenuRendererState extends State<MenuRenderer> {
+  bool isMouseInside = false;
+
+  @override
   Widget build(BuildContext context) {
-    final hasSubmenu = menu.children.whereType<MenuItem>().fold<bool>(false,
+    final hasSubmenu = widget.menu.children.whereType<MenuItem>().fold<bool>(
+        false,
         (previousValue, element) => previousValue || element.submenu != null);
 
-    final widest = menu.children.whereType<MenuItem>().map((child) {
+    final widest = widget.menu.children.whereType<MenuItem>().map((child) {
       final labelWidth = measureText(
         text: child.text,
         textStyle: const TextStyle(fontSize: _Constants.fontSize),
@@ -74,26 +82,43 @@ class MenuRenderer extends StatelessWidget {
       return labelWidth + submenuArrowWidth + 2;
     }).fold<double>(0, (value, element) => max(value, element));
 
-    final height = menu.children.fold<double>(
+    final height = widget.menu.children.fold<double>(
         0, (value, element) => value + getMenuItemHeight(element));
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.panel.accentDark,
-        border: Border.all(color: Theme.panel.border),
-        borderRadius: const BorderRadius.all(
-          Radius.circular(4),
+    return MouseRegion(
+      onEnter: (event) {
+        setState(() {
+          isMouseInside = true;
+        });
+      },
+      onExit: (event) {
+        setState(() {
+          isMouseInside = false;
+        });
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.panel.accentDark,
+          border: Border.all(color: Theme.panel.border),
+          borderRadius: const BorderRadius.all(
+            Radius.circular(4),
+          ),
         ),
-      ),
-      width: widest + (_Constants.padding + 1) * 2,
-      height: height + (_Constants.padding + 1) * 2,
-      child: Padding(
-        padding: const EdgeInsets.only(
-            top: _Constants.padding, bottom: _Constants.padding),
-        child: Column(
-          children: menu.children
-              .map((child) => MenuItemRenderer(menuItem: child))
-              .toList(),
+        width: widest + (_Constants.padding + 1) * 2,
+        height: height + (_Constants.padding + 1) * 2,
+        child: Padding(
+          padding: const EdgeInsets.only(
+              top: _Constants.padding, bottom: _Constants.padding),
+          child: Column(
+            children: widget.menu.children
+                .map(
+                  (child) => MenuItemRenderer(
+                    menuItem: child,
+                    isMouseInMenu: isMouseInside,
+                  ),
+                )
+                .toList(),
+          ),
         ),
       ),
     );
@@ -102,16 +127,23 @@ class MenuRenderer extends StatelessWidget {
 
 class MenuItemRenderer extends StatefulWidget {
   final GenericMenuItem menuItem;
+  final bool isMouseInMenu;
 
-  const MenuItemRenderer({Key? key, required this.menuItem}) : super(key: key);
+  const MenuItemRenderer({
+    Key? key,
+    required this.menuItem,
+    required this.isMouseInMenu,
+  }) : super(key: key);
 
   @override
   State<MenuItemRenderer> createState() => _MenuItemRendererState();
 }
 
 class _MenuItemRendererState extends State<MenuItemRenderer> {
-  bool hovered = false;
-  bool submenuOpen = false;
+  bool isHovered = false;
+  bool get isSubmenuOpen {
+    return submenuKey != null;
+  }
 
   // If there's no open submenu, this is null
   ID? submenuKey;
@@ -119,6 +151,26 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
   // This will be defined if the user has hovered an item with a submenu but
   // the submenu hasn't opened yet
   Timer? hoverTimer;
+
+  // This will be defined if the user has hovered a different item in this
+  // menu, but the open submenu hasn't closed yet
+  Timer? submenuCloseTimer;
+
+  @override
+  void didUpdateWidget(MenuItemRenderer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final screenOverlayCubit = Provider.of<ScreenOverlayCubit>(context);
+
+    if (!oldWidget.isMouseInMenu &&
+        widget.isMouseInMenu &&
+        isSubmenuOpen &&
+        !isHovered) {
+      startSubmenuCloseTimer(screenOverlayCubit: screenOverlayCubit);
+    } else if (oldWidget.isMouseInMenu && !widget.isMouseInMenu) {
+      cancelSubmenuCloseTimer();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -155,28 +207,28 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
         ));
       }
 
+      final showHoverState =
+          isHovered || (isSubmenuOpen && !widget.isMouseInMenu);
+
       return MouseRegion(
         onEnter: (e) {
           setState(() {
-            hovered = true;
+            isHovered = true;
           });
-          if (item.submenu != null && !submenuOpen) {
-            hoverTimer = Timer(_Constants.hoverOpenDuration, () {
-              openSubmenu(
-                context: context,
-                screenOverlayCubit: screenOverlayCubit,
-                item: item,
-              );
-
-              hoverTimer = null;
-            });
+          if (item.submenu != null && !isSubmenuOpen) {
+            startHoverTimer(
+              screenOverlayCubit: screenOverlayCubit,
+              item: item,
+            );
           }
+          cancelSubmenuCloseTimer();
         },
         onExit: (e) {
           setState(() {
-            hovered = false;
+            isHovered = false;
           });
-          hoverTimer?.cancel();
+          cancelHoverTimer();
+          startSubmenuCloseTimer(screenOverlayCubit: screenOverlayCubit);
         },
         child: GestureDetector(
           onTap: () {
@@ -185,7 +237,6 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
               screenOverlayCubit.clear();
             } else {
               openSubmenu(
-                context: context,
                 screenOverlayCubit: screenOverlayCubit,
                 item: item,
               );
@@ -193,9 +244,9 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
           },
           child: Container(
             decoration: BoxDecoration(
-              color: hovered || submenuOpen ? Theme.primary.subtle : null,
+              color: showHoverState ? Theme.primary.subtle : null,
               // This adds 2px to the width of the menu
-              border: hovered || submenuOpen
+              border: showHoverState
                   ? Border.all(color: Theme.primary.subtleBorder)
                   : Border.all(color: const Color(0x00000000)),
               borderRadius: BorderRadius.circular(4),
@@ -234,10 +285,11 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
   }
 
   void openSubmenu({
-    required BuildContext context,
     required ScreenOverlayCubit screenOverlayCubit,
     required MenuItem item,
   }) {
+    if (isSubmenuOpen) return;
+
     final position = (context.findRenderObject() as RenderBox).localToGlobal(
       const Offset(0, 0),
     );
@@ -256,9 +308,45 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
         );
       },
     ));
+  }
 
-    setState(() {
-      submenuOpen = true;
+  void startHoverTimer({
+    required ScreenOverlayCubit screenOverlayCubit,
+    required MenuItem item,
+  }) {
+    hoverTimer = Timer(_Constants.hoverOpenDuration, () {
+      openSubmenu(
+        screenOverlayCubit: screenOverlayCubit,
+        item: item,
+      );
+
+      hoverTimer = null;
     });
+  }
+
+  void cancelHoverTimer() {
+    hoverTimer?.cancel();
+    hoverTimer = null;
+  }
+
+  void startSubmenuCloseTimer({
+    required ScreenOverlayCubit screenOverlayCubit,
+  }) {
+    submenuCloseTimer = Timer(
+      _Constants.hoverCloseDuration,
+      () {
+        if (submenuKey != null) {
+          screenOverlayCubit.remove(submenuKey!);
+          setState(() {
+            submenuKey = null;
+          });
+        }
+      },
+    );
+  }
+
+  void cancelSubmenuCloseTimer() {
+    submenuCloseTimer?.cancel();
+    submenuCloseTimer = null;
   }
 }
