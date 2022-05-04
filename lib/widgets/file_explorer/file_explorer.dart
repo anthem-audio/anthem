@@ -17,22 +17,21 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_item.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_view.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../theme.dart';
-
-class ProjectExplorer extends StatefulWidget {
-  const ProjectExplorer({Key? key}) : super(key: key);
+class FileExplorer extends StatefulWidget {
+  const FileExplorer({Key? key}) : super(key: key);
 
   @override
-  State<ProjectExplorer> createState() => _ProjectExplorerState();
+  State<FileExplorer> createState() => _FileExplorerState();
 }
 
-class _ProjectExplorerState extends State<ProjectExplorer> {
+class _FileExplorerState extends State<FileExplorer> {
   final ScrollController controller = ScrollController();
 
   @override

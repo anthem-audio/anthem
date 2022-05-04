@@ -23,100 +23,110 @@ import 'package:anthem/widgets/basic/button_tabs.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 class ProjectFooter extends StatelessWidget {
   const ProjectFooter({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 44,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(4),
-        color: Theme.panel.main,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(6),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.max,
-          children: [
-            ButtonTabs(
-              // selected: ExplorerKind.file,
-              tabs: [
-                ButtonTabDef.withIcon(
-                  icon: Icons.browserPanel,
-                  id: ExplorerKind.file,
-                ),
-                ButtonTabDef.withIcon(
-                  icon: Icons.projectPanel,
-                  id: ExplorerKind.project,
-                ),
-              ],
-            ),
-            const SizedBox(width: 8),
-            ButtonTabs(
-              // selected: ProjectLayoutKind.arrange,
-              tabs: [
-                ButtonTabDef.withText(
-                  text: "ARRANGE",
-                  id: ProjectLayoutKind.arrange,
-                ),
-                ButtonTabDef.withText(
-                  text: "EDIT",
-                  id: ProjectLayoutKind.edit,
-                ),
-                ButtonTabDef.withText(
-                  text: "MIX",
-                  id: ProjectLayoutKind.mix,
-                ),
-              ],
-            ),
-            const SizedBox(width: 8),
-            Button(
-              startIcon: Icons.patternEditor,
-              width: 32,
-              height: 32,
-            ),
-            const SizedBox(width: 8),
-            ButtonTabs(
-              // selected: EditorKind.detail,
-              tabs: [
-                ButtonTabDef.withIcon(
-                  icon: Icons.detailEditor,
-                  id: EditorKind.detail,
-                ),
-                ButtonTabDef.withIcon(
-                  icon: Icons.automation,
-                  id: EditorKind.automation,
-                ),
-                ButtonTabDef.withIcon(
-                  icon: Icons.channelRack,
-                  id: EditorKind.channelRack,
-                ),
-                ButtonTabDef.withIcon(
-                  icon: Icons.mixer,
-                  id: EditorKind.mixer,
-                ),
-              ],
-            ),
-            const Expanded(child: SizedBox()),
-            Container(
-              width: 304,
-              decoration: BoxDecoration(
-                border: Border.all(color: Theme.panel.border),
-                color: Theme.panel.accentDark,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Button(
-              startIcon: Icons.automationMatrixPanel,
-              width: 32,
-              height: 32,
-            ),
-          ],
+    return BlocBuilder<ProjectCubit, ProjectState>(builder: (context, state) {
+      final projectCubit = Provider.of<ProjectCubit>(context);
+
+      return Container(
+        height: 44,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(4),
+          color: Theme.panel.main,
         ),
-      ),
-    );
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              ButtonTabs<ExplorerKind>(
+                // selected: ExplorerKind.file,
+                tabs: [
+                  ButtonTabDef.withIcon(
+                    icon: Icons.browserPanel,
+                    id: ExplorerKind.file,
+                  ),
+                  ButtonTabDef.withIcon(
+                    icon: Icons.projectPanel,
+                    id: ExplorerKind.project,
+                  ),
+                ],
+                selected: state.selectedExplorer,
+                onChange: (selection) {
+                  projectCubit.setActiveExplorer(selection);
+                },
+              ),
+              const SizedBox(width: 8),
+              ButtonTabs(
+                // selected: ProjectLayoutKind.arrange,
+                tabs: [
+                  ButtonTabDef.withText(
+                    text: "ARRANGE",
+                    id: ProjectLayoutKind.arrange,
+                  ),
+                  ButtonTabDef.withText(
+                    text: "EDIT",
+                    id: ProjectLayoutKind.edit,
+                  ),
+                  ButtonTabDef.withText(
+                    text: "MIX",
+                    id: ProjectLayoutKind.mix,
+                  ),
+                ],
+              ),
+              const SizedBox(width: 8),
+              Button(
+                startIcon: Icons.patternEditor,
+                width: 32,
+                height: 32,
+              ),
+              const SizedBox(width: 8),
+              ButtonTabs(
+                // selected: EditorKind.detail,
+                tabs: [
+                  ButtonTabDef.withIcon(
+                    icon: Icons.detailEditor,
+                    id: EditorKind.detail,
+                  ),
+                  ButtonTabDef.withIcon(
+                    icon: Icons.automation,
+                    id: EditorKind.automation,
+                  ),
+                  ButtonTabDef.withIcon(
+                    icon: Icons.channelRack,
+                    id: EditorKind.channelRack,
+                  ),
+                  ButtonTabDef.withIcon(
+                    icon: Icons.mixer,
+                    id: EditorKind.mixer,
+                  ),
+                ],
+              ),
+              const Expanded(child: SizedBox()),
+              Container(
+                width: 304,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Theme.panel.border),
+                  color: Theme.panel.accentDark,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Button(
+                startIcon: Icons.automationMatrixPanel,
+                width: 32,
+                height: 32,
+              ),
+            ],
+          ),
+        ),
+      );
+    });
   }
 }
