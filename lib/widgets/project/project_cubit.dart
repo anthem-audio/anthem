@@ -53,4 +53,8 @@ class ProjectCubit extends Cubit<ProjectState> {
   }
 
   void setActiveGeneratorID(ID? id) => project.song.setActiveGenerator(id);
+  void setActiveExplorer(ExplorerKind explorer) =>
+      emit(state.copyWith(selectedExplorer: explorer));
+  void setActiveEditor(EditorKind editor) =>
+      emit(state.copyWith(selectedEditor: editor));
 }

@@ -25,7 +25,7 @@ import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:anthem/widgets/project/project_footer.dart';
-import 'package:anthem/widgets/project_explorer/project_explorer.dart';
+import 'package:anthem/widgets/file_explorer/file_explorer.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -51,9 +51,23 @@ class Project extends StatelessWidget {
           Expanded(
             child: Panel(
               orientation: PanelOrientation.left,
+              panelStartSize: 200,
               // left panel
-              panelContent: const ProjectExplorer(),
-              hidden: true,
+              panelContent: Stack(
+                children: [
+                  Positioned.fill(
+                    child: Visibility(
+                      maintainAnimation: false,
+                      maintainInteractivity: false,
+                      maintainSemantics: false,
+                      maintainSize: false,
+                      maintainState: true,
+                      visible: state.selectedExplorer == ExplorerKind.project,
+                      child: const FileExplorer(),
+                    ),
+                  ),
+                ],
+              ),
 
               child: Panel(
                 hidden: true,
