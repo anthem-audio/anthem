@@ -181,11 +181,16 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
     if (widget.menuItem is MenuItem) {
       final item = widget.menuItem as MenuItem;
 
+      final showHoverState =
+          isHovered || (isSubmenuOpen && !widget.isMouseInMenu);
+      
+      final textColor = showHoverState ? Theme.primary.main : Theme.text.main;
+
       final rowChildren = [
         Text(
           item.text,
           style: TextStyle(
-            color: Theme.text.main,
+            color: textColor,
             fontSize: _Constants.fontSize,
           ),
         ),
@@ -201,14 +206,11 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
             alignment: Alignment.center,
             child: SvgIcon(
               icon: Icons.arrowDown,
-              color: Theme.text.main,
+              color: textColor,
             ),
           ),
         ));
       }
-
-      final showHoverState =
-          isHovered || (isSubmenuOpen && !widget.isMouseInMenu);
 
       return MouseRegion(
         onEnter: (e) {
