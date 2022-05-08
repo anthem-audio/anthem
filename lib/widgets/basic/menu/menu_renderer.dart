@@ -32,7 +32,7 @@ import 'menu_model.dart';
 
 class _Constants {
   static const double submenuArrowWidth = 8.0;
-  static const double padding = 12.0;
+  static const double padding = 8.0;
   static const double fontSize = 11.0;
   static const double separatorHeight = 13.0;
   static const double menuItemHeight = 25.0;
@@ -76,10 +76,11 @@ class _MenuRendererState extends State<MenuRenderer> {
         textStyle: const TextStyle(fontSize: _Constants.fontSize),
         context: context,
       ).width;
-      var submenuArrowWidth =
-          hasSubmenu ? _Constants.padding + _Constants.submenuArrowWidth : 0;
+      var submenuArrowWidth = hasSubmenu
+          ? _Constants.padding + _Constants.submenuArrowWidth + 50
+          : 0;
       // The 2px extra here is due to the border from the hover effect
-      return labelWidth + submenuArrowWidth + 2;
+      return (labelWidth + submenuArrowWidth + 2);
     }).fold<double>(0, (value, element) => max(value, element));
 
     final height = widget.menu.children.fold<double>(
@@ -104,11 +105,10 @@ class _MenuRendererState extends State<MenuRenderer> {
             Radius.circular(4),
           ),
         ),
-        width: widest + (_Constants.padding + 1) * 2,
+        width: widest + (_Constants.padding + 1) * 4,
         height: height + (_Constants.padding + 1) * 2,
         child: Padding(
-          padding: const EdgeInsets.only(
-              top: _Constants.padding, bottom: _Constants.padding),
+          padding: const EdgeInsets.all(_Constants.padding),
           child: Column(
             children: widget.menu.children
                 .map(
@@ -183,7 +183,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
 
       final showHoverState =
           isHovered || (isSubmenuOpen && !widget.isMouseInMenu);
-      
+
       final textColor = showHoverState ? Theme.primary.main : Theme.text.main;
 
       final rowChildren = [
@@ -199,17 +199,19 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
 
       if (item.submenu != null) {
         rowChildren.add(const SizedBox(width: _Constants.padding));
-        rowChildren.add(SizedBox(
-          width: _Constants.submenuArrowWidth,
-          child: Transform.rotate(
-            angle: -pi / 2,
-            alignment: Alignment.center,
-            child: SvgIcon(
-              icon: Icons.arrowDown,
-              color: textColor,
+        rowChildren.add(
+          SizedBox(
+            width: _Constants.submenuArrowWidth,
+            child: Transform.rotate(
+              angle: -pi / 2,
+              alignment: Alignment.center,
+              child: SvgIcon(
+                icon: Icons.arrowDown,
+                color: textColor,
+              ),
             ),
           ),
-        ));
+        );
       }
 
       return MouseRegion(
@@ -302,7 +304,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
     screenOverlayCubit.add(submenuKey!, ScreenOverlayEntry(
       builder: (screenOverlayContext) {
         return Positioned(
-          left: position.dx + size.width,
+          left: position.dx + size.width + _Constants.padding,
           top: position.dy -
               _Constants.padding -
               1, // -1 to account for menu border
@@ -316,14 +318,17 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
     required ScreenOverlayCubit screenOverlayCubit,
     required MenuItem item,
   }) {
-    hoverTimer = Timer(_Constants.hoverOpenDuration, () {
-      openSubmenu(
-        screenOverlayCubit: screenOverlayCubit,
-        item: item,
-      );
+    hoverTimer = Timer(
+      _Constants.hoverOpenDuration,
+      () {
+        openSubmenu(
+          screenOverlayCubit: screenOverlayCubit,
+          item: item,
+        );
 
-      hoverTimer = null;
-    });
+        hoverTimer = null;
+      },
+    );
   }
 
   void cancelHoverTimer() {
