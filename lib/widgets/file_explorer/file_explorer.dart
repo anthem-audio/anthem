@@ -20,6 +20,7 @@
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
+import 'package:anthem/widgets/basic/tree_view/model.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_item.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_view.dart';
 import 'package:flutter/widgets.dart';
@@ -38,7 +39,7 @@ class _FileExplorerState extends State<FileExplorer> {
   Widget build(BuildContext context) {
     return Background(
       type: BackgroundType.dark,
-      borderRadius: const BorderRadius.all(Radius.circular(2)),
+      borderRadius: const BorderRadius.all(Radius.circular(4)),
       child: Padding(
         padding: const EdgeInsets.all(6),
         child: Column(
@@ -61,105 +62,21 @@ class _FileExplorerState extends State<FileExplorer> {
                       ),
                       child: TreeView(
                         scrollController: controller,
-                        children: const [
-                          TreeItem(label: "Current project", children: [
-                            TreeItem(
-                              label: "abc",
+                        items: [
+                          TreeViewItemModel(name: "Current project", children: [
+                            TreeViewItemModel(
+                              name: "abc",
                               children: [
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
+                                TreeViewItemModel(name: "abc"),
+                                TreeViewItemModel(name: "abc"),
+                                TreeViewItemModel(name: "abc"),
                               ],
                             ),
-                            TreeItem(label: "abc"),
-                            TreeItem(label: "abc"),
+                            TreeViewItemModel(name: "abc"),
+                            TreeViewItemModel(name: "abc"),
                           ]),
-                          TreeItem(label: "Recent files"),
-                          TreeItem(label: "Plugin databases"),
-                          TreeItem(label: "Current project", children: [
-                            TreeItem(
-                              label: "abc",
-                              children: [
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                              ],
-                            ),
-                            TreeItem(label: "abc"),
-                            TreeItem(label: "abc"),
-                          ]),
-                          TreeItem(label: "Recent files"),
-                          TreeItem(label: "Plugin databases"),
-                          TreeItem(label: "Current project", children: [
-                            TreeItem(
-                              label: "abc",
-                              children: [
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                              ],
-                            ),
-                            TreeItem(label: "abc"),
-                            TreeItem(label: "abc"),
-                          ]),
-                          TreeItem(label: "Recent files"),
-                          TreeItem(label: "Plugin databases"),
-                          TreeItem(label: "Current project", children: [
-                            TreeItem(
-                              label: "abc",
-                              children: [
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                              ],
-                            ),
-                            TreeItem(label: "abc"),
-                            TreeItem(label: "abc"),
-                          ]),
-                          TreeItem(label: "Recent files"),
-                          TreeItem(label: "Plugin databases"),
-                          TreeItem(label: "Current project", children: [
-                            TreeItem(
-                              label: "abc",
-                              children: [
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                              ],
-                            ),
-                            TreeItem(label: "abc"),
-                            TreeItem(label: "abc"),
-                          ]),
-                          TreeItem(label: "Recent files"),
-                          TreeItem(label: "Plugin databases"),
-                          TreeItem(label: "Current project", children: [
-                            TreeItem(
-                              label: "abc",
-                              children: [
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                              ],
-                            ),
-                            TreeItem(label: "abc"),
-                            TreeItem(label: "abc"),
-                          ]),
-                          TreeItem(label: "Recent files"),
-                          TreeItem(label: "Plugin databases"),
-                          TreeItem(label: "Current project", children: [
-                            TreeItem(
-                              label: "abc",
-                              children: [
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                              ],
-                            ),
-                            TreeItem(label: "abc"),
-                            TreeItem(label: "abc"),
-                          ]),
-                          TreeItem(label: "Recent files"),
-                          TreeItem(label: "Plugin databases"),
+                          TreeViewItemModel(name: "Recent files"),
+                          TreeViewItemModel(name: "Plugin databases"),
                         ],
                       ),
                     ),
