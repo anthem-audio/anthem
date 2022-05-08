@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/constants.dart';
 import 'package:anthem/helpers/measure_text.dart';
 import 'package:anthem/theme.dart';
 import 'package:flutter/widgets.dart';
@@ -131,8 +132,8 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
                 Builder(
                   builder: (context) {
                     return AnimatedPositioned(
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeOutExpo,
+                      duration: defaultAnimationDuration,
+                      curve: defaultAnimationCurve,
                       top: 0,
                       bottom: 0,
                       left: selectedItemStart,
