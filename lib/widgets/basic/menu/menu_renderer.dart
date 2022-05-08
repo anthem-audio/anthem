@@ -77,7 +77,9 @@ class _MenuRendererState extends State<MenuRenderer> {
         context: context,
       ).width;
       var submenuArrowWidth = hasSubmenu
-          ? _Constants.padding + _Constants.submenuArrowWidth + 50
+          ? _Constants.padding +
+              _Constants.submenuArrowWidth +
+              (child.submenu != null ? 50 : 0)
           : 0;
       // The 2px extra here is due to the border from the hover effect
       return (labelWidth + submenuArrowWidth + 2);
