@@ -27,7 +27,7 @@ class Theme {
   static _Primary primary = _Primary();
   static _Control control = _Control();
   static _Text text = _Text();
-  static Color separator = white.withOpacity(0.12);
+  static Color separator = const Color(0xFF2B3338);
   static _Grid grid = _Grid();
 }
 
