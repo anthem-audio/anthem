@@ -74,7 +74,7 @@ class _MenuState extends State<Menu> {
     screenOverlayCubit.add(
       id,
       ScreenOverlayEntry(
-        builder: (context) {
+        builder: (context, id) {
           return Positioned(
             left: pos.dx,
             top: pos.dy,

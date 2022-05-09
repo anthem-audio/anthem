@@ -27,10 +27,11 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'screen_overlay_state.dart';
 part 'screen_overlay_cubit.freezed.dart';
 
+@immutable
 class ScreenOverlayEntry {
-  Widget Function(BuildContext) builder;
+  final Widget Function(BuildContext, ID) builder;
 
-  ScreenOverlayEntry({required this.builder});
+  const ScreenOverlayEntry({required this.builder});
 }
 
 class ScreenOverlayCubit extends Cubit<ScreenOverlayState> {

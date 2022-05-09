@@ -57,8 +57,12 @@ class ScreenOverlay extends StatelessWidget {
                     )
                   : null,
             ].whereNotNull().toList() +
-            state.entries.values
-                .map<Widget>((entry) => entry.builder(context))
+            // state.entries is a Map<ID, ScreenOverlayEntry>
+            // state.entries.entries is a Iterable<MapEntry<String, ScreenOverlayEntry>>
+            state.entries.entries
+                .map<Widget>(
+                  (mapEntry) => mapEntry.value.builder(context, mapEntry.key),
+                )
                 .toList();
 
         return Stack(
