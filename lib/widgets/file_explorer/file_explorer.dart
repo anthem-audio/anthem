@@ -58,7 +58,7 @@ class _FileExplorerState extends State<FileExplorer> {
                       decoration: BoxDecoration(
                         color: Theme.panel.accentDark,
                         border: Border.all(color: Theme.panel.border, width: 1),
-                        borderRadius: BorderRadius.circular(1),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: TreeView(
                         scrollController: controller,

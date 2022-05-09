@@ -168,7 +168,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
         widget.isMouseInMenu &&
         isSubmenuOpen &&
         !isHovered) {
-      startSubmenuCloseTimer(screenOverlayCubit: screenOverlayCubit);
+      startSubmenuCloseTimer(screenOverlayCubit);
     } else if (oldWidget.isMouseInMenu && !widget.isMouseInMenu) {
       cancelSubmenuCloseTimer();
     }
@@ -234,7 +234,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
             isHovered = false;
           });
           cancelHoverTimer();
-          startSubmenuCloseTimer(screenOverlayCubit: screenOverlayCubit);
+          startSubmenuCloseTimer(screenOverlayCubit);
         },
         child: GestureDetector(
           onTap: () {
@@ -304,13 +304,13 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
     submenuKey = getID();
 
     screenOverlayCubit.add(submenuKey!, ScreenOverlayEntry(
-      builder: (screenOverlayContext) {
+      builder: (screenOverlayContext, id) {
         return Positioned(
           left: position.dx + size.width + _Constants.padding,
           top: position.dy -
               _Constants.padding -
               1, // -1 to account for menu border
-          child: MenuRenderer(id: submenuKey!, menu: item.submenu!),
+          child: MenuRenderer(id: id, menu: item.submenu!),
         );
       },
     ));
@@ -338,9 +338,9 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
     hoverTimer = null;
   }
 
-  void startSubmenuCloseTimer({
-    required ScreenOverlayCubit screenOverlayCubit,
-  }) {
+  void startSubmenuCloseTimer(
+    ScreenOverlayCubit screenOverlayCubit,
+  ) {
     submenuCloseTimer = Timer(
       _Constants.hoverCloseDuration,
       () {
