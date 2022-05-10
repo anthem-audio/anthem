@@ -55,7 +55,7 @@ class Project extends StatelessWidget {
               hidden: !state.isProjectExplorerVisible,
               orientation: PanelOrientation.left,
               panelStartSize: 200,
-              // left panel
+              // Left panel
               panelContent: Stack(
                 children: [
                   Positioned.fill(
@@ -89,23 +89,24 @@ class Project extends StatelessWidget {
               child: Panel(
                 hidden: true,
                 orientation: PanelOrientation.right,
-                // right panel
+                // Right panel
                 panelContent: Container(color: Theme.panel.main),
 
                 child: Panel(
                   orientation: PanelOrientation.bottom,
-                  // bottom panel
+                  // Bottom panel
                   panelContent: BlocProvider<PianoRollCubit>(
                     create: (context) => PianoRollCubit(projectID: state.id),
                     child: const PianoRoll(),
                   ),
                   child: Panel(
+                    hidden: !state.isPatternEditorVisible,
                     orientation: PanelOrientation.left,
                     child: BlocProvider<ArrangerCubit>(
                       create: (context) => ArrangerCubit(projectID: state.id),
                       child: const Arranger(),
                     ),
-                    // pattern editor
+                    // Pattern editor
                     panelContent: BlocProvider<PatternEditorCubit>(
                       create: (context) => PatternEditorCubit(
                           project: Store.instance.projects[state.id]!),

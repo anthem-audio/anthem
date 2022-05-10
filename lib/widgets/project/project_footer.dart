@@ -76,6 +76,9 @@ class ProjectFooter extends StatelessWidget {
                 startIcon: Icons.patternEditor,
                 width: 32,
                 height: 32,
+                toggleState: state.isPatternEditorVisible,
+                onPress: () => projectCubit
+                    .setIsPatternEditorVisible(!state.isPatternEditorVisible),
               ),
               const SizedBox(width: 8),
               ButtonTabs(
