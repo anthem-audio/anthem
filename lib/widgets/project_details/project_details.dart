@@ -20,8 +20,8 @@
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:flutter/widgets.dart';
 
-class ProjectExplorer extends StatelessWidget {
-  const ProjectExplorer({Key? key}) : super(key: key);
+class ProjectDetails extends StatelessWidget {
+  const ProjectDetails({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
