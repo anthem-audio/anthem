@@ -52,6 +52,7 @@ class Project extends StatelessWidget {
           ),
           Expanded(
             child: Panel(
+              hidden: !state.isProjectExplorerVisible,
               orientation: PanelOrientation.left,
               panelStartSize: 200,
               // left panel
@@ -64,7 +65,7 @@ class Project extends StatelessWidget {
                       maintainSemantics: false,
                       maintainSize: false,
                       maintainState: true,
-                      visible: state.selectedExplorer == ExplorerKind.file,
+                      visible: state.selectedDetailView == null,
                       child: BlocProvider<ProjectExplorerCubit>(
                         create: (context) => ProjectExplorerCubit(state.id),
                         child: const ProjectExplorer(),
@@ -78,7 +79,7 @@ class Project extends StatelessWidget {
                       maintainSemantics: false,
                       maintainSize: false,
                       maintainState: true,
-                      visible: state.selectedExplorer == ExplorerKind.project,
+                      visible: state.selectedDetailView != null,
                       child: const ProjectDetails(),
                     ),
                   ),
