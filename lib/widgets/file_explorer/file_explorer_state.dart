@@ -23,6 +23,7 @@ part of 'file_explorer_cubit.dart';
 class FileExplorerState with _$FileExplorerState {
   factory FileExplorerState({
     required ID projectID,
+    required List<ID> arrangementIDs,
     required List<ID> patternIDs,
   }) = _FileExplorerState;
 }
