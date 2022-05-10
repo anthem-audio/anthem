@@ -52,9 +52,11 @@ class ProjectCubit extends Cubit<ProjectState> {
     project.commitJournalPage();
   }
 
+  void setIsProjectExplorerVisible(bool visible) =>
+      emit(state.copyWith(isProjectExplorerVisible: visible));
   void setActiveGeneratorID(ID? id) => project.song.setActiveGenerator(id);
-  void setActiveExplorer(ExplorerKind explorer) =>
-      emit(state.copyWith(selectedExplorer: explorer));
+  void setActiveDetailView(DetailViewKind? detailView) =>
+      emit(state.copyWith(selectedDetailView: detailView));
   void setActiveEditor(EditorKind editor) =>
       emit(state.copyWith(selectedEditor: editor));
 }

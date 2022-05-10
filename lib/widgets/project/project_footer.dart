@@ -46,22 +46,12 @@ class ProjectFooter extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.max,
             children: [
-              ButtonTabs<ExplorerKind>(
-                // selected: ExplorerKind.file,
-                tabs: [
-                  ButtonTabDef.withIcon(
-                    icon: Icons.browserPanel,
-                    id: ExplorerKind.file,
-                  ),
-                  ButtonTabDef.withIcon(
-                    icon: Icons.projectPanel,
-                    id: ExplorerKind.project,
-                  ),
-                ],
-                selected: state.selectedExplorer,
-                onChange: (selection) {
-                  projectCubit.setActiveExplorer(selection);
-                },
+              Button(
+                startIcon: Icons.projectPanel,
+                toggleState: state.isProjectExplorerVisible,
+                onPress: () => projectCubit.setIsProjectExplorerVisible(
+                  !state.isProjectExplorerVisible,
+                ),
               ),
               const SizedBox(width: 8),
               ButtonTabs(

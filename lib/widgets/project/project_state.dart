@@ -22,27 +22,20 @@ part of 'project_cubit.dart';
 // Workaround for https://github.com/rrousselGit/freezed/issues/653
 @Freezed(makeCollectionsUnmodifiable: false)
 class ProjectState with _$ProjectState {
-
   factory ProjectState({
     required ID id,
+    @Default(true) bool isProjectExplorerVisible,
     @Default(true) bool isPatternEditorVisible,
     @Default(true) bool isAutomationMatrixVisible,
     @Default(ProjectLayoutKind.arrange) ProjectLayoutKind layout,
-    @Default(ExplorerKind.file) ExplorerKind selectedExplorer,
+    @Default(null) DetailViewKind? selectedDetailView,
     @Default(EditorKind.detail) EditorKind selectedEditor,
   }) = _ProjectState;
 }
 
-enum ProjectLayoutKind {
-  arrange,
-  edit,
-  mix
-}
+enum ProjectLayoutKind { arrange, edit, mix }
 
-enum ExplorerKind {
-  file,
-  project
-}
+enum DetailViewKind { arrangement, pattern }
 
 enum EditorKind {
   detail,
