@@ -69,22 +69,25 @@ class _PanelState extends State<Panel> {
       panelSize = widget.panelStartSize ?? defaultPanelSize;
     }
 
-    if (widget.hidden == true) {
-      return widget.child;
-    }
-
     final horizontal = _isLeftOrRight(widget.orientation);
     final panelFirst = _isPanelFirst(widget.orientation);
+
+    final panelHidden = widget.hidden ?? false;
 
     final panelHugLeft = !horizontal || panelFirst;
     final panelHugRight = !horizontal || !panelFirst;
     final panelHugTop = horizontal || panelFirst;
     final panelHugBottom = horizontal || !panelFirst;
 
-    final contentHugLeft = !horizontal || !panelFirst;
-    final contentHugRight = !horizontal || panelFirst;
-    final contentHugTop = horizontal || !panelFirst;
-    final contentHugBottom = horizontal || panelFirst;
+    var contentHugLeft = !horizontal || !panelFirst;
+    var contentHugRight = !horizontal || panelFirst;
+    var contentHugTop = horizontal || !panelFirst;
+    var contentHugBottom = horizontal || panelFirst;
+
+    contentHugLeft |= panelHidden;
+    contentHugRight |= panelHidden;
+    contentHugTop |= panelHidden;
+    contentHugBottom |= panelHidden;
 
     final separatorSize = widget.separatorSize ?? 3.0;
     const handleSize = 10.0;
@@ -114,10 +117,14 @@ class _PanelState extends State<Panel> {
           right: panelHugRight ? 0 : null,
           top: panelHugTop ? 0 : null,
           bottom: panelHugBottom ? 0 : null,
-          child: SizedBox(
-            width: horizontal ? panelSize : null,
-            height: !horizontal ? panelSize : null,
-            child: widget.panelContent,
+          child: Visibility(
+            maintainState: true,
+            visible: !panelHidden,
+            child: SizedBox(
+              width: horizontal ? panelSize : null,
+              height: !horizontal ? panelSize : null,
+              child: widget.panelContent,
+            ),
           ),
         ),
 
