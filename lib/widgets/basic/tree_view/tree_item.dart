@@ -19,7 +19,6 @@
 
 import 'dart:math';
 
-import 'package:anthem/helpers/constants.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_item_indent.dart';
@@ -33,10 +32,12 @@ const indentIncrement = 21.0;
 class TreeItem extends StatefulWidget {
   final String? label;
   final List<TreeViewItemModel> children;
+  final bool hasOpenIndicatorIndent;
   const TreeItem({
     Key? key,
     this.label,
     required this.children,
+    this.hasOpenIndicatorIndent = false,
   }) : super(key: key);
 
   @override
@@ -67,6 +68,11 @@ class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
 
     final List<Widget> children = [];
 
+    final hasChildWithChildren = widget.children.fold<bool>(
+      false,
+      (previousValue, element) => previousValue || element.children.isNotEmpty,
+    );
+
     for (var i = 0; i < widget.children.length; i++) {
       final model = widget.children[i];
 
@@ -75,6 +81,7 @@ class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
           child: TreeItem(
             label: model.name,
             children: model.children,
+            hasOpenIndicatorIndent: hasChildWithChildren,
           ),
         ),
       );
@@ -122,22 +129,23 @@ class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     SizedBox(width: indent),
-                    widget.children.isNotEmpty
-                        ? SizedBox(
-                            width: 10,
-                            height: 10,
-                            child: (widget.children.isEmpty)
-                                ? null
-                                : Transform.rotate(
-                                    angle: isOpen ? 0 : -pi / 2,
-                                    alignment: Alignment.center,
-                                    child: SvgIcon(
-                                      icon: Icons.arrowDown,
-                                      color: Theme.text.main,
-                                    ),
-                                  ),
-                          )
-                        : const SizedBox(width: 10),
+                    SizedBox(
+                      width: widget.children.isNotEmpty ||
+                              widget.hasOpenIndicatorIndent
+                          ? 10
+                          : 0,
+                      height: 10,
+                      child: (widget.children.isEmpty)
+                          ? null
+                          : Transform.rotate(
+                              angle: isOpen ? 0 : -pi / 2,
+                              alignment: Alignment.center,
+                              child: SvgIcon(
+                                icon: Icons.arrowDown,
+                                color: Theme.text.main,
+                              ),
+                            ),
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(

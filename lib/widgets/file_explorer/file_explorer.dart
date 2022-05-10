@@ -43,6 +43,22 @@ class _FileExplorerState extends State<FileExplorer> {
         builder: (context, state) {
       final project = Store.instance.projects[state.projectID]!;
 
+      final arrangementsTree = TreeViewItemModel(
+        name: "Arrangements",
+        children: state.arrangementIDs
+            .map((id) =>
+                TreeViewItemModel(name: project.song.arrangements[id]!.name))
+            .toList(),
+      );
+
+      final patternsTree = TreeViewItemModel(
+        name: "Patterns",
+        children: state.patternIDs
+            .map((id) =>
+                TreeViewItemModel(name: project.song.patterns[id]!.name))
+            .toList(),
+      );
+
       return Background(
         type: BackgroundType.dark,
         borderRadius: const BorderRadius.all(Radius.circular(4)),
@@ -73,18 +89,10 @@ class _FileExplorerState extends State<FileExplorer> {
                             TreeViewItemModel(
                               name: "Current project",
                               children: [
-                                TreeViewItemModel(
-                                  name: "Patterns",
-                                  children: state.patternIDs
-                                      .map((id) => TreeViewItemModel(
-                                          name:
-                                              project.song.patterns[id]!.name))
-                                      .toList(),
-                                ),
+                                arrangementsTree,
+                                patternsTree,
                               ],
                             ),
-                            TreeViewItemModel(name: "Recent files"),
-                            TreeViewItemModel(name: "Plugin databases"),
                           ],
                         ),
                       ),

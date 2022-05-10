@@ -47,6 +47,7 @@ class FileExplorerCubit extends Cubit<FileExplorerState> {
             final project = Store.instance.projects[projectID]!;
             return FileExplorerState(
               projectID: projectID,
+              arrangementIDs: [...project.song.arrangementOrder],
               patternIDs: [...project.song.patternOrder],
             );
           })(),
@@ -56,9 +57,13 @@ class FileExplorerCubit extends Cubit<FileExplorerState> {
   }
 
   void _onModelChanged(List<StateChange> changes) {
+    var didArrangementListChange = false;
     var didPatternListChange = false;
 
     for (final change in changes) {
+      if (change is ArrangementAdded || change is ArrangementDeleted) {
+        didArrangementListChange = true;
+      }
       if (change is PatternAdded || change is PatternDeleted) {
         didPatternListChange = true;
       }
@@ -66,6 +71,11 @@ class FileExplorerCubit extends Cubit<FileExplorerState> {
 
     FileExplorerState? newState;
 
+    if (didArrangementListChange) {
+      newState = (newState ?? state).copyWith(
+        arrangementIDs: [...project.song.arrangementOrder],
+      );
+    }
     if (didPatternListChange) {
       newState = (newState ?? state).copyWith(
         patternIDs: [...project.song.patternOrder],
