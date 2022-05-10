@@ -26,10 +26,10 @@ import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:anthem/helpers/id.dart';
 
-part 'file_explorer_state.dart';
-part 'file_explorer_cubit.freezed.dart';
+part 'project_explorer_state.dart';
+part 'project_explorer_cubit.freezed.dart';
 
-class FileExplorerCubit extends Cubit<FileExplorerState> {
+class ProjectExplorerCubit extends Cubit<ProjectExplorerState> {
   late final ProjectModel project;
 
   late final StreamSubscription<List<StateChange>> _stateChangeStream;
@@ -41,11 +41,11 @@ class FileExplorerCubit extends Cubit<FileExplorerState> {
     return super.close();
   }
 
-  FileExplorerCubit(ID projectID)
+  ProjectExplorerCubit(ID projectID)
       : super(
           (() {
             final project = Store.instance.projects[projectID]!;
-            return FileExplorerState(
+            return ProjectExplorerState(
               projectID: projectID,
               arrangementIDs: [...project.song.arrangementOrder],
               patternIDs: [...project.song.patternOrder],
@@ -69,7 +69,7 @@ class FileExplorerCubit extends Cubit<FileExplorerState> {
       }
     }
 
-    FileExplorerState? newState;
+    ProjectExplorerState? newState;
 
     if (didArrangementListChange) {
       newState = (newState ?? state).copyWith(

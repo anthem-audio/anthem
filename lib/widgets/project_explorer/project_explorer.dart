@@ -23,23 +23,23 @@ import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
 import 'package:anthem/widgets/basic/tree_view/model.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_view.dart';
-import 'package:anthem/widgets/file_explorer/file_explorer_cubit.dart';
+import 'package:anthem/widgets/project_explorer/project_explorer_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-class FileExplorer extends StatefulWidget {
-  const FileExplorer({Key? key}) : super(key: key);
+class ProjectExplorer extends StatefulWidget {
+  const ProjectExplorer({Key? key}) : super(key: key);
 
   @override
-  State<FileExplorer> createState() => _FileExplorerState();
+  State<ProjectExplorer> createState() => _ProjectExplorerState();
 }
 
-class _FileExplorerState extends State<FileExplorer> {
+class _ProjectExplorerState extends State<ProjectExplorer> {
   final ScrollController controller = ScrollController();
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<FileExplorerCubit, FileExplorerState>(
+    return BlocBuilder<ProjectExplorerCubit, ProjectExplorerState>(
         builder: (context, state) {
       final project = Store.instance.projects[state.projectID]!;
 

@@ -26,8 +26,8 @@ import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart'
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
-import 'package:anthem/widgets/file_explorer/file_explorer_cubit.dart';
-import 'package:anthem/widgets/file_explorer/file_explorer.dart';
+import 'package:anthem/widgets/project_explorer/project_explorer_cubit.dart';
+import 'package:anthem/widgets/project_explorer/project_explorer.dart';
 import 'package:anthem/widgets/project_details/project_details.dart';
 import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:anthem/widgets/project/project_footer.dart';
@@ -65,9 +65,9 @@ class Project extends StatelessWidget {
                       maintainSize: false,
                       maintainState: true,
                       visible: state.selectedExplorer == ExplorerKind.file,
-                      child: BlocProvider<FileExplorerCubit>(
-                        create: (context) => FileExplorerCubit(state.id),
-                        child: const FileExplorer(),
+                      child: BlocProvider<ProjectExplorerCubit>(
+                        create: (context) => ProjectExplorerCubit(state.id),
+                        child: const ProjectExplorer(),
                       ),
                     ),
                   ),

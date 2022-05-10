@@ -17,13 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'file_explorer_cubit.dart';
+part of 'project_explorer_cubit.dart';
 
 @freezed
-class FileExplorerState with _$FileExplorerState {
-  factory FileExplorerState({
+class ProjectExplorerState with _$ProjectExplorerState {
+  factory ProjectExplorerState({
     required ID projectID,
     required List<ID> arrangementIDs,
     required List<ID> patternIDs,
-  }) = _FileExplorerState;
+  }) = _ProjectExplorerState;
 }
