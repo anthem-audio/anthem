@@ -19,6 +19,7 @@
 
 import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/TextBox.dart';
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
 import 'package:anthem/widgets/basic/tree_view/model.dart';
@@ -69,7 +70,10 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
             children: [
               const SizedBox(height: 26),
               const SizedBox(height: 4),
-              const SizedBox(height: 24),
+              const SizedBox(
+                height: 24,
+                child: TextBox(),
+              ),
               const SizedBox(height: 4),
               Expanded(
                 child: Row(
@@ -96,12 +100,6 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
                           ],
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    Scrollbar(
-                      controller: controller,
-                      direction: ScrollbarDirection.vertical,
-                      crossAxisSize: 17,
                     ),
                   ],
                 ),
