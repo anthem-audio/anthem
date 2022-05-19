@@ -114,48 +114,51 @@ class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
                   });
                 }
               },
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isHovered ? Theme.primary.subtle : null,
-                  border: Border.all(
-                    color: isHovered
-                        ? Theme.primary.subtleBorder
-                        : const Color(0x00000000),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isHovered ? Theme.primary.subtle : null,
+                    border: Border.all(
+                      color: isHovered
+                          ? Theme.primary.subtleBorder
+                          : const Color(0x00000000),
+                    ),
+                    borderRadius: BorderRadius.circular(4),
                   ),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                height: itemHeight,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    SizedBox(width: indent),
-                    SizedBox(
-                      width: widget.children.isNotEmpty ||
-                              widget.hasOpenIndicatorIndent
-                          ? 10
-                          : 0,
-                      height: 10,
-                      child: (widget.children.isEmpty)
-                          ? null
-                          : Transform.rotate(
-                              angle: isOpen ? 0 : -pi / 2,
-                              alignment: Alignment.center,
-                              child: SvgIcon(
-                                icon: Icons.arrowDown,
-                                color: Theme.text.main,
+                  height: itemHeight,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(width: indent),
+                      SizedBox(
+                        width: widget.children.isNotEmpty ||
+                                widget.hasOpenIndicatorIndent
+                            ? 10
+                            : 0,
+                        height: 10,
+                        child: (widget.children.isEmpty)
+                            ? null
+                            : Transform.rotate(
+                                angle: isOpen ? 0 : -pi / 2,
+                                alignment: Alignment.center,
+                                child: SvgIcon(
+                                  icon: Icons.arrowDown,
+                                  color: Theme.text.main,
+                                ),
                               ),
-                            ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        widget.label ?? "",
-                        textAlign: TextAlign.left,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: Theme.text.main, fontSize: 11),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          widget.label ?? "",
+                          textAlign: TextAlign.left,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: Theme.text.main, fontSize: 11),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
