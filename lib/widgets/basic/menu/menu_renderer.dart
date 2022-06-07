@@ -66,11 +66,11 @@ class _MenuRendererState extends State<MenuRenderer> {
 
   @override
   Widget build(BuildContext context) {
-    final hasSubmenu = widget.menu.children.whereType<MenuItem>().fold<bool>(
+    final hasSubmenu = widget.menu.children.whereType<AnthemMenuItem>().fold<bool>(
         false,
         (previousValue, element) => previousValue || element.submenu != null);
 
-    final widest = widget.menu.children.whereType<MenuItem>().map((child) {
+    final widest = widget.menu.children.whereType<AnthemMenuItem>().map((child) {
       final labelWidth = measureText(
         text: child.text,
         textStyle: const TextStyle(fontSize: _Constants.fontSize),
@@ -181,7 +181,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
     final height = getMenuItemHeight(widget.menuItem);
 
     if (widget.menuItem is MenuItem) {
-      final item = widget.menuItem as MenuItem;
+      final item = widget.menuItem as AnthemMenuItem;
 
       final showHoverState =
           isHovered || (isSubmenuOpen && !widget.isMouseInMenu);
@@ -292,7 +292,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
 
   void openSubmenu({
     required ScreenOverlayCubit screenOverlayCubit,
-    required MenuItem item,
+    required AnthemMenuItem item,
   }) {
     if (isSubmenuOpen) return;
 
@@ -318,7 +318,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
 
   void startHoverTimer({
     required ScreenOverlayCubit screenOverlayCubit,
-    required MenuItem item,
+    required AnthemMenuItem item,
   }) {
     hoverTimer = Timer(
       _Constants.hoverOpenDuration,

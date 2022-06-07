@@ -67,7 +67,7 @@ class _DropdownState extends State<Dropdown> {
         menuController: menuController,
         menuDef: MenuDef(
           children: widget.items
-                  .map<GenericMenuItem>((item) => MenuItem(
+                  .map<GenericMenuItem>((item) => AnthemMenuItem(
                       text: item.name,
                       onSelected: () {
                         setState(() {
@@ -80,7 +80,7 @@ class _DropdownState extends State<Dropdown> {
                   ? []
                   : [
                       widget.items.isNotEmpty ? Separator() : null,
-                      MenuItem(
+                      AnthemMenuItem(
                         text: "(none)",
                         onSelected: () {
                           setState(() {

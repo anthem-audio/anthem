@@ -94,18 +94,18 @@ class _ArrangerState extends State<Arranger> {
                                 Menu(
                                   menuDef: MenuDef(
                                     children: [
-                                      MenuItem(
+                                      AnthemMenuItem(
                                         text: "New arrangement",
                                         onSelected: () {
                                           cubit.addArrangement();
                                         },
                                       ),
                                       Separator(),
-                                      MenuItem(
+                                      AnthemMenuItem(
                                         text: "Markers",
                                         submenu: MenuDef(
                                           children: [
-                                            MenuItem(
+                                            AnthemMenuItem(
                                               text: "Add time signature change",
                                             ),
                                           ],
