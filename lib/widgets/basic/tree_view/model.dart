@@ -17,13 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'screen_overlay_cubit.dart';
+class TreeViewItemModel {
+  List<TreeViewItemModel> children;
+  String name;
 
-// Workaround for https://github.com/rrousselGit/freezed/issues/653
-@Freezed(makeCollectionsUnmodifiable: false)
-class ScreenOverlayState with _$ScreenOverlayState {
-
-  factory ScreenOverlayState({
-    @Default({}) Map<ID, ScreenOverlayEntry> entries,
-  }) = _ScreenOverlayState;
+  TreeViewItemModel({
+    required this.name,
+    this.children = const [],
+  });
 }

@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/constants.dart';
 import 'package:anthem/helpers/measure_text.dart';
 import 'package:anthem/theme.dart';
 import 'package:flutter/widgets.dart';
@@ -52,17 +53,10 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
         List<double> tabWidths = [];
 
         for (final tab in widget.tabs) {
-          final isSelected = tab.id == (widget.selected ?? selectedFallback);
-          final color = isSelected ? Theme.primary.main : Theme.text.main;
-
-          final Widget content;
-
           if (tab.type == _ButtonTabType.icon) {
-            content = SvgIcon(icon: tab.icon!, color: color);
             tabWidths.add(8 + 16 + 8);
           } else {
-            final style = TextStyle(color: color, fontSize: 11);
-            content = Center(child: Text(tab.text!, style: style));
+            const style = TextStyle(fontSize: 11);
             tabWidths.add(
               8 +
                   measureText(
@@ -73,22 +67,6 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
                   8,
             );
           }
-
-          rowChildren.add(Listener(
-            onPointerUp: (event) {
-              setState(() {
-                selectedFallback = tab.id;
-              });
-              widget.onChange?.call(tab.id);
-            },
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 8, right: 8),
-                child: content,
-              ),
-            ),
-          ));
         }
 
         var rowWidth = tabWidths.fold<double>(
@@ -102,15 +80,37 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
           rowWidth += correction;
         }
 
+        for (final tab in widget.tabs) {
+          final isSelected = tab.id == (widget.selected ?? selectedFallback);
+          final color = isSelected ? Theme.primary.main : Theme.text.main;
+
+          final Widget content;
+
+          if (tab.type == _ButtonTabType.icon) {
+            content = SvgIcon(icon: tab.icon!, color: color);
+            tabWidths.add(8 + 16 + 8);
+          } else {
+            final style = TextStyle(color: color, fontSize: 11);
+            content = Center(child: Text(tab.text!, style: style));
+            tabWidths.add(8 +
+                measureText(text: tab.text!, textStyle: style, context: context)
+                    .width +
+                8);
+          }
+
+          rowChildren.add(content);
+        }
+
         final selectedItemIndex = widget.tabs.indexWhere(
             (element) => element.id == (widget.selected ?? selectedFallback!));
 
-        var selectedItemStart = 0.0;
-        var selectedItemEnd = tabWidths[0];
+        // Includes one more item than the number of tabs
+        final List<double> tabPixelPositions = [0];
+        var accumulator = 0.0;
 
-        for (var i = 1; i <= selectedItemIndex; i++) {
-          selectedItemStart += tabWidths[i - 1];
-          selectedItemEnd += tabWidths[i];
+        for (var i = 0; i < widget.tabs.length; i++) {
+          accumulator += tabWidths[i];
+          tabPixelPositions.add(accumulator);
         }
 
         return SizedBox(
@@ -119,24 +119,29 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
             borderRadius: BorderRadius.circular(4),
             child: Stack(
               fit: StackFit.passthrough,
-              children: [
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Theme.panel.border),
-                      borderRadius: const BorderRadius.all(Radius.circular(4)),
+              children: <Widget>[
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Theme.panel.border),
+                          borderRadius:
+                              const BorderRadius.all(Radius.circular(4)),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                Builder(
-                  builder: (context) {
-                    return AnimatedPositioned(
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeOutExpo,
+                    // TODO: This animation should only play with a transition
+                    // triggered on click. Widget resize should not trigger the
+                    // transition. I'm not sure how best to do this and I don't
+                    // want to tackle it now.
+                    // AnimatedPositioned(
+                    //   duration: defaultAnimationDuration,
+                    //   curve: defaultAnimationCurve,
+                    Positioned(
                       top: 0,
                       bottom: 0,
-                      left: selectedItemStart,
-                      right: rowWidth - selectedItemEnd,
+                      left: tabPixelPositions[selectedItemIndex],
+                      right:
+                          rowWidth - tabPixelPositions[selectedItemIndex + 1],
                       child: Container(
                         decoration: BoxDecoration(
                           border: Border.all(color: Theme.panel.border),
@@ -144,17 +149,36 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
                           color: Theme.panel.accent,
                         ),
                       ),
+                    ),
+                    Positioned.fill(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: rowChildren,
+                      ),
+                    ),
+                  ] +
+                  List.generate(widget.tabs.length, (index) => index)
+                      .map<Widget>((index) {
+                    final tab = widget.tabs[index];
+                    return Positioned(
+                      top: 0,
+                      bottom: 0,
+                      left: tabPixelPositions[index],
+                      right: rowWidth - tabPixelPositions[index + 1],
+                      child: Listener(
+                        onPointerUp: (event) {
+                          setState(() {
+                            selectedFallback = tab.id;
+                          });
+                          widget.onChange?.call(tab.id);
+                        },
+                        child: const MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                        ),
+                      ),
                     );
-                  }
-                ),
-                Positioned.fill(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: rowChildren,
-                  ),
-                ),
-              ],
+                  }).toList(),
             ),
           ),
         );

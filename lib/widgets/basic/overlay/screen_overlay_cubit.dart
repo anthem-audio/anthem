@@ -17,6 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:collection';
+
+import 'package:anthem/helpers/id.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -24,28 +27,31 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'screen_overlay_state.dart';
 part 'screen_overlay_cubit.freezed.dart';
 
+@immutable
 class ScreenOverlayEntry {
-  Widget Function(BuildContext) builder;
+  final Widget Function(BuildContext, ID) builder;
 
-  ScreenOverlayEntry({required this.builder});
+  const ScreenOverlayEntry({required this.builder});
 }
 
 class ScreenOverlayCubit extends Cubit<ScreenOverlayState> {
   ScreenOverlayCubit() : super(ScreenOverlayState());
 
-  void add(ScreenOverlayEntry entry) {
-    emit(state.copyWith(entries: [...state.entries, entry]));
+  void add(ID id, ScreenOverlayEntry entry) {
+    emit(state.copyWith(entries: {...state.entries, id: entry}));
   }
 
-  void remove(ScreenOverlayEntry entry) {
+  void remove(ID id) {
+    final entries = {...state.entries};
+    entries.removeWhere((entryID, entry) => entryID == id);
     emit(
       state.copyWith(
-        entries: state.entries.where((element) => element != entry).toList(),
+        entries: entries,
       ),
     );
   }
 
   void clear() {
-    emit(state.copyWith(entries: []));
+    emit(state.copyWith(entries: {}));
   }
 }

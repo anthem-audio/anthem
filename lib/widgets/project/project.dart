@@ -18,21 +18,23 @@
 */
 
 import 'package:anthem/model/store.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/panel.dart';
-import 'package:anthem/widgets/editors/pattern_editor/pattern_editor.dart';
+import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
+import 'package:anthem/widgets/editors/arranger/arranger.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
+import 'package:anthem/widgets/editors/pattern_editor/pattern_editor.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
+import 'package:anthem/widgets/project_explorer/project_explorer_cubit.dart';
+import 'package:anthem/widgets/project_explorer/project_explorer.dart';
+import 'package:anthem/widgets/project_details/project_details.dart';
 import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:anthem/widgets/project/project_footer.dart';
-import 'package:anthem/widgets/project_explorer/project_explorer.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/widgets.dart';
 
-import '../editors/arranger/arranger.dart';
-import '../editors/arranger/arranger_cubit.dart';
 import 'project_header.dart';
-import '../../theme.dart';
 
 class Project extends StatelessWidget {
   const Project({Key? key}) : super(key: key);
@@ -50,31 +52,61 @@ class Project extends StatelessWidget {
           ),
           Expanded(
             child: Panel(
+              hidden: !state.isProjectExplorerVisible,
               orientation: PanelOrientation.left,
-              // left panel
-              panelContent: const ProjectExplorer(),
-              hidden: true,
+              panelStartSize: 200,
+              // Left panel
+              panelContent: Stack(
+                children: [
+                  Positioned.fill(
+                    child: Visibility(
+                      maintainAnimation: false,
+                      maintainInteractivity: false,
+                      maintainSemantics: false,
+                      maintainSize: false,
+                      maintainState: true,
+                      visible: state.selectedDetailView == null,
+                      child: BlocProvider<ProjectExplorerCubit>(
+                        create: (context) => ProjectExplorerCubit(state.id),
+                        child: const ProjectExplorer(),
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: Visibility(
+                      maintainAnimation: false,
+                      maintainInteractivity: false,
+                      maintainSemantics: false,
+                      maintainSize: false,
+                      maintainState: true,
+                      visible: state.selectedDetailView != null,
+                      child: const ProjectDetails(),
+                    ),
+                  ),
+                ],
+              ),
 
               child: Panel(
                 hidden: true,
                 orientation: PanelOrientation.right,
-                // right panel
+                // Right panel
                 panelContent: Container(color: Theme.panel.main),
 
                 child: Panel(
                   orientation: PanelOrientation.bottom,
-                  // bottom panel
+                  // Bottom panel
                   panelContent: BlocProvider<PianoRollCubit>(
                     create: (context) => PianoRollCubit(projectID: state.id),
                     child: const PianoRoll(),
                   ),
                   child: Panel(
+                    hidden: !state.isPatternEditorVisible,
                     orientation: PanelOrientation.left,
                     child: BlocProvider<ArrangerCubit>(
                       create: (context) => ArrangerCubit(projectID: state.id),
                       child: const Arranger(),
                     ),
-                    // pattern editor
+                    // Pattern editor
                     panelContent: BlocProvider<PatternEditorCubit>(
                       create: (context) => PatternEditorCubit(
                           project: Store.instance.projects[state.id]!),

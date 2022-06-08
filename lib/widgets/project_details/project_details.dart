@@ -17,13 +17,17 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'screen_overlay_cubit.dart';
+import 'package:anthem/widgets/basic/background.dart';
+import 'package:flutter/widgets.dart';
 
-// Workaround for https://github.com/rrousselGit/freezed/issues/653
-@Freezed(makeCollectionsUnmodifiable: false)
-class ScreenOverlayState with _$ScreenOverlayState {
+class ProjectDetails extends StatelessWidget {
+  const ProjectDetails({Key? key}) : super(key: key);
 
-  factory ScreenOverlayState({
-    @Default({}) Map<ID, ScreenOverlayEntry> entries,
-  }) = _ScreenOverlayState;
+  @override
+  Widget build(BuildContext context) {
+    return Background(
+      type: BackgroundType.dark,
+      borderRadius: const BorderRadius.all(Radius.circular(4)),
+    );
+  }
 }

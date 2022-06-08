@@ -17,17 +17,20 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/basic/tree_view/tree_item.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_item_indent.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
+import 'model.dart';
+
 const baseIndent = 20.0;
 
 class TreeView extends StatelessWidget {
-  final List<Widget>? children;
+  final List<TreeViewItemModel> items;
   final ScrollController? scrollController;
 
-  const TreeView({Key? key, this.children, this.scrollController})
+  const TreeView({Key? key, required this.items, this.scrollController})
       : super(key: key);
 
   @override
@@ -47,7 +50,14 @@ class TreeView extends StatelessWidget {
             child: SizeChangedLayoutNotifier(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: children ?? [],
+                children: items
+                    .map(
+                      (item) => TreeItem(
+                        label: item.name,
+                        children: item.children,
+                      ),
+                    )
+                    .toList(),
               ),
             ),
           ),

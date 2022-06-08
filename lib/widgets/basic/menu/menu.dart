@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,10 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-// TODO: This needs to be refactored
-
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/basic/overlay/screen_overlay_cubit.dart';
 import 'package:flutter/widgets.dart';
+import 'package:provider/provider.dart';
+
+import 'menu_renderer.dart';
 
 class Menu extends StatefulWidget {
   final MenuController menuController;
@@ -44,14 +47,16 @@ class Menu extends StatefulWidget {
 
 class _MenuState extends State<Menu> {
   int openMenuID = -1;
+  List<ID> openMenus = [];
 
   @override
   Widget build(BuildContext context) {
-    widget.menuController.open = openMenu;
+    final screenOverlayCubit = Provider.of<ScreenOverlayCubit>(context);
+    widget.menuController.open = () => openMenu(screenOverlayCubit);
     return widget.child ?? const SizedBox();
   }
 
-  void openMenu() {
+  void openMenu(ScreenOverlayCubit screenOverlayCubit) {
     final contentRenderBox = context.findRenderObject() as RenderBox;
     final pos = contentRenderBox.localToGlobal(
       Offset(
@@ -65,17 +70,29 @@ class _MenuState extends State<Menu> {
             : contentRenderBox.size.height,
       ),
     );
-    final notification = OpenMenuNotification(
-      x: pos.dx,
-      y: pos.dy,
-      menuDef: widget.menuDef,
+    final id = getID();
+    screenOverlayCubit.add(
+      id,
+      ScreenOverlayEntry(
+        builder: (context, id) {
+          return Positioned(
+            left: pos.dx,
+            top: pos.dy,
+            child: MenuRenderer(
+              menu: widget.menuDef,
+              id: id,
+            ),
+          );
+        },
+      ),
     );
-    openMenuID = notification.id;
-    notification.dispatch(context);
+    openMenus.add(id);
   }
 
-  void closeMenu() {
-    CloseMenuNotification(id: openMenuID).dispatch(context);
+  void closeMenu(ScreenOverlayCubit screenOverlayCubit) {
+    for (var menu in openMenus) {
+      screenOverlayCubit.remove(menu);
+    }
   }
 }
 
