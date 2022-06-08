@@ -58,13 +58,13 @@ class ProjectHeader extends StatelessWidget {
                 menuController: menuController,
                 menuDef: MenuDef(
                   children: [
-                    MenuItem(
+                    AnthemMenuItem(
                         text: "New project",
                         onSelected: () {
                           final projectID = mainWindowCubit.newProject();
                           mainWindowCubit.switchTab(projectID);
                         }),
-                    MenuItem(
+                    AnthemMenuItem(
                         text: "Load project...",
                         onSelected: () {
                           mainWindowCubit.loadProject().then((projectID) {
@@ -74,12 +74,12 @@ class ProjectHeader extends StatelessWidget {
                           });
                         }),
                     Separator(),
-                    MenuItem(
+                    AnthemMenuItem(
                         text: "Save",
                         onSelected: () {
                           mainWindowCubit.saveProject(projectID, false);
                         }),
-                    MenuItem(
+                    AnthemMenuItem(
                         text: "Save as...",
                         onSelected: () {
                           mainWindowCubit.saveProject(projectID, true);

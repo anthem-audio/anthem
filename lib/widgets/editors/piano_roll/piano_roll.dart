@@ -111,12 +111,12 @@ class _PianoRollHeader extends StatelessWidget {
             Menu(
               menuDef: MenuDef(
                 children: [
-                  MenuItem(
+                  AnthemMenuItem(
                     text: "Markers",
                     onSelected: () {},
                     submenu: MenuDef(
                       children: [
-                        MenuItem(text: "Add time signature change",),
+                        AnthemMenuItem(text: "Add time signature change",),
                       ],
                     ),
                   ),

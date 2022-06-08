@@ -22,7 +22,6 @@ import 'dart:io';
 
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/background.dart';
-import 'package:anthem/widgets/basic/menu/menu_overlay.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
@@ -50,10 +49,10 @@ void main() async {
   runApp(const MyApp());
 
   doWhenWindowReady(() {
-    const initialSize = Size(800, 600);
-    appWindow.minSize = initialSize;
-    appWindow.size = initialSize;
-    appWindow.alignment = Alignment.center;
+    // const initialSize = Size(800, 600);
+    // appWindow.minSize = initialSize;
+    // appWindow.size = initialSize;
+    // appWindow.alignment = Alignment.center;
     appWindow.show();
   });
 }
@@ -77,16 +76,14 @@ class MyApp extends StatelessWidget {
             child: ScrollConfiguration(
               behavior:
                   ScrollConfiguration.of(context).copyWith(scrollbars: false),
-              child: MenuOverlay(
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Container(
-                      color: Theme.panel.border,
-                    ),
-                    const MainWindow(),
-                  ],
-                ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Container(
+                    color: Theme.panel.border,
+                  ),
+                  const MainWindow(),
+                ],
               ),
             ),
           ),

@@ -27,7 +27,7 @@ class Theme {
   static _Primary primary = _Primary();
   static _Control control = _Control();
   static _Text text = _Text();
-  static Color separator = white.withOpacity(0.12);
+  static Color separator = const Color(0xFF2B3338);
   static _Grid grid = _Grid();
 }
 
@@ -39,7 +39,9 @@ class _Panel {
 }
 
 class _Primary {
-  Color main = const Color(0xFF25C29D);
+  Color main = const Color(0xFF28D1AA);
+  Color subtle = const Color(0xFF20A888).withOpacity(0.11);
+  Color subtleBorder = const Color(0xFF25C29D).withOpacity(0.38);
 }
 
 class _Control {

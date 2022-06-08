@@ -59,7 +59,7 @@ class _PatternEditorState extends State<PatternEditor> {
 
       return NotificationListener<SizeChangedLayoutNotification>(
         onNotification: (notification) {
-          WidgetsBinding.instance?.addPostFrameCallback((_) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
             verticalScrollController.position.notifyListeners();
           });
           return true;
@@ -82,7 +82,7 @@ class _PatternEditorState extends State<PatternEditor> {
                         menuController: menuController,
                         menuDef: MenuDef(
                           children: [
-                            MenuItem(
+                            AnthemMenuItem(
                               text: "New pattern",
                               onSelected: () {
                                 final cubit =

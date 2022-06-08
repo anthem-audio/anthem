@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,13 +17,16 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/store.dart';
+import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/TextBox.dart';
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
-import 'package:anthem/widgets/basic/tree_view/tree_item.dart';
+import 'package:anthem/widgets/basic/tree_view/model.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_view.dart';
+import 'package:anthem/widgets/project_explorer/project_explorer_cubit.dart';
 import 'package:flutter/widgets.dart';
-
-import '../../theme.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class ProjectExplorer extends StatefulWidget {
   const ProjectExplorer({Key? key}) : super(key: key);
@@ -37,146 +40,74 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
 
   @override
   Widget build(BuildContext context) {
-    return Background(
-      type: BackgroundType.dark,
-      borderRadius: const BorderRadius.all(Radius.circular(2)),
-      child: Padding(
-        padding: const EdgeInsets.all(6),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 26),
-            const SizedBox(height: 4),
-            const SizedBox(height: 24),
-            const SizedBox(height: 4),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Theme.panel.accentDark,
-                        border: Border.all(color: Theme.panel.border, width: 1),
-                        borderRadius: BorderRadius.circular(1),
-                      ),
-                      child: TreeView(
-                        scrollController: controller,
-                        children: const [
-                          TreeItem(label: "Current project", children: [
-                            TreeItem(
-                              label: "abc",
-                              children: [
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                              ],
-                            ),
-                            TreeItem(label: "abc"),
-                            TreeItem(label: "abc"),
-                          ]),
-                          TreeItem(label: "Recent files"),
-                          TreeItem(label: "Plugin databases"),
-                          TreeItem(label: "Current project", children: [
-                            TreeItem(
-                              label: "abc",
-                              children: [
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                              ],
-                            ),
-                            TreeItem(label: "abc"),
-                            TreeItem(label: "abc"),
-                          ]),
-                          TreeItem(label: "Recent files"),
-                          TreeItem(label: "Plugin databases"),
-                          TreeItem(label: "Current project", children: [
-                            TreeItem(
-                              label: "abc",
-                              children: [
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                              ],
-                            ),
-                            TreeItem(label: "abc"),
-                            TreeItem(label: "abc"),
-                          ]),
-                          TreeItem(label: "Recent files"),
-                          TreeItem(label: "Plugin databases"),
-                          TreeItem(label: "Current project", children: [
-                            TreeItem(
-                              label: "abc",
-                              children: [
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                              ],
-                            ),
-                            TreeItem(label: "abc"),
-                            TreeItem(label: "abc"),
-                          ]),
-                          TreeItem(label: "Recent files"),
-                          TreeItem(label: "Plugin databases"),
-                          TreeItem(label: "Current project", children: [
-                            TreeItem(
-                              label: "abc",
-                              children: [
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                              ],
-                            ),
-                            TreeItem(label: "abc"),
-                            TreeItem(label: "abc"),
-                          ]),
-                          TreeItem(label: "Recent files"),
-                          TreeItem(label: "Plugin databases"),
-                          TreeItem(label: "Current project", children: [
-                            TreeItem(
-                              label: "abc",
-                              children: [
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                              ],
-                            ),
-                            TreeItem(label: "abc"),
-                            TreeItem(label: "abc"),
-                          ]),
-                          TreeItem(label: "Recent files"),
-                          TreeItem(label: "Plugin databases"),
-                          TreeItem(label: "Current project", children: [
-                            TreeItem(
-                              label: "abc",
-                              children: [
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                                TreeItem(label: "abc"),
-                              ],
-                            ),
-                            TreeItem(label: "abc"),
-                            TreeItem(label: "abc"),
-                          ]),
-                          TreeItem(label: "Recent files"),
-                          TreeItem(label: "Plugin databases"),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                    Scrollbar(
-                      controller: controller,
-                      direction: ScrollbarDirection.vertical,
-                      crossAxisSize: 17,
-                    ),
-                ],
+    return BlocBuilder<ProjectExplorerCubit, ProjectExplorerState>(
+        builder: (context, state) {
+      final project = Store.instance.projects[state.projectID]!;
+
+      final arrangementsTree = TreeViewItemModel(
+        name: "Arrangements",
+        children: state.arrangementIDs
+            .map((id) =>
+                TreeViewItemModel(name: project.song.arrangements[id]!.name))
+            .toList(),
+      );
+
+      final patternsTree = TreeViewItemModel(
+        name: "Patterns",
+        children: state.patternIDs
+            .map((id) =>
+                TreeViewItemModel(name: project.song.patterns[id]!.name))
+            .toList(),
+      );
+
+      return Background(
+        type: BackgroundType.dark,
+        borderRadius: const BorderRadius.all(Radius.circular(4)),
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 26),
+              const SizedBox(height: 4),
+              const SizedBox(
+                height: 24,
+                child: TextBox(),
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Theme.panel.accentDark,
+                          border:
+                              Border.all(color: Theme.panel.border, width: 1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: TreeView(
+                          scrollController: controller,
+                          items: [
+                            TreeViewItemModel(
+                              name: "Current project",
+                              children: [
+                                arrangementsTree,
+                                patternsTree,
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 }

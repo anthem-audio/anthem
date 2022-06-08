@@ -17,13 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'screen_overlay_cubit.dart';
+part of 'project_explorer_cubit.dart';
 
-// Workaround for https://github.com/rrousselGit/freezed/issues/653
-@Freezed(makeCollectionsUnmodifiable: false)
-class ScreenOverlayState with _$ScreenOverlayState {
-
-  factory ScreenOverlayState({
-    @Default({}) Map<ID, ScreenOverlayEntry> entries,
-  }) = _ScreenOverlayState;
+@freezed
+class ProjectExplorerState with _$ProjectExplorerState {
+  factory ProjectExplorerState({
+    required ID projectID,
+    required List<ID> arrangementIDs,
+    required List<ID> patternIDs,
+  }) = _ProjectExplorerState;
 }

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,22 +17,34 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
+import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_item_indent.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
-import '../../../theme.dart';
+import 'model.dart';
 
 const indentIncrement = 21.0;
 
 class TreeItem extends StatefulWidget {
   final String? label;
-  final List<Widget>? children;
-  const TreeItem({Key? key, this.label, this.children}) : super(key: key);
+  final List<TreeViewItemModel> children;
+  final bool hasOpenIndicatorIndent;
+  const TreeItem({
+    Key? key,
+    this.label,
+    required this.children,
+    this.hasOpenIndicatorIndent = false,
+  }) : super(key: key);
 
   @override
   State<TreeItem> createState() => _TreeItemState();
 }
+
+const double itemHeight = 24;
 
 class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
   bool isHovered = false;
@@ -54,6 +66,27 @@ class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final indent = Provider.of<TreeItemIndent>(context).indent;
 
+    final List<Widget> children = [];
+
+    final hasChildWithChildren = widget.children.fold<bool>(
+      false,
+      (previousValue, element) => previousValue || element.children.isNotEmpty,
+    );
+
+    for (var i = 0; i < widget.children.length; i++) {
+      final model = widget.children[i];
+
+      children.add(
+        SizedBox(
+          child: TreeItem(
+            label: model.name,
+            children: model.children,
+            hasOpenIndicatorIndent: hasChildWithChildren,
+          ),
+        ),
+      );
+    }
+
     return Provider(
       create: (context) => TreeItemIndent(indent: indent + indentIncrement),
       child: Column(
@@ -71,7 +104,7 @@ class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
             },
             child: GestureDetector(
               onTap: () {
-                if ((widget.children?.length ?? 0) > 0) {
+                if (widget.children.isNotEmpty) {
                   setState(() {
                     if (isOpen) {
                       close();
@@ -81,32 +114,51 @@ class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
                   });
                 }
               },
-              child: Container(
-                color: isHovered ? Theme.control.hover.dark : null,
-                height: 24,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    SizedBox(width: indent),
-                    widget.children?.isNotEmpty ?? false
-                        ? Container(
-                            width: 10,
-                            height: 10,
-                            color: isOpen
-                                ? const Color(0xFFFF0000)
-                                : const Color(0xFFFFFFFF),
-                          )
-                        : const SizedBox(width: 10),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        widget.label ?? "",
-                        textAlign: TextAlign.left,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: Theme.text.main),
-                      ),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isHovered ? Theme.primary.subtle : null,
+                    border: Border.all(
+                      color: isHovered
+                          ? Theme.primary.subtleBorder
+                          : const Color(0x00000000),
                     ),
-                  ],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  height: itemHeight,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(width: indent),
+                      SizedBox(
+                        width: widget.children.isNotEmpty ||
+                                widget.hasOpenIndicatorIndent
+                            ? 10
+                            : 0,
+                        height: 10,
+                        child: (widget.children.isEmpty)
+                            ? null
+                            : Transform.rotate(
+                                angle: isOpen ? 0 : -pi / 2,
+                                alignment: Alignment.center,
+                                child: SvgIcon(
+                                  icon: Icons.arrowDown,
+                                  color: Theme.text.main,
+                                ),
+                              ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          widget.label ?? "",
+                          textAlign: TextAlign.left,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: Theme.text.main, fontSize: 11),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -115,7 +167,7 @@ class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
             visible: isOpen,
             maintainState: true,
             child: Column(
-              children: widget.children ?? [],
+              children: children,
             ),
           ),
         ],

@@ -17,13 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'screen_overlay_cubit.dart';
+import 'package:flutter/animation.dart';
 
-// Workaround for https://github.com/rrousselGit/freezed/issues/653
-@Freezed(makeCollectionsUnmodifiable: false)
-class ScreenOverlayState with _$ScreenOverlayState {
-
-  factory ScreenOverlayState({
-    @Default({}) Map<ID, ScreenOverlayEntry> entries,
-  }) = _ScreenOverlayState;
-}
+const defaultAnimationDuration = Duration(milliseconds: 250);
+const defaultAnimationCurve = Curves.easeOutExpo;
