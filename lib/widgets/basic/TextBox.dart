@@ -32,6 +32,17 @@ class _TextBoxState extends State<TextBox> {
   FocusNode? focusNode;
 
   @override
+  void dispose() {
+    controller?.dispose();
+    controller = null;
+
+    focusNode?.dispose();
+    focusNode = null;
+
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     controller ??= TextEditingController();
     focusNode ??= FocusNode();
@@ -44,7 +55,7 @@ class _TextBoxState extends State<TextBox> {
       ),
       child: Center(
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           child: EditableText(
             backgroundCursorColor:
                 const Color(0xFFFF0000), // I have no idea what this is
