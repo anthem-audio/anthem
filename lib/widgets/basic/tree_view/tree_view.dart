@@ -39,7 +39,7 @@ class TreeView extends StatelessWidget {
       create: (context) => TreeItemIndent(indent: baseIndent),
       child: NotificationListener<SizeChangedLayoutNotification>(
         onNotification: (notification) {
-          WidgetsBinding.instance?.addPostFrameCallback((duration) {
+          WidgetsBinding.instance.addPostFrameCallback((duration) {
             scrollController?.position.notifyListeners();
           });
           return true;

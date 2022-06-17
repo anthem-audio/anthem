@@ -41,7 +41,7 @@ class PatternPicker extends StatelessWidget {
       builder: (context, state) {
         return NotificationListener<SizeChangedLayoutNotification>(
           onNotification: (notification) {
-            WidgetsBinding.instance?.addPostFrameCallback((_) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
               scrollController.position.notifyListeners();
             });
             return true;
