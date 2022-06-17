@@ -42,7 +42,7 @@ class _Constants {
 }
 
 double getMenuItemHeight(GenericMenuItem menuItem) {
-  if (menuItem is MenuItem) return _Constants.menuItemHeight;
+  if (menuItem is AnthemMenuItem) return _Constants.menuItemHeight;
   if (menuItem is Separator) return _Constants.separatorHeight;
   return 0;
 }
@@ -66,11 +66,15 @@ class _MenuRendererState extends State<MenuRenderer> {
 
   @override
   Widget build(BuildContext context) {
-    final hasSubmenu = widget.menu.children.whereType<AnthemMenuItem>().fold<bool>(
-        false,
-        (previousValue, element) => previousValue || element.submenu != null);
+    final hasSubmenu = widget.menu.children
+        .whereType<AnthemMenuItem>()
+        .fold<bool>(
+            false,
+            (previousValue, element) =>
+                previousValue || element.submenu != null);
 
-    final widest = widget.menu.children.whereType<AnthemMenuItem>().map((child) {
+    final widest =
+        widget.menu.children.whereType<AnthemMenuItem>().map((child) {
       final labelWidth = measureText(
         text: child.text,
         textStyle: const TextStyle(fontSize: _Constants.fontSize),
@@ -180,7 +184,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
 
     final height = getMenuItemHeight(widget.menuItem);
 
-    if (widget.menuItem is MenuItem) {
+    if (widget.menuItem is AnthemMenuItem) {
       final item = widget.menuItem as AnthemMenuItem;
 
       final showHoverState =
