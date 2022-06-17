@@ -19,7 +19,7 @@
 
 import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/TextBox.dart';
+import 'package:anthem/widgets/basic/textbox.dart';
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
 import 'package:anthem/widgets/basic/tree_view/model.dart';

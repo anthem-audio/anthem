@@ -76,14 +76,29 @@ class MyApp extends StatelessWidget {
             child: ScrollConfiguration(
               behavior:
                   ScrollConfiguration.of(context).copyWith(scrollbars: false),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Container(
-                    color: Theme.panel.border,
+              child: FocusScope(
+                child: Focus(
+                  canRequestFocus: true,
+                  child: Builder(
+                    builder: (context) {
+                      // Allows text boxes to be unfocused when clicking elsewhere in the app
+                      return Listener(
+                        onPointerUp: (e) {
+                          Focus.of(context).requestFocus();
+                        },
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Container(
+                              color: Theme.panel.border,
+                            ),
+                            const MainWindow(),
+                          ],
+                        ),
+                      );
+                    }
                   ),
-                  const MainWindow(),
-                ],
+                ),
               ),
             ),
           ),
