@@ -38,20 +38,18 @@ class _TextBoxState extends State<TextBox> {
         borderRadius: BorderRadius.circular(4),
         color: anthem_theme.Theme.panel.accentDark,
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: TextField(
-          decoration: const InputDecoration(
-            border: InputBorder.none,
-            isCollapsed: true,
-          ),
-          cursorColor: anthem_theme.Theme.text.main,
-          style: TextStyle(color: anthem_theme.Theme.text.main, fontSize: 11),
-          textAlignVertical: TextAlignVertical.top,
-          onChanged: (e) {
-            print(e);
-          },
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: TextField(
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          fillColor: anthem_theme.Theme.panel.accentDark,
         ),
+        cursorColor: anthem_theme.Theme.text.main,
+        style: TextStyle(color: anthem_theme.Theme.text.main, fontSize: 11),
+        textAlignVertical: TextAlignVertical.bottom,
+        onChanged: (e) {
+          // print(e);
+        },
       ),
     );
   }
