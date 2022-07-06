@@ -17,12 +17,28 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+part of 'tree_view.dart';
+
+class _TreeViewItemFilterModel {
+  TreeViewItemModel item;
+  int matchScore;
+
+  _TreeViewItemFilterModel({
+    required this.item,
+    required this.matchScore,
+  });
+}
+
 class TreeViewItemModel {
   List<TreeViewItemModel> children;
-  String name;
+  String label;
+
+  /// Key for this item. Must be unique within this tree view.
+  String key;
 
   TreeViewItemModel({
-    required this.name,
+    required this.key,
+    required this.label,
     this.children = const [],
   });
 }
