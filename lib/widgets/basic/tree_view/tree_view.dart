@@ -85,8 +85,11 @@ class _TreeViewState extends State<TreeView> {
         final maxScoreOfChildren = process(item.children);
         final maxOfBoth = max(thisScore, maxScoreOfChildren);
 
-        newFilterItems[item.key] =
-            _TreeViewItemFilterModel(item: item, matchScore: maxOfBoth);
+        newFilterItems[item.key] = _TreeViewItemFilterModel(
+          item: item,
+          rawMatchScore: thisScore,
+          maxScoreOfChildren: maxOfBoth,
+        );
 
         highestScore = max(maxOfBoth, highestScore);
       }
@@ -94,7 +97,11 @@ class _TreeViewState extends State<TreeView> {
       return highestScore;
     }
 
-    process(widget.items);
+    int overallHighestScore = process(widget.items);
+
+    for (final item in newFilterItems.values) {
+      item.hasHighestScore = item.rawMatchScore >= overallHighestScore;
+    }
 
     filterItems = newFilterItems;
   }
@@ -132,12 +139,11 @@ class _TreeViewState extends State<TreeView> {
             child: SizeChangedLayoutNotifier(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: widget.items
-                    .map(
+                children: widget.items.map(
                   (item) {
                     final filterItem = filterItems[item.key];
                     final visible = filterItem == null ||
-                        filterItem.matchScore > widget.filterCutoff;
+                        filterItem.maxScoreOfChildren > widget.filterCutoff;
 
                     return Visibility(
                       maintainState: true,
@@ -145,7 +151,8 @@ class _TreeViewState extends State<TreeView> {
                       child: _TreeItem(
                         label: item.label,
                         children: item.children,
-                        filterModels: filterItems,
+                        allFilterModels: filterItems,
+                        filterModel: filterItem,
                         filterCutoff: widget.filterCutoff,
                       ),
                     );

@@ -25,7 +25,8 @@ class _TreeItem extends StatefulWidget {
   final String? label;
   final List<TreeViewItemModel> children;
   final bool hasOpenIndicatorIndent;
-  final Map<String, _TreeViewItemFilterModel> filterModels;
+  final _TreeViewItemFilterModel? filterModel;
+  final Map<String, _TreeViewItemFilterModel> allFilterModels;
   final int filterCutoff;
 
   const _TreeItem({
@@ -33,7 +34,8 @@ class _TreeItem extends StatefulWidget {
     this.label,
     required this.children,
     this.hasOpenIndicatorIndent = false,
-    required this.filterModels,
+    required this.filterModel,
+    required this.allFilterModels,
     required this.filterCutoff,
   }) : super(key: key);
 
@@ -46,7 +48,7 @@ const double itemHeight = 24;
 class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
   bool isHovered = false;
   bool isOpenFlag = false;
-  bool get isOpen => isOpenFlag || widget.filterModels.isNotEmpty;
+  bool get isOpen => isOpenFlag || widget.allFilterModels.isNotEmpty;
 
   void open() {
     setState(() {
@@ -73,25 +75,28 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
 
     for (var i = 0; i < widget.children.length; i++) {
       final model = widget.children[i];
-      final filterModel = widget.filterModels[model.key];
+      final filterModel = widget.allFilterModels[model.key];
 
       children.add(
         SizedBox(
           child: Visibility(
             maintainState: true,
             visible: filterModel == null ||
-                filterModel.matchScore > widget.filterCutoff,
+                filterModel.maxScoreOfChildren > widget.filterCutoff,
             child: _TreeItem(
               label: model.label,
               children: model.children,
               hasOpenIndicatorIndent: hasChildWithChildren,
-              filterModels: widget.filterModels,
+              allFilterModels: widget.allFilterModels,
+              filterModel: filterModel,
               filterCutoff: widget.filterCutoff,
             ),
           ),
         ),
       );
     }
+
+    final hasHighestScore = (widget.filterModel?.hasHighestScore ?? false);
 
     return Provider(
       create: (context) => TreeItemIndent(indent: indent + indentIncrement),
@@ -124,13 +129,17 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
                 cursor: SystemMouseCursors.click,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isHovered ? Theme.primary.subtle : null,
+                    color: isHovered || hasHighestScore
+                        ? Theme.primary.subtle
+                        : null,
                     border: Border.all(
                       color: isHovered
                           ? Theme.primary.subtleBorder
                           : const Color(0x00000000),
                     ),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: !isHovered && hasHighestScore
+                        ? null
+                        : BorderRadius.circular(4),
                   ),
                   height: itemHeight,
                   child: Row(

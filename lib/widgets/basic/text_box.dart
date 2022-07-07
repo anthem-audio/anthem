@@ -48,9 +48,6 @@ class _TextBoxState extends State<TextBox> {
         cursorColor: anthem_theme.Theme.text.main,
         style: TextStyle(color: anthem_theme.Theme.text.main, fontSize: 11),
         textAlignVertical: TextAlignVertical.bottom,
-        onChanged: (e) {
-          // print(e);
-        },
       ),
     );
   }
