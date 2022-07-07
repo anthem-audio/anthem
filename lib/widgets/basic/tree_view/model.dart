@@ -21,11 +21,14 @@ part of 'tree_view.dart';
 
 class _TreeViewItemFilterModel {
   TreeViewItemModel item;
-  int matchScore;
+  int rawMatchScore;
+  int maxScoreOfChildren;
+  bool hasHighestScore = false;
 
   _TreeViewItemFilterModel({
     required this.item,
-    required this.matchScore,
+    required this.rawMatchScore,
+    required this.maxScoreOfChildren,
   });
 }
 
