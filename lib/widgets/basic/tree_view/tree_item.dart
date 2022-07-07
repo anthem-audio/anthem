@@ -17,36 +17,33 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:math';
-
-import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/icon.dart';
-import 'package:anthem/widgets/basic/tree_view/tree_item_indent.dart';
-import 'package:flutter/widgets.dart';
-import 'package:provider/provider.dart';
-
-import 'model.dart';
+part of "tree_view.dart";
 
 const indentIncrement = 21.0;
 
-class TreeItem extends StatefulWidget {
+class _TreeItem extends StatefulWidget {
   final String? label;
   final List<TreeViewItemModel> children;
   final bool hasOpenIndicatorIndent;
-  const TreeItem({
+  final Map<String, _TreeViewItemFilterModel> filterModels;
+  final int filterCutoff;
+
+  const _TreeItem({
     Key? key,
     this.label,
     required this.children,
     this.hasOpenIndicatorIndent = false,
+    required this.filterModels,
+    required this.filterCutoff,
   }) : super(key: key);
 
   @override
-  State<TreeItem> createState() => _TreeItemState();
+  State<_TreeItem> createState() => _TreeItemState();
 }
 
 const double itemHeight = 24;
 
-class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
+class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
   bool isHovered = false;
   bool isOpen = false;
 
@@ -75,16 +72,22 @@ class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
 
     for (var i = 0; i < widget.children.length; i++) {
       final model = widget.children[i];
+      final filterModel = widget.filterModels[model.key];
 
-      children.add(
-        SizedBox(
-          child: TreeItem(
-            label: model.name,
-            children: model.children,
-            hasOpenIndicatorIndent: hasChildWithChildren,
+      if (filterModel == null || filterModel.matchScore > widget.filterCutoff) {
+        children.add(
+          SizedBox(
+            child: _TreeItem(
+              label:
+                  "${model.label} - ${(widget.filterModels[model.key]?.matchScore.toString() ?? '')}",
+              children: model.children,
+              hasOpenIndicatorIndent: hasChildWithChildren,
+              filterModels: widget.filterModels,
+              filterCutoff: widget.filterCutoff,
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
 
     return Provider(
@@ -154,7 +157,8 @@ class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
                           widget.label ?? "",
                           textAlign: TextAlign.left,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: Theme.text.main, fontSize: 11),
+                          style:
+                              TextStyle(color: Theme.text.main, fontSize: 11),
                         ),
                       ),
                     ],
