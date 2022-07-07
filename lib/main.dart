@@ -67,29 +67,33 @@ class MyApp extends StatelessWidget {
       title: 'Anthem',
       color: anthem_theme.Theme.primary.main,
       builder: (context, widget) {
-        return GestureDetector(
-          // Un-focus text boxes when clicking elsewhere
-          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-          child: Scaffold(
-            body: BlocProvider<MainWindowCubit>(
-              create: (_) => MainWindowCubit(),
-              child: MultiProvider(
-                providers: [
-                  ChangeNotifierProvider(
-                      create: (context) => KeyboardModifiers()),
-                  Provider(create: (context) => BackgroundType.dark)
-                ],
-                child: ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(context)
-                      .copyWith(scrollbars: false),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Container(
-                        color: anthem_theme.Theme.panel.border,
-                      ),
-                      const MainWindow(),
+        return Navigator(
+          onGenerateRoute: (_) => MaterialPageRoute(
+            builder: (_) => GestureDetector(
+              // Un-focus text boxes when clicking elsewhere
+              onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+              child: Scaffold(
+                body: BlocProvider<MainWindowCubit>(
+                  create: (_) => MainWindowCubit(),
+                  child: MultiProvider(
+                    providers: [
+                      ChangeNotifierProvider(
+                          create: (context) => KeyboardModifiers()),
+                      Provider(create: (context) => BackgroundType.dark)
                     ],
+                    child: ScrollConfiguration(
+                      behavior: ScrollConfiguration.of(context)
+                          .copyWith(scrollbars: false),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Container(
+                            color: anthem_theme.Theme.panel.border,
+                          ),
+                          const MainWindow(),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),

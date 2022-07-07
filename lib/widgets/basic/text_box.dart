@@ -21,7 +21,9 @@ import 'package:anthem/theme.dart' as anthem_theme;
 import 'package:flutter/material.dart';
 
 class TextBox extends StatefulWidget {
-  const TextBox({Key? key}) : super(key: key);
+  final TextEditingController? controller;
+
+  const TextBox({Key? key, this.controller}) : super(key: key);
 
   @override
   State<TextBox> createState() => _TextBoxState();
@@ -36,15 +38,18 @@ class _TextBoxState extends State<TextBox> {
         borderRadius: BorderRadius.circular(4),
         color: anthem_theme.Theme.panel.accentDark,
       ),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: TextField(
-            decoration: const InputDecoration(border: InputBorder.none),
-            cursorColor: anthem_theme.Theme.text.main,
-            style: TextStyle(color: anthem_theme.Theme.text.main, fontSize: 11),
-          ),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: TextField(
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          fillColor: anthem_theme.Theme.panel.accentDark,
         ),
+        cursorColor: anthem_theme.Theme.text.main,
+        style: TextStyle(color: anthem_theme.Theme.text.main, fontSize: 11),
+        textAlignVertical: TextAlignVertical.bottom,
+        onChanged: (e) {
+          // print(e);
+        },
       ),
     );
   }

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,21 +17,103 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/widgets/basic/tree_view/tree_item.dart';
+import 'dart:math';
+
+import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_item_indent.dart';
 import 'package:flutter/widgets.dart';
+import 'package:fuzzywuzzy/fuzzywuzzy.dart';
 import 'package:provider/provider.dart';
 
-import 'model.dart';
+part 'model.dart';
+part 'tree_item.dart';
 
 const baseIndent = 20.0;
 
-class TreeView extends StatelessWidget {
+class TreeView extends StatefulWidget {
+  final String? filterText;
   final List<TreeViewItemModel> items;
   final ScrollController? scrollController;
+  final int filterCutoff;
 
-  const TreeView({Key? key, required this.items, this.scrollController})
-      : super(key: key);
+  const TreeView({
+    Key? key,
+    required this.items,
+    this.scrollController,
+    this.filterText,
+    this.filterCutoff = 50,
+  }) : super(key: key);
+
+  @override
+  State<TreeView> createState() => _TreeViewState();
+}
+
+class _TreeViewState extends State<TreeView> {
+  Map<String, _TreeViewItemFilterModel> filterItems = {};
+
+  /// Recalculates `filterItems`.
+  ///
+  /// This function does not call `setState()` since it's only called on
+  /// `didUpdateWidget()`, and the widget will always render after
+  /// `didUpdateWidget()` is called.
+  void updateFilter() {
+    if (widget.filterText == null) {
+      filterItems = {};
+      return;
+    }
+
+    Map<String, _TreeViewItemFilterModel> newFilterItems = {};
+
+    /// Processes a list of `TreeViewItemModel`s, adding a score for each item
+    /// in `newFilterItems`. This function also recursively processes the
+    /// children of each item, and it returns the highest score it sees.
+    int process(List<TreeViewItemModel> items) {
+      int highestScore = 0;
+
+      for (final item in items) {
+        if (newFilterItems.containsKey(item.key)) {
+          throw Exception(
+            'Found duplicate key "${item.key}" (label: "${item.label}") '
+            'in TreeView. This item duplicates a previous item with the same '
+            'key "${item.key}" (label: "${newFilterItems[item.key]?.item.label}").',
+          );
+        }
+
+        final thisScore = weightedRatio(item.label, widget.filterText!);
+
+        final maxScoreOfChildren = process(item.children);
+        final maxOfBoth = max(thisScore, maxScoreOfChildren);
+
+        newFilterItems[item.key] =
+            _TreeViewItemFilterModel(item: item, matchScore: maxOfBoth);
+
+        highestScore = max(maxOfBoth, highestScore);
+      }
+
+      return highestScore;
+    }
+
+    process(widget.items);
+
+    filterItems = newFilterItems;
+  }
+
+  @override
+  void initState() {
+    updateFilter();
+    super.initState();
+  }
+
+  @override
+  void didUpdateWidget(covariant TreeView oldWidget) {
+    if (oldWidget.items != widget.items ||
+        oldWidget.filterText != widget.filterText) {
+      updateFilter();
+    }
+
+    super.didUpdateWidget(oldWidget);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,21 +122,30 @@ class TreeView extends StatelessWidget {
       child: NotificationListener<SizeChangedLayoutNotification>(
         onNotification: (notification) {
           WidgetsBinding.instance.addPostFrameCallback((duration) {
-            scrollController?.position.notifyListeners();
+            widget.scrollController?.position.notifyListeners();
           });
           return true;
         },
         child: SizeChangedLayoutNotifier(
           child: SingleChildScrollView(
-            controller: scrollController,
+            controller: widget.scrollController,
             child: SizeChangedLayoutNotifier(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: items
+                children: widget.items
+                    // TODO: Removing items from the tree like this causes their collapse/expand state to be destroyed. Look into hiding this like we do with tabs?
+                    .where((item) {
+                      final filterItem = filterItems[item.key];
+                      return filterItem == null ||
+                          filterItem.matchScore > widget.filterCutoff;
+                    })
                     .map(
-                      (item) => TreeItem(
-                        label: item.name,
+                      (item) => _TreeItem(
+                        label:
+                            "${item.label} - ${(filterItems[item.key]?.matchScore.toString() ?? '')}",
                         children: item.children,
+                        filterModels: filterItems,
+                        filterCutoff: widget.filterCutoff,
                       ),
                     )
                     .toList(),

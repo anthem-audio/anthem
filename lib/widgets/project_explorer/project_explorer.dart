@@ -21,8 +21,6 @@ import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/textbox.dart';
 import 'package:anthem/widgets/basic/background.dart';
-import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
-import 'package:anthem/widgets/basic/tree_view/model.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_view.dart';
 import 'package:anthem/widgets/project_explorer/project_explorer_cubit.dart';
 import 'package:flutter/widgets.dart';
@@ -45,18 +43,24 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
       final project = Store.instance.projects[state.projectID]!;
 
       final arrangementsTree = TreeViewItemModel(
-        name: "Arrangements",
+        key: "projectArrangementsFolder",
+        label: "Arrangements",
         children: state.arrangementIDs
-            .map((id) =>
-                TreeViewItemModel(name: project.song.arrangements[id]!.name))
+            .map((id) => TreeViewItemModel(
+                  key: "arrangement-$id",
+                  label: project.song.arrangements[id]!.name,
+                ))
             .toList(),
       );
 
       final patternsTree = TreeViewItemModel(
-        name: "Patterns",
+        key: "projectPatternsFolder",
+        label: "Patterns",
         children: state.patternIDs
-            .map((id) =>
-                TreeViewItemModel(name: project.song.patterns[id]!.name))
+            .map((id) => TreeViewItemModel(
+                  key: "pattern-$id",
+                  label: project.song.patterns[id]!.name,
+                ))
             .toList(),
       );
 
@@ -88,10 +92,12 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: TreeView(
+                          filterText: "argmt 1",
                           scrollController: controller,
                           items: [
                             TreeViewItemModel(
-                              name: "Current project",
+                              key: "currentProject",
+                              label: "Current project",
                               children: [
                                 arrangementsTree,
                                 patternsTree,
