@@ -49,7 +49,7 @@ dependencies:
 dev_dependencies:
   json_serializable: ^6.0.0
   freezed: ^2.0.2
-  build_runner: ^2.1.10
+  build_runner: ^2.1.11
   flutter_test:
     sdk: flutter
   integration_test:
