@@ -45,17 +45,18 @@ const double itemHeight = 24;
 
 class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
   bool isHovered = false;
-  bool isOpen = false;
+  bool isOpenFlag = false;
+  bool get isOpen => isOpenFlag || widget.filterModels.isNotEmpty;
 
   void open() {
     setState(() {
-      isOpen = true;
+      isOpenFlag = true;
     });
   }
 
   void close() {
     setState(() {
-      isOpen = false;
+      isOpenFlag = false;
     });
   }
 
@@ -74,20 +75,22 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
       final model = widget.children[i];
       final filterModel = widget.filterModels[model.key];
 
-      if (filterModel == null || filterModel.matchScore > widget.filterCutoff) {
-        children.add(
-          SizedBox(
+      children.add(
+        SizedBox(
+          child: Visibility(
+            maintainState: true,
+            visible: filterModel == null ||
+                filterModel.matchScore > widget.filterCutoff,
             child: _TreeItem(
-              label:
-                  "${model.label} - ${(widget.filterModels[model.key]?.matchScore.toString() ?? '')}",
+              label: model.label,
               children: model.children,
               hasOpenIndicatorIndent: hasChildWithChildren,
               filterModels: widget.filterModels,
               filterCutoff: widget.filterCutoff,
             ),
           ),
-        );
-      }
+        ),
+      );
     }
 
     return Provider(

@@ -40,6 +40,7 @@ class _TextBoxState extends State<TextBox> {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: TextField(
+        controller: widget.controller,
         decoration: InputDecoration(
           border: InputBorder.none,
           fillColor: anthem_theme.Theme.panel.accentDark,
