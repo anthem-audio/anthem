@@ -42,12 +42,14 @@ class Icons {
   static IconDef detailEditor =
       const IconDef("assets/icons/bottom_bar/detail_editor.svg");
   static IconDef hamburger = const IconDef("assets/icons/misc/hamburgner.svg");
+  static IconDef file = const IconDef("assets/icons/file.svg");
   static IconDef kebab = const IconDef("assets/icons/misc.svg");
   static IconDef mixer = const IconDef("assets/icons/bottom_bar/mixer.svg");
   static IconDef midi = const IconDef("assets/icons/midi.svg");
   static IconDef mute = const IconDef("assets/icons/power.svg");
   static IconDef patternEditor =
       const IconDef("assets/icons/bottom_bar/pattern_editor.svg");
+  static IconDef plugin = const IconDef("assets/icons/plugin.svg");
   static IconDef projectPanel =
       const IconDef("assets/icons/bottom_bar/project_panel_2.svg");
   static IconDef redo = const IconDef("assets/icons/edit/redo.svg");
