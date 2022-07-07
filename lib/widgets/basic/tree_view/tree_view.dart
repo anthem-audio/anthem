@@ -133,22 +133,24 @@ class _TreeViewState extends State<TreeView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: widget.items
-                    // TODO: Removing items from the tree like this causes their collapse/expand state to be destroyed. Look into hiding this like we do with tabs?
-                    .where((item) {
-                      final filterItem = filterItems[item.key];
-                      return filterItem == null ||
-                          filterItem.matchScore > widget.filterCutoff;
-                    })
                     .map(
-                      (item) => _TreeItem(
-                        label:
-                            "${item.label} - ${(filterItems[item.key]?.matchScore.toString() ?? '')}",
+                  (item) {
+                    final filterItem = filterItems[item.key];
+                    final visible = filterItem == null ||
+                        filterItem.matchScore > widget.filterCutoff;
+
+                    return Visibility(
+                      maintainState: true,
+                      visible: visible,
+                      child: _TreeItem(
+                        label: item.label,
                         children: item.children,
                         filterModels: filterItems,
                         filterCutoff: widget.filterCutoff,
                       ),
-                    )
-                    .toList(),
+                    );
+                  },
+                ).toList(),
               ),
             ),
           ),

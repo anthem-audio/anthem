@@ -19,7 +19,10 @@
 
 import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/textbox.dart';
+import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/button_tabs.dart';
+import 'package:anthem/widgets/basic/icon.dart';
+import 'package:anthem/widgets/basic/text_box.dart';
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_view.dart';
 import 'package:anthem/widgets/project_explorer/project_explorer_cubit.dart';
@@ -34,7 +37,19 @@ class ProjectExplorer extends StatefulWidget {
 }
 
 class _ProjectExplorerState extends State<ProjectExplorer> {
-  final ScrollController controller = ScrollController();
+  final scrollController = ScrollController();
+  final searchBoxController = TextEditingController();
+  String searchText = "";
+
+  @override
+  void initState() {
+    super.initState();
+    searchBoxController.addListener(() {
+      setState(() {
+        searchText = searchBoxController.value.text;
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,11 +87,33 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 26),
+              SizedBox(
+                height: 26,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Button(startIcon: Icons.kebab, width: 26),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: ButtonTabs(
+                        tabs: [
+                          ButtonTabDef.withIcon(
+                              id: "project", icon: Icons.audio),
+                          ButtonTabDef.withIcon(id: "files", icon: Icons.file),
+                          ButtonTabDef.withIcon(
+                              id: "plugins", icon: Icons.plugin),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 4),
-              const SizedBox(
+              SizedBox(
                 height: 24,
-                child: TextBox(),
+                child: TextBox(
+                  controller: searchBoxController,
+                ),
               ),
               const SizedBox(height: 4),
               Expanded(
@@ -92,8 +129,8 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: TreeView(
-                          filterText: "argmt 1",
-                          scrollController: controller,
+                          filterText: searchText == "" ? null : searchText,
+                          scrollController: scrollController,
                           items: [
                             TreeViewItemModel(
                               key: "currentProject",
