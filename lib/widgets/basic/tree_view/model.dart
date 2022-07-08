@@ -35,6 +35,7 @@ class _TreeViewItemFilterModel {
 class TreeViewItemModel {
   List<TreeViewItemModel> children;
   String label;
+  Function? onClick;
 
   /// Key for this item. Must be unique within this tree view.
   String key;
@@ -43,5 +44,6 @@ class TreeViewItemModel {
     required this.key,
     required this.label,
     this.children = const [],
+    this.onClick,
   });
 }
