@@ -80,7 +80,9 @@ class Project extends StatelessWidget {
                       maintainSize: false,
                       maintainState: true,
                       visible: state.selectedDetailView != null,
-                      child: const ProjectDetails(),
+                      child: ProjectDetails(
+                        selectedProjectDetails: state.selectedDetailView,
+                      ),
                     ),
                   ),
                 ],

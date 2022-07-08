@@ -26,10 +26,6 @@ part 'arrangement_state_changes.dart';
 
 abstract class StateChange {}
 
-/*
- * App
- */
-
 class ProjectAdded extends ProjectStateChange {
   ProjectAdded({required ID projectID}) : super(projectID: projectID);
 }

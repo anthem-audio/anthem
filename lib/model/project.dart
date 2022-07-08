@@ -49,6 +49,13 @@ class ProjectModel extends Hydratable {
   String? filePath;
 
   @JsonKey(ignore: true)
+  bool isSaved = false;
+
+
+
+  // Undo / redo & etc
+
+  @JsonKey(ignore: true)
   CommandQueue commandQueue = CommandQueue();
 
   @JsonKey(ignore: true)
@@ -57,6 +64,10 @@ class ProjectModel extends Hydratable {
   @JsonKey(ignore: true)
   bool _journalPageActive = false;
 
+
+
+  // State change stream & etc
+
   @JsonKey(ignore: true)
   final StreamController<List<StateChange>> _stateChangeStreamController =
       StreamController.broadcast();
@@ -64,8 +75,7 @@ class ProjectModel extends Hydratable {
   @JsonKey(ignore: true)
   late Stream<List<StateChange>> stateChangeStream;
 
-  @JsonKey(ignore: true)
-  bool isSaved = false;
+
 
   // This method is used for deserialization and so doesn't create new child
   // models.

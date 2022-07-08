@@ -25,9 +25,9 @@ abstract class ProjectStateChange extends StateChange {
   ProjectStateChange({required this.projectID});
 }
 
-/*
- * State changes
- */
+
+
+// Generator
 
 class GeneratorAdded extends GeneratorStateChange {
   GeneratorAdded({
@@ -56,6 +56,10 @@ class PatternAdded extends PatternStateChange {
     required ID patternID,
   }) : super(projectID: projectID, patternID: patternID);
 }
+
+
+
+// Pattern
 
 class PatternDeleted extends PatternStateChange {
   PatternDeleted({
