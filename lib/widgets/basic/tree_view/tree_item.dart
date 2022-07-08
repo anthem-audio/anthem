@@ -22,8 +22,7 @@ part of "tree_view.dart";
 const indentIncrement = 21.0;
 
 class _TreeItem extends StatefulWidget {
-  final String? label;
-  final List<TreeViewItemModel> children;
+  final TreeViewItemModel model;
   final bool hasOpenIndicatorIndent;
   final _TreeViewItemFilterModel? filterModel;
   final Map<String, _TreeViewItemFilterModel> allFilterModels;
@@ -31,8 +30,7 @@ class _TreeItem extends StatefulWidget {
 
   const _TreeItem({
     Key? key,
-    this.label,
-    required this.children,
+    required this.model,
     this.hasOpenIndicatorIndent = false,
     required this.filterModel,
     required this.allFilterModels,
@@ -68,13 +66,13 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
 
     final List<Widget> children = [];
 
-    final hasChildWithChildren = widget.children.fold<bool>(
+    final hasChildWithChildren = widget.model.children.fold<bool>(
       false,
       (previousValue, element) => previousValue || element.children.isNotEmpty,
     );
 
-    for (var i = 0; i < widget.children.length; i++) {
-      final model = widget.children[i];
+    for (var i = 0; i < widget.model.children.length; i++) {
+      final model = widget.model.children[i];
       final filterModel = widget.allFilterModels[model.key];
 
       children.add(
@@ -84,8 +82,7 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
             visible: filterModel == null ||
                 filterModel.maxScoreOfChildren > widget.filterCutoff,
             child: _TreeItem(
-              label: model.label,
-              children: model.children,
+              model: model,
               hasOpenIndicatorIndent: hasChildWithChildren,
               allFilterModels: widget.allFilterModels,
               filterModel: filterModel,
@@ -115,7 +112,7 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
             },
             child: GestureDetector(
               onTap: () {
-                if (widget.children.isNotEmpty) {
+                if (widget.model.children.isNotEmpty) {
                   setState(() {
                     if (isOpen) {
                       close();
@@ -124,6 +121,8 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
                     }
                   });
                 }
+
+                widget.model.onClick?.call();
               },
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
@@ -147,12 +146,12 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
                     children: [
                       SizedBox(width: indent),
                       SizedBox(
-                        width: widget.children.isNotEmpty ||
+                        width: widget.model.children.isNotEmpty ||
                                 widget.hasOpenIndicatorIndent
                             ? 10
                             : 0,
                         height: 10,
-                        child: (widget.children.isEmpty)
+                        child: (widget.model.children.isEmpty)
                             ? null
                             : Transform.rotate(
                                 angle: isOpen ? 0 : -pi / 2,
@@ -166,7 +165,7 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          widget.label ?? "",
+                          widget.model.label,
                           textAlign: TextAlign.left,
                           overflow: TextOverflow.ellipsis,
                           style:

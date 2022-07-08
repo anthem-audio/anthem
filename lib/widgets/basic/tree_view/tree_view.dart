@@ -149,8 +149,7 @@ class _TreeViewState extends State<TreeView> {
                       maintainState: true,
                       visible: visible,
                       child: _TreeItem(
-                        label: item.label,
-                        children: item.children,
+                        model: item,
                         allFilterModels: filterItems,
                         filterModel: filterItem,
                         filterCutoff: widget.filterCutoff,
