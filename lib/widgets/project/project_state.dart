@@ -35,11 +35,24 @@ class ProjectState with _$ProjectState {
 
 enum ProjectLayoutKind { arrange, edit, mix }
 
-enum DetailViewKind { arrangement, pattern }
-
 enum EditorKind {
   detail,
   automation,
   channelRack,
   mixer,
+}
+
+
+
+/// Used to describe which detail view is active in the project sidebar, if any
+abstract class DetailViewKind {}
+
+class PatternDetailViewKind extends DetailViewKind {
+  ID patternID;
+  PatternDetailViewKind(this.patternID);
+}
+
+class ArrangementDetailViewKind extends DetailViewKind {
+  ID arrangementID;
+  ArrangementDetailViewKind(this.arrangementID);
 }

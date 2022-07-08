@@ -17,17 +17,19 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/widgets/basic/background.dart';
+import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/widgets.dart';
 
 class ProjectDetails extends StatelessWidget {
-  const ProjectDetails({Key? key}) : super(key: key);
+  final DetailViewKind? selectedProjectDetails;
+
+  const ProjectDetails({
+    Key? key,
+    required this.selectedProjectDetails,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Background(
-      type: BackgroundType.dark,
-      borderRadius: const BorderRadius.all(Radius.circular(4)),
-    );
+    return Container(color: const Color(0xFFafa345));
   }
 }

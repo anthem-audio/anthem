@@ -25,9 +25,11 @@ import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/text_box.dart';
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_view.dart';
+import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:anthem/widgets/project_explorer/project_explorer_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 class ProjectExplorer extends StatefulWidget {
   const ProjectExplorer({Key? key}) : super(key: key);
@@ -53,6 +55,8 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
 
   @override
   Widget build(BuildContext context) {
+    final projectCubit = Provider.of<ProjectCubit>(context);
+
     return BlocBuilder<ProjectExplorerCubit, ProjectExplorerState>(
         builder: (context, state) {
       final project = Store.instance.projects[state.projectID]!;
@@ -64,6 +68,9 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
             .map((id) => TreeViewItemModel(
                   key: "arrangement-$id",
                   label: project.song.arrangements[id]!.name,
+                  onClick: () => projectCubit.setActiveDetailView(
+                    ArrangementDetailViewKind(id),
+                  ),
                 ))
             .toList(),
       );
@@ -75,6 +82,9 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
             .map((id) => TreeViewItemModel(
                   key: "pattern-$id",
                   label: project.song.patterns[id]!.name,
+                  onClick: () => projectCubit.setActiveDetailView(
+                    PatternDetailViewKind(id),
+                  ),
                 ))
             .toList(),
       );

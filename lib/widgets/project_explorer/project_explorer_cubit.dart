@@ -64,7 +64,7 @@ class ProjectExplorerCubit extends Cubit<ProjectExplorerState> {
       if (change is ArrangementAdded || change is ArrangementDeleted) {
         didArrangementListChange = true;
       }
-      if (change is PatternAdded || change is PatternDeleted) {
+      else if (change is PatternAdded || change is PatternDeleted) {
         didPatternListChange = true;
       }
     }
