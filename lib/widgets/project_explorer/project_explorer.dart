@@ -69,6 +69,7 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
                   key: "arrangement-$id",
                   label: project.song.arrangements[id]!.name,
                   onClick: () => projectCubit.setActiveDetailView(
+                    true,
                     ArrangementDetailViewKind(id),
                   ),
                 ))
@@ -83,6 +84,7 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
                   key: "pattern-$id",
                   label: project.song.patterns[id]!.name,
                   onClick: () => projectCubit.setActiveDetailView(
+                    true,
                     PatternDetailViewKind(id),
                   ),
                 ))

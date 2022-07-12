@@ -54,8 +54,15 @@ class ProjectCubit extends Cubit<ProjectState> {
   void setIsPatternEditorVisible(bool visible) =>
       emit(state.copyWith(isPatternEditorVisible: visible));
   void setActiveGeneratorID(ID? id) => project.song.setActiveGenerator(id);
-  void setActiveDetailView(DetailViewKind? detailView) =>
-      emit(state.copyWith(selectedDetailView: detailView));
+  void setActiveDetailView(bool isVisible, [DetailViewKind? detailView]) {
+    if (detailView != null) {
+      emit(state.copyWith(isDetailViewSelected: isVisible, selectedDetailView: detailView));
+    }
+    else {
+      emit(state.copyWith(isDetailViewSelected: isVisible));
+    }
+  }
+
   void setActiveEditor(EditorKind editor) =>
       emit(state.copyWith(selectedEditor: editor));
 }
