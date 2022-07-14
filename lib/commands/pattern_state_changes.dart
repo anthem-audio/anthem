@@ -17,94 +17,27 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'state_changes.dart';
+import 'package:anthem/helpers/id.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-/*
- * Base classes
- */
+part 'pattern_state_changes.freezed.dart';
 
-abstract class GeneratorStateChange extends ProjectStateChange {
-  ID? generatorID;
-
-  GeneratorStateChange({required ID projectID, required this.generatorID})
-      : super(projectID: projectID);
+@freezed
+class GeneratorStateChange with _$GeneratorStateChange {
+  const factory GeneratorStateChange.generatorAdded(ID projectID, ID generatorID) = GeneratorAdded;
+  const factory GeneratorStateChange.generatorRemoved(ID projectID, ID generatorID) = GeneratorRemoved;
 }
 
-abstract class PatternStateChange extends ProjectStateChange {
-  ID? patternID;
-
-  PatternStateChange({required ID projectID, required this.patternID})
-      : super(projectID: projectID);
+@freezed
+class PatternStateChange with _$PatternStateChange {
+  const factory PatternStateChange.patternAdded(ID projectID, ID patternID) = PatternAdded;
+  const factory PatternStateChange.patternDeleted(ID projectID, ID patternID) = PatternDeleted;
 }
 
-abstract class NoteStateChange extends PatternStateChange {
-  ID generatorID;
-  ID noteID;
-
-  NoteStateChange({
-    required ID projectID,
-    required ID patternID,
-    required this.generatorID,
-    required this.noteID,
-  }) : super(projectID: projectID, patternID: patternID);
-}
-
-/*
- * State changes
- */
-
-class NoteAdded extends NoteStateChange {
-  NoteAdded({
-    required ID projectID,
-    required ID patternID,
-    required ID generatorID,
-    required ID noteID,
-  }) : super(
-          projectID: projectID,
-          patternID: patternID,
-          generatorID: generatorID,
-          noteID: noteID,
-        );
-}
-
-class NoteDeleted extends NoteStateChange {
-  NoteDeleted({
-    required ID projectID,
-    required ID patternID,
-    required ID generatorID,
-    required ID noteID,
-  }) : super(
-          projectID: projectID,
-          patternID: patternID,
-          generatorID: generatorID,
-          noteID: noteID,
-        );
-}
-
-class NoteMoved extends NoteStateChange {
-  NoteMoved({
-    required ID projectID,
-    required ID patternID,
-    required ID generatorID,
-    required ID noteID,
-  }) : super(
-          projectID: projectID,
-          patternID: patternID,
-          generatorID: generatorID,
-          noteID: noteID,
-        );
-}
-
-class NoteResized extends NoteStateChange {
-  NoteResized({
-    required ID projectID,
-    required ID patternID,
-    required ID generatorID,
-    required ID noteID,
-  }) : super(
-          projectID: projectID,
-          patternID: patternID,
-          generatorID: generatorID,
-          noteID: noteID,
-        );
+@freezed
+class NoteStateChange with _$NoteStateChange {
+  const factory NoteStateChange.noteAdded(ID projectID, ID patternID, ID generatorID, ID noteID) = NoteAdded;
+  const factory NoteStateChange.noteDeleted(ID projectID, ID patternID, ID generatorID, ID noteID) = NoteDeleted;
+  const factory NoteStateChange.noteMoved(ID projectID, ID patternID, ID generatorID, ID noteID) = NoteMoved;
+  const factory NoteStateChange.noteResized(ID projectID, ID patternID, ID generatorID, ID noteID) = NoteResized;
 }

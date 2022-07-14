@@ -82,9 +82,11 @@ class ClipCubit extends Cubit<ClipState> {
   _onModelChanged(List<StateChange> changes) {
     var updateNotes = false;
 
-    changes.whereType<NoteStateChange>().forEach((change) {
-      updateNotes = true;
-    });
+    for (final change in changes) {
+      change.whenOrNull(
+        note: (noteChange) => updateNotes = true,
+      );
+    }
 
     if (updateNotes) {
       emit(state.copyWith(

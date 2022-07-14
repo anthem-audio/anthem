@@ -76,19 +76,25 @@ class PianoRollCubit extends Cubit<PianoRollState> {
     var updateActivePattern = false;
     var updateActiveGenerator = false;
 
-    for (final change in changes) {
-      if (change is ActivePatternChanged ||
-          change is NoteAdded ||
-          change is NoteDeleted ||
-          change is NoteMoved ||
-          change is NoteResized ||
-          change is ActiveGeneratorChanged) {
-        updateActivePattern = true;
-      }
+    void updateActivePatternFn(change) => updateActivePattern = true;
 
-      if (change is ActiveGeneratorChanged) {
-        updateActiveGenerator = true;
-      }
+    for (final change in changes) {
+      change.whenOrNull(project: (change) {
+        change.mapOrNull(
+          activePatternChanged: updateActivePatternFn,
+          activeGeneratorChanged: (change) {
+            updateActivePatternFn(change);
+            updateActiveGenerator = true;
+          },
+        );
+      }, note: (change) {
+        change.mapOrNull(
+          noteAdded: updateActivePatternFn,
+          noteDeleted: updateActivePatternFn,
+          noteMoved: updateActivePatternFn,
+          noteResized: updateActivePatternFn,
+        );
+      });
     }
 
     PianoRollState? newState;

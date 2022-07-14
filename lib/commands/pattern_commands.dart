@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/commands/pattern_state_changes.dart';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
@@ -56,9 +57,8 @@ class AddPatternCommand extends Command {
   List<StateChange> execute() {
     _addPatternToProject(project, pattern, index);
     return [
-      PatternAdded(
-        projectID: project.id,
-        patternID: pattern.id,
+      StateChange.pattern(
+        PatternStateChange.patternAdded(project.id, pattern.id),
       )
     ];
   }
@@ -67,9 +67,8 @@ class AddPatternCommand extends Command {
   List<StateChange> rollback() {
     _removePatternFromProject(project, pattern.id);
     return [
-      PatternDeleted(
-        projectID: project.id,
-        patternID: pattern.id,
+      StateChange.pattern(
+        PatternStateChange.patternDeleted(project.id, pattern.id),
       )
     ];
   }
@@ -89,9 +88,8 @@ class DeletePatternCommand extends Command {
   List<StateChange> execute() {
     _removePatternFromProject(project, pattern.id);
     return [
-      PatternDeleted(
-        projectID: project.id,
-        patternID: pattern.id,
+      StateChange.pattern(
+        PatternStateChange.patternDeleted(project.id, pattern.id),
       )
     ];
   }
@@ -100,9 +98,8 @@ class DeletePatternCommand extends Command {
   List<StateChange> rollback() {
     _addPatternToProject(project, pattern, index);
     return [
-      PatternAdded(
-        projectID: project.id,
-        patternID: pattern.id,
+      StateChange.pattern(
+        PatternStateChange.patternAdded(project.id, pattern.id),
       )
     ];
   }
@@ -160,11 +157,13 @@ class AddNoteCommand extends Command {
     _addNote(pattern, generatorID, note);
 
     return [
-      NoteAdded(
-        projectID: project.id,
-        patternID: patternID,
-        generatorID: generatorID,
-        noteID: note.id,
+      StateChange.note(
+        NoteStateChange.noteAdded(
+          project.id,
+          patternID,
+          generatorID,
+          note.id,
+        ),
       )
     ];
   }
@@ -180,11 +179,13 @@ class AddNoteCommand extends Command {
     _removeNote(pattern, generatorID, note.id);
 
     return [
-      NoteDeleted(
-        projectID: project.id,
-        patternID: pattern.id,
-        generatorID: generatorID,
-        noteID: note.id,
+      StateChange.note(
+        NoteStateChange.noteDeleted(
+          project.id,
+          patternID,
+          generatorID,
+          note.id,
+        ),
       )
     ];
   }
@@ -213,11 +214,13 @@ class DeleteNoteCommand extends Command {
     _removeNote(pattern, generatorID, note.id);
 
     return [
-      NoteDeleted(
-        projectID: project.id,
-        patternID: pattern.id,
-        generatorID: generatorID,
-        noteID: note.id,
+      StateChange.note(
+        NoteStateChange.noteDeleted(
+          project.id,
+          patternID,
+          generatorID,
+          note.id,
+        ),
       )
     ];
   }
@@ -233,11 +236,13 @@ class DeleteNoteCommand extends Command {
     _addNote(pattern, generatorID, note);
 
     return [
-      NoteAdded(
-        projectID: project.id,
-        patternID: patternID,
-        generatorID: generatorID,
-        noteID: note.id,
+      StateChange.note(
+        NoteStateChange.noteAdded(
+          project.id,
+          patternID,
+          generatorID,
+          note.id,
+        ),
       )
     ];
   }
@@ -277,11 +282,13 @@ class MoveNoteCommand extends Command {
     note.offset = newOffset;
 
     return [
-      NoteMoved(
-        projectID: project.id,
-        patternID: patternID,
-        generatorID: generatorID,
-        noteID: noteID,
+      StateChange.note(
+        NoteStateChange.noteMoved(
+          project.id,
+          patternID,
+          generatorID,
+          note.id,
+        ),
       )
     ];
   }
@@ -300,11 +307,13 @@ class MoveNoteCommand extends Command {
     note.offset = oldOffset;
 
     return [
-      NoteMoved(
-        projectID: project.id,
-        patternID: patternID,
-        generatorID: generatorID,
-        noteID: noteID,
+      StateChange.note(
+        NoteStateChange.noteMoved(
+          project.id,
+          patternID,
+          generatorID,
+          note.id,
+        ),
       )
     ];
   }
@@ -339,11 +348,13 @@ class ResizeNoteCommand extends Command {
     note.length = newLength;
 
     return [
-      NoteResized(
-        projectID: project.id,
-        patternID: patternID,
-        generatorID: generatorID,
-        noteID: noteID,
+      StateChange.note(
+        NoteStateChange.noteResized(
+          project.id,
+          patternID,
+          generatorID,
+          note.id,
+        ),
       )
     ];
   }
@@ -361,11 +372,13 @@ class ResizeNoteCommand extends Command {
     note.length = newLength;
 
     return [
-      NoteResized(
-        projectID: project.id,
-        patternID: patternID,
-        generatorID: generatorID,
-        noteID: noteID,
+      StateChange.note(
+        NoteStateChange.noteResized(
+          project.id,
+          patternID,
+          generatorID,
+          note.id,
+        ),
       )
     ];
   }

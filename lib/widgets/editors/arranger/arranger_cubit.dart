@@ -91,23 +91,35 @@ class ArrangerCubit extends Cubit<ArrangerState> {
     var didActiveArrangementChange = false;
     var didArrangementListChange = false;
 
+    void doOnActiveArrangementChanged(change) {
+      didActiveArrangementChange = true;
+      didClipsChange = true;
+    }
+
     for (final change in changes) {
-      final relatesToSelectedArrangement = change is ArrangementStateChange &&
-          change.arrangementID == state.activeArrangementID;
+      change.whenOrNull(
+        project: (change) {
+          change.mapOrNull(
+            activeArrangementChanged: (change) {
+              didActiveArrangementChange = true;
+              didClipsChange = true;
+            },
+          );
+        },
 
-      if (relatesToSelectedArrangement &&
-          (change is ClipAdded || change is ClipDeleted)) {
-        didClipsChange = true;
-      }
-
-      if (change is ArrangementAdded || change is ArrangementDeleted) {
-        didArrangementListChange = true;
-      }
-
-      if (change is ActiveArrangementChanged) {
-        didActiveArrangementChange = true;
-        didClipsChange = true;
-      }
+        arrangement: (change) {
+          if (change.arrangementID == state.activeArrangementID) {
+            change.mapOrNull(
+              clipAdded: (change) => didClipsChange = true,
+              clipDeleted: (change) => didClipsChange = true,
+            );
+          }
+          change.mapOrNull(
+            arrangementAdded: (change) => didArrangementListChange = true,
+            arrangementDeleted: (change) => didArrangementListChange = true,
+          );
+        },
+      );
     }
 
     ArrangerState? newState;
