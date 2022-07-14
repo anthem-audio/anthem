@@ -55,17 +55,25 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
     var updateGeneratorList = false;
 
     for (final change in changes) {
-      if (change is ActivePatternChanged) {
-        updateActivePattern = true;
-      }
-
-      if (change is PatternAdded || change is PatternDeleted) {
-        updatePatternList = true;
-      }
-
-      if (change is GeneratorAdded || change is GeneratorRemoved) {
-        updateGeneratorList = true;
-      }
+      change.whenOrNull(
+        project: (change) {
+          change.mapOrNull(
+            activePatternChanged: (change) => updateActivePattern = true,
+          );
+        },
+        pattern: (change) {
+          change.mapOrNull(
+            patternAdded: (change) => updatePatternList = true,
+            patternDeleted: (change) => updatePatternList = true,
+          );
+        },
+        generator: (change) {
+          change.mapOrNull(
+            generatorAdded: (change) => updateGeneratorList = true,
+            generatorRemoved: (change) => updateGeneratorList = true,
+          );
+        },
+      );
     }
 
     PatternEditorState? newState;

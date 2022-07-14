@@ -17,35 +17,19 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/id.dart';
+import 'package:anthem/commands/pattern_state_changes.dart';
+import 'package:anthem/commands/project_state_changes.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-part 'project_state_changes.dart';
-part 'pattern_state_changes.dart';
+import 'arrangement_state_changes.dart';
 
-part 'arrangement_state_changes.dart';
+part 'state_changes.freezed.dart';
 
-abstract class StateChange {}
-
-class ProjectAdded extends ProjectStateChange {
-  ProjectAdded({required ID projectID}) : super(projectID: projectID);
-}
-
-class ActiveProjectChanged extends ProjectStateChange {
-  ActiveProjectChanged({required ID projectID}) : super(projectID: projectID);
-}
-
-class ProjectClosed extends ProjectStateChange {
-  ProjectClosed({required ID projectID}) : super(projectID: projectID);
-}
-
-class ProjectSaved extends ProjectStateChange {
-  ProjectSaved({required ID projectID}) : super(projectID: projectID);
-}
-
-class JournalEntryStarted extends ProjectStateChange {
-  JournalEntryStarted({required ID projectID}) : super(projectID: projectID);
-}
-
-class JournalEntryCommitted extends ProjectStateChange {
-  JournalEntryCommitted({required ID projectID}) : super(projectID: projectID);
+@freezed
+class StateChange with _$StateChange {
+  const factory StateChange.project(ProjectStateChange details) = ProjectChangeUnionType;
+  const factory StateChange.arrangement(ArrangementStateChange details) = ArrangementChangeUnionType;
+  const factory StateChange.generator(GeneratorStateChange details) = GeneratorChangeUnionType;
+  const factory StateChange.pattern(PatternStateChange details) = PatternChangeUnionType;
+  const factory StateChange.note(NoteStateChange details) = NoteChangeUnionType;
 }

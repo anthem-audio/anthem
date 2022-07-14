@@ -63,9 +63,14 @@ class PatternPickerCubit extends Cubit<PatternPickerState> {
     var patternListChanged = false;
 
     for (final change in changes) {
-      if (change is PatternAdded || change is PatternDeleted) {
-        patternListChanged = true;
-      }
+      change.whenOrNull(
+        pattern: (patternChange) {
+          patternChange.mapOrNull(
+            patternAdded: (change) => patternListChanged = true,
+            patternDeleted: (change) => patternListChanged = true,
+          );
+        },
+      );
     }
 
     PatternPickerState? newState;
