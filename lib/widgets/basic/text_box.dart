@@ -22,8 +22,9 @@ import 'package:flutter/material.dart';
 
 class TextBox extends StatefulWidget {
   final TextEditingController? controller;
+  final FocusNode? focusNode;
 
-  const TextBox({Key? key, this.controller}) : super(key: key);
+  const TextBox({Key? key, this.controller, this.focusNode}) : super(key: key);
 
   @override
   State<TextBox> createState() => _TextBoxState();
@@ -41,6 +42,7 @@ class _TextBoxState extends State<TextBox> {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: TextField(
         controller: widget.controller,
+        focusNode: widget.focusNode,
         decoration: InputDecoration(
           border: InputBorder.none,
           fillColor: anthem_theme.Theme.panel.accentDark,
