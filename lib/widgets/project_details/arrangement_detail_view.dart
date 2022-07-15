@@ -19,40 +19,61 @@
 
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/text_box.dart';
+import 'package:anthem/widgets/basic/text_box_controlled.dart';
+import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
-class ArrangementDetailView extends StatelessWidget {
+class ArrangementDetailView extends StatefulWidget {
   const ArrangementDetailView({Key? key}) : super(key: key);
 
   @override
+  State<ArrangementDetailView> createState() => _ArrangementDetailViewState();
+}
+
+class _ArrangementDetailViewState extends State<ArrangementDetailView> {
+  @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: Theme.panel.main,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          padding: const EdgeInsets.all(6),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                "ARRANGEMENT",
-                style: TextStyle(
-                  color: Theme.text.main,
-                  fontSize: 10,
+    return BlocBuilder<ArrangerCubit, ArrangerState>(builder: (context, state) {
+      final cubit = Provider.of<ArrangerCubit>(context);
+
+      return Column(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Theme.panel.main,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            padding: const EdgeInsets.all(6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  "ARRANGEMENT",
+                  style: TextStyle(
+                    color: Theme.text.main,
+                    fontSize: 10,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 6),
-              const SizedBox(height: 26, child: TextBox()),
-              const SizedBox(height: 4),
-            ],
+                const SizedBox(height: 6),
+                SizedBox(
+                  height: 26,
+                  child: ControlledTextBox(
+                    text: state.arrangementNames[state.activeArrangementID]!,
+                    onChange: (text) {
+                      cubit.setArrangementName(text);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 4),
+              ],
+            ),
           ),
-        ),
-        const Expanded(child: SizedBox()),
-      ],
-    );
+          const Expanded(child: SizedBox()),
+        ],
+      );
+    });
   }
 }
