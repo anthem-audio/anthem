@@ -45,6 +45,8 @@ dependencies:
   bitsdojo_window: ^0.1.1+1
   nanoid: ^1.0.0
   fuzzywuzzy: ^0.2.0
+  collection: ^1.16.0
+  vector_math: ^2.1.2
 
 dev_dependencies:
   json_serializable: ^6.0.0
