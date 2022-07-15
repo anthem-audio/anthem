@@ -129,6 +129,7 @@ class _ArrangerState extends State<Arranger> {
                                 ),
                                 const SizedBox(width: 4),
                                 Flexible(
+                                  fit: FlexFit.tight,
                                   child: Dropdown(
                                     selectedID:
                                         state.activeArrangementID.toString(),
@@ -144,7 +145,6 @@ class _ArrangerState extends State<Arranger> {
                                       cubit.setActiveArrangement(selectedID);
                                     },
                                   ),
-                                  fit: FlexFit.tight,
                                 ),
                                 const SizedBox(width: 4),
                               ],

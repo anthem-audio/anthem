@@ -106,7 +106,6 @@ class ArrangerCubit extends Cubit<ArrangerState> {
             },
           );
         },
-
         arrangement: (change) {
           if (change.arrangementID == state.activeArrangementID) {
             change.mapOrNull(
@@ -117,6 +116,7 @@ class ArrangerCubit extends Cubit<ArrangerState> {
           change.mapOrNull(
             arrangementAdded: (change) => didArrangementListChange = true,
             arrangementDeleted: (change) => didArrangementListChange = true,
+            arrangementNameChanged: (change) => didArrangementListChange = true,
           );
         },
       );
@@ -164,6 +164,19 @@ class ArrangerCubit extends Cubit<ArrangerState> {
 
     project.execute(
       AddArrangementCommand(project: project, arrangementName: arrangementName),
+    );
+  }
+
+  void setArrangementName(String name, [ID? arrangementID]) {
+    arrangementID ??= state.activeArrangementID;
+    if (arrangementID == null) return;
+
+    project.execute(
+      SetArrangementNameCommand(
+        project: project,
+        arrangementID: arrangementID,
+        newName: name,
+      ),
     );
   }
 
