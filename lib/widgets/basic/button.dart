@@ -233,8 +233,8 @@ class _ButtonState extends State<Button> {
             style: TextStyle(
               color: textColor,
               fontSize: 11,
+              overflow: TextOverflow.ellipsis,
             ),
-            overflow: TextOverflow.ellipsis,
           )
         : null;
 
@@ -255,15 +255,17 @@ class _ButtonState extends State<Button> {
     }
 
     rowChildren.add(
-      Row(
-        children: innerRowChildren,
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
+      Expanded(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: innerRowChildren,
+        ),
       ),
     );
 
     if (textWidget != null) {
-      innerRowChildren.add(textWidget);
+      innerRowChildren.add(Expanded(child: textWidget));
     }
 
     if (endIconWidget != null) {
@@ -277,12 +279,10 @@ class _ButtonState extends State<Button> {
 
     final Widget buttonContent;
 
-    final startIconOnly = startIconWidget != null &&
-        textWidget == null &&
-        endIconWidget == null;
-    final startAndEndIconOnly = startIconWidget != null &&
-        textWidget == null &&
-        endIconWidget != null;
+    final startIconOnly =
+        startIconWidget != null && textWidget == null && endIconWidget == null;
+    final startAndEndIconOnly =
+        startIconWidget != null && textWidget == null && endIconWidget != null;
 
     // Hack to fix row overflow in some icon button cases
     if (startIconOnly) {
@@ -306,11 +306,11 @@ class _ButtonState extends State<Button> {
       );
     } else {
       buttonContent = Row(
-        children: rowChildren,
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: widget.endIcon == null
             ? MainAxisAlignment.spaceAround
             : MainAxisAlignment.spaceBetween,
+        children: rowChildren,
       );
     }
 
