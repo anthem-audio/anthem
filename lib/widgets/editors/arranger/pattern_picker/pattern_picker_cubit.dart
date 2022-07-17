@@ -35,6 +35,12 @@ List<ID> getPatternIDs(ProjectModel? project) {
   return [...project?.song.patternOrder ?? []];
 }
 
+Map<ID, String> getPatternNames(ProjectModel? project) {
+  return project?.song.patterns
+          .map((patternID, pattern) => MapEntry(patternID, pattern.name)) ??
+      {};
+}
+
 class PatternPickerCubit extends Cubit<PatternPickerState> {
   late final ProjectModel project;
 
@@ -51,6 +57,9 @@ class PatternPickerCubit extends Cubit<PatternPickerState> {
       : super(PatternPickerState(
           projectID: projectID,
           patternIDs: getPatternIDs(
+            Store.instance.projects[projectID],
+          ),
+          patternNames: getPatternNames(
             Store.instance.projects[projectID],
           ),
           patternHeight: 50,
@@ -89,13 +98,26 @@ class PatternPickerCubit extends Cubit<PatternPickerState> {
     emit(state.copyWith(patternHeight: height));
   }
 
-  addPattern(String name) {
+  addPattern([String? name]) {
+    if (name == null) {
+      var patternNumber = state.patternIDs.length;
+
+      do {
+        patternNumber++;
+        name = "Pattern $patternNumber";
+      } while (state.patternNames.containsValue(name));
+    }
+
+    final patternModel = PatternModel.create(name: name, project: project);
+
     project.execute(
       AddPatternCommand(
         project: project,
-        pattern: PatternModel.create(name: name, project: project),
+        pattern: patternModel,
         index: project.song.patternOrder.length,
       ),
     );
+
+    project.song.setActivePattern(patternModel.id);
   }
 }

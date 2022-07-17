@@ -6,6 +6,7 @@ class PatternPickerState with _$PatternPickerState {
   factory PatternPickerState({
     required ID projectID,
     required List<ID> patternIDs,
+    required Map<ID, String> patternNames,
     required double patternHeight,
     @Default(PatternFilterKind.midi) PatternFilterKind filterType,
   }) = _PatternPickerState;
