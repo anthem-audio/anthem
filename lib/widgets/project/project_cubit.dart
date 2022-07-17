@@ -17,6 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
+import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
@@ -29,8 +32,67 @@ part 'project_cubit.freezed.dart';
 class ProjectCubit extends Cubit<ProjectState> {
   late final ProjectModel project;
 
+  late final StreamSubscription<List<StateChange>> _stateChangeStream;
+
   ProjectCubit({required ID id}) : super(ProjectState(id: id)) {
     project = Store.instance.projects[id]!;
+    _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
+  }
+
+  @override
+  Future<void> close() async {
+    await _stateChangeStream.cancel();
+
+    return super.close();
+  }
+
+  void _onModelChanged(List<StateChange> changes) {
+    var didActiveArrangementChange = false;
+    var didActivePatternChange = false;
+
+    for (final change in changes) {
+      change.whenOrNull(
+        project: (projectChange) {
+          projectChange.mapOrNull(
+            activeArrangementChanged: (change) =>
+                didActiveArrangementChange = true,
+            activePatternChanged: (change) => didActivePatternChange = true,
+          );
+        },
+      );
+    }
+
+    ProjectState? newState;
+
+    if (didActiveArrangementChange) {
+      final isSelected = project.song.activeArrangementID != null;
+
+      newState = (newState ?? state).copyWith(
+        isDetailViewSelected: isSelected,
+        selectedDetailView: !isSelected
+            ? null
+            : ArrangementDetailViewKind(
+                project.song.activeArrangementID!,
+              ),
+      );
+    }
+
+    if (didActivePatternChange) {
+      final isSelected = project.song.activePatternID != null;
+
+      newState = (newState ?? state).copyWith(
+        isDetailViewSelected: isSelected,
+        selectedDetailView: !isSelected
+            ? null
+            : PatternDetailViewKind(
+                project.song.activePatternID!,
+              ),
+      );
+    }
+
+    if (newState != null) {
+      emit(newState);
+    }
   }
 
   void undo() {
@@ -56,9 +118,9 @@ class ProjectCubit extends Cubit<ProjectState> {
   void setActiveGeneratorID(ID? id) => project.song.setActiveGenerator(id);
   void setActiveDetailView(bool isVisible, [DetailViewKind? detailView]) {
     if (detailView != null) {
-      emit(state.copyWith(isDetailViewSelected: isVisible, selectedDetailView: detailView));
-    }
-    else {
+      emit(state.copyWith(
+          isDetailViewSelected: isVisible, selectedDetailView: detailView));
+    } else {
       emit(state.copyWith(isDetailViewSelected: isVisible));
     }
   }

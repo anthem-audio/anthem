@@ -26,10 +26,10 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 
-class ProjectDetailsBase extends StatelessWidget {
+class ProjectDetails extends StatelessWidget {
   final DetailViewKind? selectedProjectDetails;
 
-  const ProjectDetailsBase({
+  const ProjectDetails({
     Key? key,
     required this.selectedProjectDetails,
   }) : super(key: key);

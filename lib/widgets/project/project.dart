@@ -28,7 +28,7 @@ import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/project_explorer/project_explorer_cubit.dart';
 import 'package:anthem/widgets/project_explorer/project_explorer.dart';
-import 'package:anthem/widgets/project_details/base.dart';
+import 'package:anthem/widgets/project_details/project_details.dart';
 import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:anthem/widgets/project/project_footer.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -80,7 +80,7 @@ class Project extends StatelessWidget {
                       maintainSize: false,
                       maintainState: true,
                       visible: state.isDetailViewSelected,
-                      child: ProjectDetailsBase(
+                      child: ProjectDetails(
                         selectedProjectDetails: state.selectedDetailView,
                       ),
                     ),
