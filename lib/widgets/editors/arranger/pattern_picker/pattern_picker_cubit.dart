@@ -98,7 +98,7 @@ class PatternPickerCubit extends Cubit<PatternPickerState> {
     emit(state.copyWith(patternHeight: height));
   }
 
-  addPattern([String? name]) {
+  ID addPattern([String? name]) {
     if (name == null) {
       var patternNumber = state.patternIDs.length;
 
@@ -119,5 +119,7 @@ class PatternPickerCubit extends Cubit<PatternPickerState> {
     );
 
     project.song.setActivePattern(patternModel.id);
+
+    return patternModel.id;
   }
 }
