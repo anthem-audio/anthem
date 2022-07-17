@@ -87,8 +87,7 @@ class _PatternEditorState extends State<PatternEditor> {
                               onSelected: () {
                                 final cubit =
                                     context.read<PatternEditorCubit>();
-                                final patternID = cubit.addPattern(
-                                    "Pattern ${(Random()).nextInt(100).toString()}");
+                                final patternID = cubit.addPattern();
                                 cubit.setActivePattern(patternID);
                               },
                             )
@@ -147,7 +146,7 @@ class _PatternEditorState extends State<PatternEditor> {
                                         state.generatorIDList.map<Widget>((id) {
                                       final instrument = state.instruments[id];
                                       final controller = state.controllers[id];
-          
+
                                       // TODO: provide type to child
                                       if (instrument != null) {
                                         return BlocProvider(
@@ -160,7 +159,7 @@ class _PatternEditorState extends State<PatternEditor> {
                                           child: const GeneratorRow(),
                                         );
                                       }
-          
+
                                       if (controller != null) {
                                         return Padding(
                                           padding:
@@ -176,7 +175,7 @@ class _PatternEditorState extends State<PatternEditor> {
                                           ),
                                         );
                                       }
-          
+
                                       throw Error();
                                     }).toList(),
                                   ),

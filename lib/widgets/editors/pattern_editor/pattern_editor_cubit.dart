@@ -109,14 +109,31 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
     }
   }
 
-  ID addPattern(String name) {
-    final pattern = PatternModel.create(name: name, project: project);
-    project.execute(AddPatternCommand(
-      project: project,
-      pattern: pattern,
-      index: project.song.patternOrder.length,
-    ));
-    return pattern.id;
+  ID addPattern([String? name]) {
+    if (name == null) {
+      var patternNumber = state.patternList.length;
+
+      final existingNames = state.patternList.map((pattern) => pattern.name);
+
+      do {
+        patternNumber++;
+        name = "Pattern $patternNumber";
+      } while (existingNames.contains(name));
+    }
+
+    final patternModel = PatternModel.create(name: name, project: project);
+
+    project.execute(
+      AddPatternCommand(
+        project: project,
+        pattern: patternModel,
+        index: project.song.patternOrder.length,
+      ),
+    );
+
+    project.song.setActivePattern(patternModel.id);
+
+    return patternModel.id;
   }
 
   void deletePattern(ID patternID) {
