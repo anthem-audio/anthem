@@ -65,6 +65,7 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
           change.mapOrNull(
             patternAdded: (change) => updatePatternList = true,
             patternDeleted: (change) => updatePatternList = true,
+            patternNameChanged: (change) => updatePatternList = true,
           );
         },
         generator: (change) {

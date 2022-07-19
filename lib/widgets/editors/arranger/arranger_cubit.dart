@@ -91,11 +91,6 @@ class ArrangerCubit extends Cubit<ArrangerState> {
     var didActiveArrangementChange = false;
     var didArrangementListChange = false;
 
-    void doOnActiveArrangementChanged(change) {
-      didActiveArrangementChange = true;
-      didClipsChange = true;
-    }
-
     for (final change in changes) {
       change.whenOrNull(
         project: (change) {

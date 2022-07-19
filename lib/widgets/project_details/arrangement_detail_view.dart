@@ -21,6 +21,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/text_box.dart';
 import 'package:anthem/widgets/basic/text_box_controlled.dart';
 import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
+import 'package:anthem/widgets/project_details/arrangement_detail_view_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
@@ -35,8 +36,9 @@ class ArrangementDetailView extends StatefulWidget {
 class _ArrangementDetailViewState extends State<ArrangementDetailView> {
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ArrangerCubit, ArrangerState>(builder: (context, state) {
-      final cubit = Provider.of<ArrangerCubit>(context);
+    return BlocBuilder<ArrangementDetailViewCubit, ArrangementDetailViewState>(
+        builder: (context, state) {
+      final cubit = Provider.of<ArrangementDetailViewCubit>(context);
 
       return Column(
         children: [
@@ -61,7 +63,7 @@ class _ArrangementDetailViewState extends State<ArrangementDetailView> {
                 SizedBox(
                   height: 26,
                   child: ControlledTextBox(
-                    text: state.arrangementNames[state.activeArrangementID]!,
+                    text: state.arrangementName,
                     onChange: (text) {
                       cubit.setArrangementName(text);
                     },

@@ -38,7 +38,7 @@ class Clip extends StatelessWidget {
           Container(
             height: 15,
             decoration: BoxDecoration(
-              color: getBaseColor(state.color),
+              color: getBaseColor(state.patternColor),
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(3),
               ),
@@ -47,7 +47,7 @@ class Clip extends StatelessWidget {
             child: Text(
               state.patternName,
               style: TextStyle(
-                color: getTextColor(state.color),
+                color: getTextColor(state.patternColor),
                 fontSize: 10,
               ),
             ),
@@ -55,7 +55,7 @@ class Clip extends StatelessWidget {
           Expanded(
             child: Container(
                 decoration: BoxDecoration(
-                  color: getBaseColor(state.color).withAlpha(0x66),
+                  color: getBaseColor(state.patternColor).withAlpha(0x66),
                   borderRadius: const BorderRadius.vertical(
                     bottom: Radius.circular(3),
                   ),
@@ -63,7 +63,7 @@ class Clip extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: ClipNotes(
-                    color: getContentColor(state.color),
+                    color: getContentColor(state.patternColor),
                     timeViewStart: 0,
                     ticksPerPixel: ticksPerPixel,
                     notes: state.notes,
