@@ -17,15 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'clip_cubit.dart';
+part of 'arrangement_detail_view_cubit.dart';
 
-// Workaround for https://github.com/rrousselGit/freezed/issues/653
-@Freezed(makeCollectionsUnmodifiable: false)
-class ClipState with _$ClipState {
-  factory ClipState({
-    required List<ClipNoteModel> notes,
-    required String patternName,
-    required AnthemColor patternColor,
-    required int contentWidth,
-  }) = _ClipState;
+@freezed
+class ArrangementDetailViewState with _$ArrangementDetailViewState {
+
+  factory ArrangementDetailViewState({
+    required ID projectID,
+    required ID arrangementID,
+    @Default("") String arrangementName,
+  }) = _ArrangementDetailViewState;
 }

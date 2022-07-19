@@ -23,6 +23,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/anthem_color.dart';
 
 import 'command.dart';
 
@@ -102,6 +103,58 @@ class DeletePatternCommand extends Command {
         PatternStateChange.patternAdded(project.id, pattern.id),
       )
     ];
+  }
+}
+
+class SetPatternNameCommand extends Command {
+  ID patternID;
+  late String oldName;
+  String newName;
+
+  SetPatternNameCommand({
+    required ProjectModel project,
+    required this.patternID,
+    required this.newName,
+  }) : super(project) {
+    oldName = project.song.patterns[patternID]!.name;
+  }
+
+  @override
+  List<StateChange> execute() {
+    project.song.patterns[patternID]!.name = newName;
+    return [StateChange.pattern(PatternNameChanged(project.id, patternID))];
+  }
+
+  @override
+  List<StateChange> rollback() {
+    project.song.patterns[patternID]!.name = oldName;
+    return [StateChange.pattern(PatternNameChanged(project.id, patternID))];
+  }
+}
+
+class SetPatternColorCommand extends Command {
+  ID patternID;
+  late AnthemColor oldColor;
+  AnthemColor newColor;
+
+  SetPatternColorCommand({
+    required ProjectModel project,
+    required this.patternID,
+    required this.newColor,
+  }) : super(project) {
+    oldColor = project.song.patterns[patternID]!.color;
+  }
+
+  @override
+  List<StateChange> execute() {
+    project.song.patterns[patternID]!.color = newColor;
+    return [StateChange.pattern(PatternColorChanged(project.id, patternID))];
+  }
+
+  @override
+  List<StateChange> rollback() {
+    project.song.patterns[patternID]!.color = oldColor;
+    return [StateChange.pattern(PatternColorChanged(project.id, patternID))];
   }
 }
 

@@ -32,6 +32,8 @@ class GeneratorStateChange with _$GeneratorStateChange {
 class PatternStateChange with _$PatternStateChange {
   const factory PatternStateChange.patternAdded(ID projectID, ID patternID) = PatternAdded;
   const factory PatternStateChange.patternDeleted(ID projectID, ID patternID) = PatternDeleted;
+  const factory PatternStateChange.patternNameChanged(ID projectID, ID patternID) = PatternNameChanged;
+  const factory PatternStateChange.patternColorChanged(ID projectID, ID patternID) = PatternColorChanged;
 }
 
 @freezed

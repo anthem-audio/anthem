@@ -22,9 +22,12 @@ import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
 import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:anthem/widgets/project_details/arrangement_detail_view.dart';
 import 'package:anthem/widgets/project_details/pattern_detail_view.dart';
+import 'package:anthem/widgets/project_details/pattern_detail_view_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
+
+import 'arrangement_detail_view_cubit.dart';
 
 class ProjectDetails extends StatelessWidget {
   final DetailViewKind? selectedProjectDetails;
@@ -39,10 +42,13 @@ class ProjectDetails extends StatelessWidget {
     final projectCubit = Provider.of<ProjectCubit>(context);
 
     if (selectedProjectDetails is PatternDetailViewKind) {
-      return const PatternDetailView();
+      return BlocProvider(
+        create: (context) => PatternDetailViewCubit(projectID: projectCubit.project.id),
+        child: const PatternDetailView(),
+        );
     } else if (selectedProjectDetails is ArrangementDetailViewKind) {
       return BlocProvider(
-        create: (context) => ArrangerCubit(projectID: projectCubit.project.id),
+        create: (context) => ArrangementDetailViewCubit(projectID: projectCubit.project.id),
         child: const ArrangementDetailView(),
       );
     }

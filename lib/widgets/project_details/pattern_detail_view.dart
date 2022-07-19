@@ -20,39 +20,46 @@
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/text_box.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../editors/pattern_editor/pattern_editor_cubit.dart';
 
 class PatternDetailView extends StatelessWidget {
   const PatternDetailView({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: Theme.panel.main,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          padding: const EdgeInsets.all(6),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                "PATTERN",
-                style: TextStyle(
-                  color: Theme.text.main,
-                  fontSize: 10,
-                ),
-                textAlign: TextAlign.center,
+    return BlocBuilder<PatternEditorCubit, PatternEditorState>(
+      builder: (context, state) {
+        return Column(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.panel.main,
+                borderRadius: BorderRadius.circular(4),
               ),
-              const SizedBox(height: 6),
-              const SizedBox(height: 26, child: TextBox()),
-              const SizedBox(height: 4),
-            ],
-          ),
-        ),
-        const Expanded(child: SizedBox()),
-      ],
+              padding: const EdgeInsets.all(6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    "PATTERN",
+                    style: TextStyle(
+                      color: Theme.text.main,
+                      fontSize: 10,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 6),
+                  const SizedBox(height: 26, child: TextBox()),
+                  const SizedBox(height: 4),
+                ],
+              ),
+            ),
+            const Expanded(child: SizedBox()),
+          ],
+        );
+      }
     );
   }
 }
