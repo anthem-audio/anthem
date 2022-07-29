@@ -21,7 +21,6 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 
-import 'package:anthem/commands/pattern_state_changes.dart';
 import 'package:anthem/commands/project_state_changes.dart';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';

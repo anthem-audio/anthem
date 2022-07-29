@@ -47,16 +47,14 @@ class ProjectCubit extends Cubit<ProjectState> {
   }
 
   void _onModelChanged(List<StateChange> changes) {
-    var didActiveArrangementChange = false;
-    var didActivePatternChange = false;
+    var didSelectedDetailViewChange = false;
 
     for (final change in changes) {
       change.whenOrNull(
         project: (projectChange) {
           projectChange.mapOrNull(
-            activeArrangementChanged: (change) =>
-                didActiveArrangementChange = true,
-            activePatternChanged: (change) => didActivePatternChange = true,
+            selectedDetailViewChanged: (change) =>
+                didSelectedDetailViewChange = true,
           );
         },
       );
@@ -64,29 +62,10 @@ class ProjectCubit extends Cubit<ProjectState> {
 
     ProjectState? newState;
 
-    if (didActiveArrangementChange) {
-      final isSelected = project.song.activeArrangementID != null;
-
+    if (didSelectedDetailViewChange) {
       newState = (newState ?? state).copyWith(
-        isDetailViewSelected: isSelected,
-        selectedDetailView: !isSelected
-            ? null
-            : ArrangementDetailViewKind(
-                project.song.activeArrangementID!,
-              ),
-      );
-    }
-
-    if (didActivePatternChange) {
-      final isSelected = project.song.activePatternID != null;
-
-      newState = (newState ?? state).copyWith(
-        isDetailViewSelected: isSelected,
-        selectedDetailView: !isSelected
-            ? null
-            : PatternDetailViewKind(
-                project.song.activePatternID!,
-              ),
+        isDetailViewSelected: project.isDetailViewSelected,
+        selectedDetailView: project.selectedDetailView,
       );
     }
 
@@ -117,12 +96,8 @@ class ProjectCubit extends Cubit<ProjectState> {
       emit(state.copyWith(isPatternEditorVisible: visible));
   void setActiveGeneratorID(ID? id) => project.song.setActiveGenerator(id);
   void setActiveDetailView(bool isVisible, [DetailViewKind? detailView]) {
-    if (detailView != null) {
-      emit(state.copyWith(
-          isDetailViewSelected: isVisible, selectedDetailView: detailView));
-    } else {
-      emit(state.copyWith(isDetailViewSelected: isVisible));
-    }
+    project.selectedDetailView = detailView;
+    project.isDetailViewSelected = isVisible;
   }
 
   void setActiveEditor(EditorKind editor) =>

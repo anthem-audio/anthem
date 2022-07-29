@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
 import 'package:anthem/widgets/project/project_cubit.dart';
@@ -43,12 +44,17 @@ class ProjectDetails extends StatelessWidget {
 
     if (selectedProjectDetails is PatternDetailViewKind) {
       return BlocProvider(
-        create: (context) => PatternDetailViewCubit(projectID: projectCubit.project.id),
+        create: (context) =>
+            PatternDetailViewCubit(projectID: projectCubit.project.id),
         child: const PatternDetailView(),
-        );
+      );
     } else if (selectedProjectDetails is ArrangementDetailViewKind) {
       return BlocProvider(
-        create: (context) => ArrangementDetailViewCubit(projectID: projectCubit.project.id),
+        create: (context) => ArrangementDetailViewCubit(
+          projectID: projectCubit.project.id,
+          arrangementID: (selectedProjectDetails as ArrangementDetailViewKind)
+              .arrangementID,
+        ),
         child: const ArrangementDetailView(),
       );
     }
