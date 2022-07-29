@@ -25,5 +25,6 @@ class PatternDetailViewState with _$PatternDetailViewState {
   factory PatternDetailViewState({
     required ID projectID,
     required ID? patternID,
+    @Default("") String patternName,
   }) = _PatternDetailViewState;
 }
