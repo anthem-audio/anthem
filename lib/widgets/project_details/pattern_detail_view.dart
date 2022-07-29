@@ -19,17 +19,16 @@
 
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/text_box.dart';
+import 'package:anthem/widgets/project_details/pattern_detail_view_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-import '../editors/pattern_editor/pattern_editor_cubit.dart';
 
 class PatternDetailView extends StatelessWidget {
   const PatternDetailView({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<PatternEditorCubit, PatternEditorState>(
+    return BlocBuilder<PatternDetailViewCubit, PatternDetailViewState>(
       builder: (context, state) {
         return Column(
           children: [

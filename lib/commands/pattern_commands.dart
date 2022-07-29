@@ -27,19 +27,19 @@ import 'package:anthem/model/shared/anthem_color.dart';
 
 import 'command.dart';
 
-void _addPatternToProject(
-  ProjectModel project,
-  PatternModel pattern,
-  int index,
-) {
+void _addPatternToProject({
+  required ProjectModel project,
+  required PatternModel pattern,
+  required int index,
+}) {
   project.song.patternOrder.insert(index, pattern.id);
   project.song.patterns[pattern.id] = pattern;
 }
 
-void _removePatternFromProject(
-  ProjectModel project,
-  ID patternID,
-) {
+void _removePatternFromProject({
+  required ProjectModel project,
+  required ID patternID,
+}) {
   project.song.patternOrder.removeWhere((element) => element == patternID);
   project.song.patterns.remove(patternID);
 }
@@ -56,7 +56,11 @@ class AddPatternCommand extends Command {
 
   @override
   List<StateChange> execute() {
-    _addPatternToProject(project, pattern, index);
+    _addPatternToProject(
+      project: project,
+      pattern: pattern,
+      index: index,
+    );
     return [
       StateChange.pattern(
         PatternStateChange.patternAdded(project.id, pattern.id),
@@ -66,7 +70,10 @@ class AddPatternCommand extends Command {
 
   @override
   List<StateChange> rollback() {
-    _removePatternFromProject(project, pattern.id);
+    _removePatternFromProject(
+      project: project,
+      patternID: pattern.id,
+    );
     return [
       StateChange.pattern(
         PatternStateChange.patternDeleted(project.id, pattern.id),
@@ -87,7 +94,10 @@ class DeletePatternCommand extends Command {
 
   @override
   List<StateChange> execute() {
-    _removePatternFromProject(project, pattern.id);
+    _removePatternFromProject(
+      project: project,
+      patternID: pattern.id,
+    );
     return [
       StateChange.pattern(
         PatternStateChange.patternDeleted(project.id, pattern.id),
@@ -97,7 +107,11 @@ class DeletePatternCommand extends Command {
 
   @override
   List<StateChange> rollback() {
-    _addPatternToProject(project, pattern, index);
+    _addPatternToProject(
+      project: project,
+      pattern: pattern,
+      index: index,
+    );
     return [
       StateChange.pattern(
         PatternStateChange.patternAdded(project.id, pattern.id),

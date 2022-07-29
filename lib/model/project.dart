@@ -24,6 +24,7 @@ import 'dart:convert';
 import 'package:anthem/commands/command.dart';
 import 'package:anthem/commands/command_queue.dart';
 import 'package:anthem/commands/journal_commands.dart';
+import 'package:anthem/commands/project_state_changes.dart';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/song.dart';
@@ -51,7 +52,31 @@ class ProjectModel extends Hydratable {
   @JsonKey(ignore: true)
   bool isSaved = false;
 
+  // Detail view state
 
+  @JsonKey(ignore: true)
+  DetailViewKind? _selectedDetailView;
+
+  @JsonKey(ignore: true)
+  DetailViewKind? get selectedDetailView => _selectedDetailView;
+  set selectedDetailView(DetailViewKind? detailView) {
+    _selectedDetailView = detailView;
+    _dispatch([
+      StateChange.project(ProjectStateChange.selectedDetailViewChanged(id)),
+    ]);
+  }
+
+  @JsonKey(ignore: true)
+  bool _isDetailViewSelected = false;
+
+  @JsonKey(ignore: true)
+  bool get isDetailViewSelected => _isDetailViewSelected;
+  set isDetailViewSelected(bool isSelected) {
+    _isDetailViewSelected = isSelected;
+    _dispatch([
+      StateChange.project(ProjectStateChange.selectedDetailViewChanged(id)),
+    ]);
+  }
 
   // Undo / redo & etc
 
@@ -64,8 +89,6 @@ class ProjectModel extends Hydratable {
   @JsonKey(ignore: true)
   bool _journalPageActive = false;
 
-
-
   // State change stream & etc
 
   @JsonKey(ignore: true)
@@ -74,8 +97,6 @@ class ProjectModel extends Hydratable {
 
   @JsonKey(ignore: true)
   late Stream<List<StateChange>> stateChangeStream;
-
-
 
   // This method is used for deserialization and so doesn't create new child
   // models.
@@ -166,4 +187,17 @@ class ProjectModel extends Hydratable {
     final change = commandQueue.executeAndPush(command);
     _dispatch(change);
   }
+}
+
+/// Used to describe which detail view is active in the project sidebar, if any
+abstract class DetailViewKind {}
+
+class PatternDetailViewKind extends DetailViewKind {
+  ID patternID;
+  PatternDetailViewKind(this.patternID);
+}
+
+class ArrangementDetailViewKind extends DetailViewKind {
+  ID arrangementID;
+  ArrangementDetailViewKind(this.arrangementID);
 }

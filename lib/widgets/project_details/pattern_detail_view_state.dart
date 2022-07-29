@@ -24,6 +24,6 @@ class PatternDetailViewState with _$PatternDetailViewState {
 
   factory PatternDetailViewState({
     required ID projectID,
-    required ID patternID,
+    required ID? patternID,
   }) = _PatternDetailViewState;
 }
