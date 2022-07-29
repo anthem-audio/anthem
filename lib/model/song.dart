@@ -135,6 +135,11 @@ class SongModel extends Hydratable {
 
   void setActivePattern(ID? patternID) {
     activePatternID = patternID;
+
+    if (patternID != null) {
+      project.selectedDetailView = PatternDetailViewKind(patternID);
+    }
+
     changeStreamController.add([
       StateChange.project(
         ProjectStateChange.activePatternChanged(_project!.id),
@@ -144,6 +149,11 @@ class SongModel extends Hydratable {
 
   void setActiveArrangement(ID? arrangementID) {
     activeArrangementID = arrangementID;
+
+    if (arrangementID != null) {
+      project.selectedDetailView = ArrangementDetailViewKind(arrangementID);
+    }
+
     changeStreamController.add([
       StateChange.project(
         ProjectStateChange.activeArrangementChanged(_project!.id),

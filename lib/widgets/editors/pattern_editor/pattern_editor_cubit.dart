@@ -167,7 +167,7 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
     throw UnimplementedError();
   }
 
-  void setActivePattern(ID id) {
+  void setActivePattern(ID? id) {
     project.song.setActivePattern(id);
   }
 }

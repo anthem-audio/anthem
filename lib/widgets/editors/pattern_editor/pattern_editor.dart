@@ -118,7 +118,7 @@ class _PatternEditorState extends State<PatternEditor> {
                         onChanged: (id) {
                           context
                               .read<PatternEditorCubit>()
-                              .setActivePattern(id ?? "");
+                              .setActivePattern(id);
                         },
                       ),
                       const Expanded(child: SizedBox()),
