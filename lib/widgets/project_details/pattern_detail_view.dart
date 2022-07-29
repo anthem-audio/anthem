@@ -19,9 +19,11 @@
 
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/text_box.dart';
+import 'package:anthem/widgets/basic/text_box_controlled.dart';
 import 'package:anthem/widgets/project_details/pattern_detail_view_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 class PatternDetailView extends StatelessWidget {
   const PatternDetailView({Key? key}) : super(key: key);
@@ -29,36 +31,45 @@ class PatternDetailView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<PatternDetailViewCubit, PatternDetailViewState>(
-      builder: (context, state) {
-        return Column(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: Theme.panel.main,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              padding: const EdgeInsets.all(6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    "PATTERN",
-                    style: TextStyle(
-                      color: Theme.text.main,
-                      fontSize: 10,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 6),
-                  const SizedBox(height: 26, child: TextBox()),
-                  const SizedBox(height: 4),
-                ],
-              ),
+        builder: (context, state) {
+      final cubit = Provider.of<PatternDetailViewCubit>(context);
+
+      print(state.patternName);
+
+      return Column(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Theme.panel.main,
+              borderRadius: BorderRadius.circular(4),
             ),
-            const Expanded(child: SizedBox()),
-          ],
-        );
-      }
-    );
+            padding: const EdgeInsets.all(6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  "PATTERN",
+                  style: TextStyle(
+                    color: Theme.text.main,
+                    fontSize: 10,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 6),
+                SizedBox(
+                  height: 26,
+                  child: ControlledTextBox(
+                    text: state.patternName,
+                    onChange: (newName) => cubit.setPatternName(newName),
+                  ),
+                ),
+                const SizedBox(height: 4),
+              ],
+            ),
+          ),
+          const Expanded(child: SizedBox()),
+        ],
+      );
+    });
   }
 }

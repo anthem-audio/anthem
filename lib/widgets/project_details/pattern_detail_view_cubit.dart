@@ -19,6 +19,7 @@
 
 import 'dart:async';
 
+import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
@@ -60,24 +61,48 @@ class PatternDetailViewCubit extends Cubit<PatternDetailViewState> {
   }
 
   void _onModelChanged(List<StateChange> changes) {
-    // var didSomeItemChange = false;
+    var didActiveDetailViewChange = false;
 
     for (final change in changes) {
-      // if (change is SomeChange) {
-      //   didSomeItemChange = true;
-      // }
+      change.whenOrNull(project: (projectChange) {
+        projectChange.mapOrNull(
+            selectedDetailViewChanged: (change) =>
+                didActiveDetailViewChange = true);
+      });
     }
 
     PatternDetailViewState? newState;
 
-    // if (didSomeItemChange) {
-    //   newState = (newState ?? state).copyWith(
-    //     ...
-    //   );
-    // }
+    if (didActiveDetailViewChange &&
+        project.selectedDetailView is PatternDetailViewKind) {
+      final patternID =
+          (project.selectedDetailView as PatternDetailViewKind).patternID;
+
+      emit(
+        PatternDetailViewState(
+          projectID: project.id,
+          patternID: patternID,
+          patternName: project.song.patterns[patternID]!.name,
+        ),
+      );
+
+      return;
+    }
 
     if (newState != null) {
       emit(newState);
     }
+  }
+
+  void setPatternName(String newName) {
+    if (state.patternID == null) return;
+
+    project.execute(
+      SetPatternNameCommand(
+        project: project,
+        patternID: state.patternID!,
+        newName: newName,
+      ),
+    );
   }
 }

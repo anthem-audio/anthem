@@ -61,6 +61,7 @@ class ProjectModel extends Hydratable {
   DetailViewKind? get selectedDetailView => _selectedDetailView;
   set selectedDetailView(DetailViewKind? detailView) {
     _selectedDetailView = detailView;
+    if (detailView != null) _isDetailViewSelected = true;
     _dispatch([
       StateChange.project(ProjectStateChange.selectedDetailViewChanged(id)),
     ]);

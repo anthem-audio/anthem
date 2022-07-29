@@ -52,20 +52,45 @@ class ArrangementDetailViewCubit extends Cubit<ArrangementDetailViewState> {
 
   void _onModelChanged(List<StateChange> changes) {
     var didNameChange = false;
+    var didActiveDetailViewChange = false;
 
     for (final change in changes) {
-      change.whenOrNull(arrangement: (arrangementChange) {
-        arrangementChange.mapOrNull(
-          arrangementNameChanged: (change) {
-            if (change.arrangementID == state.arrangementID) {
-              didNameChange = true;
-            }
-          },
-        );
-      });
+      change.whenOrNull(
+        arrangement: (arrangementChange) {
+          arrangementChange.mapOrNull(
+            arrangementNameChanged: (change) {
+              if (change.arrangementID == state.arrangementID) {
+                didNameChange = true;
+              }
+            },
+          );
+        },
+        project: (projectChange) {
+          projectChange.mapOrNull(selectedDetailViewChanged: (change) {
+            didActiveDetailViewChange = true;
+          });
+        },
+      );
     }
 
     ArrangementDetailViewState? newState;
+
+    if (didActiveDetailViewChange &&
+        project.selectedDetailView is ArrangementDetailViewKind) {
+      final arrangementID =
+          (project.selectedDetailView as ArrangementDetailViewKind)
+              .arrangementID;
+
+      emit(
+        ArrangementDetailViewState(
+          projectID: project.id,
+          arrangementID: arrangementID,
+          arrangementName: project.song.arrangements[arrangementID]!.name,
+        ),
+      );
+
+      return;
+    }
 
     if (didNameChange) {
       newState = (newState ?? state).copyWith(
