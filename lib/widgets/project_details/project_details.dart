@@ -19,7 +19,6 @@
 
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
 import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:anthem/widgets/project_details/arrangement_detail_view.dart';
 import 'package:anthem/widgets/project_details/pattern_detail_view.dart';
@@ -52,8 +51,6 @@ class ProjectDetails extends StatelessWidget {
       return BlocProvider(
         create: (context) => ArrangementDetailViewCubit(
           projectID: projectCubit.project.id,
-          arrangementID: (selectedProjectDetails as ArrangementDetailViewKind)
-              .arrangementID,
         ),
         child: const ArrangementDetailView(),
       );

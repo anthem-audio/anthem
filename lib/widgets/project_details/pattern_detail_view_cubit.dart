@@ -44,17 +44,20 @@ class PatternDetailViewCubit extends Cubit<PatternDetailViewState> {
 
   PatternDetailViewCubit({required String projectID})
       : super(
-          PatternDetailViewState(
-            projectID: projectID,
-            patternID: (() {
-              final project = Store.instance.projects[projectID]!;
-              if (project.selectedDetailView is PatternDetailViewKind) {
-                return (project.selectedDetailView as PatternDetailViewKind)
-                    .patternID;
-              }
-              return null;
-            })(),
-          ),
+          (() {
+            String? patternID;
+            final project = Store.instance.projects[projectID]!;
+            if (project.selectedDetailView is PatternDetailViewKind) {
+              patternID = (project.selectedDetailView as PatternDetailViewKind)
+                  .patternID;
+            }
+
+            return PatternDetailViewState(
+              projectID: projectID,
+              patternID: patternID,
+              patternName: project.song.patterns[patternID]?.name ?? "",
+            );
+          })(),
         ) {
     project = Store.instance.projects[projectID]!;
     _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);

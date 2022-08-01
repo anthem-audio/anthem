@@ -18,7 +18,6 @@
 */
 
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/text_box.dart';
 import 'package:anthem/widgets/basic/text_box_controlled.dart';
 import 'package:anthem/widgets/project_details/pattern_detail_view_cubit.dart';
 import 'package:flutter/widgets.dart';
@@ -33,8 +32,6 @@ class PatternDetailView extends StatelessWidget {
     return BlocBuilder<PatternDetailViewCubit, PatternDetailViewState>(
         builder: (context, state) {
       final cubit = Provider.of<PatternDetailViewCubit>(context);
-
-      print(state.patternName);
 
       return Column(
         children: [

@@ -24,7 +24,7 @@ class ArrangementDetailViewState with _$ArrangementDetailViewState {
 
   factory ArrangementDetailViewState({
     required ID projectID,
-    required ID arrangementID,
+    ID? arrangementID,
     @Default("") String arrangementName,
   }) = _ArrangementDetailViewState;
 }
