@@ -42,10 +42,26 @@ class ArrangementDetailViewCubit extends Cubit<ArrangementDetailViewState> {
     return super.close();
   }
 
-  ArrangementDetailViewCubit(
-      {required String projectID, required String arrangementID})
-      : super(ArrangementDetailViewState(
-            projectID: projectID, arrangementID: arrangementID)) {
+  ArrangementDetailViewCubit({
+    required String projectID,
+  }) : super(
+          (() {
+            String? arrangementID;
+            final project = Store.instance.projects[projectID]!;
+            if (project.selectedDetailView is ArrangementDetailViewKind) {
+              arrangementID =
+                  (project.selectedDetailView as ArrangementDetailViewKind)
+                      .arrangementID;
+            }
+
+            return ArrangementDetailViewState(
+              projectID: projectID,
+              arrangementID: arrangementID,
+              arrangementName:
+                  project.song.arrangements[arrangementID]?.name ?? "",
+            );
+          })(),
+        ) {
     project = Store.instance.projects[projectID]!;
     _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
   }
@@ -104,10 +120,12 @@ class ArrangementDetailViewCubit extends Cubit<ArrangementDetailViewState> {
   }
 
   void setArrangementName(String name) {
+    if (state.arrangementID == null) return;
+
     project.execute(
       SetArrangementNameCommand(
         project: project,
-        arrangementID: state.arrangementID,
+        arrangementID: state.arrangementID!,
         newName: name,
       ),
     );
