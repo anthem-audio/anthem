@@ -18,11 +18,57 @@
 */
 
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/color_picker.dart';
 import 'package:anthem/widgets/basic/text_box_controlled.dart';
 import 'package:anthem/widgets/project_details/pattern_detail_view_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
+
+class _Header extends StatelessWidget {
+  final String text;
+
+  const _Header(this.text, {Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: TextStyle(
+        color: Theme.text.main,
+        fontSize: 10,
+      ),
+      textAlign: TextAlign.center,
+    );
+  }
+}
+
+class _Section extends StatelessWidget {
+  final List<Widget> children;
+  final String title;
+
+  const _Section({Key? key, this.children = const [], required this.title})
+      : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.panel.main,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      padding: const EdgeInsets.all(6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+              _Header(title),
+              const SizedBox(height: 6),
+            ] +
+            children,
+      ),
+    );
+  }
+}
 
 class PatternDetailView extends StatelessWidget {
   const PatternDetailView({Key? key}) : super(key: key);
@@ -35,34 +81,21 @@ class PatternDetailView extends StatelessWidget {
 
       return Column(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              color: Theme.panel.main,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            padding: const EdgeInsets.all(6),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  "PATTERN",
-                  style: TextStyle(
-                    color: Theme.text.main,
-                    fontSize: 10,
-                  ),
-                  textAlign: TextAlign.center,
+          _Section(
+            title: "PATTERN",
+            children: [
+              SizedBox(
+                height: 26,
+                child: ControlledTextBox(
+                  text: state.patternName,
+                  onChange: (newName) => cubit.setPatternName(newName),
                 ),
-                const SizedBox(height: 6),
-                SizedBox(
-                  height: 26,
-                  child: ControlledTextBox(
-                    text: state.patternName,
-                    onChange: (newName) => cubit.setPatternName(newName),
-                  ),
-                ),
-                const SizedBox(height: 4),
-              ],
-            ),
+              ),
+              const SizedBox(height: 12),
+              const _Header("COLOR"),
+              const SizedBox(height: 6),
+              const ColorPicker(),
+            ],
           ),
           const Expanded(child: SizedBox()),
         ],

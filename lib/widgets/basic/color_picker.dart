@@ -17,14 +17,21 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/theme.dart';
 import 'package:flutter/widgets.dart';
 
 const squareSize = 15.0;
-const margin = 4.0;
+const squareMargin = 1.0;
+const padding = 4.0;
 
-class ColorPicker extends StatelessWidget {
+class ColorPicker extends StatefulWidget {
   const ColorPicker({Key? key}) : super(key: key);
 
+  @override
+  State<ColorPicker> createState() => _ColorPickerState();
+}
+
+class _ColorPickerState extends State<ColorPicker> {
   @override
   Widget build(BuildContext context) {
     const hueArrayLength = 10;
@@ -35,18 +42,36 @@ class ColorPicker extends StatelessWidget {
         );
     final saturations = [0.0] + List.filled(hueArrayLength, 0.53);
 
-    return SizedBox(
-      height: squareSize * 3 + margin * 2,
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.panel.accentDark,
+        border: Border.all(color: Theme.panel.border),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      padding: const EdgeInsets.all(padding),
+      height: squareSize * 3 + squareMargin * 6 + padding * 2,
       child: Row(
-        children: List.generate(hues.length, (index) {
-          final hue = hues[index];
-          final saturation = saturations[index];
+        children: List.generate(hues.length, (colorIndex) {
+          final hue = hues[colorIndex];
+          final saturation = saturations[colorIndex];
 
-          return Container(
-            padding: const EdgeInsets.only(
-              right: margin,
+          return Expanded(
+            child: Column(
+              children: List.generate(
+                3,
+                (lightnessIndex) => Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.all(squareMargin),
+                    color: HSLColor.fromAHSL(
+                      1,
+                      hue,
+                      saturation,
+                      lightnessIndex / 4 + 0.25,
+                    ).toColor(),
+                  ),
+                ),
+              ),
             ),
-            
           );
         }),
       ),
