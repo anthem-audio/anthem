@@ -23,6 +23,7 @@ import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/store.dart';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -105,6 +106,18 @@ class PatternDetailViewCubit extends Cubit<PatternDetailViewState> {
         project: project,
         patternID: state.patternID!,
         newName: newName,
+      ),
+    );
+  }
+
+  void setPatternColor(AnthemColor newColor) {
+    if (state.patternID == null) return;
+
+    project.execute(
+      SetPatternColorCommand(
+        project: project,
+        patternID: state.patternID!,
+        newColor: newColor,
       ),
     );
   }

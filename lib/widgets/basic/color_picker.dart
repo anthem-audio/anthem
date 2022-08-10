@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/theme.dart';
 import 'package:flutter/widgets.dart';
 
@@ -25,7 +26,9 @@ const squareMargin = 1.0;
 const padding = 4.0;
 
 class ColorPicker extends StatefulWidget {
-  const ColorPicker({Key? key}) : super(key: key);
+  Function(AnthemColor)? onChange;
+
+  ColorPicker({Key? key, this.onChange}) : super(key: key);
 
   @override
   State<ColorPicker> createState() => _ColorPickerState();
@@ -40,7 +43,7 @@ class _ColorPickerState extends State<ColorPicker> {
           hueArrayLength,
           (i) => i * 360 / hueArrayLength,
         );
-    final saturations = [0.0] + List.filled(hueArrayLength, 0.53);
+    final saturations = [0.0] + List.filled(hueArrayLength, 1);
 
     return Container(
       decoration: BoxDecoration(
@@ -53,23 +56,37 @@ class _ColorPickerState extends State<ColorPicker> {
       child: Row(
         children: List.generate(hues.length, (colorIndex) {
           final hue = hues[colorIndex];
-          final saturation = saturations[colorIndex];
+          final saturation = saturations[colorIndex] * 0.53;
 
           return Expanded(
             child: Column(
               children: List.generate(
                 3,
-                (lightnessIndex) => Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.all(squareMargin),
-                    color: HSLColor.fromAHSL(
-                      1,
-                      hue,
-                      saturation,
-                      lightnessIndex / 4 + 0.25,
-                    ).toColor(),
-                  ),
-                ),
+                (lightnessIndex) {
+                  // -1, 0, 1
+                  final lightnessModifier = (lightnessIndex - 1).toDouble();
+
+                  return Expanded(
+                    child: Listener(
+                      onPointerUp: (e) {
+                        widget.onChange?.call(AnthemColor(
+                          hue: hue,
+                          saturationMultiplier: saturations[colorIndex],
+                          brightnessModifier: lightnessModifier,
+                        ));
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.all(squareMargin),
+                        color: HSLColor.fromAHSL(
+                          1,
+                          hue,
+                          saturation,
+                          0.5 + lightnessModifier / 4,
+                        ).toColor(),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           );
