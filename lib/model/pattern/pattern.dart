@@ -65,7 +65,7 @@ class PatternModel extends Hydratable {
     _hueGen = (_hueGen + 30) % 360;
     color = AnthemColor(
       hue: hue,
-      brightnessModifier: 0,
+      lightnessMultiplier: 0,
     );
     hydrate(project: project);
   }

@@ -24,12 +24,12 @@ part 'anthem_color.g.dart';
 @JsonSerializable()
 class AnthemColor {
   double hue;
-  double brightnessModifier; // 0 is normal, + is brighter, - is dimmer
+  double lightnessMultiplier; // 1 is normal, + is brighter, - is dimmer
   double saturationMultiplier; // 1 is normal, 0 is unsaturated
 
   AnthemColor({
     required this.hue,
-    this.brightnessModifier = 0,
+    this.lightnessMultiplier = 1,
     this.saturationMultiplier = 1,
   });
 
