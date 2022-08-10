@@ -91,12 +91,15 @@ class PatternDetailView extends StatelessWidget {
                   onChange: (newName) => cubit.setPatternName(newName),
                 ),
               ),
-              const SizedBox(height: 12),
-              const _Header("COLOR"),
               const SizedBox(height: 6),
-              const ColorPicker(),
+              ColorPicker(
+                onChange: (color) {
+                  cubit.setPatternColor(color);
+                }, 
+              ),
             ],
           ),
+          const SizedBox(height: 4),
           const Expanded(child: SizedBox()),
         ],
       );

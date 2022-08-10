@@ -25,8 +25,13 @@ part 'anthem_color.g.dart';
 class AnthemColor {
   double hue;
   double brightnessModifier; // 0 is normal, + is brighter, - is dimmer
+  double saturationMultiplier; // 1 is normal, 0 is unsaturated
 
-  AnthemColor({required this.hue, this.brightnessModifier = 0});
+  AnthemColor({
+    required this.hue,
+    this.brightnessModifier = 0,
+    this.saturationMultiplier = 1,
+  });
 
   factory AnthemColor.fromJson(Map<String, dynamic> json) =>
       _$AnthemColorFromJson(json);
