@@ -64,7 +64,7 @@ class _ColorPickerState extends State<ColorPicker> {
                 3,
                 (lightnessIndex) {
                   // -1, 0, 1
-                  final lightnessModifier = (lightnessIndex - 1).toDouble();
+                  final lightnessMultiplier = 0.9 + (lightnessIndex - 1) * 0.4;
 
                   return Expanded(
                     child: Listener(
@@ -72,7 +72,7 @@ class _ColorPickerState extends State<ColorPicker> {
                         widget.onChange?.call(AnthemColor(
                           hue: hue,
                           saturationMultiplier: saturations[colorIndex],
-                          brightnessModifier: lightnessModifier,
+                          lightnessMultiplier: lightnessMultiplier,
                         ));
                       },
                       child: Container(
@@ -81,7 +81,7 @@ class _ColorPickerState extends State<ColorPicker> {
                           1,
                           hue,
                           saturation,
-                          0.5 + lightnessModifier / 4,
+                          0.5 * lightnessMultiplier,
                         ).toColor(),
                       ),
                     ),

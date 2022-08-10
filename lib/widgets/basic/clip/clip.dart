@@ -76,16 +76,29 @@ class Clip extends StatelessWidget {
   }
 }
 
-// TODO: AnthemColor brightness modifier
-
 Color getBaseColor(AnthemColor color) {
-  return HSLColor.fromAHSL(1, color.hue, 0.28, 0.49).toColor();
+  return HSLColor.fromAHSL(
+    1,
+    color.hue,
+    0.28 * color.saturationMultiplier,
+    (0.49 * color.lightnessMultiplier).clamp(0, 0.92),
+  ).toColor();
 }
 
 Color getTextColor(AnthemColor color) {
-  return HSLColor.fromAHSL(1, color.hue, 1, 0.92).toColor();
+  return HSLColor.fromAHSL(
+    1,
+    color.hue,
+    1 * color.saturationMultiplier,
+    (0.92 * color.lightnessMultiplier).clamp(0, 0.92),
+  ).toColor();
 }
 
 Color getContentColor(AnthemColor color) {
-  return HSLColor.fromAHSL(1, color.hue, 0.7, 0.78).toColor();
+  return HSLColor.fromAHSL(
+    1,
+    color.hue,
+    0.7 * color.saturationMultiplier,
+    (0.78 * color.lightnessMultiplier).clamp(0, 0.92),
+  ).toColor();
 }
