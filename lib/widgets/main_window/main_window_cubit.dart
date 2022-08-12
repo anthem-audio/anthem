@@ -21,6 +21,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:anthem/commands/project_state_changes.dart';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
@@ -49,13 +50,23 @@ class MainWindowCubit extends Cubit<MainWindowState> {
       : super(MainWindowState(
             tabs: _getTabs(), selectedTabID: Store.instance.activeProjectID)) {
     _activeProjectChangedSub = Store.instance.stateChangeStream
-        .where((change) => change is ActiveProjectChanged)
-        .map((change) => change as ActiveProjectChanged)
+        .map((change) => change.whenOrNull(project: (change) {
+              return change.mapOrNull(activeProjectChanged: (change) => change);
+            }))
+        .where((change) => change != null)
+        .map((change) => change!)
         .listen(_updateActiveTab);
 
     _projectListChangedSub = Store.instance.stateChangeStream
-        .where((change) => change is ProjectAdded || change is ProjectClosed)
-        .map((change) => change as ProjectStateChange)
+        .map((change) => change.whenOrNull(project: (change) {
+              return change.mapOrNull(
+                activeProjectChanged: (change) => change,
+                projectAdded: (change) => change,
+                projectClosed: (change) => change,
+              );
+            }))
+        .where((change) => change != null)
+        .map((change) => change!)
         .listen(_updateTabList);
   }
 

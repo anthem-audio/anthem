@@ -20,8 +20,9 @@
 import 'dart:ffi';
 import 'dart:io';
 
-import 'package:anthem/theme.dart';
+import 'package:anthem/theme.dart' as anthem_theme;
 import 'package:anthem/widgets/basic/background.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
@@ -62,28 +63,39 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return WidgetsApp(
+    return MaterialApp(
       title: 'Anthem',
-      color: const Color.fromARGB(255, 7, 210, 212),
+      color: anthem_theme.Theme.primary.main,
       builder: (context, widget) {
-        return BlocProvider<MainWindowCubit>(
-          create: (_) => MainWindowCubit(),
-          child: MultiProvider(
-            providers: [
-              ChangeNotifierProvider(create: (context) => KeyboardModifiers()),
-              Provider(create: (context) => BackgroundType.dark)
-            ],
-            child: ScrollConfiguration(
-              behavior:
-                  ScrollConfiguration.of(context).copyWith(scrollbars: false),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Container(
-                    color: Theme.panel.border,
+        return Navigator(
+          onGenerateRoute: (_) => MaterialPageRoute(
+            builder: (_) => GestureDetector(
+              // Un-focus text boxes when clicking elsewhere
+              onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+              child: Scaffold(
+                body: BlocProvider<MainWindowCubit>(
+                  create: (_) => MainWindowCubit(),
+                  child: MultiProvider(
+                    providers: [
+                      ChangeNotifierProvider(
+                          create: (context) => KeyboardModifiers()),
+                      Provider(create: (context) => BackgroundType.dark)
+                    ],
+                    child: ScrollConfiguration(
+                      behavior: ScrollConfiguration.of(context)
+                          .copyWith(scrollbars: false),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Container(
+                            color: anthem_theme.Theme.panel.border,
+                          ),
+                          const MainWindow(),
+                        ],
+                      ),
+                    ),
                   ),
-                  const MainWindow(),
-                ],
+                ),
               ),
             ),
           ),

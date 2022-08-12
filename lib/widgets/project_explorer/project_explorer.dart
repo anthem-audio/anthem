@@ -17,16 +17,20 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/TextBox.dart';
+import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/button_tabs.dart';
+import 'package:anthem/widgets/basic/icon.dart';
+import 'package:anthem/widgets/basic/text_box.dart';
 import 'package:anthem/widgets/basic/background.dart';
-import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
-import 'package:anthem/widgets/basic/tree_view/model.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_view.dart';
+import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:anthem/widgets/project_explorer/project_explorer_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 class ProjectExplorer extends StatefulWidget {
   const ProjectExplorer({Key? key}) : super(key: key);
@@ -36,27 +40,55 @@ class ProjectExplorer extends StatefulWidget {
 }
 
 class _ProjectExplorerState extends State<ProjectExplorer> {
-  final ScrollController controller = ScrollController();
+  final scrollController = ScrollController();
+  final searchBoxController = TextEditingController();
+  String searchText = "";
+
+  @override
+  void initState() {
+    super.initState();
+    searchBoxController.addListener(() {
+      setState(() {
+        searchText = searchBoxController.value.text;
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final projectCubit = Provider.of<ProjectCubit>(context);
+
     return BlocBuilder<ProjectExplorerCubit, ProjectExplorerState>(
         builder: (context, state) {
       final project = Store.instance.projects[state.projectID]!;
 
       final arrangementsTree = TreeViewItemModel(
-        name: "Arrangements",
+        key: "projectArrangementsFolder",
+        label: "Arrangements",
         children: state.arrangementIDs
-            .map((id) =>
-                TreeViewItemModel(name: project.song.arrangements[id]!.name))
+            .map((id) => TreeViewItemModel(
+                  key: "arrangement-$id",
+                  label: project.song.arrangements[id]!.name,
+                  onClick: () => projectCubit.setActiveDetailView(
+                    true,
+                    ArrangementDetailViewKind(id),
+                  ),
+                ))
             .toList(),
       );
 
       final patternsTree = TreeViewItemModel(
-        name: "Patterns",
+        key: "projectPatternsFolder",
+        label: "Patterns",
         children: state.patternIDs
-            .map((id) =>
-                TreeViewItemModel(name: project.song.patterns[id]!.name))
+            .map((id) => TreeViewItemModel(
+                  key: "pattern-$id",
+                  label: project.song.patterns[id]!.name,
+                  onClick: () => projectCubit.setActiveDetailView(
+                    true,
+                    PatternDetailViewKind(id),
+                  ),
+                ))
             .toList(),
       );
 
@@ -68,11 +100,33 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 26),
+              SizedBox(
+                height: 26,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Button(startIcon: Icons.kebab, width: 26),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: ButtonTabs(
+                        tabs: [
+                          ButtonTabDef.withIcon(
+                              id: "project", icon: Icons.audio),
+                          ButtonTabDef.withIcon(id: "files", icon: Icons.file),
+                          ButtonTabDef.withIcon(
+                              id: "plugins", icon: Icons.plugin),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 4),
-              const SizedBox(
+              SizedBox(
                 height: 24,
-                child: TextBox(),
+                child: TextBox(
+                  controller: searchBoxController,
+                ),
               ),
               const SizedBox(height: 4),
               Expanded(
@@ -88,10 +142,12 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: TreeView(
-                          scrollController: controller,
+                          filterText: searchText == "" ? null : searchText,
+                          scrollController: scrollController,
                           items: [
                             TreeViewItemModel(
-                              name: "Current project",
+                              key: "currentProject",
+                              label: "Current project",
                               children: [
                                 arrangementsTree,
                                 patternsTree,

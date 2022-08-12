@@ -157,7 +157,7 @@ class PatternPicker extends StatelessWidget {
                               onPress: () {
                                 final cubit =
                                     context.read<PatternPickerCubit>();
-                                cubit.addPattern("Pattern");
+                                cubit.addPattern();
                               },
                             ),
                           ],

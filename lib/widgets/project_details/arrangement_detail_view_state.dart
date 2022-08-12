@@ -17,24 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:freezed_annotation/freezed_annotation.dart';
+part of 'arrangement_detail_view_cubit.dart';
 
-part 'anthem_color.g.dart';
+@freezed
+class ArrangementDetailViewState with _$ArrangementDetailViewState {
 
-@JsonSerializable()
-class AnthemColor {
-  double hue;
-  double lightnessMultiplier; // 1 is normal, + is brighter, - is dimmer
-  double saturationMultiplier; // 1 is normal, 0 is unsaturated
-
-  AnthemColor({
-    required this.hue,
-    this.lightnessMultiplier = 1,
-    this.saturationMultiplier = 1,
-  });
-
-  factory AnthemColor.fromJson(Map<String, dynamic> json) =>
-      _$AnthemColorFromJson(json);
-
-  Map<String, dynamic> toJson() => _$AnthemColorToJson(this);
+  factory ArrangementDetailViewState({
+    required ID projectID,
+    ID? arrangementID,
+    @Default("") String arrangementName,
+  }) = _ArrangementDetailViewState;
 }

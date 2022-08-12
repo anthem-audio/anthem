@@ -25,7 +25,7 @@ class ClipState with _$ClipState {
   factory ClipState({
     required List<ClipNoteModel> notes,
     required String patternName,
-    required AnthemColor color,
+    required AnthemColor patternColor,
     required int contentWidth,
   }) = _ClipState;
 }

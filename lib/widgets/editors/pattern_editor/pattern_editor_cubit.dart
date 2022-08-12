@@ -55,17 +55,26 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
     var updateGeneratorList = false;
 
     for (final change in changes) {
-      if (change is ActivePatternChanged) {
-        updateActivePattern = true;
-      }
-
-      if (change is PatternAdded || change is PatternDeleted) {
-        updatePatternList = true;
-      }
-
-      if (change is GeneratorAdded || change is GeneratorRemoved) {
-        updateGeneratorList = true;
-      }
+      change.whenOrNull(
+        project: (change) {
+          change.mapOrNull(
+            activePatternChanged: (change) => updateActivePattern = true,
+          );
+        },
+        pattern: (change) {
+          change.mapOrNull(
+            patternAdded: (change) => updatePatternList = true,
+            patternDeleted: (change) => updatePatternList = true,
+            patternNameChanged: (change) => updatePatternList = true,
+          );
+        },
+        generator: (change) {
+          change.mapOrNull(
+            generatorAdded: (change) => updateGeneratorList = true,
+            generatorRemoved: (change) => updateGeneratorList = true,
+          );
+        },
+      );
     }
 
     PatternEditorState? newState;
@@ -101,14 +110,31 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
     }
   }
 
-  ID addPattern(String name) {
-    final pattern = PatternModel.create(name: name, project: project);
-    project.execute(AddPatternCommand(
-      project: project,
-      pattern: pattern,
-      index: project.song.patternOrder.length,
-    ));
-    return pattern.id;
+  ID addPattern([String? name]) {
+    if (name == null) {
+      var patternNumber = state.patternList.length;
+
+      final existingNames = state.patternList.map((pattern) => pattern.name);
+
+      do {
+        patternNumber++;
+        name = "Pattern $patternNumber";
+      } while (existingNames.contains(name));
+    }
+
+    final patternModel = PatternModel.create(name: name, project: project);
+
+    project.execute(
+      AddPatternCommand(
+        project: project,
+        pattern: patternModel,
+        index: project.song.patternOrder.length,
+      ),
+    );
+
+    project.song.setActivePattern(patternModel.id);
+
+    return patternModel.id;
   }
 
   void deletePattern(ID patternID) {
@@ -141,7 +167,7 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
     throw UnimplementedError();
   }
 
-  void setActivePattern(ID id) {
+  void setActivePattern(ID? id) {
     project.song.setActivePattern(id);
   }
 }

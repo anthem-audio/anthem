@@ -35,6 +35,12 @@ List<ID> getPatternIDs(ProjectModel? project) {
   return [...project?.song.patternOrder ?? []];
 }
 
+Map<ID, String> getPatternNames(ProjectModel? project) {
+  return project?.song.patterns
+          .map((patternID, pattern) => MapEntry(patternID, pattern.name)) ??
+      {};
+}
+
 class PatternPickerCubit extends Cubit<PatternPickerState> {
   late final ProjectModel project;
 
@@ -53,6 +59,9 @@ class PatternPickerCubit extends Cubit<PatternPickerState> {
           patternIDs: getPatternIDs(
             Store.instance.projects[projectID],
           ),
+          patternNames: getPatternNames(
+            Store.instance.projects[projectID],
+          ),
           patternHeight: 50,
         )) {
     project = Store.instance.projects[projectID]!;
@@ -63,9 +72,14 @@ class PatternPickerCubit extends Cubit<PatternPickerState> {
     var patternListChanged = false;
 
     for (final change in changes) {
-      if (change is PatternAdded || change is PatternDeleted) {
-        patternListChanged = true;
-      }
+      change.whenOrNull(
+        pattern: (patternChange) {
+          patternChange.mapOrNull(
+            patternAdded: (change) => patternListChanged = true,
+            patternDeleted: (change) => patternListChanged = true,
+          );
+        },
+      );
     }
 
     PatternPickerState? newState;
@@ -84,13 +98,28 @@ class PatternPickerCubit extends Cubit<PatternPickerState> {
     emit(state.copyWith(patternHeight: height));
   }
 
-  addPattern(String name) {
+  ID addPattern([String? name]) {
+    if (name == null) {
+      var patternNumber = state.patternIDs.length;
+
+      do {
+        patternNumber++;
+        name = "Pattern $patternNumber";
+      } while (state.patternNames.containsValue(name));
+    }
+
+    final patternModel = PatternModel.create(name: name, project: project);
+
     project.execute(
       AddPatternCommand(
         project: project,
-        pattern: PatternModel.create(name: name, project: project),
+        pattern: patternModel,
         index: project.song.patternOrder.length,
       ),
     );
+
+    project.song.setActivePattern(patternModel.id);
+
+    return patternModel.id;
   }
 }

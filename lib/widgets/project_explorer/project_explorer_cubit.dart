@@ -61,12 +61,20 @@ class ProjectExplorerCubit extends Cubit<ProjectExplorerState> {
     var didPatternListChange = false;
 
     for (final change in changes) {
-      if (change is ArrangementAdded || change is ArrangementDeleted) {
-        didArrangementListChange = true;
-      }
-      if (change is PatternAdded || change is PatternDeleted) {
-        didPatternListChange = true;
-      }
+      change.whenOrNull(
+        arrangement: (arrangementChange) {
+          arrangementChange.mapOrNull(
+            arrangementAdded: (change) => didArrangementListChange = true,
+            arrangementDeleted: (change) => didArrangementListChange = true,
+          );
+        },
+        pattern: (patternChange) {
+          patternChange.mapOrNull(
+            patternAdded: (change) => didPatternListChange = true,
+            patternDeleted: (change) => didPatternListChange = true,
+          );
+        },
+      );
     }
 
     ProjectExplorerState? newState;

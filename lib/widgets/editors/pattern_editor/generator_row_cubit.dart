@@ -19,6 +19,7 @@
 
 import 'dart:async';
 
+import 'package:anthem/commands/pattern_state_changes.dart';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
@@ -77,19 +78,19 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
     var updateNotes = false;
 
     for (final change in changes) {
-      if (change is ActivePatternChanged) {
-        updateActivePattern = true;
-      }
-
-      final isNoteChange = change is NoteAdded || change is NoteDeleted;
-      if (isNoteChange) {
-        final noteChange = change as NoteStateChange;
-        final isRelevant = state.patternID == noteChange.patternID &&
-            state.generatorID == noteChange.generatorID;
-        if (isRelevant) {
-          updateNotes = true;
-        }
-      }
+      change.whenOrNull(
+        project: (change) {
+          change.mapOrNull(
+            activePatternChanged: (change) => updateActivePattern = true,
+          );
+        },
+        note: (change) {
+          if (change.patternID == state.patternID &&
+              change.generatorID == state.generatorID) {
+            updateNotes = true;
+          }
+        },
+      );
     }
 
     GeneratorRowState? newState;

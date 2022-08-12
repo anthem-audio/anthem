@@ -65,7 +65,7 @@ class Project extends StatelessWidget {
                       maintainSemantics: false,
                       maintainSize: false,
                       maintainState: true,
-                      visible: state.selectedDetailView == null,
+                      visible: !state.isDetailViewSelected,
                       child: BlocProvider<ProjectExplorerCubit>(
                         create: (context) => ProjectExplorerCubit(state.id),
                         child: const ProjectExplorer(),
@@ -79,8 +79,10 @@ class Project extends StatelessWidget {
                       maintainSemantics: false,
                       maintainSize: false,
                       maintainState: true,
-                      visible: state.selectedDetailView != null,
-                      child: const ProjectDetails(),
+                      visible: state.isDetailViewSelected,
+                      child: ProjectDetails(
+                        selectedProjectDetails: state.selectedDetailView,
+                      ),
                     ),
                   ),
                 ],
@@ -102,15 +104,15 @@ class Project extends StatelessWidget {
                   child: Panel(
                     hidden: !state.isPatternEditorVisible,
                     orientation: PanelOrientation.left,
-                    child: BlocProvider<ArrangerCubit>(
-                      create: (context) => ArrangerCubit(projectID: state.id),
-                      child: const Arranger(),
-                    ),
                     // Pattern editor
                     panelContent: BlocProvider<PatternEditorCubit>(
                       create: (context) => PatternEditorCubit(
                           project: Store.instance.projects[state.id]!),
                       child: const PatternEditor(),
+                    ),
+                    child: BlocProvider<ArrangerCubit>(
+                      create: (context) => ArrangerCubit(projectID: state.id),
+                      child: const Arranger(),
                     ),
                   ),
                 ),

@@ -61,11 +61,9 @@ class PatternModel extends Hydratable {
     required ProjectModel project,
   }) {
     defaultTimeSignature = TimeSignatureModel(4, 4);
-    final hue = _hueGen;
-    _hueGen = (_hueGen + 30) % 360;
     color = AnthemColor(
-      hue: hue,
-      brightnessModifier: 0,
+      hue: 0,
+      saturationMultiplier: 0,
     );
     hydrate(project: project);
   }

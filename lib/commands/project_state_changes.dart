@@ -17,56 +17,21 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'state_changes.dart';
+import 'package:anthem/helpers/id.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-abstract class ProjectStateChange extends StateChange {
-  ID projectID;
+part 'project_state_changes.freezed.dart';
 
-  ProjectStateChange({required this.projectID});
-}
-
-/*
- * State changes
- */
-
-class GeneratorAdded extends GeneratorStateChange {
-  GeneratorAdded({
-    required ID projectID,
-    required ID generatorID,
-  }) : super(projectID: projectID, generatorID: generatorID);
-}
-
-class GeneratorRemoved extends GeneratorStateChange {
-  GeneratorRemoved({
-    required ID projectID,
-    required ID generatorID,
-  }) : super(projectID: projectID, generatorID: generatorID);
-}
-
-class ActiveGeneratorChanged extends GeneratorStateChange {
-  ActiveGeneratorChanged({
-    required ID projectID,
-    required ID? generatorID,
-  }) : super(projectID: projectID, generatorID: generatorID);
-}
-
-class PatternAdded extends PatternStateChange {
-  PatternAdded({
-    required ID projectID,
-    required ID patternID,
-  }) : super(projectID: projectID, patternID: patternID);
-}
-
-class PatternDeleted extends PatternStateChange {
-  PatternDeleted({
-    required ID projectID,
-    required ID patternID,
-  }) : super(projectID: projectID, patternID: patternID);
-}
-
-class ActivePatternChanged extends PatternStateChange {
-  ActivePatternChanged({
-    required ID projectID,
-    required ID? patternID,
-  }) : super(projectID: projectID, patternID: patternID);
+@freezed
+class ProjectStateChange with _$ProjectStateChange {
+  const factory ProjectStateChange.activeArrangementChanged(ID projectID) = ActiveArrangementChanged;
+  const factory ProjectStateChange.activeGeneratorChanged(ID projectID) = ActiveGeneratorChanged;
+  const factory ProjectStateChange.activePatternChanged(ID projectID) = ActivePatternChanged;
+  const factory ProjectStateChange.activeProjectChanged(ID projectID) = ActiveProjectChanged;
+  const factory ProjectStateChange.journalEntryCommitted(ID projectID) = JournalEntryCommitted;
+  const factory ProjectStateChange.journalEntryStarted(ID projectID) = JournalEntryStarted;
+  const factory ProjectStateChange.projectAdded(ID projectID) = ProjectAdded;
+  const factory ProjectStateChange.projectClosed(ID projectID) = ProjectClosed;
+  const factory ProjectStateChange.projectSaved(ID projectID) = ProjectSaved;
+  const factory ProjectStateChange.selectedDetailViewChanged(ID projectID) = SelectedDetailViewChanged;
 }

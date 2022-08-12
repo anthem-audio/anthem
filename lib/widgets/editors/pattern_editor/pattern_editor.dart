@@ -26,6 +26,7 @@ import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart';
+import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -87,9 +88,7 @@ class _PatternEditorState extends State<PatternEditor> {
                               onSelected: () {
                                 final cubit =
                                     context.read<PatternEditorCubit>();
-                                final patternID = cubit.addPattern(
-                                    "Pattern ${(Random()).nextInt(100).toString()}");
-                                cubit.setActivePattern(patternID);
+                                cubit.addPattern();
                               },
                             )
                           ],
@@ -119,7 +118,7 @@ class _PatternEditorState extends State<PatternEditor> {
                         onChanged: (id) {
                           context
                               .read<PatternEditorCubit>()
-                              .setActivePattern(id ?? "");
+                              .setActivePattern(id);
                         },
                       ),
                       const Expanded(child: SizedBox()),
@@ -147,7 +146,7 @@ class _PatternEditorState extends State<PatternEditor> {
                                         state.generatorIDList.map<Widget>((id) {
                                       final instrument = state.instruments[id];
                                       final controller = state.controllers[id];
-          
+
                                       // TODO: provide type to child
                                       if (instrument != null) {
                                         return BlocProvider(
@@ -160,7 +159,7 @@ class _PatternEditorState extends State<PatternEditor> {
                                           child: const GeneratorRow(),
                                         );
                                       }
-          
+
                                       if (controller != null) {
                                         return Padding(
                                           padding:
@@ -176,7 +175,7 @@ class _PatternEditorState extends State<PatternEditor> {
                                           ),
                                         );
                                       }
-          
+
                                       throw Error();
                                     }).toList(),
                                   ),

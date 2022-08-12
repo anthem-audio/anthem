@@ -46,13 +46,23 @@ class ProjectFooter extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.max,
             children: [
-              Button(
-                startIcon: Icons.projectPanel,
-                toggleState: state.isProjectExplorerVisible,
-                onPress: () => projectCubit.setIsProjectExplorerVisible(
-                  !state.isProjectExplorerVisible,
-                ),
+              ButtonTabs(
+                tabs: [
+                  ButtonTabDef.withIcon(icon: Icons.projectPanel, id: false),
+                  ButtonTabDef.withIcon(icon: Icons.detailEditor, id: true),
+                ],
+                selected: state.isDetailViewSelected,
+                onChange: (selected) {
+                  projectCubit.setActiveDetailView(selected as bool);
+                },
               ),
+              // Button(
+              //   startIcon: Icons.projectPanel,
+              //   toggleState: state.isProjectExplorerVisible,
+              //   onPress: () => projectCubit.setIsProjectExplorerVisible(
+              //     !state.isProjectExplorerVisible,
+              //   ),
+              // ),
               const SizedBox(width: 8),
               ButtonTabs(
                 // selected: ProjectLayoutKind.arrange,
