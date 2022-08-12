@@ -17,69 +17,16 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'state_changes.dart';
+import 'package:anthem/helpers/id.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-/*
- * Base classes
- */
+part "arrangement_state_changes.freezed.dart";
 
-abstract class ArrangementStateChange extends ProjectStateChange {
-  ID? arrangementID;
-
-  ArrangementStateChange({required ID projectID, required this.arrangementID})
-      : super(projectID: projectID);
-}
-
-/*
- * State changes
- */
-
-class ClipAdded extends ArrangementStateChange {
-  ClipAdded({
-    required ID projectID,
-    required ID arrangementID,
-  }) : super(
-          projectID: projectID,
-          arrangementID: arrangementID,
-        );
-}
-
-class ClipDeleted extends ArrangementStateChange {
-  ClipDeleted({
-    required ID projectID,
-    required ID arrangementID,
-  }) : super(
-          projectID: projectID,
-          arrangementID: arrangementID,
-        );
-}
-
-class ArrangementAdded extends ArrangementStateChange {
-  ArrangementAdded({
-    required ID projectID,
-    required ID arrangementID,
-  }) : super(
-          projectID: projectID,
-          arrangementID: arrangementID,
-        );
-}
-
-class ArrangementDeleted extends ArrangementStateChange {
-  ArrangementDeleted({
-    required ID projectID,
-    required ID arrangementID,
-  }) : super(
-          projectID: projectID,
-          arrangementID: arrangementID,
-        );
-}
-
-class ActiveArrangementChanged extends ArrangementStateChange {
-  ActiveArrangementChanged({
-    required ID projectID,
-    required ID? arrangementID,
-  }) : super(
-          projectID: projectID,
-          arrangementID: arrangementID,
-        );
+@freezed
+class ArrangementStateChange with _$ArrangementStateChange {
+  const factory ArrangementStateChange.clipAdded(ID projectID, ID arrangementID) = ClipAdded;
+  const factory ArrangementStateChange.clipDeleted(ID projectID, ID arrangementID) = ClipDeleted;
+  const factory ArrangementStateChange.arrangementAdded(ID projectID, ID arrangementID) = ArrangementAdded;
+  const factory ArrangementStateChange.arrangementDeleted(ID projectID, ID arrangementID) = ArrangementDeleted;
+  const factory ArrangementStateChange.arrangementNameChanged(ID projectID, ID arrangementID) = ArrangementNameChanged;
 }

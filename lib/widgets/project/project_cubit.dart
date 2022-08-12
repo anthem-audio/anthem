@@ -32,8 +32,46 @@ part 'project_cubit.freezed.dart';
 class ProjectCubit extends Cubit<ProjectState> {
   late final ProjectModel project;
 
+  late final StreamSubscription<List<StateChange>> _stateChangeStream;
+
   ProjectCubit({required ID id}) : super(ProjectState(id: id)) {
     project = Store.instance.projects[id]!;
+    _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
+  }
+
+  @override
+  Future<void> close() async {
+    await _stateChangeStream.cancel();
+
+    return super.close();
+  }
+
+  void _onModelChanged(List<StateChange> changes) {
+    var didSelectedDetailViewChange = false;
+
+    for (final change in changes) {
+      change.whenOrNull(
+        project: (projectChange) {
+          projectChange.mapOrNull(
+            selectedDetailViewChanged: (change) =>
+                didSelectedDetailViewChange = true,
+          );
+        },
+      );
+    }
+
+    ProjectState? newState;
+
+    if (didSelectedDetailViewChange) {
+      newState = (newState ?? state).copyWith(
+        isDetailViewSelected: project.isDetailViewSelected,
+        selectedDetailView: project.selectedDetailView,
+      );
+    }
+
+    if (newState != null) {
+      emit(newState);
+    }
   }
 
   void undo() {
@@ -57,8 +95,11 @@ class ProjectCubit extends Cubit<ProjectState> {
   void setIsPatternEditorVisible(bool visible) =>
       emit(state.copyWith(isPatternEditorVisible: visible));
   void setActiveGeneratorID(ID? id) => project.song.setActiveGenerator(id);
-  void setActiveDetailView(DetailViewKind? detailView) =>
-      emit(state.copyWith(selectedDetailView: detailView));
+  void setActiveDetailView(bool isVisible, [DetailViewKind? detailView]) {
+    project.selectedDetailView = detailView;
+    project.isDetailViewSelected = isVisible;
+  }
+
   void setActiveEditor(EditorKind editor) =>
       emit(state.copyWith(selectedEditor: editor));
 }

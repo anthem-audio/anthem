@@ -29,13 +29,12 @@ class ProjectState with _$ProjectState {
     @Default(true) bool isAutomationMatrixVisible,
     @Default(ProjectLayoutKind.arrange) ProjectLayoutKind layout,
     @Default(null) DetailViewKind? selectedDetailView,
+    @Default(false) bool isDetailViewSelected,
     @Default(EditorKind.detail) EditorKind selectedEditor,
   }) = _ProjectState;
 }
 
 enum ProjectLayoutKind { arrange, edit, mix }
-
-enum DetailViewKind { arrangement, pattern }
 
 enum EditorKind {
   detail,

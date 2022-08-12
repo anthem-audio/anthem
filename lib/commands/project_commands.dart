@@ -19,6 +19,7 @@
 
 import 'dart:ui';
 
+import 'package:anthem/commands/pattern_state_changes.dart';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/generator.dart';
@@ -53,13 +54,21 @@ class AddInstrumentCommand extends Command {
     project.generatorList.add(instrumentID);
     project.instruments[instrumentID] =
         InstrumentModel(name: name, color: color);
-    return [GeneratorAdded(projectID: project.id, generatorID: instrumentID)];
+    return [
+      StateChange.generator(
+        GeneratorStateChange.generatorAdded(project.id, instrumentID),
+      )
+    ];
   }
 
   @override
   List<StateChange> rollback() {
     _removeGenerator(project, instrumentID);
-    return [GeneratorRemoved(projectID: project.id, generatorID: instrumentID)];
+    return [
+      StateChange.generator(
+        GeneratorStateChange.generatorRemoved(project.id, instrumentID),
+      )
+    ];
   }
 }
 
@@ -80,12 +89,20 @@ class AddControllerCommand extends Command {
     project.generatorList.add(controllerID);
     project.controllers[controllerID] =
         ControllerModel(name: name, color: color);
-    return [GeneratorAdded(projectID: project.id, generatorID: controllerID)];
+    return [
+      StateChange.generator(
+        GeneratorStateChange.generatorAdded(project.id, controllerID),
+      )
+    ];
   }
 
   @override
   List<StateChange> rollback() {
     _removeGenerator(project, controllerID);
-    return [GeneratorRemoved(projectID: project.id, generatorID: controllerID)];
+    return [
+      StateChange.generator(
+        GeneratorStateChange.generatorRemoved(project.id, controllerID),
+      )
+    ];
   }
 }

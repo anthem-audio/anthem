@@ -88,9 +88,19 @@ class TimelineCubit extends Cubit<TimelineState> {
     var activePatternChanged = false;
 
     for (final change in changes) {
+      bool didActivePatternChange(StateChange change) {
+        return change.maybeWhen(
+          pattern: (change) => change.maybeMap(
+            patternAdded: (change) => true,
+            patternDeleted: (change) => true,
+            orElse: () => false,
+          ),
+          orElse: () => false,
+        );
+      }
+
       if (timelineType == TimelineType.patternTimeline &&
-              change is PatternAdded ||
-          change is PatternDeleted) {
+          didActivePatternChange(change)) {
         activePatternChanged = true;
       }
     }

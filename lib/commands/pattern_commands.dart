@@ -17,27 +17,29 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/commands/pattern_state_changes.dart';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/anthem_color.dart';
 
 import 'command.dart';
 
-void _addPatternToProject(
-  ProjectModel project,
-  PatternModel pattern,
-  int index,
-) {
+void _addPatternToProject({
+  required ProjectModel project,
+  required PatternModel pattern,
+  required int index,
+}) {
   project.song.patternOrder.insert(index, pattern.id);
   project.song.patterns[pattern.id] = pattern;
 }
 
-void _removePatternFromProject(
-  ProjectModel project,
-  ID patternID,
-) {
+void _removePatternFromProject({
+  required ProjectModel project,
+  required ID patternID,
+}) {
   project.song.patternOrder.removeWhere((element) => element == patternID);
   project.song.patterns.remove(patternID);
 }
@@ -54,22 +56,27 @@ class AddPatternCommand extends Command {
 
   @override
   List<StateChange> execute() {
-    _addPatternToProject(project, pattern, index);
+    _addPatternToProject(
+      project: project,
+      pattern: pattern,
+      index: index,
+    );
     return [
-      PatternAdded(
-        projectID: project.id,
-        patternID: pattern.id,
+      StateChange.pattern(
+        PatternStateChange.patternAdded(project.id, pattern.id),
       )
     ];
   }
 
   @override
   List<StateChange> rollback() {
-    _removePatternFromProject(project, pattern.id);
+    _removePatternFromProject(
+      project: project,
+      patternID: pattern.id,
+    );
     return [
-      PatternDeleted(
-        projectID: project.id,
-        patternID: pattern.id,
+      StateChange.pattern(
+        PatternStateChange.patternDeleted(project.id, pattern.id),
       )
     ];
   }
@@ -87,24 +94,81 @@ class DeletePatternCommand extends Command {
 
   @override
   List<StateChange> execute() {
-    _removePatternFromProject(project, pattern.id);
+    _removePatternFromProject(
+      project: project,
+      patternID: pattern.id,
+    );
     return [
-      PatternDeleted(
-        projectID: project.id,
-        patternID: pattern.id,
+      StateChange.pattern(
+        PatternStateChange.patternDeleted(project.id, pattern.id),
       )
     ];
   }
 
   @override
   List<StateChange> rollback() {
-    _addPatternToProject(project, pattern, index);
+    _addPatternToProject(
+      project: project,
+      pattern: pattern,
+      index: index,
+    );
     return [
-      PatternAdded(
-        projectID: project.id,
-        patternID: pattern.id,
+      StateChange.pattern(
+        PatternStateChange.patternAdded(project.id, pattern.id),
       )
     ];
+  }
+}
+
+class SetPatternNameCommand extends Command {
+  ID patternID;
+  late String oldName;
+  String newName;
+
+  SetPatternNameCommand({
+    required ProjectModel project,
+    required this.patternID,
+    required this.newName,
+  }) : super(project) {
+    oldName = project.song.patterns[patternID]!.name;
+  }
+
+  @override
+  List<StateChange> execute() {
+    project.song.patterns[patternID]!.name = newName;
+    return [StateChange.pattern(PatternNameChanged(project.id, patternID))];
+  }
+
+  @override
+  List<StateChange> rollback() {
+    project.song.patterns[patternID]!.name = oldName;
+    return [StateChange.pattern(PatternNameChanged(project.id, patternID))];
+  }
+}
+
+class SetPatternColorCommand extends Command {
+  ID patternID;
+  late AnthemColor oldColor;
+  AnthemColor newColor;
+
+  SetPatternColorCommand({
+    required ProjectModel project,
+    required this.patternID,
+    required this.newColor,
+  }) : super(project) {
+    oldColor = project.song.patterns[patternID]!.color;
+  }
+
+  @override
+  List<StateChange> execute() {
+    project.song.patterns[patternID]!.color = newColor;
+    return [StateChange.pattern(PatternColorChanged(project.id, patternID))];
+  }
+
+  @override
+  List<StateChange> rollback() {
+    project.song.patterns[patternID]!.color = oldColor;
+    return [StateChange.pattern(PatternColorChanged(project.id, patternID))];
   }
 }
 
@@ -160,11 +224,13 @@ class AddNoteCommand extends Command {
     _addNote(pattern, generatorID, note);
 
     return [
-      NoteAdded(
-        projectID: project.id,
-        patternID: patternID,
-        generatorID: generatorID,
-        noteID: note.id,
+      StateChange.note(
+        NoteStateChange.noteAdded(
+          project.id,
+          patternID,
+          generatorID,
+          note.id,
+        ),
       )
     ];
   }
@@ -180,11 +246,13 @@ class AddNoteCommand extends Command {
     _removeNote(pattern, generatorID, note.id);
 
     return [
-      NoteDeleted(
-        projectID: project.id,
-        patternID: pattern.id,
-        generatorID: generatorID,
-        noteID: note.id,
+      StateChange.note(
+        NoteStateChange.noteDeleted(
+          project.id,
+          patternID,
+          generatorID,
+          note.id,
+        ),
       )
     ];
   }
@@ -213,11 +281,13 @@ class DeleteNoteCommand extends Command {
     _removeNote(pattern, generatorID, note.id);
 
     return [
-      NoteDeleted(
-        projectID: project.id,
-        patternID: pattern.id,
-        generatorID: generatorID,
-        noteID: note.id,
+      StateChange.note(
+        NoteStateChange.noteDeleted(
+          project.id,
+          patternID,
+          generatorID,
+          note.id,
+        ),
       )
     ];
   }
@@ -233,11 +303,13 @@ class DeleteNoteCommand extends Command {
     _addNote(pattern, generatorID, note);
 
     return [
-      NoteAdded(
-        projectID: project.id,
-        patternID: patternID,
-        generatorID: generatorID,
-        noteID: note.id,
+      StateChange.note(
+        NoteStateChange.noteAdded(
+          project.id,
+          patternID,
+          generatorID,
+          note.id,
+        ),
       )
     ];
   }
@@ -277,11 +349,13 @@ class MoveNoteCommand extends Command {
     note.offset = newOffset;
 
     return [
-      NoteMoved(
-        projectID: project.id,
-        patternID: patternID,
-        generatorID: generatorID,
-        noteID: noteID,
+      StateChange.note(
+        NoteStateChange.noteMoved(
+          project.id,
+          patternID,
+          generatorID,
+          note.id,
+        ),
       )
     ];
   }
@@ -300,11 +374,13 @@ class MoveNoteCommand extends Command {
     note.offset = oldOffset;
 
     return [
-      NoteMoved(
-        projectID: project.id,
-        patternID: patternID,
-        generatorID: generatorID,
-        noteID: noteID,
+      StateChange.note(
+        NoteStateChange.noteMoved(
+          project.id,
+          patternID,
+          generatorID,
+          note.id,
+        ),
       )
     ];
   }
@@ -339,11 +415,13 @@ class ResizeNoteCommand extends Command {
     note.length = newLength;
 
     return [
-      NoteResized(
-        projectID: project.id,
-        patternID: patternID,
-        generatorID: generatorID,
-        noteID: noteID,
+      StateChange.note(
+        NoteStateChange.noteResized(
+          project.id,
+          patternID,
+          generatorID,
+          note.id,
+        ),
       )
     ];
   }
@@ -361,11 +439,13 @@ class ResizeNoteCommand extends Command {
     note.length = newLength;
 
     return [
-      NoteResized(
-        projectID: project.id,
-        patternID: patternID,
-        generatorID: generatorID,
-        noteID: noteID,
+      StateChange.note(
+        NoteStateChange.noteResized(
+          project.id,
+          patternID,
+          generatorID,
+          note.id,
+        ),
       )
     ];
   }

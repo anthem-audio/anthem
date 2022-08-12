@@ -52,7 +52,7 @@ class ClipCubit extends Cubit<ClipState> {
           return ClipState(
             notes: _getClipNotes(pattern),
             patternName: pattern.name,
-            color: pattern.color,
+            patternColor: pattern.color,
             contentWidth: clip.getWidth(),
           );
         })()) {
@@ -69,7 +69,7 @@ class ClipCubit extends Cubit<ClipState> {
           return ClipState(
             notes: _getClipNotes(pattern),
             patternName: pattern.name,
-            color: pattern.color,
+            patternColor: pattern.color,
             contentWidth: pattern.getWidth(),
           );
         })()) {
@@ -81,16 +81,36 @@ class ClipCubit extends Cubit<ClipState> {
 
   _onModelChanged(List<StateChange> changes) {
     var updateNotes = false;
+    var updatePatternName = false;
+    var updatePatternColor = false;
 
-    changes.whereType<NoteStateChange>().forEach((change) {
-      updateNotes = true;
-    });
+    for (final change in changes) {
+      change.whenOrNull(
+        pattern: (patternChange) {
+          patternChange.mapOrNull(
+            patternNameChanged: (change) {
+              if (change.patternID == pattern.id) updatePatternName = true;
+            },
+            patternColorChanged: (change) {
+              if (change.patternID == pattern.id) updatePatternColor = true;
+            },
+          );
+        },
+        note: (noteChange) => updateNotes = true,
+      );
+    }
 
     if (updateNotes) {
       emit(state.copyWith(
         notes: _getClipNotes(pattern),
         contentWidth: clip?.getWidth() ?? pattern.getWidth(),
       ));
+    }
+    if (updatePatternName) {
+      emit(state.copyWith(patternName: pattern.name));
+    }
+    if (updatePatternColor) {
+      emit(state.copyWith(patternColor: pattern.color));
     }
   }
 

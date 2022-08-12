@@ -17,47 +17,39 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/theme.dart';
-import 'package:flutter/widgets.dart';
+import 'package:anthem/theme.dart' as anthem_theme;
+import 'package:flutter/material.dart';
 
 class TextBox extends StatefulWidget {
-  const TextBox({Key? key}) : super(key: key);
+  final TextEditingController? controller;
+  final FocusNode? focusNode;
+
+  const TextBox({Key? key, this.controller, this.focusNode}) : super(key: key);
 
   @override
   State<TextBox> createState() => _TextBoxState();
 }
 
 class _TextBoxState extends State<TextBox> {
-  TextEditingController? controller;
-  FocusNode? focusNode;
-
   @override
   Widget build(BuildContext context) {
-    controller ??= TextEditingController();
-    focusNode ??= FocusNode();
-
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: Theme.panel.border),
+        border: Border.all(color: anthem_theme.Theme.panel.border),
         borderRadius: BorderRadius.circular(4),
-        color: Theme.panel.accentDark,
+        color: anthem_theme.Theme.panel.accentDark,
       ),
-      child: Center(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
-          child: EditableText(
-            backgroundCursorColor:
-                const Color(0xFFFF0000), // I have no idea what this is
-            selectionColor: Theme.primary.subtleBorder,
-            controller: controller!,
-            cursorColor: Theme.text.main,
-            focusNode: focusNode!,
-            style: TextStyle(
-              color: Theme.text.main,
-              fontSize: 11,
-            ),
-          ),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: TextField(
+        controller: widget.controller,
+        focusNode: widget.focusNode,
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          fillColor: anthem_theme.Theme.panel.accentDark,
         ),
+        cursorColor: anthem_theme.Theme.text.main,
+        style: TextStyle(color: anthem_theme.Theme.text.main, fontSize: 11),
+        textAlignVertical: TextAlignVertical.bottom,
       ),
     );
   }

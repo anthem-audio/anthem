@@ -92,22 +92,29 @@ class ArrangerCubit extends Cubit<ArrangerState> {
     var didArrangementListChange = false;
 
     for (final change in changes) {
-      final relatesToSelectedArrangement = change is ArrangementStateChange &&
-          change.arrangementID == state.activeArrangementID;
-
-      if (relatesToSelectedArrangement &&
-          (change is ClipAdded || change is ClipDeleted)) {
-        didClipsChange = true;
-      }
-
-      if (change is ArrangementAdded || change is ArrangementDeleted) {
-        didArrangementListChange = true;
-      }
-
-      if (change is ActiveArrangementChanged) {
-        didActiveArrangementChange = true;
-        didClipsChange = true;
-      }
+      change.whenOrNull(
+        project: (change) {
+          change.mapOrNull(
+            activeArrangementChanged: (change) {
+              didActiveArrangementChange = true;
+              didClipsChange = true;
+            },
+          );
+        },
+        arrangement: (change) {
+          if (change.arrangementID == state.activeArrangementID) {
+            change.mapOrNull(
+              clipAdded: (change) => didClipsChange = true,
+              clipDeleted: (change) => didClipsChange = true,
+            );
+          }
+          change.mapOrNull(
+            arrangementAdded: (change) => didArrangementListChange = true,
+            arrangementDeleted: (change) => didArrangementListChange = true,
+            arrangementNameChanged: (change) => didArrangementListChange = true,
+          );
+        },
+      );
     }
 
     ArrangerState? newState;
@@ -150,8 +157,25 @@ class ArrangerCubit extends Cubit<ArrangerState> {
       arrangementName = "Arrangement $arrangementNumber";
     } while (state.arrangementNames.containsValue(arrangementName));
 
+    final command = AddArrangementCommand(project: project, arrangementName: arrangementName);
+
     project.execute(
-      AddArrangementCommand(project: project, arrangementName: arrangementName),
+      command
+    );
+
+    project.song.setActiveArrangement(command.arrangementID);
+  }
+
+  void setArrangementName(String name, [ID? arrangementID]) {
+    arrangementID ??= state.activeArrangementID;
+    if (arrangementID == null) return;
+
+    project.execute(
+      SetArrangementNameCommand(
+        project: project,
+        arrangementID: arrangementID,
+        newName: name,
+      ),
     );
   }
 

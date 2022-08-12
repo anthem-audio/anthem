@@ -17,48 +17,46 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:math';
-
-import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/icon.dart';
-import 'package:anthem/widgets/basic/tree_view/tree_item_indent.dart';
-import 'package:flutter/widgets.dart';
-import 'package:provider/provider.dart';
-
-import 'model.dart';
+part of "tree_view.dart";
 
 const indentIncrement = 21.0;
 
-class TreeItem extends StatefulWidget {
-  final String? label;
-  final List<TreeViewItemModel> children;
+class _TreeItem extends StatefulWidget {
+  final TreeViewItemModel model;
   final bool hasOpenIndicatorIndent;
-  const TreeItem({
+  final _TreeViewItemFilterModel? filterModel;
+  final Map<String, _TreeViewItemFilterModel> allFilterModels;
+  final int filterCutoff;
+
+  const _TreeItem({
     Key? key,
-    this.label,
-    required this.children,
+    required this.model,
     this.hasOpenIndicatorIndent = false,
+    required this.filterModel,
+    required this.allFilterModels,
+    required this.filterCutoff,
   }) : super(key: key);
 
   @override
-  State<TreeItem> createState() => _TreeItemState();
+  State<_TreeItem> createState() => _TreeItemState();
 }
 
 const double itemHeight = 24;
 
-class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
+class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
   bool isHovered = false;
-  bool isOpen = false;
+  bool isOpenFlag = false;
+  bool get isOpen => isOpenFlag || widget.allFilterModels.isNotEmpty;
 
   void open() {
     setState(() {
-      isOpen = true;
+      isOpenFlag = true;
     });
   }
 
   void close() {
     setState(() {
-      isOpen = false;
+      isOpenFlag = false;
     });
   }
 
@@ -68,24 +66,34 @@ class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
 
     final List<Widget> children = [];
 
-    final hasChildWithChildren = widget.children.fold<bool>(
+    final hasChildWithChildren = widget.model.children.fold<bool>(
       false,
       (previousValue, element) => previousValue || element.children.isNotEmpty,
     );
 
-    for (var i = 0; i < widget.children.length; i++) {
-      final model = widget.children[i];
+    for (var i = 0; i < widget.model.children.length; i++) {
+      final model = widget.model.children[i];
+      final filterModel = widget.allFilterModels[model.key];
 
       children.add(
         SizedBox(
-          child: TreeItem(
-            label: model.name,
-            children: model.children,
-            hasOpenIndicatorIndent: hasChildWithChildren,
+          child: Visibility(
+            maintainState: true,
+            visible: filterModel == null ||
+                filterModel.maxScoreOfChildren > widget.filterCutoff,
+            child: _TreeItem(
+              model: model,
+              hasOpenIndicatorIndent: hasChildWithChildren,
+              allFilterModels: widget.allFilterModels,
+              filterModel: filterModel,
+              filterCutoff: widget.filterCutoff,
+            ),
           ),
         ),
       );
     }
+
+    final hasHighestScore = (widget.filterModel?.hasHighestScore ?? false);
 
     return Provider(
       create: (context) => TreeItemIndent(indent: indent + indentIncrement),
@@ -104,7 +112,7 @@ class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
             },
             child: GestureDetector(
               onTap: () {
-                if (widget.children.isNotEmpty) {
+                if (widget.model.children.isNotEmpty) {
                   setState(() {
                     if (isOpen) {
                       close();
@@ -113,18 +121,24 @@ class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
                     }
                   });
                 }
+
+                widget.model.onClick?.call();
               },
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isHovered ? Theme.primary.subtle : null,
+                    color: isHovered || hasHighestScore
+                        ? Theme.primary.subtle
+                        : null,
                     border: Border.all(
                       color: isHovered
                           ? Theme.primary.subtleBorder
                           : const Color(0x00000000),
                     ),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: !isHovered && hasHighestScore
+                        ? null
+                        : BorderRadius.circular(4),
                   ),
                   height: itemHeight,
                   child: Row(
@@ -132,12 +146,12 @@ class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
                     children: [
                       SizedBox(width: indent),
                       SizedBox(
-                        width: widget.children.isNotEmpty ||
+                        width: widget.model.children.isNotEmpty ||
                                 widget.hasOpenIndicatorIndent
                             ? 10
                             : 0,
                         height: 10,
-                        child: (widget.children.isEmpty)
+                        child: (widget.model.children.isEmpty)
                             ? null
                             : Transform.rotate(
                                 angle: isOpen ? 0 : -pi / 2,
@@ -151,10 +165,11 @@ class _TreeItemState extends State<TreeItem> with TickerProviderStateMixin {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          widget.label ?? "",
+                          widget.model.label,
                           textAlign: TextAlign.left,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: Theme.text.main, fontSize: 11),
+                          style:
+                              TextStyle(color: Theme.text.main, fontSize: 11),
                         ),
                       ),
                     ],

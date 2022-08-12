@@ -19,6 +19,7 @@
 
 import 'dart:async';
 
+import 'package:anthem/commands/project_state_changes.dart';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
@@ -46,13 +47,20 @@ class AppModel {
     projects[project.id] = project;
     projectOrder.add(project.id);
     activeProjectID = project.id;
-    _stateChangeStreamController.add(ProjectAdded(projectID: project.id));
+    _stateChangeStreamController.add(
+      StateChange.project(
+        ProjectStateChange.projectAdded(project.id),
+      ),
+    );
   }
 
   void setActiveProject(ID projectID) {
     activeProjectID = projectID;
-    _stateChangeStreamController
-        .add(ActiveProjectChanged(projectID: projectID));
+    _stateChangeStreamController.add(
+      StateChange.project(
+        ProjectStateChange.activeProjectChanged(projectID),
+      ),
+    );
   }
 
   void closeProject(ID projectID) {
@@ -61,7 +69,11 @@ class AppModel {
     if (activeProjectID == projectID && projectOrder.isNotEmpty) {
       activeProjectID = projectOrder[0];
     }
-    _stateChangeStreamController.add(ProjectClosed(projectID: projectID));
+    _stateChangeStreamController.add(
+      StateChange.project(
+        ProjectStateChange.projectClosed(projectID),
+      ),
+    );
   }
 
   void init() {

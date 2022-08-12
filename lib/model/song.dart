@@ -21,6 +21,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 
+import 'package:anthem/commands/project_state_changes.dart';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
@@ -126,21 +127,37 @@ class SongModel extends Hydratable {
   void setActiveGenerator(ID? generatorID) {
     activeGeneratorID = generatorID;
     changeStreamController.add([
-      ActiveGeneratorChanged(projectID: _project!.id, generatorID: generatorID)
+      StateChange.project(
+        ProjectStateChange.activeGeneratorChanged(_project!.id),
+      ),
     ]);
   }
 
   void setActivePattern(ID? patternID) {
     activePatternID = patternID;
-    changeStreamController.add(
-        [ActivePatternChanged(projectID: _project!.id, patternID: patternID)]);
+
+    if (patternID != null) {
+      project.selectedDetailView = PatternDetailViewKind(patternID);
+    }
+
+    changeStreamController.add([
+      StateChange.project(
+        ProjectStateChange.activePatternChanged(_project!.id),
+      ),
+    ]);
   }
 
   void setActiveArrangement(ID? arrangementID) {
     activeArrangementID = arrangementID;
+
+    if (arrangementID != null) {
+      project.selectedDetailView = ArrangementDetailViewKind(arrangementID);
+    }
+
     changeStreamController.add([
-      ActiveArrangementChanged(
-          projectID: _project!.id, arrangementID: arrangementID)
+      StateChange.project(
+        ProjectStateChange.activeArrangementChanged(_project!.id),
+      ),
     ]);
   }
 }
