@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+// cspell:ignore ahsl
+
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/theme.dart';
 import 'package:flutter/widgets.dart';
@@ -26,9 +28,9 @@ const squareMargin = 1.0;
 const padding = 4.0;
 
 class ColorPicker extends StatefulWidget {
-  Function(AnthemColor)? onChange;
+  final Function(AnthemColor)? onChange;
 
-  ColorPicker({Key? key, this.onChange}) : super(key: key);
+  const ColorPicker({Key? key, this.onChange}) : super(key: key);
 
   @override
   State<ColorPicker> createState() => _ColorPickerState();

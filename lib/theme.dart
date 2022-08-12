@@ -17,6 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+// ignore_for_file: library_private_types_in_public_api
+// cspell:ignore budislav stepanov
+
 import 'package:flutter/widgets.dart';
 
 const white = Color(0xFFFFFFFF);

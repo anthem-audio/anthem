@@ -41,7 +41,6 @@ class Scrollbar extends StatefulWidget {
 }
 
 class _ScrollbarState extends State<Scrollbar> {
-  bool _isThumbPressed = false;
   double _localStartPos = -1;
   double _scrollAreaStartPos = -1;
 

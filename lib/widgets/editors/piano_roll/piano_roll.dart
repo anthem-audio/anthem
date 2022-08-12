@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+// cspell:ignore relayout ahsl
+
 import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
@@ -59,7 +61,7 @@ class PianoRoll extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _PianoRollState createState() => _PianoRollState();
+  State<PianoRoll> createState() => _PianoRollState();
 }
 
 class _PianoRollState extends State<PianoRoll> {
@@ -116,7 +118,9 @@ class _PianoRollHeader extends StatelessWidget {
                     onSelected: () {},
                     submenu: MenuDef(
                       children: [
-                        AnthemMenuItem(text: "Add time signature change",),
+                        AnthemMenuItem(
+                          text: "Add time signature change",
+                        ),
                       ],
                     ),
                   ),
@@ -130,7 +134,7 @@ class _PianoRollHeader extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 4),
-            ToolSelector(selectedTool: EditorTool.pencil),
+            const ToolSelector(selectedTool: EditorTool.pencil),
           ],
         ),
       );
@@ -171,6 +175,12 @@ class _PianoRollContentState extends State<_PianoRollContent> {
         orientation: PanelOrientation.bottom,
         panelStartSize: 89,
         separatorSize: 6,
+        panelContent: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Theme.panel.border),
+            borderRadius: const BorderRadius.all(Radius.circular(4)),
+          ),
+        ),
         child: Column(
           children: [
             SizedBox(
@@ -275,6 +285,14 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                                           ),
                                           ClipRect(
                                             child: CustomMultiChildLayout(
+                                              delegate: NoteLayoutDelegate(
+                                                notes: notes,
+                                                keyHeight: state.keyHeight,
+                                                keyValueAtTop:
+                                                    state.keyValueAtTop,
+                                                timeViewStart: timeView.start,
+                                                timeViewEnd: timeView.end,
+                                              ),
                                               children: notes
                                                   .map(
                                                     (note) => LayoutId(
@@ -284,14 +302,6 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                                                     ),
                                                   )
                                                   .toList(),
-                                              delegate: NoteLayoutDelegate(
-                                                notes: notes,
-                                                keyHeight: state.keyHeight,
-                                                keyValueAtTop:
-                                                    state.keyValueAtTop,
-                                                timeViewStart: timeView.start,
-                                                timeViewEnd: timeView.end,
-                                              ),
                                             ),
                                           ),
                                         ],
@@ -331,12 +341,6 @@ class _PianoRollContentState extends State<_PianoRollContent> {
               ),
             ),
           ],
-        ),
-        panelContent: Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: Theme.panel.border),
-            borderRadius: const BorderRadius.all(Radius.circular(4)),
-          ),
         ),
       );
     });
