@@ -19,7 +19,6 @@
 
 import 'dart:async';
 
-import 'package:anthem/commands/pattern_state_changes.dart';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';

@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:collection';
-
 import 'package:anthem/helpers/id.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';

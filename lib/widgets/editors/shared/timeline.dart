@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+// cspell:ignore relayout
+
 import 'dart:math';
 
 import 'package:anthem/model/shared/time_signature.dart';
@@ -96,6 +98,12 @@ class _TimelineState extends State<Timeline> {
                   ),
                 ),
                 CustomMultiChildLayout(
+                  delegate: TimeSignatureLabelLayoutDelegate(
+                    timeSignatureChanges: state.timeSignatureChanges,
+                    timeViewStart: timeView.start,
+                    timeViewEnd: timeView.end,
+                    // viewPixelWidth:
+                  ),
                   children: (state.timeSignatureChanges)
                       .map(
                         (change) => LayoutId(
@@ -107,12 +115,6 @@ class _TimelineState extends State<Timeline> {
                         ),
                       )
                       .toList(),
-                  delegate: TimeSignatureLabelLayoutDelegate(
-                    timeSignatureChanges: state.timeSignatureChanges,
-                    timeViewStart: timeView.start,
-                    timeViewEnd: timeView.end,
-                    // viewPixelWidth:
-                  ),
                 ),
               ],
             ),
@@ -190,9 +192,9 @@ class TimelineLabel extends StatelessWidget {
               topRight: Radius.circular(3),
             ),
           ),
-          child: Text(text),
           padding: const EdgeInsets.only(left: 4, right: 4),
           height: 21,
+          child: Text(text),
         ),
       ],
     );

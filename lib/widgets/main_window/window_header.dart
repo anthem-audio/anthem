@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+// cspell:ignore bitsdojo
+
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
@@ -41,7 +43,7 @@ class WindowHeader extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _WindowHeaderState createState() => _WindowHeaderState();
+  State<WindowHeader> createState() => _WindowHeaderState();
 }
 
 class _WindowHeaderState extends State<WindowHeader> {
@@ -118,6 +120,7 @@ class _WindowHeaderState extends State<WindowHeader> {
               Expanded(
                 child: MoveWindow(
                   child: Padding(
+                    padding: const EdgeInsets.only(bottom: 1),
                     child: Container(
                       decoration: BoxDecoration(
                         color: Theme.panel.main,
@@ -129,7 +132,6 @@ class _WindowHeaderState extends State<WindowHeader> {
                         ),
                       ),
                     ),
-                    padding: const EdgeInsets.only(bottom: 1),
                   ),
                 ),
               ),

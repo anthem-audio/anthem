@@ -32,8 +32,6 @@ import 'note.dart';
 
 part 'pattern.g.dart';
 
-double _hueGen = 0;
-
 @JsonSerializable()
 class PatternModel extends Hydratable {
   ID id = getID();
