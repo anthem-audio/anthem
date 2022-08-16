@@ -98,3 +98,13 @@ class PianoRollPointerUpNotification extends PianoRollPointerNotification {
           pianoRollSize: pianoRollSize,
         );
 }
+
+class PianoRollTimeSignatureChangeAddNotification
+    extends PianoRollNotification {
+  double time;
+
+  PianoRollTimeSignatureChangeAddNotification({
+    required Size pianoRollSize,
+    required this.time,
+  }) : super(pianoRollSize: pianoRollSize);
+}
