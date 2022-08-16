@@ -35,6 +35,7 @@ import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_notification_handler.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll_notifications.dart';
 import 'package:anthem/widgets/editors/shared/tool_selector.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -54,6 +55,17 @@ const double maxKeyHeight = 40;
 
 const double minKeyValue = 0;
 const double maxKeyValue = 128;
+
+// Hack: We need the size of the piano roll's content area at very inconvenient
+// times and I don't feel like figuring out how to properly get it where it
+// belongs, so here we are. The alternative I can think of is to just calculate
+// it where it's needed (we could reasonably infer this from the width of
+// _PianoRollHeader, for instance), but then any changes that would affect the
+// calculation (e.g. scrollbar width) would need to be reflected in the
+// calculation. Instead, I've opted to just store the size on render, since the
+// places that need it are currently in callbacks and so will always be fired
+// after a render completes.
+Size _pianoRollCanvasSize = const Size(0, 0);
 
 class PianoRoll extends StatefulWidget {
   const PianoRoll({
@@ -115,11 +127,23 @@ class _PianoRollHeader extends StatelessWidget {
                 children: [
                   AnthemMenuItem(
                     text: "Markers",
-                    onSelected: () {},
                     submenu: MenuDef(
                       children: [
                         AnthemMenuItem(
                           text: "Add time signature change",
+                          onSelected: () {
+                            final notification =
+                                PianoRollTimeSignatureChangeAddNotification(
+                              // The height doesn't matter since it's not used
+                              // in handling this notification. We get the
+                              // width from
+                              pianoRollSize: _pianoRollCanvasSize,
+                              time:
+                                  Provider.of<TimeView>(context, listen: false)
+                                      .start,
+                            );
+                            notification.dispatch(context);
+                          },
                         ),
                       ],
                     ),
@@ -275,38 +299,44 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                                       color: Theme.panel.border, width: 1),
                                   // Main piano roll render area
                                   Expanded(
-                                    child: PianoRollEventListener(
-                                      child: Stack(
-                                        fit: StackFit.expand,
-                                        children: [
-                                          PianoRollGrid(
-                                            keyHeight: state.keyHeight,
-                                            keyValueAtTop: state.keyValueAtTop,
-                                          ),
-                                          ClipRect(
-                                            child: CustomMultiChildLayout(
-                                              delegate: NoteLayoutDelegate(
-                                                notes: notes,
-                                                keyHeight: state.keyHeight,
-                                                keyValueAtTop:
-                                                    state.keyValueAtTop,
-                                                timeViewStart: timeView.start,
-                                                timeViewEnd: timeView.end,
-                                              ),
-                                              children: notes
-                                                  .map(
-                                                    (note) => LayoutId(
-                                                      id: note.id,
-                                                      child: NoteWidget(
-                                                          noteID: note.id),
-                                                    ),
-                                                  )
-                                                  .toList(),
+                                    child: LayoutBuilder(
+                                        builder: (context, constraints) {
+                                      _pianoRollCanvasSize =
+                                          constraints.biggest;
+                                      return PianoRollEventListener(
+                                        child: Stack(
+                                          fit: StackFit.expand,
+                                          children: [
+                                            PianoRollGrid(
+                                              keyHeight: state.keyHeight,
+                                              keyValueAtTop:
+                                                  state.keyValueAtTop,
                                             ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                                            ClipRect(
+                                              child: CustomMultiChildLayout(
+                                                delegate: NoteLayoutDelegate(
+                                                  notes: notes,
+                                                  keyHeight: state.keyHeight,
+                                                  keyValueAtTop:
+                                                      state.keyValueAtTop,
+                                                  timeViewStart: timeView.start,
+                                                  timeViewEnd: timeView.end,
+                                                ),
+                                                children: notes
+                                                    .map(
+                                                      (note) => LayoutId(
+                                                        id: note.id,
+                                                        child: NoteWidget(
+                                                            noteID: note.id),
+                                                      ),
+                                                    )
+                                                    .toList(),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
                                   ),
                                 ],
                               ),

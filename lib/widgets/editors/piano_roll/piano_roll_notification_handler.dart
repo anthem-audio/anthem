@@ -28,6 +28,32 @@ import '../shared/helpers/time_helpers.dart';
 import '../shared/helpers/types.dart';
 import 'piano_roll_notifications.dart';
 
+Time getSnappedTime({
+  required Time rawTime,
+  required List<DivisionChange> divisionChanges,
+  bool roundUp = false,
+}) {
+  Time targetTime = -1;
+
+  // A binary search might be better here, but it would only matter
+  // if there were a *lot* of time signature changes in the pattern
+  for (var i = 0; i < divisionChanges.length; i++) {
+    if (rawTime >= 0 &&
+        i < divisionChanges.length - 1 &&
+        divisionChanges[i + 1].offset <= rawTime) {
+      continue;
+    }
+
+    final divisionChange = divisionChanges[i];
+    final snapSize = divisionChange.divisionSnapSize;
+    targetTime = (rawTime ~/ snapSize) * snapSize +
+        (roundUp && rawTime % snapSize != 0 ? snapSize : 0);
+    break;
+  }
+
+  return targetTime;
+}
+
 class PianoRollNotificationHandler extends StatelessWidget {
   const PianoRollNotificationHandler({Key? key, required this.child})
       : super(key: key);
@@ -39,87 +65,86 @@ class PianoRollNotificationHandler extends StatelessWidget {
     return BlocBuilder<PianoRollCubit, PianoRollState>(
         builder: (context, state) {
       return NotificationListener<PianoRollNotification>(
-          onNotification: (notification) {
-            final timeView = Provider.of<TimeView>(context, listen: false);
-            final instrumentID =
-                BlocProvider.of<PianoRollCubit>(context).state.activeInstrumentID;
+        onNotification: (notification) {
+          final pianoRollCubit = context.read<PianoRollCubit>();
+          final timeView = Provider.of<TimeView>(context, listen: false);
+          final instrumentID =
+              BlocProvider.of<PianoRollCubit>(context).state.activeInstrumentID;
 
-            /*
-              This feels excessive, as it recalculates snap for each
-              notification. I'm not sure whether this is actually slower than
-              memoizing in the average case, so it's probably best to profile
-              before going down that route.
-            */
+          /*
+            This feels excessive, as it recalculates snap for each
+            notification. I'm not sure whether this is actually slower than
+            memoizing in the average case, so it's probably best to profile
+            before going down that route.
+          */
 
-            final project = Store.instance.projects[state.projectID];
-            final pattern = project?.song.patterns[state.patternID];
+          final project = Store.instance.projects[state.projectID];
+          final pattern = project?.song.patterns[state.patternID];
 
-            final divisionChanges = getDivisionChanges(
-              viewWidthInPixels: notification.pianoRollSize.width,
-              // TODO: this constant was copied from the minor division changes
-              // getter in piano_roll_grid.dart
-              minPixelsPerSection: 8,
-              snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
-              defaultTimeSignature: pattern?.defaultTimeSignature,
-              timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
-              ticksPerQuarter: state.ticksPerQuarter,
-              timeViewStart: timeView.start,
-              timeViewEnd: timeView.end,
+          final divisionChanges = getDivisionChanges(
+            viewWidthInPixels: notification.pianoRollSize.width,
+            // TODO: this constant was copied from the minor division changes
+            // getter in piano_roll_grid.dart
+            minPixelsPerSection: 8,
+            snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+            defaultTimeSignature: pattern?.defaultTimeSignature,
+            timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
+            ticksPerQuarter: state.ticksPerQuarter,
+            timeViewStart: timeView.start,
+            timeViewEnd: timeView.end,
+          );
+
+          if (notification is PianoRollPointerDownNotification) {
+            final notificationTime = notification.time.floor();
+            if (notificationTime < 0) return true;
+
+            int targetTime = getSnappedTime(
+              rawTime: notificationTime,
+              divisionChanges: divisionChanges,
             );
 
-            if (notification is PianoRollPointerDownNotification) {
-              final notificationTime = notification.time.floor();
-              if (notificationTime < 0) return true;
+            // projectCubit.journalStartEntry();
+            pianoRollCubit.addNote(
+              instrumentID: instrumentID,
+              key: notification.note.floor(),
+              velocity: 128,
+              length: 96,
+              offset: targetTime,
+            );
+            // pianoRollCubit.addNote(
+            //       instrumentID: instrumentID,
+            //       key: notification.note.floor() - 1,
+            //       velocity: 128,
+            //       length: 96,
+            //       offset: targetTime,
+            //     );
+            // projectCubit.journalCommitEntry();
+            return true;
+          } else if (notification is PianoRollPointerMoveNotification) {
+            // print(
+            //     "pointer move: ${notification.note}, time: ${notification.time}");
+            return true;
+          } else if (notification is PianoRollPointerUpNotification) {
+            // print(
+            //     "pointer up: ${notification.note}, time: ${notification.time}");
+            return true;
+          } else if (notification
+              is PianoRollTimeSignatureChangeAddNotification) {
+            int targetTime = getSnappedTime(
+              rawTime: notification.time.floor(),
+              divisionChanges: divisionChanges,
+              roundUp: true,
+            );
 
-              int targetTime = -1;
+            // pianoRollCubit
+            print("add at $targetTime");
 
-              // A binary search might be better here, but it would only matter
-              // if there were a *lot* of time signature changes in the pattern
-              for (var i = 0; i < divisionChanges.length; i++) {
-                if (notificationTime >= 0 &&
-                    i < divisionChanges.length - 1 &&
-                    divisionChanges[i + 1].offset <= notificationTime) {
-                  continue;
-                }
-
-                final divisionChange = divisionChanges[i];
-                final snapSize = divisionChange.divisionSnapSize;
-                targetTime = (notificationTime ~/ snapSize) * snapSize;
-                break;
-              }
-
-              final pianoRollCubit = context.read<PianoRollCubit>();
-              // final projectCubit = context.read<ProjectCubit>();
-
-              // projectCubit.journalStartEntry();
-              pianoRollCubit.addNote(
-                instrumentID: instrumentID,
-                key: notification.note.floor(),
-                velocity: 128,
-                length: 96,
-                offset: targetTime,
-              );
-              // pianoRollCubit.addNote(
-              //       instrumentID: instrumentID,
-              //       key: notification.note.floor() - 1,
-              //       velocity: 128,
-              //       length: 96,
-              //       offset: targetTime,
-              //     );
-              // projectCubit.journalCommitEntry();
-              return true;
-            } else if (notification is PianoRollPointerMoveNotification) {
-              // print(
-              //     "pointer move: ${notification.note}, time: ${notification.time}");
-              return true;
-            } else if (notification is PianoRollPointerUpNotification) {
-              // print(
-              //     "pointer up: ${notification.note}, time: ${notification.time}");
-              return true;
-            }
-            return false;
-          },
-          child: child);
+            return true;
+          }
+          return false;
+        },
+        child: child,
+      );
     });
   }
 }
