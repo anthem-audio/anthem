@@ -86,30 +86,60 @@ class TimelineCubit extends Cubit<TimelineState> {
 
   _onModelChanged(List<StateChange> changes) {
     var activePatternChanged = false;
+    var timeSignatureListChanged = false;
+
+    final isPatternTimeline = timelineType == TimelineType.patternTimeline;
 
     for (final change in changes) {
       bool didActivePatternChange(StateChange change) {
         return change.maybeWhen(
-          pattern: (change) => change.maybeMap(
-            patternAdded: (change) => true,
-            patternDeleted: (change) => true,
+          project: (change) => change.maybeMap(
+            activePatternChanged: (change) => true,
             orElse: () => false,
           ),
           orElse: () => false,
         );
       }
 
-      if (timelineType == TimelineType.patternTimeline &&
-          didActivePatternChange(change)) {
+      if (isPatternTimeline && didActivePatternChange(change)) {
         activePatternChanged = true;
       }
+
+      timeSignatureListChanged |= change.maybeWhen(
+        pattern: (change) => change.maybeMap(
+          timeSignatureChangeListUpdated: (change) => isPatternTimeline,
+          orElse: () => false,
+        ),
+        orElse: () => false,
+      );
     }
 
     TimelineState? newState;
 
+    List<TimeSignatureChangeModel> getTimeSignatureChanges() {
+      return isPatternTimeline
+          ? [
+              ...project.song.patterns[project.song.activePatternID]!
+                  .timeSignatureChanges
+            ]
+          // : [
+          //     ...project.song.arrangements[project.song.activeArrangementID]!
+          //         .timeSignatureChanges
+          //   ],
+          : [];
+    }
+
     if (activePatternChanged) {
-      newState =
-          (newState ?? state).copyWith(patternID: project.song.activePatternID);
+      newState = (newState ?? state).copyWith(
+        patternID: project.song.activePatternID,
+        timeSignatureChanges: getTimeSignatureChanges(),
+      );
+    }
+
+    if (timeSignatureListChanged) {
+      newState = (newState ?? state).copyWith(
+        timeSignatureChanges: getTimeSignatureChanges(),
+      );
     }
 
     if (newState != null) {

@@ -102,7 +102,6 @@ class _TimelineState extends State<Timeline> {
                     timeSignatureChanges: state.timeSignatureChanges,
                     timeViewStart: timeView.start,
                     timeViewEnd: timeView.end,
-                    // viewPixelWidth:
                   ),
                   children: (state.timeSignatureChanges)
                       .map(

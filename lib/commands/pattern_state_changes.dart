@@ -34,6 +34,7 @@ class PatternStateChange with _$PatternStateChange {
   const factory PatternStateChange.patternDeleted(ID projectID, ID patternID) = PatternDeleted;
   const factory PatternStateChange.patternNameChanged(ID projectID, ID patternID) = PatternNameChanged;
   const factory PatternStateChange.patternColorChanged(ID projectID, ID patternID) = PatternColorChanged;
+  const factory PatternStateChange.timeSignatureChangeListUpdated(ID projectID, ID patternID) = TimeSignatureChangeListUpdated;
 }
 
 @freezed

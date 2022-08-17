@@ -24,7 +24,9 @@ import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/model/store.dart';
+import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -296,5 +298,20 @@ class PianoRollCubit extends Cubit<PianoRollState> {
 
   void setKeyValueAtTop(double newKeyValueAtTop) {
     emit(state.copyWith(keyValueAtTop: newKeyValueAtTop));
+  }
+
+  void addTimeSignatureChange(TimeSignatureModel timeSignature, Time offset) {
+    if (state.patternID == null) return;
+
+    project.execute(
+      AddTimeSignatureChangeCommand(
+        project: project,
+        patternID: state.patternID!,
+        change: TimeSignatureChangeModel(
+          offset: offset,
+          timeSignature: timeSignature,
+        ),
+      ),
+    );
   }
 }
