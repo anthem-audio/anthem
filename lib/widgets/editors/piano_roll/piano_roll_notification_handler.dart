@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -136,8 +137,7 @@ class PianoRollNotificationHandler extends StatelessWidget {
               roundUp: true,
             );
 
-            // pianoRollCubit
-            print("add at $targetTime");
+            pianoRollCubit.addTimeSignatureChange(TimeSignatureModel(4, 4), targetTime);
 
             return true;
           }
