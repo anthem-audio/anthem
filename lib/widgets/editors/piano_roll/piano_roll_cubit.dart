@@ -20,6 +20,7 @@
 import 'dart:async';
 
 import 'package:anthem/commands/pattern_commands.dart';
+import 'package:anthem/commands/pattern_state_changes.dart';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
@@ -77,26 +78,45 @@ class PianoRollCubit extends Cubit<PianoRollState> {
   _onModelChanged(List<StateChange> changes) {
     var updateActivePattern = false;
     var updateActiveGenerator = false;
+    var timeMarkersChanged = false;
 
-    void updateActivePatternFn(change) => updateActivePattern = true;
+    void noteChangedFn(NoteStateChange change) {
+      if (change.patternID == project.song.activePatternID) {
+        updateActivePattern = true;
+      }
+    }
 
     for (final change in changes) {
-      change.whenOrNull(project: (change) {
-        change.mapOrNull(
-          activePatternChanged: updateActivePatternFn,
-          activeGeneratorChanged: (change) {
-            updateActivePatternFn(change);
-            updateActiveGenerator = true;
-          },
-        );
-      }, note: (change) {
-        change.mapOrNull(
-          noteAdded: updateActivePatternFn,
-          noteDeleted: updateActivePatternFn,
-          noteMoved: updateActivePatternFn,
-          noteResized: updateActivePatternFn,
-        );
-      });
+      change.whenOrNull(
+        project: (change) {
+          change.mapOrNull(
+            activePatternChanged: (change) {
+              updateActivePattern = true;
+            },
+            activeGeneratorChanged: (change) {
+              updateActivePattern = true;
+              updateActiveGenerator = true;
+            },
+          );
+        },
+        note: (change) {
+          change.mapOrNull(
+            noteAdded: noteChangedFn,
+            noteDeleted: noteChangedFn,
+            noteMoved: noteChangedFn,
+            noteResized: noteChangedFn,
+          );
+        },
+        pattern: (change) {
+          change.mapOrNull(
+            timeSignatureChangeListUpdated: (change) {
+              if (change.patternID == project.song.activePatternID) {
+                timeMarkersChanged = true;
+              }
+            },
+          );
+        },
+      );
     }
 
     PianoRollState? newState;
@@ -138,6 +158,15 @@ class PianoRollCubit extends Cubit<PianoRollState> {
               minPaddingInBarMultiples: 4,
             ) ??
             state.ticksPerQuarter * 4 * 8,
+      );
+    }
+
+    if (timeMarkersChanged) {
+      final timeSignatureChanges = project.song
+              .patterns[project.song.activePatternID]?.timeSignatureChanges ??
+          [];
+      newState = (newState ?? state).copyWith(
+        hasTimeMarkers: timeSignatureChanges.isNotEmpty,
       );
     }
 

@@ -185,13 +185,10 @@ class _PianoRollContentState extends State<_PianoRollContent> {
         builder: (context, state) {
       final cubit = BlocProvider.of<PianoRollCubit>(context);
 
-      final project = Store.instance.projects[state.projectID];
-      final pattern = project?.song.patterns[state.patternID];
-
       final timeView = context.watch<TimeView>();
 
       final timelineHeight =
-          (pattern?.timeSignatureChanges.length ?? 0) > 0 ? 42.0 : 21.0;
+          state.hasTimeMarkers ? 42.0 : 21.0;
 
       final notes = state.notes;
 
