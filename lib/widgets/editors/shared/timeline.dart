@@ -107,9 +107,12 @@ class _TimelineState extends State<Timeline> {
                       .map(
                         (change) => LayoutId(
                           id: change.offset,
-                          child: TimelineLabel(
-                            text:
-                                "${change.timeSignature.numerator}/${change.timeSignature.denominator}",
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.resizeLeftRight,
+                            child: TimelineLabel(
+                              text:
+                                  "${change.timeSignature.numerator}/${change.timeSignature.denominator}",
+                            ),
                           ),
                         ),
                       )
@@ -129,13 +132,11 @@ class TimeSignatureLabelLayoutDelegate extends MultiChildLayoutDelegate {
     required this.timeSignatureChanges,
     required this.timeViewStart,
     required this.timeViewEnd,
-    // required this.viewPixelWidth,
   });
 
   List<TimeSignatureChangeModel> timeSignatureChanges;
   double timeViewStart;
   double timeViewEnd;
-  // double viewPixelWidth;
 
   @override
   void performLayout(Size size) {
@@ -161,8 +162,6 @@ class TimeSignatureLabelLayoutDelegate extends MultiChildLayoutDelegate {
 
   @override
   bool shouldRelayout(TimeSignatureLabelLayoutDelegate oldDelegate) {
-    // This compares two lists. I have no idea if that makes sense in flutter
-    // but we may get a stale layout doing that.
     return oldDelegate.timeViewStart != timeViewStart ||
         oldDelegate.timeViewEnd != timeViewEnd ||
         oldDelegate.timeSignatureChanges != timeSignatureChanges;
@@ -193,7 +192,10 @@ class TimelineLabel extends StatelessWidget {
           ),
           padding: const EdgeInsets.only(left: 4, right: 4),
           height: 21,
-          child: Text(text),
+          child: Text(
+            text,
+            style: TextStyle(color: Theme.text.main),
+          ),
         ),
       ],
     );
@@ -259,22 +261,27 @@ class TimelinePainter extends CustomPainter {
 
       while (timePtr < nextDivisionStart && timePtr < timeViewEnd) {
         final x = timeToPixels(
-            timeViewStart: timeViewStart,
-            timeViewEnd: timeViewEnd,
-            viewPixelWidth: size.width,
-            time: timePtr.toDouble());
+          timeViewStart: timeViewStart,
+          timeViewEnd: timeViewEnd,
+          viewPixelWidth: size.width,
+          time: timePtr.toDouble(),
+        );
 
         TextSpan span = TextSpan(
-            style: TextStyle(color: Theme.text.main),
-            text: barNumber.toString());
+          style: TextStyle(color: Theme.text.main),
+          text: barNumber.toString(),
+        );
         TextPainter textPainter = TextPainter(
-            text: span,
-            textAlign: TextAlign.left,
-            textDirection: TextDirection.ltr);
+          text: span,
+          textAlign: TextAlign.left,
+          textDirection: TextDirection.ltr,
+        );
         textPainter.layout();
-        // TODO: replace height constant
+        // TODO: replace height constant?
         textPainter.paint(
-            canvas, Offset(x, (21 - textPainter.size.height) / 2));
+          canvas,
+          Offset(x, (21 - textPainter.size.height) / 2),
+        );
 
         timePtr += thisDivision.divisionRenderSize;
         barNumber += thisDivision.distanceBetween;
