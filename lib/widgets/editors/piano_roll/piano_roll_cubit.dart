@@ -61,7 +61,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
               lastContent: project.song.ticksPerQuarter *
                   // TODO: Use actual project time signature
                   4 * // 4/4 time signature
-                  8, // 8 bars
+                  16, // 16 bars
             );
           })(),
         ) {
