@@ -107,12 +107,9 @@ class _TimelineState extends State<Timeline> {
                       .map(
                         (change) => LayoutId(
                           id: change.offset,
-                          child: MouseRegion(
-                            cursor: SystemMouseCursors.resizeLeftRight,
-                            child: TimelineLabel(
-                              text:
-                                  "${change.timeSignature.numerator}/${change.timeSignature.denominator}",
-                            ),
+                          child: TimelineLabel(
+                            text:
+                                "${change.timeSignature.numerator}/${change.timeSignature.denominator}",
                           ),
                         ),
                       )
@@ -175,26 +172,37 @@ class TimelineLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Stack(
+      fit: StackFit.passthrough,
+      clipBehavior: Clip.none,
       children: [
-        Container(
-          color: const Color(0xFFFFFFFF).withOpacity(0.6),
-          width: 2,
-          height: 21,
-        ),
-        Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFFFFF).withOpacity(0.08),
-            borderRadius: const BorderRadius.only(
-              topRight: Radius.circular(3),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              color: const Color(0xFFFFFFFF).withOpacity(0.6),
+              width: 2,
+              height: 21,
             ),
-          ),
-          padding: const EdgeInsets.only(left: 4, right: 4),
-          height: 21,
-          child: Text(
-            text,
-            style: TextStyle(color: Theme.text.main),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFFFF).withOpacity(0.08),
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(3),
+                ),
+              ),
+              padding: const EdgeInsets.only(left: 4, right: 4),
+              height: 21,
+              child: Text(
+                text,
+                style: TextStyle(color: Theme.text.main),
+              ),
+            ),
+          ],
+        ),
+        Positioned.fill(
+          child: Container(
+            color: const Color(0x88123456),
           ),
         ),
       ],
