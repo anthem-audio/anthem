@@ -34,6 +34,8 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'piano_roll_state.dart';
 part 'piano_roll_cubit.freezed.dart';
 
+const noContentBars = 16;
+
 class PianoRollCubit extends Cubit<PianoRollState> {
   late final ProjectModel project;
 
@@ -61,7 +63,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
               lastContent: project.song.ticksPerQuarter *
                   // TODO: Use actual project time signature
                   4 * // 4/4 time signature
-                  16, // 16 bars
+                  noContentBars, // noContentBars bars
             );
           })(),
         ) {
@@ -137,7 +139,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
               barMultiple: 4,
               minPaddingInBarMultiples: 4,
             ) ??
-            state.ticksPerQuarter * 4 * 8,
+            state.ticksPerQuarter * 4 * noContentBars,
       );
     }
 
@@ -157,7 +159,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
               barMultiple: 4,
               minPaddingInBarMultiples: 4,
             ) ??
-            state.ticksPerQuarter * 4 * 8,
+            state.ticksPerQuarter * 4 * noContentBars,
       );
     }
 
