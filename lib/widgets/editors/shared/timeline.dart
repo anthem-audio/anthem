@@ -51,72 +51,44 @@ class _TimelineState extends State<Timeline> {
       builder: (context, state) {
         var timeView = context.watch<TimeView>();
 
-        return Listener(
-          onPointerDown: (e) {
-            dragStartPixelValue = e.localPosition.dx;
-            dragStartTimeViewStartValue = timeView.start;
-            dragStartTimeViewEndValue = timeView.end;
-          },
-          onPointerMove: (e) {
-            final keyboardModifiers =
-                Provider.of<KeyboardModifiers>(context, listen: false);
-            if (!keyboardModifiers.alt) {
-              final viewWidth = context.size?.width;
-              if (viewWidth == null) return;
-
-              var pixelsPerTick = viewWidth / (timeView.end - timeView.start);
-              final tickDelta =
-                  (e.localPosition.dx - dragStartPixelValue) / pixelsPerTick;
-              timeView.setStart(dragStartTimeViewStartValue - tickDelta);
-              timeView.setEnd(dragStartTimeViewEndValue - tickDelta);
-            } else {
-              final oldSize =
-                  dragStartTimeViewEndValue - dragStartTimeViewStartValue;
-              final newSize = oldSize *
-                  pow(2, 0.01 * (dragStartPixelValue - e.localPosition.dx));
-              final delta = newSize - oldSize;
-              timeView.setStart(dragStartTimeViewStartValue - delta * 0.5);
-              timeView.setEnd(dragStartTimeViewEndValue + delta * 0.5);
-            }
-          },
-          child: ClipRect(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Container(
-                  color: Theme.panel.accent,
-                  child: ClipRect(
-                    child: CustomPaint(
-                      painter: TimelinePainter(
-                        timeViewStart: timeView.start,
-                        timeViewEnd: timeView.end,
-                        ticksPerQuarter: state.ticksPerQuarter,
-                        defaultTimeSignature: state.defaultTimeSignature,
-                        timeSignatureChanges: state.timeSignatureChanges,
-                      ),
+        return ClipRect(
+          child: Stack(
+            fit: StackFit.expand,
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                color: Theme.panel.accent,
+                child: ClipRect(
+                  child: CustomPaint(
+                    painter: TimelinePainter(
+                      timeViewStart: timeView.start,
+                      timeViewEnd: timeView.end,
+                      ticksPerQuarter: state.ticksPerQuarter,
+                      defaultTimeSignature: state.defaultTimeSignature,
+                      timeSignatureChanges: state.timeSignatureChanges,
                     ),
                   ),
                 ),
-                CustomMultiChildLayout(
-                  delegate: TimeSignatureLabelLayoutDelegate(
-                    timeSignatureChanges: state.timeSignatureChanges,
-                    timeViewStart: timeView.start,
-                    timeViewEnd: timeView.end,
-                  ),
-                  children: (state.timeSignatureChanges)
-                      .map(
-                        (change) => LayoutId(
-                          id: change.offset,
-                          child: TimelineLabel(
-                            text:
-                                "${change.timeSignature.numerator}/${change.timeSignature.denominator}",
-                          ),
-                        ),
-                      )
-                      .toList(),
+              ),
+              CustomMultiChildLayout(
+                delegate: TimeSignatureLabelLayoutDelegate(
+                  timeSignatureChanges: state.timeSignatureChanges,
+                  timeViewStart: timeView.start,
+                  timeViewEnd: timeView.end,
                 ),
-              ],
-            ),
+                children: (state.timeSignatureChanges)
+                    .map(
+                      (change) => LayoutId(
+                        id: change.offset,
+                        child: TimelineLabel(
+                          text:
+                              "${change.timeSignature.numerator}/${change.timeSignature.denominator}",
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
           ),
         );
       },
@@ -153,7 +125,7 @@ class TimeSignatureLabelLayoutDelegate extends MultiChildLayoutDelegate {
         time: change.offset.toDouble(),
       );
 
-      positionChild(change.offset, Offset(x, 21));
+      positionChild(change.offset, Offset(x - _labelHandleMouseAreaPadding, 21));
     }
   }
 
@@ -165,7 +137,11 @@ class TimeSignatureLabelLayoutDelegate extends MultiChildLayoutDelegate {
   }
 }
 
+const _labelHandleWidth = 2.0;
+const _labelHandleMouseAreaPadding = 5.0;
+
 class TimelineLabel extends StatelessWidget {
+
   const TimelineLabel({Key? key, required this.text}) : super(key: key);
 
   final String text;
@@ -176,33 +152,49 @@ class TimelineLabel extends StatelessWidget {
       fit: StackFit.passthrough,
       clipBehavior: Clip.none,
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              color: const Color(0xFFFFFFFF).withOpacity(0.6),
-              width: 2,
-              height: 21,
-            ),
-            Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFFFF).withOpacity(0.08),
-                borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(3),
+        Positioned(
+          left: _labelHandleMouseAreaPadding,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                color: const Color(0xFFFFFFFF).withOpacity(0.6),
+                width: _labelHandleWidth,
+                height: 21,
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFFFF).withOpacity(0.08),
+                  borderRadius: const BorderRadius.only(
+                    topRight: Radius.circular(3),
+                  ),
+                ),
+                padding: const EdgeInsets.only(left: 4, right: 4),
+                height: 21,
+                child: Text(
+                  text,
+                  style: TextStyle(color: Theme.text.main),
                 ),
               ),
-              padding: const EdgeInsets.only(left: 4, right: 4),
-              height: 21,
-              child: Text(
-                text,
-                style: TextStyle(color: Theme.text.main),
+            ],
+          ),
+        ),
+        Positioned(
+          left: 0,
+          top: 0,
+          bottom: 0,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.resizeLeftRight,
+            child: Listener(
+              behavior: HitTestBehavior.opaque,
+              onPointerDown: (event) {
+                print("hi");
+              },
+              child: Container(
+                color: const Color(0x88123456),
+                width: 12,
               ),
             ),
-          ],
-        ),
-        Positioned.fill(
-          child: Container(
-            color: const Color(0x88123456),
           ),
         ),
       ],
