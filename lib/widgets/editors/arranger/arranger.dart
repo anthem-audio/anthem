@@ -35,8 +35,8 @@ import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker_cu
 import 'package:anthem/widgets/editors/arranger/track_header.dart';
 import 'package:anthem/widgets/editors/arranger/track_header_cubit.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
-import 'package:anthem/widgets/editors/shared/timeline.dart';
-import 'package:anthem/widgets/editors/shared/timeline_cubit.dart';
+import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
+import 'package:anthem/widgets/editors/shared/timeline/timeline_cubit.dart';
 import 'package:anthem/widgets/editors/shared/tool_selector.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';

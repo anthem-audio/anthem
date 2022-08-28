@@ -19,19 +19,14 @@
 
 // cspell:ignore relayout
 
-import 'dart:math';
-
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/editors/shared/timeline_cubit.dart';
-import 'package:anthem/widgets/main_window/main_window_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:provider/provider.dart';
-
-import 'helpers/time_helpers.dart';
-import 'helpers/types.dart';
+import '../helpers/time_helpers.dart';
+import '../helpers/types.dart';
+import 'timeline_cubit.dart';
 
 class Timeline extends StatefulWidget {
   const Timeline({Key? key}) : super(key: key);
@@ -188,7 +183,7 @@ class TimelineLabel extends StatelessWidget {
             child: Listener(
               behavior: HitTestBehavior.opaque,
               onPointerDown: (event) {
-                print("hi");
+                
               },
               child: Container(
                 color: const Color(0x88123456),
