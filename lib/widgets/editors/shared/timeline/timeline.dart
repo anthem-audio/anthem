@@ -19,10 +19,13 @@
 
 // cspell:ignore relayout
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/editors/shared/timeline/timeline_notifications.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 import '../helpers/time_helpers.dart';
 import '../helpers/types.dart';
@@ -44,48 +47,52 @@ class _TimelineState extends State<Timeline> {
   Widget build(BuildContext context) {
     return BlocBuilder<TimelineCubit, TimelineState>(
       builder: (context, state) {
-        var timeView = context.watch<TimeView>();
-
-        return ClipRect(
-          child: Stack(
-            fit: StackFit.expand,
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                color: Theme.panel.accent,
-                child: ClipRect(
-                  child: CustomPaint(
-                    painter: TimelinePainter(
-                      timeViewStart: timeView.start,
-                      timeViewEnd: timeView.end,
-                      ticksPerQuarter: state.ticksPerQuarter,
-                      defaultTimeSignature: state.defaultTimeSignature,
-                      timeSignatureChanges: state.timeSignatureChanges,
+        return LayoutBuilder(builder: (context, constraints) {
+          var timeView = context.watch<TimeView>();
+          return ClipRect(
+            child: Stack(
+              fit: StackFit.expand,
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  color: Theme.panel.accent,
+                  child: ClipRect(
+                    child: CustomPaint(
+                      painter: TimelinePainter(
+                        timeViewStart: timeView.start,
+                        timeViewEnd: timeView.end,
+                        ticksPerQuarter: state.ticksPerQuarter,
+                        defaultTimeSignature: state.defaultTimeSignature,
+                        timeSignatureChanges: state.timeSignatureChanges,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              CustomMultiChildLayout(
-                delegate: TimeSignatureLabelLayoutDelegate(
-                  timeSignatureChanges: state.timeSignatureChanges,
-                  timeViewStart: timeView.start,
-                  timeViewEnd: timeView.end,
-                ),
-                children: (state.timeSignatureChanges)
-                    .map(
-                      (change) => LayoutId(
-                        id: change.offset,
-                        child: TimelineLabel(
-                          text:
-                              "${change.timeSignature.numerator}/${change.timeSignature.denominator}",
+                CustomMultiChildLayout(
+                  delegate: TimeSignatureLabelLayoutDelegate(
+                    timeSignatureChanges: state.timeSignatureChanges,
+                    timeViewStart: timeView.start,
+                    timeViewEnd: timeView.end,
+                  ),
+                  children: (state.timeSignatureChanges)
+                      .map(
+                        (change) => LayoutId(
+                          id: change.offset,
+                          child: TimelineLabel(
+                            text:
+                                "${change.timeSignature.numerator}/${change.timeSignature.denominator}",
+                            id: change.id,
+                            offset: change.offset,
+                            timelineWidth: constraints.maxWidth,
+                          ),
                         ),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ],
-          ),
-        );
+                      )
+                      .toList(),
+                ),
+              ],
+            ),
+          );
+        });
       },
     );
   }
@@ -120,7 +127,8 @@ class TimeSignatureLabelLayoutDelegate extends MultiChildLayoutDelegate {
         time: change.offset.toDouble(),
       );
 
-      positionChild(change.offset, Offset(x - _labelHandleMouseAreaPadding, 21));
+      positionChild(
+          change.offset, Offset(x - _labelHandleMouseAreaPadding, 21));
     }
   }
 
@@ -135,11 +143,27 @@ class TimeSignatureLabelLayoutDelegate extends MultiChildLayoutDelegate {
 const _labelHandleWidth = 2.0;
 const _labelHandleMouseAreaPadding = 5.0;
 
-class TimelineLabel extends StatelessWidget {
-
-  const TimelineLabel({Key? key, required this.text}) : super(key: key);
-
+class TimelineLabel extends StatefulWidget {
   final String text;
+  final ID id;
+  final Time offset;
+  final double timelineWidth;
+
+  const TimelineLabel({
+    Key? key,
+    required this.text,
+    required this.id,
+    required this.offset,
+    required this.timelineWidth,
+  }) : super(key: key);
+
+  @override
+  State<TimelineLabel> createState() => _TimelineLabelState();
+}
+
+class _TimelineLabelState extends State<TimelineLabel> {
+  double pointerStart = 0;
+  Time timeStart = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -167,7 +191,7 @@ class TimelineLabel extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 4, right: 4),
                 height: 21,
                 child: Text(
-                  text,
+                  widget.text,
                   style: TextStyle(color: Theme.text.main),
                 ),
               ),
@@ -183,7 +207,35 @@ class TimelineLabel extends StatelessWidget {
             child: Listener(
               behavior: HitTestBehavior.opaque,
               onPointerDown: (event) {
-                
+                pointerStart = event.position.dx;
+                timeStart = widget.offset;
+                TimelineLabelPointerDownNotification(
+                  time: widget.offset.toDouble(),
+                  labelID: widget.id,
+                  labelType: TimelineLabelType.timeSignatureChange,
+                ).dispatch(context);
+              },
+              onPointerMove: (event) {
+                final timeView = Provider.of<TimeView>(context, listen: false);
+                final time = (event.position.dx - pointerStart) *
+                    timeView.width /
+                    widget.timelineWidth;
+                TimelineLabelPointerMoveNotification(
+                  time: time,
+                  labelID: widget.id,
+                  labelType: TimelineLabelType.timeSignatureChange,
+                ).dispatch(context);
+              },
+              onPointerUp: (event) {
+                final timeView = Provider.of<TimeView>(context, listen: false);
+                final time = (event.position.dx - pointerStart) *
+                    timeView.width /
+                    widget.timelineWidth;
+                TimelineLabelPointerUpNotification(
+                  time: time,
+                  labelID: widget.id,
+                  labelType: TimelineLabelType.timeSignatureChange,
+                ).dispatch(context);
               },
               child: Container(
                 color: const Color(0x88123456),
