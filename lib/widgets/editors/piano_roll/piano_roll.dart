@@ -44,6 +44,7 @@ import 'package:provider/provider.dart';
 
 import '../shared/helpers/time_helpers.dart';
 import '../shared/helpers/types.dart';
+import '../shared/timeline/timeline_notification_handler.dart';
 import '../shared/timeline/timeline_cubit.dart';
 import 'helpers.dart';
 import 'piano_roll_grid.dart';
@@ -187,8 +188,7 @@ class _PianoRollContentState extends State<_PianoRollContent> {
 
       final timeView = context.watch<TimeView>();
 
-      final timelineHeight =
-          state.hasTimeMarkers ? 42.0 : 21.0;
+      final timelineHeight = state.hasTimeMarkers ? 42.0 : 21.0;
 
       final notes = state.notes;
 
@@ -268,7 +268,9 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                                         timelineType:
                                             TimelineType.patternTimeline,
                                       ),
-                                      child: const Timeline(),
+                                      child: const TimelineNotificationHandler(
+                                        child: Timeline(),
+                                      ),
                                     ),
                                   ),
                                 ],
