@@ -45,28 +45,6 @@ void _removePatternFromProject({
   project.song.patterns.remove(patternID);
 }
 
-void _addTimeSignatureChangeToPattern({
-  required ProjectModel project,
-  required ID patternID,
-  required TimeSignatureChangeModel change,
-}) {
-  final pattern = project.song.patterns[patternID]!;
-  pattern.timeSignatureChanges.add(change);
-  pattern.timeSignatureChanges.sort((a, b) => a.offset.compareTo(b.offset));
-}
-
-void _removeTimeSignatureChangeFromPattern({
-  required ProjectModel project,
-  required ID patternID,
-  required ID changeID,
-}) {
-  final pattern = project.song.patterns[patternID]!;
-  final change = pattern.timeSignatureChanges
-      .firstWhere((change) => change.id == changeID);
-  pattern.timeSignatureChanges.remove(change);
-  // Should still be sorted, so no need to sort here
-}
-
 class AddPatternCommand extends Command {
   PatternModel pattern;
   int index;
@@ -470,103 +448,6 @@ class ResizeNoteCommand extends Command {
           note.id,
         ),
       )
-    ];
-  }
-}
-
-class AddTimeSignatureChangeCommand extends Command {
-  ID patternID;
-  // This is mutable, which might cause some fun problems.
-  // TODO: Use freezed for models?
-  TimeSignatureChangeModel change;
-
-  AddTimeSignatureChangeCommand({
-    required ProjectModel project,
-    required this.patternID,
-    required this.change,
-  }) : super(project);
-
-  @override
-  List<StateChange> execute() {
-    _addTimeSignatureChangeToPattern(
-      project: project,
-      patternID: patternID,
-      change: change,
-    );
-    return [
-      StateChange.pattern(
-        PatternStateChange.timeSignatureChangeListUpdated(
-          project.id,
-          patternID,
-        ),
-      ),
-    ];
-  }
-
-  @override
-  List<StateChange> rollback() {
-    _removeTimeSignatureChangeFromPattern(
-      project: project,
-      patternID: patternID,
-      changeID: change.id,
-    );
-    return [
-      StateChange.pattern(
-        PatternStateChange.timeSignatureChangeListUpdated(
-          project.id,
-          patternID,
-        ),
-      ),
-    ];
-  }
-}
-
-class RemoveTimeSignatureChangeCommand extends Command {
-  ID patternID;
-  // This is mutable, which might cause some fun problems.
-  // TODO: Use freezed for models?
-  late TimeSignatureChangeModel change;
-
-  RemoveTimeSignatureChangeCommand({
-    required ProjectModel project,
-    required this.patternID,
-    required ID changeID,
-  }) : super(project) {
-    change = project.song.patterns[patternID]!.timeSignatureChanges
-        .firstWhere((change) => change.id == changeID);
-  }
-
-  @override
-  List<StateChange> execute() {
-    _removeTimeSignatureChangeFromPattern(
-      project: project,
-      patternID: patternID,
-      changeID: change.id,
-    );
-    return [
-      StateChange.pattern(
-        PatternStateChange.timeSignatureChangeListUpdated(
-          project.id,
-          patternID,
-        ),
-      ),
-    ];
-  }
-
-  @override
-  List<StateChange> rollback() {
-    _addTimeSignatureChangeToPattern(
-      project: project,
-      patternID: patternID,
-      change: change,
-    );
-    return [
-      StateChange.pattern(
-        PatternStateChange.timeSignatureChangeListUpdated(
-          project.id,
-          patternID,
-        ),
-      ),
     ];
   }
 }
