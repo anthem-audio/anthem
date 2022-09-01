@@ -28,6 +28,8 @@ import 'package:anthem/model/shared/time_signature.dart';
 
 import 'command.dart';
 
+enum TimelineKind { pattern, arrangement }
+
 void _addTimeSignatureChangeToPattern({
   required ProjectModel project,
   required ID patternID,
@@ -51,99 +53,127 @@ void _removeTimeSignatureChangeFromPattern({
 }
 
 class AddTimeSignatureChangeCommand extends Command {
-  ID patternID;
-  // This is mutable, which might cause some fun problems.
-  // TODO: Use freezed for models?
+  TimelineKind timelineKind;
+  ID? patternID;
+  ID? arrangementID;
   TimeSignatureChangeModel change;
 
   AddTimeSignatureChangeCommand({
+    required this.timelineKind,
     required ProjectModel project,
-    required this.patternID,
+    this.patternID,
+    this.arrangementID,
     required this.change,
   }) : super(project);
 
   @override
   List<StateChange> execute() {
-    _addTimeSignatureChangeToPattern(
-      project: project,
-      patternID: patternID,
-      change: change,
-    );
-    return [
-      StateChange.pattern(
-        PatternStateChange.timeSignatureChangeListUpdated(
-          project.id,
-          patternID,
+    if (timelineKind == TimelineKind.pattern) {
+      _addTimeSignatureChangeToPattern(
+        project: project,
+        patternID: patternID!,
+        change: change,
+      );
+      return [
+        StateChange.pattern(
+          PatternStateChange.timeSignatureChangeListUpdated(
+            project.id,
+            patternID!,
+          ),
         ),
-      ),
-    ];
+      ];
+    } else {
+      throw Exception(
+          "Arrangement time signature changes aren't supported yet.");
+    }
   }
 
   @override
   List<StateChange> rollback() {
-    _removeTimeSignatureChangeFromPattern(
-      project: project,
-      patternID: patternID,
-      changeID: change.id,
-    );
-    return [
-      StateChange.pattern(
-        PatternStateChange.timeSignatureChangeListUpdated(
-          project.id,
-          patternID,
+    if (timelineKind == TimelineKind.pattern) {
+      _removeTimeSignatureChangeFromPattern(
+        project: project,
+        patternID: patternID!,
+        changeID: change.id,
+      );
+      return [
+        StateChange.pattern(
+          PatternStateChange.timeSignatureChangeListUpdated(
+            project.id,
+            patternID!,
+          ),
         ),
-      ),
-    ];
+      ];
+    } else {
+      throw Exception(
+          "Arrangement time signature changes aren't supported yet.");
+    }
   }
 }
 
 class RemoveTimeSignatureChangeCommand extends Command {
-  ID patternID;
-  // This is mutable, which might cause some fun problems.
-  // TODO: Use freezed for models?
+  TimelineKind timelineKind;
+  ID? patternID;
+  ID? arrangementID;
   late TimeSignatureChangeModel change;
 
   RemoveTimeSignatureChangeCommand({
+    required this.timelineKind,
     required ProjectModel project,
-    required this.patternID,
+    this.patternID,
+    this.arrangementID,
     required ID changeID,
   }) : super(project) {
-    change = project.song.patterns[patternID]!.timeSignatureChanges
-        .firstWhere((change) => change.id == changeID);
+    if (timelineKind == TimelineKind.pattern) {
+      change = project.song.patterns[patternID]!.timeSignatureChanges
+          .firstWhere((change) => change.id == changeID);
+    } else {
+      throw Exception(
+          "Arrangement time signature changes aren't supported yet.");
+    }
   }
 
   @override
   List<StateChange> execute() {
-    _removeTimeSignatureChangeFromPattern(
-      project: project,
-      patternID: patternID,
-      changeID: change.id,
-    );
-    return [
-      StateChange.pattern(
-        PatternStateChange.timeSignatureChangeListUpdated(
-          project.id,
-          patternID,
+    if (timelineKind == TimelineKind.pattern) {
+      _removeTimeSignatureChangeFromPattern(
+        project: project,
+        patternID: patternID!,
+        changeID: change.id,
+      );
+      return [
+        StateChange.pattern(
+          PatternStateChange.timeSignatureChangeListUpdated(
+            project.id,
+            patternID!,
+          ),
         ),
-      ),
-    ];
+      ];
+    } else {
+      throw Exception(
+          "Arrangement time signature changes aren't supported yet.");
+    }
   }
 
   @override
   List<StateChange> rollback() {
-    _addTimeSignatureChangeToPattern(
-      project: project,
-      patternID: patternID,
-      change: change,
-    );
-    return [
-      StateChange.pattern(
-        PatternStateChange.timeSignatureChangeListUpdated(
-          project.id,
-          patternID,
+    if (timelineKind == TimelineKind.pattern) {
+      _addTimeSignatureChangeToPattern(
+        project: project,
+        patternID: patternID!,
+        change: change,
+      );
+      return [
+        StateChange.pattern(
+          PatternStateChange.timeSignatureChangeListUpdated(
+            project.id,
+            patternID!,
+          ),
         ),
-      ),
-    ];
+      ];
+    } else {
+      throw Exception(
+          "Arrangement time signature changes aren't supported yet.");
+    }
   }
 }
-

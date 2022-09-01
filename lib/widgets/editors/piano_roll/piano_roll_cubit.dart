@@ -337,6 +337,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
 
     project.execute(
       AddTimeSignatureChangeCommand(
+        timelineKind: TimelineKind.pattern,
         project: project,
         patternID: state.patternID!,
         change: TimeSignatureChangeModel(
