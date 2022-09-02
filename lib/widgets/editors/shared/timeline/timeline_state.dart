@@ -19,15 +19,22 @@
 
 part of 'timeline_cubit.dart';
 
-// Workaround for https://github.com/rrousselGit/freezed/issues/653
-@Freezed(makeCollectionsUnmodifiable: false)
-class TimelineState with _$TimelineState {
+// Hack: Wrapping this allows us to trigger re-renders in flutter more easily.
+// Freezed overrides ==, but that means that cloning the list of time signature
+// changes isn't enough to trigger a re-render.
+class TimeSignatureChangeListWrapper {
+  List<TimeSignatureChangeModel> inner;
 
+  TimeSignatureChangeListWrapper({required this.inner});
+}
+
+@Freezed()
+class TimelineState with _$TimelineState {
   factory TimelineState({
     required ID? patternID,
     required ID? arrangementID,
     required int ticksPerQuarter,
     required TimeSignatureModel defaultTimeSignature,
-    required List<TimeSignatureChangeModel> timeSignatureChanges,
+    required TimeSignatureChangeListWrapper timeSignatureChanges,
   }) = _TimelineState;
 }

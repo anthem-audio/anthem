@@ -63,18 +63,18 @@ class _TimelineState extends State<Timeline> {
                         timeViewEnd: timeView.end,
                         ticksPerQuarter: state.ticksPerQuarter,
                         defaultTimeSignature: state.defaultTimeSignature,
-                        timeSignatureChanges: state.timeSignatureChanges,
+                        timeSignatureChanges: state.timeSignatureChanges.inner,
                       ),
                     ),
                   ),
                 ),
                 CustomMultiChildLayout(
                   delegate: TimeSignatureLabelLayoutDelegate(
-                    timeSignatureChanges: state.timeSignatureChanges,
+                    timeSignatureChanges: state.timeSignatureChanges.inner,
                     timeViewStart: timeView.start,
                     timeViewEnd: timeView.end,
                   ),
-                  children: (state.timeSignatureChanges)
+                  children: state.timeSignatureChanges.inner
                       .map(
                         (change) => LayoutId(
                           id: change.offset,
@@ -84,6 +84,7 @@ class _TimelineState extends State<Timeline> {
                             id: change.id,
                             offset: change.offset,
                             timelineWidth: constraints.maxWidth,
+                            stableBuildContext: context,
                           ),
                         ),
                       )
@@ -148,6 +149,9 @@ class TimelineLabel extends StatefulWidget {
   final ID id;
   final Time offset;
   final double timelineWidth;
+  // We need to pass in the parent's build context, since our build context
+  // doesn't stay valid during event handling.
+  final BuildContext stableBuildContext;
 
   const TimelineLabel({
     Key? key,
@@ -155,6 +159,7 @@ class TimelineLabel extends StatefulWidget {
     required this.id,
     required this.offset,
     required this.timelineWidth,
+    required this.stableBuildContext,
   }) : super(key: key);
 
   @override
@@ -213,10 +218,12 @@ class _TimelineLabelState extends State<TimelineLabel> {
                   time: widget.offset.toDouble(),
                   labelID: widget.id,
                   labelType: TimelineLabelType.timeSignatureChange,
-                ).dispatch(context);
+                ).dispatch(widget.stableBuildContext);
               },
               onPointerMove: (event) {
-                final timeView = Provider.of<TimeView>(context, listen: false);
+                final timeView = Provider.of<TimeView>(
+                    widget.stableBuildContext,
+                    listen: false);
                 final time = (event.position.dx - pointerStart) *
                     timeView.width /
                     widget.timelineWidth;
@@ -224,10 +231,12 @@ class _TimelineLabelState extends State<TimelineLabel> {
                   time: time,
                   labelID: widget.id,
                   labelType: TimelineLabelType.timeSignatureChange,
-                ).dispatch(context);
+                ).dispatch(widget.stableBuildContext);
               },
               onPointerUp: (event) {
-                final timeView = Provider.of<TimeView>(context, listen: false);
+                final timeView = Provider.of<TimeView>(
+                    widget.stableBuildContext,
+                    listen: false);
                 final time = (event.position.dx - pointerStart) *
                     timeView.width /
                     widget.timelineWidth;
@@ -235,7 +244,7 @@ class _TimelineLabelState extends State<TimelineLabel> {
                   time: time,
                   labelID: widget.id,
                   labelType: TimelineLabelType.timeSignatureChange,
-                ).dispatch(context);
+                ).dispatch(widget.stableBuildContext);
               },
               child: Container(
                 color: const Color(0x88123456),

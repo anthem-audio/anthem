@@ -25,6 +25,7 @@ import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
+import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 
 import 'command.dart';
 
@@ -175,5 +176,59 @@ class RemoveTimeSignatureChangeCommand extends Command {
       throw Exception(
           "Arrangement time signature changes aren't supported yet.");
     }
+  }
+}
+
+class MoveTimeSignatureChangeCommand extends Command {
+  TimelineKind timelineKind;
+  ID? patternID;
+  ID? arrangementID;
+  late TimeSignatureChangeModel change;
+  late Time oldOffset;
+  Time newOffset;
+
+  MoveTimeSignatureChangeCommand({
+    required ProjectModel project,
+    required this.timelineKind,
+    this.patternID,
+    this.arrangementID,
+    required ID changeID,
+    Time? oldOffset,
+    required this.newOffset,
+  }) : super(project) {
+    change = project.song.patterns[patternID]!.timeSignatureChanges
+        .firstWhere((change) => change.id == changeID);
+
+    this.oldOffset = oldOffset ?? change.offset;
+  }
+
+  @override
+  List<StateChange> execute() {
+    if (timelineKind == TimelineKind.arrangement) {
+      throw Exception("Not supported yet");
+    }
+
+    change.offset = newOffset;
+    return [
+      StateChange.pattern(
+        PatternStateChange.timeSignatureChangeListUpdated(
+            project.id, patternID!),
+      ),
+    ];
+  }
+
+  @override
+  List<StateChange> rollback() {
+    if (timelineKind == TimelineKind.arrangement) {
+      throw Exception("Not supported yet");
+    }
+
+    change.offset = oldOffset;
+    return [
+      StateChange.pattern(
+        PatternStateChange.timeSignatureChangeListUpdated(
+            project.id, patternID!),
+      ),
+    ];
   }
 }

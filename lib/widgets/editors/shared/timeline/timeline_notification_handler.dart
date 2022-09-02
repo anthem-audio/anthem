@@ -17,36 +17,74 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/commands/timeline_commands.dart';
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline_notifications.dart';
+import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-class TimelineNotificationHandler extends StatelessWidget {
+class TimelineNotificationHandler extends StatefulWidget {
+  final TimelineKind timelineKind;
+  final ID? patternID;
   final Widget child;
 
   const TimelineNotificationHandler({
     Key? key,
     required this.child,
+    required this.timelineKind,
+    this.patternID,
   }) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    return NotificationListener<TimelineNotification>(
-      child: child,
-      onNotification: (notification) {
-        if (notification is TimelineLabelPointerDownNotification) {
-          // print("down");
-          // print("at ${notification.time} on label with id ${notification.labelID}");
-        }
-        else if (notification is TimelineLabelPointerMoveNotification) {
-          // print("move");
-          // print("at ${notification.time} on label with id ${notification.labelID}");
-        }
-        else if (notification is TimelineLabelPointerUpNotification) {
-          // print("up");
-          // print("at ${notification.time} on label with id ${notification.labelID}");
-        }
+  State<TimelineNotificationHandler> createState() =>
+      _TimelineNotificationHandlerState();
+}
 
-        return true;
+class _TimelineNotificationHandlerState
+    extends State<TimelineNotificationHandler> {
+  double startTime = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ProjectCubit, ProjectState>(
+      builder: (projectCubit, projectState) {
+        final project = Store.instance.projects[projectState.id]!;
+
+        return NotificationListener<TimelineNotification>(
+          child: widget.child,
+          onNotification: (notification) {
+            if (notification is TimelineLabelPointerDownNotification) {
+              startTime = notification.time;
+            } else if (notification is TimelineLabelPointerMoveNotification) {
+              project.execute(
+                MoveTimeSignatureChangeCommand(
+                  project: project,
+                  timelineKind: TimelineKind.pattern,
+                  patternID: widget.patternID,
+                  changeID: notification.labelID,
+                  newOffset: notification.time.floor(),
+                ),
+                push: false,
+              );
+            } else if (notification is TimelineLabelPointerUpNotification) {
+              project.execute(
+                MoveTimeSignatureChangeCommand(
+                  project: project,
+                  timelineKind: TimelineKind.pattern,
+                  patternID: widget.patternID,
+                  changeID: notification.labelID,
+                  oldOffset: startTime.floor(),
+                  newOffset: notification.time.floor(),
+                ),
+                push: true,
+              );
+            }
+
+            return true;
+          },
+        );
       },
     );
   }

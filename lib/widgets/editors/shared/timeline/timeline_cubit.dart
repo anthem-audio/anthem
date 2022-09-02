@@ -25,6 +25,7 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/model/store.dart';
+import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -75,7 +76,9 @@ class TimelineCubit extends Cubit<TimelineState> {
             patternID: patternID,
             arrangementID: null,
             defaultTimeSignature: defaultTimeSignature,
-            timeSignatureChanges: timeSignatureChanges,
+            timeSignatureChanges: TimeSignatureChangeListWrapper(
+              inner: timeSignatureChanges,
+            ),
             ticksPerQuarter: project.song.ticksPerQuarter,
           );
         })()) {
@@ -116,17 +119,15 @@ class TimelineCubit extends Cubit<TimelineState> {
 
     TimelineState? newState;
 
-    List<TimeSignatureChangeModel> getTimeSignatureChanges() {
-      return isPatternTimeline
-          ? [
-              ...project.song.patterns[project.song.activePatternID]!
-                  .timeSignatureChanges
-            ]
-          // : [
-          //     ...project.song.arrangements[project.song.activeArrangementID]!
-          //         .timeSignatureChanges
-          //   ],
-          : [];
+    TimeSignatureChangeListWrapper getTimeSignatureChanges() {
+      return TimeSignatureChangeListWrapper(
+        inner: isPatternTimeline
+            ? project.song.patterns[project.song.activePatternID]!
+                .timeSignatureChanges
+            // : project.song.arrangements[project.song.activeArrangementID]!
+            //         .timeSignatureChanges;
+            : [],
+      );
     }
 
     if (activePatternChanged) {
