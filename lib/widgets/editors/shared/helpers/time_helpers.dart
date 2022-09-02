@@ -276,4 +276,3 @@ List<DivisionChange> getDivisionChanges({
 
   return result;
 }
-

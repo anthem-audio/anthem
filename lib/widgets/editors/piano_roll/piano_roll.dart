@@ -21,6 +21,7 @@
 
 import 'dart:math';
 
+import 'package:anthem/commands/timeline_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/store.dart';
@@ -268,8 +269,10 @@ class _PianoRollContentState extends State<_PianoRollContent> {
                                         timelineType:
                                             TimelineType.patternTimeline,
                                       ),
-                                      child: const TimelineNotificationHandler(
-                                        child: Timeline(),
+                                      child: TimelineNotificationHandler(
+                                        timelineKind: TimelineKind.pattern,
+                                        patternID: state.patternID,
+                                        child: const Timeline(),
                                       ),
                                     ),
                                   ),
