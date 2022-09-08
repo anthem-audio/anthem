@@ -25,8 +25,12 @@ abstract class TimelineNotification extends Notification {}
 abstract class TimelinePointerNotification extends TimelineNotification {
   // Time at cursor. Fraction indicates position within tick.
   final double time;
+  final double viewWidthInPixels;
 
-  TimelinePointerNotification({required this.time}) : super();
+  TimelinePointerNotification({
+    required this.time,
+    required this.viewWidthInPixels,
+  }) : super();
 }
 
 enum TimelineLabelType { timeSignatureChange }
@@ -40,7 +44,11 @@ abstract class TimelineLabelPointerNotification
     required double time,
     required this.labelID,
     required this.labelType,
-  }) : super(time: time);
+    required double viewWidthInPixels,
+  }) : super(
+          time: time,
+          viewWidthInPixels: viewWidthInPixels,
+        );
 }
 
 class TimelineLabelPointerDownNotification
@@ -49,10 +57,12 @@ class TimelineLabelPointerDownNotification
     required double time,
     required ID labelID,
     required TimelineLabelType labelType,
+    required double viewWidthInPixels,
   }) : super(
           time: time,
           labelID: labelID,
           labelType: labelType,
+          viewWidthInPixels: viewWidthInPixels,
         );
 }
 
@@ -62,10 +72,12 @@ class TimelineLabelPointerMoveNotification
     required double time,
     required ID labelID,
     required TimelineLabelType labelType,
+    required double viewWidthInPixels,
   }) : super(
           time: time,
           labelID: labelID,
           labelType: labelType,
+          viewWidthInPixels: viewWidthInPixels,
         );
 }
 
@@ -75,9 +87,11 @@ class TimelineLabelPointerUpNotification
     required double time,
     required ID labelID,
     required TimelineLabelType labelType,
+    required double viewWidthInPixels,
   }) : super(
           time: time,
           labelID: labelID,
           labelType: labelType,
+          viewWidthInPixels: viewWidthInPixels,
         );
 }

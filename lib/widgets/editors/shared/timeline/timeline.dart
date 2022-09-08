@@ -218,6 +218,7 @@ class _TimelineLabelState extends State<TimelineLabel> {
                   time: widget.offset.toDouble(),
                   labelID: widget.id,
                   labelType: TimelineLabelType.timeSignatureChange,
+                  viewWidthInPixels: widget.timelineWidth,
                 ).dispatch(widget.stableBuildContext);
               },
               onPointerMove: (event) {
@@ -231,6 +232,7 @@ class _TimelineLabelState extends State<TimelineLabel> {
                   time: time,
                   labelID: widget.id,
                   labelType: TimelineLabelType.timeSignatureChange,
+                  viewWidthInPixels: widget.timelineWidth,
                 ).dispatch(widget.stableBuildContext);
               },
               onPointerUp: (event) {
@@ -244,6 +246,7 @@ class _TimelineLabelState extends State<TimelineLabel> {
                   time: time,
                   labelID: widget.id,
                   labelType: TimelineLabelType.timeSignatureChange,
+                  viewWidthInPixels: widget.timelineWidth,
                 ).dispatch(widget.stableBuildContext);
               },
               child: Container(
