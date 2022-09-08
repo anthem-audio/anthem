@@ -50,7 +50,6 @@ class _TimelineNotificationHandlerState
     extends State<TimelineNotificationHandler> {
   double startTime = 0;
   Time snapOffset = 0;
-  Time mostRecentPos = 0;
   bool hasMoved = false;
 
   @override
@@ -92,7 +91,6 @@ class _TimelineNotificationHandlerState
                   snapOffset = notification.time.floor() - snappedPos;
                 } else if (notification
                     is TimelineLabelPointerMoveNotification) {
-                  mostRecentPos = snappedPos + snapOffset;
                   hasMoved = true;
                   project.execute(
                     MoveTimeSignatureChangeCommand(
@@ -100,25 +98,22 @@ class _TimelineNotificationHandlerState
                       timelineKind: TimelineKind.pattern,
                       patternID: widget.patternID,
                       changeID: notification.labelID,
-                      newOffset: mostRecentPos,
+                      newOffset: snappedPos + snapOffset,
                     ),
                     push: false,
                   );
                 } else if (notification is TimelineLabelPointerUpNotification) {
-                  if (hasMoved) {
-                    project.execute(
-                      MoveTimeSignatureChangeCommand(
-                        project: project,
-                        timelineKind: TimelineKind.pattern,
-                        patternID: widget.patternID,
-                        changeID: notification.labelID,
-                        oldOffset: startTime.floor(),
-                        newOffset: notification.time.floor(),
-                      ),
-                      push: true,
-                    );
-                    hasMoved = false;
-                  }
+                  project.execute(
+                    MoveTimeSignatureChangeCommand(
+                      project: project,
+                      timelineKind: TimelineKind.pattern,
+                      patternID: widget.patternID,
+                      changeID: notification.labelID,
+                      oldOffset: startTime.floor(),
+                      newOffset: snappedPos + snapOffset,
+                    ),
+                    push: true,
+                  );
                 }
               }
 
