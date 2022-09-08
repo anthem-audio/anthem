@@ -249,10 +249,7 @@ class _TimelineLabelState extends State<TimelineLabel> {
                   viewWidthInPixels: widget.timelineWidth,
                 ).dispatch(widget.stableBuildContext);
               },
-              child: Container(
-                color: const Color(0x88123456),
-                width: 12,
-              ),
+              child: const SizedBox(width: 12),
             ),
           ),
         ),
