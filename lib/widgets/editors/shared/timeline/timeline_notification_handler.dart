@@ -82,9 +82,12 @@ class _TimelineNotificationHandlerState
                 );
 
                 final snappedPos = getSnappedTime(
-                  rawTime: notification.time.floor(),
+                  rawTime: notification.time.floor() +
+                      ((notification is TimelineLabelPointerDownNotification)
+                          ? 0
+                          : startTime.floor()),
                   divisionChanges: divisionChanges,
-                );
+                ).clamp(0, 0x7FFFFFFFFFFFFFFF);
 
                 if (notification is TimelineLabelPointerDownNotification) {
                   startTime = notification.time;
