@@ -308,13 +308,6 @@ class TimelinePainter extends CustomPainter {
         nextDivisionStart = divisionChanges[i + 1].offset;
       }
 
-      if (timePtr >= nextDivisionStart) {
-        timePtr = nextDivisionStart;
-        barNumber = divisionChanges[i + 1].startLabel;
-        i++;
-        continue;
-      }
-
       while (timePtr < nextDivisionStart && timePtr < timeViewEnd) {
         final x = timeToPixels(
           timeViewStart: timeViewStart,
@@ -341,6 +334,12 @@ class TimelinePainter extends CustomPainter {
 
         timePtr += thisDivision.divisionRenderSize;
         barNumber += thisDivision.distanceBetween;
+
+        // If this is true, then this is the last iteration of the inner loop
+        if (timePtr >= nextDivisionStart) {
+          timePtr = nextDivisionStart;
+          barNumber = divisionChanges[i + 1].startLabel;
+        }
       }
 
       i++;
