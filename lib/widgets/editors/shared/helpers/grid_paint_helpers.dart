@@ -223,6 +223,11 @@ void paintVerticalLines({
 
       timePtr += thisDivision.divisionRenderSize;
       skip = !skip;
+
+      // If this is true, then this is the last iteration of the inner loop
+      if (timePtr >= nextDivisionStart) {
+        timePtr = nextDivisionStart;
+      }
     }
 
     i++;
