@@ -287,9 +287,7 @@ class TimelinePainter extends CustomPainter {
     );
 
     var i = 0;
-    var timePtr =
-        (timeViewStart / divisionChanges[0].divisionRenderSize).floor() *
-            divisionChanges[0].divisionRenderSize;
+    var timePtr = 0;
     var barNumber = divisionChanges[0].startLabel;
 
     barNumber += (timePtr /
@@ -309,28 +307,30 @@ class TimelinePainter extends CustomPainter {
       }
 
       while (timePtr < nextDivisionStart && timePtr < timeViewEnd) {
-        final x = timeToPixels(
-          timeViewStart: timeViewStart,
-          timeViewEnd: timeViewEnd,
-          viewPixelWidth: size.width,
-          time: timePtr.toDouble(),
-        );
+        if (timePtr >= timeViewStart) {
+          final x = timeToPixels(
+            timeViewStart: timeViewStart,
+            timeViewEnd: timeViewEnd,
+            viewPixelWidth: size.width,
+            time: timePtr.toDouble(),
+          );
 
-        TextSpan span = TextSpan(
-          style: TextStyle(color: Theme.text.main),
-          text: barNumber.toString(),
-        );
-        TextPainter textPainter = TextPainter(
-          text: span,
-          textAlign: TextAlign.left,
-          textDirection: TextDirection.ltr,
-        );
-        textPainter.layout();
-        // TODO: replace height constant?
-        textPainter.paint(
-          canvas,
-          Offset(x, (21 - textPainter.size.height) / 2),
-        );
+          TextSpan span = TextSpan(
+            style: TextStyle(color: Theme.text.main),
+            text: barNumber.toString(),
+          );
+          TextPainter textPainter = TextPainter(
+            text: span,
+            textAlign: TextAlign.left,
+            textDirection: TextDirection.ltr,
+          );
+          textPainter.layout();
+          // TODO: replace height constant?
+          textPainter.paint(
+            canvas,
+            Offset(x, (21 - textPainter.size.height) / 2),
+          );
+        }
 
         timePtr += thisDivision.divisionRenderSize;
         barNumber += thisDivision.distanceBetween;
