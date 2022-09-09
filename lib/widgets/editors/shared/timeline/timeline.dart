@@ -286,6 +286,25 @@ class TimelinePainter extends CustomPainter {
       timeViewEnd: timeViewEnd,
     );
 
+    // Calculate a starting point that isn't the beginning, but is before the
+    // start of the TimeView
+    // var firstChangeOnScreen = divisionChanges[0];
+
+    // var first = true;
+
+    // for (final change in divisionChanges) {
+    //   if (first) {
+    //     first = false;
+    //     continue;
+    //   }
+
+    //   if (timeViewStart < change.offset) {
+    //     break;
+    //   }
+
+    //   firstChangeOnScreen = change;
+    // }
+
     var i = 0;
     var timePtr = 0;
     var barNumber = divisionChanges[0].startLabel;
