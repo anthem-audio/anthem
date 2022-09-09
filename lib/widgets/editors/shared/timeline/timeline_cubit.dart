@@ -25,7 +25,6 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/model/store.dart';
-import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 

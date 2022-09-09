@@ -95,6 +95,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
           change.mapOrNull(
             activePatternChanged: (change) {
               updateActivePattern = true;
+              timeMarkersChanged = true;
             },
             activeGeneratorChanged: (change) {
               updateActivePattern = true;
