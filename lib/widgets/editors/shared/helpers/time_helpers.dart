@@ -216,7 +216,6 @@ GetBestDivisionResult getBestDivision({
   );
 }
 
-// TODO: memoize / precalculate this?
 List<DivisionChange> getDivisionChanges({
   required double viewWidthInPixels,
   required double minPixelsPerSection,
