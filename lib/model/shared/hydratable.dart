@@ -74,7 +74,7 @@ import 'package:flutter/foundation.dart';
 ///
 ///   void hydrate(String someValue) {
 ///     _someValue = someValue;
-///     _isHydrated = true;
+///     isHydrated = true;
 ///   }
 /// }
 /// 
