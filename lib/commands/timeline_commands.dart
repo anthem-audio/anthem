@@ -38,7 +38,7 @@ void _addTimeSignatureChangeToPattern({
 }) {
   final pattern = project.song.patterns[patternID]!;
   pattern.timeSignatureChanges.add(change);
-  pattern.timeSignatureChanges.sort((a, b) => a.offset.compareTo(b.offset));
+  _sortTimeSignatureChanges(pattern.timeSignatureChanges);
 }
 
 void _removeTimeSignatureChangeFromPattern({
@@ -51,6 +51,10 @@ void _removeTimeSignatureChangeFromPattern({
       .firstWhere((change) => change.id == changeID);
   pattern.timeSignatureChanges.remove(change);
   // Should still be sorted, so no need to sort here
+}
+
+void _sortTimeSignatureChanges(List<TimeSignatureChangeModel> changes) {
+  changes.sort((changeA, changeB) => changeA.offset.compareTo(changeB.offset));
 }
 
 class AddTimeSignatureChangeCommand extends Command {
@@ -183,6 +187,7 @@ class MoveTimeSignatureChangeCommand extends Command {
   TimelineKind timelineKind;
   ID? patternID;
   ID? arrangementID;
+  late List<TimeSignatureChangeModel> changeList;
   late TimeSignatureChangeModel change;
   late Time oldOffset;
   Time newOffset;
@@ -196,9 +201,8 @@ class MoveTimeSignatureChangeCommand extends Command {
     Time? oldOffset,
     required this.newOffset,
   }) : super(project) {
-    change = project.song.patterns[patternID]!.timeSignatureChanges
-        .firstWhere((change) => change.id == changeID);
-
+    changeList = project.song.patterns[patternID]!.timeSignatureChanges;
+    change = changeList.firstWhere((change) => change.id == changeID);
     this.oldOffset = oldOffset ?? change.offset;
   }
 
@@ -209,6 +213,8 @@ class MoveTimeSignatureChangeCommand extends Command {
     }
 
     change.offset = newOffset;
+    _sortTimeSignatureChanges(changeList);
+
     return [
       StateChange.pattern(
         PatternStateChange.timeSignatureChangeListUpdated(
@@ -224,6 +230,8 @@ class MoveTimeSignatureChangeCommand extends Command {
     }
 
     change.offset = oldOffset;
+    _sortTimeSignatureChanges(changeList);
+
     return [
       StateChange.pattern(
         PatternStateChange.timeSignatureChangeListUpdated(
