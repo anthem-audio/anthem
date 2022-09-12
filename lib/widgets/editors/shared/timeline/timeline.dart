@@ -23,6 +23,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline_notifications.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
@@ -49,48 +50,67 @@ class _TimelineState extends State<Timeline> {
       builder: (context, state) {
         return LayoutBuilder(builder: (context, constraints) {
           var timeView = context.watch<TimeView>();
-          return ClipRect(
-            child: Stack(
-              fit: StackFit.expand,
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  color: Theme.panel.accent,
-                  child: ClipRect(
-                    child: CustomPaint(
-                      painter: TimelinePainter(
-                        timeViewStart: timeView.start,
-                        timeViewEnd: timeView.end,
-                        ticksPerQuarter: state.ticksPerQuarter,
-                        defaultTimeSignature: state.defaultTimeSignature,
-                        timeSignatureChanges: state.timeSignatureChanges.inner,
+          return Listener(
+            onPointerSignal: (signal) {
+              if (signal is PointerScrollEvent) {
+                final timeViewWidth = timeView.width;
+                final timeViewSizeChange = timeViewWidth * 0.002 * signal.scrollDelta.dy;
+
+                var newStart = timeView.start - timeViewSizeChange;
+                var newEnd = timeView.end + timeViewSizeChange;
+
+                final startOvershootCorrection = newStart < 0 ? -newStart : 0;
+
+                newStart += startOvershootCorrection;
+                newEnd += startOvershootCorrection;
+
+                timeView.setStart(newStart);
+                timeView.setEnd(newEnd);
+              }
+            },
+            child: ClipRect(
+              child: Stack(
+                fit: StackFit.expand,
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    color: Theme.panel.accent,
+                    child: ClipRect(
+                      child: CustomPaint(
+                        painter: TimelinePainter(
+                          timeViewStart: timeView.start,
+                          timeViewEnd: timeView.end,
+                          ticksPerQuarter: state.ticksPerQuarter,
+                          defaultTimeSignature: state.defaultTimeSignature,
+                          timeSignatureChanges: state.timeSignatureChanges.inner,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                CustomMultiChildLayout(
-                  delegate: TimeSignatureLabelLayoutDelegate(
-                    timeSignatureChanges: state.timeSignatureChanges.inner,
-                    timeViewStart: timeView.start,
-                    timeViewEnd: timeView.end,
-                  ),
-                  children: state.timeSignatureChanges.inner
-                      .map(
-                        (change) => LayoutId(
-                          id: change.offset,
-                          child: TimelineLabel(
-                            text:
-                                "${change.timeSignature.numerator}/${change.timeSignature.denominator}",
-                            id: change.id,
-                            offset: change.offset,
-                            timelineWidth: constraints.maxWidth,
-                            stableBuildContext: context,
+                  CustomMultiChildLayout(
+                    delegate: TimeSignatureLabelLayoutDelegate(
+                      timeSignatureChanges: state.timeSignatureChanges.inner,
+                      timeViewStart: timeView.start,
+                      timeViewEnd: timeView.end,
+                    ),
+                    children: state.timeSignatureChanges.inner
+                        .map(
+                          (change) => LayoutId(
+                            id: change.offset,
+                            child: TimelineLabel(
+                              text:
+                                  "${change.timeSignature.numerator}/${change.timeSignature.denominator}",
+                              id: change.id,
+                              offset: change.offset,
+                              timelineWidth: constraints.maxWidth,
+                              stableBuildContext: context,
+                            ),
                           ),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ],
+                        )
+                        .toList(),
+                  ),
+                ],
+              ),
             ),
           );
         });
