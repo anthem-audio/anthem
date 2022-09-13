@@ -54,10 +54,16 @@ class _TimelineState extends State<Timeline> {
             onPointerSignal: (signal) {
               if (signal is PointerScrollEvent) {
                 final timeViewWidth = timeView.width;
-                final timeViewSizeChange = timeViewWidth * 0.002 * signal.scrollDelta.dy;
+                final timeViewSizeChange =
+                    timeViewWidth * 0.008 * signal.scrollDelta.dy;
 
-                var newStart = timeView.start - timeViewSizeChange;
-                var newEnd = timeView.end + timeViewSizeChange;
+                final mouseCursorOffset =
+                    signal.localPosition.dx / constraints.maxWidth;
+
+                var newStart =
+                    timeView.start - timeViewSizeChange * mouseCursorOffset;
+                var newEnd =
+                    timeView.end + timeViewSizeChange * (1 - mouseCursorOffset);
 
                 final startOvershootCorrection = newStart < 0 ? -newStart : 0;
 
@@ -82,7 +88,8 @@ class _TimelineState extends State<Timeline> {
                           timeViewEnd: timeView.end,
                           ticksPerQuarter: state.ticksPerQuarter,
                           defaultTimeSignature: state.defaultTimeSignature,
-                          timeSignatureChanges: state.timeSignatureChanges.inner,
+                          timeSignatureChanges:
+                              state.timeSignatureChanges.inner,
                         ),
                       ),
                     ),
