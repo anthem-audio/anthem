@@ -50,28 +50,34 @@ class _TimelineState extends State<Timeline> {
       builder: (context, state) {
         return LayoutBuilder(builder: (context, constraints) {
           var timeView = context.watch<TimeView>();
+
+          void handleScroll(double delta, double mouseX) {
+            final timeViewWidth = timeView.width;
+            final timeViewSizeChange = timeViewWidth * 0.008 * delta;
+
+            final mouseCursorOffset = mouseX / constraints.maxWidth;
+
+            var newStart =
+                timeView.start - timeViewSizeChange * mouseCursorOffset;
+            var newEnd =
+                timeView.end + timeViewSizeChange * (1 - mouseCursorOffset);
+
+            final startOvershootCorrection = newStart < 0 ? -newStart : 0;
+
+            newStart += startOvershootCorrection;
+            newEnd += startOvershootCorrection;
+
+            timeView.setStart(newStart);
+            timeView.setEnd(newEnd);
+          }
+
           return Listener(
-            onPointerSignal: (signal) {
-              if (signal is PointerScrollEvent) {
-                final timeViewWidth = timeView.width;
-                final timeViewSizeChange =
-                    timeViewWidth * 0.008 * signal.scrollDelta.dy;
-
-                final mouseCursorOffset =
-                    signal.localPosition.dx / constraints.maxWidth;
-
-                var newStart =
-                    timeView.start - timeViewSizeChange * mouseCursorOffset;
-                var newEnd =
-                    timeView.end + timeViewSizeChange * (1 - mouseCursorOffset);
-
-                final startOvershootCorrection = newStart < 0 ? -newStart : 0;
-
-                newStart += startOvershootCorrection;
-                newEnd += startOvershootCorrection;
-
-                timeView.setStart(newStart);
-                timeView.setEnd(newEnd);
+            onPointerPanZoomUpdate: (event) {
+              handleScroll(-event.panDelta.dy / 2, event.localPosition.dx);
+            },
+            onPointerSignal: (event) {
+              if (event is PointerScrollEvent) {
+                handleScroll(event.scrollDelta.dy, event.localPosition.dx);
               }
             },
             child: ClipRect(
