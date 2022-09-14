@@ -45,7 +45,7 @@ void paintTimeGrid({
     minPixelsPerSection: minorMinPixels,
     snap: snap,
     defaultTimeSignature: baseTimeSignature, // TODO
-    timeSignatureChanges: [],
+    timeSignatureChanges: timeSignatureChanges,
     ticksPerQuarter: ticksPerQuarter,
     timeViewStart: timeViewStart,
     timeViewEnd: timeViewEnd,
@@ -129,8 +129,6 @@ void paintVerticalLines({
           divisionChanges[0].divisionRenderSize;
 
   while (timePtr < timeViewEnd) {
-    var skip = true;
-
     // This shouldn't happen, but safety first
     if (i >= divisionChanges.length) break;
 
@@ -141,12 +139,7 @@ void paintVerticalLines({
       nextDivisionStart = divisionChanges[i + 1].offset;
     }
 
-    bool shouldSkipDivision = false;
-
-    // Skip this division if the time pointer is past its end
-    shouldSkipDivision = shouldSkipDivision || timePtr >= nextDivisionStart;
-
-    if (shouldSkipDivision) {
+    if (timePtr >= nextDivisionStart) {
       timePtr = nextDivisionStart;
       i++;
       continue;
@@ -166,7 +159,6 @@ void paintVerticalLines({
       );
 
       timePtr += thisDivision.divisionRenderSize;
-      skip = !skip;
 
       // If this is true, then this is the last iteration of the inner loop
       if (timePtr >= nextDivisionStart) {
