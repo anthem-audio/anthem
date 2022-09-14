@@ -62,6 +62,11 @@ class _TimelineState extends State<Timeline> {
             var newEnd =
                 timeView.end + timeViewSizeChange * (1 - mouseCursorOffset);
 
+            // Somewhat arbitrary, but a safeguard against zooming in too far
+            if (newEnd < newStart + 10) {
+              newEnd = newStart + 10;
+            }
+
             final startOvershootCorrection = newStart < 0 ? -newStart : 0;
 
             newStart += startOvershootCorrection;
