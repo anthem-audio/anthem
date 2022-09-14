@@ -297,6 +297,7 @@ Time getSnappedTime({
     final snapSize = divisionChange.divisionSnapSize;
     targetTime = (rawTime ~/ snapSize) * snapSize +
         (roundUp && rawTime % snapSize != 0 ? snapSize : 0);
+    targetTime += divisionChange.offset % snapSize;
     break;
   }
 
