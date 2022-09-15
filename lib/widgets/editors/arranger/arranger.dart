@@ -240,6 +240,8 @@ class _ArrangerContent extends StatefulWidget {
 
 class _ArrangerContentState extends State<_ArrangerContent>
     with TickerProviderStateMixin {
+  // Fields for time view animation
+
   late final AnimationController _timeViewAnimationController =
       AnimationController(
     duration: const Duration(milliseconds: 250),
@@ -265,6 +267,27 @@ class _ArrangerContentState extends State<_ArrangerContent>
       _timeViewEndTween.animate(
     CurvedAnimation(
       parent: _timeViewAnimationController,
+      curve: Curves.easeOutExpo,
+    ),
+  );
+
+  // Fields for vertical scroll position animation
+
+  late final AnimationController _verticalScrollPositionAnimationController =
+      AnimationController(
+    duration: const Duration(milliseconds: 250),
+    vsync: this,
+  );
+
+  double _lastVerticalScrollPosition = 0;
+
+  late final Tween<double> _verticalScrollPositionTween = Tween<double>(
+      begin: _lastVerticalScrollPosition, end: _lastVerticalScrollPosition);
+
+  late final Animation<double> _verticalScrollPositionAnimation =
+      _verticalScrollPositionTween.animate(
+    CurvedAnimation(
+      parent: _verticalScrollPositionAnimationController,
       curve: Curves.easeOutExpo,
     ),
   );
@@ -299,6 +322,15 @@ class _ArrangerContentState extends State<_ArrangerContent>
 
           _lastTimeViewStart = timeView.start;
           _lastTimeViewEnd = timeView.end;
+        }
+
+        if (state.verticalScrollPosition != _lastVerticalScrollPosition) {
+          _verticalScrollPositionTween.begin =
+              _verticalScrollPositionAnimation.value;
+          _verticalScrollPositionAnimationController.reset();
+          _verticalScrollPositionTween.end = state.verticalScrollPosition;
+          _verticalScrollPositionAnimationController.forward();
+          _lastVerticalScrollPosition = state.verticalScrollPosition;
         }
 
         return Container(
@@ -349,24 +381,29 @@ class _ArrangerContentState extends State<_ArrangerContent>
                           child: LayoutBuilder(builder: (context, constraints) {
                             final grid = Positioned.fill(
                               child: AnimatedBuilder(
-                                  animation: _timeViewAnimationController,
-                                  builder: (context, child) {
-                                    return CustomPaint(
-                                      painter: ArrangerBackgroundPainter(
-                                        baseTrackHeight: state.baseTrackHeight,
-                                        verticalScrollPosition:
-                                            state.verticalScrollPosition,
-                                        trackHeightModifiers:
-                                            state.trackHeightModifiers,
-                                        trackIDs: state.trackIDs,
-                                        timeViewStart:
-                                            _timeViewStartAnimation.value,
-                                        timeViewEnd:
-                                            _timeViewEndAnimation.value,
-                                        ticksPerQuarter: state.ticksPerQuarter,
-                                      ),
-                                    );
-                                  }),
+                                animation: _verticalScrollPositionAnimationController,
+                                builder: (context, child) {
+                                  return AnimatedBuilder(
+                                      animation: _timeViewAnimationController,
+                                      builder: (context, child) {
+                                        return CustomPaint(
+                                          painter: ArrangerBackgroundPainter(
+                                            baseTrackHeight: state.baseTrackHeight,
+                                            verticalScrollPosition:
+                                                _verticalScrollPositionAnimation.value,
+                                            trackHeightModifiers:
+                                                state.trackHeightModifiers,
+                                            trackIDs: state.trackIDs,
+                                            timeViewStart:
+                                                _timeViewStartAnimation.value,
+                                            timeViewEnd:
+                                                _timeViewEndAnimation.value,
+                                            ticksPerQuarter: state.ticksPerQuarter,
+                                          ),
+                                        );
+                                      });
+                                }
+                              ),
                             );
 
                             final clipWidgets = state.clipIDs.map<Widget>(
@@ -407,28 +444,37 @@ class _ArrangerContentState extends State<_ArrangerContent>
                               child: state.activeArrangementID == null
                                   ? const SizedBox()
                                   : AnimatedBuilder(
-                                      animation: _timeViewAnimationController,
+                                      animation:
+                                          _verticalScrollPositionAnimationController,
                                       builder: (context, child) {
-                                        return CustomMultiChildLayout(
-                                          delegate: ClipLayoutDelegate(
-                                            baseTrackHeight:
-                                                state.baseTrackHeight,
-                                            trackHeightModifiers:
-                                                state.trackHeightModifiers,
-                                            timeViewStart:
-                                                _timeViewStartAnimation.value,
-                                            timeViewEnd:
-                                                _timeViewEndAnimation.value,
-                                            project: cubit.project,
-                                            trackIDs: state.trackIDs,
-                                            clipIDs: state.clipIDs,
-                                            arrangementID:
-                                                state.activeArrangementID!,
-                                            verticalScrollPosition:
-                                                state.verticalScrollPosition,
-                                          ),
-                                          children: clipWidgets,
-                                        );
+                                        return AnimatedBuilder(
+                                            animation:
+                                                _timeViewAnimationController,
+                                            builder: (context, child) {
+                                              return CustomMultiChildLayout(
+                                                delegate: ClipLayoutDelegate(
+                                                  baseTrackHeight:
+                                                      state.baseTrackHeight,
+                                                  trackHeightModifiers: state
+                                                      .trackHeightModifiers,
+                                                  timeViewStart:
+                                                      _timeViewStartAnimation
+                                                          .value,
+                                                  timeViewEnd:
+                                                      _timeViewEndAnimation
+                                                          .value,
+                                                  project: cubit.project,
+                                                  trackIDs: state.trackIDs,
+                                                  clipIDs: state.clipIDs,
+                                                  arrangementID: state
+                                                      .activeArrangementID!,
+                                                  verticalScrollPosition:
+                                                      _verticalScrollPositionAnimation
+                                                          .value,
+                                                ),
+                                                children: clipWidgets,
+                                              );
+                                            });
                                       }),
                             );
 
