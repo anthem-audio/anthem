@@ -181,6 +181,8 @@ class _PianoRollContentState extends State<_PianoRollContent>
   double footerHeight = 61;
   double pianoControlWidth = 69;
 
+  // Fields for time view animation
+
   late final AnimationController _timeViewAnimationController =
       AnimationController(
     duration: const Duration(milliseconds: 250),
@@ -210,9 +212,31 @@ class _PianoRollContentState extends State<_PianoRollContent>
     ),
   );
 
+  // Fields for key value at top animation
+
+  late final AnimationController _keyValueAtTopAnimationController =
+      AnimationController(
+    duration: const Duration(milliseconds: 250),
+    vsync: this,
+  );
+
+  double _lastKeyValueAtTop = 0;
+
+  late final Tween<double> _keyValueAtTopTween =
+      Tween<double>(begin: _lastKeyValueAtTop, end: _lastKeyValueAtTop);
+
+  late final Animation<double> _keyValueAtTopAnimation =
+      _keyValueAtTopTween.animate(
+    CurvedAnimation(
+      parent: _keyValueAtTopAnimationController,
+      curve: Curves.easeOutExpo,
+    ),
+  );
+
   @override
   void dispose() {
     _timeViewAnimationController.dispose();
+    _keyValueAtTopAnimationController.dispose();
     super.dispose();
   }
 
@@ -238,6 +262,14 @@ class _PianoRollContentState extends State<_PianoRollContent>
 
         _lastTimeViewStart = timeView.start;
         _lastTimeViewEnd = timeView.end;
+      }
+
+      if (state.keyValueAtTop != _lastKeyValueAtTop) {
+        _keyValueAtTopTween.begin = _keyValueAtTopAnimation.value;
+        _keyValueAtTopAnimationController.reset();
+        _keyValueAtTopTween.end = state.keyValueAtTop;
+        _keyValueAtTopAnimationController.forward();
+        _lastKeyValueAtTop = state.keyValueAtTop;
       }
 
       final timelineHeight = state.hasTimeMarkers ? 42.0 : 21.0;
@@ -271,13 +303,18 @@ class _PianoRollContentState extends State<_PianoRollContent>
 
       final pianoControl = SizedBox(
         width: pianoControlWidth,
-        child: PianoControl(
-          keyValueAtTop: state.keyValueAtTop,
-          keyHeight: state.keyHeight,
-          setKeyValueAtTop: (value) {
-            setState(() {
-              cubit.setKeyValueAtTop(value);
-            });
+        child: AnimatedBuilder(
+          animation: _keyValueAtTopAnimationController,
+          builder: (context, child) {
+            return PianoControl(
+              keyValueAtTop: _keyValueAtTopAnimation.value,
+              keyHeight: state.keyHeight,
+              setKeyValueAtTop: (value) {
+                setState(() {
+                  cubit.setKeyValueAtTop(value);
+                });
+              },
+            );
           },
         ),
       );
@@ -304,23 +341,31 @@ class _PianoRollContentState extends State<_PianoRollContent>
                   timeViewStartAnimation: _timeViewStartAnimation,
                   timeViewEndAnimation: _timeViewEndAnimation,
                   keyHeight: state.keyHeight,
-                  keyValueAtTop: state.keyValueAtTop,
+                  keyValueAtTopAnimationController:
+                      _keyValueAtTopAnimationController,
+                  keyValueAtTopAnimation: _keyValueAtTopAnimation,
                 ),
                 ClipRect(
                   child: AnimatedBuilder(
-                      animation: _timeViewAnimationController,
-                      builder: (context, child) {
-                        return CustomMultiChildLayout(
-                          delegate: NoteLayoutDelegate(
-                            notes: notes,
-                            keyHeight: state.keyHeight,
-                            keyValueAtTop: state.keyValueAtTop,
-                            timeViewStart: _timeViewStartAnimation.value,
-                            timeViewEnd: _timeViewEndAnimation.value,
-                          ),
-                          children: noteWidgets,
-                        );
-                      }),
+                    animation: _keyValueAtTopAnimationController,
+                    builder: (context, child) {
+                      return AnimatedBuilder(
+                        animation: _timeViewAnimationController,
+                        builder: (context, child) {
+                          return CustomMultiChildLayout(
+                            delegate: NoteLayoutDelegate(
+                              notes: notes,
+                              keyHeight: state.keyHeight,
+                              keyValueAtTop: _keyValueAtTopAnimation.value,
+                              timeViewStart: _timeViewStartAnimation.value,
+                              timeViewEnd: _timeViewEndAnimation.value,
+                            ),
+                            children: noteWidgets,
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ),
               ],
             ),

@@ -29,19 +29,21 @@ import '../shared/helpers/types.dart';
 import 'helpers.dart';
 
 class PianoRollGrid extends StatelessWidget {
-  final double keyValueAtTop;
   final double keyHeight;
   final AnimationController timeViewAnimationController;
+  final AnimationController keyValueAtTopAnimationController;
   final Animation<double> timeViewStartAnimation;
   final Animation<double> timeViewEndAnimation;
+  final Animation<double> keyValueAtTopAnimation;
 
   const PianoRollGrid({
     Key? key,
     required this.keyHeight,
-    required this.keyValueAtTop,
+    required this.keyValueAtTopAnimationController,
     required this.timeViewAnimationController,
     required this.timeViewStartAnimation,
     required this.timeViewEndAnimation,
+    required this.keyValueAtTopAnimation,
   }) : super(key: key);
 
   @override
@@ -53,19 +55,24 @@ class PianoRollGrid extends StatelessWidget {
 
       return ClipRect(
         child: AnimatedBuilder(
-          animation: timeViewAnimationController,
+          animation: keyValueAtTopAnimationController,
           builder: (context, child) {
-            return CustomPaint(
-              painter: PianoRollBackgroundPainter(
-                keyHeight: keyHeight,
-                keyValueAtTop: keyValueAtTop,
-                pattern: pattern,
-                timeViewStart: timeViewStartAnimation.value,
-                timeViewEnd: timeViewEndAnimation.value,
-                ticksPerQuarter: state.ticksPerQuarter,
-              ),
+            return AnimatedBuilder(
+              animation: timeViewAnimationController,
+              builder: (context, child) {
+                return CustomPaint(
+                  painter: PianoRollBackgroundPainter(
+                    keyHeight: keyHeight,
+                    keyValueAtTop: keyValueAtTopAnimation.value,
+                    pattern: pattern,
+                    timeViewStart: timeViewStartAnimation.value,
+                    timeViewEnd: timeViewEndAnimation.value,
+                    ticksPerQuarter: state.ticksPerQuarter,
+                  ),
+                );
+              },
             );
-          }
+          },
         ),
       );
     });
