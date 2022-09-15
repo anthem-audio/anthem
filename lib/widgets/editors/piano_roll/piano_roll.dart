@@ -242,6 +242,46 @@ class _PianoRollContentState extends State<_PianoRollContent>
 
       final timelineHeight = state.hasTimeMarkers ? 42.0 : 21.0;
 
+      final timeline = SizedBox(
+        height: timelineHeight,
+        child: Row(
+          children: [
+            SizedBox(width: pianoControlWidth),
+            Container(color: Theme.panel.border, width: 1),
+            Expanded(
+              child: BlocProvider<TimelineCubit>(
+                create: (context) => TimelineCubit(
+                  projectID: state.projectID,
+                  timelineType: TimelineType.patternTimeline,
+                ),
+                child: TimelineNotificationHandler(
+                  timelineKind: TimelineKind.pattern,
+                  patternID: state.patternID,
+                  child: Timeline(
+                    timeViewAnimationController: _timeViewAnimationController,
+                    timeViewStartAnimation: _timeViewStartAnimation,
+                    timeViewEndAnimation: _timeViewEndAnimation,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+
+      final pianoControl = SizedBox(
+        width: pianoControlWidth,
+        child: PianoControl(
+          keyValueAtTop: state.keyValueAtTop,
+          keyHeight: state.keyHeight,
+          setKeyValueAtTop: (value) {
+            setState(() {
+              cubit.setKeyValueAtTop(value);
+            });
+          },
+        ),
+      );
+
       final notes = state.notes;
       final noteWidgets = notes
           .map(
@@ -251,6 +291,42 @@ class _PianoRollContentState extends State<_PianoRollContent>
             ),
           )
           .toList();
+
+      final noteRenderArea = Expanded(
+        child: LayoutBuilder(builder: (context, constraints) {
+          _pianoRollCanvasSize = constraints.biggest;
+          return PianoRollEventListener(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                PianoRollGrid(
+                  timeViewAnimationController: _timeViewAnimationController,
+                  timeViewStartAnimation: _timeViewStartAnimation,
+                  timeViewEndAnimation: _timeViewEndAnimation,
+                  keyHeight: state.keyHeight,
+                  keyValueAtTop: state.keyValueAtTop,
+                ),
+                ClipRect(
+                  child: AnimatedBuilder(
+                      animation: _timeViewAnimationController,
+                      builder: (context, child) {
+                        return CustomMultiChildLayout(
+                          delegate: NoteLayoutDelegate(
+                            notes: notes,
+                            keyHeight: state.keyHeight,
+                            keyValueAtTop: state.keyValueAtTop,
+                            timeViewStart: _timeViewStartAnimation.value,
+                            timeViewEnd: _timeViewEndAnimation.value,
+                          ),
+                          children: noteWidgets,
+                        );
+                      }),
+                ),
+              ],
+            ),
+          );
+        }),
+      );
 
       return Panel(
         orientation: PanelOrientation.bottom,
@@ -313,108 +389,16 @@ class _PianoRollContentState extends State<_PianoRollContent>
                             const BorderRadius.all(Radius.circular(4)),
                         child: Column(
                           children: [
-                            // Timeline
-                            SizedBox(
-                              height: timelineHeight,
-                              child: Row(
-                                children: [
-                                  SizedBox(width: pianoControlWidth),
-                                  Container(
-                                      color: Theme.panel.border, width: 1),
-                                  Expanded(
-                                    child: BlocProvider<TimelineCubit>(
-                                      create: (context) => TimelineCubit(
-                                        projectID: state.projectID,
-                                        timelineType:
-                                            TimelineType.patternTimeline,
-                                      ),
-                                      child: TimelineNotificationHandler(
-                                        timelineKind: TimelineKind.pattern,
-                                        patternID: state.patternID,
-                                        child: Timeline(
-                                          timeViewAnimationController:
-                                              _timeViewAnimationController,
-                                          timeViewStartAnimation:
-                                              _timeViewStartAnimation,
-                                          timeViewEndAnimation:
-                                              _timeViewEndAnimation,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            timeline,
                             Container(color: Theme.panel.border, height: 1),
                             Expanded(
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  // Piano control
-                                  SizedBox(
-                                    width: pianoControlWidth,
-                                    child: PianoControl(
-                                      keyValueAtTop: state.keyValueAtTop,
-                                      keyHeight: state.keyHeight,
-                                      setKeyValueAtTop: (value) {
-                                        setState(() {
-                                          cubit.setKeyValueAtTop(value);
-                                        });
-                                      },
-                                    ),
-                                  ),
+                                  pianoControl,
                                   Container(
                                       color: Theme.panel.border, width: 1),
-                                  // Main piano roll render area
-                                  Expanded(
-                                    child: LayoutBuilder(
-                                        builder: (context, constraints) {
-                                      _pianoRollCanvasSize =
-                                          constraints.biggest;
-                                      return PianoRollEventListener(
-                                        child: Stack(
-                                          fit: StackFit.expand,
-                                          children: [
-                                            PianoRollGrid(
-                                              timeViewAnimationController:
-                                                  _timeViewAnimationController,
-                                              timeViewStartAnimation:
-                                                  _timeViewStartAnimation,
-                                              timeViewEndAnimation:
-                                                  _timeViewEndAnimation,
-                                              keyHeight: state.keyHeight,
-                                              keyValueAtTop:
-                                                  state.keyValueAtTop,
-                                            ),
-                                            ClipRect(
-                                              child: AnimatedBuilder(
-                                                  animation:
-                                                      _timeViewAnimationController,
-                                                  builder: (context, child) {
-                                                    return CustomMultiChildLayout(
-                                                      delegate:
-                                                          NoteLayoutDelegate(
-                                                        notes: notes,
-                                                        keyHeight:
-                                                            state.keyHeight,
-                                                        keyValueAtTop:
-                                                            state.keyValueAtTop,
-                                                        timeViewStart:
-                                                            _timeViewStartAnimation
-                                                                .value,
-                                                        timeViewEnd:
-                                                            _timeViewEndAnimation
-                                                                .value,
-                                                      ),
-                                                      children: noteWidgets,
-                                                    );
-                                                  }),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    }),
-                                  ),
+                                  noteRenderArea,
                                 ],
                               ),
                             ),
