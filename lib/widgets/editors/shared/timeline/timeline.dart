@@ -33,13 +33,22 @@ import '../helpers/types.dart';
 import 'timeline_cubit.dart';
 
 class Timeline extends StatefulWidget {
-  const Timeline({Key? key}) : super(key: key);
+  final AnimationController timeViewAnimationController;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
+
+  const Timeline({
+    Key? key,
+    required this.timeViewAnimationController,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+  }) : super(key: key);
 
   @override
   State<Timeline> createState() => _TimelineState();
 }
 
-class _TimelineState extends State<Timeline> {
+class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
   double dragStartPixelValue = -1.0;
   double dragStartTimeViewStartValue = -1.0;
   double dragStartTimeViewEndValue = -1.0;
@@ -76,6 +85,22 @@ class _TimelineState extends State<Timeline> {
             timeView.setEnd(newEnd);
           }
 
+          var timelineLabels = state.timeSignatureChanges.inner
+              .map(
+                (change) => LayoutId(
+                  id: change.offset,
+                  child: TimelineLabel(
+                    text:
+                        "${change.timeSignature.numerator}/${change.timeSignature.denominator}",
+                    id: change.id,
+                    offset: change.offset,
+                    timelineWidth: constraints.maxWidth,
+                    stableBuildContext: context,
+                  ),
+                ),
+              )
+              .toList();
+
           return Listener(
             onPointerPanZoomUpdate: (event) {
               handleScroll(-event.panDelta.dy / 2, event.localPosition.dx);
@@ -93,39 +118,36 @@ class _TimelineState extends State<Timeline> {
                   Container(
                     color: Theme.panel.accent,
                     child: ClipRect(
-                      child: CustomPaint(
-                        painter: TimelinePainter(
-                          timeViewStart: timeView.start,
-                          timeViewEnd: timeView.end,
-                          ticksPerQuarter: state.ticksPerQuarter,
-                          defaultTimeSignature: state.defaultTimeSignature,
-                          timeSignatureChanges:
-                              state.timeSignatureChanges.inner,
-                        ),
-                      ),
+                      child: AnimatedBuilder(
+                          animation: widget.timeViewAnimationController,
+                          builder: (context, child) {
+                            return CustomPaint(
+                              painter: TimelinePainter(
+                                timeViewStart: widget.timeViewStartAnimation.value,
+                                timeViewEnd: widget.timeViewEndAnimation.value,
+                                ticksPerQuarter: state.ticksPerQuarter,
+                                defaultTimeSignature:
+                                    state.defaultTimeSignature,
+                                timeSignatureChanges:
+                                    state.timeSignatureChanges.inner,
+                              ),
+                            );
+                          }),
                     ),
                   ),
-                  CustomMultiChildLayout(
-                    delegate: TimeSignatureLabelLayoutDelegate(
-                      timeSignatureChanges: state.timeSignatureChanges.inner,
-                      timeViewStart: timeView.start,
-                      timeViewEnd: timeView.end,
-                    ),
-                    children: state.timeSignatureChanges.inner
-                        .map(
-                          (change) => LayoutId(
-                            id: change.offset,
-                            child: TimelineLabel(
-                              text:
-                                  "${change.timeSignature.numerator}/${change.timeSignature.denominator}",
-                              id: change.id,
-                              offset: change.offset,
-                              timelineWidth: constraints.maxWidth,
-                              stableBuildContext: context,
-                            ),
-                          ),
-                        )
-                        .toList(),
+                  AnimatedBuilder(
+                    animation: widget.timeViewAnimationController,
+                    builder: (context, child) {
+                      return CustomMultiChildLayout(
+                        delegate: TimeSignatureLabelLayoutDelegate(
+                          timeSignatureChanges:
+                              state.timeSignatureChanges.inner,
+                          timeViewStart: widget.timeViewStartAnimation.value,
+                          timeViewEnd: widget.timeViewEndAnimation.value,
+                        ),
+                        children: timelineLabels,
+                      );
+                    },
                   ),
                 ],
               ),
