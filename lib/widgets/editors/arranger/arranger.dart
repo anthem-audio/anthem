@@ -231,8 +231,49 @@ class _ArrangerState extends State<Arranger> {
 }
 
 // Actual content view of the arranger (timeline + clips + etc)
-class _ArrangerContent extends StatelessWidget {
+class _ArrangerContent extends StatefulWidget {
   const _ArrangerContent({Key? key}) : super(key: key);
+
+  @override
+  State<_ArrangerContent> createState() => _ArrangerContentState();
+}
+
+class _ArrangerContentState extends State<_ArrangerContent>
+    with TickerProviderStateMixin {
+  late final AnimationController _timeViewAnimationController =
+      AnimationController(
+    duration: const Duration(milliseconds: 250),
+    vsync: this,
+  );
+
+  double _lastTimeViewStart = 0;
+  double _lastTimeViewEnd = 1;
+
+  late final Tween<double> _timeViewStartTween =
+      Tween<double>(begin: _lastTimeViewStart, end: _lastTimeViewStart);
+  late final Tween<double> _timeViewEndTween =
+      Tween<double>(begin: _lastTimeViewEnd, end: _lastTimeViewEnd);
+
+  late final Animation<double> _timeViewStartAnimation =
+      _timeViewStartTween.animate(
+    CurvedAnimation(
+      parent: _timeViewAnimationController,
+      curve: Curves.easeOutExpo,
+    ),
+  );
+  late final Animation<double> _timeViewEndAnimation =
+      _timeViewEndTween.animate(
+    CurvedAnimation(
+      parent: _timeViewAnimationController,
+      curve: Curves.easeOutExpo,
+    ),
+  );
+
+  @override
+  void dispose() {
+    _timeViewAnimationController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -242,7 +283,23 @@ class _ArrangerContent extends StatelessWidget {
       builder: (context, state) {
         final cubit = BlocProvider.of<ArrangerCubit>(context);
 
-        final timeView = Provider.of<TimeView>(context);
+        final timeView = context.watch<TimeView>();
+
+        if (timeView.start != _lastTimeViewStart ||
+            timeView.end != _lastTimeViewEnd) {
+          _timeViewStartTween.begin = _timeViewStartAnimation.value;
+          _timeViewEndTween.begin = _timeViewEndAnimation.value;
+
+          _timeViewAnimationController.reset();
+
+          _timeViewStartTween.end = timeView.start;
+          _timeViewEndTween.end = timeView.end;
+
+          _timeViewAnimationController.forward();
+
+          _lastTimeViewStart = timeView.start;
+          _lastTimeViewEnd = timeView.end;
+        }
 
         return Container(
           decoration: BoxDecoration(
@@ -266,7 +323,12 @@ class _ArrangerContent extends StatelessWidget {
                             projectID: state.projectID,
                             timelineType: TimelineType.arrangerTimeline,
                           ),
-                          child: const Timeline(),
+                          child: Timeline(
+                            timeViewAnimationController:
+                                _timeViewAnimationController,
+                            timeViewStartAnimation: _timeViewStartAnimation,
+                            timeViewEndAnimation: _timeViewEndAnimation,
+                          ),
                         ),
                       ),
                     ],
@@ -286,67 +348,88 @@ class _ArrangerContent extends StatelessWidget {
                         child: ClipRect(
                           child: LayoutBuilder(builder: (context, constraints) {
                             final grid = Positioned.fill(
-                              child: CustomPaint(
-                                painter: ArrangerBackgroundPainter(
-                                  baseTrackHeight: state.baseTrackHeight,
-                                  verticalScrollPosition:
-                                      state.verticalScrollPosition,
-                                  trackHeightModifiers:
-                                      state.trackHeightModifiers,
-                                  trackIDs: state.trackIDs,
-                                  timeViewStart: timeView.start,
-                                  timeViewEnd: timeView.end,
-                                  ticksPerQuarter: state.ticksPerQuarter,
-                                ),
-                              ),
-                            );
-
-                            final clips = Positioned.fill(
-                              child: state.activeArrangementID == null
-                                  ? const SizedBox()
-                                  : CustomMultiChildLayout(
-                                      delegate: ClipLayoutDelegate(
+                              child: AnimatedBuilder(
+                                  animation: _timeViewAnimationController,
+                                  builder: (context, child) {
+                                    return CustomPaint(
+                                      painter: ArrangerBackgroundPainter(
                                         baseTrackHeight: state.baseTrackHeight,
-                                        trackHeightModifiers:
-                                            state.trackHeightModifiers,
-                                        timeViewStart: timeView.start,
-                                        timeViewEnd: timeView.end,
-                                        project: cubit.project,
-                                        trackIDs: state.trackIDs,
-                                        clipIDs: state.clipIDs,
-                                        arrangementID:
-                                            state.activeArrangementID!,
                                         verticalScrollPosition:
                                             state.verticalScrollPosition,
+                                        trackHeightModifiers:
+                                            state.trackHeightModifiers,
+                                        trackIDs: state.trackIDs,
+                                        timeViewStart:
+                                            _timeViewStartAnimation.value,
+                                        timeViewEnd:
+                                            _timeViewEndAnimation.value,
+                                        ticksPerQuarter: state.ticksPerQuarter,
                                       ),
-                                      children: state.clipIDs.map<Widget>(
-                                        (id) {
-                                          return LayoutId(
-                                            key: Key(id.toString()),
-                                            id: id,
-                                            child: BlocProvider<ClipCubit>(
-                                              create: (context) => ClipCubit(
-                                                projectID: state.projectID,
-                                                arrangementID:
-                                                    state.activeArrangementID!,
-                                                clipID: id,
-                                              ),
-                                              child: ClipSizer(
-                                                editorWidth:
-                                                    constraints.maxWidth,
-                                                timeViewStart: timeView.start,
-                                                timeViewEnd: timeView.end,
-                                                child: Clip(
-                                                  ticksPerPixel:
-                                                      timeView.width /
-                                                          constraints.maxWidth,
-                                                ),
-                                              ),
+                                    );
+                                  }),
+                            );
+
+                            final clipWidgets = state.clipIDs.map<Widget>(
+                              (id) {
+                                return LayoutId(
+                                  key: Key(id.toString()),
+                                  id: id,
+                                  child: BlocProvider<ClipCubit>(
+                                    create: (context) => ClipCubit(
+                                      projectID: state.projectID,
+                                      arrangementID: state.activeArrangementID!,
+                                      clipID: id,
+                                    ),
+                                    child: AnimatedBuilder(
+                                        animation: _timeViewAnimationController,
+                                        builder: (context, child) {
+                                          return ClipSizer(
+                                            editorWidth: constraints.maxWidth,
+                                            timeViewStart:
+                                                _timeViewStartAnimation.value,
+                                            timeViewEnd:
+                                                _timeViewEndAnimation.value,
+                                            child: Clip(
+                                              ticksPerPixel:
+                                                  (_timeViewEndAnimation.value -
+                                                          _timeViewStartAnimation
+                                                              .value) /
+                                                      constraints.maxWidth,
                                             ),
                                           );
-                                        },
-                                      ).toList(),
-                                    ),
+                                        }),
+                                  ),
+                                );
+                              },
+                            ).toList();
+
+                            final clipsContainer = Positioned.fill(
+                              child: state.activeArrangementID == null
+                                  ? const SizedBox()
+                                  : AnimatedBuilder(
+                                      animation: _timeViewAnimationController,
+                                      builder: (context, child) {
+                                        return CustomMultiChildLayout(
+                                          delegate: ClipLayoutDelegate(
+                                            baseTrackHeight:
+                                                state.baseTrackHeight,
+                                            trackHeightModifiers:
+                                                state.trackHeightModifiers,
+                                            timeViewStart:
+                                                _timeViewStartAnimation.value,
+                                            timeViewEnd:
+                                                _timeViewEndAnimation.value,
+                                            project: cubit.project,
+                                            trackIDs: state.trackIDs,
+                                            clipIDs: state.clipIDs,
+                                            arrangementID:
+                                                state.activeArrangementID!,
+                                            verticalScrollPosition:
+                                                state.verticalScrollPosition,
+                                          ),
+                                          children: clipWidgets,
+                                        );
+                                      }),
                             );
 
                             return Listener(
@@ -361,7 +444,7 @@ class _ArrangerContent extends StatelessWidget {
                                 );
                               },
                               child: Stack(
-                                children: [grid, clips],
+                                children: [grid, clipsContainer],
                               ),
                             );
                           }),
