@@ -364,14 +364,15 @@ class TimelinePainter extends CustomPainter {
       }
 
       while (timePtr < nextDivisionStart && timePtr < timeViewEnd) {
-        if (timePtr >= timeViewStart) {
-          final x = timeToPixels(
-            timeViewStart: timeViewStart,
-            timeViewEnd: timeViewEnd,
-            viewPixelWidth: size.width,
-            time: timePtr.toDouble(),
-          );
+        final x = timeToPixels(
+          timeViewStart: timeViewStart,
+          timeViewEnd: timeViewEnd,
+          viewPixelWidth: size.width,
+          time: timePtr.toDouble(),
+        );
 
+        // Don't draw numbers that are off-screen
+        if (x >= -50) {
           TextSpan span = TextSpan(
             style: TextStyle(color: Theme.text.main),
             text: barNumber.toString(),
