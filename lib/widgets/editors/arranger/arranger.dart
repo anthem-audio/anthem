@@ -386,49 +386,53 @@ class _ArrangerContentState extends State<_ArrangerContent>
                       Container(width: 1, color: Theme.panel.border),
                       Expanded(
                         child: ClipRect(
-                          child: LayoutBuilder(builder: (context, constraints) {
-                            final grid = Positioned.fill(
-                              child: AnimatedBuilder(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final grid = Positioned.fill(
+                                child: AnimatedBuilder(
                                   animation:
                                       _verticalScrollPositionAnimationController,
                                   builder: (context, child) {
                                     return AnimatedBuilder(
-                                        animation: _timeViewAnimationController,
-                                        builder: (context, child) {
-                                          return CustomPaint(
-                                            painter: ArrangerBackgroundPainter(
-                                              baseTrackHeight:
-                                                  state.baseTrackHeight,
-                                              verticalScrollPosition:
-                                                  _verticalScrollPositionAnimation
-                                                      .value,
-                                              trackHeightModifiers:
-                                                  state.trackHeightModifiers,
-                                              trackIDs: state.trackIDs,
-                                              timeViewStart:
-                                                  _timeViewStartAnimation.value,
-                                              timeViewEnd:
-                                                  _timeViewEndAnimation.value,
-                                              ticksPerQuarter:
-                                                  state.ticksPerQuarter,
-                                            ),
-                                          );
-                                        });
-                                  }),
-                            );
+                                      animation: _timeViewAnimationController,
+                                      builder: (context, child) {
+                                        return CustomPaint(
+                                          painter: ArrangerBackgroundPainter(
+                                            baseTrackHeight:
+                                                state.baseTrackHeight,
+                                            verticalScrollPosition:
+                                                _verticalScrollPositionAnimation
+                                                    .value,
+                                            trackHeightModifiers:
+                                                state.trackHeightModifiers,
+                                            trackIDs: state.trackIDs,
+                                            timeViewStart:
+                                                _timeViewStartAnimation.value,
+                                            timeViewEnd:
+                                                _timeViewEndAnimation.value,
+                                            ticksPerQuarter:
+                                                state.ticksPerQuarter,
+                                          ),
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
+                              );
 
-                            final clipWidgets = state.clipIDs.map<Widget>(
-                              (id) {
-                                return LayoutId(
-                                  key: Key(id.toString()),
-                                  id: id,
-                                  child: BlocProvider<ClipCubit>(
-                                    create: (context) => ClipCubit(
-                                      projectID: state.projectID,
-                                      arrangementID: state.activeArrangementID!,
-                                      clipID: id,
-                                    ),
-                                    child: AnimatedBuilder(
+                              final clipWidgets = state.clipIDs.map<Widget>(
+                                (id) {
+                                  return LayoutId(
+                                    key: Key(id.toString()),
+                                    id: id,
+                                    child: BlocProvider<ClipCubit>(
+                                      create: (context) => ClipCubit(
+                                        projectID: state.projectID,
+                                        arrangementID:
+                                            state.activeArrangementID!,
+                                        clipID: id,
+                                      ),
+                                      child: AnimatedBuilder(
                                         animation: _timeViewAnimationController,
                                         builder: (context, child) {
                                           return ClipSizer(
@@ -445,20 +449,21 @@ class _ArrangerContentState extends State<_ArrangerContent>
                                                       constraints.maxWidth,
                                             ),
                                           );
-                                        }),
-                                  ),
-                                );
-                              },
-                            ).toList();
+                                        },
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ).toList();
 
-                            final clipsContainer = Positioned.fill(
-                              child: state.activeArrangementID == null
-                                  ? const SizedBox()
-                                  : AnimatedBuilder(
-                                      animation:
-                                          _verticalScrollPositionAnimationController,
-                                      builder: (context, child) {
-                                        return AnimatedBuilder(
+                              final clipsContainer = Positioned.fill(
+                                child: state.activeArrangementID == null
+                                    ? const SizedBox()
+                                    : AnimatedBuilder(
+                                        animation:
+                                            _verticalScrollPositionAnimationController,
+                                        builder: (context, child) {
+                                          return AnimatedBuilder(
                                             animation:
                                                 _timeViewAnimationController,
                                             builder: (context, child) {
@@ -485,26 +490,29 @@ class _ArrangerContentState extends State<_ArrangerContent>
                                                 ),
                                                 children: clipWidgets,
                                               );
-                                            });
-                                      }),
-                            );
+                                            },
+                                          );
+                                        },
+                                      ),
+                              );
 
-                            return Listener(
-                              onPointerDown: (event) {
-                                cubit.handleMouseDown(
-                                  event.localPosition,
-                                  Size(
-                                    constraints.maxWidth,
-                                    constraints.maxHeight,
-                                  ),
-                                  timeView,
-                                );
-                              },
-                              child: Stack(
-                                children: [grid, clipsContainer],
-                              ),
-                            );
-                          }),
+                              return Listener(
+                                onPointerDown: (event) {
+                                  cubit.handleMouseDown(
+                                    event.localPosition,
+                                    Size(
+                                      constraints.maxWidth,
+                                      constraints.maxHeight,
+                                    ),
+                                    timeView,
+                                  );
+                                },
+                                child: Stack(
+                                  children: [grid, clipsContainer],
+                                ),
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ],
