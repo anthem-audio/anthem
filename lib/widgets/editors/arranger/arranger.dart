@@ -371,9 +371,17 @@ class _ArrangerContentState extends State<_ArrangerContent>
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const SizedBox(
+                      SizedBox(
                         width: trackHeaderWidth,
-                        child: _TrackHeaders(),
+                        child: AnimatedBuilder(
+                          animation: _verticalScrollPositionAnimationController,
+                          builder: (context, child) {
+                            return _TrackHeaders(
+                              verticalScrollPosition:
+                                  _verticalScrollPositionAnimation.value,
+                            );
+                          },
+                        ),
                       ),
                       Container(width: 1, color: Theme.panel.border),
                       Expanded(
@@ -381,29 +389,32 @@ class _ArrangerContentState extends State<_ArrangerContent>
                           child: LayoutBuilder(builder: (context, constraints) {
                             final grid = Positioned.fill(
                               child: AnimatedBuilder(
-                                animation: _verticalScrollPositionAnimationController,
-                                builder: (context, child) {
-                                  return AnimatedBuilder(
-                                      animation: _timeViewAnimationController,
-                                      builder: (context, child) {
-                                        return CustomPaint(
-                                          painter: ArrangerBackgroundPainter(
-                                            baseTrackHeight: state.baseTrackHeight,
-                                            verticalScrollPosition:
-                                                _verticalScrollPositionAnimation.value,
-                                            trackHeightModifiers:
-                                                state.trackHeightModifiers,
-                                            trackIDs: state.trackIDs,
-                                            timeViewStart:
-                                                _timeViewStartAnimation.value,
-                                            timeViewEnd:
-                                                _timeViewEndAnimation.value,
-                                            ticksPerQuarter: state.ticksPerQuarter,
-                                          ),
-                                        );
-                                      });
-                                }
-                              ),
+                                  animation:
+                                      _verticalScrollPositionAnimationController,
+                                  builder: (context, child) {
+                                    return AnimatedBuilder(
+                                        animation: _timeViewAnimationController,
+                                        builder: (context, child) {
+                                          return CustomPaint(
+                                            painter: ArrangerBackgroundPainter(
+                                              baseTrackHeight:
+                                                  state.baseTrackHeight,
+                                              verticalScrollPosition:
+                                                  _verticalScrollPositionAnimation
+                                                      .value,
+                                              trackHeightModifiers:
+                                                  state.trackHeightModifiers,
+                                              trackIDs: state.trackIDs,
+                                              timeViewStart:
+                                                  _timeViewStartAnimation.value,
+                                              timeViewEnd:
+                                                  _timeViewEndAnimation.value,
+                                              ticksPerQuarter:
+                                                  state.ticksPerQuarter,
+                                            ),
+                                          );
+                                        });
+                                  }),
                             );
 
                             final clipWidgets = state.clipIDs.map<Widget>(
@@ -509,7 +520,12 @@ class _ArrangerContentState extends State<_ArrangerContent>
 }
 
 class _TrackHeaders extends StatefulWidget {
-  const _TrackHeaders({Key? key}) : super(key: key);
+  final double verticalScrollPosition;
+
+  const _TrackHeaders({
+    Key? key,
+    required this.verticalScrollPosition,
+  }) : super(key: key);
 
   @override
   State<_TrackHeaders> createState() => _TrackHeadersState();
@@ -531,7 +547,7 @@ class _TrackHeadersState extends State<_TrackHeaders> {
             List<Widget> headers = [];
             List<Widget> resizeHandles = [];
 
-            var trackPositionPointer = -state.verticalScrollPosition;
+            var trackPositionPointer = -widget.verticalScrollPosition;
 
             for (final trackID in state.trackIDs) {
               final trackIDStr = trackID.toString();
