@@ -18,9 +18,7 @@
 */
 
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/text_box.dart';
 import 'package:anthem/widgets/basic/text_box_controlled.dart';
-import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
 import 'package:anthem/widgets/project_details/arrangement_detail_view_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';

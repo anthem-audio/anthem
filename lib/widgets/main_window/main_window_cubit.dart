@@ -22,7 +22,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:anthem/commands/project_state_changes.dart';
-import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
@@ -35,8 +34,6 @@ part 'main_window_state.dart';
 class MainWindowCubit extends Cubit<MainWindowState> {
   late final StreamSubscription<ActiveProjectChanged> _activeProjectChangedSub;
   late final StreamSubscription<ProjectStateChange> _projectListChangedSub;
-
-  late final StreamSubscription<List<StateChange>> _stateChangeStream;
 
   @override
   Future<void> close() async {

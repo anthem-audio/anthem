@@ -216,7 +216,6 @@ GetBestDivisionResult getBestDivision({
   );
 }
 
-// TODO: memoize / precalculate this?
 List<DivisionChange> getDivisionChanges({
   required double viewWidthInPixels,
   required double minPixelsPerSection,
@@ -277,3 +276,30 @@ List<DivisionChange> getDivisionChanges({
   return result;
 }
 
+// Rounds the input time down to the nearest snap boundary
+Time getSnappedTime({
+  required Time rawTime,
+  required List<DivisionChange> divisionChanges,
+  bool roundUp = false,
+}) {
+  Time targetTime = -1;
+
+  // A binary search might be better here, but it would only matter
+  // if there were a *lot* of time signature changes in the pattern
+  for (var i = 0; i < divisionChanges.length; i++) {
+    if (rawTime >= 0 &&
+        i < divisionChanges.length - 1 &&
+        divisionChanges[i + 1].offset <= rawTime) {
+      continue;
+    }
+
+    final divisionChange = divisionChanges[i];
+    final snapSize = divisionChange.divisionSnapSize;
+    targetTime = (rawTime ~/ snapSize) * snapSize +
+        (roundUp && rawTime % snapSize != 0 ? snapSize : 0);
+    targetTime += divisionChange.offset % snapSize;
+    break;
+  }
+
+  return targetTime;
+}

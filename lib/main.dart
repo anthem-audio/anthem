@@ -17,13 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+// cspell:ignore bitsdojo dylib unfocus scrollbars
+
 import 'dart:ffi';
 import 'dart:io';
 
 import 'package:anthem/theme.dart' as anthem_theme;
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 
@@ -40,9 +41,9 @@ final path = Platform.isWindows
     : Platform.isMacOS
         ? 'lib$base.dylib'
         : 'lib$base.so';
-late final dylib =
+final dylib =
     Platform.isIOS ? DynamicLibrary.process() : DynamicLibrary.open(path);
-late final api = bridge.AnthemImpl(dylib);
+final api = bridge.AnthemImpl(dylib);
 
 void main() async {
   Store.instance.init();
