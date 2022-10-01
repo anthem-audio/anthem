@@ -138,38 +138,41 @@ class _PanelState extends State<Panel> {
         ),
 
         // Draggable separator
-        Positioned(
-          left: handleLeft,
-          right: handleRight,
-          top: handleTop,
-          bottom: handleBottom,
-          child: MouseRegion(
-            cursor: horizontal
-                ? SystemMouseCursors.resizeLeftRight
-                : SystemMouseCursors.resizeUpDown,
-            opaque: false,
-            child: Listener(
-              onPointerDown: (e) {
-                mouseDown = true;
-                startPos = (horizontal ? e.position.dx : e.position.dy);
-                startSize = panelSize;
-              },
-              onPointerUp: (e) {
-                mouseDown = false;
-              },
-              onPointerMove: (e) {
-                final delta =
-                    ((horizontal ? e.position.dx : e.position.dy) - startPos) *
-                        (panelFirst ? 1 : -1);
-                setState(() {
-                  panelSize = (startSize + delta).clamp(0, double.infinity);
-                });
-              },
-              child: Container(
-                width: horizontal ? handleSize : null,
-                height: !horizontal ? handleSize : null,
-                // this is not clickable unless it has a color and I have no idea why
-                color: const Color(0x00FFFFFF),
+        Visibility(
+          visible: !panelHidden,
+          child: Positioned(
+            left: handleLeft,
+            right: handleRight,
+            top: handleTop,
+            bottom: handleBottom,
+            child: MouseRegion(
+              cursor: horizontal
+                  ? SystemMouseCursors.resizeLeftRight
+                  : SystemMouseCursors.resizeUpDown,
+              opaque: false,
+              child: Listener(
+                onPointerDown: (e) {
+                  mouseDown = true;
+                  startPos = (horizontal ? e.position.dx : e.position.dy);
+                  startSize = panelSize;
+                },
+                onPointerUp: (e) {
+                  mouseDown = false;
+                },
+                onPointerMove: (e) {
+                  final delta =
+                      ((horizontal ? e.position.dx : e.position.dy) - startPos) *
+                          (panelFirst ? 1 : -1);
+                  setState(() {
+                    panelSize = (startSize + delta).clamp(0, double.infinity);
+                  });
+                },
+                child: Container(
+                  width: horizontal ? handleSize : null,
+                  height: !horizontal ? handleSize : null,
+                  // this is not clickable unless it has a color and I have no idea why
+                  color: const Color(0x00FFFFFF),
+                ),
               ),
             ),
           ),

@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+// cspell:ignore autofocus
+
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_cubit.dart';
@@ -32,7 +34,7 @@ class MainWindow extends StatefulWidget {
   const MainWindow({Key? key}) : super(key: key);
 
   @override
-  _MainWindowState createState() => _MainWindowState();
+  State<MainWindow> createState() => _MainWindowState();
 }
 
 class _MainWindowState extends State<MainWindow> {

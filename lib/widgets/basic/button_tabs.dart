@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/constants.dart';
 import 'package:anthem/helpers/measure_text.dart';
 import 'package:anthem/theme.dart';
 import 'package:flutter/widgets.dart';
@@ -53,7 +52,7 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
         List<double> tabWidths = [];
 
         for (final tab in widget.tabs) {
-          if (tab.type == _ButtonTabType.icon) {
+          if (tab.type == ButtonTabType.icon) {
             tabWidths.add(8 + 16 + 8);
           } else {
             const style = TextStyle(fontSize: 11);
@@ -86,7 +85,7 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
 
           final Widget content;
 
-          if (tab.type == _ButtonTabType.icon) {
+          if (tab.type == ButtonTabType.icon) {
             content = SvgIcon(icon: tab.icon!, color: color);
             tabWidths.add(8 + 16 + 8);
           } else {
@@ -187,7 +186,7 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
   }
 }
 
-enum _ButtonTabType { text, icon }
+enum ButtonTabType { text, icon }
 
 class ButtonTabDef<T> {
   T id;
@@ -197,11 +196,11 @@ class ButtonTabDef<T> {
   ButtonTabDef.withText({required String this.text, required this.id});
   ButtonTabDef.withIcon({required IconDef this.icon, required this.id});
 
-  _ButtonTabType get type {
+  ButtonTabType get type {
     if (text != null) {
-      return _ButtonTabType.text;
+      return ButtonTabType.text;
     } else if (icon != null) {
-      return _ButtonTabType.icon;
+      return ButtonTabType.icon;
     } else {
       throw Exception("Malformed ButtonTabDef");
     }

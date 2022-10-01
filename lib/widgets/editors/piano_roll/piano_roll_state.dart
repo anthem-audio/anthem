@@ -32,6 +32,7 @@ class PianoRollState with _$PianoRollState {
     required double keyHeight,
     required double keyValueAtTop,
     required int lastContent, // tick position of the last note end
+    @Default(false) hasTimeMarkers,
   }) = _PianoRollState;
 }
 

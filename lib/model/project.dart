@@ -142,12 +142,13 @@ class ProjectModel extends Hydratable {
     _stateChangeStreamController.add(changes);
   }
 
-  void execute(Command command) {
+  void execute(Command command, {bool push = true}) {
     if (_journalPageActive) {
       _journalPageAccumulator.add(command);
     } else {
-      final change = commandQueue.executeAndPush(command);
-      _dispatch(change);
+      final changes =
+          push ? commandQueue.executeAndPush(command) : command.execute();
+      _dispatch(changes);
     }
   }
 

@@ -45,7 +45,7 @@ void paintTimeGrid({
     minPixelsPerSection: minorMinPixels,
     snap: snap,
     defaultTimeSignature: baseTimeSignature, // TODO
-    timeSignatureChanges: [],
+    timeSignatureChanges: timeSignatureChanges,
     ticksPerQuarter: ticksPerQuarter,
     timeViewStart: timeViewStart,
     timeViewEnd: timeViewEnd,
@@ -100,31 +100,15 @@ void paintTimeGrid({
     paint: accentLinePaint,
   );
 
-  const phraseDivisionSnapMultiplier = 4 * 4;
-
-  final phraseDivisionChanges = getDivisionChanges(
-    viewWidthInPixels: size.width,
-    minPixelsPerSection: majorMinPixels,
-    snap: DivisionSnap(
-      division: Division(multiplier: phraseDivisionSnapMultiplier, divisor: 1),
-    ),
-    defaultTimeSignature: baseTimeSignature,
-    timeSignatureChanges: timeSignatureChanges,
-    ticksPerQuarter: ticksPerQuarter,
-    timeViewStart: timeViewStart,
-    timeViewEnd: timeViewEnd,
-  );
-
-  paintVerticalLines(
+  paintPhraseShading(
     canvas: canvas,
     timeViewStart: timeViewStart,
     timeViewEnd: timeViewEnd,
-    divisionChanges: phraseDivisionChanges,
+    defaultTimeSignature: baseTimeSignature ?? TimeSignatureModel(4, 4),
+    timeSignatureChanges: timeSignatureChanges,
     size: size,
     paint: shadedPaint,
-    paintAcrossDivision: true,
-    skipOddLines: true,
-    skipWhenZoomedOut: true,
+    ticksPerQuarter: ticksPerQuarter,
   );
 }
 
@@ -135,20 +119,6 @@ void paintVerticalLines({
   required List<DivisionChange> divisionChanges,
   required Size size,
   required Paint paint,
-
-  // I'm coopting this function to draw the shaded regions every four bars.
-  // This is a bit of a hacky way to do it, but it saves duplicating some
-  // pretty dense code.
-  //
-  // By default the line width is 1 pixel. The changes we make to draw the
-  // shaded regions are:
-  //   - A flag to fill the whole division, as opposed to painting a 1-pixel-
-  //     wide line.
-  //   - A flag to skip every other line.
-  //   - A flag to skip the whole division if its skip value is greater than 1.
-  bool paintAcrossDivision = false,
-  bool skipOddLines = false,
-  bool skipWhenZoomedOut = false,
 }) {
   var i = 0;
   // There should always be at least one division change. The first change
@@ -159,8 +129,6 @@ void paintVerticalLines({
           divisionChanges[0].divisionRenderSize;
 
   while (timePtr < timeViewEnd) {
-    var skip = true;
-
     // This shouldn't happen, but safety first
     if (i >= divisionChanges.length) break;
 
@@ -171,33 +139,13 @@ void paintVerticalLines({
       nextDivisionStart = divisionChanges[i + 1].offset;
     }
 
-    bool shouldSkipDivision = false;
-
-    // Skip this division if the time pointer is past its end
-    shouldSkipDivision = shouldSkipDivision || timePtr >= nextDivisionStart;
-
-    // Skip this division if we're too zoomed out and the skip when zoomed out
-    // flag is true
-    shouldSkipDivision = shouldSkipDivision ||
-        (skipWhenZoomedOut && thisDivision.distanceBetween > 1);
-
-    if (shouldSkipDivision) {
+    if (timePtr >= nextDivisionStart) {
       timePtr = nextDivisionStart;
       i++;
       continue;
     }
 
     while (timePtr < nextDivisionStart && timePtr < timeViewEnd) {
-      final isOdd =
-          ((timePtr - thisDivision.offset) ~/ thisDivision.divisionRenderSize) %
-                  2 ==
-              0;
-      if (skipOddLines && isOdd) {
-        timePtr += thisDivision.divisionRenderSize;
-        skip = !skip;
-        continue;
-      }
-
       final x = timeToPixels(
         timeViewStart: timeViewStart,
         timeViewEnd: timeViewEnd,
@@ -205,26 +153,94 @@ void paintVerticalLines({
         time: timePtr.toDouble(),
       );
 
-      final width = !paintAcrossDivision
-          ? 1.0
-          : timeToPixels(
-              timeViewStart: 0,
-              timeViewEnd: timeViewEnd - timeViewStart,
-              viewPixelWidth: size.width,
-              time: thisDivision.divisionRenderSize
-                  .clamp(1, nextDivisionStart - timePtr)
-                  .toDouble(),
-            );
-
       canvas.drawRect(
-        Rect.fromLTWH(x, 0, width, size.height),
+        Rect.fromLTWH(x, 0, 1, size.height),
         paint,
       );
 
       timePtr += thisDivision.divisionRenderSize;
-      skip = !skip;
+
+      // If this is true, then this is the last iteration of the inner loop
+      if (timePtr >= nextDivisionStart) {
+        timePtr = nextDivisionStart;
+      }
     }
 
     i++;
+  }
+}
+
+void paintPhraseShading({
+  required Canvas canvas,
+  required double timeViewStart,
+  required double timeViewEnd,
+  required TimeSignatureModel defaultTimeSignature,
+  required List<TimeSignatureChangeModel> timeSignatureChanges,
+  required Size size,
+  required Paint paint,
+  required int ticksPerQuarter,
+}) {
+  var tick = 0;
+  var shadeThisPhrase = false;
+  var timeSignatureIndex = 0;
+
+  var timeSignatures =
+      timeSignatureChanges.isEmpty || timeSignatureChanges[0].offset > 0
+          ? [
+              TimeSignatureChangeModel(
+                  timeSignature: defaultTimeSignature, offset: 0),
+              ...timeSignatureChanges
+            ]
+          : timeSignatureChanges;
+
+  while (tick < timeViewEnd) {
+    final timeSignatureChange = timeSignatures[timeSignatureIndex];
+    final timeSignature = timeSignatureChange.timeSignature;
+
+    final barSize = timeSignature.numerator *
+        (ticksPerQuarter * 4) ~/
+        timeSignature.denominator;
+
+    final nextTimeSignatureChangeOffset =
+        timeSignatureIndex + 1 >= timeSignatures.length
+            ? 0x7FFFFFFFFFFFFFFF
+            : timeSignatures[timeSignatureIndex + 1].offset;
+
+    var phraseWidth = barSize * 4;
+    if (tick + phraseWidth > nextTimeSignatureChangeOffset) {
+      phraseWidth -= tick + phraseWidth - nextTimeSignatureChangeOffset;
+    }
+
+    final startX = timeToPixels(
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      viewPixelWidth: size.width,
+      time: tick.toDouble(),
+    );
+
+    final endX = timeToPixels(
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      viewPixelWidth: size.width,
+      time: (tick + phraseWidth).toDouble(),
+    );
+
+    // If it's actually on screen
+    if (tick <= timeViewEnd && tick + phraseWidth >= timeViewStart) {
+      // If it should be shaded
+      if (shadeThisPhrase) {
+        canvas.drawRect(
+          Rect.fromLTWH(startX, 0, endX - startX, size.height),
+          paint,
+        );
+      }
+    }
+
+    tick += phraseWidth;
+    shadeThisPhrase = !shadeThisPhrase;
+    if (tick >= nextTimeSignatureChangeOffset) {
+      timeSignatureIndex++;
+      tick = nextTimeSignatureChangeOffset;
+    }
   }
 }

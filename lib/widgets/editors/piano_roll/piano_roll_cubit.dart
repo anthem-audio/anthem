@@ -20,16 +20,22 @@
 import 'dart:async';
 
 import 'package:anthem/commands/pattern_commands.dart';
+import 'package:anthem/commands/pattern_state_changes.dart';
 import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/commands/timeline_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/model/store.dart';
+import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'piano_roll_state.dart';
 part 'piano_roll_cubit.freezed.dart';
+
+const noContentBars = 16;
 
 class PianoRollCubit extends Cubit<PianoRollState> {
   late final ProjectModel project;
@@ -58,7 +64,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
               lastContent: project.song.ticksPerQuarter *
                   // TODO: Use actual project time signature
                   4 * // 4/4 time signature
-                  8, // 8 bars
+                  noContentBars, // noContentBars bars
             );
           })(),
         ) {
@@ -75,26 +81,46 @@ class PianoRollCubit extends Cubit<PianoRollState> {
   _onModelChanged(List<StateChange> changes) {
     var updateActivePattern = false;
     var updateActiveGenerator = false;
+    var timeMarkersChanged = false;
 
-    void updateActivePatternFn(change) => updateActivePattern = true;
+    void noteChangedFn(NoteStateChange change) {
+      if (change.patternID == project.song.activePatternID) {
+        updateActivePattern = true;
+      }
+    }
 
     for (final change in changes) {
-      change.whenOrNull(project: (change) {
-        change.mapOrNull(
-          activePatternChanged: updateActivePatternFn,
-          activeGeneratorChanged: (change) {
-            updateActivePatternFn(change);
-            updateActiveGenerator = true;
-          },
-        );
-      }, note: (change) {
-        change.mapOrNull(
-          noteAdded: updateActivePatternFn,
-          noteDeleted: updateActivePatternFn,
-          noteMoved: updateActivePatternFn,
-          noteResized: updateActivePatternFn,
-        );
-      });
+      change.whenOrNull(
+        project: (change) {
+          change.mapOrNull(
+            activePatternChanged: (change) {
+              updateActivePattern = true;
+              timeMarkersChanged = true;
+            },
+            activeGeneratorChanged: (change) {
+              updateActivePattern = true;
+              updateActiveGenerator = true;
+            },
+          );
+        },
+        note: (change) {
+          change.mapOrNull(
+            noteAdded: noteChangedFn,
+            noteDeleted: noteChangedFn,
+            noteMoved: noteChangedFn,
+            noteResized: noteChangedFn,
+          );
+        },
+        pattern: (change) {
+          change.mapOrNull(
+            timeSignatureChangeListUpdated: (change) {
+              if (change.patternID == project.song.activePatternID) {
+                timeMarkersChanged = true;
+              }
+            },
+          );
+        },
+      );
     }
 
     PianoRollState? newState;
@@ -115,7 +141,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
               barMultiple: 4,
               minPaddingInBarMultiples: 4,
             ) ??
-            state.ticksPerQuarter * 4 * 8,
+            state.ticksPerQuarter * 4 * noContentBars,
       );
     }
 
@@ -135,7 +161,16 @@ class PianoRollCubit extends Cubit<PianoRollState> {
               barMultiple: 4,
               minPaddingInBarMultiples: 4,
             ) ??
-            state.ticksPerQuarter * 4 * 8,
+            state.ticksPerQuarter * 4 * noContentBars,
+      );
+    }
+
+    if (timeMarkersChanged) {
+      final timeSignatureChanges = project.song
+              .patterns[project.song.activePatternID]?.timeSignatureChanges ??
+          [];
+      newState = (newState ?? state).copyWith(
+        hasTimeMarkers: timeSignatureChanges.isNotEmpty,
       );
     }
 
@@ -296,5 +331,21 @@ class PianoRollCubit extends Cubit<PianoRollState> {
 
   void setKeyValueAtTop(double newKeyValueAtTop) {
     emit(state.copyWith(keyValueAtTop: newKeyValueAtTop));
+  }
+
+  void addTimeSignatureChange(TimeSignatureModel timeSignature, Time offset) {
+    if (state.patternID == null) return;
+
+    project.execute(
+      AddTimeSignatureChangeCommand(
+        timelineKind: TimelineKind.pattern,
+        project: project,
+        patternID: state.patternID!,
+        change: TimeSignatureChangeModel(
+          offset: offset,
+          timeSignature: timeSignature,
+        ),
+      ),
+    );
   }
 }

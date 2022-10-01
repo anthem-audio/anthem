@@ -19,6 +19,7 @@
 
 import 'dart:convert';
 
+import 'package:anthem/helpers/id.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'time_signature.g.dart';
@@ -44,13 +45,17 @@ class TimeSignatureModel {
 
 @JsonSerializable()
 class TimeSignatureChangeModel {
+  late ID id;
   TimeSignatureModel timeSignature;
   int offset;
 
   TimeSignatureChangeModel({
+    ID? id,
     required this.timeSignature,
     required this.offset,
-  });
+  }) {
+    this.id = id ?? getID();
+  }
 
   factory TimeSignatureChangeModel.fromJson(Map<String, dynamic> json) =>
       _$TimeSignatureChangeModelFromJson(json);

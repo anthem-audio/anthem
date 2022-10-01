@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+// cspell:ignore ahsl
+
 import 'dart:math';
 
 import 'package:anthem/widgets/basic/background.dart';
@@ -26,7 +28,6 @@ import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart';
-import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -39,7 +40,7 @@ class PatternEditor extends StatefulWidget {
   const PatternEditor({Key? key}) : super(key: key);
 
   @override
-  _PatternEditorState createState() => _PatternEditorState();
+  State<PatternEditor> createState() => _PatternEditorState();
 }
 
 class _PatternEditorState extends State<PatternEditor> {

@@ -29,14 +29,22 @@ import '../shared/helpers/types.dart';
 import 'helpers.dart';
 
 class PianoRollGrid extends StatelessWidget {
+  final double keyHeight;
+  final AnimationController timeViewAnimationController;
+  final AnimationController keyValueAtTopAnimationController;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
+  final Animation<double> keyValueAtTopAnimation;
+
   const PianoRollGrid({
     Key? key,
     required this.keyHeight,
-    required this.keyValueAtTop,
+    required this.keyValueAtTopAnimationController,
+    required this.timeViewAnimationController,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+    required this.keyValueAtTopAnimation,
   }) : super(key: key);
-
-  final double keyValueAtTop;
-  final double keyHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -44,18 +52,27 @@ class PianoRollGrid extends StatelessWidget {
         builder: (context, state) {
       final pattern = Store
           .instance.projects[state.projectID]?.song.patterns[state.patternID];
-      final timeView = context.watch<TimeView>();
 
       return ClipRect(
-        child: CustomPaint(
-          painter: PianoRollBackgroundPainter(
-            keyHeight: keyHeight,
-            keyValueAtTop: keyValueAtTop,
-            pattern: pattern,
-            timeViewStart: timeView.start,
-            timeViewEnd: timeView.end,
-            ticksPerQuarter: state.ticksPerQuarter,
-          ),
+        child: AnimatedBuilder(
+          animation: keyValueAtTopAnimationController,
+          builder: (context, child) {
+            return AnimatedBuilder(
+              animation: timeViewAnimationController,
+              builder: (context, child) {
+                return CustomPaint(
+                  painter: PianoRollBackgroundPainter(
+                    keyHeight: keyHeight,
+                    keyValueAtTop: keyValueAtTopAnimation.value,
+                    pattern: pattern,
+                    timeViewStart: timeViewStartAnimation.value,
+                    timeViewEnd: timeViewEndAnimation.value,
+                    ticksPerQuarter: state.ticksPerQuarter,
+                  ),
+                );
+              },
+            );
+          },
         ),
       );
     });

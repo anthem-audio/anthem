@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2022 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,20 +18,6 @@
 */
 
 import 'package:flutter/widgets.dart';
-
-// Notifications that describe pointer events on notes. How they are handled
-// will depend on the current state of the piano roll controller.
-class NotePointerNotification extends Notification {
-  NotePointerNotification({
-    required this.noteID,
-    required this.pressed,
-    required this.isRightClick,
-  });
-
-  final int noteID;
-  final bool pressed;
-  final bool isRightClick;
-}
 
 abstract class PianoRollNotification extends Notification {
   PianoRollNotification({required this.pianoRollSize});
@@ -97,4 +83,14 @@ class PianoRollPointerUpNotification extends PianoRollPointerNotification {
           event: event,
           pianoRollSize: pianoRollSize,
         );
+}
+
+class PianoRollTimeSignatureChangeAddNotification
+    extends PianoRollNotification {
+  double time;
+
+  PianoRollTimeSignatureChangeAddNotification({
+    required Size pianoRollSize,
+    required this.time,
+  }) : super(pianoRollSize: pianoRollSize);
 }
