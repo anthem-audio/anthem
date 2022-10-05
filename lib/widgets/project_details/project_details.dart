@@ -23,6 +23,8 @@ import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:anthem/widgets/project_details/arrangement_detail_view.dart';
 import 'package:anthem/widgets/project_details/pattern_detail_view.dart';
 import 'package:anthem/widgets/project_details/pattern_detail_view_cubit.dart';
+import 'package:anthem/widgets/project_details/time_signature_change_detail_view.dart';
+import 'package:anthem/widgets/project_details/time_signature_change_detail_view_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
@@ -53,6 +55,13 @@ class ProjectDetails extends StatelessWidget {
           projectID: projectCubit.project.id,
         ),
         child: const ArrangementDetailView(),
+      );
+    } else if (selectedProjectDetails is TimeSignatureChangeDetailViewKind) {
+      return BlocProvider(
+        create: (context) => TimeSignatureChangeDetailViewCubit(
+          projectID: projectCubit.project.id,
+        ),
+        child: const TimeSignatureChangeDetailView(),
       );
     }
 

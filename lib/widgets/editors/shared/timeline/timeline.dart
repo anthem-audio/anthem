@@ -90,8 +90,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                 (change) => LayoutId(
                   id: change.offset,
                   child: TimelineLabel(
-                    text:
-                        "${change.timeSignature.numerator}/${change.timeSignature.denominator}",
+                    text: change.timeSignature.toDisplayString(),
                     id: change.id,
                     offset: change.offset,
                     timelineWidth: constraints.maxWidth,

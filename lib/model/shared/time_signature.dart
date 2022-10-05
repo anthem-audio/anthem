@@ -41,6 +41,8 @@ class TimeSignatureModel {
 
   @override
   String toString() => json.encode(toJson());
+
+  String toDisplayString() => "$numerator/$denominator";
 }
 
 @JsonSerializable()

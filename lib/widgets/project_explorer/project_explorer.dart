@@ -17,6 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
+import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
@@ -54,116 +59,194 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
     });
   }
 
+  StreamSubscription<List<StateChange>>? stateChangeHandle;
+
+  // I'm trying a new pattern here. This widget uses many things from across
+  // the state tree, and getting them all into a view model is a lot of work
+  // for not much real benefit.
+  //
+  // Instead, we subscribe to a bunch of change events here and just re-
+  // render when they fire. That way, we can pull info directly from the main
+  // model.
+  void initStateChangeListenerIfNeeded(ID projectID) {
+    if (stateChangeHandle != null) return;
+
+    final project = Store.instance.projects[projectID]!;
+
+    project.stateChangeStream.listen(_onStateChanged);
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  void _onStateChanged(List<StateChange> changes) {
+    for (final change in changes) {
+      change.whenOrNull(
+        pattern: (patternChange) {
+          patternChange.mapOrNull(
+            // When dragging the time signature, this fires a lot
+            timeSignatureChangeListUpdated: (value) => setState(() {}),
+          );
+        },
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final projectCubit = Provider.of<ProjectCubit>(context);
 
     return BlocBuilder<ProjectExplorerCubit, ProjectExplorerState>(
-        builder: (context, state) {
-      final project = Store.instance.projects[state.projectID]!;
+      builder: (context, state) {
+        initStateChangeListenerIfNeeded(state.projectID);
 
-      final arrangementsTree = TreeViewItemModel(
-        key: "projectArrangementsFolder",
-        label: "Arrangements",
-        children: state.arrangementIDs
-            .map((id) => TreeViewItemModel(
+        final project = Store.instance.projects[state.projectID]!;
+
+        final arrangementsTree = TreeViewItemModel(
+          key: "projectArrangementsFolder",
+          label: "Arrangements",
+          children: state.arrangementIDs
+              .map(
+                (id) => TreeViewItemModel(
                   key: "arrangement-$id",
                   label: project.song.arrangements[id]!.name,
                   onClick: () => projectCubit.setActiveDetailView(
                     true,
                     ArrangementDetailViewKind(id),
                   ),
-                ))
-            .toList(),
-      );
+                ),
+              )
+              .toList(),
+        );
 
-      final patternsTree = TreeViewItemModel(
-        key: "projectPatternsFolder",
-        label: "Patterns",
-        children: state.patternIDs
-            .map((id) => TreeViewItemModel(
-                  key: "pattern-$id",
-                  label: project.song.patterns[id]!.name,
+        final patternsTree = TreeViewItemModel(
+          key: "projectPatternsFolder",
+          label: "Patterns",
+          children: state.patternIDs
+              .map(
+                (patternID) => TreeViewItemModel(
+                  key: "pattern-$patternID",
+                  label: project.song.patterns[patternID]!.name,
                   onClick: () => projectCubit.setActiveDetailView(
                     true,
-                    PatternDetailViewKind(id),
+                    PatternDetailViewKind(patternID),
                   ),
-                ))
-            .toList(),
-      );
-
-      return Background(
-        type: BackgroundType.dark,
-        borderRadius: const BorderRadius.all(Radius.circular(4)),
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(
-                height: 26,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Button(startIcon: Icons.kebab, width: 26),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: ButtonTabs(
-                        tabs: [
-                          ButtonTabDef.withIcon(
-                              id: "project", icon: Icons.audio),
-                          ButtonTabDef.withIcon(id: "files", icon: Icons.file),
-                          ButtonTabDef.withIcon(
-                              id: "plugins", icon: Icons.plugin),
-                        ],
-                      ),
+                    getMarkersItem(
+                      pattern: project.song.patterns[patternID],
+                      onClick: (changeID) {
+                        projectCubit.setActiveDetailView(
+                          true,
+                          TimeSignatureChangeDetailViewKind(
+                            changeID: changeID,
+                            patternID: patternID,
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 4),
-              SizedBox(
-                height: 24,
-                child: TextBox(
-                  controller: searchBoxController,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Theme.panel.accentDark,
-                          border:
-                              Border.all(color: Theme.panel.border, width: 1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: TreeView(
-                          filterText: searchText == "" ? null : searchText,
-                          scrollController: scrollController,
-                          items: [
-                            TreeViewItemModel(
-                              key: "currentProject",
-                              label: "Current project",
-                              children: [
-                                arrangementsTree,
-                                patternsTree,
-                              ],
-                            ),
+              )
+              .toList(),
+        );
+
+        return Background(
+          type: BackgroundType.dark,
+          borderRadius: const BorderRadius.all(Radius.circular(4)),
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  height: 26,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Button(startIcon: Icons.kebab, width: 26),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: ButtonTabs(
+                          tabs: [
+                            ButtonTabDef.withIcon(
+                                id: "project", icon: Icons.audio),
+                            ButtonTabDef.withIcon(
+                                id: "files", icon: Icons.file),
+                            ButtonTabDef.withIcon(
+                                id: "plugins", icon: Icons.plugin),
                           ],
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 4),
+                SizedBox(
+                  height: 24,
+                  child: TextBox(
+                    controller: searchBoxController,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Theme.panel.accentDark,
+                            border:
+                                Border.all(color: Theme.panel.border, width: 1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: TreeView(
+                            filterText: searchText == "" ? null : searchText,
+                            scrollController: scrollController,
+                            items: [
+                              TreeViewItemModel(
+                                key: "currentProject",
+                                label: "Current project",
+                                children: [
+                                  arrangementsTree,
+                                  patternsTree,
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
+}
+
+TreeViewItemModel getMarkersItem(
+    {PatternModel? pattern, required void Function(ID key) onClick}) {
+  final timeSignatureChanges = pattern!.timeSignatureChanges;
+
+  return TreeViewItemModel(
+    key: "markers",
+    label: "Time markers",
+    children: timeSignatureChanges
+        .map(
+          (change) => TreeViewItemModel(
+            key: change.id,
+            label: change.timeSignature.toDisplayString(),
+            onClick: () {
+              onClick(change.id);
+            },
+          ),
+        )
+        .toList(),
+  );
 }
