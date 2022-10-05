@@ -111,7 +111,7 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
               });
             },
             child: GestureDetector(
-              onTap: () {
+              onTapDown: (event) {
                 if (widget.model.children.isNotEmpty) {
                   setState(() {
                     if (isOpen) {
@@ -120,10 +120,15 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
                       open();
                     }
                   });
+                } else {
+                  widget.model.onClick?.call();
                 }
-
-                widget.model.onClick?.call();
               },
+              // TODO: There is absolutely no hint anywhere that this is even possible
+              onDoubleTap: widget.model.children.isNotEmpty &&
+                      widget.model.onClick != null
+                  ? () => widget.model.onClick?.call()
+                  : null,
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: Container(
