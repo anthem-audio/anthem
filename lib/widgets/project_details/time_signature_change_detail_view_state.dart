@@ -26,6 +26,7 @@ class TimeSignatureChangeDetailViewState with _$TimeSignatureChangeDetailViewSta
     required ID projectID,
     required ID? patternID,
     required ID? arrangementID,
+    required ID changeID,
     required int numerator,
     required int denominator,
   }) = _TimeSignatureChangeDetailViewState;

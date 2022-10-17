@@ -24,6 +24,7 @@ import 'package:anthem/widgets/project_details/time_signature_change_detail_view
 import 'package:anthem/widgets/project_details/widgets.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 class TimeSignatureChangeDetailView extends StatelessWidget {
   const TimeSignatureChangeDetailView({Key? key}) : super(key: key);
@@ -33,6 +34,8 @@ class TimeSignatureChangeDetailView extends StatelessWidget {
     return BlocBuilder<TimeSignatureChangeDetailViewCubit,
         TimeSignatureChangeDetailViewState>(
       builder: (context, state) {
+        final cubit = Provider.of<TimeSignatureChangeDetailViewCubit>(context);
+
         return Column(
           children: [
             Section(
@@ -49,6 +52,9 @@ class TimeSignatureChangeDetailView extends StatelessWidget {
                       name: (index + 1).toString(),
                     ),
                   ),
+                  onChanged: (id) {
+                    cubit.setNumerator(int.parse(id!));
+                  },
                 ),
                 const SizedBox(height: 4),
                 Dropdown(
@@ -62,6 +68,9 @@ class TimeSignatureChangeDetailView extends StatelessWidget {
                       return DropdownItem(id: value, name: value);
                     },
                   ),
+                  onChanged: (id) {
+                    cubit.setDenominator(int.parse(id!));
+                  },
                 ),
               ],
             ),
