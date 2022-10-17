@@ -89,7 +89,8 @@ class AddTimeSignatureChangeCommand extends Command {
       ];
     } else {
       throw Exception(
-          "Arrangement time signature changes aren't supported yet.");
+        "Arrangement time signature changes aren't supported yet.",
+      );
     }
   }
 
@@ -111,7 +112,8 @@ class AddTimeSignatureChangeCommand extends Command {
       ];
     } else {
       throw Exception(
-          "Arrangement time signature changes aren't supported yet.");
+        "Arrangement time signature changes aren't supported yet.",
+      );
     }
   }
 }
@@ -134,7 +136,8 @@ class RemoveTimeSignatureChangeCommand extends Command {
           .firstWhere((change) => change.id == changeID);
     } else {
       throw Exception(
-          "Arrangement time signature changes aren't supported yet.");
+        "Arrangement time signature changes aren't supported yet.",
+      );
     }
   }
 
@@ -156,7 +159,8 @@ class RemoveTimeSignatureChangeCommand extends Command {
       ];
     } else {
       throw Exception(
-          "Arrangement time signature changes aren't supported yet.");
+        "Arrangement time signature changes aren't supported yet.",
+      );
     }
   }
 
@@ -178,7 +182,8 @@ class RemoveTimeSignatureChangeCommand extends Command {
       ];
     } else {
       throw Exception(
-          "Arrangement time signature changes aren't supported yet.");
+        "Arrangement time signature changes aren't supported yet.",
+      );
     }
   }
 }
@@ -231,6 +236,100 @@ class MoveTimeSignatureChangeCommand extends Command {
 
     change.offset = oldOffset;
     _sortTimeSignatureChanges(changeList);
+
+    return [
+      StateChange.pattern(
+        PatternStateChange.timeSignatureChangeListUpdated(
+            project.id, patternID!),
+      ),
+    ];
+  }
+}
+
+class SetTimeSignatureNumeratorCommand extends Command {
+  TimelineKind timelineKind;
+  ID? patternID;
+  ID? arrangementID;
+  late TimeSignatureChangeModel change;
+  late int oldNumerator;
+  int numerator;
+
+  SetTimeSignatureNumeratorCommand({
+    required ProjectModel project,
+    required this.timelineKind,
+    this.patternID,
+    this.arrangementID,
+    required ID changeID,
+    required this.numerator,
+  }) : super(project) {
+    change = project.song.patterns[patternID]!.timeSignatureChanges
+        .firstWhere((change) => change.id == changeID);
+
+    oldNumerator = change.timeSignature.numerator;
+  }
+
+  @override
+  List<StateChange> execute() {
+    change.timeSignature.numerator = numerator;
+
+    return [
+      StateChange.pattern(
+        PatternStateChange.timeSignatureChangeListUpdated(
+            project.id, patternID!),
+      ),
+    ];
+  }
+
+  @override
+  List<StateChange> rollback() {
+    change.timeSignature.numerator = oldNumerator;
+
+    return [
+      StateChange.pattern(
+        PatternStateChange.timeSignatureChangeListUpdated(
+            project.id, patternID!),
+      ),
+    ];
+  }
+}
+
+class SetTimeSignatureDenominatorCommand extends Command {
+  TimelineKind timelineKind;
+  ID? patternID;
+  ID? arrangementID;
+  late TimeSignatureChangeModel change;
+  late int oldDenominator;
+  int denominator;
+
+  SetTimeSignatureDenominatorCommand({
+    required ProjectModel project,
+    required this.timelineKind,
+    this.patternID,
+    this.arrangementID,
+    required ID changeID,
+    required this.denominator,
+  }) : super(project) {
+    change = project.song.patterns[patternID]!.timeSignatureChanges
+        .firstWhere((change) => change.id == changeID);
+
+    oldDenominator = change.timeSignature.denominator;
+  }
+
+  @override
+  List<StateChange> execute() {
+    change.timeSignature.denominator = denominator;
+
+    return [
+      StateChange.pattern(
+        PatternStateChange.timeSignatureChangeListUpdated(
+            project.id, patternID!),
+      ),
+    ];
+  }
+
+  @override
+  List<StateChange> rollback() {
+    change.timeSignature.denominator = oldDenominator;
 
     return [
       StateChange.pattern(
