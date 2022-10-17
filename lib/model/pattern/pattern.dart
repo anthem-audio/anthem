@@ -63,6 +63,20 @@ class PatternModel extends Hydratable {
       hue: 0,
       saturationMultiplier: 0,
     );
+    timeSignatureChanges = [
+      TimeSignatureChangeModel(
+        offset: 0,
+        timeSignature: TimeSignatureModel(4, 4),
+      ),
+      TimeSignatureChangeModel(
+        offset: 127,
+        timeSignature: TimeSignatureModel(3, 4),
+      ),
+      TimeSignatureChangeModel(
+        offset: 96*7,
+        timeSignature: TimeSignatureModel(7, 8),
+      ),
+    ];
     hydrate(project: project);
   }
 

@@ -39,10 +39,10 @@ dependencies:
   bloc: ^8.0.3
   flutter_bloc: ^8.0.1
   flutter_svg: ^1.1.5
-  file_picker: ^4.1.6
+  file_picker: ^5.2.0+1
   json_annotation: ^4.5.0
   freezed_annotation: ^2.0.1
-  bitsdojo_window: ^0.1.1+1
+  bitsdojo_window: ^0.1.5
   nanoid: ^1.0.0
   fuzzywuzzy: ^0.2.0
   collection: ^1.16.0

@@ -203,3 +203,14 @@ class ArrangementDetailViewKind extends DetailViewKind {
   ID arrangementID;
   ArrangementDetailViewKind(this.arrangementID);
 }
+
+class TimeSignatureChangeDetailViewKind extends DetailViewKind {
+  ID? arrangementID;
+  ID? patternID;
+  ID changeID;
+  TimeSignatureChangeDetailViewKind({
+    this.arrangementID,
+    this.patternID,
+    required this.changeID,
+  });
+}
