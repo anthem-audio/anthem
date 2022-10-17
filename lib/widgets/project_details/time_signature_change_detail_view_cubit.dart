@@ -20,7 +20,10 @@
 import 'dart:async';
 
 import 'package:anthem/commands/state_changes.dart';
+import 'package:anthem/commands/timeline_commands.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/arrangement/arrangement.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:bloc/bloc.dart';
@@ -45,8 +48,8 @@ class TimeSignatureChangeDetailViewCubit
   TimeSignatureChangeDetailViewCubit({required String projectID})
       : super(
           (() {
-            String? patternID;
-            String? arrangementID;
+            ID? patternID;
+            ID? arrangementID;
 
             final project = Store.instance.projects[projectID]!;
 
@@ -74,12 +77,19 @@ class TimeSignatureChangeDetailViewCubit
                   "Arrangements can't have time signature changes yet.",
                 );
               }
+            } else {
+              throw StateError(
+                "Tried to create a TimeSignatureChangeDetailViewCubit, but the active detail view kind isn't a TimeSignatureChangeDetailView.",
+              );
             }
 
             return TimeSignatureChangeDetailViewState(
               projectID: projectID,
               patternID: patternID,
               arrangementID: arrangementID,
+              changeID: (project.selectedDetailView
+                      as TimeSignatureChangeDetailViewKind)
+                  .changeID,
               numerator: numerator,
               denominator: denominator,
             );
@@ -90,24 +100,79 @@ class TimeSignatureChangeDetailViewCubit
   }
 
   void _onModelChanged(List<StateChange> changes) {
-    // var didSomeItemChange = false;
+    var timeSignatureListChanged = false;
 
     for (final change in changes) {
-      // if (change is SomeChange) {
-      //   didSomeItemChange = true;
-      // }
+      change.whenOrNull(
+        arrangement: (change) {
+          return; // TODO: handle arrangement time signature changes
+        },
+        pattern: (change) {
+          change.mapOrNull(timeSignatureChangeListUpdated: (change) {
+            if (state.patternID == change.patternID) {
+              timeSignatureListChanged = true;
+            }
+          });
+        },
+      );
     }
 
     TimeSignatureChangeDetailViewState? newState;
 
-    // if (didSomeItemChange) {
-    //   newState = (newState ?? state).copyWith(
-    //     ...
-    //   );
-    // }
+    ArrangementModel? arrangement;
+    PatternModel? pattern;
+
+    if (state.arrangementID != null) {
+      arrangement = project.song.arrangements[state.arrangementID]!;
+    }
+
+    if (state.patternID != null) {
+      pattern = project.song.patterns[state.patternID]!;
+    }
+
+    if (timeSignatureListChanged) {
+      if (state.patternID != null) {
+        final timeSignatureChange = arrangement != null
+            ? (throw UnimplementedError())
+            : pattern!.timeSignatureChanges.firstWhere(
+                (change) => change.id == state.changeID,
+              );
+
+        newState = (newState ?? state).copyWith(
+          numerator: timeSignatureChange.timeSignature.numerator,
+          denominator: timeSignatureChange.timeSignature.denominator,
+        );
+      }
+    }
 
     if (newState != null) {
       emit(newState);
     }
+  }
+
+  void setNumerator(int numerator) {
+    project.execute(
+      SetTimeSignatureNumeratorCommand(
+        project: project,
+        patternID: state.patternID,
+        arrangementID: state.arrangementID,
+        timelineKind: TimelineKind.pattern,
+        changeID: state.changeID,
+        numerator: numerator,
+      ),
+    );
+  }
+
+  void setDenominator(int denominator) {
+    project.execute(
+      SetTimeSignatureDenominatorCommand(
+        project: project,
+        patternID: state.patternID,
+        arrangementID: state.arrangementID,
+        timelineKind: TimelineKind.pattern,
+        changeID: state.changeID,
+        denominator: denominator,
+      ),
+    );
   }
 }
