@@ -1,8 +1,9 @@
-## Flutter + Rust example for `flutter_rust_bridge`
+<img src="https://user-images.githubusercontent.com/6700184/196302775-44ae408b-8271-490b-80d2-c8a69dd3f05d.png" width="150" />
 
-In order to build and run this example, please visit [the tutorial section](https://github.com/fzyzcjy/flutter_rust_bridge#-tutorial-a-flutterrust-app) of repository readme.
+## Anthem
 
-For a pure-Dart example without UI, please see the `pure_dart` example which is a neighbor of this example.
+Anthem is a cross-platform open-source DAW, currently being prototyped in Flutter and Rust.
 
-For full documentation, please see README.md of the main repository.
+## Contributing
 
+If you're interested in contributing, feel free to open an issue or a discussion thread and I will reply as soon as possible.
