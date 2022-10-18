@@ -1,14 +1,16 @@
 name: Build Anthem
 on: [push]
 jobs:
-  Dart-Lint:
+  Lint-and-Build:
     runs-on: [windows-latest]
     steps:
     - name: Check out Anthem
       uses: actions/checkout@v3
-    # - uses: subosito/flutter-action@v2
-    #   with:
-    #     flutter-version: '3.3.4'
-    #     channel: 'stable'
-    - run: |
-        ls ${{ github.workspace }}
+    - uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.3.4'
+        channel: 'stable'
+    - run: cd ${{ github.workspace }}
+    - run: flutter pub get
+    - run: flutter pub run build_runner build
+    - run: flutter analyze
