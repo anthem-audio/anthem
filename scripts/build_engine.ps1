@@ -18,9 +18,8 @@ else {
     $BuildOutputDirectory = ".\rust\engine\target\debug"
 }
 
-try {
-    mkdir .\assets\build\
-} catch {}
+# -Force here just supresses the error if the directory already exists
+New-Item -ItemType Directory -Force -Path .\assets\build\
 
 $BuildFiles = Get-ChildItem $BuildOutputDirectory\anthem_engine.* -Exclude *.d
 foreach ($File in $BuildFiles) {

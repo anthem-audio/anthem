@@ -13,4 +13,5 @@ jobs:
     - run: cd ${{ github.workspace }}
     - run: flutter pub get
     - run: flutter pub run build_runner build
+    - run: .\scripts\build_engine.ps1
     - run: flutter analyze
