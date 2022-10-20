@@ -28,7 +28,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../basic/icon.dart';
-import '../main_window/main_window_cubit.dart';
 
 class ProjectHeader extends StatelessWidget {
   final ID projectID;
