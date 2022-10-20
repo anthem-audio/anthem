@@ -1,0 +1,31 @@
+name: Build Anthem
+on: [push]
+jobs:
+  Lint-and-Build:
+    runs-on: [windows-latest]
+    steps:
+      - name: Check out Anthem
+        uses: actions/checkout@v3
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.3.4'
+          channel: 'stable'
+
+      # Navigate to repository root
+      - run: cd ${{ github.workspace }}
+
+      # Get dependencies for Flutter
+      - name: Get dependencies
+        run: flutter pub get
+
+      # Run code generation
+      - name: Run code generation
+        run: flutter pub run build_runner build
+
+      # Build engine
+      - name: Build engine
+        run: .\scripts\build_engine.ps1
+
+      # Lint Flutter project
+      - name: Lint Flutter project
+        run: flutter analyze
