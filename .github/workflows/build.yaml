@@ -8,7 +8,7 @@ jobs:
         uses: actions/checkout@v3
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.3.4'
+          flutter-version: '3.3.7'
           channel: 'stable'
 
       # Navigate to repository root
@@ -29,3 +29,11 @@ jobs:
       # Lint Flutter project
       - name: Lint Flutter project
         run: flutter analyze
+
+      # Build Flutter project
+      - name: Build Flutter project
+        run: |
+              if ($Env:RUNNER_OS -eq "Windows") {
+                flutter build windows --verbose
+              }
+        shell: pwsh
