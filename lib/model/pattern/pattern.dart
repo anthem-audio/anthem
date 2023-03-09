@@ -44,7 +44,7 @@ class PatternModel extends Hydratable {
   late TimeSignatureModel
       defaultTimeSignature; // TODO: Just pull from project??
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   ProjectModel? _project;
 
   ProjectModel get project {

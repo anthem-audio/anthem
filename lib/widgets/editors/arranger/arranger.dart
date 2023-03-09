@@ -308,6 +308,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
 
         final timeView = context.watch<TimeView>();
 
+        // Updates the time view animation if the time view has changed
         if (timeView.start != _lastTimeViewStart ||
             timeView.end != _lastTimeViewEnd) {
           _timeViewStartTween.begin = _timeViewStartAnimation.value;
@@ -324,6 +325,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
           _lastTimeViewEnd = timeView.end;
         }
 
+        // Updates the vertical scroll position animation if the position has changed
         if (state.verticalScrollPosition != _lastVerticalScrollPosition) {
           _verticalScrollPositionTween.begin =
               _verticalScrollPositionAnimation.value;

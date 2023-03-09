@@ -30,8 +30,6 @@ dependencies:
   flutter:
     sdk: flutter
 
-  flutter_rust_bridge: ^1.38.0
-
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
@@ -40,7 +38,7 @@ dependencies:
   flutter_bloc: ^8.0.1
   flutter_svg: ^1.1.5
   file_picker: ^5.2.0+1
-  json_annotation: ^4.5.0
+  json_annotation: ^4.8.0
   freezed_annotation: ^2.0.1
   bitsdojo_window: ^0.1.5
   nanoid: ^1.0.0
@@ -49,7 +47,7 @@ dependencies:
   vector_math: ^2.1.2
 
 dev_dependencies:
-  json_serializable: ^6.0.0
+  json_serializable: ^6.6.1
   freezed: ^2.0.2
   build_runner: ^2.1.11
   flutter_test:
@@ -76,7 +74,6 @@ flutter:
   uses-material-design: false
 
   assets:
-  - assets/build/
   - assets/icons/
   - assets/icons/add/
   - assets/icons/arranger/

@@ -2,7 +2,7 @@
 
 ## Anthem
 
-Anthem is a cross-platform open-source DAW, currently being prototyped in Flutter and Rust.
+Anthem is a cross-platform open-source DAW, currently in the prototyping stage.
 
 ## Contributing
 
