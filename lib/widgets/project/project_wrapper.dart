@@ -17,11 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/widgets/main_window/main_window_cubit.dart';
-import 'package:anthem/widgets/project/project.dart';
-import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:anthem/widgets/main_window/main_window_controller.dart';
+import 'package:anthem/widgets/project/project_cubit.dart';
+import 'package:anthem/widgets/project/project.dart';
 
 class ProjectWrapper extends StatelessWidget {
   final TabDef tab;

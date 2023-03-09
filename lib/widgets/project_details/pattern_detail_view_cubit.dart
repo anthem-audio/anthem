@@ -47,7 +47,7 @@ class PatternDetailViewCubit extends Cubit<PatternDetailViewState> {
       : super(
           (() {
             String? patternID;
-            final project = Store.instance.projects[projectID]!;
+            final project = AnthemStore.instance.projects[projectID]!;
             if (project.selectedDetailView is PatternDetailViewKind) {
               patternID = (project.selectedDetailView as PatternDetailViewKind)
                   .patternID;
@@ -60,7 +60,7 @@ class PatternDetailViewCubit extends Cubit<PatternDetailViewState> {
             );
           })(),
         ) {
-    project = Store.instance.projects[projectID]!;
+    project = AnthemStore.instance.projects[projectID]!;
     _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
   }
 

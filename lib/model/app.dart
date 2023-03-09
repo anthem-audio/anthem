@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,16 +19,26 @@
 
 import 'dart:async';
 
-import 'package:anthem/commands/project_state_changes.dart';
 import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
+import 'package:mobx/mobx.dart';
 
-class AppModel {
-  Map<ID, ProjectModel> projects;
-  List<ID> projectOrder;
+part 'app.g.dart';
+
+class AppModel = _AppModel with _$AppModel;
+
+abstract class _AppModel with Store {
+  @observable
+  ObservableMap<ID, ProjectModel> projects;
+
+  @observable
+  ObservableList<ID> projectOrder;
+
+  @observable
   ID activeProjectID;
 
+  // TODO: hopefully deprecate this via mobx
   final StreamController<StateChange> _stateChangeStreamController =
       StreamController.broadcast();
 
@@ -36,9 +46,9 @@ class AppModel {
   /// the `stateChangeStream` in each `ProjectModel`.
   late Stream<StateChange> stateChangeStream;
 
-  AppModel()
-      : projects = {},
-        projectOrder = [],
+  _AppModel()
+      : projects = ObservableMap.of({}),
+        projectOrder = ObservableList.of([]),
         activeProjectID = "" {
     stateChangeStream = _stateChangeStreamController.stream;
   }
@@ -47,20 +57,10 @@ class AppModel {
     projects[project.id] = project;
     projectOrder.add(project.id);
     activeProjectID = project.id;
-    _stateChangeStreamController.add(
-      StateChange.project(
-        ProjectStateChange.projectAdded(project.id),
-      ),
-    );
   }
 
   void setActiveProject(ID projectID) {
     activeProjectID = projectID;
-    _stateChangeStreamController.add(
-      StateChange.project(
-        ProjectStateChange.activeProjectChanged(projectID),
-      ),
-    );
   }
 
   void closeProject(ID projectID) {
@@ -69,11 +69,6 @@ class AppModel {
     if (activeProjectID == projectID && projectOrder.isNotEmpty) {
       activeProjectID = projectOrder[0];
     }
-    _stateChangeStreamController.add(
-      StateChange.project(
-        ProjectStateChange.projectClosed(projectID),
-      ),
-    );
   }
 
   void init() {

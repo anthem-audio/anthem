@@ -53,7 +53,7 @@ class PianoRollNotificationHandler extends StatelessWidget {
             before going down that route.
           */
 
-          final project = Store.instance.projects[state.projectID];
+          final project = AnthemStore.instance.projects[state.projectID];
           final pattern = project?.song.patterns[state.patternID];
 
           final divisionChanges = getDivisionChanges(

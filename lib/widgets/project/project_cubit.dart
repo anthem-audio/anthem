@@ -35,7 +35,7 @@ class ProjectCubit extends Cubit<ProjectState> {
   late final StreamSubscription<List<StateChange>> _stateChangeStream;
 
   ProjectCubit({required ID id}) : super(ProjectState(id: id)) {
-    project = Store.instance.projects[id]!;
+    project = AnthemStore.instance.projects[id]!;
     _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
   }
 

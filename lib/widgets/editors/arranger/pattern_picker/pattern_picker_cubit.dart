@@ -57,14 +57,14 @@ class PatternPickerCubit extends Cubit<PatternPickerState> {
       : super(PatternPickerState(
           projectID: projectID,
           patternIDs: getPatternIDs(
-            Store.instance.projects[projectID],
+            AnthemStore.instance.projects[projectID],
           ),
           patternNames: getPatternNames(
-            Store.instance.projects[projectID],
+            AnthemStore.instance.projects[projectID],
           ),
           patternHeight: 50,
         )) {
-    project = Store.instance.projects[projectID]!;
+    project = AnthemStore.instance.projects[projectID]!;
     _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
   }
 

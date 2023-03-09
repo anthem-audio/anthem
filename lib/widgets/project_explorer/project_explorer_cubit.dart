@@ -44,7 +44,7 @@ class ProjectExplorerCubit extends Cubit<ProjectExplorerState> {
   ProjectExplorerCubit(ID projectID)
       : super(
           (() {
-            final project = Store.instance.projects[projectID]!;
+            final project = AnthemStore.instance.projects[projectID]!;
             return ProjectExplorerState(
               projectID: projectID,
               arrangementIDs: [...project.song.arrangementOrder],
@@ -52,7 +52,7 @@ class ProjectExplorerCubit extends Cubit<ProjectExplorerState> {
             );
           })(),
         ) {
-    project = Store.instance.projects[projectID]!;
+    project = AnthemStore.instance.projects[projectID]!;
     _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
   }
 

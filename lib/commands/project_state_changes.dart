@@ -27,11 +27,7 @@ class ProjectStateChange with _$ProjectStateChange {
   const factory ProjectStateChange.activeArrangementChanged(ID projectID) = ActiveArrangementChanged;
   const factory ProjectStateChange.activeGeneratorChanged(ID projectID) = ActiveGeneratorChanged;
   const factory ProjectStateChange.activePatternChanged(ID projectID) = ActivePatternChanged;
-  const factory ProjectStateChange.activeProjectChanged(ID projectID) = ActiveProjectChanged;
   const factory ProjectStateChange.journalEntryCommitted(ID projectID) = JournalEntryCommitted;
   const factory ProjectStateChange.journalEntryStarted(ID projectID) = JournalEntryStarted;
-  const factory ProjectStateChange.projectAdded(ID projectID) = ProjectAdded;
-  const factory ProjectStateChange.projectClosed(ID projectID) = ProjectClosed;
-  const factory ProjectStateChange.projectSaved(ID projectID) = ProjectSaved;
   const factory ProjectStateChange.selectedDetailViewChanged(ID projectID) = SelectedDetailViewChanged;
 }

@@ -58,7 +58,7 @@ class _TimelineNotificationHandlerState
         builder: (projectCubit, projectState) {
       return BlocBuilder<TimelineCubit, TimelineState>(
         builder: (timelineCubit, timelineState) {
-          final project = Store.instance.projects[projectState.id]!;
+          final project = AnthemStore.instance.projects[projectState.id]!;
 
           return NotificationListener<TimelineNotification>(
             child: widget.child,

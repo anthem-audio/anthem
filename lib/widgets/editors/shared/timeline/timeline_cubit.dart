@@ -54,7 +54,7 @@ class TimelineCubit extends Cubit<TimelineState> {
     required this.timelineType,
     required ID projectID,
   }) : super((() {
-          final project = Store.instance.projects[projectID]!;
+          final project = AnthemStore.instance.projects[projectID]!;
 
           ID? patternID;
           PatternModel? pattern;
@@ -81,7 +81,7 @@ class TimelineCubit extends Cubit<TimelineState> {
             ticksPerQuarter: project.song.ticksPerQuarter,
           );
         })()) {
-    project = Store.instance.projects[projectID]!;
+    project = AnthemStore.instance.projects[projectID]!;
 
     _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
   }

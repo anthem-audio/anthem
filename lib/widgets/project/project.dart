@@ -107,7 +107,7 @@ class Project extends StatelessWidget {
                     // Pattern editor
                     panelContent: BlocProvider<PatternEditorCubit>(
                       create: (context) => PatternEditorCubit(
-                          project: Store.instance.projects[state.id]!),
+                          project: AnthemStore.instance.projects[state.id]!),
                       child: const PatternEditor(),
                     ),
                     child: BlocProvider<ArrangerCubit>(

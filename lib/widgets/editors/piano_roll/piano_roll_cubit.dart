@@ -52,7 +52,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
   PianoRollCubit({required ID projectID})
       : super(
           (() {
-            final project = Store.instance.projects[projectID]!;
+            final project = AnthemStore.instance.projects[projectID]!;
 
             return PianoRollState(
               projectID: projectID,
@@ -68,7 +68,7 @@ class PianoRollCubit extends Cubit<PianoRollState> {
             );
           })(),
         ) {
-    project = Store.instance.projects[projectID]!;
+    project = AnthemStore.instance.projects[projectID]!;
     _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
   }
 

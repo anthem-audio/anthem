@@ -49,7 +49,7 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
     required ID generatorID,
   }) : super(
           (() {
-            final project = Store.instance.projects[projectID]!;
+            final project = AnthemStore.instance.projects[projectID]!;
 
             var color = const Color(0xFFFFFFFF);
 
@@ -68,7 +68,7 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
             );
           })(),
         ) {
-    project = Store.instance.projects[projectID]!;
+    project = AnthemStore.instance.projects[projectID]!;
     _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
   }
 

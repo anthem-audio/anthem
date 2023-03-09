@@ -46,7 +46,7 @@ class ClipCubit extends Cubit<ClipState> {
     required ID arrangementID,
     required ID clipID,
   }) : super((() {
-          final project = Store.instance.projects[projectID]!;
+          final project = AnthemStore.instance.projects[projectID]!;
           final clip = project.song.arrangements[arrangementID]!.clips[clipID]!;
           final pattern = project.song.patterns[clip.patternID]!;
           return ClipState(
@@ -56,7 +56,7 @@ class ClipCubit extends Cubit<ClipState> {
             contentWidth: clip.getWidth(),
           );
         })()) {
-    project = Store.instance.projects[projectID]!;
+    project = AnthemStore.instance.projects[projectID]!;
     clip = project.song.arrangements[arrangementID]!.clips[clipID];
     pattern = clip!.pattern;
     _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
@@ -64,7 +64,7 @@ class ClipCubit extends Cubit<ClipState> {
 
   ClipCubit.fromPatternID({required ID projectID, required ID patternID})
       : super((() {
-          final project = Store.instance.projects[projectID]!;
+          final project = AnthemStore.instance.projects[projectID]!;
           final pattern = project.song.patterns[patternID]!;
           return ClipState(
             notes: _getClipNotes(pattern),
@@ -73,7 +73,7 @@ class ClipCubit extends Cubit<ClipState> {
             contentWidth: pattern.getWidth(),
           );
         })()) {
-    project = Store.instance.projects[projectID]!;
+    project = AnthemStore.instance.projects[projectID]!;
     pattern = project.song.patterns[patternID]!;
     clip = null;
     project.stateChangeStream.listen(_onModelChanged);

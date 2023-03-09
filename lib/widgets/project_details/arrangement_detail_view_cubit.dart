@@ -47,7 +47,7 @@ class ArrangementDetailViewCubit extends Cubit<ArrangementDetailViewState> {
   }) : super(
           (() {
             String? arrangementID;
-            final project = Store.instance.projects[projectID]!;
+            final project = AnthemStore.instance.projects[projectID]!;
             if (project.selectedDetailView is ArrangementDetailViewKind) {
               arrangementID =
                   (project.selectedDetailView as ArrangementDetailViewKind)
@@ -62,7 +62,7 @@ class ArrangementDetailViewCubit extends Cubit<ArrangementDetailViewState> {
             );
           })(),
         ) {
-    project = Store.instance.projects[projectID]!;
+    project = AnthemStore.instance.projects[projectID]!;
     _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
   }
 
