@@ -51,14 +51,14 @@ class SongModel extends Hydratable {
   late Map<ID, TrackModel> tracks;
   late List<ID> trackOrder;
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   StreamController<List<StateChange>>? _changeStreamController;
 
   StreamController<List<StateChange>> get changeStreamController {
     return _changeStreamController!;
   }
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   ProjectModel? _project;
 
   ProjectModel get project {

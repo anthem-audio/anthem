@@ -33,9 +33,9 @@ class ClipModel extends Hydratable {
   ID trackID;
   int offset;
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   ProjectModel? _project;
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   PatternModel? _pattern;
 
   ProjectModel get project {

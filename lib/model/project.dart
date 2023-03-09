@@ -43,21 +43,21 @@ class ProjectModel extends Hydratable {
   Map<ID, ControllerModel> controllers = HashMap();
   List<ID> generatorList = [];
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   ID id = getID();
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   String? filePath;
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   bool isSaved = false;
 
   // Detail view state
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   DetailViewKind? _selectedDetailView;
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   DetailViewKind? get selectedDetailView => _selectedDetailView;
   set selectedDetailView(DetailViewKind? detailView) {
     _selectedDetailView = detailView;
@@ -67,10 +67,10 @@ class ProjectModel extends Hydratable {
     ]);
   }
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   bool _isDetailViewSelected = false;
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   bool get isDetailViewSelected => _isDetailViewSelected;
   set isDetailViewSelected(bool isSelected) {
     _isDetailViewSelected = isSelected;
@@ -81,22 +81,22 @@ class ProjectModel extends Hydratable {
 
   // Undo / redo & etc
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   CommandQueue commandQueue = CommandQueue();
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   List<Command> _journalPageAccumulator = [];
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   bool _journalPageActive = false;
 
   // State change stream & etc
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   final StreamController<List<StateChange>> _stateChangeStreamController =
       StreamController.broadcast();
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   late Stream<List<StateChange>> stateChangeStream;
 
   // This method is used for deserialization and so doesn't create new child
