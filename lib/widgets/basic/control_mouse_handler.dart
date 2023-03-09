@@ -239,7 +239,9 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
           x *= devicePixelRatio;
           y *= devicePixelRatio;
 
-          api.setMousePos(x: x.round(), y: y.round());
+          // TODO: Since we abandoned the Rust backend, we need a new platform
+          // plugin to do this, or something similar
+          // api.setMousePos(x: x.round(), y: y.round());
         }
 
         widget.onChange?.call(

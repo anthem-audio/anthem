@@ -248,6 +248,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
 
       final timeView = context.watch<TimeView>();
 
+      // Updates the time view animation if the time view has changed
       if (timeView.start != _lastTimeViewStart ||
           timeView.end != _lastTimeViewEnd) {
         _timeViewStartTween.begin = _timeViewStartAnimation.value;
@@ -264,6 +265,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
         _lastTimeViewEnd = timeView.end;
       }
 
+      // Updates the key value at top animation if the position has changed
       if (state.keyValueAtTop != _lastKeyValueAtTop) {
         _keyValueAtTopTween.begin = _keyValueAtTopAnimation.value;
         _keyValueAtTopAnimationController.reset();

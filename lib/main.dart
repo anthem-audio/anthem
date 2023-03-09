@@ -19,9 +19,6 @@
 
 // cspell:ignore bitsdojo dylib unfocus scrollbars
 
-import 'dart:ffi';
-import 'dart:io';
-
 import 'package:anthem/theme.dart' as anthem_theme;
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:flutter/material.dart';
@@ -31,23 +28,11 @@ import 'package:provider/provider.dart';
 import 'model/store.dart';
 import 'widgets/main_window/main_window.dart';
 import 'widgets/main_window/main_window_cubit.dart';
-import 'package:anthem/bridge_generated.dart' as bridge;
 
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 
-const base = 'anthem';
-final path = Platform.isWindows
-    ? '$base.dll'
-    : Platform.isMacOS
-        ? 'lib$base.dylib'
-        : 'lib$base.so';
-final dylib =
-    Platform.isIOS ? DynamicLibrary.process() : DynamicLibrary.open(path);
-final api = bridge.AnthemImpl(dylib);
-
 void main() async {
   Store.instance.init();
-  api.startEngine(id: 0);
   runApp(const MyApp());
 
   doWhenWindowReady(() {
