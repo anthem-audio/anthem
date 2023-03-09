@@ -19,7 +19,6 @@
 
 // TODO: Handle overshoot
 
-import 'package:anthem/main.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -221,25 +220,26 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
         }
 
         if (xJumpDirection != null || yJumpDirection != null) {
-          var x = mouseX;
-          var y = mouseY;
-
-          if (xJumpDirection == _JumpDirection.positive) {
-            x = windowRect.right - jumpMouseAreaSize - jumpPadding;
-          } else if (xJumpDirection == _JumpDirection.negative) {
-            x = windowRect.left + jumpMouseAreaSize + jumpPadding;
-          }
-
-          if (yJumpDirection == _JumpDirection.positive) {
-            y = windowRect.bottom - jumpMouseAreaSize - jumpPadding;
-          } else if (yJumpDirection == _JumpDirection.negative) {
-            y = windowRect.top + jumpMouseAreaSize + jumpPadding;
-          }
-
-          x *= devicePixelRatio;
-          y *= devicePixelRatio;
-
           // TODO: Since we abandoned the Rust backend, we need a new platform
+
+          // var x = mouseX;
+          // var y = mouseY;
+
+          // if (xJumpDirection == _JumpDirection.positive) {
+          //   x = windowRect.right - jumpMouseAreaSize - jumpPadding;
+          // } else if (xJumpDirection == _JumpDirection.negative) {
+          //   x = windowRect.left + jumpMouseAreaSize + jumpPadding;
+          // }
+
+          // if (yJumpDirection == _JumpDirection.positive) {
+          //   y = windowRect.bottom - jumpMouseAreaSize - jumpPadding;
+          // } else if (yJumpDirection == _JumpDirection.negative) {
+          //   y = windowRect.top + jumpMouseAreaSize + jumpPadding;
+          // }
+
+          // x *= devicePixelRatio;
+          // y *= devicePixelRatio;
+
           // plugin to do this, or something similar
           // api.setMousePos(x: x.round(), y: y.round());
         }
