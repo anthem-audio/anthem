@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,18 +21,17 @@
 
 import 'package:anthem/theme.dart' as anthem_theme;
 import 'package:anthem/widgets/basic/background.dart';
+import 'package:anthem/widgets/main_window/main_window_controller.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 
 import 'model/store.dart';
 import 'widgets/main_window/main_window.dart';
-import 'widgets/main_window/main_window_cubit.dart';
 
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 
 void main() async {
-  Store.instance.init();
+  AnthemStore.instance.init();
   runApp(const MyApp());
 
   doWhenWindowReady(() {
@@ -59,26 +58,23 @@ class MyApp extends StatelessWidget {
               // Un-focus text boxes when clicking elsewhere
               onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
               child: Scaffold(
-                body: BlocProvider<MainWindowCubit>(
-                  create: (_) => MainWindowCubit(),
-                  child: MultiProvider(
-                    providers: [
-                      ChangeNotifierProvider(
-                          create: (context) => KeyboardModifiers()),
-                      Provider(create: (context) => BackgroundType.dark)
-                    ],
-                    child: ScrollConfiguration(
-                      behavior: ScrollConfiguration.of(context)
-                          .copyWith(scrollbars: false),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Container(
-                            color: anthem_theme.Theme.panel.border,
-                          ),
-                          const MainWindow(),
-                        ],
-                      ),
+                body: MultiProvider(
+                  providers: [
+                    ChangeNotifierProvider(
+                        create: (context) => KeyboardModifiers()),
+                    Provider(create: (context) => BackgroundType.dark)
+                  ],
+                  child: ScrollConfiguration(
+                    behavior: ScrollConfiguration.of(context)
+                        .copyWith(scrollbars: false),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Container(
+                          color: anthem_theme.Theme.panel.border,
+                        ),
+                        const MainWindow(),
+                      ],
                     ),
                   ),
                 ),

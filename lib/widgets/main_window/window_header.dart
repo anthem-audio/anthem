@@ -22,11 +22,11 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/icon.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/widgets.dart';
 
-import '../basic/icon.dart';
-import 'main_window_cubit.dart';
+import 'main_window_controller.dart';
 
 class WindowHeader extends StatefulWidget {
   final ID selectedTabID;

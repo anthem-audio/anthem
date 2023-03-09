@@ -51,7 +51,7 @@ class TimeSignatureChangeDetailViewCubit
             ID? patternID;
             ID? arrangementID;
 
-            final project = Store.instance.projects[projectID]!;
+            final project = AnthemStore.instance.projects[projectID]!;
 
             int numerator = -1;
             int denominator = -1;
@@ -95,7 +95,7 @@ class TimeSignatureChangeDetailViewCubit
             );
           })(),
         ) {
-    project = Store.instance.projects[projectID]!;
+    project = AnthemStore.instance.projects[projectID]!;
     _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
   }
 

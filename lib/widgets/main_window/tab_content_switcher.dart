@@ -21,7 +21,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/project/project_wrapper.dart';
 import 'package:flutter/widgets.dart';
 
-import 'main_window_cubit.dart';
+import 'main_window_controller.dart';
 
 class TabContentSwitcher extends StatelessWidget {
   final List<TabDef> tabs;

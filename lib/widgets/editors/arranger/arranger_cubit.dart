@@ -49,7 +49,7 @@ class ArrangerCubit extends Cubit<ArrangerState> {
 
   ArrangerCubit({required ID projectID})
       : super((() {
-          final project = Store.instance.projects[projectID]!;
+          final project = AnthemStore.instance.projects[projectID]!;
           final arrangement =
               project.song.arrangements[project.song.activeArrangementID]!;
           const defaultTrackHeight = 45.0;
@@ -82,7 +82,7 @@ class ArrangerCubit extends Cubit<ArrangerState> {
             arrangementWidth: arrangement.getWidth(),
           );
         })()) {
-    project = Store.instance.projects[projectID]!;
+    project = AnthemStore.instance.projects[projectID]!;
     _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
   }
 

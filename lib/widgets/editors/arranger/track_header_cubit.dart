@@ -31,7 +31,7 @@ class TrackHeaderCubit extends Cubit<TrackHeaderState> {
     required ID projectID,
     required ID trackID,
   }) : super((() {
-          final project = Store.instance.projects[projectID]!;
+          final project = AnthemStore.instance.projects[projectID]!;
 
           return TrackHeaderState(
             projectID: projectID,

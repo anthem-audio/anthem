@@ -71,7 +71,7 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
   void initStateChangeListenerIfNeeded(ID projectID) {
     if (stateChangeHandle != null) return;
 
-    final project = Store.instance.projects[projectID]!;
+    final project = AnthemStore.instance.projects[projectID]!;
 
     project.stateChangeStream.listen(_onStateChanged);
   }
@@ -102,7 +102,7 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
       builder: (context, state) {
         initStateChangeListenerIfNeeded(state.projectID);
 
-        final project = Store.instance.projects[state.projectID]!;
+        final project = AnthemStore.instance.projects[state.projectID]!;
 
         final arrangementsTree = TreeViewItemModel(
           key: "projectArrangementsFolder",

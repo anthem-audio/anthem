@@ -50,7 +50,7 @@ class PianoRollGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<PianoRollCubit, PianoRollState>(
         builder: (context, state) {
-      final pattern = Store
+      final pattern = AnthemStore
           .instance.projects[state.projectID]?.song.patterns[state.patternID];
 
       return ClipRect(

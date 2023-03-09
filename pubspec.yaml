@@ -45,11 +45,13 @@ dependencies:
   fuzzywuzzy: ^0.2.0
   collection: ^1.16.0
   vector_math: ^2.1.2
+  mobx: ^2.1.4
+  flutter_mobx: ^2.0.6+5
 
 dev_dependencies:
   json_serializable: ^6.6.1
   freezed: ^2.0.2
-  build_runner: ^2.1.11
+  build_runner: ^2.3.3
   flutter_test:
     sdk: flutter
   integration_test:
@@ -61,6 +63,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^2.0.1
+  mobx_codegen: ^2.1.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

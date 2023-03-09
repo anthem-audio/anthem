@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,7 +22,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
-import 'package:anthem/widgets/main_window/main_window_cubit.dart';
+import 'package:anthem/widgets/main_window/main_window_controller.dart';
 import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -38,7 +38,7 @@ class ProjectHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<ProjectCubit, ProjectState>(builder: (context, state) {
       final menuController = MenuController();
-      final mainWindowCubit = context.read<MainWindowCubit>();
+      final mainWindowController = context.read<MainWindowController>();
       final projectCubit = context.read<ProjectCubit>();
 
       return Container(
@@ -60,15 +60,15 @@ class ProjectHeader extends StatelessWidget {
                     AnthemMenuItem(
                         text: "New project",
                         onSelected: () {
-                          final projectID = mainWindowCubit.newProject();
-                          mainWindowCubit.switchTab(projectID);
+                          final projectID = mainWindowController.newProject();
+                          mainWindowController.switchTab(projectID);
                         }),
                     AnthemMenuItem(
                         text: "Load project...",
                         onSelected: () {
-                          mainWindowCubit.loadProject().then((projectID) {
+                          mainWindowController.loadProject().then((projectID) {
                             if (projectID != null) {
-                              mainWindowCubit.switchTab(projectID);
+                              mainWindowController.switchTab(projectID);
                             }
                           });
                         }),
@@ -76,12 +76,12 @@ class ProjectHeader extends StatelessWidget {
                     AnthemMenuItem(
                         text: "Save",
                         onSelected: () {
-                          mainWindowCubit.saveProject(projectID, false);
+                          mainWindowController.saveProject(projectID, false);
                         }),
                     AnthemMenuItem(
                         text: "Save as...",
                         onSelected: () {
-                          mainWindowCubit.saveProject(projectID, true);
+                          mainWindowController.saveProject(projectID, true);
                         }),
                   ],
                 ),
@@ -99,7 +99,7 @@ class ProjectHeader extends StatelessWidget {
                 // width: 28,
                 startIcon: Icons.save,
                 onPress: () {
-                  mainWindowCubit.saveProject(projectID, false);
+                  mainWindowController.saveProject(projectID, false);
                 },
               ),
               const SizedBox(width: 4),
