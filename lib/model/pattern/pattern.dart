@@ -73,7 +73,7 @@ class PatternModel extends Hydratable {
         timeSignature: TimeSignatureModel(3, 4),
       ),
       TimeSignatureChangeModel(
-        offset: 96*7,
+        offset: 96 * 7,
         timeSignature: TimeSignatureModel(7, 8),
       ),
     ];

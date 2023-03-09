@@ -22,7 +22,6 @@ part of 'piano_roll_cubit.dart';
 // Workaround for https://github.com/rrousselGit/freezed/issues/653
 @Freezed(makeCollectionsUnmodifiable: false)
 class PianoRollState with _$PianoRollState {
-
   factory PianoRollState({
     required ID projectID,
     ID? patternID,

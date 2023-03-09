@@ -51,7 +51,7 @@ class PatternDetailView extends StatelessWidget {
               ColorPicker(
                 onChange: (color) {
                   cubit.setPatternColor(color);
-                }, 
+                },
               ),
             ],
           ),

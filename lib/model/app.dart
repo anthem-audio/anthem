@@ -26,6 +26,7 @@ import 'package:mobx/mobx.dart';
 
 part 'app.g.dart';
 
+// ignore: library_private_types_in_public_api
 class AppModel = _AppModel with _$AppModel;
 
 abstract class _AppModel with Store {

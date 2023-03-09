@@ -22,7 +22,6 @@ part of 'screen_overlay_cubit.dart';
 // Workaround for https://github.com/rrousselGit/freezed/issues/653
 @Freezed(makeCollectionsUnmodifiable: false)
 class ScreenOverlayState with _$ScreenOverlayState {
-
   factory ScreenOverlayState({
     @Default({}) Map<ID, ScreenOverlayEntry> entries,
   }) = _ScreenOverlayState;

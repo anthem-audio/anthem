@@ -87,7 +87,8 @@ double trackIndexToPos({
   double yIndexPointer = 0;
 
   for (final trackID in trackOrder) {
-    final trackHeight = getTrackHeight(baseTrackHeight, trackHeightModifiers[trackID]!);
+    final trackHeight =
+        getTrackHeight(baseTrackHeight, trackHeightModifiers[trackID]!);
 
     if (yIndexPointer + 1 > trackIndex) {
       return yPixelPointer + trackHeight * (trackIndex - yIndexPointer);

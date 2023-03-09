@@ -24,7 +24,6 @@ part of 'arranger_cubit.dart';
 class ArrangerState with _$ArrangerState {
   factory ArrangerState({
     required ID projectID,
-
     required ID? activeArrangementID,
     required List<ID> arrangementIDs,
     required Map<ID, String> arrangementNames,
@@ -41,13 +40,9 @@ class ArrangerState with _$ArrangerState {
     required double scrollAreaHeight,
     // Vertical scroll position, in pixels
     @Default(0) double verticalScrollPosition,
-
     required int arrangementWidth,
-
     required List<ID> clipIDs,
-
     required int ticksPerQuarter,
-
     @Default(EditorTool.pencil) EditorTool tool,
   }) = _ArrangerState;
 }
