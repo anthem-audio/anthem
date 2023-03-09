@@ -6,13 +6,15 @@ jobs:
     steps:
       - name: Check out Anthem
         uses: actions/checkout@v3
-      - uses: subosito/flutter-action@v2
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.7.7'
           channel: 'stable'
       
       # Set up environment
-      - run: .\scripts\setup.ps1
+      - name: Set up environment
+        run: .\scripts\setup.ps1
 
       # Navigate to repository root
       - run: cd ${{ github.workspace }}
