@@ -6,10 +6,15 @@ jobs:
     steps:
       - name: Check out Anthem
         uses: actions/checkout@v3
-      - uses: subosito/flutter-action@v2
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.3.4'
+          flutter-version: '3.7.7'
           channel: 'stable'
+      
+      # Set up environment
+      - name: Set up environment
+        run: .\scripts\setup.ps1
 
       # Navigate to repository root
       - run: cd ${{ github.workspace }}
@@ -22,10 +27,14 @@ jobs:
       - name: Run code generation
         run: flutter pub run build_runner build
 
-      # Build engine
-      - name: Build engine
-        run: .\scripts\build_engine.ps1
-
       # Lint Flutter project
       - name: Lint Flutter project
         run: flutter analyze
+
+      # Build Flutter project
+      - name: Build Flutter project
+        run: |
+              if ($Env:RUNNER_OS -eq "Windows") {
+                flutter build windows --verbose
+              }
+        shell: pwsh

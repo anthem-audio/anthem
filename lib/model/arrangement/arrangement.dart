@@ -37,7 +37,7 @@ class ArrangementModel extends Hydratable {
   Map<ID, ClipModel> clips = {};
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   ProjectModel? _project;
 
   ProjectModel get project {
