@@ -111,7 +111,8 @@ class PianoRollNotificationHandler extends StatelessWidget {
               roundUp: true,
             );
 
-            pianoRollCubit.addTimeSignatureChange(TimeSignatureModel(3, 4), targetTime);
+            pianoRollCubit.addTimeSignatureChange(
+                TimeSignatureModel(3, 4), targetTime);
 
             return true;
           }

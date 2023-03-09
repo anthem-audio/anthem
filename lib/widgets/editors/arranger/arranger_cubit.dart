@@ -157,11 +157,10 @@ class ArrangerCubit extends Cubit<ArrangerState> {
       arrangementName = "Arrangement $arrangementNumber";
     } while (state.arrangementNames.containsValue(arrangementName));
 
-    final command = AddArrangementCommand(project: project, arrangementName: arrangementName);
+    final command = AddArrangementCommand(
+        project: project, arrangementName: arrangementName);
 
-    project.execute(
-      command
-    );
+    project.execute(command);
 
     project.song.setActiveArrangement(command.arrangementID);
   }

@@ -65,9 +65,9 @@ import 'package:flutter/foundation.dart';
 ///   String get someValue {
 ///     return _someValue!;
 ///   }
-/// 
+///
 ///   SomeModel({/* ... */}) : super();
-/// 
+///
 ///   SomeModel.create({required string someValue, /* ... */}) : super() {
 ///     this.hydrate(someValue)
 ///   }
@@ -77,12 +77,12 @@ import 'package:flutter/foundation.dart';
 ///     isHydrated = true;
 ///   }
 /// }
-/// 
+///
 /// class SomeParentModel extends Hydratable {
 ///   // ...
-/// 
+///
 ///   SomeChildModel someChildModel;
-/// 
+///
 ///   hydrate() {
 ///     // Parents should always hydrate children in their hydrate() functions
 ///     someChildModel.hydrate();
@@ -92,7 +92,7 @@ import 'package:flutter/foundation.dart';
 ///
 /// // Good - the .create() constructor calls hydrate() by convention
 /// final model = SomeModel.create("my value");
-/// 
+///
 /// // Not recommended - prefer MyModel.create() constructor over MyModel()..hydrate()
 /// final model = SomeModel()..hydrate("my value");
 ///

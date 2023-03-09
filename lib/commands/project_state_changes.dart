@@ -24,10 +24,16 @@ part 'project_state_changes.freezed.dart';
 
 @freezed
 class ProjectStateChange with _$ProjectStateChange {
-  const factory ProjectStateChange.activeArrangementChanged(ID projectID) = ActiveArrangementChanged;
-  const factory ProjectStateChange.activeGeneratorChanged(ID projectID) = ActiveGeneratorChanged;
-  const factory ProjectStateChange.activePatternChanged(ID projectID) = ActivePatternChanged;
-  const factory ProjectStateChange.journalEntryCommitted(ID projectID) = JournalEntryCommitted;
-  const factory ProjectStateChange.journalEntryStarted(ID projectID) = JournalEntryStarted;
-  const factory ProjectStateChange.selectedDetailViewChanged(ID projectID) = SelectedDetailViewChanged;
+  const factory ProjectStateChange.activeArrangementChanged(ID projectID) =
+      ActiveArrangementChanged;
+  const factory ProjectStateChange.activeGeneratorChanged(ID projectID) =
+      ActiveGeneratorChanged;
+  const factory ProjectStateChange.activePatternChanged(ID projectID) =
+      ActivePatternChanged;
+  const factory ProjectStateChange.journalEntryCommitted(ID projectID) =
+      JournalEntryCommitted;
+  const factory ProjectStateChange.journalEntryStarted(ID projectID) =
+      JournalEntryStarted;
+  const factory ProjectStateChange.selectedDetailViewChanged(ID projectID) =
+      SelectedDetailViewChanged;
 }

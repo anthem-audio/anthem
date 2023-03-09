@@ -122,7 +122,8 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                           builder: (context, child) {
                             return CustomPaint(
                               painter: TimelinePainter(
-                                timeViewStart: widget.timeViewStartAnimation.value,
+                                timeViewStart:
+                                    widget.timeViewStartAnimation.value,
                                 timeViewEnd: widget.timeViewEndAnimation.value,
                                 ticksPerQuarter: state.ticksPerQuarter,
                                 defaultTimeSignature:

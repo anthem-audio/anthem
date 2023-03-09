@@ -21,7 +21,6 @@ part of 'arrangement_detail_view_cubit.dart';
 
 @freezed
 class ArrangementDetailViewState with _$ArrangementDetailViewState {
-
   factory ArrangementDetailViewState({
     required ID projectID,
     ID? arrangementID,

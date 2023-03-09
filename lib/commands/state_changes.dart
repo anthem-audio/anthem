@@ -27,9 +27,13 @@ part 'state_changes.freezed.dart';
 
 @freezed
 class StateChange with _$StateChange {
-  const factory StateChange.project(ProjectStateChange details) = ProjectChangeUnionType;
-  const factory StateChange.arrangement(ArrangementStateChange details) = ArrangementChangeUnionType;
-  const factory StateChange.generator(GeneratorStateChange details) = GeneratorChangeUnionType;
-  const factory StateChange.pattern(PatternStateChange details) = PatternChangeUnionType;
+  const factory StateChange.project(ProjectStateChange details) =
+      ProjectChangeUnionType;
+  const factory StateChange.arrangement(ArrangementStateChange details) =
+      ArrangementChangeUnionType;
+  const factory StateChange.generator(GeneratorStateChange details) =
+      GeneratorChangeUnionType;
+  const factory StateChange.pattern(PatternStateChange details) =
+      PatternChangeUnionType;
   const factory StateChange.note(NoteStateChange details) = NoteChangeUnionType;
 }

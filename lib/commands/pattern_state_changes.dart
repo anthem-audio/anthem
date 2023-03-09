@@ -24,23 +24,34 @@ part 'pattern_state_changes.freezed.dart';
 
 @freezed
 class GeneratorStateChange with _$GeneratorStateChange {
-  const factory GeneratorStateChange.generatorAdded(ID projectID, ID generatorID) = GeneratorAdded;
-  const factory GeneratorStateChange.generatorRemoved(ID projectID, ID generatorID) = GeneratorRemoved;
+  const factory GeneratorStateChange.generatorAdded(
+      ID projectID, ID generatorID) = GeneratorAdded;
+  const factory GeneratorStateChange.generatorRemoved(
+      ID projectID, ID generatorID) = GeneratorRemoved;
 }
 
 @freezed
 class PatternStateChange with _$PatternStateChange {
-  const factory PatternStateChange.patternAdded(ID projectID, ID patternID) = PatternAdded;
-  const factory PatternStateChange.patternDeleted(ID projectID, ID patternID) = PatternDeleted;
-  const factory PatternStateChange.patternNameChanged(ID projectID, ID patternID) = PatternNameChanged;
-  const factory PatternStateChange.patternColorChanged(ID projectID, ID patternID) = PatternColorChanged;
-  const factory PatternStateChange.timeSignatureChangeListUpdated(ID projectID, ID patternID) = TimeSignatureChangeListUpdated;
+  const factory PatternStateChange.patternAdded(ID projectID, ID patternID) =
+      PatternAdded;
+  const factory PatternStateChange.patternDeleted(ID projectID, ID patternID) =
+      PatternDeleted;
+  const factory PatternStateChange.patternNameChanged(
+      ID projectID, ID patternID) = PatternNameChanged;
+  const factory PatternStateChange.patternColorChanged(
+      ID projectID, ID patternID) = PatternColorChanged;
+  const factory PatternStateChange.timeSignatureChangeListUpdated(
+      ID projectID, ID patternID) = TimeSignatureChangeListUpdated;
 }
 
 @freezed
 class NoteStateChange with _$NoteStateChange {
-  const factory NoteStateChange.noteAdded(ID projectID, ID patternID, ID generatorID, ID noteID) = NoteAdded;
-  const factory NoteStateChange.noteDeleted(ID projectID, ID patternID, ID generatorID, ID noteID) = NoteDeleted;
-  const factory NoteStateChange.noteMoved(ID projectID, ID patternID, ID generatorID, ID noteID) = NoteMoved;
-  const factory NoteStateChange.noteResized(ID projectID, ID patternID, ID generatorID, ID noteID) = NoteResized;
+  const factory NoteStateChange.noteAdded(
+      ID projectID, ID patternID, ID generatorID, ID noteID) = NoteAdded;
+  const factory NoteStateChange.noteDeleted(
+      ID projectID, ID patternID, ID generatorID, ID noteID) = NoteDeleted;
+  const factory NoteStateChange.noteMoved(
+      ID projectID, ID patternID, ID generatorID, ID noteID) = NoteMoved;
+  const factory NoteStateChange.noteResized(
+      ID projectID, ID patternID, ID generatorID, ID noteID) = NoteResized;
 }

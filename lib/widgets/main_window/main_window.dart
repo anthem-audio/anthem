@@ -59,20 +59,20 @@ class _MainWindowState extends State<MainWindow> {
             autofocus: true,
             onKey: (e) {
               final type = e.runtimeType.toString();
-    
+
               final keyDown = type == 'RawKeyDownEvent';
               final keyUp = type == 'RawKeyUpEvent';
-    
+
               final ctrl = e.logicalKey.keyLabel == "Control Left" ||
                   e.logicalKey.keyLabel == "Control Right";
               final alt = e.logicalKey.keyLabel == "Alt Left" ||
                   e.logicalKey.keyLabel == "Alt Right";
               final shift = e.logicalKey.keyLabel == "Shift Left" ||
                   e.logicalKey.keyLabel == "Shift Right";
-    
+
               final keyboardModifiers =
                   Provider.of<KeyboardModifiers>(context, listen: false);
-    
+
               if (ctrl && keyDown) keyboardModifiers.setCtrl(true);
               if (ctrl && keyUp) keyboardModifiers.setCtrl(false);
               if (alt && keyDown) keyboardModifiers.setAlt(true);
@@ -93,7 +93,7 @@ class _MainWindowState extends State<MainWindow> {
                         ),
                       )
                       .toList();
-    
+
                   return Column(
                     children: [
                       WindowHeader(

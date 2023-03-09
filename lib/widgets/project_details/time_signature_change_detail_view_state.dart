@@ -20,8 +20,8 @@
 part of 'time_signature_change_detail_view_cubit.dart';
 
 @freezed
-class TimeSignatureChangeDetailViewState with _$TimeSignatureChangeDetailViewState {
-
+class TimeSignatureChangeDetailViewState
+    with _$TimeSignatureChangeDetailViewState {
   factory TimeSignatureChangeDetailViewState({
     required ID projectID,
     required ID? patternID,

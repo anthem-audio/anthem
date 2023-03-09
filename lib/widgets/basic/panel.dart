@@ -160,9 +160,9 @@ class _PanelState extends State<Panel> {
                   mouseDown = false;
                 },
                 onPointerMove: (e) {
-                  final delta =
-                      ((horizontal ? e.position.dx : e.position.dy) - startPos) *
-                          (panelFirst ? 1 : -1);
+                  final delta = ((horizontal ? e.position.dx : e.position.dy) -
+                          startPos) *
+                      (panelFirst ? 1 : -1);
                   setState(() {
                     panelSize = (startSize + delta).clamp(0, double.infinity);
                   });

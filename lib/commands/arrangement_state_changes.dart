@@ -24,9 +24,14 @@ part "arrangement_state_changes.freezed.dart";
 
 @freezed
 class ArrangementStateChange with _$ArrangementStateChange {
-  const factory ArrangementStateChange.clipAdded(ID projectID, ID arrangementID) = ClipAdded;
-  const factory ArrangementStateChange.clipDeleted(ID projectID, ID arrangementID) = ClipDeleted;
-  const factory ArrangementStateChange.arrangementAdded(ID projectID, ID arrangementID) = ArrangementAdded;
-  const factory ArrangementStateChange.arrangementDeleted(ID projectID, ID arrangementID) = ArrangementDeleted;
-  const factory ArrangementStateChange.arrangementNameChanged(ID projectID, ID arrangementID) = ArrangementNameChanged;
+  const factory ArrangementStateChange.clipAdded(
+      ID projectID, ID arrangementID) = ClipAdded;
+  const factory ArrangementStateChange.clipDeleted(
+      ID projectID, ID arrangementID) = ClipDeleted;
+  const factory ArrangementStateChange.arrangementAdded(
+      ID projectID, ID arrangementID) = ArrangementAdded;
+  const factory ArrangementStateChange.arrangementDeleted(
+      ID projectID, ID arrangementID) = ArrangementDeleted;
+  const factory ArrangementStateChange.arrangementNameChanged(
+      ID projectID, ID arrangementID) = ArrangementNameChanged;
 }

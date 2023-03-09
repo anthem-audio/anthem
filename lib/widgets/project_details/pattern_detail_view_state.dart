@@ -21,7 +21,6 @@ part of 'pattern_detail_view_cubit.dart';
 
 @freezed
 class PatternDetailViewState with _$PatternDetailViewState {
-
   factory PatternDetailViewState({
     required ID projectID,
     required ID? patternID,

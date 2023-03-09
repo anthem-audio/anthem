@@ -32,6 +32,7 @@ class Dropdown extends StatefulWidget {
   final List<DropdownItem> items;
   final Function(String?)? onChanged;
   final bool showNameOnButton;
+
   /// Whether or not to add a (none) option to the dropdown
   final bool allowNoSelection;
 
