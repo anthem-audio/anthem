@@ -10,6 +10,9 @@ jobs:
         with:
           flutter-version: '3.3.7'
           channel: 'stable'
+      
+      # Set up environment
+      - run: .\scripts\setup.ps1
 
       # Navigate to repository root
       - run: cd ${{ github.workspace }}
@@ -21,10 +24,6 @@ jobs:
       # Run code generation
       - name: Run code generation
         run: flutter pub run build_runner build
-
-      # Build engine
-      - name: Build engine
-        run: .\scripts\build_engine.ps1
 
       # Lint Flutter project
       - name: Lint Flutter project
