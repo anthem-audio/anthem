@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,7 +18,6 @@
 */
 
 import 'dart:async';
-import 'dart:collection';
 import 'dart:convert';
 
 import 'package:anthem/commands/command.dart';
@@ -29,6 +28,7 @@ import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/song.dart';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:mobx/mobx.dart';
 
 import 'generator.dart';
 import 'shared/hydratable.dart';
@@ -36,24 +36,46 @@ import 'shared/hydratable.dart';
 part 'project.g.dart';
 
 @JsonSerializable()
-class ProjectModel extends Hydratable {
+class ProjectModel extends _ProjectModel with _$ProjectModel {
+  ProjectModel() : super();
+  ProjectModel.create() : super.create();
+
+  factory ProjectModel.fromJson(Map<String, dynamic> json) {
+    final model = _$ProjectModelFromJson(json);
+    model.isSaved = true;
+    return model;
+  }
+}
+
+abstract class _ProjectModel extends Hydratable with Store {
   late SongModel song;
 
-  Map<ID, InstrumentModel> instruments = HashMap();
-  Map<ID, ControllerModel> controllers = HashMap();
-  List<ID> generatorList = [];
+  @observable
+  @JsonKey(fromJson: _instrumentsFromJson, toJson: _instrumentsToJson)
+  ObservableMap<ID, InstrumentModel> instruments = ObservableMap();
+
+  @observable
+  @JsonKey(fromJson: _controllersFromJson, toJson: _controllersToJson)
+  ObservableMap<ID, ControllerModel> controllers = ObservableMap();
+
+  @observable
+  @JsonKey(fromJson: _generatorListFromJson, toJson: _generatorListToJson)
+  ObservableList<ID> generatorList = ObservableList();
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   ID id = getID();
 
+  @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
   String? filePath;
 
+  @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
   bool isSaved = false;
 
   // Detail view state
 
+  @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
   DetailViewKind? _selectedDetailView;
 
@@ -61,23 +83,15 @@ class ProjectModel extends Hydratable {
   DetailViewKind? get selectedDetailView => _selectedDetailView;
   set selectedDetailView(DetailViewKind? detailView) {
     _selectedDetailView = detailView;
-    if (detailView != null) _isDetailViewSelected = true;
+    if (detailView != null) isDetailViewSelected = true;
     _dispatch([
       StateChange.project(ProjectStateChange.selectedDetailViewChanged(id)),
     ]);
   }
 
+  @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
-  bool _isDetailViewSelected = false;
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  bool get isDetailViewSelected => _isDetailViewSelected;
-  set isDetailViewSelected(bool isSelected) {
-    _isDetailViewSelected = isSelected;
-    _dispatch([
-      StateChange.project(ProjectStateChange.selectedDetailViewChanged(id)),
-    ]);
-  }
+  bool isDetailViewSelected = false;
 
   // Undo / redo & etc
 
@@ -101,14 +115,14 @@ class ProjectModel extends Hydratable {
 
   // This method is used for deserialization and so doesn't create new child
   // models.
-  ProjectModel() : super() {
+  _ProjectModel() : super() {
     stateChangeStream = _stateChangeStreamController.stream;
   }
 
-  ProjectModel.create() : super() {
+  _ProjectModel.create() : super() {
     stateChangeStream = _stateChangeStreamController.stream;
     song = SongModel.create(
-      project: this,
+      project: this as ProjectModel,
       stateChangeStreamController: _stateChangeStreamController,
     );
 
@@ -117,13 +131,7 @@ class ProjectModel extends Hydratable {
     isHydrated = true;
   }
 
-  factory ProjectModel.fromJson(Map<String, dynamic> json) {
-    final model = _$ProjectModelFromJson(json);
-    model.isSaved = true;
-    return model;
-  }
-
-  Map<String, dynamic> toJson() => _$ProjectModelToJson(this);
+  Map<String, dynamic> toJson() => _$ProjectModelToJson(this as ProjectModel);
 
   @override
   String toString() => json.encode(toJson());
@@ -132,7 +140,7 @@ class ProjectModel extends Hydratable {
   /// that the deserialization step can't do for us.
   void hydrate() {
     song.hydrate(
-      project: this,
+      project: this as ProjectModel,
       changeStreamController: _stateChangeStreamController,
     );
     isHydrated = true;
@@ -185,7 +193,7 @@ class ProjectModel extends Hydratable {
     _journalPageAccumulator = [];
     _journalPageActive = false;
 
-    final command = JournalPageCommand(this, accumulator);
+    final command = JournalPageCommand(this as ProjectModel, accumulator);
     final change = commandQueue.executeAndPush(command);
     _dispatch(change);
   }
@@ -213,4 +221,46 @@ class TimeSignatureChangeDetailViewKind extends DetailViewKind {
     this.patternID,
     required this.changeID,
   });
+}
+
+// JSON serialization and deserialization functions
+
+ObservableMap<ID, InstrumentModel> _instrumentsFromJson(
+    Map<String, dynamic> json) {
+  return ObservableMap.of(
+    json.map(
+      (key, value) => MapEntry(key, InstrumentModel.fromJson(value)),
+    ),
+  );
+}
+
+Map<String, dynamic> _instrumentsToJson(
+    ObservableMap<ID, InstrumentModel> instruments) {
+  return instruments.map(
+    (key, value) => MapEntry(key, value.toJson()),
+  );
+}
+
+
+ObservableMap<ID, ControllerModel> _controllersFromJson(
+    Map<String, dynamic> json) {
+  return ObservableMap.of(
+    json.map(
+      (key, value) => MapEntry(key, ControllerModel.fromJson(value)),
+    ),
+  );
+}
+
+Map<String, dynamic> _controllersToJson(
+    ObservableMap<ID, ControllerModel> controllers) {
+  return controllers.map((key, value) => MapEntry(key, value.toJson()));
+}
+
+
+ObservableList<ID> _generatorListFromJson(List<String> json) {
+  return ObservableList.of(json);
+}
+
+List<String> _generatorListToJson(ObservableList<ID> generatorList) {
+  return generatorList.toList();
 }

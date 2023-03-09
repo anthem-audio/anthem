@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -59,7 +59,7 @@ import 'package:flutter/foundation.dart';
 /// class SomeModel extends Hydratable {
 ///   // ...
 ///
-///   @JsonKey(ignore: true)
+///   @JsonKey(includeFromJson: false, includeToJson: false)
 ///   String? _someValue;
 ///
 ///   String get someValue {

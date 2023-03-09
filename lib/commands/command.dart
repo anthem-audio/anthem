@@ -22,7 +22,7 @@ import 'package:anthem/model/project.dart';
 
 /// Base class for a command.
 ///
-/// Anthem uses the command pattern for undo/redo. All undoable changes to the
+/// Anthem uses the command pattern for undo/redo. All undo-able changes to the
 /// model should be performed via commands.
 abstract class Command {
   ProjectModel project;

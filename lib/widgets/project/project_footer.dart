@@ -53,7 +53,7 @@ class ProjectFooter extends StatelessWidget {
                 ],
                 selected: state.isDetailViewSelected,
                 onChange: (selected) {
-                  projectCubit.setActiveDetailView(selected as bool);
+                  projectCubit.setActiveDetailView(selected);
                 },
               ),
               // Button(
