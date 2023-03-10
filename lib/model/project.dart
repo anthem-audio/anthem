@@ -241,7 +241,6 @@ Map<String, dynamic> _instrumentsToJson(
   );
 }
 
-
 ObservableMap<ID, ControllerModel> _controllersFromJson(
     Map<String, dynamic> json) {
   return ObservableMap.of(
@@ -255,7 +254,6 @@ Map<String, dynamic> _controllersToJson(
     ObservableMap<ID, ControllerModel> controllers) {
   return controllers.map((key, value) => MapEntry(key, value.toJson()));
 }
-
 
 ObservableList<ID> _generatorListFromJson(List<String> json) {
   return ObservableList.of(json);
