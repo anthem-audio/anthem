@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -24,7 +24,6 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/button_tabs.dart';
 import 'package:anthem/widgets/basic/clip/clip.dart';
-import 'package:anthem/widgets/basic/clip/clip_cubit.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
@@ -115,16 +114,9 @@ class PatternPicker extends StatelessWidget {
                                             const EdgeInsets.only(bottom: 1),
                                         child: SizedBox(
                                           height: state.patternHeight,
-                                          child: BlocProvider(
-                                            create: (context) {
-                                              return ClipCubit.fromPatternID(
-                                                projectID: state.projectID,
-                                                patternID: patternID,
-                                              );
-                                            },
-                                            child: const Clip(
-                                              ticksPerPixel: 5,
-                                            ),
+                                          child: Clip.fromPattern(
+                                            patternID: patternID,
+                                            ticksPerPixel: 5,
                                           ),
                                         ),
                                       ),

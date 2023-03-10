@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
@@ -36,6 +37,9 @@ class GeneratorRow extends StatelessWidget {
 
     return BlocBuilder<GeneratorRowCubit, GeneratorRowState>(
         builder: (context, state) {
+      final project = Provider.of<ProjectModel>(context);
+      final pattern = project.song.patterns[state.patternID];
+
       final backgroundHoverColor =
           HSLColor.fromColor(state.color).withLightness(0.56).toColor();
 
@@ -76,10 +80,11 @@ class GeneratorRow extends StatelessWidget {
                       borderRadius: const BorderRadius.all(Radius.circular(1)),
                       color: Theme.panel.main,
                     ),
-                    child: state.patternID == null
+                    child: pattern == null
                         ? const SizedBox()
                         : ClipNotes(
-                            notes: state.clipNotes,
+                            pattern: pattern,
+                            generatorID: state.generatorID,
                             timeViewStart: 0,
                             // 1 bar is 100 pixels, can be tweaked (and should probably be set above?)
                             ticksPerPixel: (state.ticksPerQuarter * 4) / 100,

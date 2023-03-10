@@ -28,6 +28,5 @@ class GeneratorRowState with _$GeneratorRowState {
     required int ticksPerQuarter,
     required ID? patternID,
     required Color color,
-    @Default([]) List<ClipNoteModel> clipNotes,
   }) = _GeneratorRowState;
 }
