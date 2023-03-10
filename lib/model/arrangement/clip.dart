@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,15 +22,53 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/hydratable.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:mobx/mobx.dart';
 
 part 'clip.g.dart';
 
 @JsonSerializable()
-class ClipModel extends Hydratable {
+class ClipModel extends _ClipModel with _$ClipModel {
+  ClipModel(
+      {TimeViewModel? timeView,
+      required ID patternID,
+      required ID trackID,
+      required int offset})
+      : super(
+            timeView: timeView,
+            patternID: patternID,
+            trackID: trackID,
+            offset: offset);
+
+  ClipModel.create({
+    TimeViewModel? timeView,
+    required ID patternID,
+    required ID trackID,
+    required int offset,
+    required ProjectModel project,
+  }) : super.create(
+            timeView: timeView,
+            patternID: patternID,
+            trackID: trackID,
+            offset: offset,
+            project: project);
+
+  factory ClipModel.fromJson(Map<String, dynamic> json) =>
+      _$ClipModelFromJson(json);
+}
+
+abstract class _ClipModel extends Hydratable with Store {
   ID clipID = getID();
+
+  @observable
   TimeViewModel? timeView; // If null, we snap to content
+
+  @observable
   ID patternID;
+
+  @observable
   ID trackID;
+
+  @observable
   int offset;
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -47,14 +85,14 @@ class ClipModel extends Hydratable {
   }
 
   /// Used for deserialization. Use ClipModel.create() instead.
-  ClipModel({
+  _ClipModel({
     this.timeView,
     required this.patternID,
     required this.trackID,
     required this.offset,
   }) : super();
 
-  ClipModel.create({
+  _ClipModel.create({
     this.timeView,
     required this.patternID,
     required this.trackID,
@@ -64,10 +102,7 @@ class ClipModel extends Hydratable {
     hydrate(project: project);
   }
 
-  factory ClipModel.fromJson(Map<String, dynamic> json) =>
-      _$ClipModelFromJson(json);
-
-  Map<String, dynamic> toJson() => _$ClipModelToJson(this);
+  Map<String, dynamic> toJson() => _$ClipModelToJson(this as ClipModel);
 
   void hydrate({required ProjectModel project}) {
     _project = project;

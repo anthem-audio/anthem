@@ -49,8 +49,7 @@ class AddGeneratorCommand extends Command {
   @override
   List<StateChange> execute() {
     project.generatorList.add(generatorID);
-    project.generators[generatorID] =
-        GeneratorModel(name: name, color: color);
+    project.generators[generatorID] = GeneratorModel(name: name, color: color);
     return [
       StateChange.generator(
         GeneratorStateChange.generatorAdded(project.id, generatorID),

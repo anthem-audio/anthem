@@ -28,8 +28,8 @@ part 'generator.g.dart';
 
 @JsonSerializable()
 class GeneratorModel extends _GeneratorModel with _$GeneratorModel {
-  GeneratorModel({required String name,
-    required Color color}) : super(name: name, color: color);
+  GeneratorModel({required String name, required Color color})
+      : super(name: name, color: color);
 
   factory GeneratorModel.fromJson(Map<String, dynamic> json) =>
       _$GeneratorModelFromJson(json);
@@ -37,7 +37,7 @@ class GeneratorModel extends _GeneratorModel with _$GeneratorModel {
 
 abstract class _GeneratorModel with Store {
   String id;
-  
+
   @observable
   String name;
 
@@ -50,7 +50,8 @@ abstract class _GeneratorModel with Store {
     required this.color,
   }) : id = getID();
 
-  Map<String, dynamic> toJson() => _$GeneratorModelToJson(this as GeneratorModel);
+  Map<String, dynamic> toJson() =>
+      _$GeneratorModelToJson(this as GeneratorModel);
 
   @override
   String toString() => json.encode(toJson());
