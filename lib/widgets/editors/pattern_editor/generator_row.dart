@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,9 +19,10 @@
 
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes.dart';
-import 'package:anthem/widgets/project/project_cubit.dart';
+import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 import '../../../theme.dart';
 import 'generator_row_cubit.dart';
@@ -31,6 +32,8 @@ class GeneratorRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final projectController = Provider.of<ProjectController>(context);
+
     return BlocBuilder<GeneratorRowCubit, GeneratorRowState>(
         builder: (context, state) {
       final backgroundHoverColor =
@@ -38,8 +41,7 @@ class GeneratorRow extends StatelessWidget {
 
       return GestureDetector(
         onTap: () {
-          BlocProvider.of<ProjectCubit>(context)
-              .setActiveGeneratorID(state.generatorID);
+          projectController.setActiveGeneratorID(state.generatorID);
         },
         child: SizedBox(
           height: 34,
