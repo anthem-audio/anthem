@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,7 +18,6 @@
 */
 
 import 'dart:async';
-import 'dart:collection';
 import 'dart:convert';
 
 import 'package:anthem/commands/project_state_changes.dart';
@@ -26,7 +25,9 @@ import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/track.dart';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:mobx/mobx.dart';
 
 import 'arrangement/arrangement.dart';
 import 'shared/hydratable.dart';
@@ -34,22 +35,58 @@ import 'shared/hydratable.dart';
 part 'song.g.dart';
 
 @JsonSerializable()
-class SongModel extends Hydratable {
+class SongModel extends _SongModel with _$SongModel {
+  SongModel() : super();
+  SongModel.create({
+    required ProjectModel project,
+    required StreamController<List<StateChange>> stateChangeStreamController,
+  }) : super.create(
+          project: project,
+          stateChangeStreamController: stateChangeStreamController,
+        );
+
+  factory SongModel.fromJson(Map<String, dynamic> json) =>
+      _$SongModelFromJson(json);
+}
+
+abstract class _SongModel extends Hydratable with Store {
   ID id = getID();
+
+  @observable
   int ticksPerQuarter = 96; // TODO
 
-  Map<ID, PatternModel> patterns = HashMap();
-  List<ID> patternOrder = [];
+  @observable
+  @JsonKey(fromJson: _patternsFromJson, toJson: _patternsToJson)
+  ObservableMap<ID, PatternModel> patterns = ObservableMap();
+
+  @observable
+  @JsonKey(fromJson: _patternOrderFromJson, toJson: _patternOrderToJson)
+  ObservableList<ID> patternOrder = ObservableList();
+
+  @observable
   ID? activePatternID;
 
+  @observable
   ID? activeGeneratorID;
 
-  late Map<ID, ArrangementModel> arrangements;
-  late List<ID> arrangementOrder;
+  @observable
+  @JsonKey(fromJson: _arrangementsFromJson, toJson: _arrangementsToJson)
+  ObservableMap<ID, ArrangementModel> arrangements = ObservableMap();
+
+  @observable
+  @JsonKey(fromJson: _arrangementOrderFromJson, toJson: _arrangementOrderToJson)
+  ObservableList<ID> arrangementOrder = ObservableList();
+
+  @observable
   ID? activeArrangementID;
 
-  late Map<ID, TrackModel> tracks;
-  late List<ID> trackOrder;
+  @observable
+  @JsonKey(fromJson: _tracksFromJson, toJson: _tracksToJson)
+  ObservableMap<ID, TrackModel> tracks = ObservableMap();
+
+  @observable
+  @JsonKey(fromJson: _trackOrderFromJson, toJson: _trackOrderToJson)
+  ObservableList<ID> trackOrder = ObservableList();
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   StreamController<List<StateChange>>? _changeStreamController;
@@ -65,9 +102,9 @@ class SongModel extends Hydratable {
     return _project!;
   }
 
-  SongModel() : super();
+  _SongModel() : super();
 
-  SongModel.create({
+  _SongModel.create({
     required ProjectModel project,
     required StreamController<List<StateChange>> stateChangeStreamController,
   }) : super() {
@@ -76,8 +113,8 @@ class SongModel extends Hydratable {
       id: getID(),
       project: project,
     );
-    arrangements = {arrangement.id: arrangement};
-    arrangementOrder = [arrangement.id];
+    arrangements = ObservableMap.of({arrangement.id: arrangement});
+    arrangementOrder = ObservableList.of([arrangement.id]);
     activeArrangementID = arrangement.id;
 
     final Map<ID, TrackModel> initTracks = {};
@@ -89,8 +126,8 @@ class SongModel extends Hydratable {
       initTrackOrder.add(track.id);
     }
 
-    tracks = initTracks;
-    trackOrder = initTrackOrder;
+    tracks = ObservableMap.of(initTracks);
+    trackOrder = ObservableList.of(initTrackOrder);
 
     hydrate(
       project: project,
@@ -98,10 +135,7 @@ class SongModel extends Hydratable {
     );
   }
 
-  factory SongModel.fromJson(Map<String, dynamic> json) =>
-      _$SongModelFromJson(json);
-
-  Map<String, dynamic> toJson() => _$SongModelToJson(this);
+  Map<String, dynamic> toJson() => _$SongModelToJson(this as SongModel);
 
   @override
   String toString() => json.encode(toJson());
@@ -162,15 +196,66 @@ class SongModel extends Hydratable {
   }
 }
 
-@JsonSerializable()
-class TrackModel {
-  ID id;
-  String name;
+// JSON serialization and deserialization functions
 
-  TrackModel({required this.name}) : id = getID();
+ObservableMap<ID, PatternModel> _patternsFromJson(Map<String, dynamic> json) {
+  return ObservableMap.of(
+    json.map(
+      (key, value) => MapEntry(key, PatternModel.fromJson(value)),
+    ),
+  );
+}
 
-  factory TrackModel.fromJson(Map<String, dynamic> json) =>
-      _$TrackModelFromJson(json);
+Map<String, dynamic> _patternsToJson(ObservableMap<ID, PatternModel> patterns) {
+  return patterns.map((key, value) => MapEntry(key, value.toJson()));
+}
 
-  Map<String, dynamic> toJson() => _$TrackModelToJson(this);
+ObservableList<ID> _patternOrderFromJson(List<String> json) {
+  return ObservableList.of(json);
+}
+
+List<String> _patternOrderToJson(ObservableList<ID> patternOrder) {
+  return patternOrder.toList();
+}
+
+ObservableMap<ID, ArrangementModel> _arrangementsFromJson(
+    Map<String, dynamic> json) {
+  return ObservableMap.of(
+    json.map(
+      (key, value) => MapEntry(key, ArrangementModel.fromJson(value)),
+    ),
+  );
+}
+
+Map<String, dynamic> _arrangementsToJson(
+    ObservableMap<ID, ArrangementModel> arrangements) {
+  return arrangements.map((key, value) => MapEntry(key, value.toJson()));
+}
+
+ObservableList<ID> _arrangementOrderFromJson(List<String> json) {
+  return ObservableList.of(json);
+}
+
+List<String> _arrangementOrderToJson(ObservableList<ID> arrangementOrder) {
+  return arrangementOrder.toList();
+}
+
+ObservableMap<ID, TrackModel> _tracksFromJson(Map<String, dynamic> json) {
+  return ObservableMap.of(
+    json.map(
+      (key, value) => MapEntry(key, TrackModel.fromJson(value)),
+    ),
+  );
+}
+
+Map<String, dynamic> _tracksToJson(ObservableMap<ID, TrackModel> tracks) {
+  return tracks.map((key, value) => MapEntry(key, value.toJson()));
+}
+
+ObservableList<ID> _trackOrderFromJson(List<String> json) {
+  return ObservableList.of(json);
+}
+
+List<String> _trackOrderToJson(ObservableList<ID> trackOrder) {
+  return trackOrder.toList();
 }
