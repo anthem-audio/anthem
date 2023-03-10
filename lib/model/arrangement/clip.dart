@@ -110,7 +110,8 @@ abstract class _ClipModel extends Hydratable with Store {
     isHydrated = true;
   }
 
-  int getWidth() {
+  @computed
+  int get width {
     if (timeView != null) {
       return timeView!.end - timeView!.start;
     }

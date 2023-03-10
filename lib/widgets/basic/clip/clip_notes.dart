@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,21 +17,24 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 
-class ClipNoteModel {
+class _ClipNoteModel {
   late final int key;
   late final int offset;
   late final int length;
 
-  ClipNoteModel({
+  _ClipNoteModel({
     required this.key,
     required this.offset,
     required this.length,
   });
 
-  ClipNoteModel.fromNoteModel(NoteModel noteModel) {
+  _ClipNoteModel.fromNoteModel(NoteModel noteModel) {
     key = noteModel.key;
     offset = noteModel.offset;
     length = noteModel.length;
@@ -39,14 +42,16 @@ class ClipNoteModel {
 }
 
 class ClipNotes extends StatelessWidget {
-  final List<ClipNoteModel> notes;
+  final PatternModel pattern;
+  final ID? generatorID;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;
 
   const ClipNotes({
     Key? key,
-    required this.notes,
+    required this.pattern,
+    this.generatorID,
     required this.timeViewStart,
     required this.ticksPerPixel,
     required this.color,
@@ -54,24 +59,42 @@ class ClipNotes extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: ClipNotesPainter(
-        notes: notes,
-        timeViewStart: timeViewStart,
-        ticksPerPixel: ticksPerPixel,
-        color: color,
-      ),
-    );
+    return Observer(builder: (context) {
+      // Unpacking this here implicitly tells MobX about everything we need
+      // to react to, and MobX will rebuild this widget automatically when
+      // anything is updated.
+
+      final notes = <_ClipNoteModel>[];
+
+      pattern.notes.forEach(
+        (key, value) {
+          if (generatorID == null || key == generatorID) {
+            notes.addAll(
+              value.map((note) => _ClipNoteModel.fromNoteModel(note)),
+            );
+          }
+        },
+      );
+
+      return CustomPaint(
+        painter: _ClipNotesPainter(
+          notes: notes,
+          timeViewStart: timeViewStart,
+          ticksPerPixel: ticksPerPixel,
+          color: color,
+        ),
+      );
+    });
   }
 }
 
-class ClipNotesPainter extends CustomPainter {
-  final List<ClipNoteModel> notes;
+class _ClipNotesPainter extends CustomPainter {
+  final List<_ClipNoteModel> notes;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;
 
-  ClipNotesPainter({
+  _ClipNotesPainter({
     required this.notes,
     required this.timeViewStart,
     required this.ticksPerPixel,
@@ -120,9 +143,10 @@ class ClipNotesPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(ClipNotesPainter oldDelegate) {
+  bool shouldRepaint(_ClipNotesPainter oldDelegate) {
     return oldDelegate.notes != notes ||
         oldDelegate.timeViewStart != timeViewStart ||
-        oldDelegate.ticksPerPixel != ticksPerPixel;
+        oldDelegate.ticksPerPixel != ticksPerPixel ||
+        oldDelegate.color != color;
   }
 }

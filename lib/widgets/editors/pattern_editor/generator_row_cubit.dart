@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,7 +23,6 @@ import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
-import 'package:anthem/widgets/basic/clip/clip_notes.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -72,7 +71,6 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
 
   _onModelChanged(List<StateChange> changes) {
     var updateActivePattern = false;
-    var updateNotes = false;
 
     for (final change in changes) {
       change.whenOrNull(
@@ -81,12 +79,6 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
             activePatternChanged: (change) => updateActivePattern = true,
           );
         },
-        note: (change) {
-          if (change.patternID == state.patternID &&
-              change.generatorID == state.generatorID) {
-            updateNotes = true;
-          }
-        },
       );
     }
 
@@ -94,25 +86,9 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
 
     if (updateActivePattern) {
       final newPatternID = project.song.activePatternID;
-      final pattern = project.song.patterns[newPatternID];
 
       newState = (newState ?? state).copyWith(
         patternID: newPatternID,
-        clipNotes: pattern?.notes[state.generatorID]
-                ?.map((note) => ClipNoteModel.fromNoteModel(note))
-                .toList() ??
-            [],
-      );
-    }
-
-    if (updateNotes) {
-      final pattern = project.song.patterns[project.song.activePatternID];
-
-      newState = (newState ?? state).copyWith(
-        clipNotes: pattern?.notes[state.generatorID]
-                ?.map((note) => ClipNoteModel.fromNoteModel(note))
-                .toList() ??
-            [],
       );
     }
 

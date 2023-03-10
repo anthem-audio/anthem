@@ -104,10 +104,7 @@ abstract class _ArrangementModel extends Hydratable with Store {
         defaultTimeSignature.numerator;
     final lastContent = clips.values.fold<int>(
       ticksPerBar * barMultiple * minPaddingInBarMultiples,
-      (previousValue, clip) => max(
-        previousValue,
-        clip.offset + clip.getWidth(),
-      ),
+      (previousValue, clip) => max(previousValue, clip.offset + clip.width),
     );
 
     return (max(lastContent, 1) / (ticksPerBar * barMultiple)).ceil() *

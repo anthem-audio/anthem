@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,7 +20,6 @@
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/clip/clip.dart';
-import 'package:anthem/widgets/basic/clip/clip_cubit.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/icon.dart';
@@ -427,32 +426,30 @@ class _ArrangerContentState extends State<_ArrangerContent>
                                   return LayoutId(
                                     key: Key(id.toString()),
                                     id: id,
-                                    child: BlocProvider<ClipCubit>(
-                                      create: (context) => ClipCubit(
-                                        projectID: state.projectID,
-                                        arrangementID:
-                                            state.activeArrangementID!,
-                                        clipID: id,
-                                      ),
-                                      child: AnimatedBuilder(
-                                        animation: _timeViewAnimationController,
-                                        builder: (context, child) {
-                                          return ClipSizer(
-                                            editorWidth: constraints.maxWidth,
-                                            timeViewStart:
-                                                _timeViewStartAnimation.value,
-                                            timeViewEnd:
-                                                _timeViewEndAnimation.value,
-                                            child: Clip(
-                                              ticksPerPixel:
-                                                  (_timeViewEndAnimation.value -
-                                                          _timeViewStartAnimation
-                                                              .value) /
-                                                      constraints.maxWidth,
-                                            ),
-                                          );
-                                        },
-                                      ),
+                                    child: AnimatedBuilder(
+                                      animation: _timeViewAnimationController,
+                                      builder: (context, child) {
+                                        return ClipSizer(
+                                          clipID: id,
+                                          arrangementID:
+                                              state.activeArrangementID!,
+                                          editorWidth: constraints.maxWidth,
+                                          timeViewStart:
+                                              _timeViewStartAnimation.value,
+                                          timeViewEnd:
+                                              _timeViewEndAnimation.value,
+                                          child: Clip(
+                                            clipID: id,
+                                            arrangementID:
+                                                state.activeArrangementID!,
+                                            ticksPerPixel:
+                                                (_timeViewEndAnimation.value -
+                                                        _timeViewStartAnimation
+                                                            .value) /
+                                                    constraints.maxWidth,
+                                          ),
+                                        );
+                                      },
                                     ),
                                   );
                                 },
