@@ -51,12 +51,8 @@ abstract class _ProjectModel extends Hydratable with Store {
   late SongModel song;
 
   @observable
-  @JsonKey(fromJson: _instrumentsFromJson, toJson: _instrumentsToJson)
-  ObservableMap<ID, InstrumentModel> instruments = ObservableMap();
-
-  @observable
-  @JsonKey(fromJson: _controllersFromJson, toJson: _controllersToJson)
-  ObservableMap<ID, ControllerModel> controllers = ObservableMap();
+  @JsonKey(fromJson: _generatorsFromJson, toJson: _generatorsToJson)
+  ObservableMap<ID, GeneratorModel> generators = ObservableMap();
 
   @observable
   @JsonKey(fromJson: _generatorListFromJson, toJson: _generatorListToJson)
@@ -225,34 +221,20 @@ class TimeSignatureChangeDetailViewKind extends DetailViewKind {
 
 // JSON serialization and deserialization functions
 
-ObservableMap<ID, InstrumentModel> _instrumentsFromJson(
+ObservableMap<ID, GeneratorModel> _generatorsFromJson(
     Map<String, dynamic> json) {
   return ObservableMap.of(
     json.map(
-      (key, value) => MapEntry(key, InstrumentModel.fromJson(value)),
+      (key, value) => MapEntry(key, GeneratorModel.fromJson(value)),
     ),
   );
 }
 
-Map<String, dynamic> _instrumentsToJson(
-    ObservableMap<ID, InstrumentModel> instruments) {
-  return instruments.map(
+Map<String, dynamic> _generatorsToJson(
+    ObservableMap<ID, GeneratorModel> generators) {
+  return generators.map(
     (key, value) => MapEntry(key, value.toJson()),
   );
-}
-
-ObservableMap<ID, ControllerModel> _controllersFromJson(
-    Map<String, dynamic> json) {
-  return ObservableMap.of(
-    json.map(
-      (key, value) => MapEntry(key, ControllerModel.fromJson(value)),
-    ),
-  );
-}
-
-Map<String, dynamic> _controllersToJson(
-    ObservableMap<ID, ControllerModel> controllers) {
-  return controllers.map((key, value) => MapEntry(key, value.toJson()));
 }
 
 ObservableList<ID> _generatorListFromJson(List<String> json) {

@@ -53,10 +53,8 @@ class GeneratorRowCubit extends Cubit<GeneratorRowState> {
 
             var color = const Color(0xFFFFFFFF);
 
-            if (project.instruments[generatorID] != null) {
-              color = project.instruments[generatorID]!.color;
-            } else if (project.controllers[generatorID] != null) {
-              color = project.controllers[generatorID]!.color;
+            if (project.generators[generatorID] != null) {
+              color = project.generators[generatorID]!.color;
             }
 
             return GeneratorRowState(

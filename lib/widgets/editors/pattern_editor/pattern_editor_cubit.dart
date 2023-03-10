@@ -97,11 +97,9 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
 
     if (updateGeneratorList) {
       newState = (newState ?? state).copyWith(
-        controllers: project.controllers.map(
+        controllers: project.generators.map(
             (key, value) => MapEntry(key, GeneratorListItem(id: value.id))),
         generatorIDList: project.generatorList,
-        instruments: project.instruments.map(
-            (key, value) => MapEntry(key, GeneratorListItem(id: value.id))),
       );
     }
 
@@ -145,19 +143,10 @@ class PatternEditorCubit extends Cubit<PatternEditorState> {
     ));
   }
 
-  void addInstrument(String name, Color color) {
-    project.execute(AddInstrumentCommand(
+  void addGenerator(String name, Color color) {
+    project.execute(AddGeneratorCommand(
       project: project,
-      instrumentID: getID(),
-      name: name,
-      color: color,
-    ));
-  }
-
-  void addController(String name, Color color) {
-    project.execute(AddControllerCommand(
-      project: project,
-      controllerID: getID(),
+      generatorID: getID(),
       name: name,
       color: color,
     ));

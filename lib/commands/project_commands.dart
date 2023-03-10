@@ -29,79 +29,41 @@ import 'command.dart';
 
 void _removeGenerator(ProjectModel project, ID generatorID) {
   project.generatorList.removeWhere((element) => element == generatorID);
-  if (project.instruments.containsKey(generatorID)) {
-    project.instruments.remove(generatorID);
-  }
-  if (project.controllers.containsKey(generatorID)) {
-    project.controllers.remove(generatorID);
+  if (project.generators.containsKey(generatorID)) {
+    project.generators.remove(generatorID);
   }
 }
 
-class AddInstrumentCommand extends Command {
-  ID instrumentID;
+class AddGeneratorCommand extends Command {
+  ID generatorID;
   String name;
   Color color;
 
-  AddInstrumentCommand({
+  AddGeneratorCommand({
     required ProjectModel project,
-    required this.instrumentID,
+    required this.generatorID,
     required this.name,
     required this.color,
   }) : super(project);
 
   @override
   List<StateChange> execute() {
-    project.generatorList.add(instrumentID);
-    project.instruments[instrumentID] =
-        InstrumentModel(name: name, color: color);
+    project.generatorList.add(generatorID);
+    project.generators[generatorID] =
+        GeneratorModel(name: name, color: color);
     return [
       StateChange.generator(
-        GeneratorStateChange.generatorAdded(project.id, instrumentID),
+        GeneratorStateChange.generatorAdded(project.id, generatorID),
       )
     ];
   }
 
   @override
   List<StateChange> rollback() {
-    _removeGenerator(project, instrumentID);
+    _removeGenerator(project, generatorID);
     return [
       StateChange.generator(
-        GeneratorStateChange.generatorRemoved(project.id, instrumentID),
-      )
-    ];
-  }
-}
-
-class AddControllerCommand extends Command {
-  ID controllerID;
-  String name;
-  Color color;
-
-  AddControllerCommand({
-    required ProjectModel project,
-    required this.controllerID,
-    required this.name,
-    required this.color,
-  }) : super(project);
-
-  @override
-  List<StateChange> execute() {
-    project.generatorList.add(controllerID);
-    project.controllers[controllerID] =
-        ControllerModel(name: name, color: color);
-    return [
-      StateChange.generator(
-        GeneratorStateChange.generatorAdded(project.id, controllerID),
-      )
-    ];
-  }
-
-  @override
-  List<StateChange> rollback() {
-    _removeGenerator(project, controllerID);
-    return [
-      StateChange.generator(
-        GeneratorStateChange.generatorRemoved(project.id, controllerID),
+        GeneratorStateChange.generatorRemoved(project.id, generatorID),
       )
     ];
   }
