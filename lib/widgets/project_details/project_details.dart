@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,7 +19,6 @@
 
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:anthem/widgets/project_details/arrangement_detail_view.dart';
 import 'package:anthem/widgets/project_details/pattern_detail_view.dart';
 import 'package:anthem/widgets/project_details/pattern_detail_view_cubit.dart';
@@ -41,25 +40,24 @@ class ProjectDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final projectCubit = Provider.of<ProjectCubit>(context);
+    final projectModel = Provider.of<ProjectModel>(context);
 
     if (selectedProjectDetails is PatternDetailViewKind) {
       return BlocProvider(
-        create: (context) =>
-            PatternDetailViewCubit(projectID: projectCubit.project.id),
+        create: (context) => PatternDetailViewCubit(projectID: projectModel.id),
         child: const PatternDetailView(),
       );
     } else if (selectedProjectDetails is ArrangementDetailViewKind) {
       return BlocProvider(
         create: (context) => ArrangementDetailViewCubit(
-          projectID: projectCubit.project.id,
+          projectID: projectModel.id,
         ),
         child: const ArrangementDetailView(),
       );
     } else if (selectedProjectDetails is TimeSignatureChangeDetailViewKind) {
       return BlocProvider(
         create: (context) => TimeSignatureChangeDetailViewCubit(
-          projectID: projectCubit.project.id,
+          projectID: projectModel.id,
         ),
         child: const TimeSignatureChangeDetailView(),
       );

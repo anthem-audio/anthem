@@ -25,14 +25,15 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/button_tabs.dart';
+import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/text_box.dart';
-import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_view.dart';
-import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:anthem/widgets/project_explorer/project_explorer_cubit.dart';
+import 'package:anthem/widgets/project/project_controller.dart';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
@@ -96,7 +97,7 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
 
   @override
   Widget build(BuildContext context) {
-    final projectCubit = Provider.of<ProjectCubit>(context);
+    final projectController = Provider.of<ProjectController>(context);
 
     return BlocBuilder<ProjectExplorerCubit, ProjectExplorerState>(
       builder: (context, state) {
@@ -112,7 +113,7 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
                 (id) => TreeViewItemModel(
                   key: "arrangement-$id",
                   label: project.song.arrangements[id]!.name,
-                  onClick: () => projectCubit.setActiveDetailView(
+                  onClick: () => projectController.setActiveDetailView(
                     true,
                     ArrangementDetailViewKind(id),
                   ),
@@ -129,7 +130,7 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
                 (patternID) => TreeViewItemModel(
                   key: "pattern-$patternID",
                   label: project.song.patterns[patternID]!.name,
-                  onClick: () => projectCubit.setActiveDetailView(
+                  onClick: () => projectController.setActiveDetailView(
                     true,
                     PatternDetailViewKind(patternID),
                   ),
@@ -137,7 +138,7 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
                     getMarkersItem(
                       pattern: project.song.patterns[patternID],
                       onClick: (changeID) {
-                        projectCubit.setActiveDetailView(
+                        projectController.setActiveDetailView(
                           true,
                           TimeSignatureChangeDetailViewKind(
                             changeID: changeID,
