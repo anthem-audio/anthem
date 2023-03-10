@@ -24,6 +24,7 @@ import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
+import 'package:mobx/mobx.dart';
 
 import 'command.dart';
 
@@ -178,7 +179,7 @@ void _addNote(
   NoteModel note,
 ) {
   if (!pattern.notes.containsKey(generatorID)) {
-    pattern.notes[generatorID] = [];
+    pattern.notes[generatorID] = ObservableList();
   }
 
   pattern.notes[generatorID]!.add(note);

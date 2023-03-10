@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:collection';
 import 'dart:convert';
 import 'dart:math';
 
@@ -26,6 +25,7 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/shared/hydratable.dart';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:mobx/mobx.dart';
 
 import '../shared/time_signature.dart';
 import 'note.dart';
@@ -33,16 +33,40 @@ import 'note.dart';
 part 'pattern.g.dart';
 
 @JsonSerializable()
-class PatternModel extends Hydratable {
+class PatternModel extends _PatternModel with _$PatternModel {
+  PatternModel() : super();
+
+  PatternModel.create({required String name, required ProjectModel project})
+      : super.create(name: name, project: project);
+
+  factory PatternModel.fromJson(Map<String, dynamic> json) =>
+      _$PatternModelFromJson(json);
+}
+
+abstract class _PatternModel extends Hydratable with Store {
   ID id = getID();
 
-  late String name;
-  late AnthemColor color;
+  @observable
+  String name = '';
 
-  Map<ID, List<NoteModel>> notes = HashMap();
-  List<TimeSignatureChangeModel> timeSignatureChanges = [];
-  late TimeSignatureModel
-      defaultTimeSignature; // TODO: Just pull from project??
+  @observable
+  AnthemColor color = AnthemColor(hue: 0);
+
+  /// The ID here is channel ID `Map<ChannelID, List<NoteModel>>`
+  @observable
+  @JsonKey(fromJson: _notesFromJson, toJson: _notesToJson)
+  ObservableMap<ID, ObservableList<NoteModel>> notes = ObservableMap();
+
+  @observable
+  @JsonKey(
+      fromJson: _timeSignatureChangesFromJson,
+      toJson: _timeSignatureChangesToJson)
+  ObservableList<TimeSignatureChangeModel> timeSignatureChanges =
+      ObservableList();
+
+  @observable
+  TimeSignatureModel defaultTimeSignature =
+      TimeSignatureModel(4, 4); // TODO: Just pull from project??
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   ProjectModel? _project;
@@ -52,9 +76,9 @@ class PatternModel extends Hydratable {
   }
 
   /// For deserialization. Use `PatternModel.create()` instead.
-  PatternModel();
+  _PatternModel();
 
-  PatternModel.create({
+  _PatternModel.create({
     required this.name,
     required ProjectModel project,
   }) {
@@ -63,7 +87,7 @@ class PatternModel extends Hydratable {
       hue: 0,
       saturationMultiplier: 0,
     );
-    timeSignatureChanges = [
+    timeSignatureChanges = ObservableList.of([
       TimeSignatureChangeModel(
         offset: 0,
         timeSignature: TimeSignatureModel(4, 4),
@@ -76,14 +100,11 @@ class PatternModel extends Hydratable {
         offset: 96 * 7,
         timeSignature: TimeSignatureModel(7, 8),
       ),
-    ];
+    ]);
     hydrate(project: project);
   }
 
-  factory PatternModel.fromJson(Map<String, dynamic> json) =>
-      _$PatternModelFromJson(json);
-
-  Map<String, dynamic> toJson() => _$PatternModelToJson(this);
+  Map<String, dynamic> toJson() => _$PatternModelToJson(this as PatternModel);
 
   @override
   String toString() => json.encode(toJson());
@@ -114,4 +135,41 @@ class PatternModel extends Hydratable {
         ticksPerBar *
         barMultiple;
   }
+}
+
+// JSON serialization and deserialization functions
+
+typedef NotesJsonType = Map<String, List<Map<String, dynamic>>>;
+typedef NotesModelType = ObservableMap<ID, ObservableList<NoteModel>>;
+
+NotesModelType _notesFromJson(NotesJsonType json) {
+  return ObservableMap.of(
+    json.map(
+      (key, value) => MapEntry(
+        key,
+        ObservableList.of(
+          value.map((e) => NoteModel.fromJson(e)),
+        ),
+      ),
+    ),
+  );
+}
+
+NotesJsonType _notesToJson(NotesModelType model) {
+  return model.map(
+    (key, value) =>
+        MapEntry(key, value.map((element) => element.toJson()).toList()),
+  );
+}
+
+ObservableList<TimeSignatureChangeModel> _timeSignatureChangesFromJson(
+    List<dynamic> json) {
+  return ObservableList.of(
+    json.map((e) => TimeSignatureChangeModel.fromJson(e)),
+  );
+}
+
+List<dynamic> _timeSignatureChangesToJson(
+    ObservableList<TimeSignatureChangeModel> model) {
+  return model.map((value) => value.toJson()).toList();
 }

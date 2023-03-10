@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,23 +21,33 @@ import 'dart:convert';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:mobx/mobx.dart';
 
 part 'time_signature.g.dart';
 
 @JsonSerializable()
-class TimeSignatureModel {
+class TimeSignatureModel extends _TimeSignatureModel with _$TimeSignatureModel {
+  TimeSignatureModel(int numerator, int denominator)
+      : super(numerator, denominator);
+
+  factory TimeSignatureModel.fromJson(Map<String, dynamic> json) =>
+      _$TimeSignatureModelFromJson(json);
+}
+
+abstract class _TimeSignatureModel with Store {
+  @observable
   int numerator;
+
+  @observable
   int denominator;
 
-  TimeSignatureModel(
+  _TimeSignatureModel(
     this.numerator,
     this.denominator,
   );
 
-  factory TimeSignatureModel.fromJson(Map<String, dynamic> json) =>
-      _$TimeSignatureModelFromJson(json);
-
-  Map<String, dynamic> toJson() => _$TimeSignatureModelToJson(this);
+  Map<String, dynamic> toJson() =>
+      _$TimeSignatureModelToJson(this as TimeSignatureModel);
 
   @override
   String toString() => json.encode(toJson());
@@ -46,12 +56,32 @@ class TimeSignatureModel {
 }
 
 @JsonSerializable()
-class TimeSignatureChangeModel {
-  late ID id;
+class TimeSignatureChangeModel extends _TimeSignatureChangeModel
+    with _$TimeSignatureChangeModel {
+  TimeSignatureChangeModel({
+    ID? id,
+    required TimeSignatureModel timeSignature,
+    required int offset,
+  }) : super(
+          id: id,
+          timeSignature: timeSignature,
+          offset: offset,
+        );
+
+  factory TimeSignatureChangeModel.fromJson(Map<String, dynamic> json) =>
+      _$TimeSignatureChangeModelFromJson(json);
+}
+
+abstract class _TimeSignatureChangeModel with Store {
+  ID id = "";
+
+  @observable
   TimeSignatureModel timeSignature;
+
+  @observable
   int offset;
 
-  TimeSignatureChangeModel({
+  _TimeSignatureChangeModel({
     ID? id,
     required this.timeSignature,
     required this.offset,
@@ -59,10 +89,8 @@ class TimeSignatureChangeModel {
     this.id = id ?? getID();
   }
 
-  factory TimeSignatureChangeModel.fromJson(Map<String, dynamic> json) =>
-      _$TimeSignatureChangeModelFromJson(json);
-
-  Map<String, dynamic> toJson() => _$TimeSignatureChangeModelToJson(this);
+  Map<String, dynamic> toJson() =>
+      _$TimeSignatureChangeModelToJson(this as TimeSignatureChangeModel);
 
   @override
   String toString() => json.encode(toJson());

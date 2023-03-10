@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -25,16 +25,36 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/hydratable.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:mobx/mobx.dart';
 
 import 'clip.dart';
 
 part 'arrangement.g.dart';
 
 @JsonSerializable()
-class ArrangementModel extends Hydratable {
+class ArrangementModel extends _ArrangementModel with _$ArrangementModel {
+  ArrangementModel({required String name, required String id})
+      : super(name: name, id: id);
+
+  ArrangementModel.create(
+      {required String name, required String id, required ProjectModel project})
+      : super.create(name: name, id: id, project: project);
+
+  factory ArrangementModel.fromJson(Map<String, dynamic> json) =>
+      _$ArrangementModelFromJson(json);
+}
+
+abstract class _ArrangementModel extends Hydratable with Store {
   ID id;
+
+  @observable
   String name;
-  Map<ID, ClipModel> clips = {};
+
+  @observable
+  @JsonKey(fromJson: _clipsFromJson, toJson: _clipsToJson)
+  ObservableMap<ID, ClipModel> clips = ObservableMap();
+
+  @observable
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -44,12 +64,12 @@ class ArrangementModel extends Hydratable {
     return _project!;
   }
 
-  ArrangementModel({
+  _ArrangementModel({
     required this.name,
     required this.id,
   }) : super();
 
-  ArrangementModel.create({
+  _ArrangementModel.create({
     required this.name,
     required this.id,
     required ProjectModel project,
@@ -57,10 +77,8 @@ class ArrangementModel extends Hydratable {
     hydrate(project: project);
   }
 
-  factory ArrangementModel.fromJson(Map<String, dynamic> json) =>
-      _$ArrangementModelFromJson(json);
-
-  Map<String, dynamic> toJson() => _$ArrangementModelToJson(this);
+  Map<String, dynamic> toJson() =>
+      _$ArrangementModelToJson(this as ArrangementModel);
 
   @override
   String toString() => json.encode(toJson());
@@ -96,4 +114,18 @@ class ArrangementModel extends Hydratable {
         ticksPerBar *
         barMultiple;
   }
+}
+
+// JSON serialization and deserialization functions
+
+ObservableMap<ID, ClipModel> _clipsFromJson(Map<String, dynamic> clips) {
+  return ObservableMap.of(clips.map(
+    (key, value) => MapEntry(key, ClipModel.fromJson(value)),
+  ));
+}
+
+Map<String, dynamic> _clipsToJson(ObservableMap<ID, ClipModel> clips) {
+  return clips.map(
+    (key, value) => MapEntry(key, value.toJson()),
+  );
 }
