@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-// cspell:ignore ahsl
-
 import 'dart:math';
 
 import 'package:anthem/widgets/basic/background.dart';
