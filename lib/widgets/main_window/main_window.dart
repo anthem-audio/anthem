@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-// cspell:ignore autofocus
-
 import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/main_window/main_window_controller.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';

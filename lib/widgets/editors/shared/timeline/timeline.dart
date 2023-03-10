@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-// cspell:ignore relayout
-
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';

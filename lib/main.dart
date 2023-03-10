@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-// cspell:ignore bitsdojo dylib unfocus scrollbars
-
 import 'package:anthem/theme.dart' as anthem_theme;
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/main_window/main_window_controller.dart';

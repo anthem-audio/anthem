@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-// cspell:ignore relayout ahsl
-
 import 'dart:math';
 
 import 'package:anthem/commands/timeline_commands.dart';

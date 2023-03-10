@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-// cspell:ignore ahsl
-
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/theme.dart';
 import 'package:flutter/widgets.dart';
