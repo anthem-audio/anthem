@@ -204,7 +204,7 @@ class _PatternEditorState extends State<PatternEditor> {
                           contentPadding: EdgeInsets.zero,
                           startIcon: Icons.add,
                           onPress: () {
-                            context.read<PatternEditorCubit>().addInstrument(
+                            context.read<PatternEditorCubit>().addGenerator(
                                   "Instrument ${(Random()).nextInt(100).toString()}",
                                   getColor(),
                                 );

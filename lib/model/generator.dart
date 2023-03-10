@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,48 +22,35 @@ import 'dart:ui';
 import 'package:anthem/helpers/convert.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:mobx/mobx.dart';
 
 part 'generator.g.dart';
 
-abstract class GeneratorModel {
+@JsonSerializable()
+class GeneratorModel extends _GeneratorModel with _$GeneratorModel {
+  GeneratorModel({required String name,
+    required Color color}) : super(name: name, color: color);
+
+  factory GeneratorModel.fromJson(Map<String, dynamic> json) =>
+      _$GeneratorModelFromJson(json);
+}
+
+abstract class _GeneratorModel with Store {
   String id;
+  
+  @observable
   String name;
+
   @JsonKey(toJson: ColorConvert.colorToInt, fromJson: ColorConvert.intToColor)
+  @observable
   Color color;
 
-  GeneratorModel({
+  _GeneratorModel({
     required this.name,
     required this.color,
   }) : id = getID();
-}
 
-@JsonSerializable()
-class InstrumentModel extends GeneratorModel {
-  InstrumentModel({
-    required String name,
-    required Color color,
-  }) : super(name: name, color: color);
-
-  factory InstrumentModel.fromJson(Map<String, dynamic> json) =>
-      _$InstrumentModelFromJson(json);
-
-  Map<String, dynamic> toJson() => _$InstrumentModelToJson(this);
-
-  @override
-  String toString() => json.encode(toJson());
-}
-
-@JsonSerializable()
-class ControllerModel extends GeneratorModel {
-  ControllerModel({
-    required String name,
-    required Color color,
-  }) : super(name: name, color: color);
-
-  factory ControllerModel.fromJson(Map<String, dynamic> json) =>
-      _$ControllerModelFromJson(json);
-
-  Map<String, dynamic> toJson() => _$ControllerModelToJson(this);
+  Map<String, dynamic> toJson() => _$GeneratorModelToJson(this as GeneratorModel);
 
   @override
   String toString() => json.encode(toJson());
