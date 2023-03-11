@@ -27,46 +27,9 @@ class PianoRollState with _$PianoRollState {
     ID? patternID,
     required int ticksPerQuarter,
     ID? activeInstrumentID,
-    required List<LocalNote> notes,
     required double keyHeight,
     required double keyValueAtTop,
     required int lastContent, // tick position of the last note end
     @Default(false) hasTimeMarkers,
   }) = _PianoRollState;
-}
-
-// A list of these is used by the piano roll. The list is updated when the
-// model note list updates.
-class LocalNote implements NoteModel {
-  @override
-  late ID id;
-  @override
-  late int key;
-  @override
-  late int length;
-  @override
-  late int offset;
-  @override
-  late int velocity;
-
-  LocalNote({
-    required this.id,
-    required this.key,
-    required this.length,
-    required this.offset,
-    required this.velocity,
-  });
-
-  LocalNote.fromNote(NoteModel note) {
-    id = note.id;
-    key = note.key;
-    length = note.length;
-    offset = note.offset;
-    velocity = note.velocity;
-  }
-
-  @override
-  Map<String, dynamic> toJson() {
-    throw UnimplementedError();
-  }
 }

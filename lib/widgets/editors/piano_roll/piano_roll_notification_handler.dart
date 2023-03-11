@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,8 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
-import 'package:anthem/model/store.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -30,21 +31,24 @@ import '../shared/helpers/types.dart';
 import 'piano_roll_notifications.dart';
 
 class PianoRollNotificationHandler extends StatelessWidget {
-  const PianoRollNotificationHandler({Key? key, required this.child})
-      : super(key: key);
+  const PianoRollNotificationHandler({
+    Key? key,
+    required this.child,
+  }) : super(key: key);
 
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<PianoRollCubit, PianoRollState>(
-        builder: (context, state) {
+    final project = Provider.of<ProjectModel>(context);
+    final controller = Provider.of<PianoRollController>(context);
+
+    return BlocBuilder<PianoRollCubit, PianoRollState>(builder: (_, __) {
       return NotificationListener<PianoRollNotification>(
         onNotification: (notification) {
-          final pianoRollCubit = context.read<PianoRollCubit>();
           final timeView = Provider.of<TimeView>(context, listen: false);
-          final instrumentID =
-              BlocProvider.of<PianoRollCubit>(context).state.activeInstrumentID;
+          final patternID = project.song.activePatternID;
+          final generatorID = project.song.activeGeneratorID;
 
           /*
             This feels excessive, as it recalculates snap for each
@@ -53,8 +57,7 @@ class PianoRollNotificationHandler extends StatelessWidget {
             before going down that route.
           */
 
-          final project = AnthemStore.instance.projects[state.projectID];
-          final pattern = project?.song.patterns[state.patternID];
+          final pattern = project.song.patterns[patternID];
 
           final divisionChanges = getDivisionChanges(
             viewWidthInPixels: notification.pianoRollSize.width,
@@ -64,7 +67,7 @@ class PianoRollNotificationHandler extends StatelessWidget {
             snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
             defaultTimeSignature: pattern?.defaultTimeSignature,
             timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
-            ticksPerQuarter: state.ticksPerQuarter,
+            ticksPerQuarter: project.song.ticksPerQuarter,
             timeViewStart: timeView.start,
             timeViewEnd: timeView.end,
           );
@@ -79,14 +82,13 @@ class PianoRollNotificationHandler extends StatelessWidget {
             );
 
             // projectCubit.journalStartEntry();
-            pianoRollCubit.addNote(
-              instrumentID: instrumentID,
+            controller.addNote(
               key: notification.note.floor(),
               velocity: 128,
               length: 96,
               offset: targetTime,
             );
-            // pianoRollCubit.addNote(
+            // controller.addNote(
             //       instrumentID: instrumentID,
             //       key: notification.note.floor() - 1,
             //       velocity: 128,
@@ -111,7 +113,7 @@ class PianoRollNotificationHandler extends StatelessWidget {
               roundUp: true,
             );
 
-            pianoRollCubit.addTimeSignatureChange(
+            controller.addTimeSignatureChange(
                 TimeSignatureModel(3, 4), targetTime);
 
             return true;
