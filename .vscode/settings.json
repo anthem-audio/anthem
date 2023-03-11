@@ -9,6 +9,7 @@
     "relayout",
     "scrollbars",
     "stepanov",
-    "unfocus"
+    "unfocus",
+    "vsync"
   ]
 }

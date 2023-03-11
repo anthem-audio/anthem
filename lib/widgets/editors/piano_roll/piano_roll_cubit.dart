@@ -19,16 +19,11 @@
 
 import 'dart:async';
 
-import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/commands/pattern_state_changes.dart';
 import 'package:anthem/commands/state_changes.dart';
-import 'package:anthem/commands/timeline_commands.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/model/store.dart';
-import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -57,7 +52,6 @@ class PianoRollCubit extends Cubit<PianoRollState> {
             return PianoRollState(
               projectID: projectID,
               ticksPerQuarter: project.song.ticksPerQuarter,
-              notes: const [],
               keyHeight: 20,
               keyValueAtTop:
                   63.95, // Hack: cuts off the top horizontal line. Otherwise the default view looks off
@@ -70,12 +64,6 @@ class PianoRollCubit extends Cubit<PianoRollState> {
         ) {
     project = AnthemStore.instance.projects[projectID]!;
     _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);
-  }
-
-  List<LocalNote> _getLocalNotes(ID patternID, ID generatorID) {
-    return (project.song.patterns[patternID]!.notes[generatorID] ?? [])
-        .map((modelNote) => LocalNote.fromNote(modelNote))
-        .toList();
   }
 
   _onModelChanged(List<StateChange> changes) {
@@ -129,14 +117,8 @@ class PianoRollCubit extends Cubit<PianoRollState> {
       final patternID = project.song.activePatternID;
       final pattern = project.song.patterns[patternID];
 
-      final List<LocalNote> notes =
-          pattern == null || state.activeInstrumentID == null
-              ? []
-              : _getLocalNotes(pattern.id, state.activeInstrumentID!);
-
       newState = (newState ?? state).copyWith(
         patternID: patternID,
-        notes: notes,
         lastContent: pattern?.getWidth(
               barMultiple: 4,
               minPaddingInBarMultiples: 4,
@@ -149,14 +131,8 @@ class PianoRollCubit extends Cubit<PianoRollState> {
       final patternID = (newState ?? state).patternID;
       final pattern = project.song.patterns[patternID];
 
-      final List<LocalNote> notes = state.patternID == null ||
-              project.song.activeGeneratorID == null
-          ? []
-          : _getLocalNotes(state.patternID!, project.song.activeGeneratorID!);
-
       newState = (newState ?? state).copyWith(
         activeInstrumentID: project.song.activeGeneratorID,
-        notes: notes,
         lastContent: pattern?.getWidth(
               barMultiple: 4,
               minPaddingInBarMultiples: 4,
@@ -179,173 +155,11 @@ class PianoRollCubit extends Cubit<PianoRollState> {
     }
   }
 
-  NoteModel? _getNote(ID? instrumentID, ID noteID) {
-    final pattern = project.song.patterns[state.patternID];
-    final noteList = pattern?.notes[instrumentID];
-    NoteModel? note;
-    try {
-      note = noteList?.firstWhere((note) => note.id == noteID);
-    } catch (ex) {
-      note = null;
-    }
-    return note;
-  }
-
-  void addNote({
-    required ID? instrumentID,
-    required int key,
-    required int velocity,
-    required int length,
-    required int offset,
-  }) {
-    if (state.patternID == null || instrumentID == null) {
-      return;
-    }
-
-    final data = {};
-
-    data["id"] = getID();
-    data["key"] = key;
-    data["velocity"] = velocity;
-    data["length"] = length;
-    data["offset"] = offset;
-
-    project.execute(AddNoteCommand(
-      project: project,
-      patternID: state.patternID!,
-      generatorID: instrumentID,
-      note: NoteModel(
-        key: key,
-        velocity: velocity,
-        length: length,
-        offset: offset,
-      ),
-    ));
-  }
-
-  void removeNote({required ID? instrumentID, required ID noteID}) {
-    final note = _getNote(instrumentID, noteID);
-
-    if (state.patternID == null || instrumentID == null || note == null) {
-      return;
-    }
-
-    project.execute(DeleteNoteCommand(
-      project: project,
-      patternID: state.patternID!,
-      generatorID: instrumentID,
-      note: note,
-    ));
-  }
-
-  void moveNote({
-    required ID? instrumentID,
-    required ID noteID,
-    required int key,
-    required int offset,
-  }) {
-    final note = _getNote(instrumentID, noteID);
-
-    if (state.patternID == null || instrumentID == null || note == null) {
-      return;
-    }
-
-    return project.execute(MoveNoteCommand(
-      project: project,
-      patternID: state.patternID!,
-      generatorID: instrumentID,
-      noteID: noteID,
-      oldKey: note.key,
-      newKey: key,
-      oldOffset: note.offset,
-      newOffset: offset,
-    ));
-  }
-
-  void resizeNote({
-    required ID? instrumentID,
-    required ID noteID,
-    required int length,
-  }) {
-    final note = _getNote(instrumentID, noteID);
-
-    if (state.patternID == null || instrumentID == null || note == null) {
-      return;
-    }
-
-    return project.execute(ResizeNoteCommand(
-      project: project,
-      patternID: state.patternID!,
-      generatorID: instrumentID,
-      noteID: noteID,
-      oldLength: note.length,
-      newLength: length,
-    ));
-  }
-
-  // Used to affect the notes in the view model without changing the main
-  // model. This is used for in-progress operations. For example, if the user
-  // selects a group of notes, presses mouse down, and moves the notes around,
-  // mutateLocalNotes() is called. On mouse up, moveNote is called above. This
-  // is useful because moveNote pushes a command to the undo/redo queue,
-  // whereas this does not.
-  //
-  // It might be possible to handle this at the app model level. This would
-  // have the advantage of allowing in-progress updates to affect other things
-  // like clip renderers and property panels, but I haven't thought of a way to
-  // generalize a fix for the undo/redo issue. We can use journal pages, but we
-  // also don't want pages to contain every in-progress action the user
-  // performed (i.e. if the user moves the notes around a lot before releasing
-  // the mouse, we still want a journal page that just moves the notes from the
-  // start position to the end position). It's possible to fix this on a case-
-  // by-case basis but I think that would result in messier code.
-  //
-  // Until we can come up with a solution to the above, I think it's best to
-  // keep this solution of mutating the local view model until we're ready to
-  // commit.
-  void mutateLocalNotes(
-      {required int? instrumentID,
-      required Function(List<LocalNote> notes) mutator}) {
-    if (state.patternID == null || instrumentID == null) {
-      return;
-    }
-
-    final pattern = project.song.patterns[state.patternID]!;
-
-    final newNotes = [...state.notes];
-
-    mutator(newNotes);
-
-    emit(state.copyWith(
-      notes: newNotes,
-      lastContent: pattern.getWidth(
-        barMultiple: 4,
-        minPaddingInBarMultiples: 4,
-      ),
-    ));
-  }
-
   void setKeyHeight(double newKeyHeight) {
     emit(state.copyWith(keyHeight: newKeyHeight));
   }
 
   void setKeyValueAtTop(double newKeyValueAtTop) {
     emit(state.copyWith(keyValueAtTop: newKeyValueAtTop));
-  }
-
-  void addTimeSignatureChange(TimeSignatureModel timeSignature, Time offset) {
-    if (state.patternID == null) return;
-
-    project.execute(
-      AddTimeSignatureChangeCommand(
-        timelineKind: TimelineKind.pattern,
-        project: project,
-        patternID: state.patternID!,
-        change: TimeSignatureChangeModel(
-          offset: offset,
-          timeSignature: timeSignature,
-        ),
-      ),
-    );
   }
 }

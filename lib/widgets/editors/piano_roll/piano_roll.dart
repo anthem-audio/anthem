@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,6 +22,7 @@ import 'dart:math';
 import 'package:anthem/commands/timeline_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
+import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
@@ -30,6 +31,7 @@ import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_notification_handler.dart';
@@ -37,6 +39,7 @@ import 'package:anthem/widgets/editors/piano_roll/piano_roll_notifications.dart'
 import 'package:anthem/widgets/editors/shared/tool_selector.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 
 import 'package:provider/provider.dart';
 
@@ -67,46 +70,52 @@ const double maxKeyValue = 128;
 Size _pianoRollCanvasSize = const Size(0, 0);
 
 class PianoRoll extends StatefulWidget {
-  const PianoRoll({
-    Key? key,
-  }) : super(key: key);
+  const PianoRoll({Key? key}) : super(key: key);
 
   @override
   State<PianoRoll> createState() => _PianoRollState();
 }
 
 class _PianoRollState extends State<PianoRoll> {
+  PianoRollController? controller;
+
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<PianoRollCubit, PianoRollState>(
-        builder: (context, state) {
-      return MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => TimeView(0, 3072)),
-        ],
-        child: PianoRollNotificationHandler(
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              color: Theme.panel.main,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _PianoRollHeader(),
-                  const SizedBox(height: 4),
-                  const Expanded(
-                    child: _PianoRollContent(),
-                  ),
-                ],
+    final project = Provider.of<ProjectModel>(context);
+    controller ??= PianoRollController(project: project);
+
+    return Provider.value(
+      value: controller!,
+      child: BlocBuilder<PianoRollCubit, PianoRollState>(
+          builder: (context, state) {
+        return MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => TimeView(0, 3072)),
+          ],
+          child: PianoRollNotificationHandler(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                color: Theme.panel.main,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _PianoRollHeader(),
+                    const SizedBox(height: 4),
+                    const Expanded(
+                      child: _PianoRollContent(),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      );
-    });
+        );
+      }),
+    );
   }
 }
 
@@ -240,6 +249,9 @@ class _PianoRollContentState extends State<_PianoRollContent>
 
   @override
   Widget build(BuildContext context) {
+    final project = Provider.of<ProjectModel>(context);
+    final pattern = project.song.patterns[project.song.activePatternID];
+
     return BlocBuilder<PianoRollCubit, PianoRollState>(
         builder: (context, state) {
       final cubit = BlocProvider.of<PianoRollCubit>(context);
@@ -319,16 +331,6 @@ class _PianoRollContentState extends State<_PianoRollContent>
         ),
       );
 
-      final notes = state.notes;
-      final noteWidgets = notes
-          .map(
-            (note) => LayoutId(
-              id: note.id,
-              child: NoteWidget(noteID: note.id),
-            ),
-          )
-          .toList();
-
       final noteRenderArea = Expanded(
         child: LayoutBuilder(builder: (context, constraints) {
           _pianoRollCanvasSize = constraints.biggest;
@@ -352,16 +354,32 @@ class _PianoRollContentState extends State<_PianoRollContent>
                       return AnimatedBuilder(
                         animation: _timeViewAnimationController,
                         builder: (context, child) {
-                          return CustomMultiChildLayout(
-                            delegate: NoteLayoutDelegate(
-                              notes: notes,
-                              keyHeight: state.keyHeight,
-                              keyValueAtTop: _keyValueAtTopAnimation.value,
-                              timeViewStart: _timeViewStartAnimation.value,
-                              timeViewEnd: _timeViewEndAnimation.value,
-                            ),
-                            children: noteWidgets,
-                          );
+                          return Observer(builder: (context) {
+                            final notes = pattern
+                                    ?.notes[project.song.activeGeneratorID]
+                                    ?.toList() ??
+                                [];
+
+                            final noteWidgets = notes
+                                .map(
+                                  (note) => LayoutId(
+                                    id: note.id,
+                                    child: NoteWidget(noteID: note.id),
+                                  ),
+                                )
+                                .toList();
+
+                            return CustomMultiChildLayout(
+                              delegate: NoteLayoutDelegate(
+                                notes: notes,
+                                keyHeight: state.keyHeight,
+                                keyValueAtTop: _keyValueAtTopAnimation.value,
+                                timeViewStart: _timeViewStartAnimation.value,
+                                timeViewEnd: _timeViewEndAnimation.value,
+                              ),
+                              children: noteWidgets,
+                            );
+                          });
                         },
                       );
                     },
