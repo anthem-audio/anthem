@@ -378,7 +378,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
                       builder: (context, child) {
                         return Observer(builder: (context) {
                           final notes = getPattern()
-                                  ?.notes[project.song.activeGeneratorID]
+                                  ?.notes[project.activeGeneratorID]
                                   ?.toList() ??
                               [];
 

@@ -67,9 +67,6 @@ abstract class _SongModel extends Hydratable with Store {
   ID? activePatternID;
 
   @observable
-  ID? activeGeneratorID;
-
-  @observable
   @JsonKey(fromJson: _arrangementsFromJson, toJson: _arrangementsToJson)
   ObservableMap<ID, ArrangementModel> arrangements = ObservableMap();
 
@@ -156,15 +153,6 @@ abstract class _SongModel extends Hydratable with Store {
     }
 
     isHydrated = true;
-  }
-
-  void setActiveGenerator(ID? generatorID) {
-    activeGeneratorID = generatorID;
-    changeStreamController.add([
-      StateChange.project(
-        ProjectStateChange.activeGeneratorChanged(_project!.id),
-      ),
-    ]);
   }
 
   void setActivePattern(ID? patternID) {

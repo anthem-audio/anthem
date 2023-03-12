@@ -49,14 +49,14 @@ class PianoRollController {
     required int offset,
   }) {
     if (project.song.activePatternID == null ||
-        project.song.activeGeneratorID == null) {
+        project.activeGeneratorID == null) {
       return;
     }
 
     project.execute(AddNoteCommand(
       project: project,
       patternID: project.song.activePatternID!,
-      generatorID: project.song.activeGeneratorID!,
+      generatorID: project.activeGeneratorID!,
       note: NoteModel(
         key: key,
         velocity: velocity,
@@ -70,10 +70,10 @@ class PianoRollController {
     required ID noteID,
     required int length,
   }) {
-    final note = _getNote(project.song.activeGeneratorID, noteID);
+    final note = _getNote(project.activeGeneratorID, noteID);
 
     if (project.song.activePatternID == null ||
-        project.song.activeGeneratorID == null ||
+        project.activeGeneratorID == null ||
         note == null) {
       return;
     }
@@ -81,7 +81,7 @@ class PianoRollController {
     return project.execute(ResizeNoteCommand(
       project: project,
       patternID: project.song.activePatternID!,
-      generatorID: project.song.activeGeneratorID!,
+      generatorID: project.activeGeneratorID!,
       noteID: noteID,
       oldLength: note.length,
       newLength: length,
@@ -89,10 +89,10 @@ class PianoRollController {
   }
 
   void removeNote({required ID noteID}) {
-    final note = _getNote(project.song.activeGeneratorID, noteID);
+    final note = _getNote(project.activeGeneratorID, noteID);
 
     if (project.song.activePatternID == null ||
-        project.song.activeGeneratorID == null ||
+        project.activeGeneratorID == null ||
         note == null) {
       return;
     }
@@ -100,7 +100,7 @@ class PianoRollController {
     project.execute(DeleteNoteCommand(
       project: project,
       patternID: project.song.activePatternID!,
-      generatorID: project.song.activeGeneratorID!,
+      generatorID: project.activeGeneratorID!,
       note: note,
     ));
   }
@@ -110,10 +110,10 @@ class PianoRollController {
     required int key,
     required int offset,
   }) {
-    final note = _getNote(project.song.activeGeneratorID, noteID);
+    final note = _getNote(project.activeGeneratorID, noteID);
 
     if (project.song.activePatternID == null ||
-        project.song.activeGeneratorID == null ||
+        project.activeGeneratorID == null ||
         note == null) {
       return;
     }
@@ -121,7 +121,7 @@ class PianoRollController {
     return project.execute(MoveNoteCommand(
       project: project,
       patternID: project.song.activePatternID!,
-      generatorID: project.song.activeGeneratorID!,
+      generatorID: project.activeGeneratorID!,
       noteID: noteID,
       oldKey: note.key,
       newKey: key,
