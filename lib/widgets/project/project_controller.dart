@@ -47,6 +47,6 @@ class ProjectController {
   }
 
   void setActiveGeneratorID(ID id) {
-    project.song.activeGeneratorID = id;
+    project.activeGeneratorID = id;
   }
 }

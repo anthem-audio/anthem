@@ -43,7 +43,7 @@ class GeneratorRow extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
-        project.song.activeGeneratorID = generatorID;
+        project.activeGeneratorID = generatorID;
       },
       child: SizedBox(
         height: 34,
