@@ -30,7 +30,6 @@ import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
 import 'package:anthem/widgets/editors/arranger/arranger.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:anthem/widgets/project_explorer/project_explorer_cubit.dart';
@@ -120,11 +119,7 @@ class _ProjectState extends State<Project> {
                     child: Panel(
                       orientation: PanelOrientation.bottom,
                       // Bottom panel
-                      panelContent: BlocProvider<PianoRollCubit>(
-                        create: (context) =>
-                            PianoRollCubit(projectID: widget.id),
-                        child: const PianoRoll(),
-                      ),
+                      panelContent: const PianoRoll(),
                       child: Panel(
                         hidden: !projectModel.isPatternEditorVisible,
                         orientation: PanelOrientation.left,

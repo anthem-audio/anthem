@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,19 +17,22 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'piano_roll_cubit.dart';
+import 'package:mobx/mobx.dart';
 
-// Workaround for https://github.com/rrousselGit/freezed/issues/653
-@Freezed(makeCollectionsUnmodifiable: false)
-class PianoRollState with _$PianoRollState {
-  factory PianoRollState({
-    required ID projectID,
-    ID? patternID,
-    required int ticksPerQuarter,
-    ID? activeInstrumentID,
-    required double keyHeight,
-    required double keyValueAtTop,
-    required int lastContent, // tick position of the last note end
-    @Default(false) hasTimeMarkers,
-  }) = _PianoRollState;
+part 'piano_roll_view_model.g.dart';
+
+// ignore: library_private_types_in_public_api
+class PianoRollViewModel = _PianoRollViewModel with _$PianoRollViewModel;
+
+abstract class _PianoRollViewModel with Store {
+  _PianoRollViewModel({
+    required this.keyHeight,
+    required this.keyValueAtTop,
+  });
+
+  @observable
+  double keyHeight;
+
+  @observable
+  double keyValueAtTop;
 }

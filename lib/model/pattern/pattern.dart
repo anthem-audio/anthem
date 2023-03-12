@@ -135,6 +135,16 @@ abstract class _PatternModel extends Hydratable with Store {
         ticksPerBar *
         barMultiple;
   }
+
+  @computed
+  int get lastContent {
+    return getWidth(barMultiple: 4, minPaddingInBarMultiples: 4);
+  }
+
+  @computed
+  bool get hasTimeMarkers {
+    return timeSignatureChanges.isNotEmpty;
+  }
 }
 
 // JSON serialization and deserialization functions
