@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -32,7 +32,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../theme.dart';
 import '../../basic/icon.dart';
 import 'generator_row.dart';
-import 'generator_row_cubit.dart';
 
 class PatternEditor extends StatefulWidget {
   const PatternEditor({Key? key}) : super(key: key);
@@ -146,32 +145,15 @@ class _PatternEditorState extends State<PatternEditor> {
                                       final instrument = state.instruments[id];
                                       final controller = state.controllers[id];
 
-                                      // TODO: provide type to child
                                       if (instrument != null) {
-                                        return BlocProvider(
-                                          create: (context) =>
-                                              GeneratorRowCubit(
-                                            projectID: state.projectID,
-                                            patternID: state.activePatternID,
-                                            generatorID: id,
-                                          ),
-                                          child: const GeneratorRow(),
-                                        );
+                                        return GeneratorRow(generatorID: id);
                                       }
 
                                       if (controller != null) {
                                         return Padding(
                                           padding:
                                               const EdgeInsets.only(bottom: 1),
-                                          child: BlocProvider(
-                                            create: (context) =>
-                                                GeneratorRowCubit(
-                                              projectID: state.projectID,
-                                              patternID: state.activePatternID,
-                                              generatorID: id,
-                                            ),
-                                            child: const GeneratorRow(),
-                                          ),
+                                          child: GeneratorRow(generatorID: id),
                                         );
                                       }
 
