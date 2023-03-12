@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -121,10 +121,11 @@ class TimelineCubit extends Cubit<TimelineState> {
     TimeSignatureChangeListWrapper getTimeSignatureChanges() {
       return TimeSignatureChangeListWrapper(
         inner: isPatternTimeline
-            ? project.song.patterns[project.song.activePatternID]!
-                .timeSignatureChanges
-            // : project.song.arrangements[project.song.activeArrangementID]!
-            //         .timeSignatureChanges;
+            ? project.song.patterns[project.song.activePatternID]
+                    ?.timeSignatureChanges ??
+                []
+            // : project.song.arrangements[project.song.activeArrangementID]
+            //         ?.timeSignatureChanges ?? [];
             : [],
       );
     }

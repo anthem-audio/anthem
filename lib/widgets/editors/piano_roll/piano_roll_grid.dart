@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,12 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/pattern/pattern.dart';
-import 'package:anthem/model/store.dart';
+import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:provider/provider.dart';
 
 import '../shared/helpers/grid_paint_helpers.dart';
 import '../shared/helpers/types.dart';
@@ -48,34 +48,34 @@ class PianoRollGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<PianoRollCubit, PianoRollState>(
-        builder: (context, state) {
-      final pattern = AnthemStore
-          .instance.projects[state.projectID]?.song.patterns[state.patternID];
+    final project = Provider.of<ProjectModel>(context);
+    final pattern = project.song.patterns[project.song.activePatternID];
 
-      return ClipRect(
-        child: AnimatedBuilder(
-          animation: keyValueAtTopAnimationController,
-          builder: (context, child) {
-            return AnimatedBuilder(
-              animation: timeViewAnimationController,
-              builder: (context, child) {
+    return ClipRect(
+      child: AnimatedBuilder(
+        animation: keyValueAtTopAnimationController,
+        builder: (context, child) {
+          return AnimatedBuilder(
+            animation: timeViewAnimationController,
+            builder: (context, child) {
+              return Observer(builder: (context) {
                 return CustomPaint(
                   painter: PianoRollBackgroundPainter(
                     keyHeight: keyHeight,
                     keyValueAtTop: keyValueAtTopAnimation.value,
-                    pattern: pattern,
                     timeViewStart: timeViewStartAnimation.value,
                     timeViewEnd: timeViewEndAnimation.value,
-                    ticksPerQuarter: state.ticksPerQuarter,
+                    ticksPerQuarter: project.song.ticksPerQuarter,
+                    defaultTimeSignature: pattern?.defaultTimeSignature,
+                    timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
                   ),
                 );
-              },
-            );
-          },
-        ),
-      );
-    });
+              });
+            },
+          );
+        },
+      ),
+    );
   }
 }
 
@@ -83,15 +83,17 @@ class PianoRollBackgroundPainter extends CustomPainter {
   PianoRollBackgroundPainter({
     required this.keyHeight,
     required this.keyValueAtTop,
-    required this.pattern,
     required this.timeViewStart,
     required this.timeViewEnd,
     required this.ticksPerQuarter,
+    required this.defaultTimeSignature,
+    required this.timeSignatureChanges,
   });
 
   final double keyHeight;
   final double keyValueAtTop;
-  final PatternModel? pattern;
+  final TimeSignatureModel? defaultTimeSignature;
+  final List<TimeSignatureChangeModel> timeSignatureChanges;
   final double timeViewStart;
   final double timeViewEnd;
   final int ticksPerQuarter;
@@ -141,8 +143,8 @@ class PianoRollBackgroundPainter extends CustomPainter {
       size: size,
       ticksPerQuarter: ticksPerQuarter,
       snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
-      baseTimeSignature: pattern?.defaultTimeSignature,
-      timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
+      baseTimeSignature: defaultTimeSignature,
+      timeSignatureChanges: timeSignatureChanges,
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
     );
