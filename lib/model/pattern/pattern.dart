@@ -64,10 +64,6 @@ abstract class _PatternModel extends Hydratable with Store {
   ObservableList<TimeSignatureChangeModel> timeSignatureChanges =
       ObservableList();
 
-  @observable
-  TimeSignatureModel defaultTimeSignature =
-      TimeSignatureModel(4, 4); // TODO: Just pull from project??
-
   @JsonKey(includeFromJson: false, includeToJson: false)
   ProjectModel? _project;
 
@@ -82,7 +78,6 @@ abstract class _PatternModel extends Hydratable with Store {
     required this.name,
     required ProjectModel project,
   }) {
-    defaultTimeSignature = TimeSignatureModel(4, 4);
     color = AnthemColor(
       hue: 0,
       saturationMultiplier: 0,
@@ -124,8 +119,8 @@ abstract class _PatternModel extends Hydratable with Store {
     // TODO: Time signature changes
 
     final ticksPerBar = project.song.ticksPerQuarter ~/
-        (defaultTimeSignature.denominator ~/ 4) *
-        defaultTimeSignature.numerator;
+        (_project!.song.defaultTimeSignature.denominator ~/ 4) *
+        _project!.song.defaultTimeSignature.numerator;
     final lastContent = notes.values.expand((e) => e).fold<int>(
         ticksPerBar * barMultiple * minPaddingInBarMultiples,
         (previousValue, note) =>

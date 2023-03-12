@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -220,7 +220,7 @@ List<DivisionChange> getDivisionChanges({
   required double viewWidthInPixels,
   required double minPixelsPerSection,
   required Snap snap,
-  required TimeSignatureModel? defaultTimeSignature,
+  required TimeSignatureModel defaultTimeSignature,
   required List<TimeSignatureChangeModel> timeSignatureChanges,
   required int ticksPerQuarter,
   required double timeViewStart,

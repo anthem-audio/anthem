@@ -39,7 +39,6 @@ import 'package:anthem/widgets/editors/piano_roll/piano_roll_notifications.dart'
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
 import 'package:anthem/widgets/editors/shared/tool_selector.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart' as mobx;
 
@@ -48,7 +47,6 @@ import 'package:provider/provider.dart';
 import '../shared/helpers/time_helpers.dart';
 import '../shared/helpers/types.dart';
 import '../shared/timeline/timeline_notification_handler.dart';
-import '../shared/timeline/timeline_cubit.dart';
 import 'helpers.dart';
 import 'piano_roll_grid.dart';
 import '../shared/timeline/timeline.dart';
@@ -308,6 +306,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
     final timeline = Observer(builder: (context) {
       final timelineHeight =
           (getPattern()?.hasTimeMarkers ?? false) ? 42.0 : 21.0;
+      final pattern = getPattern();
 
       return SizedBox(
         height: timelineHeight,
@@ -316,19 +315,14 @@ class _PianoRollContentState extends State<_PianoRollContent>
             SizedBox(width: pianoControlWidth),
             Container(color: Theme.panel.border, width: 1),
             Expanded(
-              child: BlocProvider<TimelineCubit>(
-                create: (context) => TimelineCubit(
-                  projectID: project.id,
-                  timelineType: TimelineType.patternTimeline,
-                ),
-                child: TimelineNotificationHandler(
-                  timelineKind: TimelineKind.pattern,
-                  patternID: getPattern()?.id,
-                  child: Timeline(
-                    timeViewAnimationController: _timeViewAnimationController,
-                    timeViewStartAnimation: _timeViewStartAnimation,
-                    timeViewEndAnimation: _timeViewEndAnimation,
-                  ),
+              child: TimelineNotificationHandler(
+                timelineKind: TimelineKind.pattern,
+                patternID: pattern?.id,
+                child: Timeline.pattern(
+                  timeViewAnimationController: _timeViewAnimationController,
+                  timeViewStartAnimation: _timeViewStartAnimation,
+                  timeViewEndAnimation: _timeViewEndAnimation,
+                  patternID: pattern?.id,
                 ),
               ),
             ),

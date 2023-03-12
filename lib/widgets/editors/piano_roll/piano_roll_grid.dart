@@ -66,7 +66,7 @@ class PianoRollGrid extends StatelessWidget {
                     timeViewStart: timeViewStartAnimation.value,
                     timeViewEnd: timeViewEndAnimation.value,
                     ticksPerQuarter: project.song.ticksPerQuarter,
-                    defaultTimeSignature: pattern?.defaultTimeSignature,
+                    defaultTimeSignature: project.song.defaultTimeSignature,
                     timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
                   ),
                 );
@@ -92,7 +92,7 @@ class PianoRollBackgroundPainter extends CustomPainter {
 
   final double keyHeight;
   final double keyValueAtTop;
-  final TimeSignatureModel? defaultTimeSignature;
+  final TimeSignatureModel defaultTimeSignature;
   final List<TimeSignatureChangeModel> timeSignatureChanges;
   final double timeViewStart;
   final double timeViewEnd;
