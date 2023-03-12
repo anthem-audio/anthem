@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -24,7 +24,8 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/measure_text.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/icon.dart';
-import 'package:anthem/widgets/basic/overlay/screen_overlay_cubit.dart';
+import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
+import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
@@ -166,13 +167,14 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
   void didUpdateWidget(MenuItemRenderer oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    final screenOverlayCubit = Provider.of<ScreenOverlayCubit>(context);
+    final screenOverlayController =
+        Provider.of<ScreenOverlayController>(context);
 
     if (!oldWidget.isMouseInMenu &&
         widget.isMouseInMenu &&
         isSubmenuOpen &&
         !isHovered) {
-      startSubmenuCloseTimer(screenOverlayCubit);
+      startSubmenuCloseTimer(screenOverlayController);
     } else if (oldWidget.isMouseInMenu && !widget.isMouseInMenu) {
       cancelSubmenuCloseTimer();
     }
@@ -180,7 +182,8 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
 
   @override
   Widget build(BuildContext context) {
-    final screenOverlayCubit = Provider.of<ScreenOverlayCubit>(context);
+    final screenOverlayController =
+        Provider.of<ScreenOverlayController>(context);
 
     final height = getMenuItemHeight(widget.menuItem);
 
@@ -227,7 +230,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
           });
           if (item.submenu != null && !isSubmenuOpen) {
             startHoverTimer(
-              screenOverlayCubit: screenOverlayCubit,
+              screenOverlayController: screenOverlayController,
               item: item,
             );
           }
@@ -238,16 +241,16 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
             isHovered = false;
           });
           cancelHoverTimer();
-          startSubmenuCloseTimer(screenOverlayCubit);
+          startSubmenuCloseTimer(screenOverlayController);
         },
         child: GestureDetector(
           onTap: () {
             item.onSelected?.call();
             if (item.submenu == null) {
-              screenOverlayCubit.clear();
+              screenOverlayController.clear();
             } else {
               openSubmenu(
-                screenOverlayCubit: screenOverlayCubit,
+                screenOverlayController: screenOverlayController,
                 item: item,
               );
             }
@@ -295,7 +298,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
   }
 
   void openSubmenu({
-    required ScreenOverlayCubit screenOverlayCubit,
+    required ScreenOverlayController screenOverlayController,
     required AnthemMenuItem item,
   }) {
     if (isSubmenuOpen) return;
@@ -307,7 +310,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
 
     submenuKey = getID();
 
-    screenOverlayCubit.add(submenuKey!, ScreenOverlayEntry(
+    screenOverlayController.add(submenuKey!, ScreenOverlayEntry(
       builder: (screenOverlayContext, id) {
         return Positioned(
           left: position.dx + size.width + _Constants.padding,
@@ -321,14 +324,14 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
   }
 
   void startHoverTimer({
-    required ScreenOverlayCubit screenOverlayCubit,
+    required ScreenOverlayController screenOverlayController,
     required AnthemMenuItem item,
   }) {
     hoverTimer = Timer(
       _Constants.hoverOpenDuration,
       () {
         openSubmenu(
-          screenOverlayCubit: screenOverlayCubit,
+          screenOverlayController: screenOverlayController,
           item: item,
         );
 
@@ -343,13 +346,13 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
   }
 
   void startSubmenuCloseTimer(
-    ScreenOverlayCubit screenOverlayCubit,
+    ScreenOverlayController screenOverlayController,
   ) {
     submenuCloseTimer = Timer(
       _Constants.hoverCloseDuration,
       () {
         if (submenuKey != null) {
-          screenOverlayCubit.remove(submenuKey!);
+          screenOverlayController.remove(submenuKey!);
           setState(() {
             submenuKey = null;
           });

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,12 +17,23 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'screen_overlay_cubit.dart';
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 
-// Workaround for https://github.com/rrousselGit/freezed/issues/653
-@Freezed(makeCollectionsUnmodifiable: false)
-class ScreenOverlayState with _$ScreenOverlayState {
-  factory ScreenOverlayState({
-    @Default({}) Map<ID, ScreenOverlayEntry> entries,
-  }) = _ScreenOverlayState;
+class ScreenOverlayController {
+  ScreenOverlayViewModel viewModel;
+
+  ScreenOverlayController({required this.viewModel});
+
+  void add(ID id, ScreenOverlayEntry entry) {
+    viewModel.entries[id] = entry;
+  }
+
+  void remove(ID id) {
+    viewModel.entries.remove(id);
+  }
+
+  void clear() {
+    viewModel.entries.clear();
+  }
 }
