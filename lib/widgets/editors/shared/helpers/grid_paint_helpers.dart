@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -30,7 +30,7 @@ void paintTimeGrid({
   required Size size,
   required int ticksPerQuarter,
   required Snap snap,
-  required TimeSignatureModel? baseTimeSignature,
+  required TimeSignatureModel baseTimeSignature,
   required List<TimeSignatureChangeModel> timeSignatureChanges,
   required double timeViewStart,
   required double timeViewEnd,
@@ -104,7 +104,7 @@ void paintTimeGrid({
     canvas: canvas,
     timeViewStart: timeViewStart,
     timeViewEnd: timeViewEnd,
-    defaultTimeSignature: baseTimeSignature ?? TimeSignatureModel(4, 4),
+    defaultTimeSignature: baseTimeSignature,
     timeSignatureChanges: timeSignatureChanges,
     size: size,
     paint: shadedPaint,

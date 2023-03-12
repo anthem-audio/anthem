@@ -25,6 +25,7 @@ import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/model/track.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
@@ -84,6 +85,9 @@ abstract class _SongModel extends Hydratable with Store {
   @observable
   @JsonKey(fromJson: _trackOrderFromJson, toJson: _trackOrderToJson)
   ObservableList<ID> trackOrder = ObservableList();
+
+  @observable
+  TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   StreamController<List<StateChange>>? _changeStreamController;

@@ -33,7 +33,6 @@ import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker.da
 import 'package:anthem/widgets/editors/arranger/track_header.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
-import 'package:anthem/widgets/editors/shared/timeline/timeline_cubit.dart';
 import 'package:anthem/widgets/editors/shared/tool_selector.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -345,17 +344,12 @@ class _ArrangerContentState extends State<_ArrangerContent>
                       const SizedBox(width: trackHeaderWidth),
                       Container(width: 1, color: Theme.panel.border),
                       Expanded(
-                        child: BlocProvider<TimelineCubit>(
-                          create: (context) => TimelineCubit(
-                            projectID: state.projectID,
-                            timelineType: TimelineType.arrangerTimeline,
-                          ),
-                          child: Timeline(
-                            timeViewAnimationController:
-                                _timeViewAnimationController,
-                            timeViewStartAnimation: _timeViewStartAnimation,
-                            timeViewEndAnimation: _timeViewEndAnimation,
-                          ),
+                        child: Timeline.arrangement(
+                          timeViewAnimationController:
+                              _timeViewAnimationController,
+                          timeViewStartAnimation: _timeViewStartAnimation,
+                          timeViewEndAnimation: _timeViewEndAnimation,
+                          arrangementID: state.activeArrangementID,
                         ),
                       ),
                     ],

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,10 +22,8 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
-import 'package:anthem/widgets/editors/shared/timeline/timeline_cubit.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline_notifications.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 
 class TimelineNotificationHandler extends StatefulWidget {
@@ -53,72 +51,68 @@ class _TimelineNotificationHandlerState
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<TimelineCubit, TimelineState>(
-      builder: (timelineCubit, timelineState) {
-        final project = Provider.of<ProjectModel>(context);
+    final project = Provider.of<ProjectModel>(context);
 
-        return NotificationListener<TimelineNotification>(
-          child: widget.child,
-          onNotification: (notification) {
-            if (notification is TimelineLabelPointerNotification) {
-              final timeView = Provider.of<TimeView>(context, listen: false);
-              final pattern = project.song.patterns[timelineState.patternID];
+    return NotificationListener<TimelineNotification>(
+      child: widget.child,
+      onNotification: (notification) {
+        if (notification is TimelineLabelPointerNotification) {
+          final timeView = Provider.of<TimeView>(context, listen: false);
+          final pattern = project
+              .song.patterns.nonObservableInner[project.song.activePatternID];
 
-              final divisionChanges = getDivisionChanges(
-                viewWidthInPixels: notification.viewWidthInPixels,
-                // TODO: this constant was copied from the minor division changes
-                // getter in piano_roll_grid.dart
-                minPixelsPerSection: 8,
-                snap:
-                    DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
-                defaultTimeSignature: pattern?.defaultTimeSignature,
-                timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
-                ticksPerQuarter: project.song.ticksPerQuarter,
-                timeViewStart: timeView.start,
-                timeViewEnd: timeView.end,
-              );
+          final divisionChanges = getDivisionChanges(
+            viewWidthInPixels: notification.viewWidthInPixels,
+            // TODO: this constant was copied from the minor division changes
+            // getter in piano_roll_grid.dart
+            minPixelsPerSection: 8,
+            snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+            defaultTimeSignature: project.song.defaultTimeSignature,
+            timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
+            ticksPerQuarter: project.song.ticksPerQuarter,
+            timeViewStart: timeView.start,
+            timeViewEnd: timeView.end,
+          );
 
-              final snappedPos = getSnappedTime(
-                rawTime: notification.time.floor() +
-                    ((notification is TimelineLabelPointerDownNotification)
-                        ? 0
-                        : startTime.floor()),
-                divisionChanges: divisionChanges,
-              ).clamp(0, 0x7FFFFFFFFFFFFFFF);
+          final snappedPos = getSnappedTime(
+            rawTime: notification.time.floor() +
+                ((notification is TimelineLabelPointerDownNotification)
+                    ? 0
+                    : startTime.floor()),
+            divisionChanges: divisionChanges,
+          ).clamp(0, 0x7FFFFFFFFFFFFFFF);
 
-              if (notification is TimelineLabelPointerDownNotification) {
-                startTime = notification.time;
-                snapOffset = notification.time.floor() - snappedPos;
-              } else if (notification is TimelineLabelPointerMoveNotification) {
-                hasMoved = true;
-                project.execute(
-                  MoveTimeSignatureChangeCommand(
-                    project: project,
-                    timelineKind: TimelineKind.pattern,
-                    patternID: widget.patternID,
-                    changeID: notification.labelID,
-                    newOffset: snappedPos + snapOffset,
-                  ),
-                  push: false,
-                );
-              } else if (notification is TimelineLabelPointerUpNotification) {
-                project.execute(
-                  MoveTimeSignatureChangeCommand(
-                    project: project,
-                    timelineKind: TimelineKind.pattern,
-                    patternID: widget.patternID,
-                    changeID: notification.labelID,
-                    oldOffset: startTime.floor(),
-                    newOffset: snappedPos + snapOffset,
-                  ),
-                  push: true,
-                );
-              }
-            }
+          if (notification is TimelineLabelPointerDownNotification) {
+            startTime = notification.time;
+            snapOffset = notification.time.floor() - snappedPos;
+          } else if (notification is TimelineLabelPointerMoveNotification) {
+            hasMoved = true;
+            project.execute(
+              MoveTimeSignatureChangeCommand(
+                project: project,
+                timelineKind: TimelineKind.pattern,
+                patternID: widget.patternID,
+                changeID: notification.labelID,
+                newOffset: snappedPos + snapOffset,
+              ),
+              push: false,
+            );
+          } else if (notification is TimelineLabelPointerUpNotification) {
+            project.execute(
+              MoveTimeSignatureChangeCommand(
+                project: project,
+                timelineKind: TimelineKind.pattern,
+                patternID: widget.patternID,
+                changeID: notification.labelID,
+                oldOffset: startTime.floor(),
+                newOffset: snappedPos + snapOffset,
+              ),
+              push: true,
+            );
+          }
+        }
 
-            return true;
-          },
-        );
+        return true;
       },
     );
   }
