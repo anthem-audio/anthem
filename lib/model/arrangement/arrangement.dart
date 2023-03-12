@@ -111,6 +111,9 @@ abstract class _ArrangementModel extends Hydratable with Store {
         ticksPerBar *
         barMultiple;
   }
+
+  @computed
+  int get width => getWidth();
 }
 
 // JSON serialization and deserialization functions

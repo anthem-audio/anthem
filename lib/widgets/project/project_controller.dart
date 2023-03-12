@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/commands/arrangement_commands.dart';
 import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
@@ -78,5 +79,28 @@ class ProjectController {
     project.song.setActivePattern(patternModel.id);
 
     return patternModel.id;
+  }
+
+  void addArrangement([String? name]) {
+    if (name == null) {
+      final arrangements = project.song.arrangements.nonObservableInner;
+      var arrangementNumber = arrangements.length;
+
+      final existingNames = arrangements.values.map((pattern) => pattern.name);
+
+      do {
+        arrangementNumber++;
+        name = "Arrangement $arrangementNumber";
+      } while (existingNames.contains(name));
+    }
+
+    final command = AddArrangementCommand(
+      project: project,
+      arrangementName: name,
+    );
+
+    project.execute(command);
+
+    project.song.setActiveArrangement(command.arrangementID);
   }
 }
