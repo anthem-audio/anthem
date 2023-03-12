@@ -19,14 +19,12 @@
 
 import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/main_window/main_window_controller.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
-import 'package:anthem/widgets/basic/overlay/screen_overlay_cubit.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay.dart';
 import 'package:anthem/widgets/main_window/tab_content_switcher.dart';
 import 'package:anthem/widgets/main_window/window_header.dart';
@@ -49,71 +47,68 @@ class _MainWindowState extends State<MainWindow> {
 
     return Provider.value(
       value: controller,
-      child: BlocProvider<ScreenOverlayCubit>(
-        create: (context) => ScreenOverlayCubit(),
-        child: ScreenOverlay(
-          child: RawKeyboardListener(
-            focusNode: FocusNode(),
-            autofocus: true,
-            onKey: (e) {
-              final type = e.runtimeType.toString();
+      child: ScreenOverlay(
+        child: RawKeyboardListener(
+          focusNode: FocusNode(),
+          autofocus: true,
+          onKey: (e) {
+            final type = e.runtimeType.toString();
 
-              final keyDown = type == 'RawKeyDownEvent';
-              final keyUp = type == 'RawKeyUpEvent';
+            final keyDown = type == 'RawKeyDownEvent';
+            final keyUp = type == 'RawKeyUpEvent';
 
-              final ctrl = e.logicalKey.keyLabel == "Control Left" ||
-                  e.logicalKey.keyLabel == "Control Right";
-              final alt = e.logicalKey.keyLabel == "Alt Left" ||
-                  e.logicalKey.keyLabel == "Alt Right";
-              final shift = e.logicalKey.keyLabel == "Shift Left" ||
-                  e.logicalKey.keyLabel == "Shift Right";
+            final ctrl = e.logicalKey.keyLabel == "Control Left" ||
+                e.logicalKey.keyLabel == "Control Right";
+            final alt = e.logicalKey.keyLabel == "Alt Left" ||
+                e.logicalKey.keyLabel == "Alt Right";
+            final shift = e.logicalKey.keyLabel == "Shift Left" ||
+                e.logicalKey.keyLabel == "Shift Right";
 
-              final keyboardModifiers =
-                  Provider.of<KeyboardModifiers>(context, listen: false);
+            final keyboardModifiers =
+                Provider.of<KeyboardModifiers>(context, listen: false);
 
-              if (ctrl && keyDown) keyboardModifiers.setCtrl(true);
-              if (ctrl && keyUp) keyboardModifiers.setCtrl(false);
-              if (alt && keyDown) keyboardModifiers.setAlt(true);
-              if (alt && keyUp) keyboardModifiers.setAlt(false);
-              if (shift && keyDown) keyboardModifiers.setShift(true);
-              if (shift && keyUp) keyboardModifiers.setShift(false);
-            },
-            child: Container(
-              color: const Color(0xFF2A3237),
-              child: Padding(
-                padding: const EdgeInsets.all(3),
-                child: Observer(builder: (context) {
-                  final tabs = store.projectOrder
-                      .map<TabDef>(
-                        (projectID) => TabDef(
-                          id: projectID,
-                          title: store.projects[projectID]!.id,
-                        ),
-                      )
-                      .toList();
+            if (ctrl && keyDown) keyboardModifiers.setCtrl(true);
+            if (ctrl && keyUp) keyboardModifiers.setCtrl(false);
+            if (alt && keyDown) keyboardModifiers.setAlt(true);
+            if (alt && keyUp) keyboardModifiers.setAlt(false);
+            if (shift && keyDown) keyboardModifiers.setShift(true);
+            if (shift && keyUp) keyboardModifiers.setShift(false);
+          },
+          child: Container(
+            color: const Color(0xFF2A3237),
+            child: Padding(
+              padding: const EdgeInsets.all(3),
+              child: Observer(builder: (context) {
+                final tabs = store.projectOrder
+                    .map<TabDef>(
+                      (projectID) => TabDef(
+                        id: projectID,
+                        title: store.projects[projectID]!.id,
+                      ),
+                    )
+                    .toList();
 
-                  return Column(
-                    children: [
-                      WindowHeader(
-                        selectedTabID: store.activeProjectID,
+                return Column(
+                  children: [
+                    WindowHeader(
+                      selectedTabID: store.activeProjectID,
+                      tabs: tabs,
+                      setActiveProject: (ID id) {
+                        store.setActiveProject(id);
+                      },
+                      closeProject: (ID id) {
+                        store.closeProject(id);
+                      },
+                    ),
+                    Expanded(
+                      child: TabContentSwitcher(
                         tabs: tabs,
-                        setActiveProject: (ID id) {
-                          store.setActiveProject(id);
-                        },
-                        closeProject: (ID id) {
-                          store.closeProject(id);
-                        },
+                        selectedTabID: store.activeProjectID,
                       ),
-                      Expanded(
-                        child: TabContentSwitcher(
-                          tabs: tabs,
-                          selectedTabID: store.activeProjectID,
-                        ),
-                      ),
-                    ],
-                  );
-                }),
-              ),
+                    ),
+                  ],
+                );
+              }),
             ),
           ),
         ),
