@@ -17,7 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 
 class ProjectController {
@@ -48,5 +50,33 @@ class ProjectController {
 
   void setActiveGeneratorID(ID id) {
     project.activeGeneratorID = id;
+  }
+
+  ID addPattern([String? name]) {
+    if (name == null) {
+      final patterns = project.song.patterns.nonObservableInner;
+      var patternNumber = patterns.length;
+
+      final existingNames = patterns.values.map((pattern) => pattern.name);
+
+      do {
+        patternNumber++;
+        name = "Pattern $patternNumber";
+      } while (existingNames.contains(name));
+    }
+
+    final patternModel = PatternModel.create(name: name, project: project);
+
+    project.execute(
+      AddPatternCommand(
+        project: project,
+        pattern: patternModel,
+        index: project.song.patternOrder.length,
+      ),
+    );
+
+    project.song.setActivePattern(patternModel.id);
+
+    return patternModel.id;
   }
 }

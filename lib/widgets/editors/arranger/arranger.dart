@@ -30,7 +30,6 @@ import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
 import 'package:anthem/widgets/editors/arranger/clip_layout_delegate.dart';
 import 'package:anthem/widgets/editors/arranger/clip_sizer.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker.dart';
-import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker_cubit.dart';
 import 'package:anthem/widgets/editors/arranger/track_header.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
@@ -179,15 +178,11 @@ class _ArrangerState extends State<Arranger> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: 15),
+                          const Padding(
+                            padding: EdgeInsets.only(top: 15),
                             child: SizedBox(
                               width: 126,
-                              child: BlocProvider<PatternPickerCubit>(
-                                create: (context) => PatternPickerCubit(
-                                    projectID: state.projectID),
-                                child: PatternPicker(),
-                              ),
+                              child: PatternPicker(),
                             ),
                           ),
                           const SizedBox(width: 6),

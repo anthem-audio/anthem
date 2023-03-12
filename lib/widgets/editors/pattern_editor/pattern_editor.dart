@@ -29,6 +29,7 @@ import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_controller.dart';
+import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -57,6 +58,7 @@ class _PatternEditorState extends State<PatternEditor> {
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
+    final projectController = Provider.of<ProjectController>(context);
     controller ??= PatternEditorController(project: project);
 
     final menuController = MenuController();
@@ -91,7 +93,7 @@ class _PatternEditorState extends State<PatternEditor> {
                             AnthemMenuItem(
                               text: "New pattern",
                               onSelected: () {
-                                controller!.addPattern();
+                                projectController.addPattern();
                               },
                             )
                           ],
