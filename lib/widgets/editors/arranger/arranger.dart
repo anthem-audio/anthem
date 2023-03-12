@@ -32,7 +32,6 @@ import 'package:anthem/widgets/editors/arranger/clip_sizer.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker.dart';
 import 'package:anthem/widgets/editors/arranger/pattern_picker/pattern_picker_cubit.dart';
 import 'package:anthem/widgets/editors/arranger/track_header.dart';
-import 'package:anthem/widgets/editors/arranger/track_header_cubit.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline_cubit.dart';
@@ -557,8 +556,6 @@ class _TrackHeadersState extends State<_TrackHeaders> {
             var trackPositionPointer = -widget.verticalScrollPosition;
 
             for (final trackID in state.trackIDs) {
-              final trackIDStr = trackID.toString();
-
               final heightModifier = state.trackHeightModifiers[trackID]!;
 
               final trackHeight = getTrackHeight(
@@ -570,28 +567,20 @@ class _TrackHeadersState extends State<_TrackHeaders> {
                   trackPositionPointer + trackHeight > 0) {
                 headers.add(
                   Positioned(
-                    key: Key(trackIDStr),
+                    key: Key(trackID),
                     top: trackPositionPointer,
                     left: 0,
                     right: 0,
                     child: SizedBox(
                       height: trackHeight - 1,
-                      child: BlocProvider<TrackHeaderCubit>(
-                        create: (context) {
-                          return TrackHeaderCubit(
-                            projectID: state.projectID,
-                            trackID: trackID,
-                          );
-                        },
-                        child: const TrackHeader(),
-                      ),
+                      child: TrackHeader(trackID: trackID),
                     ),
                   ),
                 );
                 const resizeHandleHeight = 10.0;
                 resizeHandles.add(
                   Positioned(
-                    key: Key("$trackIDStr-handle"),
+                    key: Key("$trackID-handle"),
                     left: 0,
                     right: 0,
                     top: trackPositionPointer +
