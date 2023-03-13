@@ -25,7 +25,7 @@ import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/main_window/main_window_controller.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 import '../basic/icon.dart';
 

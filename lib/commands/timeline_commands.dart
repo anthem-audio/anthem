@@ -247,7 +247,7 @@ class MoveTimeSignatureChangeCommand extends Command {
 }
 
 class SetTimeSignatureNumeratorCommand extends Command {
-  TimelineKind timelineKind;
+  late TimelineKind timelineKind;
   ID? patternID;
   ID? arrangementID;
   late TimeSignatureChangeModel change;
@@ -256,12 +256,20 @@ class SetTimeSignatureNumeratorCommand extends Command {
 
   SetTimeSignatureNumeratorCommand({
     required ProjectModel project,
-    required this.timelineKind,
     this.patternID,
     this.arrangementID,
     required ID changeID,
     required this.numerator,
   }) : super(project) {
+    if (patternID != null) {
+      timelineKind = TimelineKind.pattern;
+    } else if (arrangementID != null) {
+      timelineKind = TimelineKind.arrangement;
+    } else {
+      throw ArgumentError(
+          "Arguments should specify a pattern ID or arrangement ID, but neither was specified.");
+    }
+
     change = project.song.patterns[patternID]!.timeSignatureChanges
         .firstWhere((change) => change.id == changeID);
 
@@ -294,7 +302,7 @@ class SetTimeSignatureNumeratorCommand extends Command {
 }
 
 class SetTimeSignatureDenominatorCommand extends Command {
-  TimelineKind timelineKind;
+  late TimelineKind timelineKind;
   ID? patternID;
   ID? arrangementID;
   late TimeSignatureChangeModel change;
@@ -303,12 +311,20 @@ class SetTimeSignatureDenominatorCommand extends Command {
 
   SetTimeSignatureDenominatorCommand({
     required ProjectModel project,
-    required this.timelineKind,
     this.patternID,
     this.arrangementID,
     required ID changeID,
     required this.denominator,
   }) : super(project) {
+    if (patternID != null) {
+      timelineKind = TimelineKind.pattern;
+    } else if (arrangementID != null) {
+      timelineKind = TimelineKind.arrangement;
+    } else {
+      throw ArgumentError(
+          "Arguments should specify a pattern ID or arrangement ID, but neither was specified.");
+    }
+
     change = project.song.patterns[patternID]!.timeSignatureChanges
         .firstWhere((change) => change.id == changeID);
 
