@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,8 +19,6 @@
 
 import 'dart:ui';
 
-import 'package:anthem/commands/pattern_state_changes.dart';
-import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/project.dart';
@@ -47,23 +45,13 @@ class AddGeneratorCommand extends Command {
   }) : super(project);
 
   @override
-  List<StateChange> execute() {
+  void execute() {
     project.generatorList.add(generatorID);
     project.generators[generatorID] = GeneratorModel(name: name, color: color);
-    return [
-      StateChange.generator(
-        GeneratorStateChange.generatorAdded(project.id, generatorID),
-      )
-    ];
   }
 
   @override
-  List<StateChange> rollback() {
+  void rollback() {
     _removeGenerator(project, generatorID);
-    return [
-      StateChange.generator(
-        GeneratorStateChange.generatorRemoved(project.id, generatorID),
-      )
-    ];
   }
 }

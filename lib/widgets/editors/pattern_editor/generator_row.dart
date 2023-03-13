@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes.dart';
@@ -38,7 +39,8 @@ class GeneratorRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
-    final pattern = project.song.patterns[project.song.activePatternID];
+    PatternModel? getPattern() =>
+        project.song.patterns[project.song.activePatternID];
     final generator = project.generators[generatorID]!;
 
     return GestureDetector(
@@ -87,17 +89,22 @@ class GeneratorRow extends StatelessWidget {
                     borderRadius: const BorderRadius.all(Radius.circular(1)),
                     color: Theme.panel.main,
                   ),
-                  child: pattern == null
-                      ? const SizedBox()
-                      : ClipNotes(
-                          pattern: pattern,
-                          generatorID: generatorID,
-                          timeViewStart: 0,
-                          // 1 bar is 100 pixels, can be tweaked (and should probably be set above?)
-                          ticksPerPixel:
-                              (project.song.ticksPerQuarter * 4) / 100,
-                          color: generator.color,
-                        ),
+                  child: Observer(builder: (context) {
+                    final pattern = getPattern();
+
+                    if (pattern == null) {
+                      return const SizedBox();
+                    }
+
+                    return ClipNotes(
+                      pattern: pattern,
+                      generatorID: generatorID,
+                      timeViewStart: 0,
+                      // 1 bar is 100 pixels, can be tweaked (and should probably be set above?)
+                      ticksPerPixel: (project.song.ticksPerQuarter * 4) / 100,
+                      color: generator.color,
+                    );
+                  }),
                 ),
               ),
             ],

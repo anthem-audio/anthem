@@ -17,9 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:async';
-
-import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:mobx/mobx.dart';
@@ -39,20 +36,10 @@ abstract class _AppModel with Store {
   @observable
   ID activeProjectID;
 
-  // TODO: hopefully deprecate this via mobx
-  final StreamController<StateChange> _stateChangeStreamController =
-      StreamController.broadcast();
-
-  /// Contains globally-relevant state changes. Most state changes will be on
-  /// the `stateChangeStream` in each `ProjectModel`.
-  late Stream<StateChange> stateChangeStream;
-
   _AppModel()
       : projects = ObservableMap.of({}),
         projectOrder = ObservableList.of([]),
-        activeProjectID = "" {
-    stateChangeStream = _stateChangeStreamController.stream;
-  }
+        activeProjectID = "";
 
   void addProject(ProjectModel project) {
     projects[project.id] = project;
