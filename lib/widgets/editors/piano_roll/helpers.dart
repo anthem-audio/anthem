@@ -18,6 +18,7 @@
 */
 
 enum KeyType { black, white }
+
 enum NotchType { above, below, both }
 
 KeyType getKeyType(int key) {

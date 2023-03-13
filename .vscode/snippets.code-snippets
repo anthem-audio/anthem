@@ -21,7 +21,7 @@
 		"scope": "rust",
 		"body": [
 			"/*",
-			"    Copyright (C) 2022 $1",
+			"    Copyright (C) 2023 $1",
 			"",
 			"    This file is part of Anthem.",
 			"",
@@ -49,7 +49,7 @@
 		"scope": "dart",
 		"body": [
 			"/*",
-			"  Copyright (C) 2022 $1",
+			"  Copyright (C) 2023 $1",
 			"",
 			"  This file is part of Anthem.",
 			"",
@@ -72,85 +72,6 @@
 		]
 	},
 
-	"Cubit State": {
-		"prefix": ["cubitState", "viewModelItem"],
-		"scope": "dart",
-		"body": [
-			"part of '$1_cubit.dart';",
-			"",
-			"@freezed",
-			"class $2State with _$$2State {",
-			"",
-			"  factory $2State({",
-			"    required ID projectID,",
-			"  }) = _$2State;",
-			"}"
-		],
-	},
-
-	"Cubit": {
-		"prefix": ["cubit"],
-		"scope": "dart",
-		"body": [
-			"import 'dart:async';",
-			"",
-			"import 'package:anthem/helpers/id.dart';",
-			"import 'package:bloc/bloc.dart';",
-			"import 'package:freezed_annotation/freezed_annotation.dart';",
-			"",
-			"part '$1_state.dart';",
-			"part '$1_cubit.freezed.dart';",
-			"",
-			"class $2Cubit extends Cubit<$2State> {",
-			"  late final ProjectModel project;",
-			"",
-			"  late final StreamSubscription<List<StateChange>> _stateChangeStream;",
-			"",
-			"  @override",
-			"  Future<void> close() async {",
-			"    await _stateChangeStream.cancel();",
-			"",
-			"    return super.close();",
-			"  }",
-			"",
-			"  $2Cubit({required String projectID}) : super($2State(projectID: projectID)) {",
-			"    project = Store.instance.projects[projectID]!;",
-			"    _stateChangeStream = project.stateChangeStream.listen(_onModelChanged);",
-			"  }",
-			"",
-			"  void _onModelChanged(List<StateChange> changes) {",
-			"    // var didSomeItemChange = false;",
-			"",
-			"    for (final change in changes) {",
-			"      change.whenOrNull(",
-			"        // arrangement: (arrangementChange) {",
-			"        //   arrangementChange.mapOrNull(",
-			"        //     arrangementNameChanged: (change) {",
-			"        //       if (change.arrangementID == state.arrangementID) {",
-			"        //         didNameChange = true;",
-			"        //       }",
-			"        //     },",
-			"        //   );",
-			"        // },",
-			"      );",
-			"    }",
-			"",
-			"    $2State? newState;",
-			"",
-			"    // if (didSomeItemChange) {",
-			"    //   newState = (newState ?? state).copyWith(",
-			"    //     ...",
-			"    //   );",
-			"    // }",
-			"",
-			"    if (newState != null) {",
-			"      emit(newState);",
-			"    }",
-			"  }",
-			"}"
-		],
-	},
-
 	"Command Impl": {
 		"prefix": ["command"],
 		"scope": "rust",
@@ -169,43 +90,5 @@
 			"    }",
 			"}",
 		],
-	},
-
-	"Stateless widget with bloc builder": {
-		"prefix": ["statelessWBloc", "blocStatelessW"],
-		"scope": "dart",
-		"body": [
-			"class $1 extends StatelessWidget {",
-			"  const $1({Key? key}) : super(key: key);",
-			"",
-			"  @override",
-			"  Widget build(BuildContext context) {",
-			"    return BlocBuilder<$2Cubit, $2State>(",
-			"        builder: (context, state) {",
-			"      return Container();",
-			"    });",
-			"  }",
-			"}"
-		]
-	},
-
-	"Model item": {
-		"prefix": "modelItem",
-		"scope": "dart",
-		"body": [
-			"import 'package:freezed_annotation/freezed_annotation.dart';",
-			"",
-			"part '$1.g.dart';",
-			"",
-			"@JsonSerializable()",
-			"class $2 {",
-			"  $2();",
-			"",
-			"  factory $2.fromJson(Map<String, dynamic> json) =>",
-			"      _$$2FromJson(json);",
-			"",
-			"  Map<String, dynamic> toJson() => _$$2ToJson(this);",
-			"}"
-		]
 	}
 }

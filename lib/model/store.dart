@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,7 +19,7 @@
 
 import 'package:anthem/model/app.dart';
 
-class Store {
+class AnthemStore {
   static AppModel? _instance;
   static AppModel get instance {
     _instance ??= AppModel();

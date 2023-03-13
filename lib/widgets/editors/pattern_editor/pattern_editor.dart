@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,24 +17,24 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-// cspell:ignore ahsl
-
 import 'dart:math';
 
+import 'package:anthem/model/project.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
+import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
-import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart';
+import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_controller.dart';
+import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:provider/provider.dart';
 
-import '../../../theme.dart';
-import '../../basic/icon.dart';
 import 'generator_row.dart';
-import 'generator_row_cubit.dart';
 
 class PatternEditor extends StatefulWidget {
   const PatternEditor({Key? key}) : super(key: key);
@@ -47,6 +47,8 @@ class _PatternEditorState extends State<PatternEditor> {
   double nextHue = 0;
   ScrollController verticalScrollController = ScrollController();
 
+  PatternEditorController? controller;
+
   Color getColor() {
     final color = HSLColor.fromAHSL(1, nextHue, 0.33, 0.5).toColor();
     nextHue = (nextHue + 330) % 360;
@@ -55,11 +57,15 @@ class _PatternEditorState extends State<PatternEditor> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<PatternEditorCubit, PatternEditorState>(
-        builder: (context, state) {
-      final menuController = MenuController();
+    final project = Provider.of<ProjectModel>(context);
+    final projectController = Provider.of<ProjectController>(context);
+    controller ??= PatternEditorController(project: project);
 
-      return NotificationListener<SizeChangedLayoutNotification>(
+    final menuController = MenuController();
+
+    return Provider.value(
+      value: controller!,
+      child: NotificationListener<SizeChangedLayoutNotification>(
         onNotification: (notification) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             verticalScrollController.position.notifyListeners();
@@ -87,9 +93,7 @@ class _PatternEditorState extends State<PatternEditor> {
                             AnthemMenuItem(
                               text: "New pattern",
                               onSelected: () {
-                                final cubit =
-                                    context.read<PatternEditorCubit>();
-                                cubit.addPattern();
+                                projectController.addPattern();
                               },
                             )
                           ],
@@ -104,24 +108,25 @@ class _PatternEditorState extends State<PatternEditor> {
                         ),
                       ),
                       const SizedBox(width: 4),
-                      Dropdown(
-                        width: 169,
-                        height: 26,
-                        items: state.patternList.map(
-                          (item) {
-                            return DropdownItem(
-                              id: item.id.toString(),
-                              name: item.name,
-                            );
+                      Observer(builder: (context) {
+                        return Dropdown(
+                          width: 169,
+                          height: 26,
+                          items: project.song.patternOrder.map(
+                            (id) {
+                              final pattern = project.song.patterns[id]!;
+                              return DropdownItem(
+                                id: id,
+                                name: pattern.name,
+                              );
+                            },
+                          ).toList(),
+                          selectedID: project.song.activePatternID?.toString(),
+                          onChanged: (id) {
+                            project.song.activePatternID = id;
                           },
-                        ).toList(),
-                        selectedID: state.activePatternID?.toString(),
-                        onChanged: (id) {
-                          context
-                              .read<PatternEditorCubit>()
-                              .setActivePattern(id);
-                        },
-                      ),
+                        );
+                      }),
                       const Expanded(child: SizedBox()),
                     ],
                   ),
@@ -142,44 +147,18 @@ class _PatternEditorState extends State<PatternEditor> {
                                 padding:
                                     const EdgeInsets.symmetric(vertical: 5),
                                 child: SizeChangedLayoutNotifier(
-                                  child: Column(
-                                    children:
-                                        state.generatorIDList.map<Widget>((id) {
-                                      final instrument = state.instruments[id];
-                                      final controller = state.controllers[id];
-
-                                      // TODO: provide type to child
-                                      if (instrument != null) {
-                                        return BlocProvider(
-                                          create: (context) =>
-                                              GeneratorRowCubit(
-                                            projectID: state.projectID,
-                                            patternID: state.activePatternID,
-                                            generatorID: id,
-                                          ),
-                                          child: const GeneratorRow(),
-                                        );
-                                      }
-
-                                      if (controller != null) {
+                                  child: Observer(builder: (context) {
+                                    return Column(
+                                      children: project.generatorList
+                                          .map<Widget>((id) {
                                         return Padding(
                                           padding:
                                               const EdgeInsets.only(bottom: 1),
-                                          child: BlocProvider(
-                                            create: (context) =>
-                                                GeneratorRowCubit(
-                                              projectID: state.projectID,
-                                              patternID: state.activePatternID,
-                                              generatorID: id,
-                                            ),
-                                            child: const GeneratorRow(),
-                                          ),
+                                          child: GeneratorRow(generatorID: id),
                                         );
-                                      }
-
-                                      throw Error();
-                                    }).toList(),
-                                  ),
+                                      }).toList(),
+                                    );
+                                  }),
                                 ),
                               ),
                             ),
@@ -206,10 +185,10 @@ class _PatternEditorState extends State<PatternEditor> {
                           contentPadding: EdgeInsets.zero,
                           startIcon: Icons.add,
                           onPress: () {
-                            context.read<PatternEditorCubit>().addInstrument(
-                                  "Instrument ${(Random()).nextInt(100).toString()}",
-                                  getColor(),
-                                );
+                            controller!.addGenerator(
+                              "Instrument ${(Random()).nextInt(100).toString()}",
+                              getColor(),
+                            );
                           },
                         ),
                         const SizedBox(width: 24),
@@ -222,7 +201,7 @@ class _PatternEditorState extends State<PatternEditor> {
             ),
           ),
         ),
-      );
-    });
+      ),
+    );
   }
 }

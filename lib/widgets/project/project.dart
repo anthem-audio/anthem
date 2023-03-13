@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,114 +17,120 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:flutter/widgets.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:provider/provider.dart';
+
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/panel.dart';
-import 'package:anthem/widgets/editors/arranger/arranger_cubit.dart';
 import 'package:anthem/widgets/editors/arranger/arranger.dart';
-import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_cubit.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
-import 'package:anthem/widgets/project_explorer/project_explorer_cubit.dart';
+import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:anthem/widgets/project_explorer/project_explorer.dart';
 import 'package:anthem/widgets/project_details/project_details.dart';
-import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:anthem/widgets/project/project_footer.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter/widgets.dart';
 
 import 'project_header.dart';
 
-class Project extends StatelessWidget {
-  const Project({Key? key}) : super(key: key);
+class Project extends StatefulWidget {
+  final ID id;
+
+  const Project({Key? key, required this.id}) : super(key: key);
+
+  @override
+  State<Project> createState() => _ProjectState();
+}
+
+class _ProjectState extends State<Project> {
+  ProjectController? controller;
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ProjectCubit, ProjectState>(builder: (context, state) {
-      return Column(
-        children: [
-          ProjectHeader(
-            projectID: state.id,
-          ),
-          const SizedBox(
-            height: 3,
-          ),
-          Expanded(
-            child: Panel(
-              hidden: !state.isProjectExplorerVisible,
-              orientation: PanelOrientation.left,
-              panelStartSize: 200,
-              // Left panel
-              panelContent: Stack(
-                children: [
-                  Positioned.fill(
-                    child: Visibility(
-                      maintainAnimation: false,
-                      maintainInteractivity: false,
-                      maintainSemantics: false,
-                      maintainSize: false,
-                      maintainState: true,
-                      visible: !state.isDetailViewSelected,
-                      child: BlocProvider<ProjectExplorerCubit>(
-                        create: (context) => ProjectExplorerCubit(state.id),
-                        child: const ProjectExplorer(),
-                      ),
-                    ),
-                  ),
-                  Positioned.fill(
-                    child: Visibility(
-                      maintainAnimation: false,
-                      maintainInteractivity: false,
-                      maintainSemantics: false,
-                      maintainSize: false,
-                      maintainState: true,
-                      visible: state.isDetailViewSelected,
-                      child: ProjectDetails(
-                        selectedProjectDetails: state.selectedDetailView,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+    final projectModel = AnthemStore.instance.projects[widget.id]!;
+    this.controller ??= ProjectController(projectModel);
+    final controller = this.controller!;
 
-              child: Panel(
-                hidden: true,
-                orientation: PanelOrientation.right,
-                // Right panel
-                panelContent: Container(color: Theme.panel.main),
-
-                child: Panel(
-                  orientation: PanelOrientation.bottom,
-                  // Bottom panel
-                  panelContent: BlocProvider<PianoRollCubit>(
-                    create: (context) => PianoRollCubit(projectID: state.id),
-                    child: const PianoRoll(),
-                  ),
-                  child: Panel(
-                    hidden: !state.isPatternEditorVisible,
-                    orientation: PanelOrientation.left,
-                    // Pattern editor
-                    panelContent: BlocProvider<PatternEditorCubit>(
-                      create: (context) => PatternEditorCubit(
-                          project: Store.instance.projects[state.id]!),
-                      child: const PatternEditor(),
-                    ),
-                    child: BlocProvider<ArrangerCubit>(
-                      create: (context) => ArrangerCubit(projectID: state.id),
-                      child: const Arranger(),
-                    ),
-                  ),
-                ),
-              ),
+    return Provider.value(
+      value: projectModel,
+      child: Provider.value(
+        value: controller,
+        child: Column(
+          children: [
+            ProjectHeader(
+              projectID: widget.id,
             ),
-          ),
-          const SizedBox(
-            height: 3,
-          ),
-          const ProjectFooter(),
-        ],
-      );
-    });
+            const SizedBox(
+              height: 3,
+            ),
+            Expanded(
+              child: Observer(builder: (context) {
+                return Panel(
+                  hidden: !projectModel.isProjectExplorerVisible,
+                  orientation: PanelOrientation.left,
+                  panelStartSize: 200,
+                  // Left panel
+                  panelContent: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: Visibility(
+                          maintainAnimation: false,
+                          maintainInteractivity: false,
+                          maintainSemantics: false,
+                          maintainSize: false,
+                          maintainState: true,
+                          visible: !projectModel.isDetailViewSelected,
+                          child: const ProjectExplorer(),
+                        ),
+                      ),
+                      Positioned.fill(
+                        child: Visibility(
+                          maintainAnimation: false,
+                          maintainInteractivity: false,
+                          maintainSemantics: false,
+                          maintainSize: false,
+                          maintainState: true,
+                          visible: projectModel.isDetailViewSelected,
+                          child: ProjectDetails(
+                            selectedProjectDetails:
+                                projectModel.selectedDetailView,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  child: Panel(
+                    hidden: true,
+                    orientation: PanelOrientation.right,
+                    // Right panel
+                    panelContent: Container(color: Theme.panel.main),
+
+                    child: Panel(
+                      orientation: PanelOrientation.bottom,
+                      // Bottom panel
+                      panelContent: const PianoRoll(),
+                      child: Panel(
+                        hidden: !projectModel.isPatternEditorVisible,
+                        orientation: PanelOrientation.left,
+                        // Pattern editor
+                        panelContent: const PatternEditor(),
+                        child: const Arranger(),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(
+              height: 3,
+            ),
+            const ProjectFooter(),
+          ],
+        ),
+      ),
+    );
   }
 }

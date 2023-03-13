@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,8 +19,6 @@
 
 import 'dart:ui';
 
-import 'package:anthem/commands/pattern_state_changes.dart';
-import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/project.dart';
@@ -29,80 +27,31 @@ import 'command.dart';
 
 void _removeGenerator(ProjectModel project, ID generatorID) {
   project.generatorList.removeWhere((element) => element == generatorID);
-  if (project.instruments.containsKey(generatorID)) {
-    project.instruments.remove(generatorID);
-  }
-  if (project.controllers.containsKey(generatorID)) {
-    project.controllers.remove(generatorID);
+  if (project.generators.containsKey(generatorID)) {
+    project.generators.remove(generatorID);
   }
 }
 
-class AddInstrumentCommand extends Command {
-  ID instrumentID;
+class AddGeneratorCommand extends Command {
+  ID generatorID;
   String name;
   Color color;
 
-  AddInstrumentCommand({
+  AddGeneratorCommand({
     required ProjectModel project,
-    required this.instrumentID,
+    required this.generatorID,
     required this.name,
     required this.color,
   }) : super(project);
 
   @override
-  List<StateChange> execute() {
-    project.generatorList.add(instrumentID);
-    project.instruments[instrumentID] =
-        InstrumentModel(name: name, color: color);
-    return [
-      StateChange.generator(
-        GeneratorStateChange.generatorAdded(project.id, instrumentID),
-      )
-    ];
+  void execute() {
+    project.generatorList.add(generatorID);
+    project.generators[generatorID] = GeneratorModel(name: name, color: color);
   }
 
   @override
-  List<StateChange> rollback() {
-    _removeGenerator(project, instrumentID);
-    return [
-      StateChange.generator(
-        GeneratorStateChange.generatorRemoved(project.id, instrumentID),
-      )
-    ];
-  }
-}
-
-class AddControllerCommand extends Command {
-  ID controllerID;
-  String name;
-  Color color;
-
-  AddControllerCommand({
-    required ProjectModel project,
-    required this.controllerID,
-    required this.name,
-    required this.color,
-  }) : super(project);
-
-  @override
-  List<StateChange> execute() {
-    project.generatorList.add(controllerID);
-    project.controllers[controllerID] =
-        ControllerModel(name: name, color: color);
-    return [
-      StateChange.generator(
-        GeneratorStateChange.generatorAdded(project.id, controllerID),
-      )
-    ];
-  }
-
-  @override
-  List<StateChange> rollback() {
-    _removeGenerator(project, controllerID);
-    return [
-      StateChange.generator(
-        GeneratorStateChange.generatorRemoved(project.id, controllerID),
-      )
-    ];
+  void rollback() {
+    _removeGenerator(project, generatorID);
   }
 }

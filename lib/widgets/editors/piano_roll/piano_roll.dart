@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,13 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-// cspell:ignore relayout ahsl
-
 import 'dart:math';
 
 import 'package:anthem/commands/timeline_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
+import 'package:anthem/model/pattern/pattern.dart';
+import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
@@ -32,24 +32,27 @@ import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll_cubit.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_notification_handler.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_notifications.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
 import 'package:anthem/widgets/editors/shared/tool_selector.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:mobx/mobx.dart' as mobx;
 
 import 'package:provider/provider.dart';
 
 import '../shared/helpers/time_helpers.dart';
 import '../shared/helpers/types.dart';
 import '../shared/timeline/timeline_notification_handler.dart';
-import '../shared/timeline/timeline_cubit.dart';
 import 'helpers.dart';
 import 'piano_roll_grid.dart';
 import '../shared/timeline/timeline.dart';
 import 'piano_control.dart';
+
+const noContentBars = 16;
 
 const double minKeyHeight = 6;
 const double maxKeyHeight = 40;
@@ -69,101 +72,110 @@ const double maxKeyValue = 128;
 Size _pianoRollCanvasSize = const Size(0, 0);
 
 class PianoRoll extends StatefulWidget {
-  const PianoRoll({
-    Key? key,
-  }) : super(key: key);
+  const PianoRoll({Key? key}) : super(key: key);
 
   @override
   State<PianoRoll> createState() => _PianoRollState();
 }
 
 class _PianoRollState extends State<PianoRoll> {
+  PianoRollController? controller;
+  PianoRollViewModel? viewModel;
+
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<PianoRollCubit, PianoRollState>(
-        builder: (context, state) {
-      return MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => TimeView(0, 3072)),
-        ],
-        child: PianoRollNotificationHandler(
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              color: Theme.panel.main,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _PianoRollHeader(),
-                  const SizedBox(height: 4),
-                  const Expanded(
-                    child: _PianoRollContent(),
-                  ),
-                ],
+    final project = Provider.of<ProjectModel>(context);
+
+    controller ??= PianoRollController(project: project);
+    viewModel ??= PianoRollViewModel(
+      keyHeight: 20,
+      // Hack: cuts off the top horizontal line. Otherwise the default view looks off
+      keyValueAtTop: 63.95,
+    );
+
+    return Provider.value(
+      value: controller!,
+      child: Provider.value(
+        value: viewModel!,
+        child: MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => TimeView(0, 3072)),
+          ],
+          child: PianoRollNotificationHandler(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                color: Theme.panel.main,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _PianoRollHeader(),
+                    const SizedBox(height: 4),
+                    const Expanded(
+                      child: _PianoRollContent(),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      );
-    });
+      ),
+    );
   }
 }
 
 class _PianoRollHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<PianoRollCubit, PianoRollState>(
-        builder: (context, state) {
-      final menuController = MenuController();
+    final menuController = MenuController();
 
-      return SizedBox(
-        height: 26,
-        child: Row(
-          children: [
-            Menu(
-              menuDef: MenuDef(
-                children: [
-                  AnthemMenuItem(
-                    text: "Markers",
-                    submenu: MenuDef(
-                      children: [
-                        AnthemMenuItem(
-                          text: "Add time signature change",
-                          onSelected: () {
-                            final notification =
-                                PianoRollTimeSignatureChangeAddNotification(
-                              // The height doesn't matter since it's not used
-                              // in handling this notification. We get the
-                              // width from
-                              pianoRollSize: _pianoRollCanvasSize,
-                              time:
-                                  Provider.of<TimeView>(context, listen: false)
-                                      .start,
-                            );
-                            notification.dispatch(context);
-                          },
-                        ),
-                      ],
-                    ),
+    return SizedBox(
+      height: 26,
+      child: Row(
+        children: [
+          Menu(
+            menuDef: MenuDef(
+              children: [
+                AnthemMenuItem(
+                  text: "Markers",
+                  submenu: MenuDef(
+                    children: [
+                      AnthemMenuItem(
+                        text: "Add time signature change",
+                        onSelected: () {
+                          final notification =
+                              PianoRollTimeSignatureChangeAddNotification(
+                            // The height doesn't matter since it's not used
+                            // in handling this notification. We get the
+                            // width from
+                            pianoRollSize: _pianoRollCanvasSize,
+                            time: Provider.of<TimeView>(context, listen: false)
+                                .start,
+                          );
+                          notification.dispatch(context);
+                        },
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              menuController: menuController,
-              child: Button(
-                width: 26,
-                startIcon: Icons.kebab,
-                onPress: () => menuController.open?.call(),
-              ),
+                ),
+              ],
             ),
-            const SizedBox(width: 4),
-            const ToolSelector(selectedTool: EditorTool.pencil),
-          ],
-        ),
-      );
-    });
+            menuController: menuController,
+            child: Button(
+              width: 26,
+              startIcon: Icons.kebab,
+              onPress: () => menuController.open?.call(),
+            ),
+          ),
+          const SizedBox(width: 4),
+          const ToolSelector(selectedTool: EditorTool.pencil),
+        ],
+      ),
+    );
   }
 }
 
@@ -233,137 +245,264 @@ class _PianoRollContentState extends State<_PianoRollContent>
     ),
   );
 
+  mobx.ReactionDisposer? viewModelReactionDisposer;
+
   @override
   void dispose() {
     _timeViewAnimationController.dispose();
     _keyValueAtTopAnimationController.dispose();
+    viewModelReactionDisposer?.call();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<PianoRollCubit, PianoRollState>(
-        builder: (context, state) {
-      final cubit = BlocProvider.of<PianoRollCubit>(context);
+    final project = Provider.of<ProjectModel>(context);
+    final viewModel = Provider.of<PianoRollViewModel>(context);
 
-      final timeView = context.watch<TimeView>();
+    viewModelReactionDisposer = mobx.autorun((p0) {
+      // Access fields in viewModel. Changes to these fields will rebuild this
+      // widget.
+      viewModel.keyHeight;
+      viewModel.keyValueAtTop;
 
-      // Updates the time view animation if the time view has changed
-      if (timeView.start != _lastTimeViewStart ||
-          timeView.end != _lastTimeViewEnd) {
-        _timeViewStartTween.begin = _timeViewStartAnimation.value;
-        _timeViewEndTween.begin = _timeViewEndAnimation.value;
+      // Rebuild the widget
+      setState(() {});
+    });
 
-        _timeViewAnimationController.reset();
+    // This is a function because observers need to be able to observe this
+    // call into the MobX store
+    PatternModel? getPattern() =>
+        project.song.patterns[project.song.activePatternID];
 
-        _timeViewStartTween.end = timeView.start;
-        _timeViewEndTween.end = timeView.end;
+    final timeView = context.watch<TimeView>();
 
-        _timeViewAnimationController.forward();
+    // Updates the time view animation if the time view has changed
+    if (timeView.start != _lastTimeViewStart ||
+        timeView.end != _lastTimeViewEnd) {
+      _timeViewStartTween.begin = _timeViewStartAnimation.value;
+      _timeViewEndTween.begin = _timeViewEndAnimation.value;
 
-        _lastTimeViewStart = timeView.start;
-        _lastTimeViewEnd = timeView.end;
-      }
+      _timeViewAnimationController.reset();
 
-      // Updates the key value at top animation if the position has changed
-      if (state.keyValueAtTop != _lastKeyValueAtTop) {
-        _keyValueAtTopTween.begin = _keyValueAtTopAnimation.value;
-        _keyValueAtTopAnimationController.reset();
-        _keyValueAtTopTween.end = state.keyValueAtTop;
-        _keyValueAtTopAnimationController.forward();
-        _lastKeyValueAtTop = state.keyValueAtTop;
-      }
+      _timeViewStartTween.end = timeView.start;
+      _timeViewEndTween.end = timeView.end;
 
-      final timelineHeight = state.hasTimeMarkers ? 42.0 : 21.0;
+      _timeViewAnimationController.forward();
 
-      final timeline = SizedBox(
+      _lastTimeViewStart = timeView.start;
+      _lastTimeViewEnd = timeView.end;
+    }
+
+    // Updates the key value at top animation if the position has changed
+    if (viewModel.keyValueAtTop != _lastKeyValueAtTop) {
+      _keyValueAtTopTween.begin = _keyValueAtTopAnimation.value;
+      _keyValueAtTopAnimationController.reset();
+      _keyValueAtTopTween.end = viewModel.keyValueAtTop;
+      _keyValueAtTopAnimationController.forward();
+      _lastKeyValueAtTop = viewModel.keyValueAtTop;
+    }
+
+    final timeline = Observer(builder: (context) {
+      final timelineHeight =
+          (getPattern()?.hasTimeMarkers ?? false) ? 42.0 : 21.0;
+      final pattern = getPattern();
+
+      return SizedBox(
         height: timelineHeight,
         child: Row(
           children: [
             SizedBox(width: pianoControlWidth),
             Container(color: Theme.panel.border, width: 1),
             Expanded(
-              child: BlocProvider<TimelineCubit>(
-                create: (context) => TimelineCubit(
-                  projectID: state.projectID,
-                  timelineType: TimelineType.patternTimeline,
-                ),
-                child: TimelineNotificationHandler(
-                  timelineKind: TimelineKind.pattern,
-                  patternID: state.patternID,
-                  child: Timeline(
-                    timeViewAnimationController: _timeViewAnimationController,
-                    timeViewStartAnimation: _timeViewStartAnimation,
-                    timeViewEndAnimation: _timeViewEndAnimation,
-                  ),
+              child: TimelineNotificationHandler(
+                timelineKind: TimelineKind.pattern,
+                patternID: pattern?.id,
+                child: Timeline.pattern(
+                  timeViewAnimationController: _timeViewAnimationController,
+                  timeViewStartAnimation: _timeViewStartAnimation,
+                  timeViewEndAnimation: _timeViewEndAnimation,
+                  patternID: pattern?.id,
                 ),
               ),
             ),
           ],
         ),
       );
+    });
 
-      final pianoControl = SizedBox(
-        width: pianoControlWidth,
-        child: AnimatedBuilder(
-          animation: _keyValueAtTopAnimationController,
-          builder: (context, child) {
-            return PianoControl(
-              keyValueAtTop: _keyValueAtTopAnimation.value,
-              keyHeight: state.keyHeight,
-              setKeyValueAtTop: (value) {
-                setState(() {
-                  cubit.setKeyValueAtTop(value);
-                });
-              },
-            );
-          },
-        ),
-      );
+    final pianoControl = SizedBox(
+      width: pianoControlWidth,
+      child: AnimatedBuilder(
+        animation: _keyValueAtTopAnimationController,
+        builder: (context, child) {
+          return PianoControl(
+            keyValueAtTop: _keyValueAtTopAnimation.value,
+            keyHeight: viewModel.keyHeight,
+            setKeyValueAtTop: (value) {
+              viewModel.keyValueAtTop = value;
+            },
+          );
+        },
+      ),
+    );
 
-      final notes = state.notes;
-      final noteWidgets = notes
-          .map(
-            (note) => LayoutId(
-              id: note.id,
-              child: NoteWidget(noteID: note.id),
-            ),
-          )
-          .toList();
+    final noteRenderArea = Expanded(
+      child: LayoutBuilder(builder: (context, constraints) {
+        _pianoRollCanvasSize = constraints.biggest;
+        return PianoRollEventListener(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              PianoRollGrid(
+                timeViewAnimationController: _timeViewAnimationController,
+                timeViewStartAnimation: _timeViewStartAnimation,
+                timeViewEndAnimation: _timeViewEndAnimation,
+                keyHeight: viewModel.keyHeight,
+                keyValueAtTopAnimationController:
+                    _keyValueAtTopAnimationController,
+                keyValueAtTopAnimation: _keyValueAtTopAnimation,
+              ),
+              ClipRect(
+                child: AnimatedBuilder(
+                  animation: _keyValueAtTopAnimationController,
+                  builder: (context, child) {
+                    return AnimatedBuilder(
+                      animation: _timeViewAnimationController,
+                      builder: (context, child) {
+                        return Observer(builder: (context) {
+                          final notes = getPattern()
+                                  ?.notes[project.activeGeneratorID]
+                                  ?.toList() ??
+                              [];
 
-      final noteRenderArea = Expanded(
-        child: LayoutBuilder(builder: (context, constraints) {
-          _pianoRollCanvasSize = constraints.biggest;
-          return PianoRollEventListener(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                PianoRollGrid(
-                  timeViewAnimationController: _timeViewAnimationController,
-                  timeViewStartAnimation: _timeViewStartAnimation,
-                  timeViewEndAnimation: _timeViewEndAnimation,
-                  keyHeight: state.keyHeight,
-                  keyValueAtTopAnimationController:
-                      _keyValueAtTopAnimationController,
-                  keyValueAtTopAnimation: _keyValueAtTopAnimation,
-                ),
-                ClipRect(
-                  child: AnimatedBuilder(
-                    animation: _keyValueAtTopAnimationController,
-                    builder: (context, child) {
-                      return AnimatedBuilder(
-                        animation: _timeViewAnimationController,
-                        builder: (context, child) {
+                          final noteWidgets = notes
+                              .map(
+                                (note) => LayoutId(
+                                  id: note.id,
+                                  child: NoteWidget(noteID: note.id),
+                                ),
+                              )
+                              .toList();
+
                           return CustomMultiChildLayout(
                             delegate: NoteLayoutDelegate(
                               notes: notes,
-                              keyHeight: state.keyHeight,
+                              keyHeight: viewModel.keyHeight,
                               keyValueAtTop: _keyValueAtTopAnimation.value,
                               timeViewStart: _timeViewStartAnimation.value,
                               timeViewEnd: _timeViewEndAnimation.value,
                             ),
                             children: noteWidgets,
                           );
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+
+    return Panel(
+      orientation: PanelOrientation.bottom,
+      panelStartSize: 89,
+      separatorSize: 6,
+      panelContent: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: Theme.panel.border),
+          borderRadius: const BorderRadius.all(Radius.circular(4)),
+        ),
+      ),
+      child: Column(
+        children: [
+          SizedBox(
+            height: 26,
+            child: Row(
+              children: [
+                SizedBox(width: pianoControlWidth + 1),
+                Expanded(
+                  child: Observer(builder: (context) {
+                    return ScrollbarRenderer(
+                      scrollRegionStart: 0,
+                      scrollRegionEnd: getPattern()?.lastContent.toDouble() ??
+                          (project.song.ticksPerQuarter * 4 * noContentBars)
+                              .toDouble(),
+                      handleStart: timeView.start,
+                      handleEnd: timeView.end,
+                      canScrollPastEnd: true,
+                      minHandleSize: project.song.ticksPerQuarter *
+                          4, // TODO: time signature
+                      onChange: (event) {
+                        timeView.setStart(event.handleStart);
+                        timeView.setEnd(event.handleEnd);
+                      },
+                    );
+                  }),
+                ),
+                const SizedBox(width: 4),
+                VerticalScaleControl(
+                  min: minKeyHeight,
+                  max: maxKeyHeight,
+                  value: viewModel.keyHeight,
+                  onChange: (height) {
+                    viewModel.keyHeight = height;
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Theme.panel.border),
+                      borderRadius: const BorderRadius.all(Radius.circular(4)),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.all(Radius.circular(4)),
+                      child: Column(
+                        children: [
+                          timeline,
+                          Container(color: Theme.panel.border, height: 1),
+                          Expanded(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                pianoControl,
+                                Container(color: Theme.panel.border, width: 1),
+                                noteRenderArea,
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Vertical scrollbar
+                const SizedBox(width: 4),
+                SizedBox(
+                  width: 17,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return ScrollbarRenderer(
+                        scrollRegionStart: minKeyValue,
+                        scrollRegionEnd: maxKeyValue,
+                        handleStart: maxKeyValue - viewModel.keyValueAtTop,
+                        handleEnd: maxKeyValue -
+                            viewModel.keyValueAtTop +
+                            constraints.maxHeight / viewModel.keyHeight,
+                        onChange: (event) {
+                          viewModel.keyValueAtTop =
+                              maxKeyValue - event.handleStart;
                         },
                       );
                     },
@@ -371,117 +510,10 @@ class _PianoRollContentState extends State<_PianoRollContent>
                 ),
               ],
             ),
-          );
-        }),
-      );
-
-      return Panel(
-        orientation: PanelOrientation.bottom,
-        panelStartSize: 89,
-        separatorSize: 6,
-        panelContent: Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: Theme.panel.border),
-            borderRadius: const BorderRadius.all(Radius.circular(4)),
           ),
-        ),
-        child: Column(
-          children: [
-            SizedBox(
-              height: 26,
-              child: Row(
-                children: [
-                  SizedBox(width: pianoControlWidth + 1),
-                  Expanded(
-                    child: ScrollbarRenderer(
-                      scrollRegionStart: 0,
-                      scrollRegionEnd: state.lastContent.toDouble(),
-                      handleStart: timeView.start,
-                      handleEnd: timeView.end,
-                      canScrollPastEnd: true,
-                      minHandleSize:
-                          state.ticksPerQuarter * 4, // TODO: time signature
-                      onChange: (event) {
-                        timeView.setStart(event.handleStart);
-                        timeView.setEnd(event.handleEnd);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  VerticalScaleControl(
-                    min: minKeyHeight,
-                    max: maxKeyHeight,
-                    value: state.keyHeight,
-                    onChange: (height) {
-                      cubit.setKeyHeight(height);
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 4),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Theme.panel.border),
-                        borderRadius:
-                            const BorderRadius.all(Radius.circular(4)),
-                      ),
-                      child: ClipRRect(
-                        borderRadius:
-                            const BorderRadius.all(Radius.circular(4)),
-                        child: Column(
-                          children: [
-                            timeline,
-                            Container(color: Theme.panel.border, height: 1),
-                            Expanded(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  pianoControl,
-                                  Container(
-                                      color: Theme.panel.border, width: 1),
-                                  noteRenderArea,
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Vertical scrollbar
-                  const SizedBox(width: 4),
-                  SizedBox(
-                    width: 17,
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        return ScrollbarRenderer(
-                          scrollRegionStart: minKeyValue,
-                          scrollRegionEnd: maxKeyValue,
-                          handleStart: maxKeyValue - state.keyValueAtTop,
-                          handleEnd: maxKeyValue -
-                              state.keyValueAtTop +
-                              constraints.maxHeight / state.keyHeight,
-                          onChange: (event) {
-                            cubit.setKeyValueAtTop(
-                                maxKeyValue - event.handleStart);
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    });
+        ],
+      ),
+    );
   }
 }
 

@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-// cspell:ignore ahsl
-
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/theme.dart';
 import 'package:flutter/widgets.dart';
@@ -68,7 +66,9 @@ class _ColorPickerState extends State<ColorPicker> {
                   var lightnessMultiplier = 0.9 + (lightnessIndex - 1) * 0.5;
                   if (lightnessIndex == 0) lightnessMultiplier += 0.2;
 
-                  final saturationMultiplier = saturations[colorIndex] + (lightnessIndex - 1) * 0.5 - 0.2;
+                  final saturationMultiplier = saturations[colorIndex] +
+                      (lightnessIndex - 1) * 0.5 -
+                      0.2;
 
                   return Expanded(
                     child: Listener(

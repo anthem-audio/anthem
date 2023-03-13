@@ -286,7 +286,7 @@ class _ButtonState extends State<Button> {
 
     // Hack to fix row overflow in some icon button cases
     if (startIconOnly) {
-      buttonContent = startIconWidget!;
+      buttonContent = startIconWidget;
     } else if (startAndEndIconOnly) {
       buttonContent = Stack(
         children: [
@@ -294,13 +294,13 @@ class _ButtonState extends State<Button> {
             top: 0,
             left: 0,
             bottom: 0,
-            child: Center(child: startIconWidget!),
+            child: Center(child: startIconWidget),
           ),
           Positioned(
             top: 0,
             right: 0,
             bottom: 0,
-            child: Center(child: endIconWidget!),
+            child: Center(child: endIconWidget),
           ),
         ],
       );

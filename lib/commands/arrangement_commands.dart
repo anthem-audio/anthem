@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/commands/arrangement_state_changes.dart';
-import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/arrangement/clip.dart';
@@ -50,7 +48,7 @@ class AddClipCommand extends ArrangementCommand {
   }) : super(project, arrangementID);
 
   @override
-  List<StateChange> execute() {
+  void execute() {
     final clipModel = ClipModel.create(
       offset: offset,
       patternID: patternID,
@@ -60,23 +58,11 @@ class AddClipCommand extends ArrangementCommand {
     );
 
     project.song.arrangements[arrangementID]!.clips[clipID] = clipModel;
-
-    return [
-      StateChange.arrangement(
-        ArrangementStateChange.clipAdded(project.id, arrangementID),
-      ),
-    ];
   }
 
   @override
-  List<StateChange> rollback() {
+  void rollback() {
     project.song.arrangements[arrangementID]!.clips.remove(clipID);
-
-    return [
-      StateChange.arrangement(
-        ArrangementStateChange.clipDeleted(project.id, arrangementID),
-      ),
-    ];
   }
 }
 
@@ -90,7 +76,7 @@ class AddArrangementCommand extends Command {
   }) : super(project);
 
   @override
-  List<StateChange> execute() {
+  void execute() {
     final arrangement = ArrangementModel.create(
       name: arrangementName,
       id: arrangementID,
@@ -98,24 +84,12 @@ class AddArrangementCommand extends Command {
     );
     project.song.arrangements[arrangementID] = arrangement;
     project.song.arrangementOrder.add(arrangementID);
-
-    return [
-      StateChange.arrangement(
-        ArrangementStateChange.arrangementAdded(project.id, arrangementID),
-      ),
-    ];
   }
 
   @override
-  List<StateChange> rollback() {
+  void rollback() {
     project.song.arrangements.remove(arrangementID);
     project.song.arrangementOrder.removeLast();
-
-    return [
-      StateChange.arrangement(
-        ArrangementStateChange.arrangementDeleted(project.id, arrangementID),
-      ),
-    ];
   }
 }
 
@@ -132,24 +106,12 @@ class SetArrangementNameCommand extends ArrangementCommand {
   }
 
   @override
-  List<StateChange> execute() {
+  void execute() {
     project.song.arrangements[arrangementID]!.name = newName;
-    return [
-      StateChange.arrangement(
-        ArrangementStateChange.arrangementNameChanged(
-            project.id, arrangementID),
-      ),
-    ];
   }
 
   @override
-  List<StateChange> rollback() {
+  void rollback() {
     project.song.arrangements[arrangementID]!.name = oldName;
-    return [
-      StateChange.arrangement(
-        ArrangementStateChange.arrangementNameChanged(
-            project.id, arrangementID),
-      ),
-    ];
   }
 }

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,22 +17,22 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/widgets/main_window/main_window_cubit.dart';
-import 'package:anthem/widgets/project/project.dart';
-import 'package:anthem/widgets/project/project_cubit.dart';
-import 'package:flutter/widgets.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mobx/mobx.dart';
 
-class ProjectWrapper extends StatelessWidget {
-  final TabDef tab;
+part 'piano_roll_view_model.g.dart';
 
-  const ProjectWrapper({Key? key, required this.tab}) : super(key: key);
+// ignore: library_private_types_in_public_api
+class PianoRollViewModel = _PianoRollViewModel with _$PianoRollViewModel;
 
-  @override
-  Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => ProjectCubit(id: tab.id),
-      child: const Project(),
-    );
-  }
+abstract class _PianoRollViewModel with Store {
+  _PianoRollViewModel({
+    required this.keyHeight,
+    required this.keyValueAtTop,
+  });
+
+  @observable
+  double keyHeight;
+
+  @observable
+  double keyValueAtTop;
 }

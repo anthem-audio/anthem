@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,38 +18,22 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:bloc/bloc.dart';
-import 'package:flutter/widgets.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 
-part 'screen_overlay_state.dart';
-part 'screen_overlay_cubit.freezed.dart';
+class ScreenOverlayController {
+  ScreenOverlayViewModel viewModel;
 
-@immutable
-class ScreenOverlayEntry {
-  final Widget Function(BuildContext, ID) builder;
-
-  const ScreenOverlayEntry({required this.builder});
-}
-
-class ScreenOverlayCubit extends Cubit<ScreenOverlayState> {
-  ScreenOverlayCubit() : super(ScreenOverlayState());
+  ScreenOverlayController({required this.viewModel});
 
   void add(ID id, ScreenOverlayEntry entry) {
-    emit(state.copyWith(entries: {...state.entries, id: entry}));
+    viewModel.entries[id] = entry;
   }
 
   void remove(ID id) {
-    final entries = {...state.entries};
-    entries.removeWhere((entryID, entry) => entryID == id);
-    emit(
-      state.copyWith(
-        entries: entries,
-      ),
-    );
+    viewModel.entries.remove(id);
   }
 
   void clear() {
-    emit(state.copyWith(entries: {}));
+    viewModel.entries.clear();
   }
 }
