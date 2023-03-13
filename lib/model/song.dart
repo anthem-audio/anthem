@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:convert';
-
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -124,9 +122,6 @@ abstract class _SongModel extends Hydratable with Store {
 
   Map<String, dynamic> toJson() => _$SongModelToJson(this as SongModel);
 
-  @override
-  String toString() => json.encode(toJson());
-
   void hydrate({
     required ProjectModel project,
   }) {
@@ -174,8 +169,8 @@ Map<String, dynamic> _patternsToJson(ObservableMap<ID, PatternModel> patterns) {
   return patterns.map((key, value) => MapEntry(key, value.toJson()));
 }
 
-ObservableList<ID> _patternOrderFromJson(List<String> json) {
-  return ObservableList.of(json);
+ObservableList<ID> _patternOrderFromJson(List<dynamic> json) {
+  return ObservableList.of(json.cast<String>());
 }
 
 List<String> _patternOrderToJson(ObservableList<ID> patternOrder) {
@@ -196,8 +191,8 @@ Map<String, dynamic> _arrangementsToJson(
   return arrangements.map((key, value) => MapEntry(key, value.toJson()));
 }
 
-ObservableList<ID> _arrangementOrderFromJson(List<String> json) {
-  return ObservableList.of(json);
+ObservableList<ID> _arrangementOrderFromJson(List<dynamic> json) {
+  return ObservableList.of(json.cast<String>());
 }
 
 List<String> _arrangementOrderToJson(ObservableList<ID> arrangementOrder) {
@@ -216,8 +211,8 @@ Map<String, dynamic> _tracksToJson(ObservableMap<ID, TrackModel> tracks) {
   return tracks.map((key, value) => MapEntry(key, value.toJson()));
 }
 
-ObservableList<ID> _trackOrderFromJson(List<String> json) {
-  return ObservableList.of(json);
+ObservableList<ID> _trackOrderFromJson(List<dynamic> json) {
+  return ObservableList.of(json.cast<String>());
 }
 
 List<String> _trackOrderToJson(ObservableList<ID> trackOrder) {

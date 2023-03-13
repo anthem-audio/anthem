@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:convert';
 import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
@@ -101,9 +100,6 @@ abstract class _PatternModel extends Hydratable with Store {
 
   Map<String, dynamic> toJson() => _$PatternModelToJson(this as PatternModel);
 
-  @override
-  String toString() => json.encode(toJson());
-
   void hydrate({required ProjectModel project}) {
     _project = project;
     isHydrated = true;
@@ -147,16 +143,18 @@ abstract class _PatternModel extends Hydratable with Store {
 typedef NotesJsonType = Map<String, List<Map<String, dynamic>>>;
 typedef NotesModelType = ObservableMap<ID, ObservableList<NoteModel>>;
 
-NotesModelType _notesFromJson(NotesJsonType json) {
+NotesModelType _notesFromJson(Map<String, dynamic> json) {
   return ObservableMap.of(
-    json.map(
-      (key, value) => MapEntry(
-        key,
-        ObservableList.of(
-          value.map((e) => NoteModel.fromJson(e)),
+    json.cast<String, List<dynamic>>().map(
+          (key, value) => MapEntry(
+            key,
+            ObservableList.of(
+              value
+                  .cast<Map<String, dynamic>>()
+                  .map((e) => NoteModel.fromJson(e)),
+            ),
+          ),
         ),
-      ),
-    ),
   );
 }
 

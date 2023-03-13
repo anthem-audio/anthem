@@ -6,12 +6,14 @@
     "bitsdojo",
     "budislav",
     "codegen",
+    "Diagnosticable",
     "dylib",
     "fuzzywuzzy",
     "mobx",
     "relayout",
     "scrollbars",
     "stepanov",
+    "topbar",
     "unfocus",
     "vsync"
   ]

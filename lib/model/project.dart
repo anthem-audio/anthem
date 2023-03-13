@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:convert';
-
 import 'package:anthem/commands/command.dart';
 import 'package:anthem/commands/command_queue.dart';
 import 'package:anthem/commands/journal_commands.dart';
@@ -146,9 +144,6 @@ abstract class _ProjectModel extends Hydratable with Store {
 
   Map<String, dynamic> toJson() => _$ProjectModelToJson(this as ProjectModel);
 
-  @override
-  String toString() => json.encode(toJson());
-
   /// This function is run after deserialization. It allows us to do some setup
   /// that the deserialization step can't do for us.
   void hydrate() {
@@ -248,8 +243,8 @@ Map<String, dynamic> _generatorsToJson(
   );
 }
 
-ObservableList<ID> _generatorListFromJson(List<String> json) {
-  return ObservableList.of(json);
+ObservableList<ID> _generatorListFromJson(List<dynamic> json) {
+  return ObservableList.of(json.cast<String>());
 }
 
 List<String> _generatorListToJson(ObservableList<ID> generatorList) {
