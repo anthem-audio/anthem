@@ -41,7 +41,7 @@ class _ClipNoteModel {
   }
 }
 
-class ClipNotes extends StatelessWidget {
+class ClipNotes extends StatelessObserverWidget {
   final PatternModel pattern;
   final ID? generatorID;
   final double timeViewStart;
@@ -59,32 +59,30 @@ class ClipNotes extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Observer(builder: (context) {
-      // Unpacking this here implicitly tells MobX about everything we need
-      // to react to, and MobX will rebuild this widget automatically when
-      // anything is updated.
+    // Unpacking this here implicitly tells MobX about everything we need
+    // to react to, and MobX will rebuild this widget automatically when
+    // anything is updated.
 
-      final notes = <_ClipNoteModel>[];
+    final notes = <_ClipNoteModel>[];
 
-      pattern.notes.forEach(
-        (key, value) {
-          if (generatorID == null || key == generatorID) {
-            notes.addAll(
-              value.map((note) => _ClipNoteModel.fromNoteModel(note)),
-            );
-          }
-        },
-      );
+    pattern.notes.forEach(
+      (key, value) {
+        if (generatorID == null || key == generatorID) {
+          notes.addAll(
+            value.map((note) => _ClipNoteModel.fromNoteModel(note)),
+          );
+        }
+      },
+    );
 
-      return CustomPaint(
-        painter: _ClipNotesPainter(
-          notes: notes,
-          timeViewStart: timeViewStart,
-          ticksPerPixel: ticksPerPixel,
-          color: color,
-        ),
-      );
-    });
+    return CustomPaint(
+      painter: _ClipNotesPainter(
+        notes: notes,
+        timeViewStart: timeViewStart,
+        ticksPerPixel: ticksPerPixel,
+        color: color,
+      ),
+    );
   }
 }
 

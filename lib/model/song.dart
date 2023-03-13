@@ -17,11 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:async';
 import 'dart:convert';
 
-import 'package:anthem/commands/project_state_changes.dart';
-import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -40,10 +37,8 @@ class SongModel extends _SongModel with _$SongModel {
   SongModel() : super();
   SongModel.create({
     required ProjectModel project,
-    required StreamController<List<StateChange>> stateChangeStreamController,
   }) : super.create(
           project: project,
-          stateChangeStreamController: stateChangeStreamController,
         );
 
   factory SongModel.fromJson(Map<String, dynamic> json) =>
@@ -90,13 +85,6 @@ abstract class _SongModel extends Hydratable with Store {
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
 
   @JsonKey(includeFromJson: false, includeToJson: false)
-  StreamController<List<StateChange>>? _changeStreamController;
-
-  StreamController<List<StateChange>> get changeStreamController {
-    return _changeStreamController!;
-  }
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
   ProjectModel? _project;
 
   ProjectModel get project {
@@ -107,7 +95,6 @@ abstract class _SongModel extends Hydratable with Store {
 
   _SongModel.create({
     required ProjectModel project,
-    required StreamController<List<StateChange>> stateChangeStreamController,
   }) : super() {
     final arrangement = ArrangementModel.create(
       name: "Arrangement 1",
@@ -132,7 +119,6 @@ abstract class _SongModel extends Hydratable with Store {
 
     hydrate(
       project: project,
-      changeStreamController: stateChangeStreamController,
     );
   }
 
@@ -143,10 +129,8 @@ abstract class _SongModel extends Hydratable with Store {
 
   void hydrate({
     required ProjectModel project,
-    required StreamController<List<StateChange>> changeStreamController,
   }) {
     _project = project;
-    _changeStreamController = changeStreamController;
 
     for (final arrangement in arrangements.values) {
       arrangement.hydrate(project: project);
@@ -165,12 +149,6 @@ abstract class _SongModel extends Hydratable with Store {
     if (patternID != null) {
       project.selectedDetailView = PatternDetailViewKind(patternID);
     }
-
-    changeStreamController.add([
-      StateChange.project(
-        ProjectStateChange.activePatternChanged(_project!.id),
-      ),
-    ]);
   }
 
   void setActiveArrangement(ID? arrangementID) {
@@ -179,12 +157,6 @@ abstract class _SongModel extends Hydratable with Store {
     if (arrangementID != null) {
       project.selectedDetailView = ArrangementDetailViewKind(arrangementID);
     }
-
-    changeStreamController.add([
-      StateChange.project(
-        ProjectStateChange.activeArrangementChanged(_project!.id),
-      ),
-    ]);
   }
 }
 

@@ -17,14 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:anthem/commands/command.dart';
 import 'package:anthem/commands/command_queue.dart';
 import 'package:anthem/commands/journal_commands.dart';
-import 'package:anthem/commands/project_state_changes.dart';
-import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/song.dart';
 import 'package:json_annotation/json_annotation.dart';
@@ -92,9 +89,6 @@ abstract class _ProjectModel extends Hydratable with Store {
   set selectedDetailView(DetailViewKind? detailView) {
     _selectedDetailView = detailView;
     if (detailView != null) isDetailViewSelected = true;
-    _dispatch([
-      StateChange.project(ProjectStateChange.selectedDetailViewChanged(id)),
-    ]);
   }
 
   @observable
@@ -136,26 +130,13 @@ abstract class _ProjectModel extends Hydratable with Store {
   @JsonKey(includeFromJson: false, includeToJson: false)
   bool _journalPageActive = false;
 
-  // State change stream & etc
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  final StreamController<List<StateChange>> _stateChangeStreamController =
-      StreamController.broadcast();
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  late Stream<List<StateChange>> stateChangeStream;
-
   // This method is used for deserialization and so doesn't create new child
   // models.
-  _ProjectModel() : super() {
-    stateChangeStream = _stateChangeStreamController.stream;
-  }
+  _ProjectModel() : super();
 
   _ProjectModel.create() : super() {
-    stateChangeStream = _stateChangeStreamController.stream;
     song = SongModel.create(
       project: this as ProjectModel,
-      stateChangeStreamController: _stateChangeStreamController,
     );
 
     // We don't need to hydrate here. All `SomeModel.Create()` functions should
@@ -173,22 +154,15 @@ abstract class _ProjectModel extends Hydratable with Store {
   void hydrate() {
     song.hydrate(
       project: this as ProjectModel,
-      changeStreamController: _stateChangeStreamController,
     );
     isHydrated = true;
-  }
-
-  void _dispatch(List<StateChange> changes) {
-    _stateChangeStreamController.add(changes);
   }
 
   void execute(Command command, {bool push = true}) {
     if (_journalPageActive) {
       _journalPageAccumulator.add(command);
     } else {
-      final changes =
-          push ? commandQueue.executeAndPush(command) : command.execute();
-      _dispatch(changes);
+      push ? commandQueue.executeAndPush(command) : command.execute();
     }
   }
 
@@ -200,14 +174,12 @@ abstract class _ProjectModel extends Hydratable with Store {
 
   void undo() {
     _assertJournalInactive();
-    final change = commandQueue.undo();
-    _dispatch(change);
+    commandQueue.undo();
   }
 
   void redo() {
     _assertJournalInactive();
-    final change = commandQueue.redo();
-    _dispatch(change);
+    commandQueue.redo();
   }
 
   void startJournalPage() {
@@ -226,17 +198,11 @@ abstract class _ProjectModel extends Hydratable with Store {
     _journalPageActive = false;
 
     final command = JournalPageCommand(this as ProjectModel, accumulator);
-    final change = commandQueue.executeAndPush(command);
-    _dispatch(change);
+    commandQueue.executeAndPush(command);
   }
 
   void setActiveGenerator(ID? generatorID) {
     activeGeneratorID = generatorID;
-    _stateChangeStreamController.add([
-      StateChange.project(
-        ProjectStateChange.activeGeneratorChanged(id),
-      ),
-    ]);
   }
 }
 
