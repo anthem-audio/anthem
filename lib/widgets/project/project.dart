@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -30,7 +29,6 @@ import 'package:anthem/widgets/editors/arranger/arranger.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
-import 'package:anthem/widgets/project_explorer/project_explorer_cubit.dart';
 import 'package:anthem/widgets/project_explorer/project_explorer.dart';
 import 'package:anthem/widgets/project_details/project_details.dart';
 import 'package:anthem/widgets/project/project_footer.dart';
@@ -84,11 +82,7 @@ class _ProjectState extends State<Project> {
                           maintainSize: false,
                           maintainState: true,
                           visible: !projectModel.isDetailViewSelected,
-                          child: BlocProvider<ProjectExplorerCubit>(
-                            create: (context) =>
-                                ProjectExplorerCubit(widget.id),
-                            child: const ProjectExplorer(),
-                          ),
+                          child: const ProjectExplorer(),
                         ),
                       ),
                       Positioned.fill(
