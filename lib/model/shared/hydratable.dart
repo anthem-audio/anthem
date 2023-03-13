@@ -18,6 +18,7 @@
 */
 
 import 'package:flutter/foundation.dart';
+import 'package:json_annotation/json_annotation.dart';
 
 /// ## Context
 ///
@@ -102,6 +103,7 @@ import 'package:flutter/foundation.dart';
 /// // When running in debug mode, this will cause an exception
 /// ```
 class Hydratable {
+  @JsonKey(includeFromJson: false, includeToJson: false)
   bool isHydrated = false;
 
   /// Checks that isHydrated is true after construction. It is expected that the

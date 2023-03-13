@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:convert';
 import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
@@ -79,9 +78,6 @@ abstract class _ArrangementModel extends Hydratable with Store {
 
   Map<String, dynamic> toJson() =>
       _$ArrangementModelToJson(this as ArrangementModel);
-
-  @override
-  String toString() => json.encode(toJson());
 
   void hydrate({required ProjectModel project}) {
     _project = project;

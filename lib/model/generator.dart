@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:convert';
 import 'dart:ui';
 import 'package:anthem/helpers/convert.dart';
 import 'package:anthem/helpers/id.dart';
@@ -52,7 +51,4 @@ abstract class _GeneratorModel with Store {
 
   Map<String, dynamic> toJson() =>
       _$GeneratorModelToJson(this as GeneratorModel);
-
-  @override
-  String toString() => json.encode(toJson());
 }

@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:convert';
-
 import 'package:anthem/helpers/id.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
@@ -48,9 +46,6 @@ abstract class _TimeSignatureModel with Store {
 
   Map<String, dynamic> toJson() =>
       _$TimeSignatureModelToJson(this as TimeSignatureModel);
-
-  @override
-  String toString() => json.encode(toJson());
 
   String toDisplayString() => "$numerator/$denominator";
 }
@@ -91,7 +86,4 @@ abstract class _TimeSignatureChangeModel with Store {
 
   Map<String, dynamic> toJson() =>
       _$TimeSignatureChangeModelToJson(this as TimeSignatureChangeModel);
-
-  @override
-  String toString() => json.encode(toJson());
 }

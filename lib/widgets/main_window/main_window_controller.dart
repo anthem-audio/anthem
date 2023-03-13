@@ -45,23 +45,19 @@ class MainWindowController {
   /// or was cancelled
   /// TODO: Granular error handling
   Future<ID?> loadProject() async {
-    try {
-      final path = (await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ["anthem"],
-      ))
-          ?.files[0]
-          .path;
-      if (path == null) return null;
-      final file = await File(path).readAsString();
+    final path = (await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ["anthem"],
+    ))
+        ?.files[0]
+        .path;
+    if (path == null) return null;
+    final file = await File(path).readAsString();
 
-      final project = ProjectModel.fromJson(json.decode(file))..hydrate();
-      AnthemStore.instance.addProject(project);
+    final project = ProjectModel.fromJson(json.decode(file))..hydrate();
+    AnthemStore.instance.addProject(project);
 
-      return project.id;
-    } catch (e) {
-      return null;
-    }
+    return project.id;
   }
 
   Future<void> saveProject(ID projectID, bool alwaysUseFilePicker) async {
@@ -75,6 +71,7 @@ class MainWindowController {
           allowedExtensions: ["anthem"],
         ));
       } else {
+        // TODO: This is bad because we can't actually move the project anywhere - we shouldn't hard-code a project location
         path = project.filePath;
       }
 
@@ -84,9 +81,10 @@ class MainWindowController {
         path += ".anthem";
       }
 
-      await File(path).writeAsString(project.toString());
+      await File(path).writeAsString(json.encode(project.toJson()));
 
       project.isSaved = true;
+      project.filePath = path;
     } catch (e) {
       // TODO: the backend isn't telling us if the save failed, so we can't act on that
       return;
