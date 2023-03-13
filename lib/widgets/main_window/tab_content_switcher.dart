@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,11 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/id.dart';
-import 'package:anthem/widgets/project/project_wrapper.dart';
 import 'package:flutter/widgets.dart';
+import 'main_window_controller.dart';
 
-import 'main_window_cubit.dart';
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/widgets/project/project.dart';
 
 class TabContentSwitcher extends StatelessWidget {
   final List<TabDef> tabs;
@@ -50,7 +50,7 @@ class TabContentSwitcher extends StatelessWidget {
                 maintainSemantics: false,
                 maintainSize: false,
                 maintainState: true,
-                child: ProjectWrapper(tab: tab),
+                child: Project(id: tab.id),
               ),
             ),
           )

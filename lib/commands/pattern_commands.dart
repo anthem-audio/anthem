@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,13 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/commands/pattern_state_changes.dart';
-import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
+import 'package:mobx/mobx.dart';
 
 import 'command.dart';
 
@@ -55,30 +54,20 @@ class AddPatternCommand extends Command {
   }) : super(project);
 
   @override
-  List<StateChange> execute() {
+  void execute() {
     _addPatternToProject(
       project: project,
       pattern: pattern,
       index: index,
     );
-    return [
-      StateChange.pattern(
-        PatternStateChange.patternAdded(project.id, pattern.id),
-      )
-    ];
   }
 
   @override
-  List<StateChange> rollback() {
+  void rollback() {
     _removePatternFromProject(
       project: project,
       patternID: pattern.id,
     );
-    return [
-      StateChange.pattern(
-        PatternStateChange.patternDeleted(project.id, pattern.id),
-      )
-    ];
   }
 }
 
@@ -93,30 +82,20 @@ class DeletePatternCommand extends Command {
   }) : super(project);
 
   @override
-  List<StateChange> execute() {
+  void execute() {
     _removePatternFromProject(
       project: project,
       patternID: pattern.id,
     );
-    return [
-      StateChange.pattern(
-        PatternStateChange.patternDeleted(project.id, pattern.id),
-      )
-    ];
   }
 
   @override
-  List<StateChange> rollback() {
+  void rollback() {
     _addPatternToProject(
       project: project,
       pattern: pattern,
       index: index,
     );
-    return [
-      StateChange.pattern(
-        PatternStateChange.patternAdded(project.id, pattern.id),
-      )
-    ];
   }
 }
 
@@ -134,15 +113,13 @@ class SetPatternNameCommand extends Command {
   }
 
   @override
-  List<StateChange> execute() {
+  void execute() {
     project.song.patterns[patternID]!.name = newName;
-    return [StateChange.pattern(PatternNameChanged(project.id, patternID))];
   }
 
   @override
-  List<StateChange> rollback() {
+  void rollback() {
     project.song.patterns[patternID]!.name = oldName;
-    return [StateChange.pattern(PatternNameChanged(project.id, patternID))];
   }
 }
 
@@ -160,15 +137,13 @@ class SetPatternColorCommand extends Command {
   }
 
   @override
-  List<StateChange> execute() {
+  void execute() {
     project.song.patterns[patternID]!.color = newColor;
-    return [StateChange.pattern(PatternColorChanged(project.id, patternID))];
   }
 
   @override
-  List<StateChange> rollback() {
+  void rollback() {
     project.song.patterns[patternID]!.color = oldColor;
-    return [StateChange.pattern(PatternColorChanged(project.id, patternID))];
   }
 }
 
@@ -178,7 +153,7 @@ void _addNote(
   NoteModel note,
 ) {
   if (!pattern.notes.containsKey(generatorID)) {
-    pattern.notes[generatorID] = [];
+    pattern.notes[generatorID] = ObservableList();
   }
 
   pattern.notes[generatorID]!.add(note);
@@ -214,47 +189,25 @@ class AddNoteCommand extends Command {
   }) : super(project);
 
   @override
-  List<StateChange> execute() {
+  void execute() {
     final pattern = project.song.patterns[patternID];
 
     if (pattern == null) {
-      return [];
+      return;
     }
 
     _addNote(pattern, generatorID, note);
-
-    return [
-      StateChange.note(
-        NoteStateChange.noteAdded(
-          project.id,
-          patternID,
-          generatorID,
-          note.id,
-        ),
-      )
-    ];
   }
 
   @override
-  List<StateChange> rollback() {
+  void rollback() {
     final pattern = project.song.patterns[patternID];
 
     if (pattern == null) {
-      return [];
+      return;
     }
 
     _removeNote(pattern, generatorID, note.id);
-
-    return [
-      StateChange.note(
-        NoteStateChange.noteDeleted(
-          project.id,
-          patternID,
-          generatorID,
-          note.id,
-        ),
-      )
-    ];
   }
 }
 
@@ -271,47 +224,25 @@ class DeleteNoteCommand extends Command {
   }) : super(project);
 
   @override
-  List<StateChange> execute() {
+  void execute() {
     final pattern = project.song.patterns[patternID];
 
     if (pattern == null) {
-      return [];
+      return;
     }
 
     _removeNote(pattern, generatorID, note.id);
-
-    return [
-      StateChange.note(
-        NoteStateChange.noteDeleted(
-          project.id,
-          patternID,
-          generatorID,
-          note.id,
-        ),
-      )
-    ];
   }
 
   @override
-  List<StateChange> rollback() {
+  void rollback() {
     final pattern = project.song.patterns[patternID];
 
     if (pattern == null) {
-      return [];
+      return;
     }
 
     _addNote(pattern, generatorID, note);
-
-    return [
-      StateChange.note(
-        NoteStateChange.noteAdded(
-          project.id,
-          patternID,
-          generatorID,
-          note.id,
-        ),
-      )
-    ];
   }
 }
 
@@ -336,53 +267,31 @@ class MoveNoteCommand extends Command {
   }) : super(project);
 
   @override
-  List<StateChange> execute() {
+  void execute() {
     final pattern = project.song.patterns[patternID];
 
     if (pattern == null) {
-      return [];
+      return;
     }
 
     final note = _getNote(pattern, generatorID, noteID);
 
     note.key = newKey;
     note.offset = newOffset;
-
-    return [
-      StateChange.note(
-        NoteStateChange.noteMoved(
-          project.id,
-          patternID,
-          generatorID,
-          note.id,
-        ),
-      )
-    ];
   }
 
   @override
-  List<StateChange> rollback() {
+  void rollback() {
     final pattern = project.song.patterns[patternID];
 
     if (pattern == null) {
-      return [];
+      return;
     }
 
     final note = _getNote(pattern, generatorID, noteID);
 
     note.key = oldKey;
     note.offset = oldOffset;
-
-    return [
-      StateChange.note(
-        NoteStateChange.noteMoved(
-          project.id,
-          patternID,
-          generatorID,
-          note.id,
-        ),
-      )
-    ];
   }
 }
 
@@ -403,50 +312,28 @@ class ResizeNoteCommand extends Command {
   }) : super(project);
 
   @override
-  List<StateChange> execute() {
+  void execute() {
     final pattern = project.song.patterns[patternID];
 
     if (pattern == null) {
-      return [];
+      return;
     }
 
     final note = _getNote(pattern, generatorID, noteID);
 
     note.length = newLength;
-
-    return [
-      StateChange.note(
-        NoteStateChange.noteResized(
-          project.id,
-          patternID,
-          generatorID,
-          note.id,
-        ),
-      )
-    ];
   }
 
   @override
-  List<StateChange> rollback() {
+  void rollback() {
     final pattern = project.song.patterns[patternID];
 
     if (pattern == null) {
-      return [];
+      return;
     }
 
     final note = _getNote(pattern, generatorID, noteID);
 
     note.length = newLength;
-
-    return [
-      StateChange.note(
-        NoteStateChange.noteResized(
-          project.id,
-          patternID,
-          generatorID,
-          note.id,
-        ),
-      )
-    ];
   }
 }

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,8 +20,6 @@
 // This file has commands that deal with shared features between pattern
 // timelines and arrangement timelines, such as time markers.
 
-import 'package:anthem/commands/pattern_state_changes.dart';
-import 'package:anthem/commands/state_changes.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
@@ -72,21 +70,13 @@ class AddTimeSignatureChangeCommand extends Command {
   }) : super(project);
 
   @override
-  List<StateChange> execute() {
+  void execute() {
     if (timelineKind == TimelineKind.pattern) {
       _addTimeSignatureChangeToPattern(
         project: project,
         patternID: patternID!,
         change: change,
       );
-      return [
-        StateChange.pattern(
-          PatternStateChange.timeSignatureChangeListUpdated(
-            project.id,
-            patternID!,
-          ),
-        ),
-      ];
     } else {
       throw Exception(
         "Arrangement time signature changes aren't supported yet.",
@@ -95,21 +85,13 @@ class AddTimeSignatureChangeCommand extends Command {
   }
 
   @override
-  List<StateChange> rollback() {
+  void rollback() {
     if (timelineKind == TimelineKind.pattern) {
       _removeTimeSignatureChangeFromPattern(
         project: project,
         patternID: patternID!,
         changeID: change.id,
       );
-      return [
-        StateChange.pattern(
-          PatternStateChange.timeSignatureChangeListUpdated(
-            project.id,
-            patternID!,
-          ),
-        ),
-      ];
     } else {
       throw Exception(
         "Arrangement time signature changes aren't supported yet.",
@@ -142,21 +124,13 @@ class RemoveTimeSignatureChangeCommand extends Command {
   }
 
   @override
-  List<StateChange> execute() {
+  void execute() {
     if (timelineKind == TimelineKind.pattern) {
       _removeTimeSignatureChangeFromPattern(
         project: project,
         patternID: patternID!,
         changeID: change.id,
       );
-      return [
-        StateChange.pattern(
-          PatternStateChange.timeSignatureChangeListUpdated(
-            project.id,
-            patternID!,
-          ),
-        ),
-      ];
     } else {
       throw Exception(
         "Arrangement time signature changes aren't supported yet.",
@@ -165,21 +139,13 @@ class RemoveTimeSignatureChangeCommand extends Command {
   }
 
   @override
-  List<StateChange> rollback() {
+  void rollback() {
     if (timelineKind == TimelineKind.pattern) {
       _addTimeSignatureChangeToPattern(
         project: project,
         patternID: patternID!,
         change: change,
       );
-      return [
-        StateChange.pattern(
-          PatternStateChange.timeSignatureChangeListUpdated(
-            project.id,
-            patternID!,
-          ),
-        ),
-      ];
     } else {
       throw Exception(
         "Arrangement time signature changes aren't supported yet.",
@@ -212,42 +178,28 @@ class MoveTimeSignatureChangeCommand extends Command {
   }
 
   @override
-  List<StateChange> execute() {
+  void execute() {
     if (timelineKind == TimelineKind.arrangement) {
       throw Exception("Not supported yet");
     }
 
     change.offset = newOffset;
     _sortTimeSignatureChanges(changeList);
-
-    return [
-      StateChange.pattern(
-        PatternStateChange.timeSignatureChangeListUpdated(
-            project.id, patternID!),
-      ),
-    ];
   }
 
   @override
-  List<StateChange> rollback() {
+  void rollback() {
     if (timelineKind == TimelineKind.arrangement) {
       throw Exception("Not supported yet");
     }
 
     change.offset = oldOffset;
     _sortTimeSignatureChanges(changeList);
-
-    return [
-      StateChange.pattern(
-        PatternStateChange.timeSignatureChangeListUpdated(
-            project.id, patternID!),
-      ),
-    ];
   }
 }
 
 class SetTimeSignatureNumeratorCommand extends Command {
-  TimelineKind timelineKind;
+  late TimelineKind timelineKind;
   ID? patternID;
   ID? arrangementID;
   late TimeSignatureChangeModel change;
@@ -256,12 +208,20 @@ class SetTimeSignatureNumeratorCommand extends Command {
 
   SetTimeSignatureNumeratorCommand({
     required ProjectModel project,
-    required this.timelineKind,
     this.patternID,
     this.arrangementID,
     required ID changeID,
     required this.numerator,
   }) : super(project) {
+    if (patternID != null) {
+      timelineKind = TimelineKind.pattern;
+    } else if (arrangementID != null) {
+      timelineKind = TimelineKind.arrangement;
+    } else {
+      throw ArgumentError(
+          "Arguments should specify a pattern ID or arrangement ID, but neither was specified.");
+    }
+
     change = project.song.patterns[patternID]!.timeSignatureChanges
         .firstWhere((change) => change.id == changeID);
 
@@ -269,32 +229,18 @@ class SetTimeSignatureNumeratorCommand extends Command {
   }
 
   @override
-  List<StateChange> execute() {
+  void execute() {
     change.timeSignature.numerator = numerator;
-
-    return [
-      StateChange.pattern(
-        PatternStateChange.timeSignatureChangeListUpdated(
-            project.id, patternID!),
-      ),
-    ];
   }
 
   @override
-  List<StateChange> rollback() {
+  void rollback() {
     change.timeSignature.numerator = oldNumerator;
-
-    return [
-      StateChange.pattern(
-        PatternStateChange.timeSignatureChangeListUpdated(
-            project.id, patternID!),
-      ),
-    ];
   }
 }
 
 class SetTimeSignatureDenominatorCommand extends Command {
-  TimelineKind timelineKind;
+  late TimelineKind timelineKind;
   ID? patternID;
   ID? arrangementID;
   late TimeSignatureChangeModel change;
@@ -303,12 +249,20 @@ class SetTimeSignatureDenominatorCommand extends Command {
 
   SetTimeSignatureDenominatorCommand({
     required ProjectModel project,
-    required this.timelineKind,
     this.patternID,
     this.arrangementID,
     required ID changeID,
     required this.denominator,
   }) : super(project) {
+    if (patternID != null) {
+      timelineKind = TimelineKind.pattern;
+    } else if (arrangementID != null) {
+      timelineKind = TimelineKind.arrangement;
+    } else {
+      throw ArgumentError(
+          "Arguments should specify a pattern ID or arrangement ID, but neither was specified.");
+    }
+
     change = project.song.patterns[patternID]!.timeSignatureChanges
         .firstWhere((change) => change.id == changeID);
 
@@ -316,26 +270,12 @@ class SetTimeSignatureDenominatorCommand extends Command {
   }
 
   @override
-  List<StateChange> execute() {
+  void execute() {
     change.timeSignature.denominator = denominator;
-
-    return [
-      StateChange.pattern(
-        PatternStateChange.timeSignatureChangeListUpdated(
-            project.id, patternID!),
-      ),
-    ];
   }
 
   @override
-  List<StateChange> rollback() {
+  void rollback() {
     change.timeSignature.denominator = oldDenominator;
-
-    return [
-      StateChange.pattern(
-        PatternStateChange.timeSignatureChangeListUpdated(
-            project.id, patternID!),
-      ),
-    ];
   }
 }

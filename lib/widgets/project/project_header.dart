@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,10 +22,10 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
-import 'package:anthem/widgets/main_window/main_window_cubit.dart';
-import 'package:anthem/widgets/project/project_cubit.dart';
+import 'package:anthem/widgets/main_window/main_window_controller.dart';
+import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 import '../basic/icon.dart';
 
@@ -36,92 +36,90 @@ class ProjectHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ProjectCubit, ProjectState>(builder: (context, state) {
-      final menuController = MenuController();
-      final mainWindowCubit = context.read<MainWindowCubit>();
-      final projectCubit = context.read<ProjectCubit>();
+    final menuController = MenuController();
+    final mainWindowController = context.read<MainWindowController>();
+    final projectController = context.read<ProjectController>();
 
-      return Container(
-        height: 40,
-        decoration: BoxDecoration(
-          borderRadius: const BorderRadius.vertical(
-            bottom: Radius.circular(4),
-          ),
-          color: Theme.panel.accent,
+    return Container(
+      height: 40,
+      decoration: BoxDecoration(
+        borderRadius: const BorderRadius.vertical(
+          bottom: Radius.circular(4),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(7),
-          child: Row(
-            children: [
-              Menu(
-                menuController: menuController,
-                menuDef: MenuDef(
-                  children: [
-                    AnthemMenuItem(
-                        text: "New project",
-                        onSelected: () {
-                          final projectID = mainWindowCubit.newProject();
-                          mainWindowCubit.switchTab(projectID);
-                        }),
-                    AnthemMenuItem(
-                        text: "Load project...",
-                        onSelected: () {
-                          mainWindowCubit.loadProject().then((projectID) {
-                            if (projectID != null) {
-                              mainWindowCubit.switchTab(projectID);
-                            }
-                          });
-                        }),
-                    Separator(),
-                    AnthemMenuItem(
-                        text: "Save",
-                        onSelected: () {
-                          mainWindowCubit.saveProject(projectID, false);
-                        }),
-                    AnthemMenuItem(
-                        text: "Save as...",
-                        onSelected: () {
-                          mainWindowCubit.saveProject(projectID, true);
-                        }),
-                  ],
-                ),
-                child: Button(
-                  // width: 28,
-                  startIcon: Icons.hamburger,
-                  showMenuIndicator: true,
-                  onPress: () {
-                    menuController.open?.call();
-                  },
-                ),
+        color: Theme.panel.accent,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(7),
+        child: Row(
+          children: [
+            Menu(
+              menuController: menuController,
+              menuDef: MenuDef(
+                children: [
+                  AnthemMenuItem(
+                      text: "New project",
+                      onSelected: () {
+                        final projectID = mainWindowController.newProject();
+                        mainWindowController.switchTab(projectID);
+                      }),
+                  AnthemMenuItem(
+                      text: "Load project...",
+                      onSelected: () {
+                        mainWindowController.loadProject().then((projectID) {
+                          if (projectID != null) {
+                            mainWindowController.switchTab(projectID);
+                          }
+                        });
+                      }),
+                  Separator(),
+                  AnthemMenuItem(
+                      text: "Save",
+                      onSelected: () {
+                        mainWindowController.saveProject(projectID, false);
+                      }),
+                  AnthemMenuItem(
+                      text: "Save as...",
+                      onSelected: () {
+                        mainWindowController.saveProject(projectID, true);
+                      }),
+                ],
               ),
-              const SizedBox(width: 4),
-              Button(
+              child: Button(
                 // width: 28,
-                startIcon: Icons.save,
+                startIcon: Icons.hamburger,
+                showMenuIndicator: true,
                 onPress: () {
-                  mainWindowCubit.saveProject(projectID, false);
+                  menuController.open?.call();
                 },
               ),
-              const SizedBox(width: 4),
-              Button(
-                // width: 28,
-                startIcon: Icons.undo,
-                onPress: () {
-                  projectCubit.undo();
-                },
-              ),
-              const SizedBox(width: 4),
-              Button(
-                // width: 28,
-                startIcon: Icons.redo,
-                onPress: () {
-                  projectCubit.redo();
-                },
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 4),
+            Button(
+              // width: 28,
+              startIcon: Icons.save,
+              onPress: () {
+                mainWindowController.saveProject(projectID, false);
+              },
+            ),
+            const SizedBox(width: 4),
+            Button(
+              // width: 28,
+              startIcon: Icons.undo,
+              onPress: () {
+                projectController.undo();
+              },
+            ),
+            const SizedBox(width: 4),
+            Button(
+              // width: 28,
+              startIcon: Icons.redo,
+              onPress: () {
+                projectController.redo();
+              },
+            ),
+          ],
         ),
-      );
-    });
+      ),
+    );
   }
 }

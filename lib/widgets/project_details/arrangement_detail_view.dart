@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,14 +17,15 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/commands/arrangement_commands.dart';
+import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/text_box_controlled.dart';
-import 'package:anthem/widgets/project_details/arrangement_detail_view_cubit.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
-class ArrangementDetailView extends StatefulWidget {
+class ArrangementDetailView extends StatefulObserverWidget {
   const ArrangementDetailView({Key? key}) : super(key: key);
 
   @override
@@ -34,46 +35,52 @@ class ArrangementDetailView extends StatefulWidget {
 class _ArrangementDetailViewState extends State<ArrangementDetailView> {
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ArrangementDetailViewCubit, ArrangementDetailViewState>(
-        builder: (context, state) {
-      final cubit = Provider.of<ArrangementDetailViewCubit>(context);
+    final project = Provider.of<ProjectModel>(context);
+    final arrangementID =
+        (project.selectedDetailView as ArrangementDetailViewKind).arrangementID;
+    final arrangement = project.song.arrangements[arrangementID]!;
 
-      return Column(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: Theme.panel.main,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            padding: const EdgeInsets.all(6),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  "ARRANGEMENT",
-                  style: TextStyle(
-                    color: Theme.text.main,
-                    fontSize: 10,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 6),
-                SizedBox(
-                  height: 26,
-                  child: ControlledTextBox(
-                    text: state.arrangementName,
-                    onChange: (text) {
-                      cubit.setArrangementName(text);
-                    },
-                  ),
-                ),
-                const SizedBox(height: 4),
-              ],
-            ),
+    return Column(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Theme.panel.main,
+            borderRadius: BorderRadius.circular(4),
           ),
-          const Expanded(child: SizedBox()),
-        ],
-      );
-    });
+          padding: const EdgeInsets.all(6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                "ARRANGEMENT",
+                style: TextStyle(
+                  color: Theme.text.main,
+                  fontSize: 10,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 26,
+                child: ControlledTextBox(
+                  text: arrangement.name,
+                  onChange: (text) {
+                    project.execute(
+                      SetArrangementNameCommand(
+                        project: project,
+                        arrangementID: arrangementID,
+                        newName: text,
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 4),
+            ],
+          ),
+        ),
+        const Expanded(child: SizedBox()),
+      ],
+    );
   }
 }

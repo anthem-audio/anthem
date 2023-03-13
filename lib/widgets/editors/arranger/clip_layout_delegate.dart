@@ -76,13 +76,6 @@ class ClipLayoutDelegate extends MultiChildLayoutDelegate {
 
       final double height = (trackHeight - 1).clamp(0, double.infinity);
 
-      // The width is dependent on the pattern content. We could fetch that
-      // from the model but we can't watch the model for updates from here.
-      // Instead, we store the clip width (in ticks) in the clip cubit
-      // state, and we calculate the pixel width using a dedicated widget
-      // (ClipSizer) rendered under the BlocProvider<ClipCubit>. This has
-      // the added benefit of letting us update clip based on pattern
-      // content without rebuilding the entire clip list.
       layoutChild(
         clipID,
         BoxConstraints.tightFor(height: height),

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,48 +17,63 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/commands/pattern_commands.dart';
+import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/color_picker.dart';
 import 'package:anthem/widgets/basic/text_box_controlled.dart';
-import 'package:anthem/widgets/project_details/pattern_detail_view_cubit.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 import 'widgets.dart';
 
-class PatternDetailView extends StatelessWidget {
+class PatternDetailView extends StatelessObserverWidget {
   const PatternDetailView({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<PatternDetailViewCubit, PatternDetailViewState>(
-        builder: (context, state) {
-      final cubit = Provider.of<PatternDetailViewCubit>(context);
+    final project = Provider.of<ProjectModel>(context);
+    final patternID =
+        (project.selectedDetailView as PatternDetailViewKind).patternID;
+    final pattern = project.song.patterns[patternID]!;
 
-      return Column(
-        children: [
-          Section(
-            title: "PATTERN",
-            children: [
-              SizedBox(
-                height: 26,
-                child: ControlledTextBox(
-                  text: state.patternName,
-                  onChange: (newName) => cubit.setPatternName(newName),
-                ),
+    return Column(
+      children: [
+        Section(
+          title: "PATTERN",
+          children: [
+            SizedBox(
+              height: 26,
+              child: ControlledTextBox(
+                text: pattern.name,
+                onChange: (newName) {
+                  project.execute(
+                    SetPatternNameCommand(
+                      project: project,
+                      patternID: patternID,
+                      newName: newName,
+                    ),
+                  );
+                },
               ),
-              const SizedBox(height: 6),
-              ColorPicker(
-                onChange: (color) {
-                  cubit.setPatternColor(color);
-                }, 
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          const Expanded(child: SizedBox()),
-        ],
-      );
-    });
+            ),
+            const SizedBox(height: 6),
+            ColorPicker(
+              onChange: (color) {
+                project.execute(
+                  SetPatternColorCommand(
+                    project: project,
+                    patternID: patternID,
+                    newColor: color,
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        const Expanded(child: SizedBox()),
+      ],
+    );
   }
 }

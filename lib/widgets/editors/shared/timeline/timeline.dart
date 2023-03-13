@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,32 +17,44 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-// cspell:ignore relayout
-
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline_notifications.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 import '../helpers/time_helpers.dart';
 import '../helpers/types.dart';
-import 'timeline_cubit.dart';
 
 class Timeline extends StatefulWidget {
+  final ID? arrangementID;
+  final ID? patternID;
+
   final AnimationController timeViewAnimationController;
   final Animation<double> timeViewStartAnimation;
   final Animation<double> timeViewEndAnimation;
 
-  const Timeline({
+  const Timeline.pattern({
     Key? key,
     required this.timeViewAnimationController,
     required this.timeViewStartAnimation,
     required this.timeViewEndAnimation,
-  }) : super(key: key);
+    required this.patternID,
+  })  : arrangementID = null,
+        super(key: key);
+
+  const Timeline.arrangement({
+    Key? key,
+    required this.timeViewAnimationController,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+    required this.arrangementID,
+  })  : patternID = null,
+        super(key: key);
 
   @override
   State<Timeline> createState() => _TimelineState();
@@ -55,106 +67,112 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<TimelineCubit, TimelineState>(
-      builder: (context, state) {
-        return LayoutBuilder(builder: (context, constraints) {
-          var timeView = context.watch<TimeView>();
+    return LayoutBuilder(builder: (context, constraints) {
+      final timeView = context.watch<TimeView>();
+      final project = Provider.of<ProjectModel>(context);
 
-          void handleScroll(double delta, double mouseX) {
-            final timeViewWidth = timeView.width;
-            final timeViewSizeChange = timeViewWidth * 0.008 * delta;
+      List<TimeSignatureChangeModel> getTimeSignatureChanges() =>
+          project.song.patterns[widget.patternID]?.timeSignatureChanges ?? [];
 
-            final mouseCursorOffset = mouseX / constraints.maxWidth;
+      void handleScroll(double delta, double mouseX) {
+        final timeViewWidth = timeView.width;
+        final timeViewSizeChange = timeViewWidth * 0.008 * delta;
 
-            var newStart =
-                timeView.start - timeViewSizeChange * mouseCursorOffset;
-            var newEnd =
-                timeView.end + timeViewSizeChange * (1 - mouseCursorOffset);
+        final mouseCursorOffset = mouseX / constraints.maxWidth;
 
-            // Somewhat arbitrary, but a safeguard against zooming in too far
-            if (newEnd < newStart + 10) {
-              newEnd = newStart + 10;
-            }
+        var newStart = timeView.start - timeViewSizeChange * mouseCursorOffset;
+        var newEnd =
+            timeView.end + timeViewSizeChange * (1 - mouseCursorOffset);
 
-            final startOvershootCorrection = newStart < 0 ? -newStart : 0;
+        // Somewhat arbitrary, but a safeguard against zooming in too far
+        if (newEnd < newStart + 10) {
+          newEnd = newStart + 10;
+        }
 
-            newStart += startOvershootCorrection;
-            newEnd += startOvershootCorrection;
+        final startOvershootCorrection = newStart < 0 ? -newStart : 0;
 
-            timeView.setStart(newStart);
-            timeView.setEnd(newEnd);
+        newStart += startOvershootCorrection;
+        newEnd += startOvershootCorrection;
+
+        timeView.setStart(newStart);
+        timeView.setEnd(newEnd);
+      }
+
+      return Listener(
+        onPointerPanZoomUpdate: (event) {
+          handleScroll(-event.panDelta.dy / 2, event.localPosition.dx);
+        },
+        onPointerSignal: (event) {
+          if (event is PointerScrollEvent) {
+            handleScroll(event.scrollDelta.dy, event.localPosition.dx);
           }
-
-          var timelineLabels = state.timeSignatureChanges.inner
-              .map(
-                (change) => LayoutId(
-                  id: change.offset,
-                  child: TimelineLabel(
-                    text: change.timeSignature.toDisplayString(),
-                    id: change.id,
-                    offset: change.offset,
-                    timelineWidth: constraints.maxWidth,
-                    stableBuildContext: context,
-                  ),
-                ),
-              )
-              .toList();
-
-          return Listener(
-            onPointerPanZoomUpdate: (event) {
-              handleScroll(-event.panDelta.dy / 2, event.localPosition.dx);
-            },
-            onPointerSignal: (event) {
-              if (event is PointerScrollEvent) {
-                handleScroll(event.scrollDelta.dy, event.localPosition.dx);
-              }
-            },
-            child: ClipRect(
-              child: Stack(
-                fit: StackFit.expand,
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    color: Theme.panel.accent,
-                    child: ClipRect(
-                      child: AnimatedBuilder(
-                          animation: widget.timeViewAnimationController,
-                          builder: (context, child) {
-                            return CustomPaint(
-                              painter: TimelinePainter(
-                                timeViewStart: widget.timeViewStartAnimation.value,
-                                timeViewEnd: widget.timeViewEndAnimation.value,
-                                ticksPerQuarter: state.ticksPerQuarter,
-                                defaultTimeSignature:
-                                    state.defaultTimeSignature,
-                                timeSignatureChanges:
-                                    state.timeSignatureChanges.inner,
-                              ),
-                            );
-                          }),
-                    ),
-                  ),
-                  AnimatedBuilder(
+        },
+        child: ClipRect(
+          child: Stack(
+            fit: StackFit.expand,
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                color: Theme.panel.accent,
+                child: ClipRect(
+                  child: AnimatedBuilder(
                     animation: widget.timeViewAnimationController,
                     builder: (context, child) {
+                      return Observer(builder: (context) {
+                        return CustomPaint(
+                          painter: TimelinePainter(
+                            timeViewStart: widget.timeViewStartAnimation.value,
+                            timeViewEnd: widget.timeViewEndAnimation.value,
+                            ticksPerQuarter: project.song.ticksPerQuarter,
+                            defaultTimeSignature:
+                                project.song.defaultTimeSignature,
+                            timeSignatureChanges: getTimeSignatureChanges(),
+                          ),
+                        );
+                      });
+                    },
+                  ),
+                ),
+              ),
+              Observer(builder: (context) {
+                final timelineLabels = project
+                        .song.patterns[widget.patternID]?.timeSignatureChanges
+                        .map<Widget>(
+                          (change) => LayoutId(
+                            id: change.offset,
+                            child: TimelineLabel(
+                              text: change.timeSignature.toDisplayString(),
+                              id: change.id,
+                              offset: change.offset,
+                              timelineWidth: constraints.maxWidth,
+                              stableBuildContext: context,
+                            ),
+                          ),
+                        )
+                        .toList() ??
+                    [];
+
+                return AnimatedBuilder(
+                  animation: widget.timeViewAnimationController,
+                  builder: (context, child) {
+                    return Observer(builder: (context) {
                       return CustomMultiChildLayout(
                         delegate: TimeSignatureLabelLayoutDelegate(
-                          timeSignatureChanges:
-                              state.timeSignatureChanges.inner,
+                          timeSignatureChanges: getTimeSignatureChanges(),
                           timeViewStart: widget.timeViewStartAnimation.value,
                           timeViewEnd: widget.timeViewEndAnimation.value,
                         ),
                         children: timelineLabels,
                       );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          );
-        });
-      },
-    );
+                    });
+                  },
+                );
+              }),
+            ],
+          ),
+        ),
+      );
+    });
   }
 }
 

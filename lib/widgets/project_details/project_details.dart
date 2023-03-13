@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,17 +19,10 @@
 
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/project/project_cubit.dart';
 import 'package:anthem/widgets/project_details/arrangement_detail_view.dart';
 import 'package:anthem/widgets/project_details/pattern_detail_view.dart';
-import 'package:anthem/widgets/project_details/pattern_detail_view_cubit.dart';
 import 'package:anthem/widgets/project_details/time_signature_change_detail_view.dart';
-import 'package:anthem/widgets/project_details/time_signature_change_detail_view_cubit.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart';
-
-import 'arrangement_detail_view_cubit.dart';
 
 class ProjectDetails extends StatelessWidget {
   final DetailViewKind? selectedProjectDetails;
@@ -41,28 +34,12 @@ class ProjectDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final projectCubit = Provider.of<ProjectCubit>(context);
-
     if (selectedProjectDetails is PatternDetailViewKind) {
-      return BlocProvider(
-        create: (context) =>
-            PatternDetailViewCubit(projectID: projectCubit.project.id),
-        child: const PatternDetailView(),
-      );
+      return const PatternDetailView();
     } else if (selectedProjectDetails is ArrangementDetailViewKind) {
-      return BlocProvider(
-        create: (context) => ArrangementDetailViewCubit(
-          projectID: projectCubit.project.id,
-        ),
-        child: const ArrangementDetailView(),
-      );
+      return const ArrangementDetailView();
     } else if (selectedProjectDetails is TimeSignatureChangeDetailViewKind) {
-      return BlocProvider(
-        create: (context) => TimeSignatureChangeDetailViewCubit(
-          projectID: projectCubit.project.id,
-        ),
-        child: const TimeSignatureChangeDetailView(),
-      );
+      return const TimeSignatureChangeDetailView();
     }
 
     return Container(

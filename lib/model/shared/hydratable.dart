@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,6 +18,7 @@
 */
 
 import 'package:flutter/foundation.dart';
+import 'package:json_annotation/json_annotation.dart';
 
 /// ## Context
 ///
@@ -59,15 +60,15 @@ import 'package:flutter/foundation.dart';
 /// class SomeModel extends Hydratable {
 ///   // ...
 ///
-///   @JsonKey(ignore: true)
+///   @JsonKey(includeFromJson: false, includeToJson: false)
 ///   String? _someValue;
 ///
 ///   String get someValue {
 ///     return _someValue!;
 ///   }
-/// 
+///
 ///   SomeModel({/* ... */}) : super();
-/// 
+///
 ///   SomeModel.create({required string someValue, /* ... */}) : super() {
 ///     this.hydrate(someValue)
 ///   }
@@ -77,12 +78,12 @@ import 'package:flutter/foundation.dart';
 ///     isHydrated = true;
 ///   }
 /// }
-/// 
+///
 /// class SomeParentModel extends Hydratable {
 ///   // ...
-/// 
+///
 ///   SomeChildModel someChildModel;
-/// 
+///
 ///   hydrate() {
 ///     // Parents should always hydrate children in their hydrate() functions
 ///     someChildModel.hydrate();
@@ -92,7 +93,7 @@ import 'package:flutter/foundation.dart';
 ///
 /// // Good - the .create() constructor calls hydrate() by convention
 /// final model = SomeModel.create("my value");
-/// 
+///
 /// // Not recommended - prefer MyModel.create() constructor over MyModel()..hydrate()
 /// final model = SomeModel()..hydrate("my value");
 ///
@@ -102,6 +103,7 @@ import 'package:flutter/foundation.dart';
 /// // When running in debug mode, this will cause an exception
 /// ```
 class Hydratable {
+  @JsonKey(includeFromJson: false, includeToJson: false)
   bool isHydrated = false;
 
   /// Checks that isHydrated is true after construction. It is expected that the

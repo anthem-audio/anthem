@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,13 +17,28 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'screen_overlay_cubit.dart';
+import 'package:json_annotation/json_annotation.dart';
+import 'package:mobx/mobx.dart';
 
-// Workaround for https://github.com/rrousselGit/freezed/issues/653
-@Freezed(makeCollectionsUnmodifiable: false)
-class ScreenOverlayState with _$ScreenOverlayState {
+import 'package:anthem/helpers/id.dart';
 
-  factory ScreenOverlayState({
-    @Default({}) Map<ID, ScreenOverlayEntry> entries,
-  }) = _ScreenOverlayState;
+part 'track.g.dart';
+
+@JsonSerializable()
+class TrackModel extends _TrackModel with _$TrackModel {
+  TrackModel({required String name}) : super(name: name);
+
+  factory TrackModel.fromJson(Map<String, dynamic> json) =>
+      _$TrackModelFromJson(json);
+}
+
+abstract class _TrackModel with Store {
+  ID id;
+
+  @observable
+  String name;
+
+  _TrackModel({required this.name}) : id = getID();
+
+  Map<String, dynamic> toJson() => _$TrackModelToJson(this as TrackModel);
 }

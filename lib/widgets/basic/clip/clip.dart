@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,64 +17,92 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-// cspell:ignore ahsl
-
-import 'package:anthem/widgets/basic/clip/clip_cubit.dart';
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:provider/provider.dart';
 
 import '../../../model/shared/anthem_color.dart';
 
 class Clip extends StatelessWidget {
+  final ID? clipID;
+  final ID? patternID;
+  final ID? arrangementID;
   final double ticksPerPixel;
 
-  const Clip({Key? key, required this.ticksPerPixel}) : super(key: key);
+  /// Creates a Clip widget tied to a ClipModel
+  const Clip({
+    Key? key,
+    required this.clipID,
+    required this.arrangementID,
+    required this.ticksPerPixel,
+  })  : patternID = null,
+        super(key: key);
+
+  /// Creates a Clip widget tied to a PatternModel
+  const Clip.fromPattern({
+    Key? key,
+    required this.patternID,
+    required this.ticksPerPixel,
+  })  : clipID = null,
+        arrangementID = null,
+        super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ClipCubit, ClipState>(builder: (context, state) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
+    final projectModel = Provider.of<ProjectModel>(context);
+    final clipModel =
+        projectModel.song.arrangements[arrangementID]?.clips[clipID];
+    final patternModel =
+        projectModel.song.patterns[clipModel?.patternID ?? patternID!]!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Observer(builder: (context) {
+          return Container(
             height: 15,
             decoration: BoxDecoration(
-              color: getBaseColor(state.patternColor),
+              color: getBaseColor(patternModel.color),
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(3),
               ),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(
-              state.patternName,
+              patternModel.name,
               style: TextStyle(
-                color: getTextColor(state.patternColor),
+                color: getTextColor(patternModel.color),
                 fontSize: 10,
               ),
             ),
-          ),
-          Expanded(
+          );
+        }),
+        Observer(builder: (context) {
+          return Expanded(
             child: Container(
-                decoration: BoxDecoration(
-                  color: getBaseColor(state.patternColor).withAlpha(0x66),
-                  borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(3),
-                  ),
+              decoration: BoxDecoration(
+                color: getBaseColor(patternModel.color).withAlpha(0x66),
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(3),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: ClipNotes(
-                    color: getContentColor(state.patternColor),
-                    timeViewStart: 0,
-                    ticksPerPixel: ticksPerPixel,
-                    notes: state.notes,
-                  ),
-                )),
-          ),
-        ],
-      );
-    });
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: ClipNotes(
+                  color: getContentColor(patternModel.color),
+                  timeViewStart: 0,
+                  ticksPerPixel: ticksPerPixel,
+                  pattern: patternModel,
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
   }
 }
 

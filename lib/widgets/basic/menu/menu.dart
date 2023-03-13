@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,7 +19,8 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
-import 'package:anthem/widgets/basic/overlay/screen_overlay_cubit.dart';
+import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
+import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
@@ -51,12 +52,12 @@ class _MenuState extends State<Menu> {
 
   @override
   Widget build(BuildContext context) {
-    final screenOverlayCubit = Provider.of<ScreenOverlayCubit>(context);
+    final screenOverlayCubit = Provider.of<ScreenOverlayController>(context);
     widget.menuController.open = () => openMenu(screenOverlayCubit);
     return widget.child ?? const SizedBox();
   }
 
-  void openMenu(ScreenOverlayCubit screenOverlayCubit) {
+  void openMenu(ScreenOverlayController screenOverlayController) {
     final contentRenderBox = context.findRenderObject() as RenderBox;
     final pos = contentRenderBox.localToGlobal(
       Offset(
@@ -71,7 +72,7 @@ class _MenuState extends State<Menu> {
       ),
     );
     final id = getID();
-    screenOverlayCubit.add(
+    screenOverlayController.add(
       id,
       ScreenOverlayEntry(
         builder: (context, id) {
@@ -89,9 +90,9 @@ class _MenuState extends State<Menu> {
     openMenus.add(id);
   }
 
-  void closeMenu(ScreenOverlayCubit screenOverlayCubit) {
+  void closeMenu(ScreenOverlayController screenOverlayController) {
     for (var menu in openMenus) {
-      screenOverlayCubit.remove(menu);
+      screenOverlayController.remove(menu);
     }
   }
 }

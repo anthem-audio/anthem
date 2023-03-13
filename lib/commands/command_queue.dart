@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/commands/state_changes.dart';
-
 import 'command.dart';
 
 class CommandQueue {
@@ -31,20 +29,20 @@ class CommandQueue {
     commandPointer++;
   }
 
-  List<StateChange> executeAndPush(Command command) {
+  void executeAndPush(Command command) {
     push(command);
-    return command.execute();
+    command.execute();
   }
 
-  List<StateChange> undo() {
-    if (commandPointer - 1 < 0) return [];
+  void undo() {
+    if (commandPointer - 1 < 0) return;
     commandPointer--;
-    return commands[commandPointer].rollback();
+    commands[commandPointer].rollback();
   }
 
-  List<StateChange> redo() {
-    if (commandPointer + 1 > commands.length) return [];
+  void redo() {
+    if (commandPointer + 1 > commands.length) return;
     commandPointer++;
-    return commands[commandPointer - 1].execute();
+    commands[commandPointer - 1].execute();
   }
 }

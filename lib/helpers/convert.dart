@@ -25,6 +25,7 @@ class ColorConvert {
   static int colorToInt(Color color) {
     return color.value;
   }
+
   static Color intToColor(int hex) {
     return Color(hex);
   }

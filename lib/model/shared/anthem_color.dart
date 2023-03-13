@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,24 +17,42 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:json_annotation/json_annotation.dart';
+import 'package:mobx/mobx.dart';
 
 part 'anthem_color.g.dart';
 
 @JsonSerializable()
-class AnthemColor {
-  double hue;
-  double lightnessMultiplier; // 1 is normal, + is brighter, - is dimmer
-  double saturationMultiplier; // 1 is normal, 0 is unsaturated
-
+class AnthemColor extends _AnthemColor with _$AnthemColor {
   AnthemColor({
-    required this.hue,
-    this.lightnessMultiplier = 1,
-    this.saturationMultiplier = 1,
-  });
+    required double hue,
+    double lightnessMultiplier = 1,
+    double saturationMultiplier = 1,
+  }) : super(
+          hue: hue,
+          lightnessMultiplier: lightnessMultiplier,
+          saturationMultiplier: saturationMultiplier,
+        );
 
   factory AnthemColor.fromJson(Map<String, dynamic> json) =>
       _$AnthemColorFromJson(json);
+}
 
-  Map<String, dynamic> toJson() => _$AnthemColorToJson(this);
+abstract class _AnthemColor with Store {
+  @observable
+  double hue;
+
+  @observable
+  double lightnessMultiplier; // 1 is normal, + is brighter, - is dimmer
+
+  @observable
+  double saturationMultiplier; // 1 is normal, 0 is unsaturated
+
+  _AnthemColor({
+    required this.hue,
+    required this.lightnessMultiplier,
+    required this.saturationMultiplier,
+  });
+
+  Map<String, dynamic> toJson() => _$AnthemColorToJson(this as AnthemColor);
 }
