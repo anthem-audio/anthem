@@ -90,7 +90,7 @@ class _PianoRollState extends State<PianoRoll> {
       keyHeight: 20,
       // Hack: cuts off the top horizontal line. Otherwise the default view looks off
       keyValueAtTop: 63.95,
-      timeView: TimeView(0, 3072),
+      timeView: TimeRange(0, 3072),
     );
 
     return Provider.value(
@@ -123,9 +123,13 @@ class _PianoRollState extends State<PianoRoll> {
   }
 }
 
-/// Uses an observer to grab the [TimeView] from the view model and provide it to
-/// the tree. Using a separate widget for this means we can tell the tree about
-/// updates to the [TimeView] without re-rendering [PianoRoll].
+/// Uses an observer to grab the [TimeRange] from the view model and provide it
+/// to the tree. Using a separate widget for this means we can tell the tree
+/// about updates to the [TimeRange] without re-rendering [Arranger].
+///
+/// We provide the [TimeRange] to the tree because some widgets, such as
+/// [Timeline], are shared between editors, and they need to access the
+/// [TimeRange] via a [Provider].
 class PianoRollTimeViewProvider extends StatelessObserverWidget {
   final Widget? child;
 
@@ -162,7 +166,7 @@ class _PianoRollHeader extends StatelessWidget {
                               context,
                               listen: false);
                           final timeView =
-                              Provider.of<TimeView>(context, listen: false);
+                              Provider.of<TimeRange>(context, listen: false);
 
                           controller.addTimeSignatureChange(
                             timeSignature: TimeSignatureModel(3, 4),

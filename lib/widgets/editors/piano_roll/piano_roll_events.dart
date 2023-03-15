@@ -45,7 +45,7 @@ abstract class PianoRollPointerEvent extends PianoRollEvent {
 }
 
 class PianoRollPointerDownEvent extends PianoRollPointerEvent {
-  final TimeView
+  final TimeRange
       timeView; // TODO: Refactor this so TimeView is in the view model
 
   PianoRollPointerDownEvent({

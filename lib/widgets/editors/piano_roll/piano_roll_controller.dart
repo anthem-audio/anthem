@@ -136,7 +136,7 @@ class PianoRollController {
     required TimeSignatureModel timeSignature,
     required Time offset,
     bool snap = true,
-    required TimeView
+    required TimeRange
         timeView, // TODO: store this in the view model and get it form there
     required double pianoRollWidth,
   }) {

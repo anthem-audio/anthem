@@ -39,7 +39,7 @@ class PianoRollEventListener extends StatelessWidget {
       final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
       final controller =
           Provider.of<PianoRollController>(context, listen: false);
-      final timeView = Provider.of<TimeView>(context, listen: false);
+      final timeView = Provider.of<TimeRange>(context, listen: false);
       final contentRenderBox = context.findRenderObject() as RenderBox;
       final pointerPos = contentRenderBox.globalToLocal(e.position);
 
@@ -65,7 +65,7 @@ class PianoRollEventListener extends StatelessWidget {
       final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
       final controller =
           Provider.of<PianoRollController>(context, listen: false);
-      final timeView = Provider.of<TimeView>(context, listen: false);
+      final timeView = Provider.of<TimeRange>(context, listen: false);
       final contentRenderBox = context.findRenderObject() as RenderBox;
       final pointerPos = contentRenderBox.globalToLocal(e.position);
 
@@ -90,7 +90,7 @@ class PianoRollEventListener extends StatelessWidget {
       final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
       final controller =
           Provider.of<PianoRollController>(context, listen: false);
-      final timeView = Provider.of<TimeView>(context, listen: false);
+      final timeView = Provider.of<TimeRange>(context, listen: false);
       final contentRenderBox = context.findRenderObject() as RenderBox;
       final pointerPos = contentRenderBox.globalToLocal(e.position);
 

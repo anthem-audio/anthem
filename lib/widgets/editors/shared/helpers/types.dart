@@ -27,10 +27,10 @@ part 'types.g.dart';
 //
 
 // ignore: library_private_types_in_public_api
-class TimeView = _TimeView with _$TimeView;
+class TimeRange = _TimeRange with _$TimeRange;
 
-abstract class _TimeView with Store {
-  _TimeView(this.start, this.end);
+abstract class _TimeRange with Store {
+  _TimeRange(this.start, this.end);
 
   @observable
   double start;

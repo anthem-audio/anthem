@@ -32,7 +32,7 @@ abstract class _ArrangerViewModel with Store {
   EditorTool tool = EditorTool.pencil;
 
   @observable
-  TimeView timeView;
+  TimeRange timeView;
 
   @observable
   double baseTrackHeight;
