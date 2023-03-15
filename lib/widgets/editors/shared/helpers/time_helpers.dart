@@ -181,7 +181,7 @@ GetBestDivisionResult getBestDivision({
   } else {
     // This isn't TypeScript, so (I think) we can't verify completeness here.
     // If Snap gets more subclasses then this could give a runtime error.
-    throw ArgumentError("Unhandled Snap type");
+    throw ArgumentError('Unhandled Snap type');
   }
 
   var numDivisionsInBar = barLength ~/ snapSize;

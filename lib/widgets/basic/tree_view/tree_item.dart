@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of "tree_view.dart";
+part of 'tree_view.dart';
 
 const indentIncrement = 21.0;
 

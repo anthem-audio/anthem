@@ -62,7 +62,7 @@ class ProjectController {
 
       do {
         patternNumber++;
-        name = "Pattern $patternNumber";
+        name = 'Pattern $patternNumber';
       } while (existingNames.contains(name));
     }
 
@@ -90,7 +90,7 @@ class ProjectController {
 
       do {
         arrangementNumber++;
-        name = "Arrangement $arrangementNumber";
+        name = 'Arrangement $arrangementNumber';
       } while (existingNames.contains(name));
     }
 

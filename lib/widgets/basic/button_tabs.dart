@@ -202,7 +202,7 @@ class ButtonTabDef<T> {
     } else if (icon != null) {
       return ButtonTabType.icon;
     } else {
-      throw Exception("Malformed ButtonTabDef");
+      throw Exception('Malformed ButtonTabDef');
     }
   }
 }

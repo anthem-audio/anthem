@@ -47,7 +47,7 @@ class MainWindowController {
   Future<ID?> loadProject() async {
     final path = (await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ["anthem"],
+      allowedExtensions: ['anthem'],
     ))
         ?.files[0]
         .path;
@@ -68,7 +68,7 @@ class MainWindowController {
       if (alwaysUseFilePicker || !project.isSaved) {
         path = (await FilePicker.platform.saveFile(
           type: FileType.custom,
-          allowedExtensions: ["anthem"],
+          allowedExtensions: ['anthem'],
         ));
       } else {
         // TODO: This is bad because we can't actually move the project anywhere - we shouldn't hard-code a project location
@@ -77,8 +77,8 @@ class MainWindowController {
 
       if (path == null) return;
 
-      if (!path.endsWith(".anthem")) {
-        path += ".anthem";
+      if (!path.endsWith('.anthem')) {
+        path += '.anthem';
       }
 
       await File(path).writeAsString(json.encode(project.toJson()));

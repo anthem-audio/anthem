@@ -36,7 +36,7 @@ class AnthemMenuItem extends GenericMenuItem {
   VoidCallback? onSelected;
 
   AnthemMenuItem({String? text, this.submenu, this.onSelected}) : super() {
-    this.text = text ?? "";
+    this.text = text ?? '';
   }
 }
 
