@@ -44,22 +44,22 @@ class ToolSelector extends StatelessWidget {
         items: [
           DropdownItem(
             id: EditorTool.pencil.name,
-            name: "Pencil",
+            name: 'Pencil',
             icon: Icons.tools.pencil,
           ),
           DropdownItem(
             id: EditorTool.eraser.name,
-            name: "Eraser",
+            name: 'Eraser',
             icon: Icons.tools.erase,
           ),
           DropdownItem(
             id: EditorTool.select.name,
-            name: "Select",
+            name: 'Select',
             icon: Icons.tools.select,
           ),
           DropdownItem(
             id: EditorTool.cut.name,
-            name: "Cut",
+            name: 'Cut',
             icon: Icons.tools.cut,
           ),
         ],

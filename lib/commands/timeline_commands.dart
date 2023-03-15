@@ -180,7 +180,7 @@ class MoveTimeSignatureChangeCommand extends Command {
   @override
   void execute() {
     if (timelineKind == TimelineKind.arrangement) {
-      throw Exception("Not supported yet");
+      throw Exception('Not supported yet');
     }
 
     change.offset = newOffset;
@@ -190,7 +190,7 @@ class MoveTimeSignatureChangeCommand extends Command {
   @override
   void rollback() {
     if (timelineKind == TimelineKind.arrangement) {
-      throw Exception("Not supported yet");
+      throw Exception('Not supported yet');
     }
 
     change.offset = oldOffset;
@@ -219,7 +219,7 @@ class SetTimeSignatureNumeratorCommand extends Command {
       timelineKind = TimelineKind.arrangement;
     } else {
       throw ArgumentError(
-          "Arguments should specify a pattern ID or arrangement ID, but neither was specified.");
+          'Arguments should specify a pattern ID or arrangement ID, but neither was specified.');
     }
 
     change = project.song.patterns[patternID]!.timeSignatureChanges
@@ -260,7 +260,7 @@ class SetTimeSignatureDenominatorCommand extends Command {
       timelineKind = TimelineKind.arrangement;
     } else {
       throw ArgumentError(
-          "Arguments should specify a pattern ID or arrangement ID, but neither was specified.");
+          'Arguments should specify a pattern ID or arrangement ID, but neither was specified.');
     }
 
     change = project.song.patterns[patternID]!.timeSignatureChanges

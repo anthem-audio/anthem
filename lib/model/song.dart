@@ -95,7 +95,7 @@ abstract class _SongModel extends Hydratable with Store {
     required ProjectModel project,
   }) : super() {
     final arrangement = ArrangementModel.create(
-      name: "Arrangement 1",
+      name: 'Arrangement 1',
       id: getID(),
       project: project,
     );
@@ -107,7 +107,7 @@ abstract class _SongModel extends Hydratable with Store {
     final List<ID> initTrackOrder = [];
 
     for (var i = 1; i <= 200; i++) {
-      final track = TrackModel(name: "Track $i");
+      final track = TrackModel(name: 'Track $i');
       initTracks[track.id] = track;
       initTrackOrder.add(track.id);
     }

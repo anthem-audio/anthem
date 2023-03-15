@@ -47,7 +47,7 @@ abstract class _TimeSignatureModel with Store {
   Map<String, dynamic> toJson() =>
       _$TimeSignatureModelToJson(this as TimeSignatureModel);
 
-  String toDisplayString() => "$numerator/$denominator";
+  String toDisplayString() => '$numerator/$denominator';
 }
 
 @JsonSerializable()
@@ -68,7 +68,7 @@ class TimeSignatureChangeModel extends _TimeSignatureChangeModel
 }
 
 abstract class _TimeSignatureChangeModel with Store {
-  ID id = "";
+  ID id = '';
 
   @observable
   TimeSignatureModel timeSignature;

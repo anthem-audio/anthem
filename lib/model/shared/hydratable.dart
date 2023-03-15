@@ -127,5 +127,5 @@ class Hydratable {
   }
 
   String _getHydrationError() =>
-      "$runtimeType was not hydrated after being constructed. See lib/model/shared/hydratable.dart for more info.";
+      '$runtimeType was not hydrated after being constructed. See lib/model/shared/hydratable.dart for more info.';
 }

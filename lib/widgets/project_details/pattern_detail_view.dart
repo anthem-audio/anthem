@@ -40,7 +40,7 @@ class PatternDetailView extends StatelessObserverWidget {
     return Column(
       children: [
         Section(
-          title: "PATTERN",
+          title: 'PATTERN',
           children: [
             SizedBox(
               height: 26,

@@ -52,7 +52,7 @@ class _ArrangementDetailViewState extends State<ArrangementDetailView> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                "ARRANGEMENT",
+                'ARRANGEMENT',
                 style: TextStyle(
                   color: Theme.text.main,
                   fontSize: 10,

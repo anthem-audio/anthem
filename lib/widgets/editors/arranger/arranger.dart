@@ -122,18 +122,18 @@ class _ArrangerState extends State<Arranger> {
                               menuDef: MenuDef(
                                 children: [
                                   AnthemMenuItem(
-                                    text: "New arrangement",
+                                    text: 'New arrangement',
                                     onSelected: () {
                                       projectController.addArrangement();
                                     },
                                   ),
                                   Separator(),
                                   AnthemMenuItem(
-                                    text: "Markers",
+                                    text: 'Markers',
                                     submenu: MenuDef(
                                       children: [
                                         AnthemMenuItem(
-                                          text: "Add time signature change",
+                                          text: 'Add time signature change',
                                         ),
                                       ],
                                     ),
@@ -705,7 +705,7 @@ class _TrackHeadersState extends State<_TrackHeaders> {
               const resizeHandleHeight = 10.0;
               resizeHandles.add(
                 Positioned(
-                  key: Key("$trackID-handle"),
+                  key: Key('$trackID-handle'),
                   left: 0,
                   right: 0,
                   top: trackPositionPointer +

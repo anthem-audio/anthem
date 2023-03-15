@@ -58,12 +58,12 @@ class _MainWindowState extends State<MainWindow> {
     final keyDown = e is KeyDownEvent;
     final keyUp = e is KeyUpEvent;
 
-    final ctrl = e.logicalKey.keyLabel == "Control Left" ||
-        e.logicalKey.keyLabel == "Control Right";
-    final alt = e.logicalKey.keyLabel == "Alt Left" ||
-        e.logicalKey.keyLabel == "Alt Right";
-    final shift = e.logicalKey.keyLabel == "Shift Left" ||
-        e.logicalKey.keyLabel == "Shift Right";
+    final ctrl = e.logicalKey.keyLabel == 'Control Left' ||
+        e.logicalKey.keyLabel == 'Control Right';
+    final alt = e.logicalKey.keyLabel == 'Alt Left' ||
+        e.logicalKey.keyLabel == 'Alt Right';
+    final shift = e.logicalKey.keyLabel == 'Shift Left' ||
+        e.logicalKey.keyLabel == 'Shift Right';
 
     final keyboardModifiers =
         Provider.of<KeyboardModifiers>(context, listen: false);

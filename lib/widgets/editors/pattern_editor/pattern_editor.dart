@@ -91,7 +91,7 @@ class _PatternEditorState extends State<PatternEditor> {
                         menuDef: MenuDef(
                           children: [
                             AnthemMenuItem(
-                              text: "New pattern",
+                              text: 'New pattern',
                               onSelected: () {
                                 projectController.addPattern();
                               },
@@ -186,7 +186,7 @@ class _PatternEditorState extends State<PatternEditor> {
                           startIcon: Icons.add,
                           onPress: () {
                             controller!.addGenerator(
-                              "Instrument ${(Random()).nextInt(100).toString()}",
+                              'Instrument ${(Random()).nextInt(100).toString()}',
                               getColor(),
                             );
                           },

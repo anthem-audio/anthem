@@ -29,50 +29,50 @@ class IconDef {
 }
 
 class Icons {
-  static IconDef add = const IconDef("assets/icons/scrollbar/add.svg");
+  static IconDef add = const IconDef('assets/icons/scrollbar/add.svg');
   static IconDef arrowDown =
-      const IconDef("assets/icons/misc/dropdown_arrow___down.svg");
-  static IconDef audio = const IconDef("assets/icons/audio.svg");
-  static IconDef automation = const IconDef("assets/icons/automation.svg");
+      const IconDef('assets/icons/misc/dropdown_arrow___down.svg');
+  static IconDef audio = const IconDef('assets/icons/audio.svg');
+  static IconDef automation = const IconDef('assets/icons/automation.svg');
   static IconDef automationMatrixPanel =
-      const IconDef("assets/icons/bottom_bar/automation_panel.svg");
+      const IconDef('assets/icons/bottom_bar/automation_panel.svg');
   static IconDef browserPanel =
-      const IconDef("assets/icons/bottom_bar/browser_panel.svg");
+      const IconDef('assets/icons/bottom_bar/browser_panel.svg');
   static IconDef channelRack =
-      const IconDef("assets/icons/bottom_bar/instruments_effects_panel.svg");
-  static IconDef close = const IconDef("assets/icons/small/close.svg");
+      const IconDef('assets/icons/bottom_bar/instruments_effects_panel.svg');
+  static IconDef close = const IconDef('assets/icons/small/close.svg');
   static IconDef detailEditor =
-      const IconDef("assets/icons/bottom_bar/detail_editor.svg");
-  static IconDef hamburger = const IconDef("assets/icons/misc/hamburgner.svg");
-  static IconDef file = const IconDef("assets/icons/file.svg");
-  static IconDef kebab = const IconDef("assets/icons/misc.svg");
-  static IconDef mixer = const IconDef("assets/icons/bottom_bar/mixer.svg");
-  static IconDef midi = const IconDef("assets/icons/midi.svg");
-  static IconDef mute = const IconDef("assets/icons/power.svg");
+      const IconDef('assets/icons/bottom_bar/detail_editor.svg');
+  static IconDef hamburger = const IconDef('assets/icons/misc/hamburgner.svg');
+  static IconDef file = const IconDef('assets/icons/file.svg');
+  static IconDef kebab = const IconDef('assets/icons/misc.svg');
+  static IconDef mixer = const IconDef('assets/icons/bottom_bar/mixer.svg');
+  static IconDef midi = const IconDef('assets/icons/midi.svg');
+  static IconDef mute = const IconDef('assets/icons/power.svg');
   static IconDef patternEditor =
-      const IconDef("assets/icons/bottom_bar/pattern_editor.svg");
-  static IconDef plugin = const IconDef("assets/icons/plugin.svg");
+      const IconDef('assets/icons/bottom_bar/pattern_editor.svg');
+  static IconDef plugin = const IconDef('assets/icons/plugin.svg');
   static IconDef projectPanel =
-      const IconDef("assets/icons/bottom_bar/project_panel_2.svg");
-  static IconDef redo = const IconDef("assets/icons/edit/redo.svg");
-  static IconDef save = const IconDef("assets/icons/edit/save.svg");
-  static IconDef undo = const IconDef("assets/icons/edit/undo.svg");
+      const IconDef('assets/icons/bottom_bar/project_panel_2.svg');
+  static IconDef redo = const IconDef('assets/icons/edit/redo.svg');
+  static IconDef save = const IconDef('assets/icons/edit/save.svg');
+  static IconDef undo = const IconDef('assets/icons/edit/undo.svg');
   static _ScrollbarIcons scrollbar = _ScrollbarIcons();
   static _ToolIcons tools = _ToolIcons();
 }
 
 class _ScrollbarIcons {
-  IconDef arrowDown = const IconDef("assets/icons/scrollbar/arrow_down.svg");
-  IconDef arrowLeft = const IconDef("assets/icons/scrollbar/arrow_left.svg");
-  IconDef arrowRight = const IconDef("assets/icons/scrollbar/arrow_right.svg");
-  IconDef arrowUp = const IconDef("assets/icons/scrollbar/arrow_up.svg");
+  IconDef arrowDown = const IconDef('assets/icons/scrollbar/arrow_down.svg');
+  IconDef arrowLeft = const IconDef('assets/icons/scrollbar/arrow_left.svg');
+  IconDef arrowRight = const IconDef('assets/icons/scrollbar/arrow_right.svg');
+  IconDef arrowUp = const IconDef('assets/icons/scrollbar/arrow_up.svg');
 }
 
 class _ToolIcons {
-  IconDef cut = const IconDef("assets/icons/tools/cut.svg");
-  IconDef erase = const IconDef("assets/icons/tools/erase.svg");
-  IconDef pencil = const IconDef("assets/icons/tools/pencil.svg");
-  IconDef select = const IconDef("assets/icons/tools/select.svg");
+  IconDef cut = const IconDef('assets/icons/tools/cut.svg');
+  IconDef erase = const IconDef('assets/icons/tools/erase.svg');
+  IconDef pencil = const IconDef('assets/icons/tools/pencil.svg');
+  IconDef select = const IconDef('assets/icons/tools/select.svg');
 }
 
 class SvgIcon extends StatelessWidget {
