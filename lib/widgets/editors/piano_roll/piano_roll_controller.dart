@@ -24,13 +24,18 @@ import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_events.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 
 class PianoRollController {
   final ProjectModel project;
+  final PianoRollViewModel viewModel;
 
-  PianoRollController({required this.project});
+  PianoRollController({
+    required this.project,
+    required this.viewModel,
+  });
 
   NoteModel? _getNote(ID? instrumentID, ID noteID) {
     final pattern = project.song.patterns[project.song.activePatternID];
@@ -197,8 +202,8 @@ class PianoRollController {
       defaultTimeSignature: project.song.defaultTimeSignature,
       timeSignatureChanges: pattern.timeSignatureChanges,
       ticksPerQuarter: project.song.ticksPerQuarter,
-      timeViewStart: event.timeView.start,
-      timeViewEnd: event.timeView.end,
+      timeViewStart: viewModel.timeView.start,
+      timeViewEnd: viewModel.timeView.end,
     );
 
     int targetTime = getSnappedTime(
