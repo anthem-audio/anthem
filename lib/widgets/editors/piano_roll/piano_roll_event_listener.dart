@@ -17,7 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/widgets/editors/piano_roll/piano_roll_notifications.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll_controller.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll_events.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
@@ -36,11 +37,13 @@ class PianoRollEventListener extends StatelessWidget {
   Widget build(BuildContext context) {
     handlePointerDown(PointerDownEvent e) {
       final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
+      final controller =
+          Provider.of<PianoRollController>(context, listen: false);
       final timeView = Provider.of<TimeView>(context, listen: false);
       final contentRenderBox = context.findRenderObject() as RenderBox;
       final pointerPos = contentRenderBox.globalToLocal(e.position);
 
-      PianoRollPointerDownNotification(
+      final event = PianoRollPointerDownEvent(
         note: pixelsToKeyValue(
             keyHeight: viewModel.keyHeight,
             keyValueAtTop: viewModel.keyValueAtTop,
@@ -52,16 +55,21 @@ class PianoRollEventListener extends StatelessWidget {
             pixelOffsetFromLeft: pointerPos.dx),
         event: e,
         pianoRollSize: contentRenderBox.size,
-      ).dispatch(context);
+        timeView: timeView,
+      );
+
+      controller.pointerDown(event);
     }
 
     handlePointerMove(PointerMoveEvent e) {
       final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
+      final controller =
+          Provider.of<PianoRollController>(context, listen: false);
       final timeView = Provider.of<TimeView>(context, listen: false);
       final contentRenderBox = context.findRenderObject() as RenderBox;
       final pointerPos = contentRenderBox.globalToLocal(e.position);
 
-      PianoRollPointerMoveNotification(
+      final event = PianoRollPointerMoveEvent(
         note: pixelsToKeyValue(
             keyHeight: viewModel.keyHeight,
             keyValueAtTop: viewModel.keyValueAtTop,
@@ -73,16 +81,20 @@ class PianoRollEventListener extends StatelessWidget {
             pixelOffsetFromLeft: pointerPos.dx),
         event: e,
         pianoRollSize: contentRenderBox.size,
-      ).dispatch(context);
+      );
+
+      controller.pointerMove(event);
     }
 
     handlePointerUp(PointerUpEvent e) {
       final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
+      final controller =
+          Provider.of<PianoRollController>(context, listen: false);
       final timeView = Provider.of<TimeView>(context, listen: false);
       final contentRenderBox = context.findRenderObject() as RenderBox;
       final pointerPos = contentRenderBox.globalToLocal(e.position);
 
-      PianoRollPointerUpNotification(
+      final event = PianoRollPointerUpEvent(
         note: pixelsToKeyValue(
             keyHeight: viewModel.keyHeight,
             keyValueAtTop: viewModel.keyValueAtTop,
@@ -94,7 +106,9 @@ class PianoRollEventListener extends StatelessWidget {
             pixelOffsetFromLeft: pointerPos.dx),
         event: e,
         pianoRollSize: contentRenderBox.size,
-      ).dispatch(context);
+      );
+
+      controller.pointerUp(event);
     }
 
     return Listener(
