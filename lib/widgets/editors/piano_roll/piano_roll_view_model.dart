@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:mobx/mobx.dart';
 
 part 'piano_roll_view_model.g.dart';
@@ -28,6 +29,7 @@ abstract class _PianoRollViewModel with Store {
   _PianoRollViewModel({
     required this.keyHeight,
     required this.keyValueAtTop,
+    required this.timeView,
   });
 
   @observable
@@ -35,4 +37,7 @@ abstract class _PianoRollViewModel with Store {
 
   @observable
   double keyValueAtTop;
+
+  @observable
+  TimeView timeView;
 }

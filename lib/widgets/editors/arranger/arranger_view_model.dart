@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:async';
-
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
@@ -34,29 +32,28 @@ abstract class _ArrangerViewModel with Store {
   EditorTool tool = EditorTool.pencil;
 
   @observable
+  TimeView timeView;
+
+  @observable
   double baseTrackHeight;
 
-  // Per-track modifier that is multiplied by baseTrackHeight and clamped to
-  // get the actual height for each track
+  /// Per-track modifier that is multiplied by baseTrackHeight and clamped to
+  /// get the actual height for each track
   @observable
   ObservableMap<ID, double> trackHeightModifiers;
 
-  // Vertical scroll position, in pixels. Should not be set directly.
+  /// Vertical scroll position, in pixels.
   @observable
   double verticalScrollPosition = 0;
 
   _ArrangerViewModel({
     required this.baseTrackHeight,
     required this.trackHeightModifiers,
+    required this.timeView,
   });
 
   // Total height of the entire scrollable region
   @computed
   double get scrollAreaHeight =>
       getScrollAreaHeight(baseTrackHeight, trackHeightModifiers);
-
-  // Allows us to observe changes to this value before it hits MobX. Fixes an
-  // issue with the vertical scroll animation lagging behind the scrollbar.
-  StreamController<void> verticalScrollPositionChanged =
-      StreamController.broadcast();
 }
