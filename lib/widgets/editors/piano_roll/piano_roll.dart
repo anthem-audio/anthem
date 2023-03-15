@@ -90,16 +90,14 @@ class _PianoRollState extends State<PianoRoll> {
       keyHeight: 20,
       // Hack: cuts off the top horizontal line. Otherwise the default view looks off
       keyValueAtTop: 63.95,
+      timeView: TimeView(0, 3072),
     );
 
     return Provider.value(
       value: controller!,
       child: Provider.value(
         value: viewModel!,
-        child: MultiProvider(
-          providers: [
-            ChangeNotifierProvider(create: (_) => TimeView(0, 3072)),
-          ],
+        child: PianoRollTimeViewProvider(
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(4),
@@ -122,6 +120,22 @@ class _PianoRollState extends State<PianoRoll> {
         ),
       ),
     );
+  }
+}
+
+/// Uses an observer to grab the [TimeView] from the view model and provide it to
+/// the tree. Using a separate widget for this means we can tell the tree about
+/// updates to the [TimeView] without re-rendering [PianoRoll].
+class PianoRollTimeViewProvider extends StatelessObserverWidget {
+  final Widget? child;
+
+  const PianoRollTimeViewProvider({Key? key, this.child}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = Provider.of<PianoRollViewModel>(context);
+
+    return Provider.value(value: viewModel.timeView, child: child);
   }
 }
 
@@ -264,33 +278,28 @@ class _PianoRollContentState extends State<_PianoRollContent>
       // widget.
       viewModel.keyHeight;
       viewModel.keyValueAtTop;
+      viewModel.timeView.start;
+      viewModel.timeView.end;
 
       // Rebuild the widget
       setState(() {});
     });
 
-    // This is a function because observers need to be able to observe this
-    // call into the MobX store
-    PatternModel? getPattern() =>
-        project.song.patterns[project.song.activePatternID];
-
-    final timeView = context.watch<TimeView>();
-
     // Updates the time view animation if the time view has changed
-    if (timeView.start != _lastTimeViewStart ||
-        timeView.end != _lastTimeViewEnd) {
+    if (viewModel.timeView.start != _lastTimeViewStart ||
+        viewModel.timeView.end != _lastTimeViewEnd) {
       _timeViewStartTween.begin = _timeViewStartAnimation.value;
       _timeViewEndTween.begin = _timeViewEndAnimation.value;
 
       _timeViewAnimationController.reset();
 
-      _timeViewStartTween.end = timeView.start;
-      _timeViewEndTween.end = timeView.end;
+      _timeViewStartTween.end = viewModel.timeView.start;
+      _timeViewEndTween.end = viewModel.timeView.end;
 
       _timeViewAnimationController.forward();
 
-      _lastTimeViewStart = timeView.start;
-      _lastTimeViewEnd = timeView.end;
+      _lastTimeViewStart = viewModel.timeView.start;
+      _lastTimeViewEnd = viewModel.timeView.end;
     }
 
     // Updates the key value at top animation if the position has changed
@@ -301,6 +310,11 @@ class _PianoRollContentState extends State<_PianoRollContent>
       _keyValueAtTopAnimationController.forward();
       _lastKeyValueAtTop = viewModel.keyValueAtTop;
     }
+
+    // This is a function because observers need to be able to observe this
+    // call into the MobX store
+    PatternModel? getPattern() =>
+        project.song.patterns[project.song.activePatternID];
 
     final timeline = Observer(builder: (context) {
       final timelineHeight =
@@ -430,14 +444,14 @@ class _PianoRollContentState extends State<_PianoRollContent>
                       scrollRegionEnd: getPattern()?.lastContent.toDouble() ??
                           (project.song.ticksPerQuarter * 4 * noContentBars)
                               .toDouble(),
-                      handleStart: timeView.start,
-                      handleEnd: timeView.end,
+                      handleStart: viewModel.timeView.start,
+                      handleEnd: viewModel.timeView.end,
                       canScrollPastEnd: true,
                       minHandleSize: project.song.ticksPerQuarter *
                           4, // TODO: time signature
                       onChange: (event) {
-                        timeView.setStart(event.handleStart);
-                        timeView.setEnd(event.handleEnd);
+                        viewModel.timeView.start = event.handleStart;
+                        viewModel.timeView.end = event.handleEnd;
                       },
                     );
                   }),

@@ -94,8 +94,8 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
         newStart += startOvershootCorrection;
         newEnd += startOvershootCorrection;
 
-        timeView.setStart(newStart);
-        timeView.setEnd(newEnd);
+        timeView.start = newStart;
+        timeView.end = newEnd;
       }
 
       return Listener(
