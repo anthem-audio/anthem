@@ -281,7 +281,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
     final project = Provider.of<ProjectModel>(context);
     final viewModel = Provider.of<PianoRollViewModel>(context);
 
-    viewModelReactionDisposer = mobx.autorun((p0) {
+    viewModelReactionDisposer ??= mobx.autorun((p0) {
       // Access fields in viewModel. Changes to these fields will rebuild this
       // widget.
       viewModel.keyHeight;
