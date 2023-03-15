@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:io';
+
 import 'package:anthem/theme.dart' as anthem_theme;
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/main_window/main_window_controller.dart';
@@ -37,6 +39,17 @@ void main() async {
     // appWindow.minSize = initialSize;
     // appWindow.size = initialSize;
     // appWindow.alignment = Alignment.center;
+
+    if (Platform.isWindows) {
+      // This is a temporary fix for https://github.com/bitsdojo/bitsdojo_window/issues/193
+      // Based on code from https://github.com/MixinNetwork/flutter-app/pull/838
+      WidgetsBinding.instance.scheduleFrameCallback((timeStamp) {
+        appWindow.size = appWindow.size + const Offset(0, 1);
+        WidgetsBinding.instance.scheduleFrameCallback((timeStamp) {
+          appWindow.size = appWindow.size + const Offset(0, -1);
+        });
+      });
+    }
     appWindow.show();
   });
 }
