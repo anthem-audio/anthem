@@ -74,7 +74,7 @@ class _ArrangerState extends State<Arranger> {
           (key, value) => MapEntry(key, 1),
         ),
       ),
-      timeView: TimeView(0, 3072),
+      timeView: TimeRange(0, 3072),
     );
 
     ArrangementModel? getModel() =>
@@ -258,9 +258,13 @@ class _ArrangerState extends State<Arranger> {
   }
 }
 
-/// Uses an observer to grab the [TimeView] from the view model and provide it to
-/// the tree. Using a separate widget for this means we can tell the tree about
-/// updates to the [TimeView] without re-rendering [Arranger].
+/// Uses an observer to grab the [TimeRange] from the view model and provide it
+/// to the tree. Using a separate widget for this means we can tell the tree
+/// about updates to the [TimeRange] without re-rendering [Arranger].
+///
+/// We provide the [TimeRange] to the tree because some widgets, such as
+/// [Timeline], are shared between editors, and they need to access the
+/// [TimeRange] via a [Provider].
 class ArrangerTimeViewProvider extends StatelessObserverWidget {
   final Widget? child;
 
@@ -376,7 +380,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
       for (var _ in project.song.trackOrder) {}
     }
 
-    void handleMouseDown(Offset offset, Size editorSize, TimeView timeView) {
+    void handleMouseDown(Offset offset, Size editorSize, TimeRange timeView) {
       if (project.song.activeArrangementID == null ||
           project.song.patternOrder.isEmpty) return;
 

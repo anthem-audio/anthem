@@ -68,7 +68,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, constraints) {
-      final timeView = context.watch<TimeView>();
+      final timeView = context.watch<TimeRange>();
       final project = Provider.of<ProjectModel>(context);
 
       List<TimeSignatureChangeModel> getTimeSignatureChanges() =>
@@ -299,7 +299,7 @@ class _TimelineLabelState extends State<TimelineLabel> {
                 ).dispatch(widget.stableBuildContext);
               },
               onPointerMove: (event) {
-                final timeView = Provider.of<TimeView>(
+                final timeView = Provider.of<TimeRange>(
                     widget.stableBuildContext,
                     listen: false);
                 final time = (event.position.dx - pointerStart) *
@@ -313,7 +313,7 @@ class _TimelineLabelState extends State<TimelineLabel> {
                 ).dispatch(widget.stableBuildContext);
               },
               onPointerUp: (event) {
-                final timeView = Provider.of<TimeView>(
+                final timeView = Provider.of<TimeRange>(
                     widget.stableBuildContext,
                     listen: false);
                 final time = (event.position.dx - pointerStart) *

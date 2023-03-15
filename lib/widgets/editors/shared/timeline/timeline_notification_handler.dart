@@ -57,7 +57,7 @@ class _TimelineNotificationHandlerState
       child: widget.child,
       onNotification: (notification) {
         if (notification is TimelineLabelPointerNotification) {
-          final timeView = Provider.of<TimeView>(context, listen: false);
+          final timeView = Provider.of<TimeRange>(context, listen: false);
           final pattern = project
               .song.patterns.nonObservableInner[project.song.activePatternID];
 

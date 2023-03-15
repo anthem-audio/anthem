@@ -39,5 +39,5 @@ abstract class _PianoRollViewModel with Store {
   double keyValueAtTop;
 
   @observable
-  TimeView timeView;
+  TimeRange timeView;
 }
