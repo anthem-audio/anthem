@@ -24,6 +24,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
@@ -34,8 +35,6 @@ import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll_notification_handler.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll_notifications.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
 import 'package:anthem/widgets/editors/shared/tool_selector.dart';
 import 'package:flutter/widgets.dart';
@@ -101,24 +100,22 @@ class _PianoRollState extends State<PianoRoll> {
           providers: [
             ChangeNotifierProvider(create: (_) => TimeView(0, 3072)),
           ],
-          child: PianoRollNotificationHandler(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(4),
-                color: Theme.panel.main,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(6),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _PianoRollHeader(),
-                    const SizedBox(height: 4),
-                    const Expanded(
-                      child: _PianoRollContent(),
-                    ),
-                  ],
-                ),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              color: Theme.panel.main,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _PianoRollHeader(),
+                  const SizedBox(height: 4),
+                  const Expanded(
+                    child: _PianoRollContent(),
+                  ),
+                ],
               ),
             ),
           ),
@@ -147,16 +144,18 @@ class _PianoRollHeader extends StatelessWidget {
                       AnthemMenuItem(
                         text: "Add time signature change",
                         onSelected: () {
-                          final notification =
-                              PianoRollTimeSignatureChangeAddNotification(
-                            // The height doesn't matter since it's not used
-                            // in handling this notification. We get the
-                            // width from
-                            pianoRollSize: _pianoRollCanvasSize,
-                            time: Provider.of<TimeView>(context, listen: false)
-                                .start,
+                          final controller = Provider.of<PianoRollController>(
+                              context,
+                              listen: false);
+                          final timeView =
+                              Provider.of<TimeView>(context, listen: false);
+
+                          controller.addTimeSignatureChange(
+                            timeSignature: TimeSignatureModel(3, 4),
+                            offset: timeView.start.floor(),
+                            pianoRollWidth: _pianoRollCanvasSize.width,
+                            timeView: timeView,
                           );
-                          notification.dispatch(context);
                         },
                       ),
                     ],

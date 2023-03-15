@@ -23,6 +23,8 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll_events.dart';
+import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 
 class PianoRollController {
@@ -130,8 +132,40 @@ class PianoRollController {
     ));
   }
 
-  void addTimeSignatureChange(TimeSignatureModel timeSignature, Time offset) {
+  void addTimeSignatureChange({
+    required TimeSignatureModel timeSignature,
+    required Time offset,
+    bool snap = true,
+    required TimeView
+        timeView, // TODO: store this in the view model and get it form there
+    required double pianoRollWidth,
+  }) {
     if (project.song.activePatternID == null) return;
+
+    var snappedOffset = offset;
+
+    if (snap) {
+      final pattern = project.song.patterns[project.song.activePatternID]!;
+
+      final divisionChanges = getDivisionChanges(
+        viewWidthInPixels: pianoRollWidth,
+        // TODO: this constant was copied from the minor division changes
+        // getter in piano_roll_grid.dart
+        minPixelsPerSection: 8,
+        snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+        defaultTimeSignature: project.song.defaultTimeSignature,
+        timeSignatureChanges: pattern.timeSignatureChanges,
+        ticksPerQuarter: project.song.ticksPerQuarter,
+        timeViewStart: timeView.start,
+        timeViewEnd: timeView.end,
+      );
+
+      snappedOffset = getSnappedTime(
+        rawTime: offset.floor(),
+        divisionChanges: divisionChanges,
+        roundUp: true,
+      );
+    }
 
     project.execute(
       AddTimeSignatureChangeCommand(
@@ -139,12 +173,51 @@ class PianoRollController {
         project: project,
         patternID: project.song.activePatternID!,
         change: TimeSignatureChangeModel(
-          offset: offset,
+          offset: snappedOffset,
           timeSignature: timeSignature,
         ),
       ),
     );
   }
+
+  void pointerDown(PianoRollPointerDownEvent event) {
+    if (project.song.activePatternID == null) return;
+
+    final eventTime = event.time.floor();
+    if (eventTime < 0) return;
+
+    final pattern = project.song.patterns[project.song.activePatternID]!;
+
+    final divisionChanges = getDivisionChanges(
+      viewWidthInPixels: event.pianoRollSize.width,
+      // TODO: this constant was copied from the minor division changes
+      // getter in piano_roll_grid.dart
+      minPixelsPerSection: 8,
+      snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+      defaultTimeSignature: project.song.defaultTimeSignature,
+      timeSignatureChanges: pattern.timeSignatureChanges,
+      ticksPerQuarter: project.song.ticksPerQuarter,
+      timeViewStart: event.timeView.start,
+      timeViewEnd: event.timeView.end,
+    );
+
+    int targetTime = getSnappedTime(
+      rawTime: eventTime,
+      divisionChanges: divisionChanges,
+    );
+
+    // projectCubit.journalStartEntry();
+    addNote(
+      key: event.note.floor(),
+      velocity: 128,
+      length: 96,
+      offset: targetTime,
+    );
+  }
+
+  void pointerMove(PianoRollPointerMoveEvent event) {}
+
+  void pointerUp(PianoRollPointerUpEvent event) {}
 
   // OLD COMMENTARY:
   // Used to affect the notes in the view model without changing the main
