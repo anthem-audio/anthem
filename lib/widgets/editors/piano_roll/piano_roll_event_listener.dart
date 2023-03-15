@@ -21,6 +21,7 @@ import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_events.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
+import 'package:anthem/widgets/main_window/main_window_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
@@ -197,9 +198,54 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
         maxKeyValue);
   }
 
+  // Scroll
+
+  handleScroll(double delta) {
+    final modifiers = Provider.of<KeyboardModifiers>(context, listen: false);
+    final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
+    final contentRenderBox = context.findRenderObject() as RenderBox;
+
+    if (modifiers.shift) {
+      // We need to scroll by the same speed in pixels, regardless of how
+      // zoomed in we are. Since our current scroll position is in time and not
+      // pixels, we use this value to convert between the two.
+      final ticksPerPixel =
+          viewModel.timeView.width / contentRenderBox.size.width;
+
+      const scrollAmountInPixels = 100;
+
+      var scrollAmountInTicks =
+          delta * 0.01 * scrollAmountInPixels * ticksPerPixel;
+
+      if (viewModel.timeView.start + scrollAmountInTicks < 0) {
+        scrollAmountInTicks = -viewModel.timeView.start;
+      }
+
+      viewModel.timeView.start += scrollAmountInTicks;
+      viewModel.timeView.end += scrollAmountInTicks;
+    } else {
+      final keysPerPixel = 1 / viewModel.keyHeight;
+
+      const scrollAmountInPixels = 100;
+
+      final scrollAmountInKeys =
+          -delta * 0.01 * scrollAmountInPixels * keysPerPixel;
+
+      viewModel.keyValueAtTop = clampDouble(
+          viewModel.keyValueAtTop + scrollAmountInKeys,
+          minKeyValue + (contentRenderBox.size.height / viewModel.keyHeight),
+          maxKeyValue);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Listener(
+      onPointerSignal: (e) {
+        if (e is PointerScrollEvent) {
+          handleScroll(e.scrollDelta.dy);
+        }
+      },
       onPointerDown: (e) {
         handlePointerDown(context, e);
       },
