@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
@@ -76,7 +78,16 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
       void handleScroll(double delta, double mouseX) {
         final timeViewWidth = timeView.width;
-        final timeViewSizeChange = timeViewWidth * 0.008 * delta;
+
+        // Convert the time view width to log. Converting to log means we can
+        // adjust the size by adding or subtracting a constant value, and it
+        // feels right. It also means that zooming in by one tick and then
+        // zooming out by one tick gets you back to the exact same position.
+        final timeViewWidthLog = log(timeViewWidth);
+        final newTimeViewWidthLog = timeViewWidthLog + delta * 0.0025;
+        final newTimeViewWidth = pow(e, newTimeViewWidthLog);
+
+        final timeViewSizeChange = newTimeViewWidth - timeViewWidth;
 
         final mouseCursorOffset = mouseX / constraints.maxWidth;
 
