@@ -85,12 +85,16 @@ class _PianoRollState extends State<PianoRoll> {
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
 
-    controller ??= PianoRollController(project: project);
     viewModel ??= PianoRollViewModel(
       keyHeight: 20,
       // Hack: cuts off the top horizontal line. Otherwise the default view looks off
       keyValueAtTop: 63.95,
       timeView: TimeRange(0, 3072),
+    );
+
+    controller ??= PianoRollController(
+      project: project,
+      viewModel: viewModel!,
     );
 
     return Provider.value(

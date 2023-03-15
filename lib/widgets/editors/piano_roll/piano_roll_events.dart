@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
 
 abstract class PianoRollEvent {
@@ -45,15 +44,11 @@ abstract class PianoRollPointerEvent extends PianoRollEvent {
 }
 
 class PianoRollPointerDownEvent extends PianoRollPointerEvent {
-  final TimeRange
-      timeView; // TODO: Refactor this so TimeView is in the view model
-
   PianoRollPointerDownEvent({
     required double note,
     required double time,
     required PointerDownEvent event,
     required Size pianoRollSize,
-    required this.timeView,
   }) : super(
           note: note,
           time: time,
