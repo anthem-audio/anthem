@@ -31,6 +31,7 @@ import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 
 /// These are the possible states that the piano roll can have during event
 /// handing. The current state tells the controller how to handle incoming
@@ -75,6 +76,14 @@ class PianoRollController {
       _singleNoteMoveNoteOffset; // difference between the start of the note and the cursor Y, in notes
   Time? _singleNoteMoveStartTime;
   int? _singleNoteMoveStartKey;
+
+  // Data for deleting state
+  /// We ignore notes under the cursor, except the topmost one, until the user
+  /// moves the mouse off the note and back on. This means that the user
+  /// doesn't right click to delete an overlapping note, accidentally move the
+  /// mouse by one pixel, and delete additional notes.
+  Set<NoteModel>? _deleteNotesToTemporarilyIgnore;
+  Set<NoteModel>? _deleteNotesDeleted;
 
   PianoRollController({
     required this.project,
@@ -233,16 +242,13 @@ class PianoRollController {
     );
   }
 
-  void pointerDown(PianoRollPointerDownEvent event) {
-    if (project.song.activePatternID == null ||
-        project.activeGeneratorID == null) return;
-
+  void leftPointerDown(PianoRollPointerDownEvent event) {
     final pattern = project.song.patterns[project.song.activePatternID]!;
 
     void setSingleMoveNoteInfo(NoteModel note) {
       _singleNoteMoveNote = note;
       _singleNoteMoveTimeOffset = event.offset - note.offset;
-      _singleNoteMoveNoteOffset = event.key - note.key;
+      _singleNoteMoveNoteOffset = 0.5;
       _singleNoteMoveStartTime = note.offset;
       _singleNoteMoveStartKey = note.key;
     }
@@ -293,6 +299,42 @@ class PianoRollController {
     setSingleMoveNoteInfo(note);
   }
 
+  void rightPointerDown(PianoRollPointerDownEvent event) {
+    _eventHandlingState = EventHandlingState.deleting;
+
+    project.startJournalPage();
+
+    final pattern = project.song.patterns[project.song.activePatternID]!;
+    final notes = pattern.notes[project.activeGeneratorID]!;
+
+    _deleteNotesDeleted = {};
+    _deleteNotesToTemporarilyIgnore = {};
+
+    if (event.noteUnderCursor != null) {
+      notes.removeWhere((note) {
+        final remove = note.id == event.noteUnderCursor;
+        if (remove) _deleteNotesDeleted!.add(note);
+        return remove;
+      });
+
+      _deleteNotesToTemporarilyIgnore =
+          getNotesUnderCursor(notes, event.key, event.offset).toSet();
+    }
+  }
+
+  void pointerDown(PianoRollPointerDownEvent event) {
+    if (project.song.activePatternID == null ||
+        project.activeGeneratorID == null) return;
+
+    if (event.pointerEvent.buttons & kPrimaryMouseButton ==
+        kPrimaryMouseButton) {
+      leftPointerDown(event);
+    } else if (event.pointerEvent.buttons & kSecondaryButton ==
+        kSecondaryMouseButton) {
+      rightPointerDown(event);
+    }
+  }
+
   void pointerMove(PianoRollPointerMoveEvent event) {
     if (_eventHandlingState == EventHandlingState.movingSingleNote) {
       final key = event.key - _singleNoteMoveNoteOffset!;
@@ -319,8 +361,39 @@ class PianoRollController {
       );
 
       _singleNoteMoveNote!.key =
-          clampDouble(key, minKeyValue, maxKeyValue).floor();
+          clampDouble(key, minKeyValue, maxKeyValue).round();
       _singleNoteMoveNote!.offset = max(targetTime, 0);
+    } else if (_eventHandlingState == EventHandlingState.deleting) {
+      // TODO: When dragging the mouse quickly, we may not get an event for
+      // every note we need to delete. We should draw a line between this and
+      // the previous event point, and delete all notes that intersect that
+      // line.
+
+      final pattern = project.song.patterns[project.song.activePatternID]!;
+      final notes = pattern.notes[project.activeGeneratorID]!;
+      final notesUnderCursor =
+          getNotesUnderCursor(notes, event.key, event.offset);
+
+      final notesToRemove = <NoteModel>[];
+
+      for (final note in _deleteNotesToTemporarilyIgnore!) {
+        if (!notesUnderCursor.contains(note)) {
+          notesToRemove.add(note);
+        }
+      }
+
+      for (final note in notesToRemove) {
+        _deleteNotesToTemporarilyIgnore!.remove(note);
+      }
+
+      for (final note in notesUnderCursor) {
+        if (_deleteNotesToTemporarilyIgnore!.contains(note)) {
+          continue;
+        } else {
+          notes.remove(note);
+          _deleteNotesDeleted!.add(note);
+        }
+      }
     }
   }
 
@@ -343,6 +416,17 @@ class PianoRollController {
       // Push the command, but don't execute it, since the note is already
       // moved
       project.push(command);
+    } else if (_eventHandlingState == EventHandlingState.deleting) {
+      for (final note in _deleteNotesDeleted!) {
+        final command = DeleteNoteCommand(
+          project: project,
+          patternID: project.song.activePatternID!,
+          generatorID: project.activeGeneratorID!,
+          note: note,
+        );
+
+        project.push(command);
+      }
     }
 
     project.commitJournalPage();
@@ -351,7 +435,22 @@ class PianoRollController {
     _singleNoteMoveNoteOffset = null;
     _singleNoteMoveTimeOffset = null;
 
+    _deleteNotesToTemporarilyIgnore = null;
+
     _eventHandlingState = EventHandlingState.idle;
+  }
+
+  // Helper functions
+
+  List<NoteModel> getNotesUnderCursor(
+      List<NoteModel> notes, double key, double offset) {
+    final keyFloor = key.floor();
+
+    return notes.where((note) {
+      return offset >= note.offset &&
+          offset < note.offset + note.length &&
+          keyFloor == note.key;
+    }).toList();
   }
 
   // OLD COMMENTARY:
