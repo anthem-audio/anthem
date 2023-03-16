@@ -81,20 +81,7 @@ abstract class _PatternModel extends Hydratable with Store {
       hue: 0,
       saturationMultiplier: 0,
     );
-    timeSignatureChanges = ObservableList.of([
-      TimeSignatureChangeModel(
-        offset: 0,
-        timeSignature: TimeSignatureModel(4, 4),
-      ),
-      TimeSignatureChangeModel(
-        offset: 127,
-        timeSignature: TimeSignatureModel(3, 4),
-      ),
-      TimeSignatureChangeModel(
-        offset: 96 * 7,
-        timeSignature: TimeSignatureModel(7, 8),
-      ),
-    ]);
+    timeSignatureChanges = ObservableList();
     hydrate(project: project);
   }
 
