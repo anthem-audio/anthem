@@ -276,6 +276,9 @@ class _PianoRollContentState extends State<_PianoRollContent>
     super.dispose();
   }
 
+  /// See [PianoRollEventListener] for details on what this is for.
+  List<ID> notesUnderCursorDuringEventHandling = [];
+
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
@@ -372,6 +375,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
       child: LayoutBuilder(builder: (context, constraints) {
         _pianoRollCanvasSize = constraints.biggest;
         return PianoRollEventListener(
+          notesUnderCursor: notesUnderCursorDuringEventHandling,
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -397,11 +401,22 @@ class _PianoRollContentState extends State<_PianoRollContent>
                                   ?.toList() ??
                               [];
 
+                          // Observe all note values
+                          for (var note in notes) {
+                            note.key;
+                            note.length;
+                            note.offset;
+                          }
+
                           final noteWidgets = notes
                               .map(
                                 (note) => LayoutId(
                                   id: note.id,
-                                  child: NoteWidget(noteID: note.id),
+                                  child: NoteWidget(
+                                    noteID: note.id,
+                                    notesUnderCursor:
+                                        notesUnderCursorDuringEventHandling,
+                                  ),
                                 ),
                               )
                               .toList();
@@ -589,7 +604,7 @@ class NoteLayoutDelegate extends MultiChildLayoutDelegate {
   bool shouldRelayout(covariant NoteLayoutDelegate oldDelegate) {
     if (oldDelegate.timeViewStart != timeViewStart ||
         oldDelegate.timeViewEnd != timeViewEnd ||
-        oldDelegate.notes.length != notes.length ||
+        oldDelegate.notes != notes ||
         oldDelegate.keyHeight != keyHeight ||
         oldDelegate.keyValueAtTop != keyValueAtTop) return true;
     for (var i = 0; i < notes.length; i++) {
@@ -608,9 +623,16 @@ class NoteLayoutDelegate extends MultiChildLayoutDelegate {
 }
 
 class NoteWidget extends StatefulWidget {
-  const NoteWidget({Key? key, required this.noteID}) : super(key: key);
+  const NoteWidget({
+    Key? key,
+    required this.noteID,
+    required this.notesUnderCursor,
+  }) : super(key: key);
 
   final ID noteID;
+
+  /// See [PianoRollEventListener] for details on what this is for.
+  final List<ID> notesUnderCursor;
 
   @override
   State<NoteWidget> createState() => _NoteWidgetState();
@@ -622,22 +644,15 @@ class _NoteWidgetState extends State<NoteWidget> {
   @override
   Widget build(BuildContext context) {
     return Listener(
-      // TODO: Send off notification on focus loss (?) or people will be very confused maybe
       onPointerDown: (e) {
-        // NotePointerNotification(
-        //   isRightClick: e.buttons == kSecondaryMouseButton,
-        //   pressed: true,
-        //   noteID: 1,
-        // ).dispatch(context);
-        // PianoRollNotification().dispatch(context);
+        widget.notesUnderCursor.add(widget.noteID);
       },
-      // onPointerUp: (e) {
-      //   NotePointerNotification(
-      //     isRightClick: e.buttons == kSecondaryMouseButton,
-      //     pressed: false,
-      //     noteID: 1,
-      //   ).dispatch(context);
-      // },
+      onPointerMove: (e) {
+        widget.notesUnderCursor.add(widget.noteID);
+      },
+      onPointerUp: (e) {
+        widget.notesUnderCursor.add(widget.noteID);
+      },
       child: MouseRegion(
         onEnter: (e) {
           setState(() {

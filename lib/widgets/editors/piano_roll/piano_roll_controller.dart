@@ -17,20 +17,64 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
 import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/commands/timeline_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_events.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:flutter/foundation.dart';
+
+/// These are the possible states that the piano roll can have during event
+/// handing. The current state tells the controller how to handle incoming
+/// pointer events.
+enum EventHandlingState {
+  /// Nothing is happening right now.
+  idle,
+
+  /// A single note is being moved.
+  movingSingleNote,
+
+  /// A selection of notes are being moved.
+  movingSelection,
+
+  /// An additive selection box is being drawn. Notes under this box will be
+  /// added to the current selection.
+  creatingAdditiveSelectionBox,
+
+  /// A subtractive selection box is being drawn. Notes under this box will be
+  /// removed from the current selection if they are selected.
+  creatingSubtractiveSelectionBox,
+
+  /// Notes under the cursor are being deleted.
+  deleting,
+}
 
 class PianoRollController {
   final ProjectModel project;
   final PianoRollViewModel viewModel;
+
+  // Fields for event handling
+  // Would be nice to replace some of these groups with records when records
+  // are stabilized in Dart 3
+
+  EventHandlingState _eventHandlingState = EventHandlingState.idle;
+
+  // Data for single note move state
+  NoteModel? _singleNoteMoveNote;
+  double?
+      _singleNoteMoveTimeOffset; // difference between the start of the note and the cursor X, in time
+  double?
+      _singleNoteMoveNoteOffset; // difference between the start of the note and the cursor Y, in notes
+  Time? _singleNoteMoveStartTime;
+  int? _singleNoteMoveStartKey;
 
   PianoRollController({
     required this.project,
@@ -49,7 +93,7 @@ class PianoRollController {
     return note;
   }
 
-  void addNote({
+  NoteModel addNote({
     required int key,
     required int velocity,
     required int length,
@@ -57,20 +101,24 @@ class PianoRollController {
   }) {
     if (project.song.activePatternID == null ||
         project.activeGeneratorID == null) {
-      return;
+      throw Exception('Active pattern and/or active generator are not set');
     }
+
+    final note = NoteModel(
+      key: key,
+      velocity: velocity,
+      length: length,
+      offset: offset,
+    );
 
     project.execute(AddNoteCommand(
       project: project,
       patternID: project.song.activePatternID!,
       generatorID: project.activeGeneratorID!,
-      note: NoteModel(
-        key: key,
-        velocity: velocity,
-        length: length,
-        offset: offset,
-      ),
+      note: note,
     ));
+
+    return note;
   }
 
   void resizeNote({
@@ -186,12 +234,34 @@ class PianoRollController {
   }
 
   void pointerDown(PianoRollPointerDownEvent event) {
-    if (project.song.activePatternID == null) return;
-
-    final eventTime = event.time.floor();
-    if (eventTime < 0) return;
+    if (project.song.activePatternID == null ||
+        project.activeGeneratorID == null) return;
 
     final pattern = project.song.patterns[project.song.activePatternID]!;
+
+    void setSingleMoveNoteInfo(NoteModel note) {
+      _singleNoteMoveNote = note;
+      _singleNoteMoveTimeOffset = event.offset - note.offset;
+      _singleNoteMoveNoteOffset = event.key - note.key;
+      _singleNoteMoveStartTime = note.offset;
+      _singleNoteMoveStartKey = note.key;
+    }
+
+    if (event.noteUnderCursor != null) {
+      _eventHandlingState = EventHandlingState.movingSingleNote;
+
+      final note = pattern.notes[project.activeGeneratorID]!
+          .firstWhere((element) => element.id == event.noteUnderCursor);
+
+      setSingleMoveNoteInfo(note);
+
+      return;
+    }
+
+    _eventHandlingState = EventHandlingState.movingSingleNote;
+
+    final eventTime = event.offset.floor();
+    if (eventTime < 0) return;
 
     final divisionChanges = getDivisionChanges(
       viewWidthInPixels: event.pianoRollSize.width,
@@ -211,18 +281,78 @@ class PianoRollController {
       divisionChanges: divisionChanges,
     );
 
-    // projectCubit.journalStartEntry();
-    addNote(
-      key: event.note.floor(),
+    project.startJournalPage();
+
+    final note = addNote(
+      key: event.key.floor(),
       velocity: 128,
       length: 96,
       offset: targetTime,
     );
+
+    setSingleMoveNoteInfo(note);
   }
 
-  void pointerMove(PianoRollPointerMoveEvent event) {}
+  void pointerMove(PianoRollPointerMoveEvent event) {
+    if (_eventHandlingState == EventHandlingState.movingSingleNote) {
+      final key = event.key - _singleNoteMoveNoteOffset!;
+      final offset = event.offset - _singleNoteMoveTimeOffset!;
 
-  void pointerUp(PianoRollPointerUpEvent event) {}
+      final pattern = project.song.patterns[project.song.activePatternID]!;
+
+      final divisionChanges = getDivisionChanges(
+        viewWidthInPixels: event.pianoRollSize.width,
+        // TODO: this constant was copied from the minor division changes
+        // getter in piano_roll_grid.dart
+        minPixelsPerSection: 8,
+        snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+        defaultTimeSignature: project.song.defaultTimeSignature,
+        timeSignatureChanges: pattern.timeSignatureChanges,
+        ticksPerQuarter: project.song.ticksPerQuarter,
+        timeViewStart: viewModel.timeView.start,
+        timeViewEnd: viewModel.timeView.end,
+      );
+
+      int targetTime = getSnappedTime(
+        rawTime: offset.floor(),
+        divisionChanges: divisionChanges,
+      );
+
+      _singleNoteMoveNote!.key =
+          clampDouble(key, minKeyValue, maxKeyValue).floor();
+      _singleNoteMoveNote!.offset = max(targetTime, 0);
+    }
+  }
+
+  void pointerUp(PianoRollPointerUpEvent event) {
+    if (_eventHandlingState == EventHandlingState.movingSingleNote) {
+      // We already moved this note to its target position. Now, we create a
+      // command to move it from its original position to the target position,
+      // which will be used for undo/redo.
+      final command = MoveNoteCommand(
+        project: project,
+        patternID: project.song.activePatternID!,
+        generatorID: project.activeGeneratorID!,
+        noteID: _singleNoteMoveNote!.id,
+        oldKey: _singleNoteMoveStartKey!,
+        newKey: _singleNoteMoveNote!.key,
+        oldOffset: _singleNoteMoveStartTime!,
+        newOffset: _singleNoteMoveNote!.offset,
+      );
+
+      // Push the command, but don't execute it, since the note is already
+      // moved
+      project.push(command);
+    }
+
+    project.commitJournalPage();
+
+    _singleNoteMoveNote = null;
+    _singleNoteMoveNoteOffset = null;
+    _singleNoteMoveTimeOffset = null;
+
+    _eventHandlingState = EventHandlingState.idle;
+  }
 
   // OLD COMMENTARY:
   // Used to affect the notes in the view model without changing the main
