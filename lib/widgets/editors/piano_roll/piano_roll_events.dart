@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:flutter/widgets.dart';
 
 abstract class PianoRollEvent {
@@ -27,69 +28,72 @@ abstract class PianoRollEvent {
 
 abstract class PianoRollPointerEvent extends PianoRollEvent {
   PianoRollPointerEvent({
-    required this.note,
-    required this.time,
-    required this.event,
+    required this.key,
+    required this.offset,
+    required this.pointerEvent,
     required Size pianoRollSize,
   }) : super(pianoRollSize: pianoRollSize);
 
   // MIDI note at cursor. Fraction indicates position in note.
-  final double note;
+  final double key;
 
   // Time at cursor. Fraction indicates position within tick.
-  final double time;
+  final double offset;
 
   // Determines if this is caused by a right click.
-  final PointerEvent event;
+  final PointerEvent pointerEvent;
 }
 
 class PianoRollPointerDownEvent extends PianoRollPointerEvent {
+  final ID? noteUnderCursor;
+
   PianoRollPointerDownEvent({
-    required double note,
-    required double time,
-    required PointerDownEvent event,
+    required double key,
+    required double offset,
+    required PointerDownEvent pointerEvent,
     required Size pianoRollSize,
+    required this.noteUnderCursor,
   }) : super(
-          note: note,
-          time: time,
-          event: event,
+          key: key,
+          offset: offset,
+          pointerEvent: pointerEvent,
           pianoRollSize: pianoRollSize,
         );
 }
 
 class PianoRollPointerMoveEvent extends PianoRollPointerEvent {
   PianoRollPointerMoveEvent({
-    required double note,
-    required double time,
-    required PointerMoveEvent event,
+    required double key,
+    required double offset,
+    required PointerMoveEvent pointerEvent,
     required Size pianoRollSize,
   }) : super(
-          note: note,
-          time: time,
-          event: event,
+          key: key,
+          offset: offset,
+          pointerEvent: pointerEvent,
           pianoRollSize: pianoRollSize,
         );
 }
 
 class PianoRollPointerUpEvent extends PianoRollPointerEvent {
   PianoRollPointerUpEvent({
-    required double note,
-    required double time,
-    required PointerUpEvent event,
+    required double key,
+    required double offset,
+    required PointerUpEvent pointerEvent,
     required Size pianoRollSize,
   }) : super(
-          note: note,
-          time: time,
-          event: event,
+          key: key,
+          offset: offset,
+          pointerEvent: pointerEvent,
           pianoRollSize: pianoRollSize,
         );
 }
 
 class PianoRollTimeSignatureChangeAddEvent extends PianoRollEvent {
-  double time;
+  double offset;
 
   PianoRollTimeSignatureChangeAddEvent({
     required Size pianoRollSize,
-    required this.time,
+    required this.offset,
   }) : super(pianoRollSize: pianoRollSize);
 }

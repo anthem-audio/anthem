@@ -17,11 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_events.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
 import 'package:anthem/widgets/main_window/main_window_controller.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
@@ -33,8 +35,22 @@ import 'helpers.dart';
 class PianoRollEventListener extends StatefulWidget {
   final Widget child;
 
-  const PianoRollEventListener({Key? key, required this.child})
-      : super(key: key);
+  /// Flutter sends pointer events to the innermost [Listener] first, and then
+  /// moves up the tree. We use this fact to our advantage here; this list is
+  /// passed to all note widgets, and they have listeners that add their note
+  /// IDs to this list. It is the responsibility of the
+  /// [PianoRollEventListener] to clear this list at the end of each event
+  /// handler.
+  ///
+  /// The result is that, during event handling, this list contains a list of
+  /// note IDs for notes that are currently under the pointer.
+  final List<ID> notesUnderCursor;
+
+  const PianoRollEventListener({
+    Key? key,
+    required this.child,
+    required this.notesUnderCursor,
+  }) : super(key: key);
 
   @override
   State<PianoRollEventListener> createState() => _PianoRollEventListenerState();
@@ -42,6 +58,8 @@ class PianoRollEventListener extends StatefulWidget {
 
 class _PianoRollEventListenerState extends State<PianoRollEventListener> {
   handlePointerDown(BuildContext context, PointerDownEvent e) {
+    final noteUnderCursor = widget.notesUnderCursor.firstOrNull;
+
     final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
     final contentRenderBox = context.findRenderObject() as RenderBox;
     final pointerPos = contentRenderBox.globalToLocal(e.position);
@@ -73,10 +91,11 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
     );
 
     final event = PianoRollPointerDownEvent(
-      note: note,
-      time: time,
-      event: e,
+      key: note,
+      offset: time,
+      pointerEvent: e,
       pianoRollSize: contentRenderBox.size,
+      noteUnderCursor: noteUnderCursor,
     );
 
     controller.pointerDown(event);
@@ -101,16 +120,16 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
     final controller = Provider.of<PianoRollController>(context, listen: false);
 
     final event = PianoRollPointerMoveEvent(
-      note: pixelsToKeyValue(
+      key: pixelsToKeyValue(
           keyHeight: viewModel.keyHeight,
           keyValueAtTop: viewModel.keyValueAtTop,
           pixelOffsetFromTop: pointerPos.dy),
-      time: pixelsToTime(
+      offset: pixelsToTime(
           timeViewStart: viewModel.timeView.start,
           timeViewEnd: viewModel.timeView.end,
           viewPixelWidth: context.size?.width ?? 1,
           pixelOffsetFromLeft: pointerPos.dx),
-      event: e,
+      pointerEvent: e,
       pianoRollSize: contentRenderBox.size,
     );
 
@@ -124,16 +143,16 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
     final pointerPos = contentRenderBox.globalToLocal(e.position);
 
     final event = PianoRollPointerUpEvent(
-      note: pixelsToKeyValue(
+      key: pixelsToKeyValue(
           keyHeight: viewModel.keyHeight,
           keyValueAtTop: viewModel.keyValueAtTop,
           pixelOffsetFromTop: pointerPos.dy),
-      time: pixelsToTime(
+      offset: pixelsToTime(
           timeViewStart: viewModel.timeView.start,
           timeViewEnd: viewModel.timeView.end,
           viewPixelWidth: context.size?.width ?? 1,
           pixelOffsetFromLeft: pointerPos.dx),
-      event: e,
+      pointerEvent: e,
       pianoRollSize: contentRenderBox.size,
     );
 
@@ -264,15 +283,19 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
         if (e is PointerScrollEvent) {
           handleScroll(e);
         }
+        widget.notesUnderCursor.clear();
       },
       onPointerDown: (e) {
         handlePointerDown(context, e);
+        widget.notesUnderCursor.clear();
       },
       onPointerMove: (e) {
         handlePointerMove(context, e);
+        widget.notesUnderCursor.clear();
       },
       onPointerUp: (e) {
         handlePointerUp(context, e);
+        widget.notesUnderCursor.clear();
       },
       child: widget.child,
     );
