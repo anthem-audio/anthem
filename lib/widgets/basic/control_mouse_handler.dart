@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,9 +19,12 @@
 
 // TODO: Handle overshoot
 
+import 'package:anthem/widgets/main_window/main_window_controller.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:provider/provider.dart';
 
 class ControlMouseEvent {
   Offset delta;
@@ -220,7 +223,8 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
         }
 
         if (xJumpDirection != null || yJumpDirection != null) {
-          // TODO: Since we abandoned the Rust backend, we need a new platform
+          // TODO: Since we abandoned the Rust backend, we need a new way to
+          // set the mouse cursor.
 
           // var x = mouseX;
           // var y = mouseY;
@@ -246,14 +250,37 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
 
         widget.onChange?.call(
           ControlMouseEvent(
-            delta: Offset(isWaitingForHorizontalJump ? 0 : dx,
-                isWaitingForVerticalJump ? 0 : -dy),
+            delta: Offset(
+              isWaitingForHorizontalJump ? 0 : dx,
+              isWaitingForVerticalJump ? 0 : -dy,
+            ),
             absolute: Offset(accumulatorX, -accumulatorY),
           ),
         );
 
         mostRecentMouseX = mouseX;
         mostRecentMouseY = mouseY;
+      },
+      onPointerSignal: (e) {
+        if (e is PointerScrollEvent) {
+          final keyboardModifiers =
+              Provider.of<KeyboardModifiers>(context, listen: false);
+
+          final dxRaw = -e.scrollDelta.dx * 0.35;
+          final dyRaw = -e.scrollDelta.dy * 0.35;
+
+          final dx = keyboardModifiers.shift ? dyRaw : dxRaw;
+          final dy = keyboardModifiers.shift ? dxRaw : dyRaw;
+
+          final event = ControlMouseEvent(
+            delta: Offset(dx, dy),
+            absolute: Offset(dx, dy),
+          );
+
+          widget.onStart?.call();
+          widget.onChange?.call(event);
+          widget.onEnd?.call(event);
+        }
       },
       child: widget.child,
     );
