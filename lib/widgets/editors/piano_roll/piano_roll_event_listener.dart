@@ -200,11 +200,28 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
 
   // Scroll
 
-  handleScroll(double delta) {
+  handleScroll(PointerScrollEvent e) {
+    final delta = e.scrollDelta.dy;
+
     final modifiers = Provider.of<KeyboardModifiers>(context, listen: false);
     final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
     final contentRenderBox = context.findRenderObject() as RenderBox;
 
+    // Zoom
+    if (modifiers.ctrl) {
+      final pointerPos = contentRenderBox.globalToLocal(e.position);
+
+      zoomTimeView(
+        timeView: viewModel.timeView,
+        delta: delta,
+        mouseX: pointerPos.dx,
+        editorWidth: contentRenderBox.size.width,
+      );
+
+      return;
+    }
+
+    // Horizontal scroll
     if (modifiers.shift) {
       // We need to scroll by the same speed in pixels, regardless of how
       // zoomed in we are. Since our current scroll position is in time and not
@@ -223,19 +240,21 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
 
       viewModel.timeView.start += scrollAmountInTicks;
       viewModel.timeView.end += scrollAmountInTicks;
-    } else {
-      final keysPerPixel = 1 / viewModel.keyHeight;
-
-      const scrollAmountInPixels = 100;
-
-      final scrollAmountInKeys =
-          -delta * 0.01 * scrollAmountInPixels * keysPerPixel;
-
-      viewModel.keyValueAtTop = clampDouble(
-          viewModel.keyValueAtTop + scrollAmountInKeys,
-          minKeyValue + (contentRenderBox.size.height / viewModel.keyHeight),
-          maxKeyValue);
+      return;
     }
+
+    // Vertical scroll
+    final keysPerPixel = 1 / viewModel.keyHeight;
+
+    const scrollAmountInPixels = 100;
+
+    final scrollAmountInKeys =
+        -delta * 0.01 * scrollAmountInPixels * keysPerPixel;
+
+    viewModel.keyValueAtTop = clampDouble(
+        viewModel.keyValueAtTop + scrollAmountInKeys,
+        minKeyValue + (contentRenderBox.size.height / viewModel.keyHeight),
+        maxKeyValue);
   }
 
   @override
@@ -243,7 +262,7 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
     return Listener(
       onPointerSignal: (e) {
         if (e is PointerScrollEvent) {
-          handleScroll(e.scrollDelta.dy);
+          handleScroll(e);
         }
       },
       onPointerDown: (e) {
