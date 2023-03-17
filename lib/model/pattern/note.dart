@@ -51,6 +51,10 @@ abstract class _NoteModel with Store {
   @observable
   int offset;
 
+  @observable
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  bool isPressed = false;
+
   _NoteModel({
     required this.key,
     required this.velocity,
