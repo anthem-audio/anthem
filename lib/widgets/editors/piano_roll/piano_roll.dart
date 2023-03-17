@@ -413,7 +413,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
                                 (note) => LayoutId(
                                   id: note.id,
                                   child: NoteWidget(
-                                    noteID: note.id,
+                                    note: note,
                                     notesUnderCursor:
                                         notesUnderCursorDuringEventHandling,
                                   ),
@@ -622,14 +622,14 @@ class NoteLayoutDelegate extends MultiChildLayoutDelegate {
   }
 }
 
-class NoteWidget extends StatefulWidget {
+class NoteWidget extends StatefulObserverWidget {
   const NoteWidget({
     Key? key,
-    required this.noteID,
+    required this.note,
     required this.notesUnderCursor,
   }) : super(key: key);
 
-  final ID noteID;
+  final NoteModel note;
 
   /// See [PianoRollEventListener] for details on what this is for.
   final List<ID> notesUnderCursor;
@@ -643,15 +643,28 @@ class _NoteWidgetState extends State<NoteWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final saturation = widget.note.isPressed
+        ? 0.6
+        : isHovered
+            ? 0.4
+            : 0.46;
+    final lightness = widget.note.isPressed
+        ? 0.22
+        : isHovered
+            ? 0.35
+            : 0.31;
+
+    final color = HSLColor.fromAHSL(1, 166, saturation, lightness).toColor();
+
     return Listener(
       onPointerDown: (e) {
-        widget.notesUnderCursor.add(widget.noteID);
+        widget.notesUnderCursor.add(widget.note.id);
       },
       onPointerMove: (e) {
-        widget.notesUnderCursor.add(widget.noteID);
+        widget.notesUnderCursor.add(widget.note.id);
       },
       onPointerUp: (e) {
-        widget.notesUnderCursor.add(widget.noteID);
+        widget.notesUnderCursor.add(widget.note.id);
       },
       child: MouseRegion(
         onEnter: (e) {
@@ -666,9 +679,7 @@ class _NoteWidgetState extends State<NoteWidget> {
         },
         child: Container(
           decoration: BoxDecoration(
-            color: HSLColor.fromAHSL(
-                    1, 166, isHovered ? 0.4 : 0.46, isHovered ? 0.35 : 0.31)
-                .toColor(),
+            color: color,
             borderRadius: const BorderRadius.all(Radius.circular(1)),
           ),
         ),
