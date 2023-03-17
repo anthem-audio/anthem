@@ -1,7 +1,7 @@
 name: Build Anthem
 on: [push]
 jobs:
-  Lint-and-Build:
+  build:
     runs-on: [windows-latest]
     steps:
       - name: Check out Anthem
@@ -28,12 +28,15 @@ jobs:
         run: flutter pub run build_runner build
 
       # Check for formatting in Flutter project
-      - name: Format Flutter project
+      - name: Format Flutter code
         run: flutter format . --set-exit-if-changed -o none
 
       # Lint Flutter project
-      - name: Lint Flutter project
+      - name: Lint Flutter code
         run: flutter analyze
+      
+      - name: Test Flutter code
+        run: flutter test .
 
       # Build Flutter project
       - name: Build Flutter project

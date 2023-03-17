@@ -28,6 +28,7 @@ import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_events.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
+import 'package:anthem/widgets/editors/shared/helpers/box_intersection.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/foundation.dart';
@@ -84,6 +85,7 @@ class PianoRollController {
   /// mouse by one pixel, and delete additional notes.
   Set<NoteModel>? _deleteNotesToTemporarilyIgnore;
   Set<NoteModel>? _deleteNotesDeleted;
+  Point? _deleteMostRecentPoint;
 
   PianoRollController({
     required this.project,
@@ -302,6 +304,8 @@ class PianoRollController {
   void rightPointerDown(PianoRollPointerDownEvent event) {
     _eventHandlingState = EventHandlingState.deleting;
 
+    _deleteMostRecentPoint = Point(event.offset, event.key);
+
     project.startJournalPage();
 
     final pattern = project.song.patterns[project.song.activePatternID]!;
@@ -318,7 +322,7 @@ class PianoRollController {
       });
 
       _deleteNotesToTemporarilyIgnore =
-          getNotesUnderCursor(notes, event.key, event.offset).toSet();
+          _getNotesUnderCursor(notes, event.key, event.offset).toSet();
     }
   }
 
@@ -364,20 +368,33 @@ class PianoRollController {
           clampDouble(key, minKeyValue, maxKeyValue).round();
       _singleNoteMoveNote!.offset = max(targetTime, 0);
     } else if (_eventHandlingState == EventHandlingState.deleting) {
-      // TODO: When dragging the mouse quickly, we may not get an event for
-      // every note we need to delete. We should draw a line between this and
-      // the previous event point, and delete all notes that intersect that
-      // line.
-
       final pattern = project.song.patterns[project.song.activePatternID]!;
       final notes = pattern.notes[project.activeGeneratorID]!;
-      final notesUnderCursor =
-          getNotesUnderCursor(notes, event.key, event.offset);
+
+      final thisPoint = Point(event.offset, event.key);
+
+      final notesUnderCursorPath = notes
+          .where(
+            (note) =>
+                boxesIntersect(
+                  _deleteMostRecentPoint!,
+                  thisPoint,
+                  Point(note.offset, note.key),
+                  Point(note.offset + note.length, note.key + 1),
+                ) &&
+                lineIntersectsBox(
+                  _deleteMostRecentPoint!,
+                  thisPoint,
+                  Point(note.offset, note.key),
+                  Point(note.offset + note.length, note.key + 1),
+                ),
+          )
+          .toList();
 
       final notesToRemove = <NoteModel>[];
 
       for (final note in _deleteNotesToTemporarilyIgnore!) {
-        if (!notesUnderCursor.contains(note)) {
+        if (!notesUnderCursorPath.contains(note)) {
           notesToRemove.add(note);
         }
       }
@@ -386,7 +403,7 @@ class PianoRollController {
         _deleteNotesToTemporarilyIgnore!.remove(note);
       }
 
-      for (final note in notesUnderCursor) {
+      for (final note in notesUnderCursorPath) {
         if (_deleteNotesToTemporarilyIgnore!.contains(note)) {
           continue;
         } else {
@@ -394,6 +411,8 @@ class PianoRollController {
           _deleteNotesDeleted!.add(note);
         }
       }
+
+      _deleteMostRecentPoint = thisPoint;
     }
   }
 
@@ -436,13 +455,15 @@ class PianoRollController {
     _singleNoteMoveTimeOffset = null;
 
     _deleteNotesToTemporarilyIgnore = null;
+    _deleteNotesDeleted = null;
+    _deleteMostRecentPoint = null;
 
     _eventHandlingState = EventHandlingState.idle;
   }
 
   // Helper functions
 
-  List<NoteModel> getNotesUnderCursor(
+  List<NoteModel> _getNotesUnderCursor(
       List<NoteModel> notes, double key, double offset) {
     final keyFloor = key.floor();
 
