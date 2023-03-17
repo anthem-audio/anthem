@@ -376,12 +376,20 @@ class PianoRollController {
       final notesUnderCursorPath = notes
           .where(
             (note) =>
+                // Discard if bounding boxes don't intersect
                 boxesIntersect(
-                  _deleteMostRecentPoint!,
-                  thisPoint,
+                  Point(
+                    min(_deleteMostRecentPoint!.x, thisPoint.x),
+                    min(_deleteMostRecentPoint!.y, thisPoint.y),
+                  ),
+                  Point(
+                    max(_deleteMostRecentPoint!.x, thisPoint.x),
+                    max(_deleteMostRecentPoint!.y, thisPoint.y),
+                  ),
                   Point(note.offset, note.key),
                   Point(note.offset + note.length, note.key + 1),
                 ) &&
+                // Calculate if path segment intersects note
                 lineIntersectsBox(
                   _deleteMostRecentPoint!,
                   thisPoint,
