@@ -261,6 +261,8 @@ class PianoRollController {
       final note = pattern.notes[project.activeGeneratorID]!
           .firstWhere((element) => element.id == event.noteUnderCursor);
 
+      note.isPressed = true;
+
       setSingleMoveNoteInfo(note);
 
       return;
@@ -299,6 +301,8 @@ class PianoRollController {
     );
 
     setSingleMoveNoteInfo(note);
+
+    note.isPressed = true;
   }
 
   void rightPointerDown(PianoRollPointerDownEvent event) {
@@ -376,12 +380,22 @@ class PianoRollController {
       final notesUnderCursorPath = notes
           .where(
             (note) =>
+                // Discard if bounding boxes don't intersect
                 boxesIntersect(
-                  _deleteMostRecentPoint!,
-                  thisPoint,
+                  // Gets the bottom-left of the path bounding box
+                  Point(
+                    min(_deleteMostRecentPoint!.x, thisPoint.x),
+                    min(_deleteMostRecentPoint!.y, thisPoint.y),
+                  ),
+                  // Gets the bottom-top-right of the path bounding box
+                  Point(
+                    max(_deleteMostRecentPoint!.x, thisPoint.x),
+                    max(_deleteMostRecentPoint!.y, thisPoint.y),
+                  ),
                   Point(note.offset, note.key),
                   Point(note.offset + note.length, note.key + 1),
                 ) &&
+                // Calculate if path segment intersects note
                 lineIntersectsBox(
                   _deleteMostRecentPoint!,
                   thisPoint,
@@ -435,6 +449,8 @@ class PianoRollController {
       // Push the command, but don't execute it, since the note is already
       // moved
       project.push(command);
+
+      _singleNoteMoveNote!.isPressed = false;
     } else if (_eventHandlingState == EventHandlingState.deleting) {
       for (final note in _deleteNotesDeleted!) {
         final command = DeleteNoteCommand(
