@@ -24,7 +24,7 @@ import 'dart:math';
 import 'package:anthem/widgets/editors/shared/helpers/box_intersection.dart';
 
 void main() {
-  test('Box intersection tests', () {
+  test('Line intersection tests', () {
     // Test for line segment intersecting opposing edges
     expect(
       lineIntersectsBox(
@@ -114,71 +114,33 @@ void main() {
     );
   });
 
-  test('Box intersection tests', () {
-    // Test for two boxes intersecting partially
-    expect(
-      boxesIntersect(
-        const Point(0, 0),
-        const Point(2, 2),
-        const Point(1, 1),
-        const Point(3, 3),
-      ),
-      isTrue,
-    );
+  group('Rectangle intersection tests', () {
+    test('Rectangles intersect', () {
+      const rect1 = Rectangle(0, 0, 10, 10);
+      const rect2 = Rectangle(5, 5, 10, 10);
+      final result = rectanglesIntersect(rect1, rect2);
+      expect(result, true);
+    });
 
-    // Test for one box entirely inside another
-    expect(
-      boxesIntersect(
-        const Point(0, 0),
-        const Point(4, 4),
-        const Point(1, 1),
-        const Point(3, 3),
-      ),
-      isTrue,
-    );
+    test('Rectangles do not intersect', () {
+      const rect1 = Rectangle(0, 0, 10, 10);
+      const rect2 = Rectangle(15, 15, 10, 10);
+      final result = rectanglesIntersect(rect1, rect2);
+      expect(result, false);
+    });
 
-    // Test for two boxes just touching (edge case)
-    expect(
-      boxesIntersect(
-        const Point(0, 0),
-        const Point(1, 1),
-        const Point(1, 1),
-        const Point(2, 2),
-      ),
-      isTrue,
-    );
+    test('Rectangles share an edge', () {
+      const rect1 = Rectangle(0, 0, 10, 10);
+      const rect2 = Rectangle(10, 0, 10, 10);
+      final result = rectanglesIntersect(rect1, rect2);
+      expect(result, true);
+    });
 
-    // Test for two boxes not intersecting (separated along x-axis)
-    expect(
-      boxesIntersect(
-        const Point(0, 0),
-        const Point(1, 1),
-        const Point(2, 0),
-        const Point(3, 1),
-      ),
-      isFalse,
-    );
-
-    // Test for two boxes not intersecting (separated along y-axis)
-    expect(
-      boxesIntersect(
-        const Point(0, 0),
-        const Point(1, 1),
-        const Point(0, 2),
-        const Point(1, 3),
-      ),
-      isFalse,
-    );
-
-    // Test for two boxes just not touching (edge case)
-    expect(
-      boxesIntersect(
-        const Point(0, 0),
-        const Point(1, 1),
-        const Point(1.0001, 1.0001),
-        const Point(2, 2),
-      ),
-      isFalse,
-    );
+    test('Rectangles share a corner', () {
+      const rect1 = Rectangle(0, 0, 10, 10);
+      const rect2 = Rectangle(10, 10, 10, 10);
+      final result = rectanglesIntersect(rect1, rect2);
+      expect(result, true);
+    });
   });
 }

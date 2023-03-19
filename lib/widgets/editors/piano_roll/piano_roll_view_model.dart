@@ -17,6 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:mobx/mobx.dart';
 
@@ -40,4 +43,10 @@ abstract class _PianoRollViewModel with Store {
 
   @observable
   TimeRange timeView;
+
+  @observable
+  Rectangle<double>? selectionBox;
+
+  @observable
+  ObservableSet<ID> selectedNotes = ObservableSet();
 }

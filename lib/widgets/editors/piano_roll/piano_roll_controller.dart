@@ -33,6 +33,7 @@ import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:mobx/mobx.dart';
 
 /// These are the possible states that the piano roll can have during event
 /// handing. The current state tells the controller how to handle incoming
@@ -86,6 +87,10 @@ class PianoRollController {
   Set<NoteModel>? _deleteNotesToTemporarilyIgnore;
   Set<NoteModel>? _deleteNotesDeleted;
   Point? _deleteMostRecentPoint;
+
+  // Data for selection box
+  Point<double>? _selectionBoxStart;
+  Set<ID>? _selectionBoxOriginalSelection;
 
   PianoRollController({
     required this.project,
@@ -247,6 +252,27 @@ class PianoRollController {
   void leftPointerDown(PianoRollPointerDownEvent event) {
     final pattern = project.song.patterns[project.song.activePatternID]!;
 
+    if (event.keyboardModifiers.ctrl) {
+      if (event.keyboardModifiers.shift &&
+          event.noteUnderCursor != null &&
+          viewModel.selectedNotes.contains(event.noteUnderCursor)) {
+        _eventHandlingState =
+            EventHandlingState.creatingSubtractiveSelectionBox;
+      } else {
+        _eventHandlingState = EventHandlingState.creatingAdditiveSelectionBox;
+      }
+
+      if (!event.keyboardModifiers.shift) {
+        viewModel.selectedNotes.clear();
+      }
+
+      _selectionBoxStart = Point(event.offset, event.key);
+      _selectionBoxOriginalSelection =
+          viewModel.selectedNotes.nonObservableInner;
+
+      return;
+    }
+
     void setSingleMoveNoteInfo(NoteModel note) {
       _singleNoteMoveNote = note;
       _singleNoteMoveTimeOffset = event.offset - note.offset;
@@ -257,6 +283,7 @@ class PianoRollController {
 
     if (event.noteUnderCursor != null) {
       _eventHandlingState = EventHandlingState.movingSingleNote;
+      viewModel.selectedNotes.clear();
 
       final note = pattern.notes[project.activeGeneratorID]!
           .firstWhere((element) => element.id == event.noteUnderCursor);
@@ -269,6 +296,7 @@ class PianoRollController {
     }
 
     _eventHandlingState = EventHandlingState.movingSingleNote;
+    viewModel.selectedNotes.clear();
 
     final eventTime = event.offset.floor();
     if (eventTime < 0) return;
@@ -344,89 +372,136 @@ class PianoRollController {
   }
 
   void pointerMove(PianoRollPointerMoveEvent event) {
-    if (_eventHandlingState == EventHandlingState.movingSingleNote) {
-      final key = event.key - _singleNoteMoveNoteOffset!;
-      final offset = event.offset - _singleNoteMoveTimeOffset!;
+    switch (_eventHandlingState) {
+      case EventHandlingState.idle:
+        break;
+      case EventHandlingState.movingSingleNote:
+        final key = event.key - _singleNoteMoveNoteOffset!;
+        final offset = event.offset - _singleNoteMoveTimeOffset!;
 
-      final pattern = project.song.patterns[project.song.activePatternID]!;
+        final pattern = project.song.patterns[project.song.activePatternID]!;
 
-      final divisionChanges = getDivisionChanges(
-        viewWidthInPixels: event.pianoRollSize.width,
-        // TODO: this constant was copied from the minor division changes
-        // getter in piano_roll_grid.dart
-        minPixelsPerSection: 8,
-        snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
-        defaultTimeSignature: project.song.defaultTimeSignature,
-        timeSignatureChanges: pattern.timeSignatureChanges,
-        ticksPerQuarter: project.song.ticksPerQuarter,
-        timeViewStart: viewModel.timeView.start,
-        timeViewEnd: viewModel.timeView.end,
-      );
+        final divisionChanges = getDivisionChanges(
+          viewWidthInPixels: event.pianoRollSize.width,
+          // TODO: this constant was copied from the minor division changes
+          // getter in piano_roll_grid.dart
+          minPixelsPerSection: 8,
+          snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+          defaultTimeSignature: project.song.defaultTimeSignature,
+          timeSignatureChanges: pattern.timeSignatureChanges,
+          ticksPerQuarter: project.song.ticksPerQuarter,
+          timeViewStart: viewModel.timeView.start,
+          timeViewEnd: viewModel.timeView.end,
+        );
 
-      int targetTime = getSnappedTime(
-        rawTime: offset.floor(),
-        divisionChanges: divisionChanges,
-      );
+        int targetTime = getSnappedTime(
+          rawTime: offset.floor(),
+          divisionChanges: divisionChanges,
+        );
 
-      _singleNoteMoveNote!.key =
-          clampDouble(key, minKeyValue, maxKeyValue).round();
-      _singleNoteMoveNote!.offset = max(targetTime, 0);
-    } else if (_eventHandlingState == EventHandlingState.deleting) {
-      final pattern = project.song.patterns[project.song.activePatternID]!;
-      final notes = pattern.notes[project.activeGeneratorID]!;
+        _singleNoteMoveNote!.key =
+            clampDouble(key, minKeyValue, maxKeyValue).round();
+        _singleNoteMoveNote!.offset = max(targetTime, 0);
 
-      final thisPoint = Point(event.offset, event.key);
+        break;
+      case EventHandlingState.movingSelection:
+        break;
+      case EventHandlingState.creatingAdditiveSelectionBox:
+      case EventHandlingState.creatingSubtractiveSelectionBox:
+        final pattern = project.song.patterns[project.song.activePatternID]!;
+        final notes = pattern.notes[project.activeGeneratorID]!;
 
-      final notesUnderCursorPath = notes
-          .where(
-            (note) =>
-                // Discard if bounding boxes don't intersect
-                boxesIntersect(
-                  // Gets the bottom-left of the path bounding box
-                  Point(
-                    min(_deleteMostRecentPoint!.x, thisPoint.x),
-                    min(_deleteMostRecentPoint!.y, thisPoint.y),
-                  ),
-                  // Gets the bottom-top-right of the path bounding box
-                  Point(
-                    max(_deleteMostRecentPoint!.x, thisPoint.x),
-                    max(_deleteMostRecentPoint!.y, thisPoint.y),
-                  ),
-                  Point(note.offset, note.key),
-                  Point(note.offset + note.length, note.key + 1),
-                ) &&
-                // Calculate if path segment intersects note
-                lineIntersectsBox(
-                  _deleteMostRecentPoint!,
-                  thisPoint,
-                  Point(note.offset, note.key),
-                  Point(note.offset + note.length, note.key + 1),
-                ),
-          )
-          .toList();
+        final isSubtractive = _eventHandlingState ==
+            EventHandlingState.creatingSubtractiveSelectionBox;
 
-      final notesToRemove = <NoteModel>[];
+        viewModel.selectionBox = Rectangle.fromPoints(
+          _selectionBoxStart!,
+          Point(event.offset, event.key),
+        );
 
-      for (final note in _deleteNotesToTemporarilyIgnore!) {
-        if (!notesUnderCursorPath.contains(note)) {
-          notesToRemove.add(note);
-        }
-      }
+        final notesInSelection = notes
+            .where(
+              (note) => rectanglesIntersect(
+                viewModel.selectionBox!,
+                Rectangle(note.offset, note.key, note.length, 1),
+              ),
+            )
+            .map((note) => note.id)
+            .toSet();
 
-      for (final note in notesToRemove) {
-        _deleteNotesToTemporarilyIgnore!.remove(note);
-      }
-
-      for (final note in notesUnderCursorPath) {
-        if (_deleteNotesToTemporarilyIgnore!.contains(note)) {
-          continue;
+        if (isSubtractive) {
+          viewModel.selectedNotes = ObservableSet.of(
+            _selectionBoxOriginalSelection!.difference(notesInSelection),
+          );
         } else {
-          notes.remove(note);
-          _deleteNotesDeleted!.add(note);
+          viewModel.selectedNotes = ObservableSet.of(
+            _selectionBoxOriginalSelection!.union(notesInSelection),
+          );
         }
-      }
 
-      _deleteMostRecentPoint = thisPoint;
+        break;
+      case EventHandlingState.deleting:
+        final pattern = project.song.patterns[project.song.activePatternID]!;
+        final notes = pattern.notes[project.activeGeneratorID]!;
+
+        final thisPoint = Point(event.offset, event.key);
+
+        // We make a line between the previous event point and this point, and
+        // we delete all notes that intersect that line
+        final notesUnderCursorPath = notes
+            .where(
+              (note) =>
+                  // Discard if bounding boxes don't intersect
+                  rectanglesIntersect(
+                    Rectangle.fromPoints(
+                      Point(
+                        _deleteMostRecentPoint!.x,
+                        _deleteMostRecentPoint!.y,
+                      ),
+                      Point(
+                        thisPoint.x,
+                        thisPoint.y,
+                      ),
+                    ),
+                    Rectangle.fromPoints(
+                      Point(note.offset, note.key),
+                      Point(note.offset + note.length, note.key + 1),
+                    ),
+                  ) &&
+                  // Calculate if path segment intersects note
+                  lineIntersectsBox(
+                    _deleteMostRecentPoint!,
+                    thisPoint,
+                    Point(note.offset, note.key),
+                    Point(note.offset + note.length, note.key + 1),
+                  ),
+            )
+            .toList();
+
+        final notesToRemove = <NoteModel>[];
+
+        for (final note in _deleteNotesToTemporarilyIgnore!) {
+          if (!notesUnderCursorPath.contains(note)) {
+            notesToRemove.add(note);
+          }
+        }
+
+        for (final note in notesToRemove) {
+          _deleteNotesToTemporarilyIgnore!.remove(note);
+        }
+
+        for (final note in notesUnderCursorPath) {
+          if (_deleteNotesToTemporarilyIgnore!.contains(note)) {
+            continue;
+          } else {
+            notes.remove(note);
+            _deleteNotesDeleted!.add(note);
+          }
+        }
+
+        _deleteMostRecentPoint = thisPoint;
+
+        break;
     }
   }
 
@@ -462,6 +537,11 @@ class PianoRollController {
 
         project.push(command);
       }
+    } else if (_eventHandlingState ==
+            EventHandlingState.creatingAdditiveSelectionBox ||
+        _eventHandlingState ==
+            EventHandlingState.creatingSubtractiveSelectionBox) {
+      viewModel.selectionBox = null;
     }
 
     project.commitJournalPage();
@@ -473,6 +553,9 @@ class PianoRollController {
     _deleteNotesToTemporarilyIgnore = null;
     _deleteNotesDeleted = null;
     _deleteMostRecentPoint = null;
+
+    _selectionBoxStart = null;
+    _selectionBoxOriginalSelection = null;
 
     _eventHandlingState = EventHandlingState.idle;
   }

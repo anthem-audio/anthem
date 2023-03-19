@@ -92,13 +92,14 @@ bool lineIntersectsBox(Point p1, Point p2, Point minBox, Point maxBox) {
   return false;
 }
 
-/// Checks if two axis-aligned boxes intersect.
-bool boxesIntersect(
-    Point minBox1, Point maxBox1, Point minBox2, Point maxBox2) {
-  // Check if the boxes don't intersect by finding a separating axis.
-  if (maxBox1.x < minBox2.x || minBox1.x > maxBox2.x) return false;
-  if (maxBox1.y < minBox2.y || minBox1.y > maxBox2.y) return false;
+/// Checks if two rectangles intersect.
+bool rectanglesIntersect(Rectangle rect1, Rectangle rect2) {
+  // Check if the two rectangles overlap in the x-axis.
+  bool overlapX = (rect1.left <= rect2.right) && (rect2.left <= rect1.right);
 
-  // If no separating axis was found, the boxes intersect.
-  return true;
+  // Check if the two rectangles overlap in the y-axis.
+  bool overlapY = (rect1.top <= rect2.bottom) && (rect2.top <= rect1.bottom);
+
+  // Return true if the two rectangles overlap in both the x-axis and y-axis.
+  return overlapX && overlapY;
 }
