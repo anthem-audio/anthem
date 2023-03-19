@@ -19,6 +19,7 @@
 
 import 'dart:math';
 
+import 'package:anthem/commands/journal_commands.dart';
 import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/commands/timeline_commands.dart';
 import 'package:anthem/helpers/id.dart';
@@ -31,7 +32,6 @@ import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/box_intersection.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:mobx/mobx.dart';
 
@@ -70,14 +70,18 @@ class PianoRollController {
 
   EventHandlingState _eventHandlingState = EventHandlingState.idle;
 
-  // Data for single note move state
-  NoteModel? _singleNoteMoveNote;
+  // Data for note moves
+  NoteModel? _noteMoveNote;
   double?
-      _singleNoteMoveTimeOffset; // difference between the start of the note and the cursor X, in time
+      _noteMoveTimeOffset; // difference between the start of the pressed note and the cursor X, in time
   double?
-      _singleNoteMoveNoteOffset; // difference between the start of the note and the cursor Y, in notes
-  Time? _singleNoteMoveStartTime;
-  int? _singleNoteMoveStartKey;
+      _noteMoveNoteOffset; // difference between the start of the pressed note and the cursor Y, in notes
+  Time? _noteMoveStartTime;
+  int? _noteMoveStartKey;
+  Time?
+      _noteMoveStartOfFirstNote; // Start offset of the earliest note. Used to ensure none of the notes are moved to before the start of the pattern.
+  int? _noteMoveKeyOfTopNote;
+  int? _noteMoveKeyOfBottomNote;
 
   // Data for deleting state
   /// We ignore notes under the cursor, except the topmost one, until the user
@@ -273,24 +277,58 @@ class PianoRollController {
       return;
     }
 
-    void setSingleMoveNoteInfo(NoteModel note) {
-      _singleNoteMoveNote = note;
-      _singleNoteMoveTimeOffset = event.offset - note.offset;
-      _singleNoteMoveNoteOffset = 0.5;
-      _singleNoteMoveStartTime = note.offset;
-      _singleNoteMoveStartKey = note.key;
+    final notes = pattern.notes[project.activeGeneratorID] ?? <NoteModel>[];
+
+    void setMoveNoteInfo(NoteModel note) {
+      _noteMoveNote = note;
+      _noteMoveTimeOffset = event.offset - note.offset;
+      _noteMoveNoteOffset = 0.5;
+      _noteMoveStartTime = note.offset;
+      _noteMoveStartKey = note.key;
+
+      if (_eventHandlingState == EventHandlingState.movingSelection) {
+        _noteMoveStartOfFirstNote = notes.fold<int>(
+          0x7FFFFFFFFFFFFFFF,
+          (previousValue, element) =>
+              viewModel.selectedNotes.contains(element.id)
+                  ? min(previousValue, element.offset)
+                  : previousValue,
+        );
+        _noteMoveKeyOfTopNote = notes.fold<int>(
+          0,
+          (previousValue, element) =>
+              viewModel.selectedNotes.contains(element.id)
+                  ? max(previousValue, element.key)
+                  : previousValue,
+        );
+        _noteMoveKeyOfBottomNote = notes.fold<int>(
+          0x7FFFFFFFFFFFFFFF,
+          (previousValue, element) =>
+              viewModel.selectedNotes.contains(element.id)
+                  ? min(previousValue, element.key)
+                  : previousValue,
+        );
+      } else {
+        _noteMoveStartOfFirstNote = note.offset;
+        _noteMoveKeyOfTopNote = note.key;
+        _noteMoveKeyOfBottomNote = note.key;
+      }
     }
 
     if (event.noteUnderCursor != null) {
-      _eventHandlingState = EventHandlingState.movingSingleNote;
-      viewModel.selectedNotes.clear();
+      if (viewModel.selectedNotes.contains(event.noteUnderCursor)) {
+        _eventHandlingState = EventHandlingState.movingSelection;
+      } else {
+        _eventHandlingState = EventHandlingState.movingSingleNote;
+        viewModel.selectedNotes.clear();
+      }
 
-      final note = pattern.notes[project.activeGeneratorID]!
-          .firstWhere((element) => element.id == event.noteUnderCursor);
+      final note =
+          notes.firstWhere((element) => element.id == event.noteUnderCursor);
 
-      note.isPressed = true;
+      viewModel.pressedNote = note.id;
 
-      setSingleMoveNoteInfo(note);
+      setMoveNoteInfo(note);
 
       return;
     }
@@ -328,9 +366,9 @@ class PianoRollController {
       offset: targetTime,
     );
 
-    setSingleMoveNoteInfo(note);
+    setMoveNoteInfo(note);
 
-    note.isPressed = true;
+    viewModel.pressedNote = note.id;
   }
 
   void rightPointerDown(PianoRollPointerDownEvent event) {
@@ -376,10 +414,58 @@ class PianoRollController {
       case EventHandlingState.idle:
         break;
       case EventHandlingState.movingSingleNote:
-        final key = event.key - _singleNoteMoveNoteOffset!;
-        final offset = event.offset - _singleNoteMoveTimeOffset!;
+      case EventHandlingState.movingSelection:
+        final isSelectionMove =
+            _eventHandlingState == EventHandlingState.movingSelection;
+
+        final key = event.key - _noteMoveNoteOffset!;
+        final offset = event.offset - _noteMoveTimeOffset!;
+
+        // Figure out how far we've moved so far (until the event before this)
+        final offsetMoveSoFar = _noteMoveNote!.offset - _noteMoveStartTime!;
+        final keyMoveSoFar = _noteMoveNote!.key - _noteMoveStartKey!;
+
+        // Figure out how much we need to move each note for this event
+        var offsetAmountThisEvent =
+            offset - (_noteMoveStartTime! + offsetMoveSoFar);
+        var keyAmountThisEvent = key - (_noteMoveStartKey! + keyMoveSoFar);
+
+        var totalOffsetChange = offsetMoveSoFar + offsetAmountThisEvent;
+        var totalKeyChange = keyMoveSoFar + keyAmountThisEvent;
+
+        // Prevent the leftmost key from going earlier than the start of the pattern
+        if (_noteMoveStartOfFirstNote! + totalOffsetChange < 0) {
+          final correction = _noteMoveStartOfFirstNote! + totalOffsetChange;
+
+          offsetAmountThisEvent -= correction;
+          totalOffsetChange -= correction;
+        }
+
+        // Prevent the top key from going above the highest allowed note
+        if (_noteMoveKeyOfTopNote! + totalKeyChange > maxKeyValue) {
+          final correction =
+              _noteMoveKeyOfTopNote! + totalKeyChange - maxKeyValue;
+
+          keyAmountThisEvent -= correction;
+          totalKeyChange -= correction;
+        }
+
+        // Prevent the bottom key from going below the lowest allowed note
+        if (_noteMoveKeyOfBottomNote! + totalKeyChange < minKeyValue) {
+          final correction =
+              minKeyValue - (_noteMoveKeyOfTopNote! + totalKeyChange);
+
+          keyAmountThisEvent += correction;
+          totalKeyChange += correction;
+        }
 
         final pattern = project.song.patterns[project.song.activePatternID]!;
+
+        final notes = isSelectionMove
+            ? pattern.notes[project.activeGeneratorID]!
+                .where((note) => viewModel.selectedNotes.contains(note.id))
+                .toList()
+            : [_noteMoveNote!];
 
         final divisionChanges = getDivisionChanges(
           viewWidthInPixels: event.pianoRollSize.width,
@@ -394,17 +480,16 @@ class PianoRollController {
           timeViewEnd: viewModel.timeView.end,
         );
 
-        int targetTime = getSnappedTime(
-          rawTime: offset.floor(),
-          divisionChanges: divisionChanges,
-        );
+        for (final note in notes) {
+          int targetTime = getSnappedTime(
+            rawTime: (note.offset + offsetAmountThisEvent).floor(),
+            divisionChanges: divisionChanges,
+          );
 
-        _singleNoteMoveNote!.key =
-            clampDouble(key, minKeyValue, maxKeyValue).round();
-        _singleNoteMoveNote!.offset = max(targetTime, 0);
+          note.key = (note.key + keyAmountThisEvent).round();
+          note.offset = targetTime;
+        }
 
-        break;
-      case EventHandlingState.movingSelection:
         break;
       case EventHandlingState.creatingAdditiveSelectionBox:
       case EventHandlingState.creatingSubtractiveSelectionBox:
@@ -514,18 +599,41 @@ class PianoRollController {
         project: project,
         patternID: project.song.activePatternID!,
         generatorID: project.activeGeneratorID!,
-        noteID: _singleNoteMoveNote!.id,
-        oldKey: _singleNoteMoveStartKey!,
-        newKey: _singleNoteMoveNote!.key,
-        oldOffset: _singleNoteMoveStartTime!,
-        newOffset: _singleNoteMoveNote!.offset,
+        noteID: _noteMoveNote!.id,
+        oldKey: _noteMoveStartKey!,
+        newKey: _noteMoveNote!.key,
+        oldOffset: _noteMoveStartTime!,
+        newOffset: _noteMoveNote!.offset,
       );
 
       // Push the command, but don't execute it, since the note is already
       // moved
       project.push(command);
+    } else if (_eventHandlingState == EventHandlingState.movingSelection) {
+      final pattern = project.song.patterns[project.song.activePatternID]!;
+      final notes = pattern.notes[project.activeGeneratorID]!;
 
-      _singleNoteMoveNote!.isPressed = false;
+      final commands = notes
+          .where((note) => viewModel.selectedNotes.contains(note.id))
+          .map((note) {
+        final noteOffsetChange = _noteMoveNote!.offset - _noteMoveStartTime!;
+        final noteKeyChange = _noteMoveNote!.key - _noteMoveStartKey!;
+
+        return MoveNoteCommand(
+          project: project,
+          patternID: pattern.id,
+          generatorID: project.activeGeneratorID!,
+          noteID: note.id,
+          oldKey: note.key - noteKeyChange,
+          newKey: note.key,
+          oldOffset: note.offset - noteOffsetChange,
+          newOffset: note.offset,
+        );
+      });
+
+      final command = JournalPageCommand(project, commands.toList());
+
+      project.push(command);
     } else if (_eventHandlingState == EventHandlingState.deleting) {
       for (final note in _deleteNotesDeleted!) {
         final command = DeleteNoteCommand(
@@ -546,9 +654,11 @@ class PianoRollController {
 
     project.commitJournalPage();
 
-    _singleNoteMoveNote = null;
-    _singleNoteMoveNoteOffset = null;
-    _singleNoteMoveTimeOffset = null;
+    viewModel.pressedNote = null;
+
+    _noteMoveNote = null;
+    _noteMoveNoteOffset = null;
+    _noteMoveTimeOffset = null;
 
     _deleteNotesToTemporarilyIgnore = null;
     _deleteNotesDeleted = null;

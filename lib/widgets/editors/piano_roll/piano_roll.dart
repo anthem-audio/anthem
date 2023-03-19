@@ -414,8 +414,9 @@ class _PianoRollContentState extends State<_PianoRollContent>
                                   id: note.id,
                                   child: NoteWidget(
                                     note: note,
-                                    selected: viewModel.selectedNotes
+                                    isSelected: viewModel.selectedNotes
                                         .contains(note.id),
+                                    isPressed: viewModel.pressedNote == note.id,
                                     notesUnderCursor:
                                         notesUnderCursorDuringEventHandling,
                                   ),
@@ -678,16 +679,18 @@ class NoteLayoutDelegate extends MultiChildLayoutDelegate {
   }
 }
 
-class NoteWidget extends StatefulObserverWidget {
+class NoteWidget extends StatefulWidget {
   const NoteWidget({
     Key? key,
     required this.note,
-    required this.selected,
+    required this.isSelected,
+    required this.isPressed,
     required this.notesUnderCursor,
   }) : super(key: key);
 
   final NoteModel note;
-  final bool selected;
+  final bool isSelected;
+  final bool isPressed;
 
   /// See [PianoRollEventListener] for details on what this is for.
   final List<ID> notesUnderCursor;
@@ -701,15 +704,15 @@ class _NoteWidgetState extends State<NoteWidget> {
 
   @override
   Widget build(BuildContext context) {
-    var saturation = widget.note.isPressed
+    var saturation = widget.isPressed
         ? 0.6
-        : widget.selected
+        : widget.isSelected
             ? 0.37
             : 0.46;
 
-    var lightness = widget.note.isPressed
+    var lightness = widget.isPressed
         ? 0.22
-        : widget.selected
+        : widget.isSelected
             ? 0.37
             : 0.31;
 
@@ -746,7 +749,7 @@ class _NoteWidgetState extends State<NoteWidget> {
             color: color,
             borderRadius: const BorderRadius.all(Radius.circular(1)),
             border: Border.all(
-              color: widget.selected
+              color: widget.isSelected
                   ? const HSLColor.fromAHSL(1, 166, 0.35, 0.45).toColor()
                   : const Color(0x00000000),
               width: 1,

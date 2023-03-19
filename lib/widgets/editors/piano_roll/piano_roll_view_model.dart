@@ -49,4 +49,7 @@ abstract class _PianoRollViewModel with Store {
 
   @observable
   ObservableSet<ID> selectedNotes = ObservableSet();
+
+  @observable
+  ID? pressedNote;
 }
