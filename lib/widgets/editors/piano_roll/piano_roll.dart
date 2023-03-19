@@ -376,20 +376,20 @@ class _PianoRollContentState extends State<_PianoRollContent>
         _pianoRollCanvasSize = constraints.biggest;
         return PianoRollEventListener(
           notesUnderCursor: notesUnderCursorDuringEventHandling,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              PianoRollGrid(
-                timeViewAnimationController: _timeViewAnimationController,
-                timeViewStartAnimation: _timeViewStartAnimation,
-                timeViewEndAnimation: _timeViewEndAnimation,
-                keyHeight: viewModel.keyHeight,
-                keyValueAtTopAnimationController:
-                    _keyValueAtTopAnimationController,
-                keyValueAtTopAnimation: _keyValueAtTopAnimation,
-              ),
-              ClipRect(
-                child: AnimatedBuilder(
+          child: ClipRect(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                PianoRollGrid(
+                  timeViewAnimationController: _timeViewAnimationController,
+                  timeViewStartAnimation: _timeViewStartAnimation,
+                  timeViewEndAnimation: _timeViewEndAnimation,
+                  keyHeight: viewModel.keyHeight,
+                  keyValueAtTopAnimationController:
+                      _keyValueAtTopAnimationController,
+                  keyValueAtTopAnimation: _keyValueAtTopAnimation,
+                ),
+                AnimatedBuilder(
                   animation: _keyValueAtTopAnimationController,
                   builder: (context, child) {
                     return AnimatedBuilder(
@@ -414,6 +414,8 @@ class _PianoRollContentState extends State<_PianoRollContent>
                                   id: note.id,
                                   child: NoteWidget(
                                     note: note,
+                                    selected: viewModel.selectedNotes
+                                        .contains(note.id),
                                     notesUnderCursor:
                                         notesUnderCursorDuringEventHandling,
                                   ),
@@ -436,8 +438,62 @@ class _PianoRollContentState extends State<_PianoRollContent>
                     );
                   },
                 ),
-              ),
-            ],
+                Observer(
+                  builder: (context) {
+                    if (viewModel.selectionBox == null) {
+                      return const SizedBox();
+                    }
+
+                    final selectionBox = viewModel.selectionBox!;
+
+                    final left = timeToPixels(
+                      timeViewStart: viewModel.timeView.start,
+                      timeViewEnd: viewModel.timeView.end,
+                      viewPixelWidth: constraints.maxWidth,
+                      time: selectionBox.left,
+                    );
+
+                    final width = timeToPixels(
+                      timeViewStart: viewModel.timeView.start,
+                      timeViewEnd: viewModel.timeView.end,
+                      viewPixelWidth: constraints.maxWidth,
+                      time: viewModel.timeView.start + selectionBox.width,
+                    );
+
+                    final top = keyValueToPixels(
+                      keyValueAtTop: viewModel.keyValueAtTop,
+                      keyHeight: viewModel.keyHeight,
+                      keyValue: selectionBox.bottom,
+                    );
+
+                    final height = keyValueToPixels(
+                      keyValueAtTop: viewModel.keyValueAtTop,
+                      keyHeight: viewModel.keyHeight,
+                      keyValue: viewModel.keyValueAtTop - selectionBox.height,
+                    );
+
+                    final borderColor =
+                        const HSLColor.fromAHSL(1, 166, 0.6, 0.35).toColor();
+                    final backgroundColor = borderColor.withAlpha(100);
+
+                    return Positioned(
+                      left: left,
+                      top: top,
+                      child: Container(
+                        width: width,
+                        height: height,
+                        decoration: BoxDecoration(
+                          color: backgroundColor,
+                          border: Border.all(color: borderColor),
+                          borderRadius:
+                              const BorderRadius.all(Radius.circular(2)),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         );
       }),
@@ -626,10 +682,12 @@ class NoteWidget extends StatefulObserverWidget {
   const NoteWidget({
     Key? key,
     required this.note,
+    required this.selected,
     required this.notesUnderCursor,
   }) : super(key: key);
 
   final NoteModel note;
+  final bool selected;
 
   /// See [PianoRollEventListener] for details on what this is for.
   final List<ID> notesUnderCursor;
@@ -643,16 +701,22 @@ class _NoteWidgetState extends State<NoteWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final saturation = widget.note.isPressed
+    var saturation = widget.note.isPressed
         ? 0.6
-        : isHovered
-            ? 0.4
+        : widget.selected
+            ? 0.37
             : 0.46;
-    final lightness = widget.note.isPressed
+
+    var lightness = widget.note.isPressed
         ? 0.22
-        : isHovered
-            ? 0.35
+        : widget.selected
+            ? 0.37
             : 0.31;
+
+    if (isHovered) {
+      saturation -= 0.06;
+      lightness += 0.04;
+    }
 
     final color = HSLColor.fromAHSL(1, 166, saturation, lightness).toColor();
 
@@ -681,6 +745,12 @@ class _NoteWidgetState extends State<NoteWidget> {
           decoration: BoxDecoration(
             color: color,
             borderRadius: const BorderRadius.all(Radius.circular(1)),
+            border: Border.all(
+              color: widget.selected
+                  ? const HSLColor.fromAHSL(1, 166, 0.35, 0.45).toColor()
+                  : const Color(0x00000000),
+              width: 1,
+            ),
           ),
         ),
       ),

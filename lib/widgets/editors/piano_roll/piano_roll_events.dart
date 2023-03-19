@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/widgets/main_window/main_window_controller.dart';
 import 'package:flutter/widgets.dart';
 
 abstract class PianoRollEvent {
@@ -31,17 +32,21 @@ abstract class PianoRollPointerEvent extends PianoRollEvent {
     required this.key,
     required this.offset,
     required this.pointerEvent,
+    required this.keyboardModifiers,
     required Size pianoRollSize,
   }) : super(pianoRollSize: pianoRollSize);
 
-  // MIDI note at cursor. Fraction indicates position in note.
+  /// MIDI note at cursor. Fraction indicates position in note.
   final double key;
 
-  // Time at cursor. Fraction indicates position within tick.
+  /// Time at cursor. Fraction indicates position within tick.
   final double offset;
 
-  // Determines if this is caused by a right click.
+  /// Determines if this is caused by a right click.
   final PointerEvent pointerEvent;
+
+  /// Ctrl, alt and shift key states
+  final KeyboardModifiers keyboardModifiers;
 }
 
 class PianoRollPointerDownEvent extends PianoRollPointerEvent {
@@ -52,12 +57,14 @@ class PianoRollPointerDownEvent extends PianoRollPointerEvent {
     required double offset,
     required PointerDownEvent pointerEvent,
     required Size pianoRollSize,
+    required KeyboardModifiers keyboardModifiers,
     required this.noteUnderCursor,
   }) : super(
           key: key,
           offset: offset,
           pointerEvent: pointerEvent,
           pianoRollSize: pianoRollSize,
+          keyboardModifiers: keyboardModifiers,
         );
 }
 
@@ -67,11 +74,13 @@ class PianoRollPointerMoveEvent extends PianoRollPointerEvent {
     required double offset,
     required PointerMoveEvent pointerEvent,
     required Size pianoRollSize,
+    required KeyboardModifiers keyboardModifiers,
   }) : super(
           key: key,
           offset: offset,
           pointerEvent: pointerEvent,
           pianoRollSize: pianoRollSize,
+          keyboardModifiers: keyboardModifiers,
         );
 }
 
@@ -81,11 +90,13 @@ class PianoRollPointerUpEvent extends PianoRollPointerEvent {
     required double offset,
     required PointerUpEvent pointerEvent,
     required Size pianoRollSize,
+    required KeyboardModifiers keyboardModifiers,
   }) : super(
           key: key,
           offset: offset,
           pointerEvent: pointerEvent,
           pianoRollSize: pianoRollSize,
+          keyboardModifiers: keyboardModifiers,
         );
 }
 
