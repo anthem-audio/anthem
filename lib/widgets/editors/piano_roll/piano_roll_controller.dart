@@ -48,6 +48,12 @@ enum EventHandlingState {
   /// A selection of notes are being moved.
   movingSelection,
 
+  /// A single note is being moved.
+  resizingSingleNote,
+
+  /// A selection of notes are being moved.
+  resizingSelection,
+
   /// An additive selection box is being drawn. Notes under this box will be
   /// added to the current selection.
   creatingAdditiveSelectionBox,
@@ -83,6 +89,12 @@ class PianoRollController {
   int? _noteMoveKeyOfTopNote;
   int? _noteMoveKeyOfBottomNote;
 
+  double? _noteResizePointerStartOffset;
+  Map<ID, Time>? _noteResizeStartLengths;
+  Time? _noteResizeSmallestStartLength;
+  ID? _noteResizeSmallestNoteAtStart;
+  NoteModel? _noteResizePressedNote;
+
   // Data for deleting state
   /// We ignore notes under the cursor, except the topmost one, until the user
   /// moves the mouse off the note and back on. This means that the user
@@ -101,19 +113,7 @@ class PianoRollController {
     required this.viewModel,
   });
 
-  NoteModel? _getNote(ID? instrumentID, ID noteID) {
-    final pattern = project.song.patterns[project.song.activePatternID];
-    final noteList = pattern?.notes[instrumentID];
-    NoteModel? note;
-    try {
-      note = noteList?.firstWhere((note) => note.id == noteID);
-    } catch (ex) {
-      note = null;
-    }
-    return note;
-  }
-
-  NoteModel addNote({
+  NoteModel _addNote({
     required int key,
     required int velocity,
     required int length,
@@ -141,76 +141,10 @@ class PianoRollController {
     return note;
   }
 
-  void resizeNote({
-    required ID noteID,
-    required int length,
-  }) {
-    final note = _getNote(project.activeGeneratorID, noteID);
-
-    if (project.song.activePatternID == null ||
-        project.activeGeneratorID == null ||
-        note == null) {
-      return;
-    }
-
-    return project.execute(ResizeNoteCommand(
-      project: project,
-      patternID: project.song.activePatternID!,
-      generatorID: project.activeGeneratorID!,
-      noteID: noteID,
-      oldLength: note.length,
-      newLength: length,
-    ));
-  }
-
-  void removeNote({required ID noteID}) {
-    final note = _getNote(project.activeGeneratorID, noteID);
-
-    if (project.song.activePatternID == null ||
-        project.activeGeneratorID == null ||
-        note == null) {
-      return;
-    }
-
-    project.execute(DeleteNoteCommand(
-      project: project,
-      patternID: project.song.activePatternID!,
-      generatorID: project.activeGeneratorID!,
-      note: note,
-    ));
-  }
-
-  void moveNote({
-    required ID noteID,
-    required int key,
-    required int offset,
-  }) {
-    final note = _getNote(project.activeGeneratorID, noteID);
-
-    if (project.song.activePatternID == null ||
-        project.activeGeneratorID == null ||
-        note == null) {
-      return;
-    }
-
-    return project.execute(MoveNoteCommand(
-      project: project,
-      patternID: project.song.activePatternID!,
-      generatorID: project.activeGeneratorID!,
-      noteID: noteID,
-      oldKey: note.key,
-      newKey: key,
-      oldOffset: note.offset,
-      newOffset: offset,
-    ));
-  }
-
   void addTimeSignatureChange({
     required TimeSignatureModel timeSignature,
     required Time offset,
     bool snap = true,
-    required TimeRange
-        timeView, // TODO: store this in the view model and get it form there
     required double pianoRollWidth,
   }) {
     if (project.song.activePatternID == null) return;
@@ -229,8 +163,8 @@ class PianoRollController {
         defaultTimeSignature: project.song.defaultTimeSignature,
         timeSignatureChanges: pattern.timeSignatureChanges,
         ticksPerQuarter: project.song.ticksPerQuarter,
-        timeViewStart: timeView.start,
-        timeViewEnd: timeView.end,
+        timeViewStart: viewModel.timeView.start,
+        timeViewEnd: viewModel.timeView.end,
       );
 
       snappedOffset = getSnappedTime(
@@ -255,11 +189,52 @@ class PianoRollController {
 
   void leftPointerDown(PianoRollPointerDownEvent event) {
     final pattern = project.song.patterns[project.song.activePatternID]!;
+    final notes =
+        pattern.notes[project.activeGeneratorID]?.nonObservableInner ??
+            <NoteModel>[];
+
+    if (event.isResize) {
+      if (event.noteUnderCursor == null) {
+        throw ArgumentError("Resize event didn't provide a noteUnderCursor");
+      }
+
+      final note = notes.firstWhere((note) => note.id == event.noteUnderCursor);
+
+      _noteResizePointerStartOffset = event.offset;
+      viewModel.pressedNote = event.noteUnderCursor;
+      _noteResizePressedNote = note;
+
+      if (viewModel.selectedNotes.nonObservableInner.contains(note.id)) {
+        _eventHandlingState = EventHandlingState.resizingSelection;
+
+        final relevantNotes = notes.where((note) =>
+            viewModel.selectedNotes.nonObservableInner.contains(note.id));
+        var smallestNote = relevantNotes.first;
+        for (final note in relevantNotes) {
+          if (note.length < smallestNote.length) smallestNote = note;
+        }
+
+        _noteResizeSmallestStartLength = smallestNote.length;
+        _noteResizeSmallestNoteAtStart = smallestNote.id;
+        _noteResizeStartLengths = Map.fromEntries(
+            relevantNotes.map((note) => MapEntry(note.id, note.length)));
+      } else {
+        _eventHandlingState = EventHandlingState.resizingSingleNote;
+        viewModel.selectedNotes.clear();
+
+        _noteResizeStartLengths = {note.id: note.length};
+        _noteResizeSmallestStartLength = note.length;
+        _noteResizeSmallestNoteAtStart = note.id;
+      }
+
+      return;
+    }
 
     if (event.keyboardModifiers.ctrl) {
       if (event.keyboardModifiers.shift &&
           event.noteUnderCursor != null &&
-          viewModel.selectedNotes.contains(event.noteUnderCursor)) {
+          viewModel.selectedNotes.nonObservableInner
+              .contains(event.noteUnderCursor)) {
         _eventHandlingState =
             EventHandlingState.creatingSubtractiveSelectionBox;
       } else {
@@ -277,8 +252,6 @@ class PianoRollController {
       return;
     }
 
-    final notes = pattern.notes[project.activeGeneratorID] ?? <NoteModel>[];
-
     void setMoveNoteInfo(NoteModel noteUnderCursor) {
       _noteMoveNoteUnderCursor = noteUnderCursor;
       _noteMoveTimeOffset = event.offset - noteUnderCursor.offset;
@@ -287,8 +260,8 @@ class PianoRollController {
       _noteMoveStartKeys = {noteUnderCursor.id: noteUnderCursor.key};
 
       // If we're moving a selection, record the start times
-      for (final note
-          in notes.where((note) => viewModel.selectedNotes.contains(note.id))) {
+      for (final note in notes.where((note) =>
+          viewModel.selectedNotes.nonObservableInner.contains(note.id))) {
         _noteMoveStartTimes![note.id] = note.offset;
         _noteMoveStartKeys![note.id] = note.key;
       }
@@ -297,21 +270,21 @@ class PianoRollController {
         _noteMoveStartOfFirstNote = notes.fold<int>(
           0x7FFFFFFFFFFFFFFF,
           (previousValue, element) =>
-              viewModel.selectedNotes.contains(element.id)
+              viewModel.selectedNotes.nonObservableInner.contains(element.id)
                   ? min(previousValue, element.offset)
                   : previousValue,
         );
         _noteMoveKeyOfTopNote = notes.fold<int>(
           0,
           (previousValue, element) =>
-              viewModel.selectedNotes.contains(element.id)
+              viewModel.selectedNotes.nonObservableInner.contains(element.id)
                   ? max(previousValue, element.key)
                   : previousValue,
         );
         _noteMoveKeyOfBottomNote = notes.fold<int>(
           0x7FFFFFFFFFFFFFFF,
           (previousValue, element) =>
-              viewModel.selectedNotes.contains(element.id)
+              viewModel.selectedNotes.nonObservableInner.contains(element.id)
                   ? min(previousValue, element.key)
                   : previousValue,
         );
@@ -326,7 +299,8 @@ class PianoRollController {
       var pressedNote =
           notes.firstWhere((element) => element.id == event.noteUnderCursor);
 
-      if (viewModel.selectedNotes.contains(event.noteUnderCursor)) {
+      if (viewModel.selectedNotes.nonObservableInner
+          .contains(event.noteUnderCursor)) {
         _eventHandlingState = EventHandlingState.movingSelection;
 
         if (event.keyboardModifiers.shift) {
@@ -335,7 +309,8 @@ class PianoRollController {
           final newSelectedNotes = ObservableSet<String>();
 
           for (final note in notes
-              .where((note) => viewModel.selectedNotes.contains(note.id))
+              .where((note) =>
+                  viewModel.selectedNotes.nonObservableInner.contains(note.id))
               .toList()) {
             final newNote = NoteModel.fromNoteModel(note);
 
@@ -404,7 +379,7 @@ class PianoRollController {
 
     project.startJournalPage();
 
-    final note = addNote(
+    final note = _addNote(
       key: event.key.floor(),
       velocity: 128,
       length: 96,
@@ -431,7 +406,11 @@ class PianoRollController {
 
     if (event.noteUnderCursor != null) {
       notes.removeWhere((note) {
-        final remove = note.id == event.noteUnderCursor;
+        final remove = note.id == event.noteUnderCursor &&
+            // Ignore events that come from the resize handle but aren't over
+            // the note.
+            note.offset + note.length > event.offset;
+
         if (remove) _deleteNotesDeleted!.add(note);
         return remove;
       });
@@ -470,7 +449,8 @@ class PianoRollController {
 
         final notes = isSelectionMove
             ? pattern.notes[project.activeGeneratorID]!
-                .where((note) => viewModel.selectedNotes.contains(note.id))
+                .where((note) => viewModel.selectedNotes.nonObservableInner
+                    .contains(note.id))
                 .toList()
             : [_noteMoveNoteUnderCursor!];
 
@@ -619,6 +599,66 @@ class PianoRollController {
         _deleteMostRecentPoint = thisPoint;
 
         break;
+      case EventHandlingState.resizingSingleNote:
+      case EventHandlingState.resizingSelection:
+        final pattern = project.song.patterns[project.song.activePatternID]!;
+        final notes = pattern.notes[project.activeGeneratorID]!;
+
+        final divisionChanges = getDivisionChanges(
+          viewWidthInPixels: event.pianoRollSize.width,
+          // TODO: this constant was copied from the minor division changes
+          // getter in piano_roll_grid.dart
+          minPixelsPerSection: 8,
+          snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+          defaultTimeSignature: project.song.defaultTimeSignature,
+          timeSignatureChanges: pattern.timeSignatureChanges,
+          ticksPerQuarter: project.song.ticksPerQuarter,
+          timeViewStart: viewModel.timeView.start,
+          timeViewEnd: viewModel.timeView.end,
+        );
+
+        final snappedOriginalTime = getSnappedTime(
+          rawTime: _noteResizePointerStartOffset!.floor(),
+          divisionChanges: divisionChanges,
+        );
+
+        final snappedEventTime = getSnappedTime(
+          rawTime: event.offset.floor(),
+          divisionChanges: divisionChanges,
+        );
+
+        late int snapAtSmallestNoteStart;
+
+        final offsetOfSmallestNoteAtStart =
+            _noteResizeStartLengths![_noteResizeSmallestNoteAtStart]!;
+
+        for (var i = 0; i < divisionChanges.length; i++) {
+          if (i < divisionChanges.length - 1 &&
+              divisionChanges[i + 1].offset <= offsetOfSmallestNoteAtStart) {
+            continue;
+          }
+
+          snapAtSmallestNoteStart = divisionChanges[i].divisionSnapSize;
+
+          break;
+        }
+
+        var diff = snappedEventTime - snappedOriginalTime;
+
+        if (_noteResizeSmallestStartLength! + diff < snapAtSmallestNoteStart) {
+          int snapCount = ((snapAtSmallestNoteStart -
+                      (_noteResizeSmallestStartLength! + diff)) /
+                  snapAtSmallestNoteStart)
+              .ceil();
+          diff = diff + snapCount * snapAtSmallestNoteStart;
+        }
+
+        for (final note in notes
+            .where((note) => _noteResizeStartLengths!.containsKey(note.id))) {
+          note.length = _noteResizeStartLengths![note.id]! + diff;
+        }
+
+        break;
     }
   }
 
@@ -634,7 +674,8 @@ class PianoRollController {
       final relevantNotes = isSingleNote
           ? [_noteMoveNoteUnderCursor!]
           : notes
-              .where((note) => viewModel.selectedNotes.contains(note.id))
+              .where((note) =>
+                  viewModel.selectedNotes.nonObservableInner.contains(note.id))
               .toList();
 
       final commands = relevantNotes.map((note) {
@@ -672,6 +713,25 @@ class PianoRollController {
         _eventHandlingState ==
             EventHandlingState.creatingSubtractiveSelectionBox) {
       viewModel.selectionBox = null;
+    } else if (_eventHandlingState == EventHandlingState.resizingSingleNote ||
+        _eventHandlingState == EventHandlingState.resizingSelection) {
+      final diff = _noteResizePressedNote!.length -
+          _noteResizeStartLengths![_noteResizePressedNote!.id]!;
+
+      final commands = _noteResizeStartLengths!.entries.map((entry) {
+        return ResizeNoteCommand(
+          project: project,
+          patternID: project.song.activePatternID!,
+          generatorID: project.activeGeneratorID!,
+          noteID: entry.key,
+          oldLength: entry.value,
+          newLength: entry.value + diff,
+        );
+      }).toList();
+
+      final command = JournalPageCommand(project, commands);
+
+      project.push(command);
     }
 
     project.commitJournalPage();
@@ -690,6 +750,12 @@ class PianoRollController {
 
     _selectionBoxStart = null;
     _selectionBoxOriginalSelection = null;
+
+    _noteResizePointerStartOffset = null;
+    _noteResizeStartLengths = null;
+    _noteResizeSmallestStartLength = null;
+    _noteResizeSmallestNoteAtStart = null;
+    _noteResizePressedNote = null;
 
     _eventHandlingState = EventHandlingState.idle;
   }

@@ -51,6 +51,7 @@ abstract class PianoRollPointerEvent extends PianoRollEvent {
 
 class PianoRollPointerDownEvent extends PianoRollPointerEvent {
   final ID? noteUnderCursor;
+  final bool isResize;
 
   PianoRollPointerDownEvent({
     required double key,
@@ -59,6 +60,7 @@ class PianoRollPointerDownEvent extends PianoRollPointerEvent {
     required Size pianoRollSize,
     required KeyboardModifiers keyboardModifiers,
     required this.noteUnderCursor,
+    required this.isResize,
   }) : super(
           key: key,
           offset: offset,

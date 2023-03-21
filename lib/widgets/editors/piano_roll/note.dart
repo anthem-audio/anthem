@@ -17,9 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart';
 import 'package:flutter/widgets.dart';
+
+const noteResizeHandleWidth = 10.0;
 
 class NoteWidget extends StatefulWidget {
   const NoteWidget({
@@ -27,7 +29,7 @@ class NoteWidget extends StatefulWidget {
     required this.note,
     required this.isSelected,
     required this.isPressed,
-    required this.notesUnderCursor,
+    required this.eventData,
   }) : super(key: key);
 
   final NoteModel note;
@@ -35,7 +37,7 @@ class NoteWidget extends StatefulWidget {
   final bool isPressed;
 
   /// See [PianoRollEventListener] for details on what this is for.
-  final List<ID> notesUnderCursor;
+  final NoteWidgetEventData eventData;
 
   @override
   State<NoteWidget> createState() => _NoteWidgetState();
@@ -58,7 +60,7 @@ class _NoteWidgetState extends State<NoteWidget> {
             ? 0.37
             : 0.31;
 
-    if (isHovered) {
+    if (isHovered && !widget.isPressed) {
       saturation -= 0.06;
       lightness += 0.04;
     }
@@ -67,13 +69,13 @@ class _NoteWidgetState extends State<NoteWidget> {
 
     return Listener(
       onPointerDown: (e) {
-        widget.notesUnderCursor.add(widget.note.id);
+        widget.eventData.notesUnderCursor.add(widget.note.id);
       },
       onPointerMove: (e) {
-        widget.notesUnderCursor.add(widget.note.id);
+        widget.eventData.notesUnderCursor.add(widget.note.id);
       },
       onPointerUp: (e) {
-        widget.notesUnderCursor.add(widget.note.id);
+        widget.eventData.notesUnderCursor.add(widget.note.id);
       },
       child: MouseRegion(
         onEnter: (e) {
@@ -86,17 +88,42 @@ class _NoteWidgetState extends State<NoteWidget> {
             isHovered = false;
           });
         },
-        child: Container(
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: const BorderRadius.all(Radius.circular(1)),
-            border: Border.all(
-              color: widget.isSelected
-                  ? const HSLColor.fromAHSL(1, 166, 0.35, 0.45).toColor()
-                  : const Color(0x00000000),
-              width: 1,
+        child: Stack(
+          clipBehavior: Clip.none,
+          fit: StackFit.expand,
+          children: [
+            Positioned.fill(
+              right: noteResizeHandleWidth / 2,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: const BorderRadius.all(Radius.circular(1)),
+                  border: Border.all(
+                    color: widget.isSelected
+                        ? const HSLColor.fromAHSL(1, 166, 0.35, 0.45).toColor()
+                        : const Color(0x00000000),
+                    width: 1,
+                  ),
+                ),
+              ),
             ),
-          ),
+            Positioned(
+              top: 0,
+              bottom: 0,
+              right: 0,
+              child: SizedBox(
+                width: noteResizeHandleWidth,
+                child: Listener(
+                  onPointerDown: (e) {
+                    widget.eventData.isResizeEvent = true;
+                  },
+                  child: const MouseRegion(
+                    cursor: SystemMouseCursors.resizeLeftRight,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
