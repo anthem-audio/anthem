@@ -476,8 +476,12 @@ class PianoRollController {
         }
 
         for (final note in notes) {
-          note.key = _noteMoveStartKeys![note.id]! + keyOffsetFromStart;
-          note.offset = _noteMoveStartTimes![note.id]! + timeOffsetFromStart;
+          final shift = event.keyboardModifiers.shift;
+          final ctrl = event.keyboardModifiers.ctrl;
+          note.key =
+              _noteMoveStartKeys![note.id]! + (shift ? 0 : keyOffsetFromStart);
+          note.offset = _noteMoveStartTimes![note.id]! +
+              (!shift && ctrl ? 0 : timeOffsetFromStart);
         }
 
         break;
@@ -664,56 +668,4 @@ class PianoRollController {
           keyFloor == note.key;
     }).toList();
   }
-
-  // OLD COMMENTARY:
-  // Used to affect the notes in the view model without changing the main
-  // model. This is used for in-progress operations. For example, if the user
-  // selects a group of notes, presses mouse down, and moves the notes around,
-  // mutateLocalNotes() is called. On mouse up, moveNote is called above. This
-  // is useful because moveNote pushes a command to the undo/redo queue,
-  // whereas this does not.
-  //
-  // It might be possible to handle this at the app model level. This would
-  // have the advantage of allowing in-progress updates to affect other things
-  // like clip renderers and property panels, but I haven't thought of a way to
-  // generalize a fix for the undo/redo issue. We can use journal pages, but we
-  // also don't want pages to contain every in-progress action the user
-  // performed (i.e. if the user moves the notes around a lot before releasing
-  // the mouse, we still want a journal page that just moves the notes from the
-  // start position to the end position). It's possible to fix this on a case-
-  // by-case basis but I think that would result in messier code.
-  //
-  // Until we can come up with a solution to the above, I think it's best to
-  // keep this solution of mutating the local view model until we're ready to
-  // commit.
-  //
-  // UPDATE:
-  // It's 1:30AM and I'm not 100%, but here goes.
-  //
-  // This won't work anymore since we removed cubits and added MobX. I still
-  // don't know what solution I want. The first that comes to mind is to have
-  // the command store all notes before and after the edit. This almost
-  // certainly won't be a huge amount. Seems fine, probably?
-
-  // void mutateLocalNotes(
-  //     {required int? instrumentID,
-  //     required Function(List<LocalNote> notes) mutator}) {
-  //   if (state.patternID == null || instrumentID == null) {
-  //     return;
-  //   }
-
-  //   final pattern = project.song.patterns[state.patternID]!;
-
-  //   final newNotes = [...state.notes];
-
-  //   mutator(newNotes);
-
-  //   emit(state.copyWith(
-  //     notes: newNotes,
-  //     lastContent: pattern.getWidth(
-  //       barMultiple: 4,
-  //       minPaddingInBarMultiples: 4,
-  //     ),
-  //   ));
-  // }
 }
