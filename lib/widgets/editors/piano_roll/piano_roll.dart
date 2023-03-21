@@ -47,6 +47,7 @@ import '../shared/helpers/time_helpers.dart';
 import '../shared/helpers/types.dart';
 import '../shared/timeline/timeline_notification_handler.dart';
 import 'helpers.dart';
+import 'note.dart';
 import 'piano_roll_grid.dart';
 import '../shared/timeline/timeline.dart';
 import 'piano_control.dart';
@@ -676,87 +677,5 @@ class NoteLayoutDelegate extends MultiChildLayoutDelegate {
       }
     }
     return false;
-  }
-}
-
-class NoteWidget extends StatefulWidget {
-  const NoteWidget({
-    Key? key,
-    required this.note,
-    required this.isSelected,
-    required this.isPressed,
-    required this.notesUnderCursor,
-  }) : super(key: key);
-
-  final NoteModel note;
-  final bool isSelected;
-  final bool isPressed;
-
-  /// See [PianoRollEventListener] for details on what this is for.
-  final List<ID> notesUnderCursor;
-
-  @override
-  State<NoteWidget> createState() => _NoteWidgetState();
-}
-
-class _NoteWidgetState extends State<NoteWidget> {
-  bool isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    var saturation = widget.isPressed
-        ? 0.6
-        : widget.isSelected
-            ? 0.37
-            : 0.46;
-
-    var lightness = widget.isPressed
-        ? 0.22
-        : widget.isSelected
-            ? 0.37
-            : 0.31;
-
-    if (isHovered) {
-      saturation -= 0.06;
-      lightness += 0.04;
-    }
-
-    final color = HSLColor.fromAHSL(1, 166, saturation, lightness).toColor();
-
-    return Listener(
-      onPointerDown: (e) {
-        widget.notesUnderCursor.add(widget.note.id);
-      },
-      onPointerMove: (e) {
-        widget.notesUnderCursor.add(widget.note.id);
-      },
-      onPointerUp: (e) {
-        widget.notesUnderCursor.add(widget.note.id);
-      },
-      child: MouseRegion(
-        onEnter: (e) {
-          setState(() {
-            isHovered = true;
-          });
-        },
-        onExit: (e) {
-          setState(() {
-            isHovered = false;
-          });
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: const BorderRadius.all(Radius.circular(1)),
-            border: Border.all(
-              color: widget.isSelected
-                  ? const HSLColor.fromAHSL(1, 166, 0.35, 0.45).toColor()
-                  : const Color(0x00000000),
-              width: 1,
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
