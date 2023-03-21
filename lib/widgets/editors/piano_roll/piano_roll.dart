@@ -20,7 +20,6 @@
 import 'dart:math';
 
 import 'package:anthem/commands/timeline_commands.dart';
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -177,7 +176,6 @@ class _PianoRollHeader extends StatelessWidget {
                             timeSignature: TimeSignatureModel(3, 4),
                             offset: timeView.start.floor(),
                             pianoRollWidth: _pianoRollCanvasSize.width,
-                            timeView: timeView,
                           );
                         },
                       ),
@@ -278,7 +276,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
   }
 
   /// See [PianoRollEventListener] for details on what this is for.
-  List<ID> notesUnderCursorDuringEventHandling = [];
+  NoteWidgetEventData noteWidgetEventData = NoteWidgetEventData();
 
   @override
   Widget build(BuildContext context) {
@@ -376,7 +374,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
       child: LayoutBuilder(builder: (context, constraints) {
         _pianoRollCanvasSize = constraints.biggest;
         return PianoRollEventListener(
-          notesUnderCursor: notesUnderCursorDuringEventHandling,
+          noteWidgetEventData: noteWidgetEventData,
           child: ClipRect(
             child: Stack(
               fit: StackFit.expand,
@@ -418,8 +416,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
                                     isSelected: viewModel.selectedNotes
                                         .contains(note.id),
                                     isPressed: viewModel.pressedNote == note.id,
-                                    notesUnderCursor:
-                                        notesUnderCursorDuringEventHandling,
+                                    eventData: noteWidgetEventData,
                                   ),
                                 ),
                               )
@@ -648,7 +645,12 @@ class NoteLayoutDelegate extends MultiChildLayoutDelegate {
               timeViewEnd: timeViewEnd,
               viewPixelWidth: size.width,
               time: timeViewStart + note.length.toDouble()) -
-          1;
+          1
+          // We make a bit of extra room here for the resize handle. Flutter
+          // refuses to change the cursor to ResizeLeftRight on hover unless
+          // the MouseRegion is fully inside the note, so here we are.
+          +
+          noteResizeHandleWidth / 2;
 
       layoutChild(
         note.id,

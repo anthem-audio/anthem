@@ -32,8 +32,12 @@ import 'package:provider/provider.dart';
 import '../shared/helpers/time_helpers.dart';
 import 'helpers.dart';
 
-class PianoRollEventListener extends StatefulWidget {
-  final Widget child;
+/// A single instance of this class is handed to every note in the piano roll.
+/// The fields here are used during event handling.
+class NoteWidgetEventData {
+  /// Set to true if the cursor was over a note resize handle during this
+  /// event.
+  bool isResizeEvent = false;
 
   /// Flutter sends pointer events to the innermost [Listener] first, and then
   /// moves up the tree. We use this fact to our advantage here; this list is
@@ -44,12 +48,24 @@ class PianoRollEventListener extends StatefulWidget {
   ///
   /// The result is that, during event handling, this list contains a list of
   /// note IDs for notes that are currently under the pointer.
-  final List<ID> notesUnderCursor;
+  List<ID> notesUnderCursor = [];
+
+  /// Resets this class to its original state.
+  void reset() {
+    isResizeEvent = false;
+    notesUnderCursor.clear();
+  }
+}
+
+class PianoRollEventListener extends StatefulWidget {
+  final Widget child;
+
+  final NoteWidgetEventData noteWidgetEventData;
 
   const PianoRollEventListener({
     Key? key,
     required this.child,
-    required this.notesUnderCursor,
+    required this.noteWidgetEventData,
   }) : super(key: key);
 
   @override
@@ -58,7 +74,8 @@ class PianoRollEventListener extends StatefulWidget {
 
 class _PianoRollEventListenerState extends State<PianoRollEventListener> {
   handlePointerDown(BuildContext context, PointerDownEvent e) {
-    final noteUnderCursor = widget.notesUnderCursor.firstOrNull;
+    final noteUnderCursor =
+        widget.noteWidgetEventData.notesUnderCursor.firstOrNull;
 
     final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
     final contentRenderBox = context.findRenderObject() as RenderBox;
@@ -100,6 +117,7 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
       pianoRollSize: contentRenderBox.size,
       noteUnderCursor: noteUnderCursor,
       keyboardModifiers: keyboardModifiers,
+      isResize: widget.noteWidgetEventData.isResizeEvent,
     );
 
     controller.pointerDown(event);
@@ -298,19 +316,19 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
         if (e is PointerScrollEvent) {
           handleScroll(e);
         }
-        widget.notesUnderCursor.clear();
+        widget.noteWidgetEventData.reset();
       },
       onPointerDown: (e) {
         handlePointerDown(context, e);
-        widget.notesUnderCursor.clear();
+        widget.noteWidgetEventData.reset();
       },
       onPointerMove: (e) {
         handlePointerMove(context, e);
-        widget.notesUnderCursor.clear();
+        widget.noteWidgetEventData.reset();
       },
       onPointerUp: (e) {
         handlePointerUp(context, e);
-        widget.notesUnderCursor.clear();
+        widget.noteWidgetEventData.reset();
       },
       child: widget.child,
     );

@@ -334,6 +334,6 @@ class ResizeNoteCommand extends Command {
 
     final note = _getNote(pattern, generatorID, noteID);
 
-    note.length = newLength;
+    note.length = oldLength;
   }
 }
