@@ -32,6 +32,14 @@ class NoteModel extends _NoteModel with _$NoteModel {
     required super.offset,
   });
 
+  NoteModel.fromNoteModel(NoteModel model)
+      : super(
+          key: model.key,
+          length: model.length,
+          offset: model.offset,
+          velocity: model.velocity,
+        );
+
   factory NoteModel.fromJson(Map<String, dynamic> json) =>
       _$NoteModelFromJson(json);
 }

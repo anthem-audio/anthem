@@ -323,19 +323,57 @@ class PianoRollController {
     }
 
     if (event.noteUnderCursor != null) {
+      var pressedNote =
+          notes.firstWhere((element) => element.id == event.noteUnderCursor);
+
       if (viewModel.selectedNotes.contains(event.noteUnderCursor)) {
         _eventHandlingState = EventHandlingState.movingSelection;
+
+        if (event.keyboardModifiers.shift) {
+          project.startJournalPage();
+
+          final newSelectedNotes = ObservableSet<String>();
+
+          for (final note in notes
+              .where((note) => viewModel.selectedNotes.contains(note.id))
+              .toList()) {
+            final newNote = NoteModel.fromNoteModel(note);
+
+            project.execute(AddNoteCommand(
+              project: project,
+              patternID: project.song.activePatternID!,
+              generatorID: project.activeGeneratorID!,
+              note: newNote,
+            ));
+
+            newSelectedNotes.add(newNote.id);
+
+            if (note.id == event.noteUnderCursor) {
+              pressedNote = newNote;
+            }
+          }
+
+          viewModel.selectedNotes = newSelectedNotes;
+        }
       } else {
         _eventHandlingState = EventHandlingState.movingSingleNote;
         viewModel.selectedNotes.clear();
+
+        if (event.keyboardModifiers.shift) {
+          final newNote = NoteModel.fromNoteModel(pressedNote);
+
+          project.execute(AddNoteCommand(
+            project: project,
+            patternID: project.song.activePatternID!,
+            generatorID: project.activeGeneratorID!,
+            note: newNote,
+          ));
+        }
       }
 
-      final note =
-          notes.firstWhere((element) => element.id == event.noteUnderCursor);
+      viewModel.pressedNote = pressedNote.id;
 
-      viewModel.pressedNote = note.id;
-
-      setMoveNoteInfo(note);
+      setMoveNoteInfo(pressedNote);
 
       return;
     }
