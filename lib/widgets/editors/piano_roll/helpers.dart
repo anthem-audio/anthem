@@ -21,6 +21,8 @@ enum KeyType { black, white }
 
 enum NotchType { above, below, both }
 
+const double pianoControlWidth = 69;
+
 KeyType getKeyType(int key) {
   switch (key % 12) {
     case 1:
