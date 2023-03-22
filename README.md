@@ -10,7 +10,7 @@ If you're interested in contributing, feel free to open an issue or a discussion
 
 ## Setup
 
-Anthem is developed with cross-platform technologies, and is designed to run on Windows, macOS and Linux. However, it is currently being developed on Windows and may not run correctly yet on other platforms. If you have any trouble compiling for macOS or Linux, please open an issue.
+Anthem is developed with cross-platform technologies, and is designed to run on Windows, macOS and Linux. However, it is currently being developed on Windows and may not run correctly on other platforms yet. If you have any trouble compiling for macOS or Linux, please open an issue.
 
 ### Prerequisites
 
@@ -21,4 +21,4 @@ Anthem is developed with the Flutter framework. You can see instructions for ins
 1. Clone this repository
 2. Navigate to the repository and run `flutter pub get`.
 3. Open a new terminal session and run `flutter pub run build_runner watch`. This will run Dart-related code generation, and keep the generated files up-to-date as you develop.
-4. Use `flutter run` to run ANthem, or start Anthem via your IDE.
+4. Use `flutter run` to run Anthem, or start Anthem via your IDE.
