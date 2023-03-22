@@ -50,6 +50,7 @@ import 'note.dart';
 import 'piano_roll_grid.dart';
 import '../shared/timeline/timeline.dart';
 import 'piano_control.dart';
+import 'piano_rolll_attribute_editor.dart';
 
 const noContentBars = 16;
 
@@ -211,7 +212,6 @@ class _PianoRollContent extends StatefulWidget {
 class _PianoRollContentState extends State<_PianoRollContent>
     with TickerProviderStateMixin {
   double footerHeight = 61;
-  double pianoControlWidth = 69;
 
   // Fields for time view animation
 
@@ -335,7 +335,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
         height: timelineHeight,
         child: Row(
           children: [
-            SizedBox(width: pianoControlWidth),
+            const SizedBox(width: pianoControlWidth),
             Container(color: Theme.panel.border, width: 1),
             Expanded(
               child: TimelineNotificationHandler(
@@ -503,19 +503,14 @@ class _PianoRollContentState extends State<_PianoRollContent>
       sizeBehavior: PanelSizeBehavior.pixels,
       panelStartSize: 89,
       separatorSize: 6,
-      panelContent: Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: Theme.panel.border),
-          borderRadius: const BorderRadius.all(Radius.circular(4)),
-        ),
-      ),
+      panelContent: const PianoRollAttributeEditor(),
       child: Column(
         children: [
           SizedBox(
             height: 26,
             child: Row(
               children: [
-                SizedBox(width: pianoControlWidth + 1),
+                const SizedBox(width: pianoControlWidth + 1),
                 Expanded(
                   child: Observer(builder: (context) {
                     return ScrollbarRenderer(
