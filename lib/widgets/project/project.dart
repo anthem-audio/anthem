@@ -70,6 +70,7 @@ class _ProjectState extends State<Project> {
                 return Panel(
                   hidden: !projectModel.isProjectExplorerVisible,
                   orientation: PanelOrientation.left,
+                  sizeBehavior: PanelSizeBehavior.pixels,
                   panelStartSize: 200,
                   // Left panel
                   panelContent: Stack(
@@ -105,6 +106,8 @@ class _ProjectState extends State<Project> {
                   child: Panel(
                     hidden: true,
                     orientation: PanelOrientation.right,
+                    sizeBehavior: PanelSizeBehavior.pixels,
+                    panelStartSize: 200,
                     // Right panel
                     panelContent: Container(color: Theme.panel.main),
 
@@ -115,6 +118,7 @@ class _ProjectState extends State<Project> {
                       child: Panel(
                         hidden: !projectModel.isPatternEditorVisible,
                         orientation: PanelOrientation.left,
+                        panelStartSize: 500,
                         // Pattern editor
                         panelContent: const PatternEditor(),
                         child: const Arranger(),
