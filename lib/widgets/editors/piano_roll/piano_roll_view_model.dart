@@ -52,4 +52,9 @@ abstract class _PianoRollViewModel with Store {
 
   @observable
   ID? pressedNote;
+
+  // These don't need to be observable, since they're just used during event
+  // handling.
+  Time cursorNoteLength = 96;
+  int cursorNoteVelocity = 128 * 4 ~/ 5;
 }
