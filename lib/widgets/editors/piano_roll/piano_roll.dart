@@ -500,6 +500,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
 
     return Panel(
       orientation: PanelOrientation.bottom,
+      sizeBehavior: PanelSizeBehavior.pixels,
       panelStartSize: 89,
       separatorSize: 6,
       panelContent: Container(

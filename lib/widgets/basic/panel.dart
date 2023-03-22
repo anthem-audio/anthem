@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,6 +21,8 @@ import 'package:flutter/widgets.dart';
 
 enum PanelOrientation { left, top, right, bottom }
 
+enum PanelSizeBehavior { pixels, flex }
+
 bool _isLeftOrRight(PanelOrientation orientation) {
   return orientation == PanelOrientation.left ||
       orientation == PanelOrientation.right;
@@ -38,12 +40,14 @@ class Panel extends StatefulWidget {
   final bool? hidden;
   final double? panelStartSize;
   final double? separatorSize;
+  final PanelSizeBehavior sizeBehavior;
 
   const Panel({
     Key? key,
     required this.panelContent,
     required this.child,
     required this.orientation,
+    this.sizeBehavior = PanelSizeBehavior.flex,
     this.hidden,
     this.panelStartSize,
     this.separatorSize,
@@ -56,7 +60,8 @@ class Panel extends StatefulWidget {
 const defaultPanelSize = 300.0;
 
 class _PanelState extends State<Panel> {
-  double panelSize = -1;
+  double flexPanelSize = -1;
+  double pixelPanelSize = -1;
 
   // event variables, not used during render
   bool mouseDown = false;
@@ -65,119 +70,141 @@ class _PanelState extends State<Panel> {
 
   @override
   Widget build(BuildContext context) {
-    if (panelSize < 0) {
-      panelSize = widget.panelStartSize ?? defaultPanelSize;
-    }
+    return LayoutBuilder(builder: (context, constraints) {
+      final horizontal = _isLeftOrRight(widget.orientation);
 
-    final horizontal = _isLeftOrRight(widget.orientation);
-    final panelFirst = _isPanelFirst(widget.orientation);
+      final mainAxisSize =
+          (horizontal ? constraints.maxWidth : constraints.maxHeight);
 
-    final panelHidden = widget.hidden ?? false;
+      if (pixelPanelSize < 0) {
+        pixelPanelSize = widget.panelStartSize ?? defaultPanelSize;
+      }
 
-    final panelHugLeft = !horizontal || panelFirst;
-    final panelHugRight = !horizontal || !panelFirst;
-    final panelHugTop = horizontal || panelFirst;
-    final panelHugBottom = horizontal || !panelFirst;
+      if (flexPanelSize < 0) {
+        if (widget.panelStartSize != null) {
+          flexPanelSize = widget.panelStartSize! / mainAxisSize;
+        } else {
+          flexPanelSize = 0.5;
+        }
+      }
 
-    var contentHugLeft = !horizontal || !panelFirst;
-    var contentHugRight = !horizontal || panelFirst;
-    var contentHugTop = horizontal || !panelFirst;
-    var contentHugBottom = horizontal || panelFirst;
+      final panelSize = widget.sizeBehavior == PanelSizeBehavior.flex
+          ? flexPanelSize * mainAxisSize
+          : pixelPanelSize;
 
-    contentHugLeft |= panelHidden;
-    contentHugRight |= panelHidden;
-    contentHugTop |= panelHidden;
-    contentHugBottom |= panelHidden;
+      final panelFirst = _isPanelFirst(widget.orientation);
 
-    final separatorSize = widget.separatorSize ?? 3.0;
-    const handleSize = 10.0;
+      final panelHidden = widget.hidden ?? false;
 
-    var handleLeft =
-        panelHugLeft ? panelSize - handleSize / 2 + separatorSize / 2 : null;
-    var handleRight =
-        panelHugRight ? panelSize - handleSize / 2 + separatorSize / 2 : null;
-    var handleTop =
-        panelHugTop ? panelSize - handleSize / 2 + separatorSize / 2 : null;
-    var handleBottom =
-        panelHugBottom ? panelSize - handleSize / 2 + separatorSize / 2 : null;
+      final panelHugLeft = !horizontal || panelFirst;
+      final panelHugRight = !horizontal || !panelFirst;
+      final panelHugTop = horizontal || panelFirst;
+      final panelHugBottom = horizontal || !panelFirst;
 
-    if (horizontal) {
-      handleTop = 0;
-      handleBottom = 0;
-    } else {
-      handleLeft = 0;
-      handleRight = 0;
-    }
+      var contentHugLeft = !horizontal || !panelFirst;
+      var contentHugRight = !horizontal || panelFirst;
+      var contentHugTop = horizontal || !panelFirst;
+      var contentHugBottom = horizontal || panelFirst;
 
-    return Stack(
-      children: [
-        // Panel
-        Positioned(
-          left: panelHugLeft ? 0 : null,
-          right: panelHugRight ? 0 : null,
-          top: panelHugTop ? 0 : null,
-          bottom: panelHugBottom ? 0 : null,
-          child: Visibility(
-            maintainState: true,
-            visible: !panelHidden,
-            child: SizedBox(
-              width: horizontal ? panelSize : null,
-              height: !horizontal ? panelSize : null,
-              child: widget.panelContent,
+      contentHugLeft |= panelHidden;
+      contentHugRight |= panelHidden;
+      contentHugTop |= panelHidden;
+      contentHugBottom |= panelHidden;
+
+      final separatorSize = widget.separatorSize ?? 3.0;
+      const handleSize = 10.0;
+
+      var handleLeft =
+          panelHugLeft ? panelSize - handleSize / 2 + separatorSize / 2 : null;
+      var handleRight =
+          panelHugRight ? panelSize - handleSize / 2 + separatorSize / 2 : null;
+      var handleTop =
+          panelHugTop ? panelSize - handleSize / 2 + separatorSize / 2 : null;
+      var handleBottom = panelHugBottom
+          ? panelSize - handleSize / 2 + separatorSize / 2
+          : null;
+
+      if (horizontal) {
+        handleTop = 0;
+        handleBottom = 0;
+      } else {
+        handleLeft = 0;
+        handleRight = 0;
+      }
+
+      return Stack(
+        children: [
+          // Panel
+          Positioned(
+            left: panelHugLeft ? 0 : null,
+            right: panelHugRight ? 0 : null,
+            top: panelHugTop ? 0 : null,
+            bottom: panelHugBottom ? 0 : null,
+            child: Visibility(
+              maintainState: true,
+              visible: !panelHidden,
+              child: SizedBox(
+                width: horizontal ? panelSize : null,
+                height: !horizontal ? panelSize : null,
+                child: widget.panelContent,
+              ),
             ),
           ),
-        ),
 
-        // Child
-        Positioned(
-          left: contentHugLeft ? 0 : panelSize + separatorSize,
-          right: contentHugRight ? 0 : panelSize + separatorSize,
-          top: contentHugTop ? 0 : panelSize + separatorSize,
-          bottom: contentHugBottom ? 0 : panelSize + separatorSize,
-          child: widget.child,
-        ),
+          // Child
+          Positioned(
+            left: contentHugLeft ? 0 : panelSize + separatorSize,
+            right: contentHugRight ? 0 : panelSize + separatorSize,
+            top: contentHugTop ? 0 : panelSize + separatorSize,
+            bottom: contentHugBottom ? 0 : panelSize + separatorSize,
+            child: widget.child,
+          ),
 
-        // Draggable separator
-        Visibility(
-          visible: !panelHidden,
-          child: Positioned(
-            left: handleLeft,
-            right: handleRight,
-            top: handleTop,
-            bottom: handleBottom,
-            child: MouseRegion(
-              cursor: horizontal
-                  ? SystemMouseCursors.resizeLeftRight
-                  : SystemMouseCursors.resizeUpDown,
-              opaque: false,
-              child: Listener(
-                onPointerDown: (e) {
-                  mouseDown = true;
-                  startPos = (horizontal ? e.position.dx : e.position.dy);
-                  startSize = panelSize;
-                },
-                onPointerUp: (e) {
-                  mouseDown = false;
-                },
-                onPointerMove: (e) {
-                  final delta = ((horizontal ? e.position.dx : e.position.dy) -
-                          startPos) *
-                      (panelFirst ? 1 : -1);
-                  setState(() {
-                    panelSize = (startSize + delta).clamp(0, double.infinity);
-                  });
-                },
-                child: Container(
-                  width: horizontal ? handleSize : null,
-                  height: !horizontal ? handleSize : null,
-                  // this is not clickable unless it has a color and I have no idea why
-                  color: const Color(0x00FFFFFF),
+          // Draggable separator
+          Visibility(
+            visible: !panelHidden,
+            child: Positioned(
+              left: handleLeft,
+              right: handleRight,
+              top: handleTop,
+              bottom: handleBottom,
+              child: MouseRegion(
+                cursor: horizontal
+                    ? SystemMouseCursors.resizeLeftRight
+                    : SystemMouseCursors.resizeUpDown,
+                opaque: false,
+                child: Listener(
+                  onPointerDown: (e) {
+                    mouseDown = true;
+                    startPos = (horizontal ? e.position.dx : e.position.dy);
+                    startSize = panelSize;
+                  },
+                  onPointerUp: (e) {
+                    mouseDown = false;
+                  },
+                  onPointerMove: (e) {
+                    final delta =
+                        ((horizontal ? e.position.dx : e.position.dy) -
+                                startPos) *
+                            (panelFirst ? 1 : -1);
+                    setState(() {
+                      pixelPanelSize =
+                          (startSize + delta).clamp(0, double.infinity);
+                      flexPanelSize = pixelPanelSize / mainAxisSize;
+                    });
+                  },
+                  child: Container(
+                    width: horizontal ? handleSize : null,
+                    height: !horizontal ? handleSize : null,
+                    // this is not clickable unless it has a color and I have no idea why
+                    color: const Color(0x00FFFFFF),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
-    );
+        ],
+      );
+    });
   }
 }
