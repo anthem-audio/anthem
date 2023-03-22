@@ -187,6 +187,13 @@ class PianoRollController {
     );
   }
 
+  /// Records the parameters of this note so the next placed note has the same
+  /// parameters.
+  void setCursorNoteParameters(NoteModel note) {
+    viewModel.cursorNoteLength = note.length;
+    viewModel.cursorNoteVelocity = note.velocity;
+  }
+
   void leftPointerDown(PianoRollPointerDownEvent event) {
     final pattern = project.song.patterns[project.song.activePatternID]!;
     final notes =
@@ -226,6 +233,8 @@ class PianoRollController {
         _noteResizeSmallestStartLength = note.length;
         _noteResizeSmallestNoteAtStart = note.id;
       }
+
+      setCursorNoteParameters(note);
 
       return;
     }
@@ -293,6 +302,8 @@ class PianoRollController {
         _noteMoveKeyOfTopNote = noteUnderCursor.key;
         _noteMoveKeyOfBottomNote = noteUnderCursor.key;
       }
+
+      setCursorNoteParameters(noteUnderCursor);
     }
 
     if (event.noteUnderCursor != null) {
@@ -381,8 +392,8 @@ class PianoRollController {
 
     final note = _addNote(
       key: event.key.floor(),
-      velocity: 128,
-      length: 96,
+      velocity: viewModel.cursorNoteVelocity,
+      length: viewModel.cursorNoteLength,
       offset: targetTime,
     );
 
@@ -657,6 +668,8 @@ class PianoRollController {
             .where((note) => _noteResizeStartLengths!.containsKey(note.id))) {
           note.length = _noteResizeStartLengths![note.id]! + diff;
         }
+
+        setCursorNoteParameters(_noteResizePressedNote!);
 
         break;
     }
