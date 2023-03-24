@@ -9,6 +9,7 @@
     "Diagnosticable",
     "dylib",
     "fuzzywuzzy",
+    "LTWH",
     "mobx",
     "relayout",
     "scrollbars",

@@ -36,8 +36,8 @@ class PianoRollAttributeEditor extends StatelessWidget {
           const SizedBox(width: pianoControlWidth),
           Expanded(
             child: Container(
-              color: const Color(0x22FFFFFF),
-            ),
+                // color: const Color(0x22FFFFFF),
+                ),
           )
         ],
       ),

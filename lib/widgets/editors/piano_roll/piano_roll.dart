@@ -24,6 +24,7 @@ import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
+import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
@@ -50,7 +51,7 @@ import 'note.dart';
 import 'piano_roll_grid.dart';
 import '../shared/timeline/timeline.dart';
 import 'piano_control.dart';
-import 'piano_rolll_attribute_editor.dart';
+import 'piano_roll_attribute_editor.dart';
 
 const noContentBars = 16;
 
@@ -130,11 +131,11 @@ class _PianoRollState extends State<PianoRoll> {
 
 /// Uses an observer to grab the [TimeRange] from the view model and provide it
 /// to the tree. Using a separate widget for this means we can tell the tree
-/// about updates to the [TimeRange] without re-rendering [Arranger].
+/// about updates to the [TimeRange] without re-rendering [PianoRoll].
 ///
 /// We provide the [TimeRange] to the tree because some widgets, such as
 /// [Timeline], are shared between editors, and they need to access the
-/// [TimeRange] via a [Provider].
+/// [TimeRange] without knowing which editor they're associated with.
 class PianoRollTimeViewProvider extends StatelessObserverWidget {
   final Widget? child;
 
@@ -383,7 +384,6 @@ class _PianoRollContentState extends State<_PianoRollContent>
                   timeViewAnimationController: _timeViewAnimationController,
                   timeViewStartAnimation: _timeViewStartAnimation,
                   timeViewEndAnimation: _timeViewEndAnimation,
-                  keyHeight: viewModel.keyHeight,
                   keyValueAtTopAnimationController:
                       _keyValueAtTopAnimationController,
                   keyValueAtTopAnimation: _keyValueAtTopAnimation,
