@@ -264,7 +264,7 @@ class _ArrangerState extends State<Arranger> {
 ///
 /// We provide the [TimeRange] to the tree because some widgets, such as
 /// [Timeline], are shared between editors, and they need to access the
-/// [TimeRange] via a [Provider].
+/// [TimeRange] without knowing which editor they're associated with.
 class ArrangerTimeViewProvider extends StatelessObserverWidget {
   final Widget? child;
 
