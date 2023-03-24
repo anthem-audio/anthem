@@ -119,6 +119,7 @@ class _ProjectState extends State<Project> {
                         hidden: !projectModel.isPatternEditorVisible,
                         orientation: PanelOrientation.left,
                         panelStartSize: 500,
+                        sizeBehavior: PanelSizeBehavior.pixels,
                         // Pattern editor
                         panelContent: const PatternEditor(),
                         child: const Arranger(),
