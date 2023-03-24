@@ -75,6 +75,13 @@ class _CustomPaintObserverState extends State<CustomPaintObserver> {
     }
   }
 
+  @override
+  void dispose() {
+    painterReaction?.dispose();
+    foregroundPainterReaction?.dispose();
+    super.dispose();
+  }
+
   void invalidatePainter() {
     setState(() {
       painterDirtyTracker!.isDirty = true;
