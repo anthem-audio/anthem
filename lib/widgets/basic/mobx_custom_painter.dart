@@ -22,10 +22,10 @@ import 'package:mobx/mobx.dart';
 // ignore: implementation_imports
 import 'package:mobx/src/core.dart' show ReactionImpl;
 
-/// A wrapper for [CustomPaint] that interfacees with [CustomPainterObserver].
+/// A wrapper for [CustomPaint] that interfaces with [CustomPainterObserver].
 class CustomPaintObserver extends StatefulWidget {
-  final CustomPainter? painter;
-  final CustomPainter? foregroundPainter;
+  final CustomPainterObserver? painter;
+  final CustomPainterObserver? foregroundPainter;
   final Size size;
   final bool isComplex;
   final bool willChange;
@@ -99,7 +99,7 @@ class _CustomPaintObserverState extends State<CustomPaintObserver> {
     CustomPainterObserver? foregroundPainter;
 
     if (widget.foregroundPainter != null) {
-      foregroundPainter = widget.foregroundPainter as CustomPainterObserver;
+      foregroundPainter = widget.foregroundPainter!;
       foregroundPainter.reaction = foregroundPainterReaction!;
       foregroundPainter._dirtyTracker = foregroundPainterDirtyTracker!;
     }
@@ -107,7 +107,7 @@ class _CustomPaintObserverState extends State<CustomPaintObserver> {
     CustomPainterObserver? painter;
 
     if (widget.painter != null) {
-      painter = widget.painter as CustomPainterObserver;
+      painter = widget.painter!;
       painter.reaction = painterReaction!;
       painter._dirtyTracker = painterDirtyTracker!;
     }
