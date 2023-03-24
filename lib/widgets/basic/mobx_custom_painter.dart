@@ -134,6 +134,8 @@ abstract class CustomPainterObserver extends CustomPainter {
   // Should not be overridden.
   @override
   void paint(Canvas canvas, Size size) {
+    // TODO: This seems to only get dependencies once. I'm still not sure why.
+    // Maybe I need a new reaction for each render??
     reaction!.track(() {
       observablePaint(canvas, size);
     });
