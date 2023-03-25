@@ -19,13 +19,11 @@
 
 import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart';
-// ignore: implementation_imports
-import 'package:mobx/src/core.dart' show ReactionImpl;
 
-/// A wrapper for [CustomPaint] that interfaces with [CustomPainterObserver].
+/// A wrapper for [CustomPaint] that interfacees with [CustomPainterObserver].
 class CustomPaintObserver extends StatefulWidget {
-  final CustomPainterObserver? painter;
-  final CustomPainterObserver? foregroundPainter;
+  final CustomPainterObserver Function()? painterBuilder;
+  final CustomPainterObserver Function()? foregroundPainterBuilder;
   final Size size;
   final bool isComplex;
   final bool willChange;
@@ -33,8 +31,8 @@ class CustomPaintObserver extends StatefulWidget {
 
   const CustomPaintObserver({
     Key? key,
-    this.painter,
-    this.foregroundPainter,
+    this.painterBuilder,
+    this.foregroundPainterBuilder,
     this.size = Size.zero,
     this.isComplex = false,
     this.willChange = false,
@@ -46,51 +44,38 @@ class CustomPaintObserver extends StatefulWidget {
 }
 
 class _CustomPaintObserverState extends State<CustomPaintObserver> {
-  ReactionImpl? painterReaction;
-  ReactionImpl? foregroundPainterReaction;
-
-  _DirtyTracker? painterDirtyTracker;
-  _DirtyTracker? foregroundPainterDirtyTracker;
+  _SharedState? painterSharedState;
+  _SharedState? foregroundPainterSharedState;
 
   @override
   void initState() {
     super.initState();
 
-    if (widget.painter != null) {
-      painterReaction = ReactionImpl(
-        mainContext,
-        invalidatePainter,
-        name: 'CustomPainterReaction',
-      );
-      painterDirtyTracker = _DirtyTracker();
+    if (widget.painterBuilder != null) {
+      painterSharedState = _SharedState(invalidatePainter);
     }
 
-    if (widget.foregroundPainter != null) {
-      foregroundPainterReaction = ReactionImpl(
-        mainContext,
-        invalidateForegroundPainter,
-        name: 'CustomPainterForegroundReaction',
-      );
-      foregroundPainterDirtyTracker = _DirtyTracker();
+    if (widget.foregroundPainterBuilder != null) {
+      foregroundPainterSharedState = _SharedState(invalidateForegroundPainter);
     }
   }
 
   @override
   void dispose() {
-    painterReaction?.dispose();
-    foregroundPainterReaction?.dispose();
+    painterSharedState?.cleanup?.call();
+    foregroundPainterSharedState?.cleanup?.call();
     super.dispose();
   }
 
   void invalidatePainter() {
     setState(() {
-      painterDirtyTracker!.isDirty = true;
+      painterSharedState!.isDirty = true;
     });
   }
 
   void invalidateForegroundPainter() {
     setState(() {
-      foregroundPainterDirtyTracker!.isDirty = true;
+      foregroundPainterSharedState!.isDirty = true;
     });
   }
 
@@ -98,18 +83,16 @@ class _CustomPaintObserverState extends State<CustomPaintObserver> {
   Widget build(BuildContext context) {
     CustomPainterObserver? foregroundPainter;
 
-    if (widget.foregroundPainter != null) {
-      foregroundPainter = widget.foregroundPainter!;
-      foregroundPainter.reaction = foregroundPainterReaction!;
-      foregroundPainter._dirtyTracker = foregroundPainterDirtyTracker!;
+    if (widget.foregroundPainterBuilder != null) {
+      foregroundPainter = widget.foregroundPainterBuilder!.call();
+      foregroundPainter._sharedState = foregroundPainterSharedState;
     }
 
     CustomPainterObserver? painter;
 
-    if (widget.painter != null) {
-      painter = widget.painter!;
-      painter.reaction = painterReaction!;
-      painter._dirtyTracker = painterDirtyTracker!;
+    if (widget.painterBuilder != null) {
+      painter = widget.painterBuilder!.call();
+      painter._sharedState = painterSharedState;
     }
 
     return CustomPaint(
@@ -126,28 +109,39 @@ class _CustomPaintObserverState extends State<CustomPaintObserver> {
 /// A [CustomPainter] that will re-render when any observables accessed by
 /// [observablePaint] are changed. Must be used with [CustomPaintObserver].
 abstract class CustomPainterObserver extends CustomPainter {
-  ReactionImpl? reaction;
-  _DirtyTracker? _dirtyTracker;
+  _SharedState? _sharedState;
 
   void observablePaint(Canvas canvas, Size size);
 
   // Should not be overridden.
   @override
   void paint(Canvas canvas, Size size) {
-    // TODO: This seems to only get dependencies once. I'm still not sure why.
-    // Maybe I need a new reaction for each render??
-    reaction!.track(() {
+    // Very awful. A ReactionImpl didn't work so here we are.
+    _sharedState!.first = true;
+    _sharedState!.cleanup = autorun((a) {
+      if (!_sharedState!.first) {
+        _sharedState!.invalidate();
+        _sharedState!.cleanup!.call();
+        return;
+      }
+      _sharedState!.first = false;
       observablePaint(canvas, size);
     });
-    _dirtyTracker!.isDirty = false;
+    _sharedState!.isDirty = false;
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return _dirtyTracker!.isDirty;
+    return _sharedState!.isDirty;
   }
 }
 
-class _DirtyTracker {
+class _SharedState {
+  _SharedState(this.invalidate);
+
+  Function invalidate;
+  bool first = true;
+  ReactionDisposer? cleanup;
+
   var isDirty = false;
 }

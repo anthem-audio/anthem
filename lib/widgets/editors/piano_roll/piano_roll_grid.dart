@@ -57,7 +57,7 @@ class PianoRollGrid extends StatelessWidget {
             animation: timeViewAnimationController,
             builder: (context, child) {
               return CustomPaintObserver(
-                painter: PianoRollBackgroundPainter(
+                painterBuilder: () => PianoRollBackgroundPainter(
                   project: project,
                   viewModel: viewModel,
                   keyValueAtTop: keyValueAtTopAnimation.value,

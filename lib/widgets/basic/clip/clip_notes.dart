@@ -42,7 +42,7 @@ class ClipNotes extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaintObserver(
-      painter: _ClipNotesPainter(
+      painterBuilder: () => _ClipNotesPainter(
         pattern: pattern,
         generatorID: generatorID,
         timeViewStart: timeViewStart,
