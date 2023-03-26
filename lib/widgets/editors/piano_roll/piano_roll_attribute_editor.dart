@@ -21,7 +21,9 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
+import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
@@ -41,6 +43,7 @@ class PianoRollAttributeEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
+    final viewModel = Provider.of<PianoRollViewModel>(context);
 
     return Row(
       children: [
@@ -61,6 +64,7 @@ class PianoRollAttributeEditor extends StatelessWidget {
                       return ClipRect(
                         child: CustomPaintObserver(
                           painterBuilder: () => PianoRollAttributePainter(
+                            viewModel: viewModel,
                             project: project,
                             timeViewStart: timeViewStartAnimation.value,
                             timeViewEnd: timeViewEndAnimation.value,
@@ -84,11 +88,13 @@ class PianoRollAttributeEditor extends StatelessWidget {
 }
 
 class PianoRollAttributePainter extends CustomPainterObserver {
+  PianoRollViewModel viewModel;
   ProjectModel project;
   double timeViewStart;
   double timeViewEnd;
 
   PianoRollAttributePainter({
+    required this.viewModel,
     required this.project,
     required this.timeViewStart,
     required this.timeViewEnd,
@@ -97,6 +103,17 @@ class PianoRollAttributePainter extends CustomPainterObserver {
   @override
   void observablePaint(Canvas canvas, Size size) {
     final minorLinePaint = Paint()..color = Theme.grid.minor;
+
+    const selectedNoteColor = HSLColor.fromAHSL(1, 166, 0.37, 0.37);
+    const noteColor = HSLColor.fromAHSL(1, 166, 0.46, 0.31);
+    const selectedNoteCircleColor = HSLColor.fromAHSL(1, 166, 0.41, 0.25);
+    const noteCircleColor = HSLColor.fromAHSL(1, 166, 0.51, 0.23);
+
+    final selectedNotePaint = Paint()..color = selectedNoteColor.toColor();
+    final notePaint = Paint()..color = noteColor.toColor();
+    final selectedNoteCirclePaint = Paint()
+      ..color = selectedNoteCircleColor.toColor();
+    final noteCirclePaint = Paint()..color = noteCircleColor.toColor();
 
     final activePattern = project.song.patterns[project.song.activePatternID];
 
@@ -118,6 +135,55 @@ class PianoRollAttributePainter extends CustomPainterObserver {
       final rect = Rect.fromLTWH(
           0, size.height * i / verticalDivisionCount, size.width, 1);
       canvas.drawRect(rect, minorLinePaint);
+    }
+
+    final notes = activePattern?.notes[project.activeGeneratorID];
+
+    if (notes == null) return;
+
+    for (final note in notes) {
+      final startX = timeToPixels(
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: size.width,
+        time: note.offset.toDouble(),
+      );
+
+      final endX = timeToPixels(
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: size.width,
+        time: note.offset.toDouble() + note.length.toDouble(),
+      );
+
+      if (endX < 0 || startX > size.width) continue;
+
+      final paint = viewModel.selectedNotes.contains(note.id)
+          ? selectedNotePaint
+          : notePaint;
+      final circleCenterPaint = viewModel.selectedNotes.contains(note.id)
+          ? selectedNoteCirclePaint
+          : noteCirclePaint;
+
+      final barTop =
+          ((1 - (note.velocity / 127)) * size.height).round().toDouble();
+
+      canvas.drawRect(
+        Rect.fromPoints(
+          Offset(startX, barTop),
+          Offset(startX + 3, size.height),
+        ),
+        paint,
+      );
+
+      canvas.drawRect(
+        Rect.fromLTWH(startX, barTop, endX - startX, 1),
+        paint,
+      );
+
+      final circlePos = Offset(startX + 1.5, barTop + 0.5);
+      canvas.drawCircle(circlePos, 3.5, paint);
+      canvas.drawCircle(circlePos, 2.5, circleCenterPaint);
     }
   }
 }
