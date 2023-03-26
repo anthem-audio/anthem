@@ -502,7 +502,11 @@ class _PianoRollContentState extends State<_PianoRollContent>
       sizeBehavior: PanelSizeBehavior.pixels,
       panelStartSize: 89,
       separatorSize: 6,
-      panelContent: const PianoRollAttributeEditor(),
+      panelContent: PianoRollAttributeEditor(
+        timeViewAnimationController: _timeViewAnimationController,
+        timeViewStartAnimation: _timeViewStartAnimation,
+        timeViewEndAnimation: _timeViewEndAnimation,
+      ),
       child: Column(
         children: [
           SizedBox(
