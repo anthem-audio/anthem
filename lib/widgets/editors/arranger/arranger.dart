@@ -28,6 +28,7 @@ import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/track_header.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
@@ -375,11 +376,6 @@ class _ArrangerContentState extends State<_ArrangerContent>
       viewModel.trackHeightModifiers.forEach((key, value) {});
     }
 
-    void subscribeToTracks() {
-      project.song.tracks.forEach((key, value) {});
-      for (var _ in project.song.trackOrder) {}
-    }
-
     void handleMouseDown(Offset offset, Size editorSize, TimeRange timeView) {
       if (project.song.activeArrangementID == null ||
           project.song.patternOrder.isEmpty) return;
@@ -490,41 +486,34 @@ class _ArrangerContentState extends State<_ArrangerContent>
                       child: LayoutBuilder(
                         builder: (context, constraints) {
                           final grid = Positioned.fill(
-                            child: Observer(builder: (context) {
-                              subscribeToTrackHeights();
-                              subscribeToTracks();
-
-                              return AnimatedBuilder(
-                                animation:
-                                    _verticalScrollPositionAnimationController,
-                                builder: (context, child) {
-                                  return AnimatedBuilder(
-                                    animation: _timeViewAnimationController,
-                                    builder: (context, child) {
-                                      return CustomPaint(
-                                        painter: ArrangerBackgroundPainter(
-                                          baseTrackHeight:
-                                              viewModel.baseTrackHeight,
-                                          verticalScrollPosition:
-                                              _verticalScrollPositionAnimation
-                                                  .value,
-                                          trackHeightModifiers:
-                                              viewModel.trackHeightModifiers,
-                                          trackIDs: project.song.trackOrder
-                                              .nonObservableInner,
-                                          timeViewStart:
-                                              _timeViewStartAnimation.value,
-                                          timeViewEnd:
-                                              _timeViewEndAnimation.value,
-                                          ticksPerQuarter:
-                                              project.song.ticksPerQuarter,
-                                        ),
-                                      );
-                                    },
-                                  );
-                                },
-                              );
-                            }),
+                            child: AnimatedBuilder(
+                              animation:
+                                  _verticalScrollPositionAnimationController,
+                              builder: (context, child) {
+                                return AnimatedBuilder(
+                                  animation: _timeViewAnimationController,
+                                  builder: (context, child) {
+                                    return CustomPaintObserver(
+                                      painterBuilder: () =>
+                                          ArrangerBackgroundPainter(
+                                        viewModel: viewModel,
+                                        activeArrangement: project
+                                                .song.arrangements[
+                                            project.song.activeArrangementID],
+                                        project: project,
+                                        verticalScrollPosition:
+                                            _verticalScrollPositionAnimation
+                                                .value,
+                                        timeViewStart:
+                                            _timeViewStartAnimation.value,
+                                        timeViewEnd:
+                                            _timeViewEndAnimation.value,
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
                           );
 
                           ArrangementModel? getArrangement() => project.song
