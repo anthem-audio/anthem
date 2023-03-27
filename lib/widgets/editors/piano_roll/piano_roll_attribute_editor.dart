@@ -19,6 +19,7 @@
 
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
@@ -26,6 +27,7 @@ import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 class PianoRollAttributeEditor extends StatelessWidget {
@@ -56,7 +58,41 @@ class PianoRollAttributeEditor extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(width: pianoControlWidth + 1),
+                SizedBox(
+                  width: pianoControlWidth,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 4, top: 4, right: 4),
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: SizedBox(
+                        height: 20,
+                        child: Observer(builder: (context) {
+                          return Dropdown(
+                            allowNoSelection: false,
+                            items: [
+                              DropdownItem(
+                                id: NoteAttribute.velocity.name,
+                                name: 'Velocity',
+                              ),
+                              DropdownItem(
+                                id: NoteAttribute.pan.name,
+                                name: 'Pan',
+                              ),
+                            ],
+                            selectedID: viewModel.activeNoteAttribute.name,
+                            onChanged: (id) {
+                              viewModel.activeNoteAttribute =
+                                  NoteAttribute.values.firstWhere(
+                                (attribute) => attribute.name == id,
+                              );
+                            },
+                          );
+                        }),
+                      ),
+                    ),
+                  ),
+                ),
+                Container(width: 1, color: Theme.panel.border),
                 Expanded(
                   child: AnimatedBuilder(
                     animation: timeViewAnimationController,
@@ -116,6 +152,16 @@ class PianoRollAttributePainter extends CustomPainterObserver {
     final noteCirclePaint = Paint()..color = noteCircleColor.toColor();
 
     final activePattern = project.song.patterns[project.song.activePatternID];
+    final selectedAttribute = viewModel.activeNoteAttribute;
+
+    var bottom = 0;
+    const baseline = 0;
+    var top = 127;
+
+    if (selectedAttribute == NoteAttribute.pan) {
+      bottom = -127;
+      top = 127;
+    }
 
     paintTimeGrid(
       canvas: canvas,
@@ -142,6 +188,17 @@ class PianoRollAttributePainter extends CustomPainterObserver {
     if (notes == null) return;
 
     for (final note in notes) {
+      double attribute;
+
+      switch (selectedAttribute) {
+        case NoteAttribute.velocity:
+          attribute = note.velocity.toDouble();
+          break;
+        case NoteAttribute.pan:
+          attribute = note.pan.toDouble();
+          break;
+      }
+
       final startX = timeToPixels(
         timeViewStart: timeViewStart,
         timeViewEnd: timeViewEnd,
@@ -165,13 +222,18 @@ class PianoRollAttributePainter extends CustomPainterObserver {
           ? selectedNoteCirclePaint
           : noteCirclePaint;
 
-      final barTop =
-          ((1 - (note.velocity / 127)) * size.height).round().toDouble();
+      double valueToPixels(num value) =>
+          ((1 - ((value - bottom) / (top - bottom))) * size.height)
+              .round()
+              .toDouble();
+
+      final barTop = valueToPixels(attribute);
+      final barBottom = valueToPixels(baseline);
 
       canvas.drawRect(
         Rect.fromPoints(
           Offset(startX, barTop),
-          Offset(startX + 3, size.height),
+          Offset(startX + 3, barBottom),
         ),
         paint,
       );

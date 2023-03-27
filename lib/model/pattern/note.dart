@@ -30,6 +30,7 @@ class NoteModel extends _NoteModel with _$NoteModel {
     required super.velocity,
     required super.length,
     required super.offset,
+    required super.pan,
   });
 
   NoteModel.fromNoteModel(NoteModel model)
@@ -38,6 +39,7 @@ class NoteModel extends _NoteModel with _$NoteModel {
           length: model.length,
           offset: model.offset,
           velocity: model.velocity,
+          pan: model.pan,
         );
 
   factory NoteModel.fromJson(Map<String, dynamic> json) =>
@@ -59,11 +61,15 @@ abstract class _NoteModel with Store {
   @observable
   int offset;
 
+  @observable
+  int pan;
+
   _NoteModel({
     required this.key,
     required this.velocity,
     required this.length,
     required this.offset,
+    required this.pan,
   }) : id = getID();
 
   Map<String, dynamic> toJson() => _$NoteModelToJson(this as NoteModel);

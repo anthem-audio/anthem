@@ -25,6 +25,8 @@ import 'package:mobx/mobx.dart';
 
 part 'piano_roll_view_model.g.dart';
 
+enum NoteAttribute { velocity, pan }
+
 // ignore: library_private_types_in_public_api
 class PianoRollViewModel = _PianoRollViewModel with _$PianoRollViewModel;
 
@@ -53,8 +55,12 @@ abstract class _PianoRollViewModel with Store {
   @observable
   ID? pressedNote;
 
+  @observable
+  NoteAttribute activeNoteAttribute = NoteAttribute.velocity;
+
   // These don't need to be observable, since they're just used during event
   // handling.
   Time cursorNoteLength = 96;
   int cursorNoteVelocity = 128 * 3 ~/ 4;
+  int cursorNotePan = 0;
 }
