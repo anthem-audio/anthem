@@ -155,6 +155,7 @@ class _PianoRollHeader extends StatelessWidget {
     return SizedBox(
       height: 26,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Menu(
             menuDef: MenuDef(

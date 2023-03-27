@@ -51,6 +51,7 @@ class ProjectHeader extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(7),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Menu(
               menuController: menuController,
