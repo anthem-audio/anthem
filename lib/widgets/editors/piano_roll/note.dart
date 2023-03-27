@@ -22,6 +22,8 @@ import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart
 import 'package:flutter/widgets.dart';
 
 const noteResizeHandleWidth = 10.0;
+const noteResizeHandleOvershoot =
+    3.0; // How far the resize handle extends past the end of the note
 
 class NoteWidget extends StatefulWidget {
   const NoteWidget({
@@ -93,7 +95,7 @@ class _NoteWidgetState extends State<NoteWidget> {
           fit: StackFit.expand,
           children: [
             Positioned.fill(
-              right: noteResizeHandleWidth / 2,
+              right: noteResizeHandleOvershoot,
               child: Container(
                 decoration: BoxDecoration(
                   color: color,
