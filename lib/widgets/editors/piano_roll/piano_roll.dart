@@ -28,29 +28,28 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
 import 'package:anthem/widgets/basic/icon.dart';
-import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll_controller.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
-import 'package:anthem/widgets/editors/shared/tool_selector.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart' as mobx;
-
 import 'package:provider/provider.dart';
 
 import '../shared/helpers/time_helpers.dart';
 import '../shared/helpers/types.dart';
 import '../shared/timeline/timeline_notification_handler.dart';
+import '../shared/timeline/timeline.dart';
+import '../shared/tool_selector.dart';
 import 'helpers.dart';
 import 'note.dart';
-import 'piano_roll_grid.dart';
-import '../shared/timeline/timeline.dart';
 import 'piano_control.dart';
 import 'piano_roll_attribute_editor.dart';
+import 'piano_roll_controller.dart';
+import 'piano_roll_event_listener.dart';
+import 'piano_roll_grid.dart';
+import 'piano_roll_view_model.dart';
 
 const noContentBars = 16;
 
@@ -651,7 +650,7 @@ class NoteLayoutDelegate extends MultiChildLayoutDelegate {
           // refuses to change the cursor to ResizeLeftRight on hover unless
           // the MouseRegion is fully inside the note, so here we are.
           +
-          noteResizeHandleWidth / 2;
+          noteResizeHandleOvershoot;
 
       layoutChild(
         note.id,
