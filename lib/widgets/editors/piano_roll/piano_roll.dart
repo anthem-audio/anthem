@@ -501,6 +501,8 @@ class _PianoRollContentState extends State<_PianoRollContent>
       orientation: PanelOrientation.bottom,
       sizeBehavior: PanelSizeBehavior.pixels,
       panelStartSize: 89,
+      panelMinSize: 89,
+      contentMinSize: 150,
       separatorSize: 6,
       panelContent: PianoRollAttributeEditor(
         timeViewAnimationController: _timeViewAnimationController,
