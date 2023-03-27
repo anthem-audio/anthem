@@ -42,6 +42,11 @@ class Panel extends StatefulWidget {
   final double? separatorSize;
   final PanelSizeBehavior sizeBehavior;
 
+  final double panelMinSize;
+  final double panelMaxSize;
+  final double contentMinSize;
+  final double contentMaxSize;
+
   const Panel({
     Key? key,
     required this.panelContent,
@@ -51,6 +56,10 @@ class Panel extends StatefulWidget {
     this.hidden,
     this.panelStartSize,
     this.separatorSize,
+    this.panelMinSize = 0,
+    this.panelMaxSize = double.infinity,
+    this.contentMinSize = 0,
+    this.contentMaxSize = double.infinity,
   }) : super(key: key);
 
   @override
@@ -188,8 +197,19 @@ class _PanelState extends State<Panel> {
                                 startPos) *
                             (panelFirst ? 1 : -1);
                     setState(() {
-                      pixelPanelSize =
-                          (startSize + delta).clamp(0, double.infinity);
+                      final pixelPanelSizeRaw = startSize + delta;
+                      final pixelContentSizeRaw = (horizontal
+                              ? constraints.maxWidth
+                              : constraints.maxHeight) -
+                          pixelPanelSizeRaw;
+
+                      final pixelContentSizeClamped = pixelContentSizeRaw.clamp(
+                          widget.contentMinSize, widget.contentMaxSize);
+
+                      pixelPanelSize = (pixelPanelSizeRaw +
+                              (pixelContentSizeRaw - pixelContentSizeClamped))
+                          .clamp(widget.panelMinSize, widget.panelMaxSize);
+
                       flexPanelSize = pixelPanelSize / mainAxisSize;
                     });
                   },

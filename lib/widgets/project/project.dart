@@ -72,6 +72,7 @@ class _ProjectState extends State<Project> {
                   orientation: PanelOrientation.left,
                   sizeBehavior: PanelSizeBehavior.pixels,
                   panelStartSize: 200,
+                  panelMinSize: 200,
                   // Left panel
                   panelContent: Stack(
                     children: [
@@ -113,12 +114,16 @@ class _ProjectState extends State<Project> {
 
                     child: Panel(
                       orientation: PanelOrientation.bottom,
+                      panelMinSize: 300,
+                      contentMinSize: 300,
                       // Bottom panel
                       panelContent: const PianoRoll(),
                       child: Panel(
                         hidden: !projectModel.isPatternEditorVisible,
                         orientation: PanelOrientation.left,
                         panelStartSize: 500,
+                        panelMinSize: 500,
+                        contentMinSize: 500,
                         sizeBehavior: PanelSizeBehavior.pixels,
                         // Pattern editor
                         panelContent: const PatternEditor(),
