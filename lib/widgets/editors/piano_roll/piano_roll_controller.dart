@@ -118,6 +118,7 @@ class PianoRollController {
     required int velocity,
     required int length,
     required int offset,
+    required int pan,
   }) {
     if (project.song.activePatternID == null ||
         project.activeGeneratorID == null) {
@@ -129,6 +130,7 @@ class PianoRollController {
       velocity: velocity,
       length: length,
       offset: offset,
+      pan: pan,
     );
 
     project.execute(AddNoteCommand(
@@ -192,6 +194,7 @@ class PianoRollController {
   void setCursorNoteParameters(NoteModel note) {
     viewModel.cursorNoteLength = note.length;
     viewModel.cursorNoteVelocity = note.velocity;
+    viewModel.cursorNotePan = note.pan;
   }
 
   void leftPointerDown(PianoRollPointerDownEvent event) {
@@ -395,6 +398,7 @@ class PianoRollController {
       velocity: viewModel.cursorNoteVelocity,
       length: viewModel.cursorNoteLength,
       offset: targetTime,
+      pan: viewModel.cursorNotePan,
     );
 
     setMoveNoteInfo(note);
