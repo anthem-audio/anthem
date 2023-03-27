@@ -152,7 +152,7 @@ class Button extends StatefulWidget {
     this.width,
     this.height,
     this.expand,
-    this.contentPadding = const EdgeInsets.all(5),
+    this.contentPadding = const EdgeInsets.only(left: 5, right: 5),
     this.showMenuIndicator,
     this.backgroundColor,
     this.backgroundHoverColor,
