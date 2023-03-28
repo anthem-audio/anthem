@@ -88,18 +88,18 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
                             allowNoSelection: false,
                             items: [
                               DropdownItem(
-                                id: NoteAttribute.velocity.name,
+                                id: ActiveNoteAttribute.velocity.name,
                                 name: 'Velocity',
                               ),
                               DropdownItem(
-                                id: NoteAttribute.pan.name,
+                                id: ActiveNoteAttribute.pan.name,
                                 name: 'Pan',
                               ),
                             ],
                             selectedID: viewModel.activeNoteAttribute.name,
                             onChanged: (id) {
                               viewModel.activeNoteAttribute =
-                                  NoteAttribute.values.firstWhere(
+                                  ActiveNoteAttribute.values.firstWhere(
                                 (attribute) => attribute.name == id,
                               );
                             },
@@ -207,15 +207,15 @@ class PianoRollAttributePainter extends CustomPainterObserver {
     int top;
 
     switch (selectedAttribute) {
-      case NoteAttribute.velocity:
-        bottom = NoteAttribute.velocity.bottom;
-        baseline = NoteAttribute.velocity.baseline;
-        top = NoteAttribute.velocity.top;
+      case ActiveNoteAttribute.velocity:
+        bottom = ActiveNoteAttribute.velocity.bottom;
+        baseline = ActiveNoteAttribute.velocity.baseline;
+        top = ActiveNoteAttribute.velocity.top;
         break;
-      case NoteAttribute.pan:
-        bottom = NoteAttribute.pan.bottom;
-        baseline = NoteAttribute.pan.baseline;
-        top = NoteAttribute.pan.top;
+      case ActiveNoteAttribute.pan:
+        bottom = ActiveNoteAttribute.pan.bottom;
+        baseline = ActiveNoteAttribute.pan.baseline;
+        top = ActiveNoteAttribute.pan.top;
         break;
     }
 
@@ -247,10 +247,10 @@ class PianoRollAttributePainter extends CustomPainterObserver {
       double attribute;
 
       switch (selectedAttribute) {
-        case NoteAttribute.velocity:
+        case ActiveNoteAttribute.velocity:
           attribute = note.velocity.toDouble();
           break;
-        case NoteAttribute.pan:
+        case ActiveNoteAttribute.pan:
           attribute = note.pan.toDouble();
           break;
       }

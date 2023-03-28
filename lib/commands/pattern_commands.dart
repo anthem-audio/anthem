@@ -246,25 +246,45 @@ class DeleteNoteCommand extends Command {
   }
 }
 
-class MoveNoteCommand extends Command {
+enum NoteAttribute { key, offset, length, velocity, pan }
+
+class SetNoteAttributeCommand extends Command {
   ID patternID;
   ID generatorID;
   ID noteID;
-  int oldKey;
-  int newKey;
-  int oldOffset;
-  int newOffset;
+  NoteAttribute attribute;
+  int oldValue;
+  int newValue;
 
-  MoveNoteCommand({
+  SetNoteAttributeCommand({
     required ProjectModel project,
     required this.patternID,
     required this.generatorID,
     required this.noteID,
-    required this.oldKey,
-    required this.newKey,
-    required this.oldOffset,
-    required this.newOffset,
+    required this.attribute,
+    required this.oldValue,
+    required this.newValue,
   }) : super(project);
+
+  void setAttribute(NoteModel note, int value) {
+    switch (attribute) {
+      case NoteAttribute.key:
+        note.key = value;
+        break;
+      case NoteAttribute.offset:
+        note.offset = value;
+        break;
+      case NoteAttribute.length:
+        note.length = value;
+        break;
+      case NoteAttribute.velocity:
+        note.velocity = value;
+        break;
+      case NoteAttribute.pan:
+        note.pan = value;
+        break;
+    }
+  }
 
   @override
   void execute() {
@@ -276,8 +296,7 @@ class MoveNoteCommand extends Command {
 
     final note = _getNote(pattern, generatorID, noteID);
 
-    note.key = newKey;
-    note.offset = newOffset;
+    setAttribute(note, newValue);
   }
 
   @override
@@ -290,50 +309,6 @@ class MoveNoteCommand extends Command {
 
     final note = _getNote(pattern, generatorID, noteID);
 
-    note.key = oldKey;
-    note.offset = oldOffset;
-  }
-}
-
-class ResizeNoteCommand extends Command {
-  ID patternID;
-  ID generatorID;
-  ID noteID;
-  int oldLength;
-  int newLength;
-
-  ResizeNoteCommand({
-    required ProjectModel project,
-    required this.patternID,
-    required this.generatorID,
-    required this.noteID,
-    required this.oldLength,
-    required this.newLength,
-  }) : super(project);
-
-  @override
-  void execute() {
-    final pattern = project.song.patterns[patternID];
-
-    if (pattern == null) {
-      return;
-    }
-
-    final note = _getNote(pattern, generatorID, noteID);
-
-    note.length = newLength;
-  }
-
-  @override
-  void rollback() {
-    final pattern = project.song.patterns[patternID];
-
-    if (pattern == null) {
-      return;
-    }
-
-    final note = _getNote(pattern, generatorID, noteID);
-
-    note.length = oldLength;
+    setAttribute(note, oldValue);
   }
 }

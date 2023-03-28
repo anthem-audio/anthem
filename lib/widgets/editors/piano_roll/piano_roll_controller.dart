@@ -695,23 +695,35 @@ class PianoRollController {
                   viewModel.selectedNotes.nonObservableInner.contains(note.id))
               .toList();
 
-      final commands = relevantNotes.map((note) {
-        // We already moved this note to its target position. Now, we create a
-        // command to move it from its original position to the target position,
-        // which will be used for undo/redo.
-        return MoveNoteCommand(
+      // We already moved these note to their target positions. Now, we create
+      // a command to move it from its original position to the target
+      // position, which will be used for undo/redo.
+      final offsetCommands = relevantNotes.map((note) {
+        return SetNoteAttributeCommand(
           project: project,
           patternID: pattern.id,
           generatorID: project.activeGeneratorID!,
           noteID: note.id,
-          oldKey: _noteMoveStartKeys![note.id]!,
-          newKey: note.key,
-          oldOffset: _noteMoveStartTimes![note.id]!,
-          newOffset: note.offset,
+          attribute: NoteAttribute.offset,
+          oldValue: _noteMoveStartTimes![note.id]!,
+          newValue: note.offset,
         );
       });
 
-      final command = JournalPageCommand(project, commands.toList());
+      final keyCommands = relevantNotes.map((note) {
+        return SetNoteAttributeCommand(
+          project: project,
+          patternID: pattern.id,
+          generatorID: project.activeGeneratorID!,
+          noteID: note.id,
+          attribute: NoteAttribute.key,
+          oldValue: _noteMoveStartKeys![note.id]!,
+          newValue: note.key,
+        );
+      });
+
+      final command = JournalPageCommand(
+          project, offsetCommands.followedBy(keyCommands).toList());
 
       project.push(command);
     } else if (_eventHandlingState == EventHandlingState.deleting) {
@@ -736,13 +748,14 @@ class PianoRollController {
           _noteResizeStartLengths![_noteResizePressedNote!.id]!;
 
       final commands = _noteResizeStartLengths!.entries.map((entry) {
-        return ResizeNoteCommand(
+        return SetNoteAttributeCommand(
           project: project,
           patternID: project.song.activePatternID!,
           generatorID: project.activeGeneratorID!,
           noteID: entry.key,
-          oldLength: entry.value,
-          newLength: entry.value + diff,
+          attribute: NoteAttribute.length,
+          oldValue: entry.value,
+          newValue: entry.value + diff,
         );
       }).toList();
 

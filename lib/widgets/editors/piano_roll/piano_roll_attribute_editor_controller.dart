@@ -19,6 +19,9 @@
 
 import 'dart:ui';
 
+import 'package:anthem/commands/journal_commands.dart';
+import 'package:anthem/commands/pattern_commands.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
@@ -42,6 +45,8 @@ class AttributeEditorPointerEvent {
 
 class AttributeEditorController {
   PianoRollViewModel viewModel;
+  final oldValues = <ID, int>{};
+  final newValues = <ID, int>{};
 
   AttributeEditorController({required this.viewModel});
 
@@ -130,13 +135,13 @@ class AttributeEditorController {
     late final int top;
 
     switch (viewModel.activeNoteAttribute) {
-      case NoteAttribute.velocity:
-        bottom = NoteAttribute.velocity.bottom;
-        top = NoteAttribute.velocity.top;
+      case ActiveNoteAttribute.velocity:
+        bottom = ActiveNoteAttribute.velocity.bottom;
+        top = ActiveNoteAttribute.velocity.top;
         break;
-      case NoteAttribute.pan:
-        bottom = NoteAttribute.pan.bottom;
-        top = NoteAttribute.pan.top;
+      case ActiveNoteAttribute.pan:
+        bottom = ActiveNoteAttribute.pan.bottom;
+        top = ActiveNoteAttribute.pan.top;
         break;
     }
 
@@ -144,15 +149,58 @@ class AttributeEditorController {
 
     for (final note in affectedNotes) {
       switch (viewModel.activeNoteAttribute) {
-        case NoteAttribute.velocity:
+        case ActiveNoteAttribute.velocity:
+          oldValues[note.id] ??= note.velocity;
+          newValues[note.id] = newValue;
           note.velocity = newValue;
           break;
-        case NoteAttribute.pan:
+        case ActiveNoteAttribute.pan:
+          oldValues[note.id] ??= note.pan;
+          newValues[note.id] = newValue;
           note.pan = newValue;
           break;
       }
     }
   }
 
-  void pointerUp(AttributeEditorPointerEvent event) {}
+  void pointerUp(AttributeEditorPointerEvent event) {
+    if (oldValues.isEmpty && newValues.isEmpty) return;
+
+    final store = AnthemStore.instance;
+    final project = store.projects[store.activeProjectID]!;
+    final pattern = project.song.patterns[project.song.activePatternID];
+
+    if (pattern == null) return;
+    if (project.activeGeneratorID == null) return;
+
+    late NoteAttribute attribute;
+
+    switch (viewModel.activeNoteAttribute) {
+      case ActiveNoteAttribute.velocity:
+        attribute = NoteAttribute.velocity;
+        break;
+      case ActiveNoteAttribute.pan:
+        attribute = NoteAttribute.pan;
+        break;
+    }
+
+    final commands = oldValues.keys
+        .map((noteID) => SetNoteAttributeCommand(
+              project: project,
+              patternID: pattern.id,
+              generatorID: project.activeGeneratorID!,
+              noteID: noteID,
+              attribute: attribute,
+              oldValue: oldValues[noteID]!,
+              newValue: newValues[noteID]!,
+            ))
+        .toList();
+
+    final journalPageCommand = JournalPageCommand(project, commands);
+
+    project.push(journalPageCommand);
+
+    oldValues.clear();
+    newValues.clear();
+  }
 }
