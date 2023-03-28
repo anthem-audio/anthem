@@ -25,11 +25,11 @@ import 'package:mobx/mobx.dart';
 
 part 'piano_roll_view_model.g.dart';
 
-enum NoteAttribute {
+enum ActiveNoteAttribute {
   velocity(bottom: 0, baseline: 0, top: 127),
   pan(bottom: -127, baseline: 0, top: 127);
 
-  const NoteAttribute({
+  const ActiveNoteAttribute({
     required this.bottom,
     required this.baseline,
     required this.top,
@@ -69,7 +69,7 @@ abstract class _PianoRollViewModel with Store {
   ID? pressedNote;
 
   @observable
-  NoteAttribute activeNoteAttribute = NoteAttribute.velocity;
+  ActiveNoteAttribute activeNoteAttribute = ActiveNoteAttribute.velocity;
 
   // These don't need to be observable, since they're just used during event
   // handling.
