@@ -172,7 +172,7 @@ class PianoRollController {
       snappedOffset = getSnappedTime(
         rawTime: offset.floor(),
         divisionChanges: divisionChanges,
-        roundUp: true,
+        ceil: true,
       );
     }
 
@@ -389,6 +389,7 @@ class PianoRollController {
     int targetTime = getSnappedTime(
       rawTime: eventTime,
       divisionChanges: divisionChanges,
+      round: true,
     );
 
     project.startJournalPage();
@@ -485,7 +486,7 @@ class PianoRollController {
         final snappedOffset = getSnappedTime(
           rawTime: offset.floor(),
           divisionChanges: divisionChanges,
-          roundUp: true,
+          round: true,
         );
 
         var timeOffsetFromStart =
@@ -635,11 +636,13 @@ class PianoRollController {
         final snappedOriginalTime = getSnappedTime(
           rawTime: _noteResizePointerStartOffset!.floor(),
           divisionChanges: divisionChanges,
+          round: true,
         );
 
         final snappedEventTime = getSnappedTime(
           rawTime: event.offset.floor(),
           divisionChanges: divisionChanges,
+          round: true,
         );
 
         late int snapAtSmallestNoteStart;

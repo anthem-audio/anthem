@@ -282,28 +282,33 @@ List<DivisionChange> getDivisionChanges({
 Time getSnappedTime({
   required Time rawTime,
   required List<DivisionChange> divisionChanges,
-  bool roundUp = false,
+  bool ceil = false,
+  bool round = false,
 }) {
-  Time targetTime = -1;
+  Time raw = rawTime;
+  Time snapped = -1;
 
   // A binary search might be better here, but it would only matter
   // if there were a *lot* of time signature changes in the pattern
   for (var i = 0; i < divisionChanges.length; i++) {
-    if (rawTime >= 0 &&
+    if (raw >= 0 &&
         i < divisionChanges.length - 1 &&
-        divisionChanges[i + 1].offset <= rawTime) {
+        divisionChanges[i + 1].offset <= raw) {
       continue;
     }
 
     final divisionChange = divisionChanges[i];
     final snapSize = divisionChange.divisionSnapSize;
-    targetTime = (rawTime ~/ snapSize) * snapSize +
-        (roundUp && rawTime % snapSize != 0 ? snapSize : 0);
-    targetTime += divisionChange.offset % snapSize;
+
+    if (round) raw += snapSize ~/ 2;
+
+    snapped = (raw ~/ snapSize) * snapSize +
+        (ceil && raw % snapSize != 0 ? snapSize : 0);
+    snapped += divisionChange.offset % snapSize;
     break;
   }
 
-  return targetTime;
+  return snapped;
 }
 
 void zoomTimeView({
