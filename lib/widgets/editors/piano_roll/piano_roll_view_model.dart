@@ -25,7 +25,20 @@ import 'package:mobx/mobx.dart';
 
 part 'piano_roll_view_model.g.dart';
 
-enum NoteAttribute { velocity, pan }
+enum NoteAttribute {
+  velocity(bottom: 0, baseline: 0, top: 127),
+  pan(bottom: -127, baseline: 0, top: 127);
+
+  const NoteAttribute({
+    required this.bottom,
+    required this.baseline,
+    required this.top,
+  });
+
+  final int bottom;
+  final int baseline;
+  final int top;
+}
 
 // ignore: library_private_types_in_public_api
 class PianoRollViewModel = _PianoRollViewModel with _$PianoRollViewModel;

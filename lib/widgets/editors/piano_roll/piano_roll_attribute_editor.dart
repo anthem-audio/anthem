@@ -22,6 +22,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll_attribute_editor_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
@@ -30,17 +31,33 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
-class PianoRollAttributeEditor extends StatelessWidget {
+class PianoRollAttributeEditor extends StatefulWidget {
   final AnimationController timeViewAnimationController;
   final Animation<double> timeViewStartAnimation;
   final Animation<double> timeViewEndAnimation;
+  final PianoRollViewModel viewModel;
 
   const PianoRollAttributeEditor({
     super.key,
     required this.timeViewAnimationController,
     required this.timeViewStartAnimation,
     required this.timeViewEndAnimation,
+    required this.viewModel,
   });
+
+  @override
+  State<PianoRollAttributeEditor> createState() =>
+      _PianoRollAttributeEditorState();
+}
+
+class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
+  late AttributeEditorController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = AttributeEditorController(viewModel: widget.viewModel);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,21 +111,52 @@ class PianoRollAttributeEditor extends StatelessWidget {
                 ),
                 Container(width: 1, color: Theme.panel.border),
                 Expanded(
-                  child: AnimatedBuilder(
-                    animation: timeViewAnimationController,
-                    builder: (context, child) {
-                      return ClipRect(
-                        child: CustomPaintObserver(
-                          painterBuilder: () => PianoRollAttributePainter(
-                            viewModel: viewModel,
-                            project: project,
-                            timeViewStart: timeViewStartAnimation.value,
-                            timeViewEnd: timeViewEndAnimation.value,
-                          ),
+                  child: LayoutBuilder(builder: (context, constraints) {
+                    AttributeEditorPointerEvent createEditorPointerEvent(
+                        PointerEvent rawEvent) {
+                      return AttributeEditorPointerEvent(
+                        offset: pixelsToTime(
+                          timeViewStart: viewModel.timeView.start,
+                          timeViewEnd: viewModel.timeView.end,
+                          viewPixelWidth: constraints.maxWidth,
+                          pixelOffsetFromLeft: rawEvent.localPosition.dx,
                         ),
+                        normalizedY: (1 -
+                                (rawEvent.localPosition.dy /
+                                    constraints.maxHeight))
+                            .clamp(0, 1),
+                        viewSize: constraints.biggest,
                       );
-                    },
-                  ),
+                    }
+
+                    return Listener(
+                      onPointerDown: (e) {
+                        controller.pointerDown(createEditorPointerEvent(e));
+                      },
+                      onPointerMove: (e) {
+                        controller.pointerMove(createEditorPointerEvent(e));
+                      },
+                      onPointerUp: (e) {
+                        controller.pointerUp(createEditorPointerEvent(e));
+                      },
+                      child: AnimatedBuilder(
+                        animation: widget.timeViewAnimationController,
+                        builder: (context, child) {
+                          return ClipRect(
+                            child: CustomPaintObserver(
+                              painterBuilder: () => PianoRollAttributePainter(
+                                viewModel: viewModel,
+                                project: project,
+                                timeViewStart:
+                                    widget.timeViewStartAnimation.value,
+                                timeViewEnd: widget.timeViewEndAnimation.value,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  }),
                 ),
               ],
             ),
@@ -154,13 +202,21 @@ class PianoRollAttributePainter extends CustomPainterObserver {
     final activePattern = project.song.patterns[project.song.activePatternID];
     final selectedAttribute = viewModel.activeNoteAttribute;
 
-    var bottom = 0;
-    const baseline = 0;
-    var top = 127;
+    int bottom;
+    int baseline;
+    int top;
 
-    if (selectedAttribute == NoteAttribute.pan) {
-      bottom = -127;
-      top = 127;
+    switch (selectedAttribute) {
+      case NoteAttribute.velocity:
+        bottom = NoteAttribute.velocity.bottom;
+        baseline = NoteAttribute.velocity.baseline;
+        top = NoteAttribute.velocity.top;
+        break;
+      case NoteAttribute.pan:
+        bottom = NoteAttribute.pan.bottom;
+        baseline = NoteAttribute.pan.baseline;
+        top = NoteAttribute.pan.top;
+        break;
     }
 
     paintTimeGrid(

@@ -508,6 +508,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
         timeViewAnimationController: _timeViewAnimationController,
         timeViewStartAnimation: _timeViewStartAnimation,
         timeViewEndAnimation: _timeViewEndAnimation,
+        viewModel: viewModel,
       ),
       child: Column(
         children: [
