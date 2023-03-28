@@ -152,11 +152,13 @@ class AttributeEditorController {
         case ActiveNoteAttribute.velocity:
           oldValues[note.id] ??= note.velocity;
           newValues[note.id] = newValue;
+          viewModel.cursorNoteVelocity = newValue;
           note.velocity = newValue;
           break;
         case ActiveNoteAttribute.pan:
           oldValues[note.id] ??= note.pan;
           newValues[note.id] = newValue;
+          viewModel.cursorNotePan = newValue;
           note.pan = newValue;
           break;
       }
