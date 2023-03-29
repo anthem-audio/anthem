@@ -90,7 +90,7 @@ class PianoRollPointerUpEvent extends PianoRollPointerEvent {
   PianoRollPointerUpEvent({
     required double key,
     required double offset,
-    required PointerUpEvent pointerEvent,
+    required PointerEvent pointerEvent,
     required Size pianoRollSize,
     required KeyboardModifiers keyboardModifiers,
   }) : super(
