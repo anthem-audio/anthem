@@ -19,7 +19,7 @@
 
 // TODO: Handle overshoot
 
-import 'package:anthem/widgets/main_window/main_window_controller.dart';
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
