@@ -164,7 +164,7 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
     controller.pointerMove(event);
   }
 
-  handlePointerUp(BuildContext context, PointerUpEvent e) {
+  handlePointerUp(BuildContext context, PointerEvent e) {
     final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
     final controller = Provider.of<PianoRollController>(context, listen: false);
     final keyboardModifiers =
@@ -327,6 +327,22 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
         widget.noteWidgetEventData.reset();
       },
       onPointerUp: (e) {
+        handlePointerUp(context, e);
+        widget.noteWidgetEventData.reset();
+      },
+
+      // If a middle-click or right-click drag goes out of the window, Flutter
+      // will temporarily stop receiving move events. If the button is released
+      // while the pointer is outside the window in one of these cases, Flutter
+      // will call onPointerCancel instead of onPointerUp.
+      //
+      // We send this to the controller as a pointer up event. If
+      // onPointerCancel is called, we will not receive a pointer up event. An
+      // event cycle must always contain down, then zero or more moves, then
+      // up, and always in that order. We must always finalize the drag and
+      // create any necessary undo steps for whatever action has been
+      // performed, and we must always do this before starting another drag.
+      onPointerCancel: (e) {
         handlePointerUp(context, e);
         widget.noteWidgetEventData.reset();
       },
