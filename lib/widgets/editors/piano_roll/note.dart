@@ -48,6 +48,10 @@ class NoteWidget extends StatefulWidget {
 class _NoteWidgetState extends State<NoteWidget> {
   bool isHovered = false;
 
+  void _onPointerEvent(PointerEvent e) {
+    widget.eventData.notesUnderCursor.add(widget.note.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     var saturation = widget.isPressed
@@ -70,15 +74,10 @@ class _NoteWidgetState extends State<NoteWidget> {
     final color = HSLColor.fromAHSL(1, 166, saturation, lightness).toColor();
 
     return Listener(
-      onPointerDown: (e) {
-        widget.eventData.notesUnderCursor.add(widget.note.id);
-      },
-      onPointerMove: (e) {
-        widget.eventData.notesUnderCursor.add(widget.note.id);
-      },
-      onPointerUp: (e) {
-        widget.eventData.notesUnderCursor.add(widget.note.id);
-      },
+      onPointerDown: _onPointerEvent,
+      onPointerMove: _onPointerEvent,
+      onPointerUp: _onPointerEvent,
+      onPointerCancel: _onPointerEvent,
       child: MouseRegion(
         onEnter: (e) {
           setState(() {

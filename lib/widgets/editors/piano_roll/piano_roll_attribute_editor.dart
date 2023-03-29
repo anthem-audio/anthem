@@ -139,6 +139,9 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
                       onPointerUp: (e) {
                         controller.pointerUp(createEditorPointerEvent(e));
                       },
+                      onPointerCancel: (e) {
+                        controller.pointerUp(createEditorPointerEvent(e));
+                      },
                       child: AnimatedBuilder(
                         animation: widget.timeViewAnimationController,
                         builder: (context, child) {

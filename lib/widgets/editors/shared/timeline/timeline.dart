@@ -232,6 +232,43 @@ class _TimelineLabelState extends State<TimelineLabel> {
   double pointerStart = 0;
   Time timeStart = 0;
 
+  void onPointerDown(PointerEvent e) {
+    pointerStart = e.position.dx;
+    timeStart = widget.offset;
+    TimelineLabelPointerDownNotification(
+      time: widget.offset.toDouble(),
+      labelID: widget.id,
+      labelType: TimelineLabelType.timeSignatureChange,
+      viewWidthInPixels: widget.timelineWidth,
+    ).dispatch(widget.stableBuildContext);
+  }
+
+  void onPointerMove(PointerEvent e) {
+    final timeView =
+        Provider.of<TimeRange>(widget.stableBuildContext, listen: false);
+    final time =
+        (e.position.dx - pointerStart) * timeView.width / widget.timelineWidth;
+    TimelineLabelPointerMoveNotification(
+      time: time,
+      labelID: widget.id,
+      labelType: TimelineLabelType.timeSignatureChange,
+      viewWidthInPixels: widget.timelineWidth,
+    ).dispatch(widget.stableBuildContext);
+  }
+
+  void onPointerUp(PointerEvent e) {
+    final timeView =
+        Provider.of<TimeRange>(widget.stableBuildContext, listen: false);
+    final time =
+        (e.position.dx - pointerStart) * timeView.width / widget.timelineWidth;
+    TimelineLabelPointerUpNotification(
+      time: time,
+      labelID: widget.id,
+      labelType: TimelineLabelType.timeSignatureChange,
+      viewWidthInPixels: widget.timelineWidth,
+    ).dispatch(widget.stableBuildContext);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -273,44 +310,10 @@ class _TimelineLabelState extends State<TimelineLabel> {
             cursor: SystemMouseCursors.resizeLeftRight,
             child: Listener(
               behavior: HitTestBehavior.opaque,
-              onPointerDown: (event) {
-                pointerStart = event.position.dx;
-                timeStart = widget.offset;
-                TimelineLabelPointerDownNotification(
-                  time: widget.offset.toDouble(),
-                  labelID: widget.id,
-                  labelType: TimelineLabelType.timeSignatureChange,
-                  viewWidthInPixels: widget.timelineWidth,
-                ).dispatch(widget.stableBuildContext);
-              },
-              onPointerMove: (event) {
-                final timeView = Provider.of<TimeRange>(
-                    widget.stableBuildContext,
-                    listen: false);
-                final time = (event.position.dx - pointerStart) *
-                    timeView.width /
-                    widget.timelineWidth;
-                TimelineLabelPointerMoveNotification(
-                  time: time,
-                  labelID: widget.id,
-                  labelType: TimelineLabelType.timeSignatureChange,
-                  viewWidthInPixels: widget.timelineWidth,
-                ).dispatch(widget.stableBuildContext);
-              },
-              onPointerUp: (event) {
-                final timeView = Provider.of<TimeRange>(
-                    widget.stableBuildContext,
-                    listen: false);
-                final time = (event.position.dx - pointerStart) *
-                    timeView.width /
-                    widget.timelineWidth;
-                TimelineLabelPointerUpNotification(
-                  time: time,
-                  labelID: widget.id,
-                  labelType: TimelineLabelType.timeSignatureChange,
-                  viewWidthInPixels: widget.timelineWidth,
-                ).dispatch(widget.stableBuildContext);
-              },
+              onPointerDown: onPointerDown,
+              onPointerMove: onPointerMove,
+              onPointerUp: onPointerUp,
+              onPointerCancel: onPointerUp,
               child: const SizedBox(width: 12),
             ),
           ),

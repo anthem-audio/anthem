@@ -353,19 +353,9 @@ class _ButtonState extends State<Button> {
         });
       },
       child: Listener(
-        onPointerDown: (e) {
-          if (!mounted) return;
-          setState(() {
-            pressed = true;
-          });
-        },
-        onPointerUp: (e) {
-          if (!mounted) return;
-          setState(() {
-            pressed = false;
-            widget.onPress?.call();
-          });
-        },
+        onPointerDown: _onPointerDown,
+        onPointerUp: _onPointerUp,
+        onPointerCancel: _onPointerUp,
         child: Container(
           width: widget.width,
           height: widget.height,
@@ -390,5 +380,20 @@ class _ButtonState extends State<Button> {
         ),
       ),
     );
+  }
+
+  void _onPointerDown(PointerEvent e) {
+    if (!mounted) return;
+    setState(() {
+      pressed = true;
+    });
+  }
+
+  void _onPointerUp(PointerEvent e) {
+    if (!mounted) return;
+    setState(() {
+      pressed = false;
+      widget.onPress?.call();
+    });
   }
 }

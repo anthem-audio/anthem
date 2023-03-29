@@ -94,194 +94,195 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
     SystemMouseCursors.basic,
   );
 
+  void onPointerDown(PointerEvent e) {
+    final mediaQuery = MediaQuery.of(context);
+    devicePixelRatio = mediaQuery.devicePixelRatio;
+    windowRect = Rect.fromLTRB(
+      appWindow.rect.left / devicePixelRatio,
+      appWindow.rect.top / devicePixelRatio,
+      appWindow.rect.right / devicePixelRatio,
+      appWindow.rect.bottom / devicePixelRatio,
+    );
+
+    final mousePos =
+        Offset(e.position.dx + windowRect.left, e.position.dy + windowRect.top);
+    originalMouseX = mousePos.dx;
+    originalMouseY = mousePos.dy;
+    mostRecentMouseX = mousePos.dx;
+    mostRecentMouseY = mousePos.dy;
+
+    widget.onStart?.call();
+  }
+
+  void onPointerMove(PointerEvent e) {
+    final mousePos =
+        Offset(e.position.dx + windowRect.left, e.position.dy + windowRect.top);
+    final mouseX = mousePos.dx;
+    final mouseY = mousePos.dy;
+
+    final dx = (mouseX - mostRecentMouseX);
+    final dy = (mouseY - mostRecentMouseY);
+
+    final isInLeftJumpDetectZone = mouseX - windowRect.left < jumpMouseAreaSize;
+    final isInTopJumpDetectZone = mouseY - windowRect.top < jumpMouseAreaSize;
+    final isInRightJumpDetectZone =
+        windowRect.right - mouseX < jumpMouseAreaSize;
+    final isInBottomJumpDetectZone =
+        windowRect.bottom - mouseY < jumpMouseAreaSize;
+
+    _JumpDirection? xJumpDirection;
+    _JumpDirection? yJumpDirection;
+
+    final isWaitingForHorizontalJump =
+        horizontalAxisState == _AxisHandlerStatus.waitingForNegativeJump ||
+            horizontalAxisState == _AxisHandlerStatus.waitingForPositiveJump;
+    final isWaitingForVerticalJump =
+        verticalAxisState == _AxisHandlerStatus.waitingForNegativeJump ||
+            verticalAxisState == _AxisHandlerStatus.waitingForPositiveJump;
+
+    // Horizontal axis jump detection
+    if (widget.allowHorizontalJump) {
+      if (horizontalAxisState == _AxisHandlerStatus.waitingForNegativeJump ||
+          horizontalAxisState == _AxisHandlerStatus.waitingForPositiveJump) {
+        if (horizontalAxisState == _AxisHandlerStatus.waitingForNegativeJump &&
+            !isInRightJumpDetectZone) {
+          horizontalAxisState = _AxisHandlerStatus.idle;
+        }
+        if (horizontalAxisState == _AxisHandlerStatus.waitingForPositiveJump &&
+            !isInLeftJumpDetectZone) {
+          horizontalAxisState = _AxisHandlerStatus.idle;
+        }
+      } else if (horizontalAxisState == _AxisHandlerStatus.idle) {
+        accumulatorX += dx;
+
+        if (isInLeftJumpDetectZone) {
+          horizontalAxisState = _AxisHandlerStatus.waitingForPositiveJump;
+          xJumpDirection = _JumpDirection.positive;
+        } else if (isInRightJumpDetectZone) {
+          horizontalAxisState = _AxisHandlerStatus.waitingForNegativeJump;
+          xJumpDirection = _JumpDirection.negative;
+        }
+      }
+    }
+
+    // Vertical axis jump detection
+    if (widget.allowVerticalJump) {
+      if (verticalAxisState == _AxisHandlerStatus.waitingForNegativeJump ||
+          verticalAxisState == _AxisHandlerStatus.waitingForPositiveJump) {
+        if (verticalAxisState == _AxisHandlerStatus.waitingForNegativeJump &&
+            !isInBottomJumpDetectZone) {
+          verticalAxisState = _AxisHandlerStatus.idle;
+        }
+        if (verticalAxisState == _AxisHandlerStatus.waitingForPositiveJump &&
+            !isInTopJumpDetectZone) {
+          verticalAxisState = _AxisHandlerStatus.idle;
+        }
+      } else if (verticalAxisState == _AxisHandlerStatus.idle) {
+        accumulatorY += dy;
+
+        if (isInTopJumpDetectZone) {
+          verticalAxisState = _AxisHandlerStatus.waitingForPositiveJump;
+          yJumpDirection = _JumpDirection.positive;
+        } else if (isInBottomJumpDetectZone) {
+          verticalAxisState = _AxisHandlerStatus.waitingForNegativeJump;
+          yJumpDirection = _JumpDirection.negative;
+        }
+      }
+    }
+
+    if (xJumpDirection != null || yJumpDirection != null) {
+      // TODO: Since we abandoned the Rust backend, we need a new way to
+      // set the mouse cursor.
+
+      // var x = mouseX;
+      // var y = mouseY;
+
+      // if (xJumpDirection == _JumpDirection.positive) {
+      //   x = windowRect.right - jumpMouseAreaSize - jumpPadding;
+      // } else if (xJumpDirection == _JumpDirection.negative) {
+      //   x = windowRect.left + jumpMouseAreaSize + jumpPadding;
+      // }
+
+      // if (yJumpDirection == _JumpDirection.positive) {
+      //   y = windowRect.bottom - jumpMouseAreaSize - jumpPadding;
+      // } else if (yJumpDirection == _JumpDirection.negative) {
+      //   y = windowRect.top + jumpMouseAreaSize + jumpPadding;
+      // }
+
+      // x *= devicePixelRatio;
+      // y *= devicePixelRatio;
+
+      // plugin to do this, or something similar
+      // api.setMousePos(x: x.round(), y: y.round());
+    }
+
+    widget.onChange?.call(
+      ControlMouseEvent(
+        delta: Offset(
+          isWaitingForHorizontalJump ? 0 : dx,
+          isWaitingForVerticalJump ? 0 : -dy,
+        ),
+        absolute: Offset(accumulatorX, -accumulatorY),
+      ),
+    );
+
+    mostRecentMouseX = mouseX;
+    mostRecentMouseY = mouseY;
+  }
+
+  void onPointerUp(PointerEvent e) {
+    // We'll skip this for now, until we can figure out a way to make the
+    // mouse cursor disappear.
+
+    // api.setMousePos(
+    //   x: (originalMouseX * devicePixelRatio).round(),
+    //   y: (originalMouseY * devicePixelRatio).round(),
+    // );
+
+    widget.onEnd?.call(
+      ControlMouseEvent(
+        delta: const Offset(0, 0),
+        absolute: Offset(accumulatorX, accumulatorY),
+      ),
+    );
+
+    accumulatorX = 0;
+    accumulatorY = 0;
+
+    horizontalAxisState = _AxisHandlerStatus.idle;
+    verticalAxisState = _AxisHandlerStatus.idle;
+  }
+
+  void onPointerSignal(PointerEvent e) {
+    if (e is PointerScrollEvent) {
+      final keyboardModifiers =
+          Provider.of<KeyboardModifiers>(context, listen: false);
+
+      final dxRaw = -e.scrollDelta.dx * 0.35;
+      final dyRaw = -e.scrollDelta.dy * 0.35;
+
+      final dx = keyboardModifiers.shift ? dyRaw : dxRaw;
+      final dy = keyboardModifiers.shift ? dxRaw : dyRaw;
+
+      final event = ControlMouseEvent(
+        delta: Offset(dx, dy),
+        absolute: Offset(dx, dy),
+      );
+
+      widget.onStart?.call();
+      widget.onChange?.call(event);
+      widget.onEnd?.call(event);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final child = Listener(
-      onPointerDown: (e) {
-        final mediaQuery = MediaQuery.of(context);
-        devicePixelRatio = mediaQuery.devicePixelRatio;
-        windowRect = Rect.fromLTRB(
-          appWindow.rect.left / devicePixelRatio,
-          appWindow.rect.top / devicePixelRatio,
-          appWindow.rect.right / devicePixelRatio,
-          appWindow.rect.bottom / devicePixelRatio,
-        );
-
-        final mousePos = Offset(
-            e.position.dx + windowRect.left, e.position.dy + windowRect.top);
-        originalMouseX = mousePos.dx;
-        originalMouseY = mousePos.dy;
-        mostRecentMouseX = mousePos.dx;
-        mostRecentMouseY = mousePos.dy;
-
-        widget.onStart?.call();
-      },
-      onPointerUp: (e) {
-        // We'll skip this for now, until we can figure out a way to make the
-        // mouse cursor disappear.
-
-        // api.setMousePos(
-        //   x: (originalMouseX * devicePixelRatio).round(),
-        //   y: (originalMouseY * devicePixelRatio).round(),
-        // );
-
-        widget.onEnd?.call(
-          ControlMouseEvent(
-            delta: const Offset(0, 0),
-            absolute: Offset(accumulatorX, accumulatorY),
-          ),
-        );
-
-        accumulatorX = 0;
-        accumulatorY = 0;
-
-        horizontalAxisState = _AxisHandlerStatus.idle;
-        verticalAxisState = _AxisHandlerStatus.idle;
-      },
-      onPointerMove: (e) {
-        final mousePos = Offset(
-            e.position.dx + windowRect.left, e.position.dy + windowRect.top);
-        final mouseX = mousePos.dx;
-        final mouseY = mousePos.dy;
-
-        final dx = (mouseX - mostRecentMouseX);
-        final dy = (mouseY - mostRecentMouseY);
-
-        final isInLeftJumpDetectZone =
-            mouseX - windowRect.left < jumpMouseAreaSize;
-        final isInTopJumpDetectZone =
-            mouseY - windowRect.top < jumpMouseAreaSize;
-        final isInRightJumpDetectZone =
-            windowRect.right - mouseX < jumpMouseAreaSize;
-        final isInBottomJumpDetectZone =
-            windowRect.bottom - mouseY < jumpMouseAreaSize;
-
-        _JumpDirection? xJumpDirection;
-        _JumpDirection? yJumpDirection;
-
-        final isWaitingForHorizontalJump = horizontalAxisState ==
-                _AxisHandlerStatus.waitingForNegativeJump ||
-            horizontalAxisState == _AxisHandlerStatus.waitingForPositiveJump;
-        final isWaitingForVerticalJump =
-            verticalAxisState == _AxisHandlerStatus.waitingForNegativeJump ||
-                verticalAxisState == _AxisHandlerStatus.waitingForPositiveJump;
-
-        // Horizontal axis jump detection
-        if (widget.allowHorizontalJump) {
-          if (horizontalAxisState ==
-                  _AxisHandlerStatus.waitingForNegativeJump ||
-              horizontalAxisState ==
-                  _AxisHandlerStatus.waitingForPositiveJump) {
-            if (horizontalAxisState ==
-                    _AxisHandlerStatus.waitingForNegativeJump &&
-                !isInRightJumpDetectZone) {
-              horizontalAxisState = _AxisHandlerStatus.idle;
-            }
-            if (horizontalAxisState ==
-                    _AxisHandlerStatus.waitingForPositiveJump &&
-                !isInLeftJumpDetectZone) {
-              horizontalAxisState = _AxisHandlerStatus.idle;
-            }
-          } else if (horizontalAxisState == _AxisHandlerStatus.idle) {
-            accumulatorX += dx;
-
-            if (isInLeftJumpDetectZone) {
-              horizontalAxisState = _AxisHandlerStatus.waitingForPositiveJump;
-              xJumpDirection = _JumpDirection.positive;
-            } else if (isInRightJumpDetectZone) {
-              horizontalAxisState = _AxisHandlerStatus.waitingForNegativeJump;
-              xJumpDirection = _JumpDirection.negative;
-            }
-          }
-        }
-
-        // Vertical axis jump detection
-        if (widget.allowVerticalJump) {
-          if (verticalAxisState == _AxisHandlerStatus.waitingForNegativeJump ||
-              verticalAxisState == _AxisHandlerStatus.waitingForPositiveJump) {
-            if (verticalAxisState ==
-                    _AxisHandlerStatus.waitingForNegativeJump &&
-                !isInBottomJumpDetectZone) {
-              verticalAxisState = _AxisHandlerStatus.idle;
-            }
-            if (verticalAxisState ==
-                    _AxisHandlerStatus.waitingForPositiveJump &&
-                !isInTopJumpDetectZone) {
-              verticalAxisState = _AxisHandlerStatus.idle;
-            }
-          } else if (verticalAxisState == _AxisHandlerStatus.idle) {
-            accumulatorY += dy;
-
-            if (isInTopJumpDetectZone) {
-              verticalAxisState = _AxisHandlerStatus.waitingForPositiveJump;
-              yJumpDirection = _JumpDirection.positive;
-            } else if (isInBottomJumpDetectZone) {
-              verticalAxisState = _AxisHandlerStatus.waitingForNegativeJump;
-              yJumpDirection = _JumpDirection.negative;
-            }
-          }
-        }
-
-        if (xJumpDirection != null || yJumpDirection != null) {
-          // TODO: Since we abandoned the Rust backend, we need a new way to
-          // set the mouse cursor.
-
-          // var x = mouseX;
-          // var y = mouseY;
-
-          // if (xJumpDirection == _JumpDirection.positive) {
-          //   x = windowRect.right - jumpMouseAreaSize - jumpPadding;
-          // } else if (xJumpDirection == _JumpDirection.negative) {
-          //   x = windowRect.left + jumpMouseAreaSize + jumpPadding;
-          // }
-
-          // if (yJumpDirection == _JumpDirection.positive) {
-          //   y = windowRect.bottom - jumpMouseAreaSize - jumpPadding;
-          // } else if (yJumpDirection == _JumpDirection.negative) {
-          //   y = windowRect.top + jumpMouseAreaSize + jumpPadding;
-          // }
-
-          // x *= devicePixelRatio;
-          // y *= devicePixelRatio;
-
-          // plugin to do this, or something similar
-          // api.setMousePos(x: x.round(), y: y.round());
-        }
-
-        widget.onChange?.call(
-          ControlMouseEvent(
-            delta: Offset(
-              isWaitingForHorizontalJump ? 0 : dx,
-              isWaitingForVerticalJump ? 0 : -dy,
-            ),
-            absolute: Offset(accumulatorX, -accumulatorY),
-          ),
-        );
-
-        mostRecentMouseX = mouseX;
-        mostRecentMouseY = mouseY;
-      },
-      onPointerSignal: (e) {
-        if (e is PointerScrollEvent) {
-          final keyboardModifiers =
-              Provider.of<KeyboardModifiers>(context, listen: false);
-
-          final dxRaw = -e.scrollDelta.dx * 0.35;
-          final dyRaw = -e.scrollDelta.dy * 0.35;
-
-          final dx = keyboardModifiers.shift ? dyRaw : dxRaw;
-          final dy = keyboardModifiers.shift ? dxRaw : dyRaw;
-
-          final event = ControlMouseEvent(
-            delta: Offset(dx, dy),
-            absolute: Offset(dx, dy),
-          );
-
-          widget.onStart?.call();
-          widget.onChange?.call(event);
-          widget.onEnd?.call(event);
-        }
-      },
+      onPointerDown: onPointerDown,
+      onPointerMove: onPointerMove,
+      onPointerUp: onPointerUp,
+      onPointerCancel: onPointerUp,
+      onPointerSignal: onPointerSignal,
       child: widget.child,
     );
 

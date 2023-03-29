@@ -160,18 +160,22 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
                   List.generate(widget.tabs.length, (index) => index)
                       .map<Widget>((index) {
                     final tab = widget.tabs[index];
+
+                    void onPointerUp(PointerEvent e) {
+                      setState(() {
+                        selectedFallback = tab.id;
+                      });
+                      widget.onChange?.call(tab.id);
+                    }
+
                     return Positioned(
                       top: 0,
                       bottom: 0,
                       left: tabPixelPositions[index],
                       right: rowWidth - tabPixelPositions[index + 1],
                       child: Listener(
-                        onPointerUp: (event) {
-                          setState(() {
-                            selectedFallback = tab.id;
-                          });
-                          widget.onChange?.call(tab.id);
-                        },
+                        onPointerUp: onPointerUp,
+                        onPointerCancel: onPointerUp,
                         child: const MouseRegion(
                           cursor: SystemMouseCursors.click,
                         ),
