@@ -191,6 +191,9 @@ class _PanelState extends State<Panel> {
                   onPointerUp: (e) {
                     mouseDown = false;
                   },
+                  onPointerCancel: (e) {
+                    mouseDown = false;
+                  },
                   onPointerMove: (e) {
                     final delta =
                         ((horizontal ? e.position.dx : e.position.dy) -

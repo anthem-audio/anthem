@@ -54,6 +54,9 @@ class ScreenOverlay extends StatelessObserverWidget {
                     onPointerUp: (event) {
                       controller.clear();
                     },
+                    onPointerCancel: (event) {
+                      controller.clear();
+                    },
                     child: Container(color: const Color(0x00000000)),
                   ),
                 )
