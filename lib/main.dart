@@ -21,7 +21,7 @@ import 'dart:io';
 
 import 'package:anthem/theme.dart' as anthem_theme;
 import 'package:anthem/widgets/basic/background.dart';
-import 'package:anthem/widgets/main_window/main_window_controller.dart';
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 

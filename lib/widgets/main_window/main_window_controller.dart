@@ -107,30 +107,3 @@ class TabDef {
   @override
   int get hashCode => id.hashCode ^ title.hashCode;
 }
-
-class KeyboardModifiers with ChangeNotifier, DiagnosticableTreeMixin {
-  bool _ctrl = false;
-  bool _alt = false;
-  bool _shift = false;
-
-  KeyboardModifiers();
-
-  bool get ctrl => _ctrl;
-  bool get alt => _alt;
-  bool get shift => _shift;
-
-  void setCtrl(bool value) {
-    _ctrl = value;
-    notifyListeners();
-  }
-
-  void setAlt(bool value) {
-    _alt = value;
-    notifyListeners();
-  }
-
-  void setShift(bool value) {
-    _shift = value;
-    notifyListeners();
-  }
-}
