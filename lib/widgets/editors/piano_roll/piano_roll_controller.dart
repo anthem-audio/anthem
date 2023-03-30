@@ -33,6 +33,8 @@ import 'package:anthem/widgets/editors/shared/helpers/box_intersection.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart';
 
 /// These are the possible states that the piano roll can have during event
@@ -791,6 +793,32 @@ class PianoRollController {
     _noteResizePressedNote = null;
 
     _eventHandlingState = EventHandlingState.idle;
+  }
+
+  void onShortcut(LogicalKeySet shortcut) {
+    if (shortcut == LogicalKeySet(LogicalKeyboardKey.delete)) {
+      if (viewModel.selectedNotes.isEmpty ||
+          project.song.activePatternID == null ||
+          project.activeGeneratorID == null) return;
+
+      final commands = project.song.patterns[project.song.activePatternID]!
+          .notes[project.activeGeneratorID]!
+          .where((note) => viewModel.selectedNotes.contains(note.id))
+          .map((note) {
+        return DeleteNoteCommand(
+          project: project,
+          patternID: project.song.activePatternID!,
+          generatorID: project.activeGeneratorID!,
+          note: note,
+        );
+      }).toList();
+
+      final command = JournalPageCommand(project, commands);
+
+      project.execute(command);
+
+      viewModel.selectedNotes.clear();
+    }
   }
 
   // Helper functions

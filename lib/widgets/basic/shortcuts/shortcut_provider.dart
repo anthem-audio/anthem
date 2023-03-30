@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -66,6 +67,8 @@ class ShortcutProvider extends StatefulWidget {
 }
 
 class _ShortcutProviderState extends State<ShortcutProvider> {
+  final controller = ShortcutProviderController();
+
   @override
   void initState() {
     super.initState();
@@ -99,11 +102,14 @@ class _ShortcutProviderState extends State<ShortcutProvider> {
     if (shift && keyDown) keyboardModifiers.setShift(true);
     if (shift && keyUp) keyboardModifiers.setShift(false);
 
+    if (keyDown) controller.handleKeyDown(e.logicalKey);
+    if (keyUp) controller.handleKeyUp(e.logicalKey);
+
     return false;
   }
 
   @override
   Widget build(BuildContext context) {
-    return widget.child;
+    return Provider.value(value: controller, child: widget.child);
   }
 }
