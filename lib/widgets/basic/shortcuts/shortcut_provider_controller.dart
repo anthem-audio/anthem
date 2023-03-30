@@ -27,7 +27,7 @@ typedef Handler = void Function(LogicalKeySet shortcut);
 /// via [Provider]. This fact is used by [ShortcutConsumer] widgets to
 class ShortcutProviderController {
   final handlers = <String, Handler>{};
-  final globalHandlers = <Handler>[];
+  final globalHandlers = <String, Handler>{};
 
   String? activeConsumer;
 
@@ -38,14 +38,19 @@ class ShortcutProviderController {
   void register({
     required String id,
     required Handler handler,
-    bool receiveGlobalShortcuts = false,
+    bool global = false,
   }) {
-    handlers[id] = handler;
+    if (global) {
+      globalHandlers[id] = handler;
+    } else {
+      handlers[id] = handler;
+    }
   }
 
   /// Unregisters the handler with the given ID.
   void unregister(String id) {
     handlers.remove(id);
+    globalHandlers.remove(id);
   }
 
   /// The associated [ShortcutProvider] should call this function when it
@@ -55,7 +60,7 @@ class ShortcutProviderController {
 
     final shortcut = LogicalKeySet.fromSet(pressedKeys);
 
-    for (final handler in globalHandlers) {
+    for (final handler in globalHandlers.values) {
       handler(shortcut);
     }
 
@@ -74,5 +79,58 @@ class ShortcutProviderController {
   /// events.
   void focus(String id) {
     activeConsumer = id;
+  }
+}
+
+/// Mixin to check if two shortcuts match.
+extension ShortcutMatchesMixin on LogicalKeySet {
+  /// Checks if two shortcuts match.
+  ///
+  /// [LogicalKeySet] has an equality check, but two shortcuts will not be equal
+  /// if they specify different keys that should be equivalent, such as
+  /// controlLeft and controlRight.
+  bool matches(LogicalKeySet other) {
+    final normalizedThis = <LogicalKeyboardKey>{};
+    final normalizedOther = <LogicalKeyboardKey>{};
+
+    void add(LogicalKeySet source, Set<LogicalKeyboardKey> container) {
+      for (final key in source.keys) {
+        if (key == LogicalKeyboardKey.control ||
+            key == LogicalKeyboardKey.controlLeft ||
+            key == LogicalKeyboardKey.controlRight) {
+          container.add(LogicalKeyboardKey.control);
+          continue;
+        }
+
+        if (key == LogicalKeyboardKey.alt ||
+            key == LogicalKeyboardKey.altLeft ||
+            key == LogicalKeyboardKey.altRight) {
+          container.add(LogicalKeyboardKey.alt);
+          continue;
+        }
+
+        if (key == LogicalKeyboardKey.shift ||
+            key == LogicalKeyboardKey.shiftLeft ||
+            key == LogicalKeyboardKey.shiftRight) {
+          container.add(LogicalKeyboardKey.shift);
+          continue;
+        }
+
+        if (key == LogicalKeyboardKey.meta ||
+            key == LogicalKeyboardKey.metaLeft ||
+            key == LogicalKeyboardKey.metaRight) {
+          container.add(LogicalKeyboardKey.meta);
+          continue;
+        }
+
+        container.add(key);
+      }
+    }
+
+    add(this, normalizedThis);
+    add(other, normalizedOther);
+
+    return LogicalKeySet.fromSet(normalizedThis) ==
+        LogicalKeySet.fromSet(normalizedOther);
   }
 }

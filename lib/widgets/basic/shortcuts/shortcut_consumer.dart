@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/project.dart';
+import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
@@ -36,8 +38,16 @@ class ShortcutConsumer extends StatefulWidget {
   /// This function will be called when this consumer receives a shortcut.
   final Function(LogicalKeySet shortcut)? handler;
 
-  const ShortcutConsumer(
-      {super.key, required this.id, this.child, this.handler});
+  /// If true, this handler will always be called when a shortcut is triggered.
+  final bool global;
+
+  const ShortcutConsumer({
+    super.key,
+    required this.id,
+    this.child,
+    this.handler,
+    this.global = false,
+  });
 
   @override
   State<ShortcutConsumer> createState() => _ShortcutConsumerState();
@@ -47,8 +57,24 @@ class _ShortcutConsumerState extends State<ShortcutConsumer> {
   var registered = false;
   ShortcutProviderController? controller;
 
+  String getID() {
+    final project = Provider.of<ProjectModel>(context, listen: false);
+    return '${project.id}-${widget.id}';
+  }
+
   void register() {
-    controller!.register(id: widget.id, handler: onShortcut);
+    controller!.register(
+      id: getID(),
+      global: widget.global,
+      handler: (shortcut) {
+        final project = Provider.of<ProjectModel>(context, listen: false);
+
+        // Don't process shortcuts if this tab is not selected
+        if (project.id != AnthemStore.instance.activeProjectID) return;
+
+        onShortcut(shortcut);
+      },
+    );
     registered = true;
   }
 
@@ -62,9 +88,12 @@ class _ShortcutConsumerState extends State<ShortcutConsumer> {
 
     if (!registered) register();
 
+    // If this is a global handler, we don't want to steal focus on mouse down.
+    if (widget.global) return widget.child ?? const SizedBox();
+
     return Listener(
       onPointerDown: (e) {
-        controller!.focus(widget.id);
+        controller!.focus(getID());
       },
       child: widget.child,
     );
@@ -72,7 +101,7 @@ class _ShortcutConsumerState extends State<ShortcutConsumer> {
 
   @override
   void dispose() {
-    controller!.unregister(widget.id);
+    controller!.unregister(getID());
     super.dispose();
   }
 }
