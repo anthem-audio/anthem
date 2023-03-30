@@ -498,7 +498,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
       }),
     );
 
-    return AnthemShortcuts(
+    return ShortcutConsumer(
       id: 'piano-roll',
       handler: (shortcut) {
         final controller =

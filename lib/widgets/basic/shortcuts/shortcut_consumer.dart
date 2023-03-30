@@ -21,27 +21,34 @@ import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
-/// Provides a way for Anthem's editors to listen for shortcuts.
-class AnthemShortcuts extends StatefulWidget {
+/// Provides a way for Anthem's editors to listen for shortcuts. This widget
+/// renders a [Listener] that captures mouse events and tells the
+/// nearest [ShortcutProvider] when it is clicked on. This provides a crude way
+/// to track which editor is active, so that only the active editor receives
+/// keyboard shortcuts.
+class ShortcutConsumer extends StatefulWidget {
+  /// The ID of this consumer. Must be unique within a project (i.e. you cannot
+  /// have two widgets with a key of `piano-roll` within the same tab).
   final String id;
+
   final Widget? child;
+
+  /// This function will be called when this consumer receives a shortcut.
   final Function(LogicalKeySet shortcut)? handler;
 
-  const AnthemShortcuts(
+  const ShortcutConsumer(
       {super.key, required this.id, this.child, this.handler});
 
   @override
-  State<AnthemShortcuts> createState() => _AnthemShortcutsState();
+  State<ShortcutConsumer> createState() => _ShortcutConsumerState();
 }
 
-class _AnthemShortcutsState extends State<AnthemShortcuts> {
+class _ShortcutConsumerState extends State<ShortcutConsumer> {
   var registered = false;
   ShortcutProviderController? controller;
 
   void register() {
     controller!.register(id: widget.id, handler: onShortcut);
-    // TODO this should be triggered by mouse activity in the editor, not automatically on register
-    controller!.focus(widget.id);
     registered = true;
   }
 
@@ -55,7 +62,12 @@ class _AnthemShortcutsState extends State<AnthemShortcuts> {
 
     if (!registered) register();
 
-    return widget.child ?? const SizedBox();
+    return Listener(
+      onPointerDown: (e) {
+        controller!.focus(widget.id);
+      },
+      child: widget.child,
+    );
   }
 
   @override
