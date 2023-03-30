@@ -20,57 +20,47 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-typedef Handler = void Function();
+typedef Handler = void Function(LogicalKeySet shortcut);
 
 class ShortcutProviderController {
   final handlers = <String, Handler>{};
-  final shortcuts = <String, List<LogicalKeySet>>{};
+  final globalHandlers = <Handler>[];
 
   String? activeConsumer;
 
-  final pressedKeys = LogicalKeySet.fromSet(const {});
+  final pressedKeys = <LogicalKeyboardKey>{};
 
   void register({
-    required String key,
+    required String id,
     required Handler handler,
     bool receiveGlobalShortcuts = false,
   }) {
-    handlers[key] = handler;
-    shortcuts[key] = [];
+    handlers[id] = handler;
   }
 
-  void unregister(String key) {
-    handlers.remove(key);
-    shortcuts.remove(key);
-  }
-
-  void addShortcut({required String key, required LogicalKeySet shortcut}) {
-    shortcuts[key]!.add(shortcut);
-  }
-
-  void addGlobalShortcut(
-      {required String key, required LogicalKeySet shortcut}) {
-    // TODO: Implement
-  }
-
-  void removeShortcut({required String key, required LogicalKeySet shortcut}) {
-    shortcuts[key]!.removeWhere(
-      (element) =>
-          element.keys.intersection(shortcut.keys).length ==
-          element.keys.length,
-    );
-  }
-
-  void removeGlobalShortcut(
-      {required String key, required LogicalKeySet shortcut}) {
-    // TODO: Implement
+  void unregister(String id) {
+    handlers.remove(id);
   }
 
   void handleKeyDown(LogicalKeyboardKey key) {
-    pressedKeys.keys.add(key);
+    pressedKeys.add(key);
+
+    final shortcut = LogicalKeySet.fromSet(pressedKeys);
+
+    for (final handler in globalHandlers) {
+      handler(shortcut);
+    }
+
+    if (activeConsumer == null) return;
+
+    handlers[activeConsumer]!(shortcut);
   }
 
   void handleKeyUp(LogicalKeyboardKey key) {
-    pressedKeys.keys.remove(key);
+    pressedKeys.remove(key);
+  }
+
+  void focus(String id) {
+    activeConsumer = id;
   }
 }

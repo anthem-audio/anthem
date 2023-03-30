@@ -32,6 +32,7 @@ import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
+import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart' as mobx;
@@ -497,114 +498,125 @@ class _PianoRollContentState extends State<_PianoRollContent>
       }),
     );
 
-    return Panel(
-      orientation: PanelOrientation.bottom,
-      sizeBehavior: PanelSizeBehavior.pixels,
-      panelStartSize: 89,
-      panelMinSize: 89,
-      contentMinSize: 150,
-      separatorSize: 6,
-      panelContent: PianoRollAttributeEditor(
-        timeViewAnimationController: _timeViewAnimationController,
-        timeViewStartAnimation: _timeViewStartAnimation,
-        timeViewEndAnimation: _timeViewEndAnimation,
-        viewModel: viewModel,
-      ),
-      child: Column(
-        children: [
-          SizedBox(
-            height: 26,
-            child: Row(
-              children: [
-                const SizedBox(width: pianoControlWidth + 1),
-                Expanded(
-                  child: Observer(builder: (context) {
-                    return ScrollbarRenderer(
-                      scrollRegionStart: 0,
-                      scrollRegionEnd: getPattern()?.lastContent.toDouble() ??
-                          (project.song.ticksPerQuarter * 4 * noContentBars)
-                              .toDouble(),
-                      handleStart: viewModel.timeView.start,
-                      handleEnd: viewModel.timeView.end,
-                      canScrollPastEnd: true,
-                      minHandleSize: project.song.ticksPerQuarter *
-                          4, // TODO: time signature
-                      onChange: (event) {
-                        viewModel.timeView.start = event.handleStart;
-                        viewModel.timeView.end = event.handleEnd;
-                      },
-                    );
-                  }),
-                ),
-                const SizedBox(width: 4),
-                VerticalScaleControl(
-                  min: minKeyHeight,
-                  max: maxKeyHeight,
-                  value: viewModel.keyHeight,
-                  onChange: (height) {
-                    viewModel.keyHeight = height;
-                  },
-                ),
-              ],
+    return AnthemShortcuts(
+      id: 'piano-roll',
+      handler: (shortcut) {
+        final controller =
+            Provider.of<PianoRollController>(context, listen: false);
+        controller.onShortcut(shortcut);
+      },
+      child: Panel(
+        orientation: PanelOrientation.bottom,
+        sizeBehavior: PanelSizeBehavior.pixels,
+        panelStartSize: 89,
+        panelMinSize: 89,
+        contentMinSize: 150,
+        separatorSize: 6,
+        panelContent: PianoRollAttributeEditor(
+          timeViewAnimationController: _timeViewAnimationController,
+          timeViewStartAnimation: _timeViewStartAnimation,
+          timeViewEndAnimation: _timeViewEndAnimation,
+          viewModel: viewModel,
+        ),
+        child: Column(
+          children: [
+            SizedBox(
+              height: 26,
+              child: Row(
+                children: [
+                  const SizedBox(width: pianoControlWidth + 1),
+                  Expanded(
+                    child: Observer(builder: (context) {
+                      return ScrollbarRenderer(
+                        scrollRegionStart: 0,
+                        scrollRegionEnd: getPattern()?.lastContent.toDouble() ??
+                            (project.song.ticksPerQuarter * 4 * noContentBars)
+                                .toDouble(),
+                        handleStart: viewModel.timeView.start,
+                        handleEnd: viewModel.timeView.end,
+                        canScrollPastEnd: true,
+                        minHandleSize: project.song.ticksPerQuarter *
+                            4, // TODO: time signature
+                        onChange: (event) {
+                          viewModel.timeView.start = event.handleStart;
+                          viewModel.timeView.end = event.handleEnd;
+                        },
+                      );
+                    }),
+                  ),
+                  const SizedBox(width: 4),
+                  VerticalScaleControl(
+                    min: minKeyHeight,
+                    max: maxKeyHeight,
+                    value: viewModel.keyHeight,
+                    onChange: (height) {
+                      viewModel.keyHeight = height;
+                    },
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Theme.panel.border),
-                      borderRadius: const BorderRadius.all(Radius.circular(4)),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.all(Radius.circular(4)),
-                      child: Column(
-                        children: [
-                          timeline,
-                          Container(color: Theme.panel.border, height: 1),
-                          Expanded(
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                pianoControl,
-                                Container(color: Theme.panel.border, width: 1),
-                                noteRenderArea,
-                              ],
+            const SizedBox(height: 4),
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Theme.panel.border),
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(4)),
+                      ),
+                      child: ClipRRect(
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(4)),
+                        child: Column(
+                          children: [
+                            timeline,
+                            Container(color: Theme.panel.border, height: 1),
+                            Expanded(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  pianoControl,
+                                  Container(
+                                      color: Theme.panel.border, width: 1),
+                                  noteRenderArea,
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                // Vertical scrollbar
-                const SizedBox(width: 4),
-                SizedBox(
-                  width: 17,
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      return ScrollbarRenderer(
-                        scrollRegionStart: minKeyValue,
-                        scrollRegionEnd: maxKeyValue,
-                        handleStart: maxKeyValue - viewModel.keyValueAtTop,
-                        handleEnd: maxKeyValue -
-                            viewModel.keyValueAtTop +
-                            constraints.maxHeight / viewModel.keyHeight,
-                        onChange: (event) {
-                          viewModel.keyValueAtTop =
-                              maxKeyValue - event.handleStart;
-                        },
-                      );
-                    },
+                  // Vertical scrollbar
+                  const SizedBox(width: 4),
+                  SizedBox(
+                    width: 17,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return ScrollbarRenderer(
+                          scrollRegionStart: minKeyValue,
+                          scrollRegionEnd: maxKeyValue,
+                          handleStart: maxKeyValue - viewModel.keyValueAtTop,
+                          handleEnd: maxKeyValue -
+                              viewModel.keyValueAtTop +
+                              constraints.maxHeight / viewModel.keyHeight,
+                          onChange: (event) {
+                            viewModel.keyValueAtTop =
+                                maxKeyValue - event.handleStart;
+                          },
+                        );
+                      },
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
