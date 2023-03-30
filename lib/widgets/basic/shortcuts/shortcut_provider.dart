@@ -53,7 +53,7 @@ class KeyboardModifiers with ChangeNotifier, DiagnosticableTreeMixin {
 }
 
 /// This class listens for shortcuts and sends them to the active
-/// [ShortcutListener].
+/// [ShortcutConsumer].
 ///
 /// This class also provides an object to descendants which tells which
 /// modifier keys (control, alt, shift) are currently pressed.
