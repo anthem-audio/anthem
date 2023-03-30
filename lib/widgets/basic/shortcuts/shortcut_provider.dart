@@ -84,6 +84,7 @@ class _ShortcutProviderState extends State<ShortcutProvider> {
   bool _onKey(KeyEvent e) {
     final keyDown = e is KeyDownEvent;
     final keyUp = e is KeyUpEvent;
+    final keyRepeat = e is KeyRepeatEvent;
 
     final ctrl = e.logicalKey.keyLabel == 'Control Left' ||
         e.logicalKey.keyLabel == 'Control Right';
@@ -102,7 +103,7 @@ class _ShortcutProviderState extends State<ShortcutProvider> {
     if (shift && keyDown) keyboardModifiers.setShift(true);
     if (shift && keyUp) keyboardModifiers.setShift(false);
 
-    if (keyDown) controller.handleKeyDown(e.logicalKey);
+    if (keyDown || keyRepeat) controller.handleKeyDown(e.logicalKey);
     if (keyUp) controller.handleKeyUp(e.logicalKey);
 
     return false;
