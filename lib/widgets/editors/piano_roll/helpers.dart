@@ -21,6 +21,8 @@ enum KeyType { black, white }
 
 enum NotchType { above, below, both }
 
+const double pianoControlWidth = 69;
+
 KeyType getKeyType(int key) {
   switch (key % 12) {
     case 1:
@@ -63,4 +65,22 @@ double pixelsToKeyValue({
 }) {
   final keyOffsetFromTop = pixelOffsetFromTop / keyHeight;
   return keyValueAtTop - keyOffsetFromTop;
+}
+
+String keyToString(int key) {
+  const notes = [
+    'A',
+    'B♭',
+    'B',
+    'C',
+    'C♯',
+    'D',
+    'E♭',
+    'E',
+    'F',
+    'F♯',
+    'G',
+    'A♭'
+  ];
+  return notes[key % notes.length] + (key ~/ notes.length).toString();
 }

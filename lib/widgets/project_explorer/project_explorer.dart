@@ -43,7 +43,7 @@ class ProjectExplorer extends StatefulWidget {
 class _ProjectExplorerState extends State<ProjectExplorer> {
   final scrollController = ScrollController();
   final searchBoxController = TextEditingController();
-  String searchText = "";
+  String searchText = '';
 
   @override
   void initState() {
@@ -67,12 +67,12 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
     final project = Provider.of<ProjectModel>(context);
 
     TreeViewItemModel getArrangementsTree() => TreeViewItemModel(
-          key: "projectArrangementsFolder",
-          label: "Arrangements",
+          key: 'projectArrangementsFolder',
+          label: 'Arrangements',
           children: project.song.arrangementOrder
               .map(
                 (id) => TreeViewItemModel(
-                  key: "arrangement-$id",
+                  key: 'arrangement-$id',
                   label: project.song.arrangements[id]!.name,
                   onClick: () => projectController.setActiveDetailView(
                     true,
@@ -84,12 +84,12 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
         );
 
     TreeViewItemModel getPatternsTree() => TreeViewItemModel(
-          key: "projectPatternsFolder",
-          label: "Patterns",
+          key: 'projectPatternsFolder',
+          label: 'Patterns',
           children: project.song.patternOrder
               .map(
                 (patternID) => TreeViewItemModel(
-                  key: "pattern-$patternID",
+                  key: 'pattern-$patternID',
                   label: project.song.patterns[patternID]!.name,
                   onClick: () => projectController.setActiveDetailView(
                     true,
@@ -132,10 +132,10 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
                   Expanded(
                     child: ButtonTabs(
                       tabs: [
-                        ButtonTabDef.withIcon(id: "project", icon: Icons.audio),
-                        ButtonTabDef.withIcon(id: "files", icon: Icons.file),
+                        ButtonTabDef.withIcon(id: 'project', icon: Icons.audio),
+                        ButtonTabDef.withIcon(id: 'files', icon: Icons.file),
                         ButtonTabDef.withIcon(
-                            id: "plugins", icon: Icons.plugin),
+                            id: 'plugins', icon: Icons.plugin),
                       ],
                     ),
                   ),
@@ -163,12 +163,12 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
                       ),
                       child: Observer(builder: (context) {
                         return TreeView(
-                          filterText: searchText == "" ? null : searchText,
+                          filterText: searchText == '' ? null : searchText,
                           scrollController: scrollController,
                           items: [
                             TreeViewItemModel(
-                              key: "currentProject",
-                              label: "Current project",
+                              key: 'currentProject',
+                              label: 'Current project',
                               children: [
                                 getArrangementsTree(),
                                 getPatternsTree(),
@@ -194,8 +194,8 @@ TreeViewItemModel getMarkersItem(
   final timeSignatureChanges = pattern!.timeSignatureChanges;
 
   return TreeViewItemModel(
-    key: "markers",
-    label: "Time markers",
+    key: 'markers',
+    label: 'Time markers',
     children: timeSignatureChanges
         .map(
           (change) => TreeViewItemModel(

@@ -128,10 +128,10 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
                         ),
                       ),
                     ),
-                    // TODO: This animation should only play with a transition
-                    // triggered on click. Widget resize should not trigger the
-                    // transition. I'm not sure how best to do this and I don't
-                    // want to tackle it now.
+                    // It would be nice to have this animation, but it triggers
+                    // on widget resize, whereas it should only happen on
+                    // click. I'm not sure how best to do this and I don't want
+                    // to tackle it now.
                     // AnimatedPositioned(
                     //   duration: defaultAnimationDuration,
                     //   curve: defaultAnimationCurve,
@@ -160,18 +160,22 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
                   List.generate(widget.tabs.length, (index) => index)
                       .map<Widget>((index) {
                     final tab = widget.tabs[index];
+
+                    void onPointerUp(PointerEvent e) {
+                      setState(() {
+                        selectedFallback = tab.id;
+                      });
+                      widget.onChange?.call(tab.id);
+                    }
+
                     return Positioned(
                       top: 0,
                       bottom: 0,
                       left: tabPixelPositions[index],
                       right: rowWidth - tabPixelPositions[index + 1],
                       child: Listener(
-                        onPointerUp: (event) {
-                          setState(() {
-                            selectedFallback = tab.id;
-                          });
-                          widget.onChange?.call(tab.id);
-                        },
+                        onPointerUp: onPointerUp,
+                        onPointerCancel: onPointerUp,
                         child: const MouseRegion(
                           cursor: SystemMouseCursors.click,
                         ),
@@ -202,7 +206,7 @@ class ButtonTabDef<T> {
     } else if (icon != null) {
       return ButtonTabType.icon;
     } else {
-      throw Exception("Malformed ButtonTabDef");
+      throw Exception('Malformed ButtonTabDef');
     }
   }
 }

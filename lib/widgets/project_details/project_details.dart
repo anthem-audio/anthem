@@ -51,7 +51,7 @@ class ProjectDetails extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Text(
-            "This is the detail view. Click on something to view and edit its details.",
+            'This is the detail view. Click on something to view and edit its details.',
             style: TextStyle(
               color: Theme.text.main,
               fontSize: 12,

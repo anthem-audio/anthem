@@ -43,11 +43,10 @@ class MainWindowController {
 
   /// Returns the ID of the loaded project, or null if the project load failed
   /// or was cancelled
-  /// TODO: Granular error handling
   Future<ID?> loadProject() async {
     final path = (await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ["anthem"],
+      allowedExtensions: ['anthem'],
     ))
         ?.files[0]
         .path;
@@ -68,17 +67,16 @@ class MainWindowController {
       if (alwaysUseFilePicker || !project.isSaved) {
         path = (await FilePicker.platform.saveFile(
           type: FileType.custom,
-          allowedExtensions: ["anthem"],
+          allowedExtensions: ['anthem'],
         ));
       } else {
-        // TODO: This is bad because we can't actually move the project anywhere - we shouldn't hard-code a project location
         path = project.filePath;
       }
 
       if (path == null) return;
 
-      if (!path.endsWith(".anthem")) {
-        path += ".anthem";
+      if (!path.endsWith('.anthem')) {
+        path += '.anthem';
       }
 
       await File(path).writeAsString(json.encode(project.toJson()));
@@ -86,7 +84,6 @@ class MainWindowController {
       project.isSaved = true;
       project.filePath = path;
     } catch (e) {
-      // TODO: the backend isn't telling us if the save failed, so we can't act on that
       return;
     }
   }
@@ -106,31 +103,4 @@ class TabDef {
 
   @override
   int get hashCode => id.hashCode ^ title.hashCode;
-}
-
-class KeyboardModifiers with ChangeNotifier, DiagnosticableTreeMixin {
-  bool _ctrl = false;
-  bool _alt = false;
-  bool _shift = false;
-
-  KeyboardModifiers();
-
-  bool get ctrl => _ctrl;
-  bool get alt => _alt;
-  bool get shift => _shift;
-
-  void setCtrl(bool value) {
-    _ctrl = value;
-    notifyListeners();
-  }
-
-  void setAlt(bool value) {
-    _alt = value;
-    notifyListeners();
-  }
-
-  void setShift(bool value) {
-    _shift = value;
-    notifyListeners();
-  }
 }

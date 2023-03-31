@@ -9,12 +9,14 @@
     "Diagnosticable",
     "dylib",
     "fuzzywuzzy",
+    "LTWH",
     "mobx",
     "relayout",
     "scrollbars",
     "stepanov",
     "topbar",
     "unfocus",
+    "Unregisters",
     "vsync"
   ]
 }

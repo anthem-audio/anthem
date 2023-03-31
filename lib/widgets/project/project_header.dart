@@ -51,19 +51,20 @@ class ProjectHeader extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(7),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Menu(
               menuController: menuController,
               menuDef: MenuDef(
                 children: [
                   AnthemMenuItem(
-                      text: "New project",
+                      text: 'New project',
                       onSelected: () {
                         final projectID = mainWindowController.newProject();
                         mainWindowController.switchTab(projectID);
                       }),
                   AnthemMenuItem(
-                      text: "Load project...",
+                      text: 'Load project...',
                       onSelected: () {
                         mainWindowController.loadProject().then((projectID) {
                           if (projectID != null) {
@@ -73,12 +74,12 @@ class ProjectHeader extends StatelessWidget {
                       }),
                   Separator(),
                   AnthemMenuItem(
-                      text: "Save",
+                      text: 'Save',
                       onSelected: () {
                         mainWindowController.saveProject(projectID, false);
                       }),
                   AnthemMenuItem(
-                      text: "Save as...",
+                      text: 'Save as...',
                       onSelected: () {
                         mainWindowController.saveProject(projectID, true);
                       }),

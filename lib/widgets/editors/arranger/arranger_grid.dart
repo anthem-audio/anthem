@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,36 +17,37 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/arrangement/arrangement.dart';
+import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
 
+import 'arranger_view_model.dart';
 import 'helpers.dart';
 
-class ArrangerBackgroundPainter extends CustomPainter {
-  final double baseTrackHeight;
-  final Map<ID, double> trackHeightModifiers;
-  final List<ID> trackIDs;
+class ArrangerBackgroundPainter extends CustomPainterObserver {
   final double verticalScrollPosition;
   final double timeViewStart;
   final double timeViewEnd;
-  final int ticksPerQuarter;
+  final ArrangerViewModel viewModel;
+  final ArrangementModel? activeArrangement;
+  final ProjectModel project;
 
   ArrangerBackgroundPainter({
-    required this.baseTrackHeight,
-    required this.trackHeightModifiers,
-    required this.trackIDs,
+    required this.viewModel,
+    required this.activeArrangement,
+    required this.project,
     required this.verticalScrollPosition,
     required this.timeViewStart,
     required this.timeViewEnd,
-    required this.ticksPerQuarter,
   });
 
   @override
-  void paint(Canvas canvas, Size size) {
+  void observablePaint(Canvas canvas, Size size) {
     // final accentLinePaint = Paint()..color = Theme.grid.accent;
     final majorLinePaint = Paint()..color = Theme.grid.major;
     // final minorLinePaint = Paint()..color = Theme.grid.minor;
@@ -55,10 +56,12 @@ class ArrangerBackgroundPainter extends CustomPainter {
 
     var verticalPositionPointer = -verticalScrollPosition - 1;
 
-    for (final trackID in trackIDs) {
+    final baseTrackHeight = viewModel.baseTrackHeight;
+
+    for (final trackID in project.song.trackOrder) {
       final trackHeight = getTrackHeight(
         baseTrackHeight,
-        trackHeightModifiers[trackID]!,
+        viewModel.trackHeightModifiers[trackID]!,
       );
 
       verticalPositionPointer += trackHeight;
@@ -80,7 +83,7 @@ class ArrangerBackgroundPainter extends CustomPainter {
       snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
       baseTimeSignature: TimeSignatureModel(4, 4),
       timeSignatureChanges: [],
-      ticksPerQuarter: ticksPerQuarter,
+      ticksPerQuarter: project.song.ticksPerQuarter,
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
     );
@@ -88,11 +91,9 @@ class ArrangerBackgroundPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant ArrangerBackgroundPainter oldDelegate) {
-    return oldDelegate.baseTrackHeight != baseTrackHeight ||
-        oldDelegate.trackHeightModifiers != trackHeightModifiers ||
-        oldDelegate.trackIDs != trackIDs ||
-        oldDelegate.verticalScrollPosition != verticalScrollPosition ||
-        oldDelegate.timeViewStart != timeViewStart ||
-        oldDelegate.timeViewEnd != timeViewEnd;
+    return oldDelegate.viewModel != viewModel ||
+        oldDelegate.activeArrangement != activeArrangement ||
+        oldDelegate.project != project ||
+        super.shouldRepaint(oldDelegate);
   }
 }

@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -57,78 +58,93 @@ class _ProjectState extends State<Project> {
       value: projectModel,
       child: Provider.value(
         value: controller,
-        child: Column(
-          children: [
-            ProjectHeader(
-              projectID: widget.id,
-            ),
-            const SizedBox(
-              height: 3,
-            ),
-            Expanded(
-              child: Observer(builder: (context) {
-                return Panel(
-                  hidden: !projectModel.isProjectExplorerVisible,
-                  orientation: PanelOrientation.left,
-                  panelStartSize: 200,
-                  // Left panel
-                  panelContent: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: Visibility(
-                          maintainAnimation: false,
-                          maintainInteractivity: false,
-                          maintainSemantics: false,
-                          maintainSize: false,
-                          maintainState: true,
-                          visible: !projectModel.isDetailViewSelected,
-                          child: const ProjectExplorer(),
-                        ),
-                      ),
-                      Positioned.fill(
-                        child: Visibility(
-                          maintainAnimation: false,
-                          maintainInteractivity: false,
-                          maintainSemantics: false,
-                          maintainSize: false,
-                          maintainState: true,
-                          visible: projectModel.isDetailViewSelected,
-                          child: ProjectDetails(
-                            selectedProjectDetails:
-                                projectModel.selectedDetailView,
+        child: ShortcutConsumer(
+          id: 'project',
+          global: true,
+          handler: controller.onShortcut,
+          child: Column(
+            children: [
+              ProjectHeader(
+                projectID: widget.id,
+              ),
+              const SizedBox(
+                height: 3,
+              ),
+              Expanded(
+                child: Observer(builder: (context) {
+                  return Panel(
+                    hidden: !projectModel.isProjectExplorerVisible,
+                    orientation: PanelOrientation.left,
+                    sizeBehavior: PanelSizeBehavior.pixels,
+                    panelStartSize: 200,
+                    panelMinSize: 200,
+                    // Left panel
+                    panelContent: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Visibility(
+                            maintainAnimation: false,
+                            maintainInteractivity: false,
+                            maintainSemantics: false,
+                            maintainSize: false,
+                            maintainState: true,
+                            visible: !projectModel.isDetailViewSelected,
+                            child: const ProjectExplorer(),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-
-                  child: Panel(
-                    hidden: true,
-                    orientation: PanelOrientation.right,
-                    // Right panel
-                    panelContent: Container(color: Theme.panel.main),
+                        Positioned.fill(
+                          child: Visibility(
+                            maintainAnimation: false,
+                            maintainInteractivity: false,
+                            maintainSemantics: false,
+                            maintainSize: false,
+                            maintainState: true,
+                            visible: projectModel.isDetailViewSelected,
+                            child: ProjectDetails(
+                              selectedProjectDetails:
+                                  projectModel.selectedDetailView,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
 
                     child: Panel(
-                      orientation: PanelOrientation.bottom,
-                      // Bottom panel
-                      panelContent: const PianoRoll(),
+                      hidden: true,
+                      orientation: PanelOrientation.right,
+                      sizeBehavior: PanelSizeBehavior.pixels,
+                      panelStartSize: 200,
+                      // Right panel
+                      panelContent: Container(color: Theme.panel.main),
+
                       child: Panel(
-                        hidden: !projectModel.isPatternEditorVisible,
-                        orientation: PanelOrientation.left,
-                        // Pattern editor
-                        panelContent: const PatternEditor(),
-                        child: const Arranger(),
+                        orientation: PanelOrientation.bottom,
+                        panelMinSize: 300,
+                        contentMinSize: 300,
+                        // Bottom panel
+                        panelContent: const PianoRoll(),
+                        child: Panel(
+                          hidden: !projectModel.isPatternEditorVisible,
+                          orientation: PanelOrientation.left,
+                          panelStartSize: 500,
+                          panelMinSize: 500,
+                          contentMinSize: 500,
+                          sizeBehavior: PanelSizeBehavior.pixels,
+                          // Pattern editor
+                          panelContent: const PatternEditor(),
+                          child: const Arranger(),
+                        ),
                       ),
                     ),
-                  ),
-                );
-              }),
-            ),
-            const SizedBox(
-              height: 3,
-            ),
-            const ProjectFooter(),
-          ],
+                  );
+                }),
+              ),
+              const SizedBox(
+                height: 3,
+              ),
+              const ProjectFooter(),
+            ],
+          ),
         ),
       ),
     );

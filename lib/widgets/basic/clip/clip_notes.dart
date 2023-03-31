@@ -18,30 +18,12 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_mobx/flutter_mobx.dart';
 
-class _ClipNoteModel {
-  late final int key;
-  late final int offset;
-  late final int length;
+import '../mobx_custom_painter.dart';
 
-  _ClipNoteModel({
-    required this.key,
-    required this.offset,
-    required this.length,
-  });
-
-  _ClipNoteModel.fromNoteModel(NoteModel noteModel) {
-    key = noteModel.key;
-    offset = noteModel.offset;
-    length = noteModel.length;
-  }
-}
-
-class ClipNotes extends StatelessObserverWidget {
+class ClipNotes extends StatelessWidget {
   final PatternModel pattern;
   final ID? generatorID;
   final double timeViewStart;
@@ -59,25 +41,10 @@ class ClipNotes extends StatelessObserverWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Unpacking this here implicitly tells MobX about everything we need
-    // to react to, and MobX will rebuild this widget automatically when
-    // anything is updated.
-
-    final notes = <_ClipNoteModel>[];
-
-    pattern.notes.forEach(
-      (key, value) {
-        if (generatorID == null || key == generatorID) {
-          notes.addAll(
-            value.map((note) => _ClipNoteModel.fromNoteModel(note)),
-          );
-        }
-      },
-    );
-
-    return CustomPaint(
-      painter: _ClipNotesPainter(
-        notes: notes,
+    return CustomPaintObserver(
+      painterBuilder: () => _ClipNotesPainter(
+        pattern: pattern,
+        generatorID: generatorID,
         timeViewStart: timeViewStart,
         ticksPerPixel: ticksPerPixel,
         color: color,
@@ -86,29 +53,49 @@ class ClipNotes extends StatelessObserverWidget {
   }
 }
 
-class _ClipNotesPainter extends CustomPainter {
-  final List<_ClipNoteModel> notes;
+class _ClipNotesPainter extends CustomPainterObserver {
+  final PatternModel pattern;
+  final ID? generatorID;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;
 
   _ClipNotesPainter({
-    required this.notes,
+    required this.pattern,
+    this.generatorID,
     required this.timeViewStart,
     required this.ticksPerPixel,
     required this.color,
   });
 
   @override
-  void paint(Canvas canvas, Size size) {
-    if (notes.isEmpty) return;
+  void observablePaint(Canvas canvas, Size size) {
+    final noteLists = generatorID == null
+        ? pattern.notes.values.toList()
+        : [pattern.notes[generatorID!]!];
 
-    var bottom = notes[0].key;
-    var top = notes[0].key;
-    for (var note in notes) {
-      if (note.key < bottom) bottom = note.key;
-      if (note.key > top) top = note.key;
+    if (noteLists.isEmpty) return;
+
+    int? nullableBottom;
+    int? nullableTop;
+
+    for (var notes in noteLists) {
+      for (var note in notes) {
+        if (nullableBottom == null || nullableTop == null) {
+          nullableBottom = note.key;
+          nullableTop = note.key;
+          continue;
+        }
+
+        if (note.key < nullableBottom) nullableBottom = note.key;
+        if (note.key > nullableTop) nullableTop = note.key;
+      }
     }
+
+    if (nullableBottom == null || nullableTop == null) return;
+
+    int bottom = nullableBottom;
+    int top = nullableTop;
 
     bottom--;
 
@@ -120,31 +107,35 @@ class _ClipNotesPainter extends CustomPainter {
     final keyHeight = top - bottom;
     final yPixelsPerKey = size.height / keyHeight;
 
-    for (var note in notes) {
-      final left = (note.offset / ticksPerPixel).floorToDouble();
-      final top =
-          (size.height - (note.key - bottom) * yPixelsPerKey).floorToDouble();
-      final width = (note.length / ticksPerPixel).ceilToDouble();
-      final height = (yPixelsPerKey).ceilToDouble();
+    for (final noteList in noteLists) {
+      for (final note in noteList) {
+        final left = (note.offset / ticksPerPixel).floorToDouble();
+        final top =
+            (size.height - (note.key - bottom) * yPixelsPerKey).floorToDouble();
+        final width = (note.length / ticksPerPixel).ceilToDouble();
+        final height = (yPixelsPerKey).ceilToDouble();
 
-      final topLeft =
-          Offset(left.clamp(0, size.width), top.clamp(0, size.height));
-      final bottomRight = Offset((left + width).clamp(0, size.width),
-          (top + height).clamp(0, size.height));
+        final topLeft =
+            Offset(left.clamp(0, size.width), top.clamp(0, size.height));
+        final bottomRight = Offset((left + width).clamp(0, size.width),
+            (top + height).clamp(0, size.height));
 
-      final noteSize = bottomRight - topLeft;
-      if (noteSize.dx == 0 || noteSize.dy == 0) continue;
+        final noteSize = bottomRight - topLeft;
+        if (noteSize.dx == 0 || noteSize.dy == 0) continue;
 
-      canvas.drawRect(
-          Rect.fromPoints(topLeft, bottomRight), Paint()..color = color);
+        canvas.drawRect(
+            Rect.fromPoints(topLeft, bottomRight), Paint()..color = color);
+      }
     }
   }
 
   @override
   bool shouldRepaint(_ClipNotesPainter oldDelegate) {
-    return oldDelegate.notes != notes ||
+    return oldDelegate.pattern != pattern ||
+        oldDelegate.generatorID != generatorID ||
         oldDelegate.timeViewStart != timeViewStart ||
         oldDelegate.ticksPerPixel != ticksPerPixel ||
-        oldDelegate.color != color;
+        oldDelegate.color != color ||
+        super.shouldRepaint(oldDelegate);
   }
 }

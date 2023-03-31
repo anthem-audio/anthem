@@ -30,12 +30,14 @@ class PatternEditorController {
   PatternEditorController({required this.project});
 
   void addGenerator(String name, Color color) {
+    final id = getID();
     project.execute(AddGeneratorCommand(
       project: project,
-      generatorID: getID(),
+      generatorID: id,
       name: name,
       color: color,
     ));
+    project.activeGeneratorID = id;
   }
 
   void deletePattern(ID patternID) {

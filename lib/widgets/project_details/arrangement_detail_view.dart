@@ -52,7 +52,7 @@ class _ArrangementDetailViewState extends State<ArrangementDetailView> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                "ARRANGEMENT",
+                'ARRANGEMENT',
                 style: TextStyle(
                   color: Theme.text.main,
                   fontSize: 10,
@@ -75,11 +75,18 @@ class _ArrangementDetailViewState extends State<ArrangementDetailView> {
                   },
                 ),
               ),
-              const SizedBox(height: 4),
             ],
           ),
         ),
-        const Expanded(child: SizedBox()),
+        const SizedBox(height: 3),
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.panel.main,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ),
       ],
     );
   }

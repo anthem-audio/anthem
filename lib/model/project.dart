@@ -120,7 +120,7 @@ abstract class _ProjectModel extends Hydratable with Store {
   // Undo / redo & etc
 
   @JsonKey(includeFromJson: false, includeToJson: false)
-  CommandQueue commandQueue = CommandQueue();
+  final CommandQueue _commandQueue = CommandQueue();
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   List<Command> _journalPageAccumulator = [];
@@ -154,10 +154,24 @@ abstract class _ProjectModel extends Hydratable with Store {
   }
 
   void execute(Command command, {bool push = true}) {
+    command.execute();
+
     if (_journalPageActive) {
       _journalPageAccumulator.add(command);
     } else {
-      push ? commandQueue.executeAndPush(command) : command.execute();
+      _commandQueue.push(command);
+    }
+  }
+
+  void push(Command command, {bool execute = false}) {
+    if (execute) {
+      command.execute();
+    }
+
+    if (_journalPageActive) {
+      _journalPageAccumulator.add(command);
+    } else {
+      _commandQueue.push(command);
     }
   }
 
@@ -169,12 +183,12 @@ abstract class _ProjectModel extends Hydratable with Store {
 
   void undo() {
     _assertJournalInactive();
-    commandQueue.undo();
+    _commandQueue.undo();
   }
 
   void redo() {
     _assertJournalInactive();
-    commandQueue.redo();
+    _commandQueue.redo();
   }
 
   void startJournalPage() {
@@ -193,7 +207,7 @@ abstract class _ProjectModel extends Hydratable with Store {
     _journalPageActive = false;
 
     final command = JournalPageCommand(this as ProjectModel, accumulator);
-    commandQueue.executeAndPush(command);
+    _commandQueue.push(command);
   }
 
   void setActiveGenerator(ID? generatorID) {

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -39,7 +39,7 @@ class _TextBoxState extends State<TextBox> {
         borderRadius: BorderRadius.circular(4),
         color: anthem_theme.Theme.panel.accentDark,
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.all(8),
       child: TextField(
         controller: widget.controller,
         focusNode: widget.focusNode,
@@ -49,7 +49,7 @@ class _TextBoxState extends State<TextBox> {
         ),
         cursorColor: anthem_theme.Theme.text.main,
         style: TextStyle(color: anthem_theme.Theme.text.main, fontSize: 11),
-        textAlignVertical: TextAlignVertical.bottom,
+        textAlignVertical: TextAlignVertical.center,
       ),
     );
   }

@@ -17,9 +17,28 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:mobx/mobx.dart';
 
 part 'piano_roll_view_model.g.dart';
+
+enum ActiveNoteAttribute {
+  velocity(bottom: 0, baseline: 0, top: 127),
+  pan(bottom: -127, baseline: 0, top: 127);
+
+  const ActiveNoteAttribute({
+    required this.bottom,
+    required this.baseline,
+    required this.top,
+  });
+
+  final int bottom;
+  final int baseline;
+  final int top;
+}
 
 // ignore: library_private_types_in_public_api
 class PianoRollViewModel = _PianoRollViewModel with _$PianoRollViewModel;
@@ -28,6 +47,7 @@ abstract class _PianoRollViewModel with Store {
   _PianoRollViewModel({
     required this.keyHeight,
     required this.keyValueAtTop,
+    required this.timeView,
   });
 
   @observable
@@ -35,4 +55,28 @@ abstract class _PianoRollViewModel with Store {
 
   @observable
   double keyValueAtTop;
+
+  @observable
+  TimeRange timeView;
+
+  @observable
+  Rectangle<double>? selectionBox;
+
+  @observable
+  ObservableSet<ID> selectedNotes = ObservableSet();
+
+  @observable
+  ID? pressedNote;
+
+  @observable
+  ActiveNoteAttribute activeNoteAttribute = ActiveNoteAttribute.velocity;
+
+  @observable
+  EditorTool selectedTool = EditorTool.pencil;
+
+  // These don't need to be observable, since they're just used during event
+  // handling.
+  Time cursorNoteLength = 96;
+  int cursorNoteVelocity = 128 * 3 ~/ 4;
+  int cursorNotePan = 0;
 }

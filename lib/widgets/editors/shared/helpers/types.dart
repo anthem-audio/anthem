@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,32 +18,28 @@
 */
 
 import 'package:anthem/model/shared/time_signature.dart';
-import 'package:flutter/foundation.dart';
+import 'package:mobx/mobx.dart';
+
+part 'types.g.dart';
 
 //
 // Time-related types
 //
 
-class TimeView with ChangeNotifier, DiagnosticableTreeMixin {
-  TimeView(this._start, this._end);
+// ignore: library_private_types_in_public_api
+class TimeRange = _TimeRange with _$TimeRange;
 
-  double get start => _start;
-  double get end => _end;
+abstract class _TimeRange with Store {
+  _TimeRange(this.start, this.end);
 
-  void setStart(double value) {
-    _start = value;
-    notifyListeners();
-  }
+  @observable
+  double start;
 
-  void setEnd(double value) {
-    _end = value;
-    notifyListeners();
-  }
+  @observable
+  double end;
 
-  double _start;
-  double _end;
-
-  double get width => _end - _start;
+  @computed
+  double get width => end - start;
 }
 
 class Division {

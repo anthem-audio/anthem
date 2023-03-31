@@ -152,7 +152,7 @@ class Button extends StatefulWidget {
     this.width,
     this.height,
     this.expand,
-    this.contentPadding = const EdgeInsets.all(5),
+    this.contentPadding = const EdgeInsets.only(left: 5, right: 5),
     this.showMenuIndicator,
     this.backgroundColor,
     this.backgroundHoverColor,
@@ -353,19 +353,9 @@ class _ButtonState extends State<Button> {
         });
       },
       child: Listener(
-        onPointerDown: (e) {
-          if (!mounted) return;
-          setState(() {
-            pressed = true;
-          });
-        },
-        onPointerUp: (e) {
-          if (!mounted) return;
-          setState(() {
-            pressed = false;
-            widget.onPress?.call();
-          });
-        },
+        onPointerDown: _onPointerDown,
+        onPointerUp: _onPointerUp,
+        onPointerCancel: _onPointerUp,
         child: Container(
           width: widget.width,
           height: widget.height,
@@ -390,5 +380,20 @@ class _ButtonState extends State<Button> {
         ),
       ),
     );
+  }
+
+  void _onPointerDown(PointerEvent e) {
+    if (!mounted) return;
+    setState(() {
+      pressed = true;
+    });
+  }
+
+  void _onPointerUp(PointerEvent e) {
+    if (!mounted) return;
+    setState(() {
+      pressed = false;
+      widget.onPress?.call();
+    });
   }
 }

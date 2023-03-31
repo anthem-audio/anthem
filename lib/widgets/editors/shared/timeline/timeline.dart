@@ -68,34 +68,19 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, constraints) {
-      final timeView = context.watch<TimeView>();
+      final timeView = context.watch<TimeRange>();
       final project = Provider.of<ProjectModel>(context);
 
       List<TimeSignatureChangeModel> getTimeSignatureChanges() =>
           project.song.patterns[widget.patternID]?.timeSignatureChanges ?? [];
 
       void handleScroll(double delta, double mouseX) {
-        final timeViewWidth = timeView.width;
-        final timeViewSizeChange = timeViewWidth * 0.008 * delta;
-
-        final mouseCursorOffset = mouseX / constraints.maxWidth;
-
-        var newStart = timeView.start - timeViewSizeChange * mouseCursorOffset;
-        var newEnd =
-            timeView.end + timeViewSizeChange * (1 - mouseCursorOffset);
-
-        // Somewhat arbitrary, but a safeguard against zooming in too far
-        if (newEnd < newStart + 10) {
-          newEnd = newStart + 10;
-        }
-
-        final startOvershootCorrection = newStart < 0 ? -newStart : 0;
-
-        newStart += startOvershootCorrection;
-        newEnd += startOvershootCorrection;
-
-        timeView.setStart(newStart);
-        timeView.setEnd(newEnd);
+        zoomTimeView(
+          timeView: timeView,
+          delta: delta,
+          mouseX: mouseX,
+          editorWidth: constraints.maxWidth,
+        );
       }
 
       return Listener(
@@ -247,6 +232,43 @@ class _TimelineLabelState extends State<TimelineLabel> {
   double pointerStart = 0;
   Time timeStart = 0;
 
+  void onPointerDown(PointerEvent e) {
+    pointerStart = e.position.dx;
+    timeStart = widget.offset;
+    TimelineLabelPointerDownNotification(
+      time: widget.offset.toDouble(),
+      labelID: widget.id,
+      labelType: TimelineLabelType.timeSignatureChange,
+      viewWidthInPixels: widget.timelineWidth,
+    ).dispatch(widget.stableBuildContext);
+  }
+
+  void onPointerMove(PointerEvent e) {
+    final timeView =
+        Provider.of<TimeRange>(widget.stableBuildContext, listen: false);
+    final time =
+        (e.position.dx - pointerStart) * timeView.width / widget.timelineWidth;
+    TimelineLabelPointerMoveNotification(
+      time: time,
+      labelID: widget.id,
+      labelType: TimelineLabelType.timeSignatureChange,
+      viewWidthInPixels: widget.timelineWidth,
+    ).dispatch(widget.stableBuildContext);
+  }
+
+  void onPointerUp(PointerEvent e) {
+    final timeView =
+        Provider.of<TimeRange>(widget.stableBuildContext, listen: false);
+    final time =
+        (e.position.dx - pointerStart) * timeView.width / widget.timelineWidth;
+    TimelineLabelPointerUpNotification(
+      time: time,
+      labelID: widget.id,
+      labelType: TimelineLabelType.timeSignatureChange,
+      viewWidthInPixels: widget.timelineWidth,
+    ).dispatch(widget.stableBuildContext);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -288,44 +310,10 @@ class _TimelineLabelState extends State<TimelineLabel> {
             cursor: SystemMouseCursors.resizeLeftRight,
             child: Listener(
               behavior: HitTestBehavior.opaque,
-              onPointerDown: (event) {
-                pointerStart = event.position.dx;
-                timeStart = widget.offset;
-                TimelineLabelPointerDownNotification(
-                  time: widget.offset.toDouble(),
-                  labelID: widget.id,
-                  labelType: TimelineLabelType.timeSignatureChange,
-                  viewWidthInPixels: widget.timelineWidth,
-                ).dispatch(widget.stableBuildContext);
-              },
-              onPointerMove: (event) {
-                final timeView = Provider.of<TimeView>(
-                    widget.stableBuildContext,
-                    listen: false);
-                final time = (event.position.dx - pointerStart) *
-                    timeView.width /
-                    widget.timelineWidth;
-                TimelineLabelPointerMoveNotification(
-                  time: time,
-                  labelID: widget.id,
-                  labelType: TimelineLabelType.timeSignatureChange,
-                  viewWidthInPixels: widget.timelineWidth,
-                ).dispatch(widget.stableBuildContext);
-              },
-              onPointerUp: (event) {
-                final timeView = Provider.of<TimeView>(
-                    widget.stableBuildContext,
-                    listen: false);
-                final time = (event.position.dx - pointerStart) *
-                    timeView.width /
-                    widget.timelineWidth;
-                TimelineLabelPointerUpNotification(
-                  time: time,
-                  labelID: widget.id,
-                  labelType: TimelineLabelType.timeSignatureChange,
-                  viewWidthInPixels: widget.timelineWidth,
-                ).dispatch(widget.stableBuildContext);
-              },
+              onPointerDown: onPointerDown,
+              onPointerMove: onPointerMove,
+              onPointerUp: onPointerUp,
+              onPointerCancel: onPointerUp,
               child: const SizedBox(width: 12),
             ),
           ),
@@ -422,7 +410,6 @@ class TimelinePainter extends CustomPainter {
             textDirection: TextDirection.ltr,
           );
           textPainter.layout();
-          // TODO: replace height constant?
           textPainter.paint(
             canvas,
             Offset(x, (21 - textPainter.size.height) / 2),

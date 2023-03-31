@@ -28,6 +28,7 @@ import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/track_header.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
@@ -74,6 +75,7 @@ class _ArrangerState extends State<Arranger> {
           (key, value) => MapEntry(key, 1),
         ),
       ),
+      timeView: TimeRange(0, 3072),
     );
 
     ArrangementModel? getModel() =>
@@ -93,78 +95,73 @@ class _ArrangerState extends State<Arranger> {
           (clampedTrackHeight / oldClampedTrackHeight);
     }
 
+    final menuController = MenuController();
+
     return Provider.value(
       value: viewModel!,
-      child: MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => TimeView(0, 3072)),
-        ],
-        builder: (context, widget) {
-          final menuController = MenuController();
-
-          final timeView = Provider.of<TimeView>(context);
-
-          return Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              color: Theme.panel.main,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(
-                    height: 26,
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 263,
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Menu(
-                                menuDef: MenuDef(
-                                  children: [
-                                    AnthemMenuItem(
-                                      text: "New arrangement",
-                                      onSelected: () {
-                                        projectController.addArrangement();
-                                      },
+      child: ArrangerTimeViewProvider(
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(4),
+            color: Theme.panel.main,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  height: 26,
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 263,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Menu(
+                              menuDef: MenuDef(
+                                children: [
+                                  AnthemMenuItem(
+                                    text: 'New arrangement',
+                                    onSelected: () {
+                                      projectController.addArrangement();
+                                    },
+                                  ),
+                                  Separator(),
+                                  AnthemMenuItem(
+                                    text: 'Markers',
+                                    submenu: MenuDef(
+                                      children: [
+                                        AnthemMenuItem(
+                                          text: 'Add time signature change',
+                                        ),
+                                      ],
                                     ),
-                                    Separator(),
-                                    AnthemMenuItem(
-                                      text: "Markers",
-                                      submenu: MenuDef(
-                                        children: [
-                                          AnthemMenuItem(
-                                            text: "Add time signature change",
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                menuController: menuController,
-                                child: Button(
-                                  width: 26,
-                                  startIcon: Icons.kebab,
-                                  onPress: () => menuController.open?.call(),
-                                ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 4),
-                              Observer(builder: (context) {
-                                return ToolSelector(
-                                  selectedTool: viewModel!.tool,
-                                  setTool: (tool) {
-                                    viewModel!.tool = tool;
-                                  },
-                                );
-                              }),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                fit: FlexFit.tight,
-                                child: Dropdown(
+                              menuController: menuController,
+                              child: Button(
+                                width: 26,
+                                startIcon: Icons.kebab,
+                                onPress: () => menuController.open?.call(),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Observer(builder: (context) {
+                              return ToolSelector(
+                                selectedTool: viewModel!.tool,
+                                setTool: (tool) {
+                                  viewModel!.tool = tool;
+                                },
+                              );
+                            }),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              fit: FlexFit.tight,
+                              child: Observer(builder: (context) {
+                                return Dropdown(
                                   selectedID: project.song.activeArrangementID,
                                   items: project.song.arrangementOrder
                                       .map<DropdownItem>(
@@ -179,88 +176,109 @@ class _ArrangerState extends State<Arranger> {
                                     project.song.activeArrangementID =
                                         selectedID;
                                   },
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                            ],
-                          ),
+                                );
+                              }),
+                            ),
+                            const SizedBox(width: 4),
+                          ],
                         ),
-                        Expanded(
+                      ),
+                      Observer(builder: (context) {
+                        return Expanded(
                           child: ScrollbarRenderer(
                             scrollRegionStart: 0,
                             scrollRegionEnd: getHorizontalScrollRegionEnd(),
-                            handleStart: timeView.start,
-                            handleEnd: timeView.end,
+                            handleStart: viewModel!.timeView.start,
+                            handleEnd: viewModel!.timeView.end,
                             canScrollPastEnd: true,
                             onChange: (event) {
-                              timeView.setStart(event.handleStart);
-                              timeView.setEnd(event.handleEnd);
+                              viewModel!.timeView.start = event.handleStart;
+                              viewModel!.timeView.end = event.handleEnd;
                             },
                           ),
-                        ),
-                        const SizedBox(width: 4),
-                        Observer(builder: (context) {
-                          return VerticalScaleControl(
-                            min: 0,
-                            max: maxTrackHeight,
-                            value: viewModel!.baseTrackHeight,
-                            onChange: (newHeight) {
-                              setBaseTrackHeight(newHeight);
-                            },
-                          );
-                        }),
-                      ],
-                    ),
+                        );
+                      }),
+                      const SizedBox(width: 4),
+                      Observer(builder: (context) {
+                        return VerticalScaleControl(
+                          min: 0,
+                          max: maxTrackHeight,
+                          value: viewModel!.baseTrackHeight,
+                          onChange: (newHeight) {
+                            setBaseTrackHeight(newHeight);
+                          },
+                        );
+                      }),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.only(top: 15),
-                          child: SizedBox(
-                            width: 126,
-                            child: PatternPicker(),
-                          ),
+                ),
+                const SizedBox(height: 4),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(top: 15),
+                        child: SizedBox(
+                          width: 126,
+                          child: PatternPicker(),
                         ),
-                        const SizedBox(width: 6),
-                        const Expanded(
-                          child: _ArrangerContent(),
+                      ),
+                      const SizedBox(width: 6),
+                      const Expanded(
+                        child: _ArrangerContent(),
+                      ),
+                      const SizedBox(width: 4),
+                      SizedBox(
+                        width: 17,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            return Observer(builder: (context) {
+                              return ScrollbarRenderer(
+                                scrollRegionStart: 0,
+                                scrollRegionEnd: viewModel!.scrollAreaHeight,
+                                handleStart: viewModel!.verticalScrollPosition,
+                                handleEnd: viewModel!.verticalScrollPosition +
+                                    constraints.maxHeight -
+                                    _timelineHeight,
+                                onChange: (event) {
+                                  viewModel!.verticalScrollPosition =
+                                      event.handleStart;
+                                },
+                              );
+                            });
+                          },
                         ),
-                        const SizedBox(width: 4),
-                        SizedBox(
-                          width: 17,
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              return Observer(builder: (context) {
-                                return ScrollbarRenderer(
-                                  scrollRegionStart: 0,
-                                  scrollRegionEnd: viewModel!.scrollAreaHeight,
-                                  handleStart:
-                                      viewModel!.verticalScrollPosition,
-                                  handleEnd: viewModel!.verticalScrollPosition +
-                                      constraints.maxHeight -
-                                      _timelineHeight,
-                                  onChange: (event) {
-                                    viewModel!.verticalScrollPosition =
-                                        event.handleStart;
-                                  },
-                                );
-                              });
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
+  }
+}
+
+/// Uses an observer to grab the [TimeRange] from the view model and provide it
+/// to the tree. Using a separate widget for this means we can tell the tree
+/// about updates to the [TimeRange] without re-rendering [Arranger].
+///
+/// We provide the [TimeRange] to the tree because some widgets, such as
+/// [Timeline], are shared between editors, and they need to access the
+/// [TimeRange] without knowing which editor they're associated with.
+class ArrangerTimeViewProvider extends StatelessObserverWidget {
+  final Widget? child;
+
+  const ArrangerTimeViewProvider({Key? key, this.child}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = Provider.of<ArrangerViewModel>(context);
+
+    return Provider.value(value: viewModel.timeView, child: child);
   }
 }
 
@@ -347,6 +365,8 @@ class _ArrangerContentState extends State<_ArrangerContent>
     // scroll position changes.
     verticalScrollPosTweenUpdaterSub ??= mobx.autorun((p0) {
       viewModel.verticalScrollPosition;
+      viewModel.timeView.start;
+      viewModel.timeView.end;
 
       setState(() {});
     });
@@ -359,12 +379,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
       viewModel.trackHeightModifiers.forEach((key, value) {});
     }
 
-    void subscribeToTracks() {
-      project.song.tracks.forEach((key, value) {});
-      for (var _ in project.song.trackOrder) {}
-    }
-
-    void handleMouseDown(Offset offset, Size editorSize, TimeView timeView) {
+    void handleMouseDown(Offset offset, Size editorSize, TimeRange timeView) {
       if (project.song.activeArrangementID == null ||
           project.song.patternOrder.isEmpty) return;
 
@@ -395,23 +410,21 @@ class _ArrangerContentState extends State<_ArrangerContent>
       ));
     }
 
-    final timeView = context.watch<TimeView>();
-
     // Updates the time view animation if the time view has changed
-    if (timeView.start != _lastTimeViewStart ||
-        timeView.end != _lastTimeViewEnd) {
+    if (viewModel.timeView.start != _lastTimeViewStart ||
+        viewModel.timeView.end != _lastTimeViewEnd) {
       _timeViewStartTween.begin = _timeViewStartAnimation.value;
       _timeViewEndTween.begin = _timeViewEndAnimation.value;
 
       _timeViewAnimationController.reset();
 
-      _timeViewStartTween.end = timeView.start;
-      _timeViewEndTween.end = timeView.end;
+      _timeViewStartTween.end = viewModel.timeView.start;
+      _timeViewEndTween.end = viewModel.timeView.end;
 
       _timeViewAnimationController.forward();
 
-      _lastTimeViewStart = timeView.start;
-      _lastTimeViewEnd = timeView.end;
+      _lastTimeViewStart = viewModel.timeView.start;
+      _lastTimeViewEnd = viewModel.timeView.end;
     }
 
     if (viewModel.verticalScrollPosition != _lastVerticalScrollPosition) {
@@ -476,41 +489,34 @@ class _ArrangerContentState extends State<_ArrangerContent>
                       child: LayoutBuilder(
                         builder: (context, constraints) {
                           final grid = Positioned.fill(
-                            child: Observer(builder: (context) {
-                              subscribeToTrackHeights();
-                              subscribeToTracks();
-
-                              return AnimatedBuilder(
-                                animation:
-                                    _verticalScrollPositionAnimationController,
-                                builder: (context, child) {
-                                  return AnimatedBuilder(
-                                    animation: _timeViewAnimationController,
-                                    builder: (context, child) {
-                                      return CustomPaint(
-                                        painter: ArrangerBackgroundPainter(
-                                          baseTrackHeight:
-                                              viewModel.baseTrackHeight,
-                                          verticalScrollPosition:
-                                              _verticalScrollPositionAnimation
-                                                  .value,
-                                          trackHeightModifiers:
-                                              viewModel.trackHeightModifiers,
-                                          trackIDs: project.song.trackOrder
-                                              .nonObservableInner,
-                                          timeViewStart:
-                                              _timeViewStartAnimation.value,
-                                          timeViewEnd:
-                                              _timeViewEndAnimation.value,
-                                          ticksPerQuarter:
-                                              project.song.ticksPerQuarter,
-                                        ),
-                                      );
-                                    },
-                                  );
-                                },
-                              );
-                            }),
+                            child: AnimatedBuilder(
+                              animation:
+                                  _verticalScrollPositionAnimationController,
+                              builder: (context, child) {
+                                return AnimatedBuilder(
+                                  animation: _timeViewAnimationController,
+                                  builder: (context, child) {
+                                    return CustomPaintObserver(
+                                      painterBuilder: () =>
+                                          ArrangerBackgroundPainter(
+                                        viewModel: viewModel,
+                                        activeArrangement: project
+                                                .song.arrangements[
+                                            project.song.activeArrangementID],
+                                        project: project,
+                                        verticalScrollPosition:
+                                            _verticalScrollPositionAnimation
+                                                .value,
+                                        timeViewStart:
+                                            _timeViewStartAnimation.value,
+                                        timeViewEnd:
+                                            _timeViewEndAnimation.value,
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
                           );
 
                           ArrangementModel? getArrangement() => project.song
@@ -615,7 +621,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
                                   constraints.maxWidth,
                                   constraints.maxHeight,
                                 ),
-                                timeView,
+                                viewModel.timeView,
                               );
                             },
                             child: Stack(
@@ -691,7 +697,7 @@ class _TrackHeadersState extends State<_TrackHeaders> {
               const resizeHandleHeight = 10.0;
               resizeHandles.add(
                 Positioned(
-                  key: Key("$trackID-handle"),
+                  key: Key('$trackID-handle'),
                   left: 0,
                   right: 0,
                   top: trackPositionPointer +

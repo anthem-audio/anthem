@@ -72,15 +72,15 @@ class ProjectFooter extends StatelessWidget {
               // selected: ProjectLayoutKind.arrange,
               tabs: [
                 ButtonTabDef.withText(
-                  text: "ARRANGE",
+                  text: 'ARRANGE',
                   id: ProjectLayoutKind.arrange,
                 ),
                 ButtonTabDef.withText(
-                  text: "EDIT",
+                  text: 'EDIT',
                   id: ProjectLayoutKind.edit,
                 ),
                 ButtonTabDef.withText(
-                  text: "MIX",
+                  text: 'MIX',
                   id: ProjectLayoutKind.mix,
                 ),
               ],

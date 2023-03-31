@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
 import 'package:anthem/model/shared/time_signature.dart';
 
 import 'types.dart';
@@ -181,7 +183,7 @@ GetBestDivisionResult getBestDivision({
   } else {
     // This isn't TypeScript, so (I think) we can't verify completeness here.
     // If Snap gets more subclasses then this could give a runtime error.
-    throw ArgumentError("Unhandled Snap type");
+    throw ArgumentError('Unhandled Snap type');
   }
 
   var numDivisionsInBar = barLength ~/ snapSize;
@@ -218,7 +220,7 @@ GetBestDivisionResult getBestDivision({
 
 List<DivisionChange> getDivisionChanges({
   required double viewWidthInPixels,
-  required double minPixelsPerSection,
+  double minPixelsPerSection = 8,
   required Snap snap,
   required TimeSignatureModel defaultTimeSignature,
   required List<TimeSignatureChangeModel> timeSignatureChanges,
@@ -280,26 +282,75 @@ List<DivisionChange> getDivisionChanges({
 Time getSnappedTime({
   required Time rawTime,
   required List<DivisionChange> divisionChanges,
-  bool roundUp = false,
-}) {
-  Time targetTime = -1;
+  bool ceil = false,
+  bool round = false,
 
-  // A binary search might be better here, but it would only matter
-  // if there were a *lot* of time signature changes in the pattern
+  // This allows us to move things by snap intervals while preserving their
+  // offset from the snap boundaries. Leaving this unset will cause things to
+  // always clamp to the snap boundaries.
+  Time startTime = 0,
+}) {
+  Time raw = rawTime;
+  Time snapped = -1;
+
   for (var i = 0; i < divisionChanges.length; i++) {
-    if (rawTime >= 0 &&
+    if (raw >= 0 &&
         i < divisionChanges.length - 1 &&
-        divisionChanges[i + 1].offset <= rawTime) {
+        divisionChanges[i + 1].offset <= raw) {
       continue;
     }
 
     final divisionChange = divisionChanges[i];
     final snapSize = divisionChange.divisionSnapSize;
-    targetTime = (rawTime ~/ snapSize) * snapSize +
-        (roundUp && rawTime % snapSize != 0 ? snapSize : 0);
-    targetTime += divisionChange.offset % snapSize;
+
+    if (round) raw += snapSize ~/ 2;
+
+    final startTimeCorrection = startTime % snapSize;
+
+    snapped = ((raw - startTimeCorrection) ~/ snapSize) * snapSize +
+        (ceil && raw % snapSize != 0 ? snapSize : 0);
+    snapped += divisionChange.offset % snapSize;
+    snapped += startTimeCorrection;
+
     break;
   }
 
-  return targetTime;
+  return snapped;
+}
+
+void zoomTimeView({
+  required TimeRange timeView,
+  required double delta,
+  required double mouseX,
+  required double editorWidth,
+}) {
+  final timeViewWidth = timeView.width;
+
+  // Convert the time view width to log. Converting to log means we can
+  // adjust the size by adding or subtracting a constant value, and it
+  // feels right. It also means that zooming in by one tick and then
+  // zooming out by one tick gets you back to the exact same position.
+  final timeViewWidthLog = log(timeViewWidth);
+  final newTimeViewWidthLog = timeViewWidthLog + delta * 0.0025;
+  final newTimeViewWidth = pow(e, newTimeViewWidthLog);
+
+  final timeViewSizeChange = newTimeViewWidth - timeViewWidth;
+
+  final mouseCursorOffset = mouseX / editorWidth;
+
+  var newStart = timeView.start - timeViewSizeChange * mouseCursorOffset;
+  var newEnd = timeView.end + timeViewSizeChange * (1 - mouseCursorOffset);
+
+  // Somewhat arbitrary, but a safeguard against zooming in too far
+  if (newEnd < newStart + 10) {
+    newEnd = newStart + 10;
+  }
+
+  final startOvershootCorrection = newStart < 0 ? -newStart : 0;
+
+  newStart += startOvershootCorrection;
+  newEnd += startOvershootCorrection;
+
+  timeView.start = newStart;
+  timeView.end = newEnd;
 }
