@@ -23,7 +23,7 @@ import 'package:flutter/widgets.dart';
 
 const noteResizeHandleWidth = 10.0;
 const noteResizeHandleOvershoot =
-    3.0; // How far the resize handle extends past the end of the note
+    2.0; // How far the resize handle extends past the end of the note
 
 class NoteWidget extends StatefulWidget {
   const NoteWidget({

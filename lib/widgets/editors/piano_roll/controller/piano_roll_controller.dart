@@ -26,6 +26,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_events.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
@@ -36,6 +37,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart';
+
+part 'shortcuts.dart';
 
 /// These are the possible states that the piano roll can have during event
 /// handing. The current state tells the controller how to handle incoming
@@ -68,7 +71,16 @@ enum EventHandlingState {
   deleting,
 }
 
-class PianoRollController {
+// This allows us to declare mixins on the controller that access fields and
+// methods from the controller.
+class PianoRollController extends _PianoRollController
+    with _PianoRollShortcutsMixin {
+  @override
+  PianoRollController({required project, required viewModel})
+      : super(project: project, viewModel: viewModel);
+}
+
+class _PianoRollController {
   final ProjectModel project;
   final PianoRollViewModel viewModel;
 
@@ -110,7 +122,7 @@ class PianoRollController {
   Point<double>? _selectionBoxStart;
   Set<ID>? _selectionBoxOriginalSelection;
 
-  PianoRollController({
+  _PianoRollController({
     required this.project,
     required this.viewModel,
   });
@@ -197,6 +209,39 @@ class PianoRollController {
     viewModel.cursorNoteLength = note.length;
     viewModel.cursorNoteVelocity = note.velocity;
     viewModel.cursorNotePan = note.pan;
+  }
+
+  void deleteSelected() {
+    if (viewModel.selectedNotes.isEmpty ||
+        project.song.activePatternID == null ||
+        project.activeGeneratorID == null) return;
+
+    final commands = project.song.patterns[project.song.activePatternID]!
+        .notes[project.activeGeneratorID]!
+        .where((note) => viewModel.selectedNotes.contains(note.id))
+        .map((note) {
+      return DeleteNoteCommand(
+        project: project,
+        patternID: project.song.activePatternID!,
+        generatorID: project.activeGeneratorID!,
+        note: note,
+      );
+    }).toList();
+
+    final command = JournalPageCommand(project, commands);
+
+    project.execute(command);
+
+    viewModel.selectedNotes.clear();
+  }
+
+  void selectAll() {
+    viewModel.selectedNotes = ObservableSet.of(
+      project.song.patterns[project.song.activePatternID]!
+          .notes[project.activeGeneratorID]!
+          .map((note) => note.id)
+          .toSet(),
+    );
   }
 
   void leftPointerDown(PianoRollPointerDownEvent event) {
@@ -793,32 +838,6 @@ class PianoRollController {
     _noteResizePressedNote = null;
 
     _eventHandlingState = EventHandlingState.idle;
-  }
-
-  void onShortcut(LogicalKeySet shortcut) {
-    if (shortcut == LogicalKeySet(LogicalKeyboardKey.delete)) {
-      if (viewModel.selectedNotes.isEmpty ||
-          project.song.activePatternID == null ||
-          project.activeGeneratorID == null) return;
-
-      final commands = project.song.patterns[project.song.activePatternID]!
-          .notes[project.activeGeneratorID]!
-          .where((note) => viewModel.selectedNotes.contains(note.id))
-          .map((note) {
-        return DeleteNoteCommand(
-          project: project,
-          patternID: project.song.activePatternID!,
-          generatorID: project.activeGeneratorID!,
-          note: note,
-        );
-      }).toList();
-
-      final command = JournalPageCommand(project, commands);
-
-      project.execute(command);
-
-      viewModel.selectedNotes.clear();
-    }
   }
 
   // Helper functions

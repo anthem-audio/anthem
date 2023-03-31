@@ -20,7 +20,6 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_events.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
 import 'package:collection/collection.dart';
@@ -30,6 +29,7 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../shared/helpers/time_helpers.dart';
+import 'controller/piano_roll_controller.dart';
 import 'helpers.dart';
 
 /// A single instance of this class is handed to every note in the piano roll.
