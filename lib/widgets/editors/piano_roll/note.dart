@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:math';
-
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart';
@@ -89,7 +87,7 @@ class _NoteWidgetState extends State<NoteWidget> {
       (lightness * 2).clamp(0, 1),
     ).toColor();
 
-    final textOverlay = viewModel.keyHeight > 20
+    final textOverlay = viewModel.keyHeight > 25
         ? Center(
             child: Align(
               alignment: Alignment.centerLeft,
@@ -98,7 +96,6 @@ class _NoteWidgetState extends State<NoteWidget> {
                 child: Text(
                   style: TextStyle(
                     color: textColor,
-                    fontSize: (viewModel.keyHeight * 0.2 + 8).clamp(12, 17),
                     fontWeight: FontWeight.w400,
                     overflow: TextOverflow.ellipsis,
                   ),
