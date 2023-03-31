@@ -22,6 +22,7 @@ import 'dart:math';
 import 'package:anthem/commands/timeline_commands.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/project_details/widgets.dart';
 import 'package:flutter/widgets.dart';
@@ -106,8 +107,15 @@ class TimeSignatureChangeDetailView extends StatelessObserverWidget {
             ),
           ],
         ),
-        const SizedBox(height: 4),
-        const Expanded(child: SizedBox()),
+        const SizedBox(height: 3),
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.panel.main,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ),
       ],
     );
   }

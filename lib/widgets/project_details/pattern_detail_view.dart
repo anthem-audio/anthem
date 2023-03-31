@@ -19,6 +19,7 @@
 
 import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/color_picker.dart';
 import 'package:anthem/widgets/basic/text_box_controlled.dart';
 import 'package:flutter/widgets.dart';
@@ -71,8 +72,15 @@ class PatternDetailView extends StatelessObserverWidget {
             ),
           ],
         ),
-        const SizedBox(height: 4),
-        const Expanded(child: SizedBox()),
+        const SizedBox(height: 3),
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.panel.main,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ),
       ],
     );
   }

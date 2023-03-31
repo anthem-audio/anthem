@@ -160,21 +160,24 @@ class _ArrangerState extends State<Arranger> {
                             const SizedBox(width: 4),
                             Flexible(
                               fit: FlexFit.tight,
-                              child: Dropdown(
-                                selectedID: project.song.activeArrangementID,
-                                items: project.song.arrangementOrder
-                                    .map<DropdownItem>(
-                                      (id) => DropdownItem(
-                                        id: id.toString(),
-                                        name:
-                                            project.song.arrangements[id]!.name,
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (selectedID) {
-                                  project.song.activeArrangementID = selectedID;
-                                },
-                              ),
+                              child: Observer(builder: (context) {
+                                return Dropdown(
+                                  selectedID: project.song.activeArrangementID,
+                                  items: project.song.arrangementOrder
+                                      .map<DropdownItem>(
+                                        (id) => DropdownItem(
+                                          id: id.toString(),
+                                          name: project
+                                              .song.arrangements[id]!.name,
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (selectedID) {
+                                    project.song.activeArrangementID =
+                                        selectedID;
+                                  },
+                                );
+                              }),
                             ),
                             const SizedBox(width: 4),
                           ],
