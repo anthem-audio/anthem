@@ -276,10 +276,12 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
       timeViewEnd: viewModel.timeView.end,
     );
 
-    int targetTime = getSnappedTime(
-      rawTime: eventTime,
-      divisionChanges: divisionChanges,
-    );
+    int targetTime = event.keyboardModifiers.alt
+        ? eventTime
+        : getSnappedTime(
+            rawTime: eventTime,
+            divisionChanges: divisionChanges,
+          );
 
     project.startJournalPage();
 
@@ -378,6 +380,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
             rawTime: offset.floor(),
             divisionChanges: divisionChanges,
             round: true,
+            startTime: _noteMoveStartTimes![_noteMoveNoteUnderCursor!.id]!,
           );
         }
 
