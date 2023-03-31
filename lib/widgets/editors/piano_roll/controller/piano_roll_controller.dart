@@ -41,8 +41,6 @@ import 'package:mobx/mobx.dart';
 part 'shortcuts.dart';
 part 'pointer_events.dart';
 
-// This allows us to declare mixins on the controller that access fields and
-// methods from the controller.
 class PianoRollController extends _PianoRollController
     with _PianoRollShortcutsMixin, _PianoRollPointerEventsMixin {
   @override
@@ -89,6 +87,7 @@ class _PianoRollController {
     return note;
   }
 
+  /// Adds a time signature change to the pattern.
   void addTimeSignatureChange({
     required TimeSignatureModel timeSignature,
     required Time offset,
@@ -143,6 +142,7 @@ class _PianoRollController {
     viewModel.cursorNotePan = note.pan;
   }
 
+  /// Deletes notes in the selectedNotes set from the view model.
   void deleteSelected() {
     if (viewModel.selectedNotes.isEmpty ||
         project.song.activePatternID == null ||
@@ -167,7 +167,11 @@ class _PianoRollController {
     viewModel.selectedNotes.clear();
   }
 
+  /// Adds all notes to the selection set in the view model.
   void selectAll() {
+    if (project.song.activePatternID == null ||
+        project.activeGeneratorID == null) return;
+
     viewModel.selectedNotes = ObservableSet.of(
       project.song.patterns[project.song.activePatternID]!
           .notes[project.activeGeneratorID]!
@@ -175,8 +179,6 @@ class _PianoRollController {
           .toSet(),
     );
   }
-
-  // Helper functions
 
   List<NoteModel> _getNotesUnderCursor(
       List<NoteModel> notes, double key, double offset) {
