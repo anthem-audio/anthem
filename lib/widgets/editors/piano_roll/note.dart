@@ -19,13 +19,18 @@
 
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
+import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:provider/provider.dart';
 
 const noteResizeHandleWidth = 10.0;
-const noteResizeHandleOvershoot =
-    2.0; // How far the resize handle extends past the end of the note
 
-class NoteWidget extends StatefulWidget {
+// How far the resize handle extends past the end of the note
+const noteResizeHandleOvershoot = 2.0;
+
+class NoteWidget extends StatefulObserverWidget {
   const NoteWidget({
     Key? key,
     required this.note,
@@ -54,6 +59,8 @@ class _NoteWidgetState extends State<NoteWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final viewModel = Provider.of<PianoRollViewModel>(context);
+
     var saturation = widget.isPressed
         ? 0.6
         : widget.isSelected
@@ -118,9 +125,11 @@ class _NoteWidgetState extends State<NoteWidget> {
                   onPointerDown: (e) {
                     widget.eventData.isResizeEvent = true;
                   },
-                  child: const MouseRegion(
-                    cursor: SystemMouseCursors.resizeLeftRight,
-                  ),
+                  child: viewModel.selectedTool == EditorTool.pencil
+                      ? const MouseRegion(
+                          cursor: SystemMouseCursors.resizeLeftRight,
+                        )
+                      : null,
                 ),
               ),
             ),

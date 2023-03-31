@@ -71,6 +71,9 @@ abstract class _PianoRollViewModel with Store {
   @observable
   ActiveNoteAttribute activeNoteAttribute = ActiveNoteAttribute.velocity;
 
+  @observable
+  EditorTool selectedTool = EditorTool.pencil;
+
   // These don't need to be observable, since they're just used during event
   // handling.
   Time cursorNoteLength = 96;

@@ -152,6 +152,7 @@ class _PianoRollHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final menuController = MenuController();
+    final viewModel = Provider.of<PianoRollViewModel>(context);
 
     return SizedBox(
       height: 26,
@@ -194,7 +195,14 @@ class _PianoRollHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 4),
-          const ToolSelector(selectedTool: EditorTool.pencil),
+          Observer(builder: (context) {
+            return ToolSelector(
+              selectedTool: viewModel.selectedTool,
+              setTool: (tool) {
+                viewModel.selectedTool = tool;
+              },
+            );
+          }),
         ],
       ),
     );
