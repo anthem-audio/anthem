@@ -47,7 +47,7 @@ abstract class _SongModel extends Hydratable with Store {
   ID id = getID();
 
   @observable
-  int ticksPerQuarter = 96; // TODO
+  int ticksPerQuarter = 96;
 
   @observable
   @JsonKey(fromJson: _patternsFromJson, toJson: _patternsToJson)

@@ -410,7 +410,6 @@ class TimelinePainter extends CustomPainter {
             textDirection: TextDirection.ltr,
           );
           textPainter.layout();
-          // TODO: replace height constant?
           textPainter.paint(
             canvas,
             Offset(x, (21 - textPainter.size.height) / 2),

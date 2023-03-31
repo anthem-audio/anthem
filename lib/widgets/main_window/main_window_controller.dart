@@ -43,7 +43,6 @@ class MainWindowController {
 
   /// Returns the ID of the loaded project, or null if the project load failed
   /// or was cancelled
-  /// TODO: Granular error handling
   Future<ID?> loadProject() async {
     final path = (await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -71,7 +70,6 @@ class MainWindowController {
           allowedExtensions: ['anthem'],
         ));
       } else {
-        // TODO: This is bad because we can't actually move the project anywhere - we shouldn't hard-code a project location
         path = project.filePath;
       }
 
@@ -86,7 +84,6 @@ class MainWindowController {
       project.isSaved = true;
       project.filePath = path;
     } catch (e) {
-      // TODO: the backend isn't telling us if the save failed, so we can't act on that
       return;
     }
   }

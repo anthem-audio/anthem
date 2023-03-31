@@ -74,7 +74,6 @@ class _WindowHeaderState extends State<WindowHeader> {
                                 topLeft: Radius.circular(isFirstTab ? 4 : 2),
                                 topRight: const Radius.circular(2))
                             : BorderRadius.only(
-                                // TODO: This should only be on the logo button, but we don't have one yet
                                 topLeft: Radius.circular(isFirstTab ? 4 : 1),
                                 topRight: const Radius.circular(1),
                                 bottomRight: const Radius.circular(1),

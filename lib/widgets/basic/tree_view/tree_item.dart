@@ -124,7 +124,6 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
                   widget.model.onClick?.call();
                 }
               },
-              // TODO: There is absolutely no hint anywhere that this is even possible
               onDoubleTap: widget.model.children.isNotEmpty &&
                       widget.model.onClick != null
                   ? () => widget.model.onClick?.call()

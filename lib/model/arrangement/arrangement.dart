@@ -93,8 +93,6 @@ abstract class _ArrangementModel extends Hydratable with Store {
     int barMultiple = 4,
     int minPaddingInBarMultiples = 4,
   }) {
-    // TODO: Time signature changes
-
     final ticksPerBar = project.song.ticksPerQuarter ~/
         (defaultTimeSignature.denominator ~/ 4) *
         defaultTimeSignature.numerator;

@@ -63,9 +63,6 @@ class _TimelineNotificationHandlerState
 
           final divisionChanges = getDivisionChanges(
             viewWidthInPixels: notification.viewWidthInPixels,
-            // TODO: this constant was copied from the minor division changes
-            // getter in piano_roll_grid.dart
-            minPixelsPerSection: 8,
             snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
             defaultTimeSignature: project.song.defaultTimeSignature,
             timeSignatureChanges: pattern?.timeSignatureChanges ?? [],

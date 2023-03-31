@@ -103,9 +103,6 @@ class _PianoRollController {
 
       final divisionChanges = getDivisionChanges(
         viewWidthInPixels: pianoRollWidth,
-        // TODO: this constant was copied from the minor division changes
-        // getter in piano_roll_grid.dart
-        minPixelsPerSection: 8,
         snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
         defaultTimeSignature: project.song.defaultTimeSignature,
         timeSignatureChanges: pattern.timeSignatureChanges,

@@ -99,8 +99,6 @@ abstract class _PatternModel extends Hydratable with Store {
     int barMultiple = 1,
     int minPaddingInBarMultiples = 1,
   }) {
-    // TODO: Time signature changes
-
     final ticksPerBar = project.song.ticksPerQuarter ~/
         (_project!.song.defaultTimeSignature.denominator ~/ 4) *
         _project!.song.defaultTimeSignature.numerator;

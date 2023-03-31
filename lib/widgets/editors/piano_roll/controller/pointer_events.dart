@@ -268,9 +268,6 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
     final divisionChanges = getDivisionChanges(
       viewWidthInPixels: event.pianoRollSize.width,
-      // TODO: this constant was copied from the minor division changes
-      // getter in piano_roll_grid.dart
-      minPixelsPerSection: 8,
       snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
       defaultTimeSignature: project.song.defaultTimeSignature,
       timeSignatureChanges: pattern.timeSignatureChanges,
@@ -282,7 +279,6 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
     int targetTime = getSnappedTime(
       rawTime: eventTime,
       divisionChanges: divisionChanges,
-      round: true,
     );
 
     project.startJournalPage();
@@ -367,9 +363,6 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
         final divisionChanges = getDivisionChanges(
           viewWidthInPixels: event.pianoRollSize.width,
-          // TODO: this constant was copied from the minor division changes
-          // getter in piano_roll_grid.dart
-          minPixelsPerSection: 8,
           snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
           defaultTimeSignature: project.song.defaultTimeSignature,
           timeSignatureChanges: pattern.timeSignatureChanges,
@@ -517,9 +510,6 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
         final divisionChanges = getDivisionChanges(
           viewWidthInPixels: event.pianoRollSize.width,
-          // TODO: this constant was copied from the minor division changes
-          // getter in piano_roll_grid.dart
-          minPixelsPerSection: 8,
           snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
           defaultTimeSignature: project.song.defaultTimeSignature,
           timeSignatureChanges: pattern.timeSignatureChanges,
