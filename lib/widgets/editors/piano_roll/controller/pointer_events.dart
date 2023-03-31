@@ -560,12 +560,24 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
         var diff = snappedEventTime - snappedOriginalTime;
 
-        if (_noteResizeSmallestStartLength! + diff < snapAtSmallestNoteStart) {
+        // Make sure no notes go below the smallest snap size if snapping is
+        // enabled.
+        if (!event.keyboardModifiers.alt &&
+            _noteResizeSmallestStartLength! + diff < snapAtSmallestNoteStart) {
           int snapCount = ((snapAtSmallestNoteStart -
                       (_noteResizeSmallestStartLength! + diff)) /
                   snapAtSmallestNoteStart)
               .ceil();
           diff = diff + snapCount * snapAtSmallestNoteStart;
+        }
+
+        // If snapping is disabled, make sure the notes all have a length of at
+        // least 1.
+        if (event.keyboardModifiers.alt) {
+          final newSmallestNoteSize = _noteResizeSmallestStartLength! + diff;
+          if (newSmallestNoteSize < 1) {
+            diff += 1 - newSmallestNoteSize;
+          }
         }
 
         for (final note in notes
