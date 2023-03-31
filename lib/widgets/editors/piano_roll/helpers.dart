@@ -66,3 +66,21 @@ double pixelsToKeyValue({
   final keyOffsetFromTop = pixelOffsetFromTop / keyHeight;
   return keyValueAtTop - keyOffsetFromTop;
 }
+
+String keyToString(int key) {
+  const notes = [
+    'A',
+    'B♭',
+    'B',
+    'C',
+    'C♯',
+    'D',
+    'E♭',
+    'E',
+    'F',
+    'F♯',
+    'G',
+    'A♭'
+  ];
+  return notes[key % notes.length] + (key ~/ notes.length).toString();
+}

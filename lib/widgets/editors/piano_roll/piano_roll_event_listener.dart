@@ -298,7 +298,7 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
     // Vertical scroll
     final keysPerPixel = 1 / viewModel.keyHeight;
 
-    const scrollAmountInPixels = 100;
+    const scrollAmountInPixels = 50;
 
     final scrollAmountInKeys =
         -delta * 0.01 * scrollAmountInPixels * keysPerPixel;
