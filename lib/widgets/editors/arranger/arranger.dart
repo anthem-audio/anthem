@@ -30,6 +30,7 @@ import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/arranger_event_listener.dart';
+import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/track_header.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
@@ -62,6 +63,8 @@ class _ArrangerState extends State<Arranger> {
 
   ArrangerViewModel? viewModel;
 
+  ArrangerController? controller;
+
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
@@ -77,22 +80,12 @@ class _ArrangerState extends State<Arranger> {
       timeView: TimeRange(0, 3072),
     );
 
+    controller ??= ArrangerController(viewModel: viewModel!);
+
     ArrangementModel? getModel() =>
         project.song.arrangements[project.song.activeArrangementID];
     double getHorizontalScrollRegionEnd() =>
         getModel()?.width.toDouble() ?? project.song.ticksPerQuarter * 4 * 4;
-
-    void setBaseTrackHeight(double trackHeight) {
-      final oldClampedTrackHeight =
-          viewModel!.baseTrackHeight.clamp(minTrackHeight, maxTrackHeight);
-      final oldVerticalScrollPosition = viewModel!.verticalScrollPosition;
-      final clampedTrackHeight =
-          trackHeight.clamp(minTrackHeight, maxTrackHeight);
-
-      viewModel!.baseTrackHeight = trackHeight;
-      viewModel!.verticalScrollPosition = oldVerticalScrollPosition *
-          (clampedTrackHeight / oldClampedTrackHeight);
-    }
 
     final menuController = MenuController();
 
@@ -204,7 +197,7 @@ class _ArrangerState extends State<Arranger> {
                           max: maxTrackHeight,
                           value: viewModel!.baseTrackHeight,
                           onChange: (newHeight) {
-                            setBaseTrackHeight(newHeight);
+                            controller!.setBaseTrackHeight(newHeight);
                           },
                         );
                       }),
