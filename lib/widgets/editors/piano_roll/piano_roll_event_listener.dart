@@ -76,23 +76,16 @@ class PianoRollEventListener extends StatefulWidget {
 
 class _PianoRollEventListenerState extends State<PianoRollEventListener> {
   handlePointerDown(BuildContext context, PointerDownEvent e) {
+    if (e.buttons & kMiddleMouseButton == kMiddleMouseButton) {
+      return;
+    }
+
     final noteUnderCursor =
         widget.noteWidgetEventData.notesUnderCursor.firstOrNull;
 
     final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
     final contentRenderBox = context.findRenderObject() as RenderBox;
     final pointerPos = contentRenderBox.globalToLocal(e.position);
-
-    if (e.buttons & kMiddleMouseButton == kMiddleMouseButton) {
-      handleMiddlePointerDown(
-        timeViewStart: viewModel.timeView.start,
-        timeViewEnd: viewModel.timeView.end,
-        keyAtTop: viewModel.keyValueAtTop,
-        pointerPos: pointerPos,
-      );
-
-      return;
-    }
 
     final controller = Provider.of<PianoRollController>(context, listen: false);
 
@@ -126,20 +119,13 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
   }
 
   handlePointerMove(BuildContext context, PointerMoveEvent e) {
+    if (e.buttons & kMiddleMouseButton == kMiddleMouseButton) {
+      return;
+    }
+
     final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
     final contentRenderBox = context.findRenderObject() as RenderBox;
     final pointerPos = contentRenderBox.globalToLocal(e.position);
-
-    if (e.buttons & kMiddleMouseButton == kMiddleMouseButton) {
-      handleMiddlePointerMove(
-        model: viewModel,
-        e: e,
-        pointerPos: pointerPos,
-        pianoRollSize: contentRenderBox.size,
-      );
-
-      return;
-    }
 
     final controller = Provider.of<PianoRollController>(context, listen: false);
 
@@ -194,63 +180,8 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
     controller.pointerUp(event);
   }
 
-  // Middle-mouse pan
-
-  double _panInitialTimeViewStart = double.nan;
-  double _panInitialTimeViewEnd = double.nan;
-  double _panInitialX = double.nan;
-
-  double _panInitialKeyAtTop = double.nan;
-  double _panInitialY = double.nan;
-
-  handleMiddlePointerDown({
-    required double timeViewStart,
-    required double timeViewEnd,
-    required double keyAtTop,
-    required Offset pointerPos,
-  }) {
-    _panInitialTimeViewStart = timeViewStart;
-    _panInitialTimeViewEnd = timeViewEnd;
-    _panInitialX = pointerPos.dx;
-
-    _panInitialKeyAtTop = keyAtTop;
-    _panInitialY = pointerPos.dy;
-  }
-
-  handleMiddlePointerMove({
-    required PianoRollViewModel model,
-    required PointerMoveEvent e,
-    required Offset pointerPos,
-    required Size pianoRollSize,
-  }) {
-    // X
-
-    final deltaX = pointerPos.dx - _panInitialX;
-    final deltaTimeSincePanInit =
-        (-deltaX / pianoRollSize.width) * model.timeView.width;
-
-    var start = _panInitialTimeViewStart + deltaTimeSincePanInit;
-    var end = _panInitialTimeViewEnd + deltaTimeSincePanInit;
-
-    if (start < 0) {
-      final delta = -start;
-      start += delta;
-      end += delta;
-    }
-
-    model.timeView.start = start;
-    model.timeView.end = end;
-
-    // Y
-
-    final deltaY = pointerPos.dy - _panInitialY;
-    final deltaKeySincePanInit = (deltaY / model.keyHeight);
-
-    model.keyValueAtTop = clampDouble(
-        _panInitialKeyAtTop + deltaKeySincePanInit,
-        minKeyValue + (pianoRollSize.height / model.keyHeight),
-        maxKeyValue);
-  }
+  var _panPointerYStart = double.nan;
+  var _panKeyAtTopStart = double.nan;
 
   @override
   Widget build(BuildContext context) {
@@ -268,6 +199,20 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
                 viewModel.keyValueAtTop + scrollAmountInKeys,
                 minKeyValue + (boxConstraints.maxHeight / viewModel.keyHeight),
                 maxKeyValue);
+          },
+          onVerticalPanStart: (y) {
+            _panPointerYStart = y;
+            _panKeyAtTopStart = viewModel.keyValueAtTop;
+          },
+          onVerticalPanMove: (y) {
+            final deltaY = y - _panPointerYStart;
+            final deltaKeySincePanInit = (deltaY / viewModel.keyHeight);
+
+            viewModel.keyValueAtTop =
+                (_panKeyAtTopStart + deltaKeySincePanInit).clamp(
+              minKeyValue + (boxConstraints.maxHeight / viewModel.keyHeight),
+              maxKeyValue,
+            );
           },
           child: Listener(
             onPointerDown: (e) {
