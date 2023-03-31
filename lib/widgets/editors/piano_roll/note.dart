@@ -17,7 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
 import 'package:anthem/model/pattern/note.dart';
+import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
@@ -79,6 +82,32 @@ class _NoteWidgetState extends State<NoteWidget> {
     }
 
     final color = HSLColor.fromAHSL(1, 166, saturation, lightness).toColor();
+    final textColor = HSLColor.fromAHSL(
+      1,
+      166,
+      (saturation * 0.6).clamp(0, 1),
+      (lightness * 2).clamp(0, 1),
+    ).toColor();
+
+    final textOverlay = viewModel.keyHeight > 20
+        ? Center(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: Text(
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: (viewModel.keyHeight * 0.2 + 8).clamp(12, 17),
+                    fontWeight: FontWeight.w400,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  keyToString(widget.note.key),
+                ),
+              ),
+            ),
+          )
+        : null;
 
     return Listener(
       onPointerDown: _onPointerEvent,
@@ -113,6 +142,7 @@ class _NoteWidgetState extends State<NoteWidget> {
                     width: 1,
                   ),
                 ),
+                child: textOverlay,
               ),
             ),
             Positioned(
