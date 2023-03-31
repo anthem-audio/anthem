@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/commands/arrangement_commands.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
@@ -30,8 +29,8 @@ import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
+import 'package:anthem/widgets/editors/arranger/arranger_event_listener.dart';
 import 'package:anthem/widgets/editors/arranger/track_header.dart';
-import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
 import 'package:anthem/widgets/editors/shared/tool_selector.dart';
@@ -371,45 +370,6 @@ class _ArrangerContentState extends State<_ArrangerContent>
       setState(() {});
     });
 
-    /// Here we access all the track height values. Running this function in
-    /// an Observer will tell that Observer to re-render when any of these
-    /// values change.
-    void subscribeToTrackHeights() {
-      viewModel.baseTrackHeight;
-      viewModel.trackHeightModifiers.forEach((key, value) {});
-    }
-
-    void handleMouseDown(Offset offset, Size editorSize, TimeRange timeView) {
-      if (project.song.activeArrangementID == null ||
-          project.song.patternOrder.isEmpty) return;
-
-      final arrangementID = project.song.activeArrangementID!;
-
-      final trackIndex = posToTrackIndex(
-        yOffset: offset.dy,
-        baseTrackHeight: viewModel.baseTrackHeight,
-        trackHeightModifiers: viewModel.trackHeightModifiers,
-        trackOrder: project.song.trackOrder,
-        scrollPosition: viewModel.verticalScrollPosition,
-      );
-      if (trackIndex.isInfinite) return;
-
-      final time = pixelsToTime(
-        timeViewStart: timeView.start,
-        timeViewEnd: timeView.end,
-        viewPixelWidth: editorSize.width,
-        pixelOffsetFromLeft: offset.dx,
-      );
-
-      project.execute(AddClipCommand(
-        project: project,
-        arrangementID: arrangementID,
-        trackID: project.song.trackOrder[trackIndex.floor()],
-        patternID: project.song.patterns[project.song.patternOrder[0]]!.id,
-        offset: time.floor(),
-      ));
-    }
-
     // Updates the time view animation if the time view has changed
     if (viewModel.timeView.start != _lastTimeViewStart ||
         viewModel.timeView.end != _lastTimeViewEnd) {
@@ -485,151 +445,14 @@ class _ArrangerContentState extends State<_ArrangerContent>
                   ),
                   Container(width: 1, color: Theme.panel.border),
                   Expanded(
-                    child: ClipRect(
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final grid = Positioned.fill(
-                            child: AnimatedBuilder(
-                              animation:
-                                  _verticalScrollPositionAnimationController,
-                              builder: (context, child) {
-                                return AnimatedBuilder(
-                                  animation: _timeViewAnimationController,
-                                  builder: (context, child) {
-                                    return CustomPaintObserver(
-                                      painterBuilder: () =>
-                                          ArrangerBackgroundPainter(
-                                        viewModel: viewModel,
-                                        activeArrangement: project
-                                                .song.arrangements[
-                                            project.song.activeArrangementID],
-                                        project: project,
-                                        verticalScrollPosition:
-                                            _verticalScrollPositionAnimation
-                                                .value,
-                                        timeViewStart:
-                                            _timeViewStartAnimation.value,
-                                        timeViewEnd:
-                                            _timeViewEndAnimation.value,
-                                      ),
-                                    );
-                                  },
-                                );
-                              },
-                            ),
-                          );
-
-                          ArrangementModel? getArrangement() => project.song
-                              .arrangements[project.song.activeArrangementID];
-
-                          List<Widget> getClipWidgets() =>
-                              (getArrangement()?.clips.keys ?? []).map<Widget>(
-                                (id) {
-                                  return LayoutId(
-                                    key: Key(id),
-                                    id: id,
-                                    child: AnimatedBuilder(
-                                      animation: _timeViewAnimationController,
-                                      builder: (context, child) {
-                                        return Observer(builder: (context) {
-                                          return ClipSizer(
-                                            clipID: id,
-                                            arrangementID: project
-                                                .song.activeArrangementID!,
-                                            editorWidth: constraints.maxWidth,
-                                            timeViewStart:
-                                                _timeViewStartAnimation.value,
-                                            timeViewEnd:
-                                                _timeViewEndAnimation.value,
-                                            child: Clip(
-                                              clipID: id,
-                                              arrangementID: project
-                                                  .song.activeArrangementID!,
-                                              ticksPerPixel:
-                                                  (_timeViewEndAnimation.value -
-                                                          _timeViewStartAnimation
-                                                              .value) /
-                                                      constraints.maxWidth,
-                                            ),
-                                          );
-                                        });
-                                      },
-                                    ),
-                                  );
-                                },
-                              ).toList();
-
-                          final clipsContainer = Observer(builder: (context) {
-                            return Positioned.fill(
-                              child: project.song.activeArrangementID == null
-                                  ? const SizedBox()
-                                  : AnimatedBuilder(
-                                      animation:
-                                          _verticalScrollPositionAnimationController,
-                                      builder: (context, child) {
-                                        return AnimatedBuilder(
-                                          animation:
-                                              _timeViewAnimationController,
-                                          builder: (context, child) {
-                                            return Observer(builder: (context) {
-                                              subscribeToTrackHeights();
-
-                                              return CustomMultiChildLayout(
-                                                delegate: ClipLayoutDelegate(
-                                                  baseTrackHeight:
-                                                      viewModel.baseTrackHeight,
-                                                  trackHeightModifiers:
-                                                      viewModel
-                                                          .trackHeightModifiers,
-                                                  timeViewStart:
-                                                      _timeViewStartAnimation
-                                                          .value,
-                                                  timeViewEnd:
-                                                      _timeViewEndAnimation
-                                                          .value,
-                                                  project: project,
-                                                  trackIDs: project
-                                                      .song
-                                                      .trackOrder
-                                                      .nonObservableInner,
-                                                  clipIDs: getArrangement()
-                                                          ?.clips
-                                                          .keys
-                                                          .toList() ??
-                                                      [],
-                                                  arrangementID: project.song
-                                                      .activeArrangementID!,
-                                                  verticalScrollPosition:
-                                                      _verticalScrollPositionAnimation
-                                                          .value,
-                                                ),
-                                                children: getClipWidgets(),
-                                              );
-                                            });
-                                          },
-                                        );
-                                      },
-                                    ),
-                            );
-                          });
-
-                          return Listener(
-                            onPointerDown: (event) {
-                              handleMouseDown(
-                                event.localPosition,
-                                Size(
-                                  constraints.maxWidth,
-                                  constraints.maxHeight,
-                                ),
-                                viewModel.timeView,
-                              );
-                            },
-                            child: Stack(
-                              children: [grid, clipsContainer],
-                            ),
-                          );
-                        },
-                      ),
+                    child: _ArrangerCanvas(
+                      timeViewStartAnimation: _timeViewStartAnimation,
+                      timeViewEndAnimation: _timeViewEndAnimation,
+                      timeViewAnimationController: _timeViewAnimationController,
+                      verticalScrollPositionAnimation:
+                          _verticalScrollPositionAnimation,
+                      verticalScrollPositionAnimationController:
+                          _verticalScrollPositionAnimationController,
                     ),
                   ),
                 ],
@@ -637,6 +460,148 @@ class _ArrangerContentState extends State<_ArrangerContent>
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Renders the actual clip render area. This includes the time grid and any
+/// clips that are in the active arrangement.
+class _ArrangerCanvas extends StatelessWidget {
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
+  final AnimationController timeViewAnimationController;
+
+  final Animation<double> verticalScrollPositionAnimation;
+  final AnimationController verticalScrollPositionAnimationController;
+
+  const _ArrangerCanvas({
+    Key? key,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+    required this.timeViewAnimationController,
+    required this.verticalScrollPositionAnimation,
+    required this.verticalScrollPositionAnimationController,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final project = Provider.of<ProjectModel>(context);
+    final viewModel = Provider.of<ArrangerViewModel>(context);
+
+    return ClipRect(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final grid = Positioned.fill(
+            child: AnimatedBuilder(
+              animation: verticalScrollPositionAnimationController,
+              builder: (context, child) {
+                return AnimatedBuilder(
+                  animation: timeViewAnimationController,
+                  builder: (context, child) {
+                    return CustomPaintObserver(
+                      painterBuilder: () => ArrangerBackgroundPainter(
+                        viewModel: viewModel,
+                        activeArrangement: project.song
+                            .arrangements[project.song.activeArrangementID],
+                        project: project,
+                        verticalScrollPosition:
+                            verticalScrollPositionAnimation.value,
+                        timeViewStart: timeViewStartAnimation.value,
+                        timeViewEnd: timeViewEndAnimation.value,
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          );
+
+          ArrangementModel? getArrangement() =>
+              project.song.arrangements[project.song.activeArrangementID];
+
+          List<Widget> getClipWidgets() =>
+              (getArrangement()?.clips.keys ?? []).map<Widget>(
+                (id) {
+                  return LayoutId(
+                    key: Key(id),
+                    id: id,
+                    child: AnimatedBuilder(
+                      animation: timeViewAnimationController,
+                      builder: (context, child) {
+                        return Observer(builder: (context) {
+                          return ClipSizer(
+                            clipID: id,
+                            arrangementID: project.song.activeArrangementID!,
+                            editorWidth: constraints.maxWidth,
+                            timeViewStart: timeViewStartAnimation.value,
+                            timeViewEnd: timeViewEndAnimation.value,
+                            child: Clip(
+                              clipID: id,
+                              arrangementID: project.song.activeArrangementID!,
+                              ticksPerPixel: (timeViewEndAnimation.value -
+                                      timeViewStartAnimation.value) /
+                                  constraints.maxWidth,
+                            ),
+                          );
+                        });
+                      },
+                    ),
+                  );
+                },
+              ).toList();
+
+          final clipsContainer = Observer(builder: (context) {
+            Widget clips() {
+              return AnimatedBuilder(
+                animation: verticalScrollPositionAnimationController,
+                builder: (context, child) {
+                  return AnimatedBuilder(
+                    animation: timeViewAnimationController,
+                    builder: (context, child) {
+                      return Observer(builder: (context) {
+                        // Subscribe to updates for track heights
+                        viewModel.baseTrackHeight;
+                        viewModel.trackHeightModifiers.forEach((key, value) {});
+
+                        return CustomMultiChildLayout(
+                          delegate: ClipLayoutDelegate(
+                            baseTrackHeight: viewModel.baseTrackHeight,
+                            trackHeightModifiers:
+                                viewModel.trackHeightModifiers,
+                            timeViewStart: timeViewStartAnimation.value,
+                            timeViewEnd: timeViewEndAnimation.value,
+                            project: project,
+                            trackIDs:
+                                project.song.trackOrder.nonObservableInner,
+                            clipIDs:
+                                getArrangement()?.clips.keys.toList() ?? [],
+                            arrangementID: project.song.activeArrangementID!,
+                            verticalScrollPosition:
+                                verticalScrollPositionAnimation.value,
+                          ),
+                          children: getClipWidgets(),
+                        );
+                      });
+                    },
+                  );
+                },
+              );
+            }
+
+            return Positioned.fill(
+              child: project.song.activeArrangementID == null
+                  ? const SizedBox()
+                  : clips(),
+            );
+          });
+
+          return ArrangerEventListener(
+            child: Stack(
+              children: [grid, clipsContainer],
+            ),
+          );
+        },
       ),
     );
   }

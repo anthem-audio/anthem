@@ -26,9 +26,11 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 import '../shared/helpers/time_helpers.dart';
+import '../shared/scroll_manager.dart';
 import 'controller/piano_roll_controller.dart';
 import 'helpers.dart';
 
@@ -250,103 +252,56 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
         maxKeyValue);
   }
 
-  // Scroll
-
-  handleScroll(PointerScrollEvent e) {
-    final delta = e.scrollDelta.dy;
-
-    final modifiers = Provider.of<KeyboardModifiers>(context, listen: false);
-    final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
-    final contentRenderBox = context.findRenderObject() as RenderBox;
-
-    // Zoom
-    if (modifiers.ctrl) {
-      final pointerPos = contentRenderBox.globalToLocal(e.position);
-
-      zoomTimeView(
-        timeView: viewModel.timeView,
-        delta: delta,
-        mouseX: pointerPos.dx,
-        editorWidth: contentRenderBox.size.width,
-      );
-
-      return;
-    }
-
-    // Horizontal scroll
-    if (modifiers.shift) {
-      // We need to scroll by the same speed in pixels, regardless of how
-      // zoomed in we are. Since our current scroll position is in time and not
-      // pixels, we use this value to convert between the two.
-      final ticksPerPixel =
-          viewModel.timeView.width / contentRenderBox.size.width;
-
-      const scrollAmountInPixels = 100;
-
-      var scrollAmountInTicks =
-          delta * 0.01 * scrollAmountInPixels * ticksPerPixel;
-
-      if (viewModel.timeView.start + scrollAmountInTicks < 0) {
-        scrollAmountInTicks = -viewModel.timeView.start;
-      }
-
-      viewModel.timeView.start += scrollAmountInTicks;
-      viewModel.timeView.end += scrollAmountInTicks;
-      return;
-    }
-
-    // Vertical scroll
-    final keysPerPixel = 1 / viewModel.keyHeight;
-
-    const scrollAmountInPixels = 50;
-
-    final scrollAmountInKeys =
-        -delta * 0.01 * scrollAmountInPixels * keysPerPixel;
-
-    viewModel.keyValueAtTop = clampDouble(
-        viewModel.keyValueAtTop + scrollAmountInKeys,
-        minKeyValue + (contentRenderBox.size.height / viewModel.keyHeight),
-        maxKeyValue);
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Listener(
-      onPointerSignal: (e) {
-        if (e is PointerScrollEvent) {
-          handleScroll(e);
-        }
-        widget.noteWidgetEventData.reset();
-      },
-      onPointerDown: (e) {
-        handlePointerDown(context, e);
-        widget.noteWidgetEventData.reset();
-      },
-      onPointerMove: (e) {
-        handlePointerMove(context, e);
-        widget.noteWidgetEventData.reset();
-      },
-      onPointerUp: (e) {
-        handlePointerUp(context, e);
-        widget.noteWidgetEventData.reset();
-      },
+    final viewModel = Provider.of<PianoRollViewModel>(context);
+    return LayoutBuilder(builder: (context, boxConstraints) {
+      return Observer(builder: (context) {
+        return EditorScrollManager(
+          timeView: viewModel.timeView,
+          onVerticalScrollChange: (pixelDelta) {
+            final keysPerPixel = 1 / viewModel.keyHeight;
 
-      // If a middle-click or right-click drag goes out of the window, Flutter
-      // will temporarily stop receiving move events. If the button is released
-      // while the pointer is outside the window in one of these cases, Flutter
-      // will call onPointerCancel instead of onPointerUp.
-      //
-      // We send this to the controller as a pointer up event. If
-      // onPointerCancel is called, we will not receive a pointer up event. An
-      // event cycle must always contain down, then zero or more moves, then
-      // up, and always in that order. We must always finalize the drag and
-      // create any necessary undo steps for whatever action has been
-      // performed, and we must always do this before starting another drag.
-      onPointerCancel: (e) {
-        handlePointerUp(context, e);
-        widget.noteWidgetEventData.reset();
-      },
-      child: widget.child,
-    );
+            final scrollAmountInKeys = -pixelDelta * 0.5 * keysPerPixel;
+
+            viewModel.keyValueAtTop = clampDouble(
+                viewModel.keyValueAtTop + scrollAmountInKeys,
+                minKeyValue + (boxConstraints.maxHeight / viewModel.keyHeight),
+                maxKeyValue);
+          },
+          child: Listener(
+            onPointerDown: (e) {
+              handlePointerDown(context, e);
+              widget.noteWidgetEventData.reset();
+            },
+            onPointerMove: (e) {
+              handlePointerMove(context, e);
+              widget.noteWidgetEventData.reset();
+            },
+            onPointerUp: (e) {
+              handlePointerUp(context, e);
+              widget.noteWidgetEventData.reset();
+            },
+
+            // If a middle-click or right-click drag goes out of the window, Flutter
+            // will temporarily stop receiving move events. If the button is released
+            // while the pointer is outside the window in one of these cases, Flutter
+            // will call onPointerCancel instead of onPointerUp.
+            //
+            // We send this to the controller as a pointer up event. If
+            // onPointerCancel is called, we will not receive a pointer up event. An
+            // event cycle must always contain down, then zero or more moves, then
+            // up, and always in that order. We must always finalize the drag and
+            // create any necessary undo steps for whatever action has been
+            // performed, and we must always do this before starting another drag.
+            onPointerCancel: (e) {
+              handlePointerUp(context, e);
+              widget.noteWidgetEventData.reset();
+            },
+            child: widget.child,
+          ),
+        );
+      });
+    });
   }
 }
