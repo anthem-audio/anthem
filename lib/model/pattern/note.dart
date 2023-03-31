@@ -19,26 +19,58 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:mobx/mobx.dart';
 
 part 'note.g.dart';
 
 @JsonSerializable()
-class NoteModel {
+class NoteModel extends _NoteModel with _$NoteModel {
+  NoteModel({
+    required super.key,
+    required super.velocity,
+    required super.length,
+    required super.offset,
+    required super.pan,
+  });
+
+  NoteModel.fromNoteModel(NoteModel model)
+      : super(
+          key: model.key,
+          length: model.length,
+          offset: model.offset,
+          velocity: model.velocity,
+          pan: model.pan,
+        );
+
+  factory NoteModel.fromJson(Map<String, dynamic> json) =>
+      _$NoteModelFromJson(json);
+}
+
+abstract class _NoteModel with Store {
   String id;
+
+  @observable
   int key;
+
+  @observable
   int velocity;
+
+  @observable
   int length;
+
+  @observable
   int offset;
 
-  NoteModel({
+  @observable
+  int pan;
+
+  _NoteModel({
     required this.key,
     required this.velocity,
     required this.length,
     required this.offset,
+    required this.pan,
   }) : id = getID();
 
-  factory NoteModel.fromJson(Map<String, dynamic> json) =>
-      _$NoteModelFromJson(json);
-
-  Map<String, dynamic> toJson() => _$NoteModelToJson(this);
+  Map<String, dynamic> toJson() => _$NoteModelToJson(this as NoteModel);
 }

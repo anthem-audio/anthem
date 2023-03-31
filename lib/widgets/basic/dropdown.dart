@@ -61,7 +61,7 @@ class _DropdownState extends State<Dropdown> {
 
     final selectedItem = widget.items.firstWhere(
       (element) => element.id == selectedID,
-      orElse: () => const DropdownItem(id: "", name: "(none)"),
+      orElse: () => const DropdownItem(id: '', name: '(none)'),
     );
 
     return Menu(
@@ -82,7 +82,7 @@ class _DropdownState extends State<Dropdown> {
                   : [
                       widget.items.isNotEmpty ? Separator() : null,
                       AnthemMenuItem(
-                        text: "(none)",
+                        text: '(none)',
                         onSelected: () {
                           setState(() {
                             localSelectedID = null;

@@ -70,15 +70,18 @@ class _ColorPickerState extends State<ColorPicker> {
                       (lightnessIndex - 1) * 0.5 -
                       0.2;
 
+                  void onPointerUp(PointerEvent e) {
+                    widget.onChange?.call(AnthemColor(
+                      hue: hue,
+                      saturationMultiplier: saturationMultiplier,
+                      lightnessMultiplier: lightnessMultiplier,
+                    ));
+                  }
+
                   return Expanded(
                     child: Listener(
-                      onPointerUp: (e) {
-                        widget.onChange?.call(AnthemColor(
-                          hue: hue,
-                          saturationMultiplier: saturationMultiplier,
-                          lightnessMultiplier: lightnessMultiplier,
-                        ));
-                      },
+                      onPointerUp: onPointerUp,
+                      onPointerCancel: onPointerUp,
                       child: Container(
                         margin: const EdgeInsets.all(squareMargin),
                         color: HSLColor.fromAHSL(

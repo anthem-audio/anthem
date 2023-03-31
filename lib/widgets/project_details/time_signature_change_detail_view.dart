@@ -22,6 +22,7 @@ import 'dart:math';
 import 'package:anthem/commands/timeline_commands.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/project_details/widgets.dart';
 import 'package:flutter/widgets.dart';
@@ -40,20 +41,20 @@ class TimeSignatureChangeDetailView extends StatelessObserverWidget {
     late TimeSignatureChangeModel timeSignatureChange;
     if (detailView.arrangementID != null) {
       throw UnimplementedError(
-          "Time signature changes in arrangements are not supported yet.");
+          'Time signature changes in arrangements are not supported yet.');
     } else if (detailView.patternID != null) {
       timeSignatureChange = project
           .song.patterns[detailView.patternID]!.timeSignatureChanges
           .firstWhere((change) => change.id == detailView.changeID);
     } else {
       throw Exception(
-          "Invalid TimeSignatureChangeDetailViewKind - it should specify an arrangement ID or pattern ID, but it specified neither.");
+          'Invalid TimeSignatureChangeDetailViewKind - it should specify an arrangement ID or pattern ID, but it specified neither.');
     }
 
     return Column(
       children: [
         Section(
-          title: "TIME SIGNATURE CHANGE",
+          title: 'TIME SIGNATURE CHANGE',
           children: [
             Dropdown(
               height: 26,
@@ -106,8 +107,15 @@ class TimeSignatureChangeDetailView extends StatelessObserverWidget {
             ),
           ],
         ),
-        const SizedBox(height: 4),
-        const Expanded(child: SizedBox()),
+        const SizedBox(height: 3),
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.panel.main,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ),
       ],
     );
   }

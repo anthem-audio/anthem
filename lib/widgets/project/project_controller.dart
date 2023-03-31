@@ -22,6 +22,9 @@ import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 
 class ProjectController {
   ProjectModel project;
@@ -62,7 +65,7 @@ class ProjectController {
 
       do {
         patternNumber++;
-        name = "Pattern $patternNumber";
+        name = 'Pattern $patternNumber';
       } while (existingNames.contains(name));
     }
 
@@ -90,7 +93,7 @@ class ProjectController {
 
       do {
         arrangementNumber++;
-        name = "Arrangement $arrangementNumber";
+        name = 'Arrangement $arrangementNumber';
       } while (existingNames.contains(name));
     }
 
@@ -102,5 +105,20 @@ class ProjectController {
     project.execute(command);
 
     project.song.setActiveArrangement(command.arrangementID);
+  }
+
+  void onShortcut(LogicalKeySet shortcut) {
+    // Undo
+    if (shortcut.matches(
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyZ))) {
+      undo();
+    }
+    // Redo
+    else if (shortcut.matches(LogicalKeySet(
+            LogicalKeyboardKey.control, LogicalKeyboardKey.keyY)) ||
+        shortcut.matches(LogicalKeySet(LogicalKeyboardKey.control,
+            LogicalKeyboardKey.shift, LogicalKeyboardKey.keyZ))) {
+      redo();
+    }
   }
 }

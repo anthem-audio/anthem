@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -164,6 +164,8 @@ class _WhiteKey extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final showKeyText = keyHeight > 25 && (keyNumber - 3) % 12 == 0;
+
     final notchType = getNotchType(keyNumber);
     final widgetHeight =
         notchType == NotchType.both ? keyHeight * 2 : keyHeight * 1.5;
@@ -177,9 +179,29 @@ class _WhiteKey extends StatelessWidget {
         borderRadius: const BorderRadius.horizontal(right: Radius.circular(1)),
         color: const Color(0xFFAAB7C0).withOpacity(opacity),
       ),
+      child: showKeyText
+          ? Center(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    right: 4,
+                    // Aligns this text with the text in the notes
+                    top: keyHeight * 0.5 + 1,
+                  ),
+                  child: Text(
+                    style: const TextStyle(color: blackKeyColor),
+                    keyToString(keyNumber),
+                  ),
+                ),
+              ),
+            )
+          : null,
     );
   }
 }
+
+const blackKeyColor = Color(0xFF3D484F);
 
 class _BlackKey extends StatelessWidget {
   const _BlackKey({Key? key, required this.keyNumber, required this.keyHeight})
@@ -193,7 +215,7 @@ class _BlackKey extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         borderRadius: BorderRadius.horizontal(right: Radius.circular(4)),
-        color: Color(0xFF3D484F),
+        color: blackKeyColor,
       ),
       height: keyHeight - 1,
       margin: const EdgeInsets.only(right: notchWidth + 1),

@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of "tree_view.dart";
+part of 'tree_view.dart';
 
 const indentIncrement = 21.0;
 
@@ -124,7 +124,6 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
                   widget.model.onClick?.call();
                 }
               },
-              // TODO: There is absolutely no hint anywhere that this is even possible
               onDoubleTap: widget.model.children.isNotEmpty &&
                       widget.model.onClick != null
                   ? () => widget.model.onClick?.call()

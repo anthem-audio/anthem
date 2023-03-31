@@ -39,7 +39,7 @@ abstract class _AppModel with Store {
   _AppModel()
       : projects = ObservableMap.of({}),
         projectOrder = ObservableList.of([]),
-        activeProjectID = "";
+        activeProjectID = '';
 
   void addProject(ProjectModel project) {
     projects[project.id] = project;

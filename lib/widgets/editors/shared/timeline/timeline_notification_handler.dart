@@ -57,15 +57,12 @@ class _TimelineNotificationHandlerState
       child: widget.child,
       onNotification: (notification) {
         if (notification is TimelineLabelPointerNotification) {
-          final timeView = Provider.of<TimeView>(context, listen: false);
+          final timeView = Provider.of<TimeRange>(context, listen: false);
           final pattern = project
               .song.patterns.nonObservableInner[project.song.activePatternID];
 
           final divisionChanges = getDivisionChanges(
             viewWidthInPixels: notification.viewWidthInPixels,
-            // TODO: this constant was copied from the minor division changes
-            // getter in piano_roll_grid.dart
-            minPixelsPerSection: 8,
             snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
             defaultTimeSignature: project.song.defaultTimeSignature,
             timeSignatureChanges: pattern?.timeSignatureChanges ?? [],

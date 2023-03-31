@@ -44,7 +44,7 @@ void paintTimeGrid({
     viewWidthInPixels: size.width,
     minPixelsPerSection: minorMinPixels,
     snap: snap,
-    defaultTimeSignature: baseTimeSignature, // TODO
+    defaultTimeSignature: baseTimeSignature,
     timeSignatureChanges: timeSignatureChanges,
     ticksPerQuarter: ticksPerQuarter,
     timeViewStart: timeViewStart,

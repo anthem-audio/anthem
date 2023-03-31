@@ -18,10 +18,10 @@
 */
 
 import 'package:anthem/model/project.dart';
-import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 import '../shared/helpers/grid_paint_helpers.dart';
@@ -29,7 +29,6 @@ import '../shared/helpers/types.dart';
 import 'helpers.dart';
 
 class PianoRollGrid extends StatelessWidget {
-  final double keyHeight;
   final AnimationController timeViewAnimationController;
   final AnimationController keyValueAtTopAnimationController;
   final Animation<double> timeViewStartAnimation;
@@ -38,7 +37,6 @@ class PianoRollGrid extends StatelessWidget {
 
   const PianoRollGrid({
     Key? key,
-    required this.keyHeight,
     required this.keyValueAtTopAnimationController,
     required this.timeViewAnimationController,
     required this.timeViewStartAnimation,
@@ -49,7 +47,7 @@ class PianoRollGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
-    final pattern = project.song.patterns[project.song.activePatternID];
+    final viewModel = Provider.of<PianoRollViewModel>(context);
 
     return ClipRect(
       child: AnimatedBuilder(
@@ -58,19 +56,15 @@ class PianoRollGrid extends StatelessWidget {
           return AnimatedBuilder(
             animation: timeViewAnimationController,
             builder: (context, child) {
-              return Observer(builder: (context) {
-                return CustomPaint(
-                  painter: PianoRollBackgroundPainter(
-                    keyHeight: keyHeight,
-                    keyValueAtTop: keyValueAtTopAnimation.value,
-                    timeViewStart: timeViewStartAnimation.value,
-                    timeViewEnd: timeViewEndAnimation.value,
-                    ticksPerQuarter: project.song.ticksPerQuarter,
-                    defaultTimeSignature: project.song.defaultTimeSignature,
-                    timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
-                  ),
-                );
-              });
+              return CustomPaintObserver(
+                painterBuilder: () => PianoRollBackgroundPainter(
+                  project: project,
+                  viewModel: viewModel,
+                  keyValueAtTop: keyValueAtTopAnimation.value,
+                  timeViewStart: timeViewStartAnimation.value,
+                  timeViewEnd: timeViewEndAnimation.value,
+                ),
+              );
             },
           );
         },
@@ -79,27 +73,23 @@ class PianoRollGrid extends StatelessWidget {
   }
 }
 
-class PianoRollBackgroundPainter extends CustomPainter {
+class PianoRollBackgroundPainter extends CustomPainterObserver {
   PianoRollBackgroundPainter({
-    required this.keyHeight,
+    required this.project,
+    required this.viewModel,
     required this.keyValueAtTop,
     required this.timeViewStart,
     required this.timeViewEnd,
-    required this.ticksPerQuarter,
-    required this.defaultTimeSignature,
-    required this.timeSignatureChanges,
   });
 
-  final double keyHeight;
+  final ProjectModel project;
+  final PianoRollViewModel viewModel;
   final double keyValueAtTop;
-  final TimeSignatureModel defaultTimeSignature;
-  final List<TimeSignatureChangeModel> timeSignatureChanges;
   final double timeViewStart;
   final double timeViewEnd;
-  final int ticksPerQuarter;
 
   @override
-  void paint(Canvas canvas, Size size) {
+  void observablePaint(Canvas canvas, Size size) {
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     var minorLinePaint = Paint()..color = Theme.grid.minor;
@@ -112,12 +102,13 @@ class PianoRollBackgroundPainter extends CustomPainter {
     var keyNum = keyValueAtTop.ceil();
 
     while (true) {
-      final y = (keyValueAtTop - keyNum) * keyHeight;
+      final y = (keyValueAtTop - keyNum) * viewModel.keyHeight;
 
       if (y > size.height) break;
 
       final keyType = getKeyType(keyNum - 1);
-      final backgroundStripRect = Rect.fromLTWH(0, y, size.width, keyHeight);
+      final backgroundStripRect =
+          Rect.fromLTWH(0, y, size.width, viewModel.keyHeight);
       if (keyType == KeyType.white) {
         canvas.drawRect(backgroundStripRect, lightBackgroundPaint);
       } else {
@@ -128,23 +119,26 @@ class PianoRollBackgroundPainter extends CustomPainter {
 
     // Horizontal lines
 
-    var linePointer = ((keyValueAtTop * keyHeight) % keyHeight);
+    var linePointer =
+        ((keyValueAtTop * viewModel.keyHeight) % viewModel.keyHeight);
 
     while (linePointer < size.height) {
       canvas.drawRect(
           Rect.fromLTWH(0, linePointer, size.width, 1), minorLinePaint);
-      linePointer += keyHeight;
+      linePointer += viewModel.keyHeight;
     }
 
     // Vertical lines
 
+    final activePattern = project.song.patterns[project.song.activePatternID];
+
     paintTimeGrid(
       canvas: canvas,
       size: size,
-      ticksPerQuarter: ticksPerQuarter,
+      ticksPerQuarter: project.song.ticksPerQuarter,
       snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
-      baseTimeSignature: defaultTimeSignature,
-      timeSignatureChanges: timeSignatureChanges,
+      baseTimeSignature: project.song.defaultTimeSignature,
+      timeSignatureChanges: activePattern?.timeSignatureChanges ?? [],
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
     );
@@ -152,9 +146,11 @@ class PianoRollBackgroundPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant PianoRollBackgroundPainter oldDelegate) {
-    return oldDelegate.keyHeight != keyHeight ||
-        oldDelegate.keyValueAtTop != keyValueAtTop ||
-        oldDelegate.timeViewStart != timeViewStart ||
-        oldDelegate.timeViewEnd != timeViewEnd;
+    return project != oldDelegate.project ||
+        viewModel != oldDelegate.viewModel ||
+        keyValueAtTop != oldDelegate.keyValueAtTop ||
+        timeViewStart != oldDelegate.timeViewStart ||
+        timeViewEnd != oldDelegate.timeViewEnd ||
+        super.shouldRepaint(oldDelegate);
   }
 }

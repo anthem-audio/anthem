@@ -81,20 +81,7 @@ abstract class _PatternModel extends Hydratable with Store {
       hue: 0,
       saturationMultiplier: 0,
     );
-    timeSignatureChanges = ObservableList.of([
-      TimeSignatureChangeModel(
-        offset: 0,
-        timeSignature: TimeSignatureModel(4, 4),
-      ),
-      TimeSignatureChangeModel(
-        offset: 127,
-        timeSignature: TimeSignatureModel(3, 4),
-      ),
-      TimeSignatureChangeModel(
-        offset: 96 * 7,
-        timeSignature: TimeSignatureModel(7, 8),
-      ),
-    ]);
+    timeSignatureChanges = ObservableList();
     hydrate(project: project);
   }
 
@@ -112,8 +99,6 @@ abstract class _PatternModel extends Hydratable with Store {
     int barMultiple = 1,
     int minPaddingInBarMultiples = 1,
   }) {
-    // TODO: Time signature changes
-
     final ticksPerBar = project.song.ticksPerQuarter ~/
         (_project!.song.defaultTimeSignature.denominator ~/ 4) *
         _project!.song.defaultTimeSignature.numerator;
