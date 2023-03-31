@@ -220,7 +220,7 @@ GetBestDivisionResult getBestDivision({
 
 List<DivisionChange> getDivisionChanges({
   required double viewWidthInPixels,
-  required double minPixelsPerSection,
+  double minPixelsPerSection = 8,
   required Snap snap,
   required TimeSignatureModel defaultTimeSignature,
   required List<TimeSignatureChangeModel> timeSignatureChanges,

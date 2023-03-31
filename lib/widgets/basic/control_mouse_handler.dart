@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-// TODO: Handle overshoot
-
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/gestures.dart';
@@ -191,8 +189,8 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
     }
 
     if (xJumpDirection != null || yJumpDirection != null) {
-      // TODO: Since we abandoned the Rust backend, we need a new way to
-      // set the mouse cursor.
+      // Since we abandoned the Rust backend, we need a new way to set the
+      // mouse cursor.
 
       // var x = mouseX;
       // var y = mouseY;

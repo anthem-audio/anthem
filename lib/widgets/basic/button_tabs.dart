@@ -128,10 +128,10 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
                         ),
                       ),
                     ),
-                    // TODO: This animation should only play with a transition
-                    // triggered on click. Widget resize should not trigger the
-                    // transition. I'm not sure how best to do this and I don't
-                    // want to tackle it now.
+                    // It would be nice to have this animation, but it triggers
+                    // on widget resize, whereas it should only happen on
+                    // click. I'm not sure how best to do this and I don't want
+                    // to tackle it now.
                     // AnimatedPositioned(
                     //   duration: defaultAnimationDuration,
                     //   curve: defaultAnimationCurve,
