@@ -284,12 +284,15 @@ Time getSnappedTime({
   required List<DivisionChange> divisionChanges,
   bool ceil = false,
   bool round = false,
+
+  // This allows us to move things by snap intervals while preserving their
+  // offset from the snap boundaries. Leaving this unset will cause things to
+  // always clamp to the snap boundaries.
+  Time startTime = 0,
 }) {
   Time raw = rawTime;
   Time snapped = -1;
 
-  // A binary search might be better here, but it would only matter
-  // if there were a *lot* of time signature changes in the pattern
   for (var i = 0; i < divisionChanges.length; i++) {
     if (raw >= 0 &&
         i < divisionChanges.length - 1 &&
@@ -302,9 +305,13 @@ Time getSnappedTime({
 
     if (round) raw += snapSize ~/ 2;
 
-    snapped = (raw ~/ snapSize) * snapSize +
+    final startTimeCorrection = startTime % snapSize;
+
+    snapped = ((raw - startTimeCorrection) ~/ snapSize) * snapSize +
         (ceil && raw % snapSize != 0 ? snapSize : 0);
     snapped += divisionChange.offset % snapSize;
+    snapped += startTimeCorrection;
+
     break;
   }
 
