@@ -29,13 +29,18 @@ import 'helpers/types.dart';
 class EditorScrollManager extends StatefulWidget {
   final Widget? child;
   final TimeRange timeView;
-  final void Function(int pixelDelta)? onVerticalScrollChange;
+  final void Function(double pixelDelta)? onVerticalScrollChange;
+
+  final void Function(double pointerY)? onVerticalPanStart;
+  final void Function(double pointerY)? onVerticalPanMove;
 
   const EditorScrollManager({
     Key? key,
     this.child,
     required this.timeView,
     this.onVerticalScrollChange,
+    this.onVerticalPanStart,
+    this.onVerticalPanMove,
   }) : super(key: key);
 
   @override
@@ -51,11 +56,77 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
           handleScroll(event);
         }
       },
+      onPointerDown: (event) {
+        final contentRenderBox = context.findRenderObject() as RenderBox;
+        final pointerPos = contentRenderBox.globalToLocal(event.position);
+
+        if (event.buttons & kMiddleMouseButton == kMiddleMouseButton) {
+          handleMiddlePointerDown(
+            pointerPos: pointerPos,
+          );
+
+          return;
+        }
+      },
+      onPointerMove: (event) {
+        if (event.buttons & kMiddleMouseButton == kMiddleMouseButton) {
+          final contentRenderBox = context.findRenderObject() as RenderBox;
+          final pointerPos = contentRenderBox.globalToLocal(event.position);
+
+          handleMiddlePointerMove(
+            event: event,
+            pointerPos: pointerPos,
+            pianoRollSize: contentRenderBox.size,
+          );
+
+          return;
+        }
+      },
       child: widget.child,
     );
   }
 
-  handleScroll(PointerScrollEvent e) {
+  double _panInitialTimeViewStart = double.nan;
+  double _panInitialTimeViewEnd = double.nan;
+  double _panInitialX = double.nan;
+
+  void handleMiddlePointerDown({required Offset pointerPos}) {
+    _panInitialTimeViewStart = widget.timeView.start;
+    _panInitialTimeViewEnd = widget.timeView.end;
+    _panInitialX = pointerPos.dx;
+
+    widget.onVerticalPanStart?.call(pointerPos.dy);
+  }
+
+  handleMiddlePointerMove({
+    required PointerMoveEvent event,
+    required Offset pointerPos,
+    required Size pianoRollSize,
+  }) {
+    // X
+
+    final deltaX = pointerPos.dx - _panInitialX;
+    final deltaTimeSincePanInit =
+        (-deltaX / pianoRollSize.width) * widget.timeView.width;
+
+    var start = _panInitialTimeViewStart + deltaTimeSincePanInit;
+    var end = _panInitialTimeViewEnd + deltaTimeSincePanInit;
+
+    if (start < 0) {
+      final delta = -start;
+      start += delta;
+      end += delta;
+    }
+
+    widget.timeView.start = start;
+    widget.timeView.end = end;
+
+    // Y
+
+    widget.onVerticalPanMove?.call(pointerPos.dy);
+  }
+
+  void handleScroll(PointerScrollEvent e) {
     final delta = e.scrollDelta.dy;
 
     final modifiers = Provider.of<KeyboardModifiers>(context, listen: false);
@@ -98,8 +169,6 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
 
     // Vertical scroll
 
-    final scrollAmountInPixels = delta.round();
-
-    widget.onVerticalScrollChange?.call(scrollAmountInPixels);
+    widget.onVerticalScrollChange?.call(delta);
   }
 }

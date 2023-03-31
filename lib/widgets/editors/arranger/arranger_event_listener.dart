@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/widgets/editors/arranger/arranger_view_model.dart';
+import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/shared/scroll_manager.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -36,6 +37,9 @@ class ArrangerEventListener extends StatefulObserverWidget {
 }
 
 class _ArrangerEventListenerState extends State<ArrangerEventListener> {
+  var _panYStart = double.nan;
+  var _panScrollPosStart = double.nan;
+
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<ArrangerViewModel>(context);
@@ -44,8 +48,20 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
       timeView: viewModel.timeView,
       onVerticalScrollChange: (pixelDelta) {
         viewModel.verticalScrollPosition = (viewModel.verticalScrollPosition +
-                pixelDelta * 0.01 * viewModel.baseTrackHeight)
+                pixelDelta *
+                    0.01 *
+                    viewModel.baseTrackHeight
+                        .clamp(minTrackHeight, maxTrackHeight))
             .clamp(0, double.infinity);
+      },
+      onVerticalPanStart: (y) {
+        _panYStart = y;
+        _panScrollPosStart = viewModel.verticalScrollPosition;
+      },
+      onVerticalPanMove: (y) {
+        final delta = -(y - _panYStart);
+        viewModel.verticalScrollPosition =
+            (_panScrollPosStart + delta).clamp(0, double.infinity);
       },
       child: Listener(child: widget.child),
     );
