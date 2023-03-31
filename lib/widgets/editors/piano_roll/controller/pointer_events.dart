@@ -361,6 +361,8 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
                 .toList()
             : [_noteMoveNoteUnderCursor!];
 
+        var snappedOffset = offset.floor();
+
         final divisionChanges = getDivisionChanges(
           viewWidthInPixels: event.pianoRollSize.width,
           snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
@@ -371,11 +373,13 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
           timeViewEnd: viewModel.timeView.end,
         );
 
-        final snappedOffset = getSnappedTime(
-          rawTime: offset.floor(),
-          divisionChanges: divisionChanges,
-          round: true,
-        );
+        if (!event.keyboardModifiers.alt) {
+          snappedOffset = getSnappedTime(
+            rawTime: offset.floor(),
+            divisionChanges: divisionChanges,
+            round: true,
+          );
+        }
 
         var timeOffsetFromStart =
             snappedOffset - _noteMoveStartTimes![_noteMoveNoteUnderCursor!.id]!;
@@ -508,6 +512,9 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         final pattern = project.song.patterns[project.song.activePatternID]!;
         final notes = pattern.notes[project.activeGeneratorID]!;
 
+        var snappedOriginalTime = _noteResizePointerStartOffset!.floor();
+        var snappedEventTime = event.offset.floor();
+
         final divisionChanges = getDivisionChanges(
           viewWidthInPixels: event.pianoRollSize.width,
           snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
@@ -518,17 +525,19 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
           timeViewEnd: viewModel.timeView.end,
         );
 
-        final snappedOriginalTime = getSnappedTime(
-          rawTime: _noteResizePointerStartOffset!.floor(),
-          divisionChanges: divisionChanges,
-          round: true,
-        );
+        if (!event.keyboardModifiers.alt) {
+          snappedOriginalTime = getSnappedTime(
+            rawTime: _noteResizePointerStartOffset!.floor(),
+            divisionChanges: divisionChanges,
+            round: true,
+          );
 
-        final snappedEventTime = getSnappedTime(
-          rawTime: event.offset.floor(),
-          divisionChanges: divisionChanges,
-          round: true,
-        );
+          snappedEventTime = getSnappedTime(
+            rawTime: event.offset.floor(),
+            divisionChanges: divisionChanges,
+            round: true,
+          );
+        }
 
         late int snapAtSmallestNoteStart;
 
