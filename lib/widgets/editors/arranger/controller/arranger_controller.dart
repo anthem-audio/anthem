@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
 import 'package:anthem/commands/arrangement_commands.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/arranger/arranger_events.dart';

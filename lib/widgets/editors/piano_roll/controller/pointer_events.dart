@@ -55,7 +55,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
   // Would be nice to replace some of these groups with records when records
   // are stabilized in Dart 3
 
-  EventHandlingState _eventHandlingState = EventHandlingState.idle;
+  var _eventHandlingState = EventHandlingState.idle;
 
   // Data for note moves
   NoteModel? _noteMoveNoteUnderCursor;
