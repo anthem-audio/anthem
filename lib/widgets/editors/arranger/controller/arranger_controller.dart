@@ -17,9 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/commands/arrangement_commands.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/arranger/arranger_events.dart';
 import 'package:anthem/widgets/editors/arranger/arranger_view_model.dart';
+import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
+import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:flutter/gestures.dart';
 import 'package:mobx/mobx.dart';
 
 import '../helpers.dart';

@@ -19,12 +19,76 @@
 
 part of 'arranger_controller.dart';
 
-enum EventHandlingState { idle }
+/// These are the possible states that the arranger can have during event
+/// handing. The current state tells the controller how to handle incoming
+/// pointer events.
+enum EventHandlingState {
+  /// Nothing is happening.
+  idle,
+}
 
 mixin _ArrangerPointerEventsMixin on _ArrangerController {
-  void pointerDown(ArrangerPointerEvent event) {}
+  void pointerDown(ArrangerPointerEvent event) {
+    if (project.song.activeArrangementID == null) return;
 
-  void pointerMove(ArrangerPointerEvent event) {}
+    if (event.pointerEvent.buttons & kPrimaryMouseButton ==
+        kPrimaryMouseButton) {
+      leftPointerDown(event);
+    } else if (event.pointerEvent.buttons & kSecondaryMouseButton ==
+        kSecondaryMouseButton) {
+      rightPointerDown(event);
+    }
+  }
 
-  void pointerUp(ArrangerPointerEvent event) {}
+  void leftPointerDown(ArrangerPointerEvent event) {
+    final arrangement =
+        project.song.arrangements[project.song.activeArrangementID]!;
+
+    // If there's no active cursor pattern, we don't want to add any clips
+    if (viewModel.cursorPattern == null) return;
+
+    final eventTime = event.offset.floor();
+    if (eventTime < 0) return;
+
+    final divisionChanges = getDivisionChanges(
+      viewWidthInPixels: event.arrangerSize.width,
+      snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+      defaultTimeSignature: project.song.defaultTimeSignature,
+      timeSignatureChanges: [],
+      ticksPerQuarter: project.song.ticksPerQuarter,
+      timeViewStart: viewModel.timeView.start,
+      timeViewEnd: viewModel.timeView.end,
+    );
+
+    final targetTime = event.keyboardModifiers.alt
+        ? eventTime
+        : getSnappedTime(
+            rawTime: eventTime,
+            divisionChanges: divisionChanges,
+          );
+
+    project.startJournalPage();
+
+    project.execute(
+      AddClipCommand(
+        project: project,
+        arrangementID: arrangement.id,
+        trackID: project.song.trackOrder[event.track.floor()],
+        patternID: viewModel.cursorPattern!,
+        offset: targetTime,
+      ),
+    );
+  }
+
+  void rightPointerDown(ArrangerPointerEvent event) {}
+
+  void pointerMove(ArrangerPointerEvent event) {
+    if (project.song.activeArrangementID == null) return;
+  }
+
+  void pointerUp(ArrangerPointerEvent event) {
+    if (project.song.activeArrangementID == null) return;
+
+    project.commitJournalPage();
+  }
 }
