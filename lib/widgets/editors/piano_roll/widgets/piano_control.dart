@@ -20,7 +20,7 @@
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:flutter/widgets.dart';
 
-import 'helpers.dart';
+import '../helpers.dart';
 
 class DragInfo {
   double startX;

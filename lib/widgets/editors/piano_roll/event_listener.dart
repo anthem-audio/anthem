@@ -20,8 +20,8 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll_events.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
+import 'package:anthem/widgets/editors/piano_roll/events.dart';
+import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';

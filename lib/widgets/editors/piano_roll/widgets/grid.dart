@@ -20,13 +20,13 @@
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
+import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
-import '../shared/helpers/grid_paint_helpers.dart';
-import '../shared/helpers/types.dart';
-import 'helpers.dart';
+import '../../shared/helpers/grid_paint_helpers.dart';
+import '../../shared/helpers/types.dart';
+import '../helpers.dart';
 
 class PianoRollGrid extends StatelessWidget {
   final AnimationController timeViewAnimationController;

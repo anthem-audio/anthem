@@ -45,12 +45,12 @@ import '../shared/timeline/timeline.dart';
 import '../shared/tool_selector.dart';
 import 'controller/piano_roll_controller.dart';
 import 'helpers.dart';
-import 'note.dart';
-import 'piano_control.dart';
-import 'piano_roll_attribute_editor.dart';
-import 'piano_roll_event_listener.dart';
-import 'piano_roll_grid.dart';
-import 'piano_roll_view_model.dart';
+import 'widgets/note.dart';
+import 'widgets/piano_control.dart';
+import 'attribute_editor.dart';
+import 'event_listener.dart';
+import 'widgets/grid.dart';
+import 'view_model.dart';
 
 const noContentBars = 16;
 
