@@ -17,14 +17,16 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'arranger_controller.dart';
+class ArrangerPointerEvent {
+  /// Offset from the start of the arrangement, in ticks
+  double offset;
 
-enum EventHandlingState { idle }
+  /// Track index, starting at 0. A value of 2.5 means halfway through the
+  /// track with an index of 2.
+  double track;
 
-mixin _ArrangerPointerEventsMixin on _ArrangerController {
-  void pointerDown(ArrangerPointerEvent event) {}
-
-  void pointerMove(ArrangerPointerEvent event) {}
-
-  void pointerUp(ArrangerPointerEvent event) {}
+  ArrangerPointerEvent({
+    required this.offset,
+    required this.track,
+  });
 }
