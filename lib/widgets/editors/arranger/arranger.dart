@@ -43,7 +43,7 @@ import 'package:provider/provider.dart';
 
 import '../shared/helpers/time_helpers.dart';
 import 'widgets/grid.dart';
-import 'arranger_view_model.dart';
+import 'view_model.dart';
 import './widgets/clip_layout_delegate.dart';
 import './widgets/clip_sizer.dart';
 import 'helpers.dart';

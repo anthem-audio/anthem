@@ -26,7 +26,7 @@ import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
 
-import '../arranger_view_model.dart';
+import '../view_model.dart';
 import '../helpers.dart';
 
 class ArrangerBackgroundPainter extends CustomPainterObserver {
