@@ -46,6 +46,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
   // Data for selection box
   Point<double>? _selectionBoxStart;
+  Set<ID>? _selectionBoxOriginalSelection;
 
   void pointerDown(ArrangerPointerEvent event) {
     if (project.song.activeArrangementID == null) return;
@@ -64,8 +65,19 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         project.song.arrangements[project.song.activeArrangementID]!;
 
     if (event.keyboardModifiers.ctrl) {
+      if (event.keyboardModifiers.shift &&
+          event.clipUnderCursor != null &&
+          viewModel.selectedClips.nonObservableInner
+              .contains(event.clipUnderCursor)) {
+        _eventHandlingState =
+            EventHandlingState.creatingSubtractiveSelectionBox;
+      } else {
+        _eventHandlingState = EventHandlingState.creatingAdditiveSelectionBox;
+      }
+
       _selectionBoxStart = Point(event.offset, event.track);
-      _eventHandlingState = EventHandlingState.creatingAdditiveSelectionBox;
+      _selectionBoxOriginalSelection =
+          viewModel.selectedClips.nonObservableInner;
       return;
     }
 
@@ -122,10 +134,47 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         break;
       case EventHandlingState.creatingAdditiveSelectionBox:
       case EventHandlingState.creatingSubtractiveSelectionBox:
+        final arrangement =
+            project.song.arrangements[project.song.activeArrangementID];
+        if (arrangement == null) return;
+
+        final isSubtractive = _eventHandlingState ==
+            EventHandlingState.creatingSubtractiveSelectionBox;
+
         viewModel.selectionBox = Rectangle.fromPoints(
           _selectionBoxStart!,
           Point(event.offset, event.track),
         );
+
+        final clipsInSelection = arrangement.clips.values
+            .where(
+              (clip) {
+                final trackTop =
+                    project.song.trackOrder.indexOf(clip.trackID).toDouble();
+
+                return viewModel.selectionBox!.intersects(
+                  Rectangle(
+                    clip.offset,
+                    trackTop,
+                    clip.width,
+                    1,
+                  ),
+                );
+              },
+            )
+            .map((clip) => clip.clipID)
+            .toSet();
+
+        if (isSubtractive) {
+          viewModel.selectedClips = ObservableSet.of(
+            _selectionBoxOriginalSelection!.difference(clipsInSelection),
+          );
+        } else {
+          viewModel.selectedClips = ObservableSet.of(
+            _selectionBoxOriginalSelection!.union(clipsInSelection),
+          );
+        }
+
         break;
     }
   }

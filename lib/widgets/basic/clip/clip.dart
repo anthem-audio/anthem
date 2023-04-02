@@ -21,6 +21,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes.dart';
+import 'package:anthem/widgets/editors/arranger/event_listener.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -31,6 +32,7 @@ class Clip extends StatelessWidget {
   final ID? arrangementID;
   final double ticksPerPixel;
   final bool selected;
+  final ClipWidgetEventData? eventData;
 
   /// Creates a Clip widget tied to a ClipModel
   const Clip({
@@ -38,7 +40,8 @@ class Clip extends StatelessWidget {
     required this.clipID,
     required this.arrangementID,
     required this.ticksPerPixel,
-    this.selected = true,
+    this.selected = false,
+    this.eventData,
   })  : patternID = null,
         super(key: key);
 
@@ -47,10 +50,15 @@ class Clip extends StatelessWidget {
     Key? key,
     required this.patternID,
     required this.ticksPerPixel,
-  })  : selected = true,
+  })  : selected = false,
         clipID = null,
         arrangementID = null,
+        eventData = null,
         super(key: key);
+
+  void _onPointerEvent(PointerEvent e) {
+    eventData?.clipsUnderCursor.add(clipID!);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,61 +68,67 @@ class Clip extends StatelessWidget {
     final patternModel =
         projectModel.song.patterns[clipModel?.patternID ?? patternID!]!;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Observer(builder: (context) {
-          return Container(
-            height: 15,
-            decoration: BoxDecoration(
-              color: getBaseColor(patternModel.color, selected),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(3),
-              ),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              patternModel.name,
-              style: TextStyle(
-                color: getTextColor(patternModel.color, selected),
-                fontSize: 10,
-              ),
-            ),
-          );
-        }),
-        Observer(builder: (context) {
-          return Expanded(
-            child: Container(
+    return Listener(
+      onPointerDown: _onPointerEvent,
+      onPointerMove: _onPointerEvent,
+      onPointerUp: _onPointerEvent,
+      onPointerCancel: _onPointerEvent,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Observer(builder: (context) {
+            return Container(
+              height: 15,
               decoration: BoxDecoration(
-                color:
-                    getBaseColor(patternModel.color, selected).withAlpha(0x66),
+                color: getBaseColor(patternModel.color, selected),
                 borderRadius: const BorderRadius.vertical(
-                  bottom: Radius.circular(3),
+                  top: Radius.circular(3),
                 ),
               ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: ClipNotes(
-                  color: getContentColor(patternModel.color, selected),
-                  timeViewStart: 0,
-                  ticksPerPixel: ticksPerPixel,
-                  pattern: patternModel,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                patternModel.name,
+                style: TextStyle(
+                  color: getTextColor(patternModel.color, selected),
+                  fontSize: 10,
                 ),
               ),
-            ),
-          );
-        }),
-      ],
+            );
+          }),
+          Observer(builder: (context) {
+            return Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: getBaseColor(patternModel.color, selected)
+                      .withAlpha(0x66),
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(3),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: ClipNotes(
+                    color: getContentColor(patternModel.color, selected),
+                    timeViewStart: 0,
+                    ticksPerPixel: ticksPerPixel,
+                    pattern: patternModel,
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
     );
   }
 }
 
 Color getBaseColor(AnthemColor color, bool selected) {
-  final hue = selected ? 168.0 : color.hue;
+  final hue = selected ? 166.0 : color.hue;
   final saturation =
-      selected ? 0.28 : (0.28 * color.saturationMultiplier).clamp(0.0, 1.0);
+      selected ? 0.6 : (0.28 * color.saturationMultiplier).clamp(0.0, 1.0);
   final lightness =
-      selected ? 0.49 : (0.49 * color.lightnessMultiplier).clamp(0.0, 0.92);
+      selected ? 0.31 : (0.49 * color.lightnessMultiplier).clamp(0.0, 0.92);
 
   return HSLColor.fromAHSL(
     1,
@@ -125,7 +139,7 @@ Color getBaseColor(AnthemColor color, bool selected) {
 }
 
 Color getTextColor(AnthemColor color, bool selected) {
-  final hue = selected ? 168.0 : color.hue;
+  final hue = selected ? 166.0 : color.hue;
   final saturation =
       selected ? 1.0 : (1 * color.saturationMultiplier).clamp(0.0, 1.0);
   final lightness =
@@ -140,7 +154,7 @@ Color getTextColor(AnthemColor color, bool selected) {
 }
 
 Color getContentColor(AnthemColor color, bool selected) {
-  final hue = selected ? 168.0 : color.hue;
+  final hue = selected ? 166.0 : color.hue;
   final saturation =
       selected ? 0.7 : (0.7 * color.saturationMultiplier).clamp(0.0, 1.0);
   final lightness =

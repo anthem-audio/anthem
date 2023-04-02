@@ -285,7 +285,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
   }
 
   /// See [PianoRollEventListener] for details on what this is for.
-  NoteWidgetEventData noteWidgetEventData = NoteWidgetEventData();
+  final noteWidgetEventData = NoteWidgetEventData();
 
   @override
   Widget build(BuildContext context) {
