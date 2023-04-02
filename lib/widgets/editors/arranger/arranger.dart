@@ -41,6 +41,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart' as mobx;
 import 'package:provider/provider.dart';
 
+import '../shared/helpers/time_helpers.dart';
 import 'arranger_grid.dart';
 import 'arranger_view_model.dart';
 import 'clip_layout_delegate.dart';
@@ -603,9 +604,67 @@ class _ArrangerCanvas extends StatelessWidget {
             );
           });
 
+          final selectionBox = Observer(
+            builder: (context) {
+              if (viewModel.selectionBox == null) {
+                return const SizedBox();
+              }
+
+              final selectionBox = viewModel.selectionBox!;
+
+              final left = timeToPixels(
+                timeViewStart: viewModel.timeView.start,
+                timeViewEnd: viewModel.timeView.end,
+                viewPixelWidth: constraints.maxWidth,
+                time: selectionBox.left,
+              );
+
+              final width = timeToPixels(
+                timeViewStart: viewModel.timeView.start,
+                timeViewEnd: viewModel.timeView.end,
+                viewPixelWidth: constraints.maxWidth,
+                time: viewModel.timeView.start + selectionBox.width,
+              );
+
+              final top = trackIndexToPos(
+                baseTrackHeight: viewModel.baseTrackHeight,
+                scrollPosition: viewModel.verticalScrollPosition,
+                trackHeightModifiers: viewModel.trackHeightModifiers,
+                trackOrder: project.song.trackOrder,
+                trackIndex: selectionBox.top,
+              );
+
+              final bottom = trackIndexToPos(
+                baseTrackHeight: viewModel.baseTrackHeight,
+                scrollPosition: viewModel.verticalScrollPosition,
+                trackHeightModifiers: viewModel.trackHeightModifiers,
+                trackOrder: project.song.trackOrder,
+                trackIndex: selectionBox.top + selectionBox.height,
+              );
+
+              final borderColor =
+                  const HSLColor.fromAHSL(1, 166, 0.6, 0.35).toColor();
+              final backgroundColor = borderColor.withAlpha(100);
+
+              return Positioned(
+                left: left,
+                top: top,
+                child: Container(
+                  width: width,
+                  height: bottom - top,
+                  decoration: BoxDecoration(
+                    color: backgroundColor,
+                    border: Border.all(color: borderColor),
+                    borderRadius: const BorderRadius.all(Radius.circular(2)),
+                  ),
+                ),
+              );
+            },
+          );
+
           return ArrangerEventListener(
             child: Stack(
-              children: [grid, clipsContainer],
+              children: [grid, clipsContainer, selectionBox],
             ),
           );
         },

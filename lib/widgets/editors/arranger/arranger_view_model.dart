@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
@@ -49,6 +51,9 @@ abstract class _ArrangerViewModel with Store {
   /// Current pattern that will be placed when the user places a pattern.
   @observable
   ID? cursorPattern;
+
+  @observable
+  Rectangle<double>? selectionBox;
 
   _ArrangerViewModel({
     required this.baseTrackHeight,

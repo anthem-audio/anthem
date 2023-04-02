@@ -25,9 +25,28 @@ part of 'arranger_controller.dart';
 enum EventHandlingState {
   /// Nothing is happening.
   idle,
+
+  /// A single clip is being moved.
+  movingSingleClip,
+
+  /// A selection of clips are being moved.
+  movingSelection,
+
+  /// An additive selection box is being drawn. Clips under this box will be
+  /// added to the current selection.
+  creatingAdditiveSelectionBox,
+
+  /// A subtractive selection box is being drawn. Clips under this box will be
+  /// removed from the current selection if they are selected.
+  creatingSubtractiveSelectionBox,
 }
 
 mixin _ArrangerPointerEventsMixin on _ArrangerController {
+  var _eventHandlingState = EventHandlingState.idle;
+
+  // Data for selection box
+  Point<double>? _selectionBoxStart;
+
   void pointerDown(ArrangerPointerEvent event) {
     if (project.song.activeArrangementID == null) return;
 
@@ -43,6 +62,16 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
   void leftPointerDown(ArrangerPointerEvent event) {
     final arrangement =
         project.song.arrangements[project.song.activeArrangementID]!;
+
+    if (event.keyboardModifiers.ctrl) {
+      _selectionBoxStart = Point(event.offset, event.track);
+      _eventHandlingState = EventHandlingState.creatingAdditiveSelectionBox;
+      return;
+    }
+
+    // void setMoveClipInfo(ClipModel clipUnderCursor) {
+
+    // }
 
     // If there's no active cursor pattern, we don't want to add any clips
     if (viewModel.cursorPattern == null) return;
@@ -84,11 +113,30 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
   void pointerMove(ArrangerPointerEvent event) {
     if (project.song.activeArrangementID == null) return;
+
+    switch (_eventHandlingState) {
+      case EventHandlingState.idle:
+        return;
+      case EventHandlingState.movingSingleClip:
+      case EventHandlingState.movingSelection:
+        break;
+      case EventHandlingState.creatingAdditiveSelectionBox:
+      case EventHandlingState.creatingSubtractiveSelectionBox:
+        viewModel.selectionBox = Rectangle.fromPoints(
+          _selectionBoxStart!,
+          Point(event.offset, event.track),
+        );
+        break;
+    }
   }
 
   void pointerUp(ArrangerPointerEvent event) {
     if (project.song.activeArrangementID == null) return;
 
+    viewModel.selectionBox = null;
+
     project.commitJournalPage();
+
+    _selectionBoxStart = null;
   }
 }

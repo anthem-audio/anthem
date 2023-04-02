@@ -53,7 +53,13 @@ double posToTrackIndex({
   // yOffset relative to scroll area start
   final yScrollAreaOffset = yOffset + scrollPosition;
 
-  if (yScrollAreaOffset < 0) return double.negativeInfinity;
+  if (yScrollAreaOffset < 0) {
+    return yScrollAreaOffset /
+        baseTrackHeight.clamp(
+          minTrackHeight,
+          maxTrackHeight,
+        );
+  }
 
   double yPixelPointer = 0;
   double yIndexPointer = 0;
