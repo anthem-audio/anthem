@@ -19,15 +19,16 @@
 
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
-import 'package:anthem/widgets/editors/arranger/arranger_events.dart';
-import 'package:anthem/widgets/editors/arranger/arranger_view_model.dart';
-import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
-import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/scroll_manager.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
+
+import 'arranger_view_model.dart';
+import 'controller/arranger_controller.dart';
+import 'events.dart';
+import 'helpers.dart';
 
 class ArrangerEventListener extends StatefulWidget {
   final Widget? child;
