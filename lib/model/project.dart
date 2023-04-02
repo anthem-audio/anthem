@@ -123,7 +123,7 @@ abstract class _ProjectModel extends Hydratable with Store {
   final CommandQueue _commandQueue = CommandQueue();
 
   @JsonKey(includeFromJson: false, includeToJson: false)
-  final List<Command> _journalPageAccumulator = [];
+  List<Command> _journalPageAccumulator = [];
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   bool _journalPageActive = false;
@@ -203,7 +203,7 @@ abstract class _ProjectModel extends Hydratable with Store {
     }
 
     final accumulator = _journalPageAccumulator;
-    _journalPageAccumulator.clear();
+    _journalPageAccumulator = [];
     _journalPageActive = false;
 
     if (accumulator.length == 1) {
