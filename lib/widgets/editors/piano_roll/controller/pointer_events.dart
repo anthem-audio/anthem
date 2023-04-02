@@ -95,6 +95,29 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         pattern.notes[project.activeGeneratorID]?.nonObservableInner ??
             <NoteModel>[];
 
+    if (event.keyboardModifiers.ctrl ||
+        viewModel.selectedTool == EditorTool.select) {
+      if (event.keyboardModifiers.shift &&
+          event.noteUnderCursor != null &&
+          viewModel.selectedNotes.nonObservableInner
+              .contains(event.noteUnderCursor)) {
+        _eventHandlingState =
+            EventHandlingState.creatingSubtractiveSelectionBox;
+      } else {
+        _eventHandlingState = EventHandlingState.creatingAdditiveSelectionBox;
+      }
+
+      if (!event.keyboardModifiers.shift) {
+        viewModel.selectedNotes.clear();
+      }
+
+      _selectionBoxStart = Point(event.offset, event.key);
+      _selectionBoxOriginalSelection =
+          viewModel.selectedNotes.nonObservableInner;
+
+      return;
+    }
+
     if (event.isResize && viewModel.selectedTool == EditorTool.pencil) {
       if (event.noteUnderCursor == null) {
         throw ArgumentError("Resize event didn't provide a noteUnderCursor");
@@ -130,29 +153,6 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
       }
 
       setCursorNoteParameters(note);
-
-      return;
-    }
-
-    if (event.keyboardModifiers.ctrl ||
-        viewModel.selectedTool == EditorTool.select) {
-      if (event.keyboardModifiers.shift &&
-          event.noteUnderCursor != null &&
-          viewModel.selectedNotes.nonObservableInner
-              .contains(event.noteUnderCursor)) {
-        _eventHandlingState =
-            EventHandlingState.creatingSubtractiveSelectionBox;
-      } else {
-        _eventHandlingState = EventHandlingState.creatingAdditiveSelectionBox;
-      }
-
-      if (!event.keyboardModifiers.shift) {
-        viewModel.selectedNotes.clear();
-      }
-
-      _selectionBoxStart = Point(event.offset, event.key);
-      _selectionBoxOriginalSelection =
-          viewModel.selectedNotes.nonObservableInner;
 
       return;
     }
