@@ -20,6 +20,7 @@
 import 'dart:math';
 
 import 'package:anthem/commands/arrangement_commands.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/arranger/events.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';

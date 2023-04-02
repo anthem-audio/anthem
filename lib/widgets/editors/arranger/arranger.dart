@@ -353,6 +353,9 @@ class _ArrangerContentState extends State<_ArrangerContent>
 
   mobx.ReactionDisposer? verticalScrollPosTweenUpdaterSub;
 
+  /// See [PianoRollEventListener] for details on what this is for.
+  final clipWidgetEventData = ClipWidgetEventData();
+
   @override
   void dispose() {
     _timeViewAnimationController.dispose();
@@ -461,6 +464,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
                           _verticalScrollPositionAnimation,
                       verticalScrollPositionAnimationController:
                           _verticalScrollPositionAnimationController,
+                      clipWidgetEventData: clipWidgetEventData,
                     ),
                   ),
                 ],
@@ -483,6 +487,8 @@ class _ArrangerCanvas extends StatelessWidget {
   final Animation<double> verticalScrollPositionAnimation;
   final AnimationController verticalScrollPositionAnimationController;
 
+  final ClipWidgetEventData clipWidgetEventData;
+
   const _ArrangerCanvas({
     Key? key,
     required this.timeViewStartAnimation,
@@ -490,6 +496,7 @@ class _ArrangerCanvas extends StatelessWidget {
     required this.timeViewAnimationController,
     required this.verticalScrollPositionAnimation,
     required this.verticalScrollPositionAnimationController,
+    required this.clipWidgetEventData,
   }) : super(key: key);
 
   @override
@@ -550,6 +557,7 @@ class _ArrangerCanvas extends StatelessWidget {
                               ticksPerPixel: (timeViewEndAnimation.value -
                                       timeViewStartAnimation.value) /
                                   constraints.maxWidth,
+                              selected: viewModel.selectedClips.contains(id),
                             ),
                           );
                         });
@@ -663,6 +671,7 @@ class _ArrangerCanvas extends StatelessWidget {
           );
 
           return ArrangerEventListener(
+            eventData: clipWidgetEventData,
             child: Stack(
               children: [grid, clipsContainer, selectionBox],
             ),

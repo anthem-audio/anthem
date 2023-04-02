@@ -29,23 +29,27 @@ part 'clip.g.dart';
 @JsonSerializable()
 class ClipModel extends _ClipModel with _$ClipModel {
   ClipModel(
-      {TimeViewModel? timeView,
+      {required ID clipID,
+      TimeViewModel? timeView,
       required ID patternID,
       required ID trackID,
       required int offset})
       : super(
+            clipID: clipID,
             timeView: timeView,
             patternID: patternID,
             trackID: trackID,
             offset: offset);
 
   ClipModel.create({
+    required ID clipID,
     TimeViewModel? timeView,
     required ID patternID,
     required ID trackID,
     required int offset,
     required ProjectModel project,
   }) : super.create(
+            clipID: clipID,
             timeView: timeView,
             patternID: patternID,
             trackID: trackID,
@@ -57,7 +61,7 @@ class ClipModel extends _ClipModel with _$ClipModel {
 }
 
 abstract class _ClipModel extends Hydratable with Store {
-  ID clipID = getID();
+  ID clipID;
 
   @observable
   TimeViewModel? timeView; // If null, we snap to content
@@ -86,6 +90,7 @@ abstract class _ClipModel extends Hydratable with Store {
 
   /// Used for deserialization. Use ClipModel.create() instead.
   _ClipModel({
+    required this.clipID,
     this.timeView,
     required this.patternID,
     required this.trackID,
@@ -93,6 +98,7 @@ abstract class _ClipModel extends Hydratable with Store {
   }) : super();
 
   _ClipModel.create({
+    required this.clipID,
     this.timeView,
     required this.patternID,
     required this.trackID,
