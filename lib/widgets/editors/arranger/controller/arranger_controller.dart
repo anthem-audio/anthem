@@ -21,7 +21,7 @@ import 'dart:math';
 
 import 'package:anthem/commands/arrangement_commands.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/widgets/editors/arranger/arranger_events.dart';
+import 'package:anthem/widgets/editors/arranger/events.dart';
 import 'package:anthem/widgets/editors/arranger/arranger_view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';

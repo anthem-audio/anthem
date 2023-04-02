@@ -19,18 +19,18 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
-
-import '../../../model/shared/anthem_color.dart';
 
 class Clip extends StatelessWidget {
   final ID? clipID;
   final ID? patternID;
   final ID? arrangementID;
   final double ticksPerPixel;
+  final bool selected;
 
   /// Creates a Clip widget tied to a ClipModel
   const Clip({
@@ -38,6 +38,7 @@ class Clip extends StatelessWidget {
     required this.clipID,
     required this.arrangementID,
     required this.ticksPerPixel,
+    this.selected = true,
   })  : patternID = null,
         super(key: key);
 
@@ -46,7 +47,8 @@ class Clip extends StatelessWidget {
     Key? key,
     required this.patternID,
     required this.ticksPerPixel,
-  })  : clipID = null,
+  })  : selected = true,
+        clipID = null,
         arrangementID = null,
         super(key: key);
 
@@ -65,7 +67,7 @@ class Clip extends StatelessWidget {
           return Container(
             height: 15,
             decoration: BoxDecoration(
-              color: getBaseColor(patternModel.color),
+              color: getBaseColor(patternModel.color, selected),
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(3),
               ),
@@ -74,7 +76,7 @@ class Clip extends StatelessWidget {
             child: Text(
               patternModel.name,
               style: TextStyle(
-                color: getTextColor(patternModel.color),
+                color: getTextColor(patternModel.color, selected),
                 fontSize: 10,
               ),
             ),
@@ -84,7 +86,8 @@ class Clip extends StatelessWidget {
           return Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: getBaseColor(patternModel.color).withAlpha(0x66),
+                color:
+                    getBaseColor(patternModel.color, selected).withAlpha(0x66),
                 borderRadius: const BorderRadius.vertical(
                   bottom: Radius.circular(3),
                 ),
@@ -92,7 +95,7 @@ class Clip extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 2),
                 child: ClipNotes(
-                  color: getContentColor(patternModel.color),
+                  color: getContentColor(patternModel.color, selected),
                   timeViewStart: 0,
                   ticksPerPixel: ticksPerPixel,
                   pattern: patternModel,
@@ -106,29 +109,47 @@ class Clip extends StatelessWidget {
   }
 }
 
-Color getBaseColor(AnthemColor color) {
+Color getBaseColor(AnthemColor color, bool selected) {
+  final hue = selected ? 168.0 : color.hue;
+  final saturation =
+      selected ? 0.28 : (0.28 * color.saturationMultiplier).clamp(0.0, 1.0);
+  final lightness =
+      selected ? 0.49 : (0.49 * color.lightnessMultiplier).clamp(0.0, 0.92);
+
   return HSLColor.fromAHSL(
     1,
-    color.hue,
-    (0.28 * color.saturationMultiplier).clamp(0, 1),
-    (0.49 * color.lightnessMultiplier).clamp(0, 0.92),
+    hue,
+    saturation,
+    lightness,
   ).toColor();
 }
 
-Color getTextColor(AnthemColor color) {
+Color getTextColor(AnthemColor color, bool selected) {
+  final hue = selected ? 168.0 : color.hue;
+  final saturation =
+      selected ? 1.0 : (1 * color.saturationMultiplier).clamp(0.0, 1.0);
+  final lightness =
+      selected ? 0.92 : (0.92 * color.lightnessMultiplier).clamp(0.0, 0.92);
+
   return HSLColor.fromAHSL(
     1,
-    color.hue,
-    (1 * color.saturationMultiplier).clamp(0, 1),
-    (0.92 * color.lightnessMultiplier).clamp(0, 0.92),
+    hue,
+    saturation,
+    lightness,
   ).toColor();
 }
 
-Color getContentColor(AnthemColor color) {
+Color getContentColor(AnthemColor color, bool selected) {
+  final hue = selected ? 168.0 : color.hue;
+  final saturation =
+      selected ? 0.7 : (0.7 * color.saturationMultiplier).clamp(0.0, 1.0);
+  final lightness =
+      selected ? 0.78 : (0.78 * color.lightnessMultiplier).clamp(0.0, 0.92);
+
   return HSLColor.fromAHSL(
     1,
-    color.hue,
-    (0.7 * color.saturationMultiplier).clamp(0, 1),
-    (0.78 * color.lightnessMultiplier).clamp(0, 0.92),
+    hue,
+    saturation,
+    lightness,
   ).toColor();
 }

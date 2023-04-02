@@ -29,9 +29,9 @@ import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
-import 'package:anthem/widgets/editors/arranger/arranger_event_listener.dart';
+import 'package:anthem/widgets/editors/arranger/event_listener.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
-import 'package:anthem/widgets/editors/arranger/track_header.dart';
+import 'package:anthem/widgets/editors/arranger/widgets/track_header.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
 import 'package:anthem/widgets/editors/shared/tool_selector.dart';
@@ -42,12 +42,12 @@ import 'package:mobx/mobx.dart' as mobx;
 import 'package:provider/provider.dart';
 
 import '../shared/helpers/time_helpers.dart';
-import 'arranger_grid.dart';
+import 'widgets/grid.dart';
 import 'arranger_view_model.dart';
-import 'clip_layout_delegate.dart';
-import 'clip_sizer.dart';
+import './widgets/clip_layout_delegate.dart';
+import './widgets/clip_sizer.dart';
 import 'helpers.dart';
-import 'pattern_picker/pattern_picker.dart';
+import 'widgets/pattern_picker.dart';
 
 const _timelineHeight = 44.0;
 
