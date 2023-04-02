@@ -17,7 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/project.dart';
+import 'package:anthem/widgets/editors/arranger/arranger_events.dart';
 import 'package:anthem/widgets/editors/arranger/arranger_view_model.dart';
+import 'package:mobx/mobx.dart';
 
 import '../helpers.dart';
 
@@ -25,14 +28,32 @@ part 'pointer_events.dart';
 
 class ArrangerController extends _ArrangerController
     with _ArrangerPointerEventsMixin {
-  ArrangerController({required ArrangerViewModel viewModel})
-      : super(viewModel: viewModel);
+  ArrangerController({
+    required ArrangerViewModel viewModel,
+    required ProjectModel project,
+  }) : super(viewModel: viewModel, project: project);
 }
 
 abstract class _ArrangerController {
   ArrangerViewModel viewModel;
+  ProjectModel project;
 
-  _ArrangerController({required this.viewModel});
+  late final ReactionDisposer patternCursorAutorunDispose;
+
+  _ArrangerController({
+    required this.viewModel,
+    required this.project,
+  }) {
+    // Set up an autorun to update the current cursor pattern if the selected
+    // pattern changes
+    patternCursorAutorunDispose = autorun((_) {
+      viewModel.cursorPattern = project.song.activePatternID;
+    });
+  }
+
+  void dispose() {
+    patternCursorAutorunDispose();
+  }
 
   void setBaseTrackHeight(double trackHeight) {
     final oldClampedTrackHeight =

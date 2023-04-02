@@ -66,6 +66,12 @@ class _ArrangerState extends State<Arranger> {
   ArrangerController? controller;
 
   @override
+  void dispose() {
+    controller?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     final projectController = Provider.of<ProjectController>(context);
@@ -80,7 +86,10 @@ class _ArrangerState extends State<Arranger> {
       timeView: TimeRange(0, 3072),
     );
 
-    controller ??= ArrangerController(viewModel: viewModel!);
+    controller ??= ArrangerController(
+      viewModel: viewModel!,
+      project: project,
+    );
 
     ArrangementModel? getModel() =>
         project.song.arrangements[project.song.activeArrangementID];
@@ -91,161 +100,166 @@ class _ArrangerState extends State<Arranger> {
 
     return Provider.value(
       value: viewModel!,
-      child: ArrangerTimeViewProvider(
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(4),
-            color: Theme.panel.main,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(6),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(
-                  height: 26,
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 263,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Menu(
-                              menuDef: MenuDef(
-                                children: [
-                                  AnthemMenuItem(
-                                    text: 'New arrangement',
-                                    onSelected: () {
-                                      projectController.addArrangement();
-                                    },
-                                  ),
-                                  Separator(),
-                                  AnthemMenuItem(
-                                    text: 'Markers',
-                                    submenu: MenuDef(
-                                      children: [
-                                        AnthemMenuItem(
-                                          text: 'Add time signature change',
-                                        ),
-                                      ],
+      child: Provider.value(
+        value: controller!,
+        child: ArrangerTimeViewProvider(
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              color: Theme.panel.main,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    height: 26,
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 263,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Menu(
+                                menuDef: MenuDef(
+                                  children: [
+                                    AnthemMenuItem(
+                                      text: 'New arrangement',
+                                      onSelected: () {
+                                        projectController.addArrangement();
+                                      },
                                     ),
-                                  ),
-                                ],
+                                    Separator(),
+                                    AnthemMenuItem(
+                                      text: 'Markers',
+                                      submenu: MenuDef(
+                                        children: [
+                                          AnthemMenuItem(
+                                            text: 'Add time signature change',
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                menuController: menuController,
+                                child: Button(
+                                  width: 26,
+                                  startIcon: Icons.kebab,
+                                  onPress: () => menuController.open?.call(),
+                                ),
                               ),
-                              menuController: menuController,
-                              child: Button(
-                                width: 26,
-                                startIcon: Icons.kebab,
-                                onPress: () => menuController.open?.call(),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Observer(builder: (context) {
-                              return ToolSelector(
-                                selectedTool: viewModel!.tool,
-                                setTool: (tool) {
-                                  viewModel!.tool = tool;
-                                },
-                              );
-                            }),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              fit: FlexFit.tight,
-                              child: Observer(builder: (context) {
-                                return Dropdown(
-                                  selectedID: project.song.activeArrangementID,
-                                  items: project.song.arrangementOrder
-                                      .map<DropdownItem>(
-                                        (id) => DropdownItem(
-                                          id: id.toString(),
-                                          name: project
-                                              .song.arrangements[id]!.name,
-                                        ),
-                                      )
-                                      .toList(),
-                                  onChanged: (selectedID) {
-                                    project.song.activeArrangementID =
-                                        selectedID;
+                              const SizedBox(width: 4),
+                              Observer(builder: (context) {
+                                return ToolSelector(
+                                  selectedTool: viewModel!.tool,
+                                  setTool: (tool) {
+                                    viewModel!.tool = tool;
                                   },
                                 );
                               }),
-                            ),
-                            const SizedBox(width: 4),
-                          ],
+                              const SizedBox(width: 4),
+                              Flexible(
+                                fit: FlexFit.tight,
+                                child: Observer(builder: (context) {
+                                  return Dropdown(
+                                    selectedID:
+                                        project.song.activeArrangementID,
+                                    items: project.song.arrangementOrder
+                                        .map<DropdownItem>(
+                                          (id) => DropdownItem(
+                                            id: id.toString(),
+                                            name: project
+                                                .song.arrangements[id]!.name,
+                                          ),
+                                        )
+                                        .toList(),
+                                    onChanged: (selectedID) {
+                                      project.song.activeArrangementID =
+                                          selectedID;
+                                    },
+                                  );
+                                }),
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                          ),
                         ),
-                      ),
-                      Observer(builder: (context) {
-                        return Expanded(
-                          child: ScrollbarRenderer(
-                            scrollRegionStart: 0,
-                            scrollRegionEnd: getHorizontalScrollRegionEnd(),
-                            handleStart: viewModel!.timeView.start,
-                            handleEnd: viewModel!.timeView.end,
-                            canScrollPastEnd: true,
-                            onChange: (event) {
-                              viewModel!.timeView.start = event.handleStart;
-                              viewModel!.timeView.end = event.handleEnd;
+                        Observer(builder: (context) {
+                          return Expanded(
+                            child: ScrollbarRenderer(
+                              scrollRegionStart: 0,
+                              scrollRegionEnd: getHorizontalScrollRegionEnd(),
+                              handleStart: viewModel!.timeView.start,
+                              handleEnd: viewModel!.timeView.end,
+                              canScrollPastEnd: true,
+                              onChange: (event) {
+                                viewModel!.timeView.start = event.handleStart;
+                                viewModel!.timeView.end = event.handleEnd;
+                              },
+                            ),
+                          );
+                        }),
+                        const SizedBox(width: 4),
+                        Observer(builder: (context) {
+                          return VerticalScaleControl(
+                            min: 0,
+                            max: maxTrackHeight,
+                            value: viewModel!.baseTrackHeight,
+                            onChange: (newHeight) {
+                              controller!.setBaseTrackHeight(newHeight);
+                            },
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.only(top: 15),
+                          child: SizedBox(
+                            width: 126,
+                            child: PatternPicker(),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Expanded(
+                          child: _ArrangerContent(),
+                        ),
+                        const SizedBox(width: 4),
+                        SizedBox(
+                          width: 17,
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return Observer(builder: (context) {
+                                return ScrollbarRenderer(
+                                  scrollRegionStart: 0,
+                                  scrollRegionEnd: viewModel!.scrollAreaHeight,
+                                  handleStart:
+                                      viewModel!.verticalScrollPosition,
+                                  handleEnd: viewModel!.verticalScrollPosition +
+                                      constraints.maxHeight -
+                                      _timelineHeight,
+                                  onChange: (event) {
+                                    viewModel!.verticalScrollPosition =
+                                        event.handleStart;
+                                  },
+                                );
+                              });
                             },
                           ),
-                        );
-                      }),
-                      const SizedBox(width: 4),
-                      Observer(builder: (context) {
-                        return VerticalScaleControl(
-                          min: 0,
-                          max: maxTrackHeight,
-                          value: viewModel!.baseTrackHeight,
-                          onChange: (newHeight) {
-                            controller!.setBaseTrackHeight(newHeight);
-                          },
-                        );
-                      }),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.only(top: 15),
-                        child: SizedBox(
-                          width: 126,
-                          child: PatternPicker(),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Expanded(
-                        child: _ArrangerContent(),
-                      ),
-                      const SizedBox(width: 4),
-                      SizedBox(
-                        width: 17,
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            return Observer(builder: (context) {
-                              return ScrollbarRenderer(
-                                scrollRegionStart: 0,
-                                scrollRegionEnd: viewModel!.scrollAreaHeight,
-                                handleStart: viewModel!.verticalScrollPosition,
-                                handleEnd: viewModel!.verticalScrollPosition +
-                                    constraints.maxHeight -
-                                    _timelineHeight,
-                                onChange: (event) {
-                                  viewModel!.verticalScrollPosition =
-                                      event.handleStart;
-                                },
-                              );
-                            });
-                          },
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

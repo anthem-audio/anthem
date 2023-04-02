@@ -46,6 +46,10 @@ abstract class _ArrangerViewModel with Store {
   @observable
   double verticalScrollPosition = 0;
 
+  /// Current pattern that will be placed when the user places a pattern.
+  @observable
+  ID? cursorPattern;
+
   _ArrangerViewModel({
     required this.baseTrackHeight,
     required this.trackHeightModifiers,
