@@ -276,7 +276,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
       timeViewEnd: viewModel.timeView.end,
     );
 
-    int targetTime = event.keyboardModifiers.alt
+    final targetTime = event.keyboardModifiers.alt
         ? eventTime
         : getSnappedTime(
             rawTime: eventTime,
@@ -335,7 +335,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
             kPrimaryMouseButton &&
         viewModel.selectedTool != EditorTool.eraser) {
       leftPointerDown(event);
-    } else if (event.pointerEvent.buttons & kSecondaryButton ==
+    } else if (event.pointerEvent.buttons & kSecondaryMouseButton ==
             kSecondaryMouseButton ||
         viewModel.selectedTool == EditorTool.eraser) {
       rightPointerDown(event);

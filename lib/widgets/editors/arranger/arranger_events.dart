@@ -17,6 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
+import 'package:flutter/widgets.dart';
+
 class ArrangerPointerEvent {
   /// Offset from the start of the arrangement, in ticks
   double offset;
@@ -25,8 +28,20 @@ class ArrangerPointerEvent {
   /// track with an index of 2.
   double track;
 
+  /// The pointer event that originated this [ArrangerPointerEvent].
+  PointerEvent pointerEvent;
+
+  /// Size of the arranger when this event occurred.
+  Size arrangerSize;
+
+  /// Ctrl, alt and shift key states.
+  KeyboardModifiers keyboardModifiers;
+
   ArrangerPointerEvent({
     required this.offset,
     required this.track,
+    required this.pointerEvent,
+    required this.arrangerSize,
+    required this.keyboardModifiers,
   });
 }
