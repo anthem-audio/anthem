@@ -23,7 +23,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:mobx/mobx.dart';
 
-part 'piano_roll_view_model.g.dart';
+part 'view_model.g.dart';
 
 enum ActiveNoteAttribute {
   velocity(bottom: 0, baseline: 0, top: 127),
