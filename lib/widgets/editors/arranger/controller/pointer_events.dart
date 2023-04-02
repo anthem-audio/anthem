@@ -75,6 +75,10 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         _eventHandlingState = EventHandlingState.creatingAdditiveSelectionBox;
       }
 
+      if (!event.keyboardModifiers.shift) {
+        viewModel.selectedClips.clear();
+      }
+
       _selectionBoxStart = Point(event.offset, event.track);
       _selectionBoxOriginalSelection =
           viewModel.selectedClips.nonObservableInner;
