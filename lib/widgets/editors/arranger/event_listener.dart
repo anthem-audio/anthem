@@ -25,7 +25,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
-import 'arranger_view_model.dart';
+import 'view_model.dart';
 import 'controller/arranger_controller.dart';
 import 'events.dart';
 import 'helpers.dart';

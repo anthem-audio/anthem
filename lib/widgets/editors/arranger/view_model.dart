@@ -24,7 +24,7 @@ import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:mobx/mobx.dart';
 
-part 'arranger_view_model.g.dart';
+part 'view_model.g.dart';
 
 // ignore: library_private_types_in_public_api
 class ArrangerViewModel = _ArrangerViewModel with _$ArrangerViewModel;
