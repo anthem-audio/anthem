@@ -581,6 +581,13 @@ class _ArrangerCanvas extends StatelessWidget {
                         viewModel.baseTrackHeight;
                         viewModel.trackHeightModifiers.forEach((key, value) {});
 
+                        // Subscribe to updates for clip positions
+                        final arrangement = getArrangement()!;
+                        for (final clip in arrangement.clips.values) {
+                          clip.offset;
+                          clip.trackID;
+                        }
+
                         return CustomMultiChildLayout(
                           delegate: ClipLayoutDelegate(
                             baseTrackHeight: viewModel.baseTrackHeight,
