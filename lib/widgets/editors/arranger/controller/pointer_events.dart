@@ -99,19 +99,17 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       _clipMoveClipUnderCusror = clipUnderCursor;
       _clipMoveTimeOffset = event.offset - clipUnderCursor.offset;
       _clipMoveTrackOffset = 0.5;
-      _clipMoveStartTimes = {clipUnderCursor.clipID: clipUnderCursor.offset};
+      _clipMoveStartTimes = {clipUnderCursor.id: clipUnderCursor.offset};
       _clipMoveStartTracks = {
-        clipUnderCursor.clipID:
+        clipUnderCursor.id:
             project.song.trackOrder.indexOf(clipUnderCursor.trackID)
       };
 
       if (_eventHandlingState == EventHandlingState.movingSelection) {
       } else {
         _clipMoveStartOfFirstClip = clipUnderCursor.offset;
-        _clipMoveTrackOfTopClip =
-            _clipMoveStartTracks![clipUnderCursor.clipID]!;
-        _clipMoveTrackOfBottomClip =
-            _clipMoveStartTracks![clipUnderCursor.clipID]!;
+        _clipMoveTrackOfTopClip = _clipMoveStartTracks![clipUnderCursor.id]!;
+        _clipMoveTrackOfBottomClip = _clipMoveStartTracks![clipUnderCursor.id]!;
       }
     }
 
@@ -195,14 +193,14 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
             rawTime: offset.floor(),
             divisionChanges: divisionChanges,
             round: true,
-            startTime: _clipMoveStartTimes![_clipMoveClipUnderCusror!.clipID]!,
+            startTime: _clipMoveStartTimes![_clipMoveClipUnderCusror!.id]!,
           );
         }
 
-        var timeOffsetFromEventStart = snappedOffset -
-            _clipMoveStartTimes![_clipMoveClipUnderCusror!.clipID]!;
+        var timeOffsetFromEventStart =
+            snappedOffset - _clipMoveStartTimes![_clipMoveClipUnderCusror!.id]!;
         var trackOffsetFromEventStart = track.round() -
-            _clipMoveStartTracks![_clipMoveClipUnderCusror!.clipID]!;
+            _clipMoveStartTracks![_clipMoveClipUnderCusror!.id]!;
 
         // Prevent the leftmost track from going earlier than the start of the arrangement
         if (_clipMoveStartOfFirstClip! + timeOffsetFromEventStart < 0) {
@@ -225,11 +223,11 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
           final shift = event.keyboardModifiers.shift;
           final ctrl = event.keyboardModifiers.ctrl;
 
-          final track = _clipMoveStartTracks![clip.clipID]! +
+          final track = _clipMoveStartTracks![clip.id]! +
               (shift ? 0 : trackOffsetFromEventStart);
           clip.trackID = project.song.trackOrder[track];
 
-          clip.offset = _clipMoveStartTimes![clip.clipID]! +
+          clip.offset = _clipMoveStartTimes![clip.id]! +
               (!shift && ctrl ? 0 : timeOffsetFromEventStart);
         }
 
@@ -259,7 +257,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
                 );
               },
             )
-            .map((clip) => clip.clipID)
+            .map((clip) => clip.id)
             .toSet();
 
         if (isSubtractive) {
@@ -281,18 +279,30 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
     if (_eventHandlingState == EventHandlingState.movingSingleClip ||
         _eventHandlingState == EventHandlingState.movingSelection) {
-      // final arrangement =
-      //     project.song.arrangements[project.song.activeArrangementID]!;
-      // final clips = arrangement.clips;
+      final arrangement =
+          project.song.arrangements[project.song.activeArrangementID]!;
+      final clips = arrangement.clips;
 
-      // final isSingleClip =
-      //     _eventHandlingState == EventHandlingState.movingSingleClip;
+      final isSingleClip =
+          _eventHandlingState == EventHandlingState.movingSingleClip;
 
-      // final relevantClips = isSingleClip
-      //     ? [_clipMoveClipUnderCusror!]
-      //     : viewModel.selectedClips.map((clipID) => clips[clipID]).toList();
+      final relevantClips = isSingleClip
+          ? [_clipMoveClipUnderCusror!]
+          : viewModel.selectedClips.map((clipID) => clips[clipID]!).toList();
 
-      // TODO: Finish this
+      final commands = relevantClips.map((clip) {
+        return MoveClipCommand(
+          project: project,
+          arrangementID: arrangement.id,
+          clipID: clip.id,
+          oldOffset: _clipMoveStartTimes![clip.id]!,
+          newOffset: clip.offset,
+          oldTrack: project.song.trackOrder[_clipMoveStartTracks![clip.id]!],
+          newTrack: clip.trackID,
+        );
+      }).toList();
+
+      project.push(JournalPageCommand(project, commands));
     }
 
     viewModel.selectionBox = null;

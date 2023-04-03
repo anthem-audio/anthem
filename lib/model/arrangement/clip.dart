@@ -35,7 +35,7 @@ class ClipModel extends _ClipModel with _$ClipModel {
       required ID trackID,
       required int offset})
       : super(
-            clipID: clipID,
+            id: clipID,
             timeView: timeView,
             patternID: patternID,
             trackID: trackID,
@@ -49,7 +49,7 @@ class ClipModel extends _ClipModel with _$ClipModel {
     required int offset,
     required ProjectModel project,
   }) : super.create(
-            clipID: clipID,
+            id: clipID,
             timeView: timeView,
             patternID: patternID,
             trackID: trackID,
@@ -61,7 +61,7 @@ class ClipModel extends _ClipModel with _$ClipModel {
 }
 
 abstract class _ClipModel extends Hydratable with Store {
-  ID clipID;
+  ID id;
 
   @observable
   TimeViewModel? timeView; // If null, we snap to content
@@ -90,7 +90,7 @@ abstract class _ClipModel extends Hydratable with Store {
 
   /// Used for deserialization. Use ClipModel.create() instead.
   _ClipModel({
-    required this.clipID,
+    required this.id,
     this.timeView,
     required this.patternID,
     required this.trackID,
@@ -98,7 +98,7 @@ abstract class _ClipModel extends Hydratable with Store {
   }) : super();
 
   _ClipModel.create({
-    required this.clipID,
+    required this.id,
     this.timeView,
     required this.patternID,
     required this.trackID,
