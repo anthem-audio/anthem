@@ -29,27 +29,27 @@ part 'clip.g.dart';
 @JsonSerializable()
 class ClipModel extends _ClipModel with _$ClipModel {
   ClipModel(
-      {required ID clipID,
+      {required ID id,
       TimeViewModel? timeView,
       required ID patternID,
       required ID trackID,
       required int offset})
       : super(
-            id: clipID,
+            id: id,
             timeView: timeView,
             patternID: patternID,
             trackID: trackID,
             offset: offset);
 
   ClipModel.create({
-    required ID clipID,
+    required ID id,
     TimeViewModel? timeView,
     required ID patternID,
     required ID trackID,
     required int offset,
     required ProjectModel project,
   }) : super.create(
-            id: clipID,
+            id: id,
             timeView: timeView,
             patternID: patternID,
             trackID: trackID,
