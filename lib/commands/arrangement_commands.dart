@@ -25,17 +25,17 @@ import 'package:anthem/model/project.dart';
 import 'command.dart';
 
 abstract class ArrangementCommand extends Command {
-  ID arrangementID;
+  final ID arrangementID;
 
   ArrangementCommand(ProjectModel project, this.arrangementID) : super(project);
 }
 
 /// Add a clip to an arrangement
 class AddClipCommand extends ArrangementCommand {
-  ID trackID;
-  ID patternID;
-  int offset;
-  ID clipID = getID();
+  final ID trackID;
+  final ID patternID;
+  final int offset;
+  final ID clipID = getID();
   TimeViewModel? timeView;
 
   AddClipCommand({
@@ -68,8 +68,8 @@ class AddClipCommand extends ArrangementCommand {
 }
 
 class AddArrangementCommand extends Command {
-  ID arrangementID = getID();
-  String arrangementName;
+  final ID arrangementID = getID();
+  final String arrangementName;
 
   AddArrangementCommand({
     required ProjectModel project,
@@ -95,8 +95,8 @@ class AddArrangementCommand extends Command {
 }
 
 class SetArrangementNameCommand extends ArrangementCommand {
-  late String oldName;
-  String newName;
+  late final String oldName;
+  final String newName;
 
   SetArrangementNameCommand({
     required ProjectModel project,
@@ -114,5 +114,41 @@ class SetArrangementNameCommand extends ArrangementCommand {
   @override
   void rollback() {
     project.song.arrangements[arrangementID]!.name = oldName;
+  }
+}
+
+class MoveClipCommand extends ArrangementCommand {
+  final ID clipID;
+  final int oldOffset;
+  final int newOffset;
+  final ID oldTrack;
+  final ID newTrack;
+
+  MoveClipCommand({
+    required ProjectModel project,
+    required ID arrangementID,
+    required this.clipID,
+    required this.oldOffset,
+    required this.newOffset,
+    required this.oldTrack,
+    required this.newTrack,
+  }) : super(project, arrangementID);
+
+  @override
+  void execute() {
+    final arrangement = project.song.arrangements[arrangementID]!;
+    final clip = arrangement.clips[clipID]!;
+
+    clip.offset = newOffset;
+    clip.trackID = newTrack;
+  }
+
+  @override
+  void rollback() {
+    final arrangement = project.song.arrangements[arrangementID]!;
+    final clip = arrangement.clips[clipID]!;
+
+    clip.offset = oldOffset;
+    clip.trackID = oldTrack;
   }
 }
