@@ -95,6 +95,9 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       return;
     }
 
+    // If there's no active cursor pattern, we don't want to add any clips
+    if (viewModel.cursorPattern == null) return;
+
     void setMoveClipInfo(ClipModel clipUnderCursor) {
       _clipMoveClipUnderCusror = clipUnderCursor;
       _clipMoveTimeOffset = event.offset - clipUnderCursor.offset;
@@ -105,7 +108,32 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
             project.song.trackOrder.indexOf(clipUnderCursor.trackID)
       };
 
+      // If we're moving a selection, record the start times
+      for (final clip in viewModel.selectedClips
+          .map((clipID) => arrangement.clips[clipID]!)) {
+        _clipMoveStartTimes![clip.id] = clip.offset;
+        _clipMoveStartTracks![clip.id] =
+            project.song.trackOrder.indexOf(clip.trackID);
+      }
+
       if (_eventHandlingState == EventHandlingState.movingSelection) {
+        _clipMoveStartOfFirstClip = viewModel.selectedClips.fold<int>(
+          0x7FFFFFFFFFFFFFFF,
+          (previousValue, clipID) =>
+              min(previousValue, arrangement.clips[clipID]!.offset),
+        );
+
+        _clipMoveTrackOfTopClip = 0x7FFFFFFFFFFFFFFF;
+        _clipMoveTrackOfBottomClip = 0;
+
+        // This has a worst-case complexity of clipCount * trackCount
+        for (final clipID in viewModel.selectedClips) {
+          final clipIndex = project.song.trackOrder
+              .indexOf(arrangement.clips[clipID]!.trackID);
+          _clipMoveTrackOfTopClip = min(_clipMoveTrackOfTopClip!, clipIndex);
+          _clipMoveTrackOfBottomClip =
+              max(_clipMoveTrackOfBottomClip!, clipIndex);
+        }
       } else {
         _clipMoveStartOfFirstClip = clipUnderCursor.offset;
         _clipMoveTrackOfTopClip = _clipMoveStartTracks![clipUnderCursor.id]!;
@@ -113,8 +141,20 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       }
     }
 
-    // If there's no active cursor pattern, we don't want to add any clips
-    if (viewModel.cursorPattern == null) return;
+    if (event.clipUnderCursor != null) {
+      final pressedClip = arrangement.clips[event.clipUnderCursor]!;
+
+      if (viewModel.selectedClips.contains(pressedClip.id)) {
+        _eventHandlingState = EventHandlingState.movingSelection;
+      } else {
+        _eventHandlingState = EventHandlingState.movingSingleClip;
+        viewModel.selectedClips.clear();
+      }
+
+      setMoveClipInfo(pressedClip);
+
+      return;
+    }
 
     final eventTime = event.offset.floor();
     if (eventTime < 0) return;
@@ -149,6 +189,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
     project.execute(command);
 
     _eventHandlingState = EventHandlingState.movingSingleClip;
+    viewModel.selectedClips.clear();
 
     setMoveClipInfo(arrangement.clips[command.clipID]!);
   }
