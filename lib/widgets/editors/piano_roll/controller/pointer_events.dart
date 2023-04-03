@@ -77,7 +77,8 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
   ID? _noteResizeSmallestNoteAtStart;
   NoteModel? _noteResizePressedNote;
 
-  // Data for deleting state
+  // Data for deleting notes
+
   /// We ignore notes under the cursor, except the topmost one, until the user
   /// moves the mouse off the note and back on. This means that the user
   /// doesn't right click to delete an overlapping note, accidentally move the
@@ -319,7 +320,10 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
             // the note.
             note.offset + note.length > event.offset;
 
-        if (remove) _deleteNotesDeleted!.add(note);
+        if (remove) {
+          _deleteNotesDeleted!.add(note);
+          viewModel.selectedNotes.remove(note.id);
+        }
         return remove;
       });
 
@@ -459,55 +463,53 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
         // We make a line between the previous event point and this point, and
         // we delete all notes that intersect that line
-        final notesUnderCursorPath = notes
-            .where(
-              (note) =>
-                  // Discard if bounding boxes don't intersect
-                  rectanglesIntersect(
-                    Rectangle.fromPoints(
-                      Point(
-                        _deleteMostRecentPoint!.x,
-                        _deleteMostRecentPoint!.y,
-                      ),
-                      Point(
-                        thisPoint.x,
-                        thisPoint.y,
-                      ),
-                    ),
-                    Rectangle.fromPoints(
-                      Point(note.offset, note.key),
-                      Point(note.offset + note.length, note.key + 1),
-                    ),
-                  ) &&
-                  // Calculate if path segment intersects note
-                  lineIntersectsBox(
+        final notesUnderCursorPath = notes.where(
+          (note) {
+            final noteTopLeft = Point(note.offset, note.key);
+            final noteBottomRight =
+                Point(note.offset + note.length, note.key + 1);
+
+            // Discard if bounding boxes don't intersect
+            return rectanglesIntersect(
+                  Rectangle.fromPoints(
                     _deleteMostRecentPoint!,
                     thisPoint,
-                    Point(note.offset, note.key),
-                    Point(note.offset + note.length, note.key + 1),
                   ),
-            )
-            .toList();
+                  Rectangle.fromPoints(
+                    noteTopLeft,
+                    noteBottomRight,
+                  ),
+                ) &&
+                // Calculate if path segment intersects note
+                lineIntersectsBox(
+                  _deleteMostRecentPoint!,
+                  thisPoint,
+                  noteTopLeft,
+                  noteBottomRight,
+                );
+          },
+        ).toList();
 
-        final notesToRemove = <NoteModel>[];
+        final notesToRemoveFromIgnore = <NoteModel>[];
 
         for (final note in _deleteNotesToTemporarilyIgnore!) {
           if (!notesUnderCursorPath.contains(note)) {
-            notesToRemove.add(note);
+            notesToRemoveFromIgnore.add(note);
           }
         }
 
-        for (final note in notesToRemove) {
+        for (final note in notesToRemoveFromIgnore) {
           _deleteNotesToTemporarilyIgnore!.remove(note);
         }
 
         for (final note in notesUnderCursorPath) {
           if (_deleteNotesToTemporarilyIgnore!.contains(note)) {
             continue;
-          } else {
-            notes.remove(note);
-            _deleteNotesDeleted!.add(note);
           }
+
+          notes.remove(note);
+          _deleteNotesDeleted!.add(note);
+          viewModel.selectedNotes.remove(note.id);
         }
 
         _deleteMostRecentPoint = thisPoint;
@@ -642,6 +644,8 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
       project.push(command);
     } else if (_eventHandlingState == EventHandlingState.deleting) {
+      // There should already be an active journal page, so we don't need to
+      // collect these manually.
       for (final note in _deleteNotesDeleted!) {
         final command = DeleteNoteCommand(
           project: project,

@@ -39,13 +39,16 @@ enum EventHandlingState {
   /// A subtractive selection box is being drawn. Clips under this box will be
   /// removed from the current selection if they are selected.
   creatingSubtractiveSelectionBox,
+
+  /// Notes under the cursor are being deleted.
+  deleting,
 }
 
 mixin _ArrangerPointerEventsMixin on _ArrangerController {
   var _eventHandlingState = EventHandlingState.idle;
 
   // Data for clip moves
-  ClipModel? _clipMoveClipUnderCusror;
+  ClipModel? _clipMoveClipUnderCursor;
   double? _clipMoveTimeOffset;
   double? _clipMoveTrackOffset;
   Map<ID, Time>? _clipMoveStartTimes;
@@ -57,6 +60,16 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
   // Data for selection box
   Point<double>? _selectionBoxStart;
   Set<ID>? _selectionBoxOriginalSelection;
+
+  // Data for deleting clips
+
+  /// We ignore clips under the cursor, except the topmost one, until the user
+  /// moves the mouse off the note and back on. This means that the user
+  /// doesn't right click to delete an overlapping note, accidentally move the
+  /// mouse by one pixel, and delete additional clips.
+  Set<ClipModel>? _deleteClipsToTemporarilyIgnore;
+  Set<ClipModel>? _deleteClipsDeleted;
+  Point? _deleteMostRecentPoint;
 
   void pointerDown(ArrangerPointerEvent event) {
     if (project.song.activeArrangementID == null) return;
@@ -99,7 +112,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
     if (viewModel.cursorPattern == null) return;
 
     void setMoveClipInfo(ClipModel clipUnderCursor) {
-      _clipMoveClipUnderCusror = clipUnderCursor;
+      _clipMoveClipUnderCursor = clipUnderCursor;
       _clipMoveTimeOffset = event.offset - clipUnderCursor.offset;
       _clipMoveTrackOffset = 0.5;
       _clipMoveStartTimes = {clipUnderCursor.id: clipUnderCursor.offset};
@@ -194,7 +207,34 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
     setMoveClipInfo(arrangement.clips[command.clipID]!);
   }
 
-  void rightPointerDown(ArrangerPointerEvent event) {}
+  void rightPointerDown(ArrangerPointerEvent event) {
+    _eventHandlingState = EventHandlingState.deleting;
+
+    _deleteMostRecentPoint = Point(event.offset, event.track);
+
+    project.startJournalPage();
+
+    final arrangement =
+        project.song.arrangements[project.song.activeArrangementID]!;
+
+    _deleteClipsDeleted = {};
+    _deleteClipsToTemporarilyIgnore = {};
+
+    if (event.clipUnderCursor != null) {
+      arrangement.clips.removeWhere((clipID, clip) {
+        final remove = clip.id == event.clipUnderCursor &&
+            // Ignore events that come from the resize handle but aren't over
+            // the clip.
+            clip.offset + clip.width > event.offset;
+
+        if (remove) {
+          _deleteClipsDeleted!.add(clip);
+          viewModel.selectedClips.remove(clip.id);
+        }
+        return remove;
+      });
+    }
+  }
 
   void pointerMove(ArrangerPointerEvent event) {
     if (project.song.activeArrangementID == null) return;
@@ -215,7 +255,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         final clips = isSelectionMove
             ? viewModel.selectedClips
                 .map((clipID) => arrangement.clips[clipID]!)
-            : [_clipMoveClipUnderCusror!];
+            : [_clipMoveClipUnderCursor!];
 
         var snappedOffset = offset.floor();
 
@@ -234,14 +274,14 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
             rawTime: offset.floor(),
             divisionChanges: divisionChanges,
             round: true,
-            startTime: _clipMoveStartTimes![_clipMoveClipUnderCusror!.id]!,
+            startTime: _clipMoveStartTimes![_clipMoveClipUnderCursor!.id]!,
           );
         }
 
         var timeOffsetFromEventStart =
-            snappedOffset - _clipMoveStartTimes![_clipMoveClipUnderCusror!.id]!;
+            snappedOffset - _clipMoveStartTimes![_clipMoveClipUnderCursor!.id]!;
         var trackOffsetFromEventStart = track.round() -
-            _clipMoveStartTracks![_clipMoveClipUnderCusror!.id]!;
+            _clipMoveStartTracks![_clipMoveClipUnderCursor!.id]!;
 
         // Prevent the leftmost track from going earlier than the start of the arrangement
         if (_clipMoveStartOfFirstClip! + timeOffsetFromEventStart < 0) {
@@ -312,6 +352,69 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         }
 
         break;
+      case EventHandlingState.deleting:
+        final arrangement =
+            project.song.arrangements[project.song.activeArrangementID]!;
+
+        final thisPoint = Point(event.offset, event.track);
+
+        final clipsUnderCursorPath = arrangement.clips.values.where((clip) {
+          // This might be too inefficient... For each clip, we have to get the
+          // index of its track in the track list. This is fine if there's not
+          // a lot of clips or not a lot of tracks, or if the clips are all
+          // near the top (this last one is pretty likely), but feels not-so-
+          // great to me for larger projects. I don't want to prematurely
+          // optimize though, so I'm leaving this note for the next weary
+          // traveler.
+          final clipTrack = project.song.trackOrder.indexOf(clip.trackID);
+
+          final clipTopLeft = Point(clip.offset, clipTrack);
+          final clipBottomRight =
+              Point(clip.offset + clip.width, clipTrack + 1);
+
+          return rectanglesIntersect(
+                Rectangle.fromPoints(
+                  _deleteMostRecentPoint!,
+                  thisPoint,
+                ),
+                Rectangle.fromPoints(
+                  clipTopLeft,
+                  clipBottomRight,
+                ),
+              ) &&
+              lineIntersectsBox(
+                _deleteMostRecentPoint!,
+                thisPoint,
+                clipTopLeft,
+                clipBottomRight,
+              );
+        }).toList();
+
+        final clipsToRemoveFromIgnore = <ClipModel>[];
+
+        for (final clip in _deleteClipsToTemporarilyIgnore!) {
+          if (!clipsUnderCursorPath.contains(clip)) {
+            clipsToRemoveFromIgnore.add(clip);
+          }
+        }
+
+        for (final clip in clipsToRemoveFromIgnore) {
+          _deleteClipsToTemporarilyIgnore!.remove(clip);
+        }
+
+        for (final clip in clipsUnderCursorPath) {
+          if (_deleteClipsToTemporarilyIgnore!.contains(clip)) {
+            continue;
+          }
+
+          arrangement.clips.remove(clip.id);
+          _deleteClipsDeleted!.add(clip);
+          viewModel.selectedClips.remove(clip.id);
+        }
+
+        _deleteMostRecentPoint = thisPoint;
+
+        break;
     }
   }
 
@@ -328,7 +431,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
           _eventHandlingState == EventHandlingState.movingSingleClip;
 
       final relevantClips = isSingleClip
-          ? [_clipMoveClipUnderCusror!]
+          ? [_clipMoveClipUnderCursor!]
           : viewModel.selectedClips.map((clipID) => clips[clipID]!).toList();
 
       final commands = relevantClips.map((clip) {
@@ -344,13 +447,27 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       }).toList();
 
       project.push(JournalPageCommand(project, commands));
+    } else if (_eventHandlingState == EventHandlingState.deleting) {
+      // There should already be an active journal page, so we don't need to
+      // collect these manually.
+      for (final clip in _deleteClipsDeleted!) {
+        final command = DeleteClipCommand(
+          project: project,
+          arrangementID: project.song.activeArrangementID!,
+          clip: clip,
+        );
+
+        project.push(command);
+      }
     }
+
+    _eventHandlingState = EventHandlingState.idle;
 
     viewModel.selectionBox = null;
 
     project.commitJournalPage();
 
-    _clipMoveClipUnderCusror = null;
+    _clipMoveClipUnderCursor = null;
     _clipMoveTimeOffset = null;
     _clipMoveTrackOffset = null;
     _clipMoveStartTimes = null;
@@ -361,5 +478,9 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
     _selectionBoxStart = null;
     _selectionBoxOriginalSelection = null;
+
+    _deleteClipsToTemporarilyIgnore = null;
+    _deleteClipsDeleted = null;
+    _deleteMostRecentPoint = null;
   }
 }
