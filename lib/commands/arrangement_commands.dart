@@ -152,3 +152,25 @@ class MoveClipCommand extends ArrangementCommand {
     clip.trackID = oldTrack;
   }
 }
+
+class DeleteClipCommand extends ArrangementCommand {
+  ClipModel clip;
+
+  DeleteClipCommand({
+    required ProjectModel project,
+    required ID arrangementID,
+    required this.clip,
+  }) : super(project, arrangementID);
+
+  @override
+  void execute() {
+    final arrangement = project.song.arrangements[arrangementID]!;
+    arrangement.clips.remove(clip.id);
+  }
+
+  @override
+  void rollback() {
+    final arrangement = project.song.arrangements[arrangementID]!;
+    arrangement.clips[clip.id] = clip;
+  }
+}
