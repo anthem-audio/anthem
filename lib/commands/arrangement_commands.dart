@@ -50,7 +50,7 @@ class AddClipCommand extends ArrangementCommand {
   @override
   void execute() {
     final clipModel = ClipModel.create(
-      clipID: clipID,
+      id: clipID,
       offset: offset,
       patternID: patternID,
       trackID: trackID,
