@@ -70,6 +70,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
   int? _noteMoveKeyOfTopNote;
   int? _noteMoveKeyOfBottomNote;
 
+  // Data for note resize
   double? _noteResizePointerStartOffset;
   Map<ID, Time>? _noteResizeStartLengths;
   Time? _noteResizeSmallestStartLength;
@@ -384,33 +385,35 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
           );
         }
 
-        var timeOffsetFromStart =
+        var timeOffsetFromEventStart =
             snappedOffset - _noteMoveStartTimes![_noteMoveNoteUnderCursor!.id]!;
-        var keyOffsetFromStart =
+        var keyOffsetFromEventStart =
             key.round() - _noteMoveStartKeys![_noteMoveNoteUnderCursor!.id]!;
 
         // Prevent the leftmost key from going earlier than the start of the pattern
-        if (_noteMoveStartOfFirstNote! + timeOffsetFromStart < 0) {
-          timeOffsetFromStart = -_noteMoveStartOfFirstNote!;
+        if (_noteMoveStartOfFirstNote! + timeOffsetFromEventStart < 0) {
+          timeOffsetFromEventStart = -_noteMoveStartOfFirstNote!;
         }
 
         // Prevent the top key from going above the highest allowed note
-        if (_noteMoveKeyOfTopNote! + keyOffsetFromStart > maxKeyValue) {
-          keyOffsetFromStart = maxKeyValue.round() - _noteMoveKeyOfTopNote!;
+        if (_noteMoveKeyOfTopNote! + keyOffsetFromEventStart > maxKeyValue) {
+          keyOffsetFromEventStart =
+              maxKeyValue.round() - _noteMoveKeyOfTopNote!;
         }
 
         // Prevent the bottom key from going below the lowest allowed note
-        if (_noteMoveKeyOfBottomNote! + keyOffsetFromStart < minKeyValue) {
-          keyOffsetFromStart = minKeyValue.round() - _noteMoveKeyOfBottomNote!;
+        if (_noteMoveKeyOfBottomNote! + keyOffsetFromEventStart < minKeyValue) {
+          keyOffsetFromEventStart =
+              minKeyValue.round() - _noteMoveKeyOfBottomNote!;
         }
 
         for (final note in notes) {
           final shift = event.keyboardModifiers.shift;
           final ctrl = event.keyboardModifiers.ctrl;
-          note.key =
-              _noteMoveStartKeys![note.id]! + (shift ? 0 : keyOffsetFromStart);
+          note.key = _noteMoveStartKeys![note.id]! +
+              (shift ? 0 : keyOffsetFromEventStart);
           note.offset = _noteMoveStartTimes![note.id]! +
-              (!shift && ctrl ? 0 : timeOffsetFromStart);
+              (!shift && ctrl ? 0 : timeOffsetFromEventStart);
         }
 
         break;
