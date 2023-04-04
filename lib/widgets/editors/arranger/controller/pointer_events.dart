@@ -226,7 +226,6 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       project: project,
       arrangementID: arrangement.id,
       clip: ClipModel.create(
-        project: project,
         trackID: project.song.trackOrder[event.track.floor()],
         patternID: viewModel.cursorPattern!,
         offset: targetTime,
@@ -259,7 +258,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         final remove = clip.id == event.clipUnderCursor &&
             // Ignore events that come from the resize handle but aren't over
             // the clip.
-            clip.offset + clip.width > event.offset;
+            clip.offset + clip.getWidth(project) > event.offset;
 
         if (remove) {
           _deleteClipsDeleted!.add(clip);
@@ -368,7 +367,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
                     project.song.trackOrder.indexOf(clip.trackID).toDouble();
 
                 return viewModel.selectionBox!.intersects(
-                  Rectangle(clip.offset, trackTop, clip.width, 1),
+                  Rectangle(clip.offset, trackTop, clip.getWidth(project), 1),
                 );
               },
             )
@@ -404,7 +403,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
           final clipTopLeft = Point(clip.offset, clipTrack);
           final clipBottomRight =
-              Point(clip.offset + clip.width, clipTrack + 1);
+              Point(clip.offset + clip.getWidth(project), clipTrack + 1);
 
           return rectanglesIntersect(
                 Rectangle.fromPoints(

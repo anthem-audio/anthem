@@ -18,9 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/model/shared/hydratable.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
@@ -35,11 +33,12 @@ class ClipModel extends _ClipModel with _$ClipModel {
       required ID trackID,
       required int offset})
       : super(
-            id: id,
-            timeView: timeView,
-            patternID: patternID,
-            trackID: trackID,
-            offset: offset);
+          id: id,
+          timeView: timeView,
+          patternID: patternID,
+          trackID: trackID,
+          offset: offset,
+        );
 
   ClipModel.create({
     ID? id,
@@ -47,14 +46,13 @@ class ClipModel extends _ClipModel with _$ClipModel {
     required ID patternID,
     required ID trackID,
     required int offset,
-    required ProjectModel project,
   }) : super.create(
-            id: id ?? getID(),
-            timeView: timeView,
-            patternID: patternID,
-            trackID: trackID,
-            offset: offset,
-            project: project);
+          id: id ?? getID(),
+          timeView: timeView,
+          patternID: patternID,
+          trackID: trackID,
+          offset: offset,
+        );
 
   factory ClipModel.fromClipModel(ClipModel other) {
     return ClipModel.create(
@@ -62,7 +60,6 @@ class ClipModel extends _ClipModel with _$ClipModel {
       patternID: other.patternID,
       trackID: other.trackID,
       offset: other.offset,
-      project: other.project,
     );
   }
 
@@ -70,7 +67,7 @@ class ClipModel extends _ClipModel with _$ClipModel {
       _$ClipModelFromJson(json);
 }
 
-abstract class _ClipModel extends Hydratable with Store {
+abstract class _ClipModel with Store {
   ID id;
 
   @observable
@@ -84,19 +81,6 @@ abstract class _ClipModel extends Hydratable with Store {
 
   @observable
   int offset;
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  ProjectModel? _project;
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  PatternModel? _pattern;
-
-  ProjectModel get project {
-    return _project!;
-  }
-
-  PatternModel get pattern {
-    return _pattern!;
-  }
 
   /// Used for deserialization. Use ClipModel.create() instead.
   _ClipModel({
@@ -113,26 +97,16 @@ abstract class _ClipModel extends Hydratable with Store {
     required this.patternID,
     required this.trackID,
     required this.offset,
-    required ProjectModel project,
-  }) : super() {
-    hydrate(project: project);
-  }
+  });
 
   Map<String, dynamic> toJson() => _$ClipModelToJson(this as ClipModel);
 
-  void hydrate({required ProjectModel project}) {
-    _project = project;
-    _pattern = project.song.patterns[patternID]!;
-    isHydrated = true;
-  }
-
-  @computed
-  int get width {
+  int getWidth(ProjectModel project) {
     if (timeView != null) {
       return timeView!.end - timeView!.start;
     }
 
-    return pattern.getWidth();
+    return project.song.patterns[patternID]!.getWidth();
   }
 }
 
