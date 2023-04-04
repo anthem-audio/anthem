@@ -30,11 +30,11 @@ jobs:
 
       # Check for formatting in Flutter project
       - name: Format Flutter code
-        run: flutter format . --set-exit-if-changed -o none
+        run: dart format . --set-exit-if-changed -o none
 
       # Lint Flutter project
       - name: Lint Flutter code
-        run: flutter analyze
+        run: dart analyze
       
       - name: Test Flutter code
         run: flutter test .
