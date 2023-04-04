@@ -11,6 +11,7 @@ jobs:
         with:
           flutter-version: '3.7.7'
           channel: 'stable'
+          cache: true
       
       # Set up environment
       - name: Set up environment
