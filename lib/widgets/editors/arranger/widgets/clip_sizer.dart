@@ -55,7 +55,7 @@ class ClipSizer extends StatelessObserverWidget {
               timeViewStart: 0,
               timeViewEnd: timeViewEnd - timeViewStart,
               viewPixelWidth: editorWidth,
-              time: clipModel.width.toDouble(),
+              time: clipModel.getWidth(projectModel).toDouble(),
             )
             // Subtracting 1 here helps clips not draw over bar lines.
             -
