@@ -32,38 +32,22 @@ abstract class ArrangementCommand extends Command {
 
 /// Add a clip to an arrangement
 class AddClipCommand extends ArrangementCommand {
-  final ID trackID;
-  final ID patternID;
-  final int offset;
-  final ID clipID = getID();
-  TimeViewModel? timeView;
+  final ClipModel clip;
 
   AddClipCommand({
     required ProjectModel project,
     required ID arrangementID,
-    required this.trackID,
-    required this.patternID,
-    required this.offset,
-    this.timeView,
+    required this.clip,
   }) : super(project, arrangementID);
 
   @override
   void execute() {
-    final clipModel = ClipModel.create(
-      id: clipID,
-      offset: offset,
-      patternID: patternID,
-      trackID: trackID,
-      timeView: timeView,
-      project: project,
-    );
-
-    project.song.arrangements[arrangementID]!.clips[clipID] = clipModel;
+    project.song.arrangements[arrangementID]!.clips[clip.id] = clip;
   }
 
   @override
   void rollback() {
-    project.song.arrangements[arrangementID]!.clips.remove(clipID);
+    project.song.arrangements[arrangementID]!.clips.remove(clip.id);
   }
 }
 

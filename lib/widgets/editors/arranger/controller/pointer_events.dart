@@ -159,9 +159,40 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
       if (viewModel.selectedClips.contains(pressedClip.id)) {
         _eventHandlingState = EventHandlingState.movingSelection;
+
+        if (event.keyboardModifiers.shift) {
+          project.startJournalPage();
+
+          final newSelectedNotes = ObservableSet<String>();
+
+          for (final clip
+              in viewModel.selectedClips.map((id) => arrangement.clips[id]!)) {
+            final newClip = ClipModel.fromClipModel(clip);
+
+            project.execute(AddClipCommand(
+              project: project,
+              arrangementID: arrangement.id,
+              clip: newClip,
+            ));
+
+            newSelectedNotes.add(newClip.id);
+          }
+
+          viewModel.selectedClips = newSelectedNotes;
+        }
       } else {
         _eventHandlingState = EventHandlingState.movingSingleClip;
         viewModel.selectedClips.clear();
+
+        if (event.keyboardModifiers.shift) {
+          final newClip = ClipModel.fromClipModel(pressedClip);
+
+          project.execute(AddClipCommand(
+            project: project,
+            arrangementID: arrangement.id,
+            clip: newClip,
+          ));
+        }
       }
 
       setMoveClipInfo(pressedClip);
@@ -194,9 +225,12 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
     final command = AddClipCommand(
       project: project,
       arrangementID: arrangement.id,
-      trackID: project.song.trackOrder[event.track.floor()],
-      patternID: viewModel.cursorPattern!,
-      offset: targetTime,
+      clip: ClipModel.create(
+        project: project,
+        trackID: project.song.trackOrder[event.track.floor()],
+        patternID: viewModel.cursorPattern!,
+        offset: targetTime,
+      ),
     );
 
     project.execute(command);
@@ -204,7 +238,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
     _eventHandlingState = EventHandlingState.movingSingleClip;
     viewModel.selectedClips.clear();
 
-    setMoveClipInfo(arrangement.clips[command.clipID]!);
+    setMoveClipInfo(arrangement.clips[command.clip.id]!);
   }
 
   void rightPointerDown(ArrangerPointerEvent event) {

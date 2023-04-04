@@ -42,19 +42,29 @@ class ClipModel extends _ClipModel with _$ClipModel {
             offset: offset);
 
   ClipModel.create({
-    required ID id,
+    ID? id,
     TimeViewModel? timeView,
     required ID patternID,
     required ID trackID,
     required int offset,
     required ProjectModel project,
   }) : super.create(
-            id: id,
+            id: id ?? getID(),
             timeView: timeView,
             patternID: patternID,
             trackID: trackID,
             offset: offset,
             project: project);
+
+  factory ClipModel.fromClipModel(ClipModel other) {
+    return ClipModel.create(
+      id: getID(),
+      patternID: other.patternID,
+      trackID: other.trackID,
+      offset: other.offset,
+      project: other.project,
+    );
+  }
 
   factory ClipModel.fromJson(Map<String, dynamic> json) =>
       _$ClipModelFromJson(json);
@@ -127,16 +137,24 @@ abstract class _ClipModel extends Hydratable with Store {
 }
 
 @JsonSerializable()
-class TimeViewModel {
-  int start;
-  int end;
-
-  TimeViewModel({required this.start, required this.end});
+class TimeViewModel extends _TimeViewModel with _$TimeViewModel {
+  TimeViewModel({required int start, required int end})
+      : super(start: start, end: end);
 
   factory TimeViewModel.fromJson(Map<String, dynamic> json) =>
       _$TimeViewModelFromJson(json);
+}
 
-  Map<String, dynamic> toJson() => _$TimeViewModelToJson(this);
+abstract class _TimeViewModel with Store {
+  @observable
+  int start;
+
+  @observable
+  int end;
+
+  _TimeViewModel({required this.start, required this.end});
+
+  Map<String, dynamic> toJson() => _$TimeViewModelToJson(this as TimeViewModel);
 
   int get width {
     return end - start;
