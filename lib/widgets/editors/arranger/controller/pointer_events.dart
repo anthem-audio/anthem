@@ -84,7 +84,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
   Map<ID, Time>? _clipResizeStartOffsets;
   TimeRange? _clipResizeSmallestStartTimeRange;
   ID? _clipResizeSmallestClip;
-  // ClipModel? _clipResizePressedClip;
+  ClipModel? _clipResizePressedClip;
   bool? _clipResizeIsFromStartOfClip;
 
   void pointerDown(ArrangerPointerEvent event) {
@@ -132,7 +132,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       final pressedClip = arrangement.clips[event.clipUnderCursor]!;
 
       _clipResizePointerStartOffset = event.offset;
-      // _clipResizePressedClip = pressedClip;
+      _clipResizePressedClip = pressedClip;
 
       // If we somehow get both as true, we only want to call it a start resize
       // if it's not an end resize.
@@ -671,6 +671,36 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
         project.push(command);
       }
+    } else if (_eventHandlingState == EventHandlingState.resizingSingleClip ||
+        _eventHandlingState == EventHandlingState.resizingSelection) {
+      final arrangement =
+          project.song.arrangements[project.song.activeArrangementID]!;
+
+      final commands = _clipResizeStartWidths!.keys.map((id) {
+        final clip = arrangement.clips[id]!;
+        final oldStart = _clipResizeStartTimeViewStarts![id]!;
+        final oldWidth = _clipResizeStartWidths![id]!;
+
+        return ResizeClipCommand(
+          project: project,
+          arrangementID: project.song.activeArrangementID!,
+          clipID: id,
+          oldOffset: _clipResizeStartOffsets![id]!,
+          oldTimeView: TimeViewModel(
+            start: oldStart,
+            end: oldStart + oldWidth,
+          ),
+          newOffset: clip.offset,
+          newTimeView: TimeViewModel(
+            start: clip.timeView?.start ?? 0,
+            end: clip.timeView?.end ?? clip.getWidth(project),
+          ),
+        );
+      }).toList();
+
+      final command = JournalPageCommand(project, commands);
+
+      project.push(command);
     }
 
     _eventHandlingState = EventHandlingState.idle;
@@ -701,7 +731,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
     _clipResizeStartTimeViewStarts = null;
     _clipResizeSmallestStartTimeRange = null;
     _clipResizeSmallestClip = null;
-    // _clipResizePressedClip = null;
+    _clipResizePressedClip = null;
     _clipResizeIsFromStartOfClip = null;
   }
 }

@@ -138,7 +138,7 @@ class MoveClipCommand extends ArrangementCommand {
 }
 
 class DeleteClipCommand extends ArrangementCommand {
-  ClipModel clip;
+  final ClipModel clip;
 
   DeleteClipCommand({
     required ProjectModel project,
@@ -156,5 +156,41 @@ class DeleteClipCommand extends ArrangementCommand {
   void rollback() {
     final arrangement = project.song.arrangements[arrangementID]!;
     arrangement.clips[clip.id] = clip;
+  }
+}
+
+class ResizeClipCommand extends ArrangementCommand {
+  final ID clipID;
+  final int oldOffset;
+  final TimeViewModel? oldTimeView;
+  final int newOffset;
+  final TimeViewModel? newTimeView;
+
+  ResizeClipCommand({
+    required ProjectModel project,
+    required ID arrangementID,
+    required this.clipID,
+    required this.oldOffset,
+    required this.oldTimeView,
+    required this.newOffset,
+    required this.newTimeView,
+  }) : super(project, arrangementID);
+
+  @override
+  void execute() {
+    final arrangement = project.song.arrangements[arrangementID]!;
+    final clip = arrangement.clips[clipID]!;
+
+    clip.offset = newOffset;
+    clip.timeView = newTimeView;
+  }
+
+  @override
+  void rollback() {
+    final arrangement = project.song.arrangements[arrangementID]!;
+    final clip = arrangement.clips[clipID]!;
+
+    clip.offset = oldOffset;
+    clip.timeView = oldTimeView;
   }
 }
