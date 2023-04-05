@@ -124,7 +124,8 @@ class Clip extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 2),
                         child: ClipNotes(
                           color: getContentColor(patternModel.color, selected),
-                          timeViewStart: 0,
+                          timeViewStart:
+                              clipModel?.timeView?.start.toDouble() ?? 0,
                           ticksPerPixel: ticksPerPixel,
                           pattern: patternModel,
                         ),
