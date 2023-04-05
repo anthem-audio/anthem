@@ -42,6 +42,12 @@ enum EventHandlingState {
 
   /// Notes under the cursor are being deleted.
   deleting,
+
+  /// A single clip is being resized.
+  resizingSingleClip,
+
+  /// A selection of clips are being resized.
+  resizingSelection,
 }
 
 mixin _ArrangerPointerEventsMixin on _ArrangerController {
@@ -70,6 +76,14 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
   Set<ClipModel>? _deleteClipsToTemporarilyIgnore;
   Set<ClipModel>? _deleteClipsDeleted;
   Point? _deleteMostRecentPoint;
+
+  // Data for clip resize
+  double? _clipResizePointerStartOffset;
+  Map<ID, Time>? _clipResizeStartWidths;
+  TimeRange? _clipResizeSmallestStartTimeRange;
+  ID? _clipResizeSmallestClip;
+  ClipModel? _clipResizePressedClip;
+  bool? _clipResizeIsFromStartOfClip;
 
   void pointerDown(ArrangerPointerEvent event) {
     if (project.song.activeArrangementID == null) return;
@@ -105,6 +119,63 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       _selectionBoxStart = Point(event.offset, event.track);
       _selectionBoxOriginalSelection =
           viewModel.selectedClips.nonObservableInner;
+      return;
+    }
+
+    if (event.isResizeFromStart || event.isResizeFromEnd) {
+      if (event.clipUnderCursor == null) {
+        throw ArgumentError("Resize event didn't provide clipUnderCursor");
+      }
+
+      final pressedClip = arrangement.clips[event.clipUnderCursor]!;
+
+      _clipResizePointerStartOffset = event.offset;
+      _clipResizePressedClip = pressedClip;
+
+      // If we somehow get both as true, we only want to call it a start resize
+      // if it's not an end resize.
+      _clipResizeIsFromStartOfClip = !event.isResizeFromEnd;
+
+      if (viewModel.selectedClips.contains(pressedClip.id)) {
+        _eventHandlingState = EventHandlingState.resizingSelection;
+
+        final selectedClips =
+            viewModel.selectedClips.map((id) => arrangement.clips[id]!);
+
+        var smallestClip = selectedClips.first;
+        var smallestClipWidth = smallestClip.getWidth(project);
+        _clipResizeStartWidths = {};
+
+        for (final clip in selectedClips) {
+          final clipWidth = clip.getWidth(project);
+
+          _clipResizeStartWidths![clip.id] = clipWidth;
+
+          if (clipWidth < smallestClipWidth) {
+            smallestClip = clip;
+            smallestClipWidth = clipWidth;
+          }
+        }
+
+        _clipResizeSmallestStartTimeRange = TimeRange(
+          smallestClip.timeView?.start.toDouble() ?? 0,
+          smallestClip.timeView?.end.toDouble() ?? smallestClipWidth.toDouble(),
+        );
+        _clipResizeSmallestClip = smallestClip.id;
+      } else {
+        _eventHandlingState = EventHandlingState.resizingSingleClip;
+        viewModel.selectedClips.clear();
+
+        final clipWidth = pressedClip.getWidth(project);
+
+        _clipResizeStartWidths = {pressedClip.id: clipWidth};
+        _clipResizeSmallestStartTimeRange = TimeRange(
+          pressedClip.timeView?.start.toDouble() ?? 0,
+          pressedClip.timeView?.end.toDouble() ?? clipWidth.toDouble(),
+        );
+        _clipResizeSmallestClip = pressedClip.id;
+      }
+
       return;
     }
 
@@ -448,6 +519,41 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         _deleteMostRecentPoint = thisPoint;
 
         break;
+      case EventHandlingState.resizingSingleClip:
+      case EventHandlingState.resizingSelection:
+        final arrangement =
+            project.song.arrangements[project.song.activeArrangementID]!;
+
+        var snappedOriginalTime = _clipResizePointerStartOffset!.floor();
+        var snappedEventTime = event.offset.floor();
+
+        final divisionChanges = getDivisionChanges(
+          viewWidthInPixels: event.arrangerSize.width,
+          snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+          defaultTimeSignature: project.song.defaultTimeSignature,
+          timeSignatureChanges: [],
+          ticksPerQuarter: project.song.ticksPerQuarter,
+          timeViewStart: viewModel.timeView.start,
+          timeViewEnd: viewModel.timeView.end,
+        );
+
+        if (!event.keyboardModifiers.alt) {
+          snappedOriginalTime = getSnappedTime(
+            rawTime: _clipResizePointerStartOffset!.floor(),
+            divisionChanges: divisionChanges,
+            round: true,
+          );
+
+          snappedEventTime = getSnappedTime(
+            rawTime: event.offset.floor(),
+            divisionChanges: divisionChanges,
+            round: true,
+          );
+        }
+
+        // TODO
+
+        break;
     }
   }
 
@@ -515,5 +621,12 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
     _deleteClipsToTemporarilyIgnore = null;
     _deleteClipsDeleted = null;
     _deleteMostRecentPoint = null;
+
+    _clipResizePointerStartOffset = null;
+    _clipResizeStartWidths = null;
+    _clipResizeSmallestStartTimeRange = null;
+    _clipResizeSmallestClip = null;
+    _clipResizePressedClip = null;
+    _clipResizeIsFromStartOfClip = null;
   }
 }

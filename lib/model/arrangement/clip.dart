@@ -103,7 +103,7 @@ abstract class _ClipModel with Store {
 
   int getWidth(ProjectModel project) {
     if (timeView != null) {
-      return timeView!.end - timeView!.start;
+      return timeView!.width;
     }
 
     return project.song.patterns[patternID]!.getWidth();

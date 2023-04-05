@@ -32,10 +32,10 @@ enum EventHandlingState {
   /// A selection of notes are being moved.
   movingSelection,
 
-  /// A single note is being moved.
+  /// A single note is being resized.
   resizingSingleNote,
 
-  /// A selection of notes are being moved.
+  /// A selection of notes are being resized.
   resizingSelection,
 
   /// An additive selection box is being drawn. Notes under this box will be
@@ -74,7 +74,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
   double? _noteResizePointerStartOffset;
   Map<ID, Time>? _noteResizeStartLengths;
   Time? _noteResizeSmallestStartLength;
-  ID? _noteResizeSmallestNoteAtStart;
+  ID? _noteResizeSmallestNote;
   NoteModel? _noteResizePressedNote;
 
   // Data for deleting notes
@@ -125,13 +125,14 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         throw ArgumentError("Resize event didn't provide a noteUnderCursor");
       }
 
-      final note = notes.firstWhere((note) => note.id == event.noteUnderCursor);
+      final pressedNote =
+          notes.firstWhere((note) => note.id == event.noteUnderCursor);
 
       _noteResizePointerStartOffset = event.offset;
       viewModel.pressedNote = event.noteUnderCursor;
-      _noteResizePressedNote = note;
+      _noteResizePressedNote = pressedNote;
 
-      if (viewModel.selectedNotes.nonObservableInner.contains(note.id)) {
+      if (viewModel.selectedNotes.nonObservableInner.contains(pressedNote.id)) {
         _eventHandlingState = EventHandlingState.resizingSelection;
 
         final relevantNotes = notes.where((note) =>
@@ -142,19 +143,19 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         }
 
         _noteResizeSmallestStartLength = smallestNote.length;
-        _noteResizeSmallestNoteAtStart = smallestNote.id;
+        _noteResizeSmallestNote = smallestNote.id;
         _noteResizeStartLengths = Map.fromEntries(
             relevantNotes.map((note) => MapEntry(note.id, note.length)));
       } else {
         _eventHandlingState = EventHandlingState.resizingSingleNote;
         viewModel.selectedNotes.clear();
 
-        _noteResizeStartLengths = {note.id: note.length};
-        _noteResizeSmallestStartLength = note.length;
-        _noteResizeSmallestNoteAtStart = note.id;
+        _noteResizeStartLengths = {pressedNote.id: pressedNote.length};
+        _noteResizeSmallestStartLength = pressedNote.length;
+        _noteResizeSmallestNote = pressedNote.id;
       }
 
-      setCursorNoteParameters(note);
+      setCursorNoteParameters(pressedNote);
 
       return;
     }
@@ -215,7 +216,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         if (event.keyboardModifiers.shift) {
           project.startJournalPage();
 
-          final newSelectedNotes = ObservableSet<String>();
+          final newSelectedNotes = ObservableSet<ID>();
 
           for (final note in notes
               .where((note) =>
@@ -550,7 +551,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         late int snapAtSmallestNoteStart;
 
         final offsetOfSmallestNoteAtStart =
-            _noteResizeStartLengths![_noteResizeSmallestNoteAtStart]!;
+            _noteResizeStartLengths![_noteResizeSmallestNote]!;
 
         for (var i = 0; i < divisionChanges.length; i++) {
           if (i < divisionChanges.length - 1 &&
@@ -703,7 +704,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
     _noteResizePointerStartOffset = null;
     _noteResizeStartLengths = null;
     _noteResizeSmallestStartLength = null;
-    _noteResizeSmallestNoteAtStart = null;
+    _noteResizeSmallestNote = null;
     _noteResizePressedNote = null;
 
     _eventHandlingState = EventHandlingState.idle;

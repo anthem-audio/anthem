@@ -38,7 +38,6 @@ abstract class _TimeRange with Store {
   @observable
   double end;
 
-  @computed
   double get width => end - start;
 }
 
