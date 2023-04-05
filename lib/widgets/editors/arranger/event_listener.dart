@@ -137,6 +137,8 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
       arrangerSize: viewSize,
       keyboardModifiers: keyboardModifiers,
       clipUnderCursor: eventData.clipsUnderCursor.firstOrNull,
+      isResizeFromStart: eventData.isResizeStartEvent,
+      isResizeFromEnd: eventData.isResizeEndEvent,
     );
   }
 }
@@ -155,8 +157,16 @@ class ClipWidgetEventData {
   /// clip IDs for clips that are currently under the pointer.
   List<ID> clipsUnderCursor = [];
 
+  /// True if the cursor is over the start resize handle
+  bool isResizeStartEvent = false;
+
+  /// True if the cursor is over the end resize handle
+  bool isResizeEndEvent = false;
+
   /// Resets this class to its original state.
   void reset() {
     clipsUnderCursor.clear();
+    isResizeStartEvent = false;
+    isResizeEndEvent = false;
   }
 }

@@ -59,7 +59,8 @@ class ClipSizer extends StatelessObserverWidget {
             )
             // Subtracting 1 here helps clips not draw over bar lines.
             -
-            1)
+            1 +
+            clipResizeHandleOvershoot * 2)
         .clamp(0.0, double.infinity);
 
     return ConstrainedBox(

@@ -42,12 +42,20 @@ class ArrangerPointerEvent {
   /// for pointer down events.
   ID? clipUnderCursor;
 
+  // Whether this is a resize event from the start of the clip.
+  bool isResizeFromStart;
+
+  // Whether this is a resize event from the end of the clip.
+  bool isResizeFromEnd;
+
   ArrangerPointerEvent({
     required this.offset,
     required this.track,
     required this.pointerEvent,
     required this.arrangerSize,
     required this.keyboardModifiers,
+    required this.isResizeFromStart,
+    required this.isResizeFromEnd,
     this.clipUnderCursor,
   });
 }

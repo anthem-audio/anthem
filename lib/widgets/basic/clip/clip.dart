@@ -26,6 +26,12 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
+/// Size of the resize handles, in pixels.
+const clipResizeHandleWidth = 10.0;
+
+/// How far over the clip the resize handle extends, in pixels.
+const clipResizeHandleOvershoot = 2.0;
+
 class Clip extends StatelessWidget {
   final ID? clipID;
   final ID? patternID;
@@ -33,6 +39,7 @@ class Clip extends StatelessWidget {
   final double ticksPerPixel;
   final bool selected;
   final ClipWidgetEventData? eventData;
+  final bool hasResizeHandles;
 
   /// Creates a Clip widget tied to a ClipModel
   const Clip({
@@ -42,6 +49,7 @@ class Clip extends StatelessWidget {
     required this.ticksPerPixel,
     this.selected = false,
     this.eventData,
+    this.hasResizeHandles = true,
   })  : patternID = null,
         super(key: key);
 
@@ -50,6 +58,7 @@ class Clip extends StatelessWidget {
     Key? key,
     required this.patternID,
     required this.ticksPerPixel,
+    this.hasResizeHandles = false,
   })  : selected = false,
         clipID = null,
         arrangementID = null,
@@ -73,50 +82,95 @@ class Clip extends StatelessWidget {
       onPointerMove: _onPointerEvent,
       onPointerUp: _onPointerEvent,
       onPointerCancel: _onPointerEvent,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          Observer(builder: (context) {
-            return Container(
-              height: 15,
-              decoration: BoxDecoration(
-                color: getBaseColor(patternModel.color, selected),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(3),
+          Positioned.fill(
+            left: clipResizeHandleOvershoot,
+            right: clipResizeHandleOvershoot,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Observer(builder: (context) {
+                  return Container(
+                    height: 15,
+                    decoration: BoxDecoration(
+                      color: getBaseColor(patternModel.color, selected),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(3),
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      patternModel.name,
+                      style: TextStyle(
+                        color: getTextColor(patternModel.color, selected),
+                        fontSize: 10,
+                      ),
+                    ),
+                  );
+                }),
+                Observer(builder: (context) {
+                  return Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: getBaseColor(patternModel.color, selected)
+                            .withAlpha(0x66),
+                        borderRadius: const BorderRadius.vertical(
+                          bottom: Radius.circular(3),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: ClipNotes(
+                          color: getContentColor(patternModel.color, selected),
+                          timeViewStart: 0,
+                          ticksPerPixel: ticksPerPixel,
+                          pattern: patternModel,
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            child: Listener(
+              onPointerDown: (e) {
+                if (eventData != null) {
+                  eventData!.isResizeStartEvent = true;
+                }
+              },
+              child: const SizedBox(
+                width: clipResizeHandleWidth,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.resizeLeftRight,
                 ),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text(
-                patternModel.name,
-                style: TextStyle(
-                  color: getTextColor(patternModel.color, selected),
-                  fontSize: 10,
+            ),
+          ),
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            child: Listener(
+              onPointerDown: (e) {
+                if (eventData != null) {
+                  eventData!.isResizeEndEvent = true;
+                }
+              },
+              child: const SizedBox(
+                width: clipResizeHandleWidth,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.resizeLeftRight,
                 ),
               ),
-            );
-          }),
-          Observer(builder: (context) {
-            return Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: getBaseColor(patternModel.color, selected)
-                      .withAlpha(0x66),
-                  borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(3),
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: ClipNotes(
-                    color: getContentColor(patternModel.color, selected),
-                    timeViewStart: 0,
-                    ticksPerPixel: ticksPerPixel,
-                    pattern: patternModel,
-                  ),
-                ),
-              ),
-            );
-          }),
+            ),
+          ),
         ],
       ),
     );
