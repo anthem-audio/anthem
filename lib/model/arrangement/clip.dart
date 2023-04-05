@@ -60,6 +60,12 @@ class ClipModel extends _ClipModel with _$ClipModel {
       patternID: other.patternID,
       trackID: other.trackID,
       offset: other.offset,
+      timeView: other.timeView != null
+          ? TimeViewModel(
+              start: other.timeView!.start,
+              end: other.timeView!.end,
+            )
+          : null,
     );
   }
 
