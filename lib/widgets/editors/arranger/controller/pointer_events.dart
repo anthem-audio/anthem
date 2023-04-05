@@ -80,9 +80,11 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
   // Data for clip resize
   double? _clipResizePointerStartOffset;
   Map<ID, Time>? _clipResizeStartWidths;
+  Map<ID, Time>? _clipResizeStartTimeViewStarts;
+  Map<ID, Time>? _clipResizeStartOffsets;
   TimeRange? _clipResizeSmallestStartTimeRange;
   ID? _clipResizeSmallestClip;
-  ClipModel? _clipResizePressedClip;
+  // ClipModel? _clipResizePressedClip;
   bool? _clipResizeIsFromStartOfClip;
 
   void pointerDown(ArrangerPointerEvent event) {
@@ -130,7 +132,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       final pressedClip = arrangement.clips[event.clipUnderCursor]!;
 
       _clipResizePointerStartOffset = event.offset;
-      _clipResizePressedClip = pressedClip;
+      // _clipResizePressedClip = pressedClip;
 
       // If we somehow get both as true, we only want to call it a start resize
       // if it's not an end resize.
@@ -145,11 +147,15 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         var smallestClip = selectedClips.first;
         var smallestClipWidth = smallestClip.getWidth(project);
         _clipResizeStartWidths = {};
+        _clipResizeStartOffsets = {};
+        _clipResizeStartTimeViewStarts = {};
 
         for (final clip in selectedClips) {
           final clipWidth = clip.getWidth(project);
 
           _clipResizeStartWidths![clip.id] = clipWidth;
+          _clipResizeStartOffsets![clip.id] = clip.offset;
+          _clipResizeStartTimeViewStarts![clip.id] = clip.timeView?.start ?? 0;
 
           if (clipWidth < smallestClipWidth) {
             smallestClip = clip;
@@ -169,6 +175,10 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         final clipWidth = pressedClip.getWidth(project);
 
         _clipResizeStartWidths = {pressedClip.id: clipWidth};
+        _clipResizeStartOffsets = {pressedClip.id: pressedClip.offset};
+        _clipResizeStartTimeViewStarts = {
+          pressedClip.id: pressedClip.timeView?.start ?? 0
+        };
         _clipResizeSmallestStartTimeRange = TimeRange(
           pressedClip.timeView?.start.toDouble() ?? 0,
           pressedClip.timeView?.end.toDouble() ?? clipWidth.toDouble(),
@@ -551,7 +561,70 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
           );
         }
 
-        // TODO
+        late int snapAtSmallestClipStart;
+
+        final offsetOfSmallestClipAtStart =
+            _clipResizeStartWidths![_clipResizeSmallestClip]!;
+
+        for (var i = 0; i < divisionChanges.length; i++) {
+          if (i < divisionChanges.length - 1 &&
+              divisionChanges[i + 1].offset <= offsetOfSmallestClipAtStart) {
+            continue;
+          }
+
+          snapAtSmallestClipStart = divisionChanges[i].divisionSnapSize;
+
+          break;
+        }
+
+        var diff = snappedEventTime - snappedOriginalTime;
+
+        if (_clipResizeIsFromStartOfClip!) {
+          diff = -diff; // Means we don't need to modify the calculation below.
+        }
+
+        // Make sure no clips go below the smallest snap size if snapping is
+        // enabled.
+        if (!event.keyboardModifiers.alt &&
+            _clipResizeSmallestStartTimeRange!.width + diff <
+                snapAtSmallestClipStart) {
+          int snapCount = ((snapAtSmallestClipStart -
+                      (_clipResizeSmallestStartTimeRange!.width + diff)) /
+                  snapAtSmallestClipStart)
+              .ceil();
+          diff = diff + snapCount * snapAtSmallestClipStart;
+        }
+
+        // If snapping is disabled, make sure the clips all have a length of at
+        // least 1.
+        if (event.keyboardModifiers.alt) {
+          final newSmallestClipSize =
+              (_clipResizeSmallestStartTimeRange!.width + diff).round();
+          if (newSmallestClipSize < 1) {
+            diff += 1 - newSmallestClipSize;
+          }
+        }
+
+        if (_clipResizeIsFromStartOfClip!) {
+          diff = -diff; // Means we don't need to modify the calculation above.
+        }
+
+        for (final clip in arrangement.clips.values
+            .where((clip) => _clipResizeStartWidths!.containsKey(clip.id))) {
+          if (clip.timeView == null) {
+            final width = _clipResizeStartWidths![clip.id]!;
+            clip.timeView = TimeViewModel(start: 0, end: width);
+          }
+
+          if (_clipResizeIsFromStartOfClip!) {
+            clip.timeView!.start =
+                _clipResizeStartTimeViewStarts![clip.id]! + diff;
+            clip.offset = _clipResizeStartOffsets![clip.id]! + diff;
+          } else {
+            clip.timeView!.end =
+                clip.timeView!.start + _clipResizeStartWidths![clip.id]! + diff;
+          }
+        }
 
         break;
     }
@@ -624,9 +697,11 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
     _clipResizePointerStartOffset = null;
     _clipResizeStartWidths = null;
+    _clipResizeStartOffsets = null;
+    _clipResizeStartTimeViewStarts = null;
     _clipResizeSmallestStartTimeRange = null;
     _clipResizeSmallestClip = null;
-    _clipResizePressedClip = null;
+    // _clipResizePressedClip = null;
     _clipResizeIsFromStartOfClip = null;
   }
 }
