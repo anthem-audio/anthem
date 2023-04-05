@@ -84,7 +84,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
   Map<ID, Time>? _clipResizeStartOffsets;
   TimeRange? _clipResizeSmallestStartTimeRange;
   ID? _clipResizeSmallestClip;
-  ClipModel? _clipResizePressedClip;
+  // ClipModel? _clipResizePressedClip;
   bool? _clipResizeIsFromStartOfClip;
 
   void pointerDown(ArrangerPointerEvent event) {
@@ -132,7 +132,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       final pressedClip = arrangement.clips[event.clipUnderCursor]!;
 
       _clipResizePointerStartOffset = event.offset;
-      _clipResizePressedClip = pressedClip;
+      // _clipResizePressedClip = pressedClip;
 
       // If we somehow get both as true, we only want to call it a start resize
       // if it's not an end resize.
@@ -266,6 +266,8 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         viewModel.selectedClips.clear();
 
         if (event.keyboardModifiers.shift) {
+          project.startJournalPage();
+
           final newClip = ClipModel.fromClipModel(pressedClip);
 
           project.execute(AddClipCommand(
@@ -731,7 +733,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
     _clipResizeStartTimeViewStarts = null;
     _clipResizeSmallestStartTimeRange = null;
     _clipResizeSmallestClip = null;
-    _clipResizePressedClip = null;
+    // _clipResizePressedClip = null;
     _clipResizeIsFromStartOfClip = null;
   }
 }
