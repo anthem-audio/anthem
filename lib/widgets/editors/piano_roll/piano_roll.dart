@@ -542,6 +542,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
                         handleEnd: viewModel.timeView.end,
                         canScrollPastEnd: true,
                         minHandleSize: project.song.ticksPerQuarter * 4,
+                        disableAtFullSize: false,
                         onChange: (event) {
                           viewModel.timeView.start = event.handleStart;
                           viewModel.timeView.end = event.handleEnd;

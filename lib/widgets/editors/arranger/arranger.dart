@@ -200,6 +200,7 @@ class _ArrangerState extends State<Arranger> {
                                 handleStart: viewModel!.timeView.start,
                                 handleEnd: viewModel!.timeView.end,
                                 canScrollPastEnd: true,
+                                disableAtFullSize: false,
                                 onChange: (event) {
                                   viewModel!.timeView.start = event.handleStart;
                                   viewModel!.timeView.end = event.handleEnd;
