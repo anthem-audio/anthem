@@ -139,4 +139,8 @@ abstract class _TimeViewModel with Store {
   int get width {
     return end - start;
   }
+
+  TimeViewModel clone() {
+    return TimeViewModel(start: start, end: end);
+  }
 }

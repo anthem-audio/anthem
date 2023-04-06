@@ -58,6 +58,7 @@ abstract class _ArrangerController {
     // pattern changes
     patternCursorAutorunDispose = autorun((_) {
       viewModel.cursorPattern = project.song.activePatternID;
+      viewModel.cursorTimeRange = null;
     });
   }
 

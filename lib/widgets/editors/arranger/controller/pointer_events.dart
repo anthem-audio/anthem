@@ -84,7 +84,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
   Map<ID, Time>? _clipResizeStartOffsets;
   TimeRange? _clipResizeSmallestStartTimeRange;
   ID? _clipResizeSmallestClip;
-  // ClipModel? _clipResizePressedClip;
+  ClipModel? _clipResizePressedClip;
   bool? _clipResizeIsFromStartOfClip;
 
   void pointerDown(ArrangerPointerEvent event) {
@@ -132,7 +132,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       final pressedClip = arrangement.clips[event.clipUnderCursor]!;
 
       _clipResizePointerStartOffset = event.offset;
-      // _clipResizePressedClip = pressedClip;
+      _clipResizePressedClip = pressedClip;
 
       // If we somehow get both as true, we only want to call it a start resize
       // if it's not an end resize.
@@ -264,6 +264,8 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       } else {
         _eventHandlingState = EventHandlingState.movingSingleClip;
         viewModel.selectedClips.clear();
+        viewModel.cursorPattern = pressedClip.patternID;
+        viewModel.cursorTimeRange = pressedClip.timeView?.clone();
 
         if (event.keyboardModifiers.shift) {
           project.startJournalPage();
@@ -312,6 +314,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         trackID: project.song.trackOrder[event.track.floor()],
         patternID: viewModel.cursorPattern!,
         offset: targetTime,
+        timeView: viewModel.cursorTimeRange?.clone(),
       ),
     );
 
@@ -628,6 +631,12 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
           }
         }
 
+        if (_eventHandlingState == EventHandlingState.resizingSingleClip) {
+          // Update cursor pattern and time range
+          viewModel.cursorPattern = _clipResizePressedClip!.patternID;
+          viewModel.cursorTimeRange = _clipResizePressedClip!.timeView?.clone();
+        }
+
         break;
     }
   }
@@ -693,10 +702,11 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
             end: oldStart + oldWidth,
           ),
           newOffset: clip.offset,
-          newTimeView: TimeViewModel(
-            start: clip.timeView?.start ?? 0,
-            end: clip.timeView?.end ?? clip.getWidth(project),
-          ),
+          newTimeView: clip.timeView?.clone() ??
+              TimeViewModel(
+                start: 0,
+                end: clip.getWidth(project),
+              ),
         );
       }).toList();
 
@@ -733,7 +743,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
     _clipResizeStartTimeViewStarts = null;
     _clipResizeSmallestStartTimeRange = null;
     _clipResizeSmallestClip = null;
-    // _clipResizePressedClip = null;
+    _clipResizePressedClip = null;
     _clipResizeIsFromStartOfClip = null;
   }
 }

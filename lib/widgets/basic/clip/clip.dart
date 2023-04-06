@@ -77,6 +77,8 @@ class Clip extends StatelessWidget {
     final patternModel =
         projectModel.song.patterns[clipModel?.patternID ?? patternID!]!;
 
+    final overshoot = hasResizeHandles ? clipResizeHandleOvershoot : 0.0;
+
     return Listener(
       onPointerDown: _onPointerEvent,
       onPointerMove: _onPointerEvent,
@@ -86,8 +88,8 @@ class Clip extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           Positioned.fill(
-            left: clipResizeHandleOvershoot,
-            right: clipResizeHandleOvershoot,
+            left: overshoot,
+            right: overshoot,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
