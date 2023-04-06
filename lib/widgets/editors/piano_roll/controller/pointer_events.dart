@@ -153,9 +153,9 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         _noteResizeStartLengths = {pressedNote.id: pressedNote.length};
         _noteResizeSmallestStartLength = pressedNote.length;
         _noteResizeSmallestNote = pressedNote.id;
-      }
 
-      setCursorNoteParameters(pressedNote);
+        setCursorNoteParameters(pressedNote);
+      }
 
       return;
     }
@@ -201,8 +201,6 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         _noteMoveKeyOfTopNote = noteUnderCursor.key;
         _noteMoveKeyOfBottomNote = noteUnderCursor.key;
       }
-
-      setCursorNoteParameters(noteUnderCursor);
     }
 
     if (event.noteUnderCursor != null) {
@@ -254,6 +252,8 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
             note: newNote,
           ));
         }
+
+        setCursorNoteParameters(pressedNote);
       }
 
       viewModel.pressedNote = pressedNote.id;
@@ -591,7 +591,9 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
           note.length = _noteResizeStartLengths![note.id]! + diff;
         }
 
-        setCursorNoteParameters(_noteResizePressedNote!);
+        if (_eventHandlingState == EventHandlingState.resizingSingleNote) {
+          setCursorNoteParameters(_noteResizePressedNote!);
+        }
 
         break;
     }
