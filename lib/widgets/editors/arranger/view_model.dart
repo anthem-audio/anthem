@@ -63,6 +63,9 @@ abstract class _ArrangerViewModel with Store {
   @observable
   ObservableSet<ID> selectedClips = ObservableSet();
 
+  @observable
+  ID? pressedClip;
+
   _ArrangerViewModel({
     required this.baseTrackHeight,
     required this.trackHeightModifiers,

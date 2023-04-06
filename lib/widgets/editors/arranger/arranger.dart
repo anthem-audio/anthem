@@ -559,6 +559,7 @@ class _ArrangerCanvas extends StatelessWidget {
                                   constraints.maxWidth,
                               selected: viewModel.selectedClips.contains(id),
                               eventData: clipWidgetEventData,
+                              pressed: viewModel.pressedClip == id,
                             ),
                           );
                         });
