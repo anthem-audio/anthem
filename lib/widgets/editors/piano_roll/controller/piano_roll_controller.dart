@@ -103,7 +103,7 @@ class _PianoRollController {
 
       final divisionChanges = getDivisionChanges(
         viewWidthInPixels: pianoRollWidth,
-        snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+        snap: AutoSnap(),
         defaultTimeSignature: project.song.defaultTimeSignature,
         timeSignatureChanges: pattern.timeSignatureChanges,
         ticksPerQuarter: project.song.ticksPerQuarter,

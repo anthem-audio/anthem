@@ -136,7 +136,7 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
       canvas: canvas,
       size: size,
       ticksPerQuarter: project.song.ticksPerQuarter,
-      snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+      snap: AutoSnap(),
       baseTimeSignature: project.song.defaultTimeSignature,
       timeSignatureChanges: activePattern?.timeSignatureChanges ?? [],
       timeViewStart: timeViewStart,

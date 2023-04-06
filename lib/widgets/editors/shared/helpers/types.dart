@@ -41,6 +41,7 @@ abstract class _TimeRange with Store {
   double get width => end - start;
 }
 
+// I don't remember how this works lol
 class Division {
   Division({
     required this.multiplier,
@@ -65,6 +66,8 @@ class DivisionSnap extends Snap {
   DivisionSnap({required this.division});
   Division division;
 }
+
+class AutoSnap extends Snap {}
 
 typedef Time = int;
 
