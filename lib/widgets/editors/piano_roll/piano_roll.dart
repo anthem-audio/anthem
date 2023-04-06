@@ -506,13 +506,11 @@ class _PianoRollContentState extends State<_PianoRollContent>
       }),
     );
 
+    final controller = Provider.of<PianoRollController>(context);
+
     return ShortcutConsumer(
       id: 'piano-roll',
-      handler: (shortcut) {
-        final controller =
-            Provider.of<PianoRollController>(context, listen: false);
-        controller.onShortcut(shortcut);
-      },
+      handler: controller.onShortcut,
       child: Panel(
         orientation: PanelOrientation.bottom,
         sizeBehavior: PanelSizeBehavior.pixels,

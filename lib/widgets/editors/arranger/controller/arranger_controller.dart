@@ -24,20 +24,24 @@ import 'package:anthem/commands/journal_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/editors/arranger/events.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/box_intersection.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart';
 
 import '../helpers.dart';
 
 part 'pointer_events.dart';
+part 'shortcuts.dart';
 
 class ArrangerController extends _ArrangerController
-    with _ArrangerPointerEventsMixin {
+    with _ArrangerPointerEventsMixin, _ArrangerShortcutsMixin {
   ArrangerController({
     required ArrangerViewModel viewModel,
     required ProjectModel project,
@@ -76,5 +80,38 @@ abstract class _ArrangerController {
     viewModel.baseTrackHeight = trackHeight;
     viewModel.verticalScrollPosition = oldVerticalScrollPosition *
         (clampedTrackHeight / oldClampedTrackHeight);
+  }
+
+  void deleteSelected() {
+    if (viewModel.selectedClips.isEmpty ||
+        project.song.activeArrangementID == null) return;
+
+    final arrangement =
+        project.song.arrangements[project.song.activeArrangementID]!;
+
+    project.startJournalPage();
+
+    for (final clipID in viewModel.selectedClips) {
+      project.execute(DeleteClipCommand(
+        project: project,
+        arrangementID: project.song.activeArrangementID!,
+        clip: arrangement.clips[clipID]!,
+      ));
+    }
+
+    project.commitJournalPage();
+  }
+
+  void selectAll() {
+    if (project.song.activeArrangementID == null) return;
+
+    final arrangement =
+        project.song.arrangements[project.song.activeArrangementID]!;
+
+    viewModel.selectedClips.clear();
+
+    for (final clipID in arrangement.clips.keys) {
+      viewModel.selectedClips.add(clipID);
+    }
   }
 }
