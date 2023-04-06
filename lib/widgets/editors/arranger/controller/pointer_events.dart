@@ -297,7 +297,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
     final divisionChanges = getDivisionChanges(
       viewWidthInPixels: event.arrangerSize.width,
-      snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+      snap: AutoSnap(),
       defaultTimeSignature: project.song.defaultTimeSignature,
       timeSignatureChanges: [],
       ticksPerQuarter: project.song.ticksPerQuarter,
@@ -391,7 +391,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
         final divisionChanges = getDivisionChanges(
           viewWidthInPixels: event.arrangerSize.width,
-          snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+          snap: AutoSnap(),
           defaultTimeSignature: project.song.defaultTimeSignature,
           timeSignatureChanges: [],
           ticksPerQuarter: project.song.ticksPerQuarter,
@@ -555,7 +555,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
         final divisionChanges = getDivisionChanges(
           viewWidthInPixels: event.arrangerSize.width,
-          snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+          snap: AutoSnap(),
           defaultTimeSignature: project.song.defaultTimeSignature,
           timeSignatureChanges: [],
           ticksPerQuarter: project.song.ticksPerQuarter,

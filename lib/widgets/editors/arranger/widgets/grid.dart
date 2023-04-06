@@ -80,7 +80,7 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
     paintTimeGrid(
       canvas: canvas,
       size: size,
-      snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+      snap: AutoSnap(),
       baseTimeSignature: TimeSignatureModel(4, 4),
       timeSignatureChanges: [],
       ticksPerQuarter: project.song.ticksPerQuarter,

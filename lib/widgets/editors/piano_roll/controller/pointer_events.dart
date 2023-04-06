@@ -271,7 +271,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
     final divisionChanges = getDivisionChanges(
       viewWidthInPixels: event.pianoRollSize.width,
-      snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+      snap: AutoSnap(),
       defaultTimeSignature: project.song.defaultTimeSignature,
       timeSignatureChanges: pattern.timeSignatureChanges,
       ticksPerQuarter: project.song.ticksPerQuarter,
@@ -373,7 +373,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
         final divisionChanges = getDivisionChanges(
           viewWidthInPixels: event.pianoRollSize.width,
-          snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+          snap: AutoSnap(),
           defaultTimeSignature: project.song.defaultTimeSignature,
           timeSignatureChanges: pattern.timeSignatureChanges,
           ticksPerQuarter: project.song.ticksPerQuarter,
@@ -526,7 +526,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
         final divisionChanges = getDivisionChanges(
           viewWidthInPixels: event.pianoRollSize.width,
-          snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+          snap: AutoSnap(),
           defaultTimeSignature: project.song.defaultTimeSignature,
           timeSignatureChanges: pattern.timeSignatureChanges,
           ticksPerQuarter: project.song.ticksPerQuarter,
