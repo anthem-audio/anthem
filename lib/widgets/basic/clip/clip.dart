@@ -40,6 +40,7 @@ class Clip extends StatelessWidget {
   final bool selected;
   final ClipWidgetEventData? eventData;
   final bool hasResizeHandles;
+  final bool pressed;
 
   /// Creates a Clip widget tied to a ClipModel
   const Clip({
@@ -50,6 +51,7 @@ class Clip extends StatelessWidget {
     this.selected = false,
     this.eventData,
     this.hasResizeHandles = true,
+    this.pressed = false,
   })  : patternID = null,
         super(key: key);
 
@@ -59,6 +61,7 @@ class Clip extends StatelessWidget {
     required this.patternID,
     required this.ticksPerPixel,
     this.hasResizeHandles = false,
+    this.pressed = false,
   })  : selected = false,
         clipID = null,
         arrangementID = null,
@@ -97,7 +100,11 @@ class Clip extends StatelessWidget {
                   return Container(
                     height: 15,
                     decoration: BoxDecoration(
-                      color: getBaseColor(patternModel.color, selected),
+                      color: getBaseColor(
+                        color: patternModel.color,
+                        selected: selected,
+                        pressed: pressed,
+                      ),
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(3),
                       ),
@@ -106,7 +113,11 @@ class Clip extends StatelessWidget {
                     child: Text(
                       patternModel.name,
                       style: TextStyle(
-                        color: getTextColor(patternModel.color, selected),
+                        color: getTextColor(
+                          color: patternModel.color,
+                          selected: selected,
+                          pressed: pressed,
+                        ),
                         fontSize: 10,
                       ),
                     ),
@@ -116,8 +127,11 @@ class Clip extends StatelessWidget {
                   return Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: getBaseColor(patternModel.color, selected)
-                            .withAlpha(0x66),
+                        color: getBaseColor(
+                          color: patternModel.color,
+                          selected: selected,
+                          pressed: pressed,
+                        ).withAlpha(0x66),
                         borderRadius: const BorderRadius.vertical(
                           bottom: Radius.circular(3),
                         ),
@@ -125,7 +139,11 @@ class Clip extends StatelessWidget {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 2),
                         child: ClipNotes(
-                          color: getContentColor(patternModel.color, selected),
+                          color: getContentColor(
+                            color: patternModel.color,
+                            selected: selected,
+                            pressed: pressed,
+                          ),
                           timeViewStart:
                               clipModel?.timeView?.start.toDouble() ?? 0,
                           ticksPerPixel: ticksPerPixel,
@@ -180,13 +198,22 @@ class Clip extends StatelessWidget {
   }
 }
 
-Color getBaseColor(AnthemColor color, bool selected) {
+Color getBaseColor({
+  required AnthemColor color,
+  required bool selected,
+  required bool pressed,
+}) {
   final hue = selected ? 166.0 : color.hue;
-  final saturation =
+  var saturation =
       selected ? 0.6 : (0.28 * color.saturationMultiplier).clamp(0.0, 1.0);
-  final lightness =
+  var lightness =
       selected ? 0.31 : (0.49 * color.lightnessMultiplier).clamp(0.0, 0.92);
 
+  if (pressed) {
+    saturation = (saturation * 0.9).clamp(0.0, 1.0);
+    lightness = (lightness - 0.1).clamp(0.0, 1.0);
+  }
+
   return HSLColor.fromAHSL(
     1,
     hue,
@@ -195,13 +222,22 @@ Color getBaseColor(AnthemColor color, bool selected) {
   ).toColor();
 }
 
-Color getTextColor(AnthemColor color, bool selected) {
+Color getTextColor({
+  required AnthemColor color,
+  required bool selected,
+  required bool pressed,
+}) {
   final hue = selected ? 166.0 : color.hue;
-  final saturation =
+  var saturation =
       selected ? 1.0 : (1 * color.saturationMultiplier).clamp(0.0, 1.0);
-  final lightness =
+  var lightness =
       selected ? 0.92 : (0.92 * color.lightnessMultiplier).clamp(0.0, 0.92);
 
+  if (pressed) {
+    saturation = (saturation * 0.9).clamp(0.0, 1.0);
+    lightness = (lightness - 0.1).clamp(0.0, 1.0);
+  }
+
   return HSLColor.fromAHSL(
     1,
     hue,
@@ -210,12 +246,21 @@ Color getTextColor(AnthemColor color, bool selected) {
   ).toColor();
 }
 
-Color getContentColor(AnthemColor color, bool selected) {
+Color getContentColor({
+  required AnthemColor color,
+  required bool selected,
+  required bool pressed,
+}) {
   final hue = selected ? 166.0 : color.hue;
-  final saturation =
+  var saturation =
       selected ? 0.7 : (0.7 * color.saturationMultiplier).clamp(0.0, 1.0);
-  final lightness =
+  var lightness =
       selected ? 0.78 : (0.78 * color.lightnessMultiplier).clamp(0.0, 0.92);
+
+  if (pressed) {
+    saturation = (saturation * 0.9).clamp(0.0, 1.0);
+    lightness = (lightness - 0.1).clamp(0.0, 1.0);
+  }
 
   return HSLColor.fromAHSL(
     1,

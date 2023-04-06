@@ -131,6 +131,8 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
       final pressedClip = arrangement.clips[event.clipUnderCursor]!;
 
+      viewModel.pressedClip = pressedClip.id;
+
       _clipResizePointerStartOffset = event.offset;
       _clipResizePressedClip = pressedClip;
 
@@ -237,6 +239,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
     if (event.clipUnderCursor != null) {
       final pressedClip = arrangement.clips[event.clipUnderCursor]!;
+      viewModel.pressedClip = pressedClip.id;
 
       if (viewModel.selectedClips.contains(pressedClip.id)) {
         _eventHandlingState = EventHandlingState.movingSelection;
@@ -249,6 +252,10 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
           for (final clip
               in viewModel.selectedClips.map((id) => arrangement.clips[id]!)) {
             final newClip = ClipModel.fromClipModel(clip);
+
+            if (viewModel.pressedClip == clip.id) {
+              viewModel.pressedClip = newClip.id;
+            }
 
             project.execute(AddClipCommand(
               project: project,
@@ -307,16 +314,20 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
     project.startJournalPage();
 
+    final clip = ClipModel.create(
+      trackID: project.song.trackOrder[event.track.floor()],
+      patternID: viewModel.cursorPattern!,
+      offset: targetTime,
+      timeView: viewModel.cursorTimeRange?.clone(),
+    );
+
     final command = AddClipCommand(
       project: project,
       arrangementID: arrangement.id,
-      clip: ClipModel.create(
-        trackID: project.song.trackOrder[event.track.floor()],
-        patternID: viewModel.cursorPattern!,
-        offset: targetTime,
-        timeView: viewModel.cursorTimeRange?.clone(),
-      ),
+      clip: clip,
     );
+
+    viewModel.pressedClip = clip.id;
 
     project.execute(command);
 
@@ -718,6 +729,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
     _eventHandlingState = EventHandlingState.idle;
 
     viewModel.selectionBox = null;
+    viewModel.pressedClip = null;
 
     project.commitJournalPage();
 
