@@ -20,35 +20,67 @@
 part of 'arranger_controller.dart';
 
 mixin _ArrangerShortcutsMixin on _ArrangerController {
-  void onShortcut(LogicalKeySet shortcut) {
+  ShortcutBehaviors shortcutManager = ShortcutBehaviors();
+
+  void registerShortcuts() {
     // Delete
-    if (shortcut.matches(LogicalKeySet(LogicalKeyboardKey.delete))) {
-      deleteSelected();
-    }
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.delete),
+      () {
+        deleteSelected();
+      },
+    );
+
     // Ctrl + A
-    else if (shortcut.matches(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyA))) {
-      selectAll();
-    }
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyA),
+      () {
+        selectAll();
+      },
+    );
+
     // P - pencil
-    else if (shortcut.matches(LogicalKeySet(LogicalKeyboardKey.keyP))) {
-      viewModel.tool = EditorTool.pencil;
-    }
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.keyP),
+      () {
+        viewModel.tool = EditorTool.pencil;
+      },
+    );
+
     // B - brush - we don't have a brush, but this is on the left hand so it's nicer
-    else if (shortcut.matches(LogicalKeySet(LogicalKeyboardKey.keyB))) {
-      viewModel.tool = EditorTool.pencil;
-    }
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.keyB),
+      () {
+        viewModel.tool = EditorTool.pencil;
+      },
+    );
+
     // E - select
-    else if (shortcut.matches(LogicalKeySet(LogicalKeyboardKey.keyE))) {
-      viewModel.tool = EditorTool.select;
-    }
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.keyE),
+      () {
+        viewModel.tool = EditorTool.select;
+      },
+    );
+
     // D - erase
-    else if (shortcut.matches(LogicalKeySet(LogicalKeyboardKey.keyD))) {
-      viewModel.tool = EditorTool.eraser;
-    }
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.keyD),
+      () {
+        viewModel.tool = EditorTool.eraser;
+      },
+    );
+
     // C - cut
-    else if (shortcut.matches(LogicalKeySet(LogicalKeyboardKey.keyC))) {
-      viewModel.tool = EditorTool.cut;
-    }
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.keyC),
+      () {
+        viewModel.tool = EditorTool.cut;
+      },
+    );
+  }
+
+  void onShortcut(LogicalKeySet shortcut) {
+    shortcutManager.handleShortcut(shortcut);
   }
 }

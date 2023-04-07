@@ -45,7 +45,10 @@ class ArrangerController extends _ArrangerController
   ArrangerController({
     required ArrangerViewModel viewModel,
     required ProjectModel project,
-  }) : super(viewModel: viewModel, project: project);
+  }) : super(viewModel: viewModel, project: project) {
+    // Register shortcuts for this editor
+    registerShortcuts();
+  }
 }
 
 abstract class _ArrangerController {
