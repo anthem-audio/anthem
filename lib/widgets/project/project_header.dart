@@ -58,31 +58,39 @@ class ProjectHeader extends StatelessWidget {
               menuDef: MenuDef(
                 children: [
                   AnthemMenuItem(
-                      text: 'New project',
-                      onSelected: () {
-                        final projectID = mainWindowController.newProject();
-                        mainWindowController.switchTab(projectID);
-                      }),
+                    text: 'New project',
+                    hint: 'Create a new project',
+                    onSelected: () {
+                      final projectID = mainWindowController.newProject();
+                      mainWindowController.switchTab(projectID);
+                    },
+                  ),
                   AnthemMenuItem(
-                      text: 'Load project...',
-                      onSelected: () {
-                        mainWindowController.loadProject().then((projectID) {
-                          if (projectID != null) {
-                            mainWindowController.switchTab(projectID);
-                          }
-                        });
-                      }),
+                    text: 'Load project...',
+                    hint: 'Load a project',
+                    onSelected: () {
+                      mainWindowController.loadProject().then((projectID) {
+                        if (projectID != null) {
+                          mainWindowController.switchTab(projectID);
+                        }
+                      });
+                    },
+                  ),
                   Separator(),
                   AnthemMenuItem(
-                      text: 'Save',
-                      onSelected: () {
-                        mainWindowController.saveProject(projectID, false);
-                      }),
+                    text: 'Save',
+                    hint: 'Save the active project',
+                    onSelected: () {
+                      mainWindowController.saveProject(projectID, false);
+                    },
+                  ),
                   AnthemMenuItem(
-                      text: 'Save as...',
-                      onSelected: () {
-                        mainWindowController.saveProject(projectID, true);
-                      }),
+                    text: 'Save as...',
+                    hint: 'Save the active project to a new location',
+                    onSelected: () {
+                      mainWindowController.saveProject(projectID, true);
+                    },
+                  ),
                 ],
               ),
               child: Button(
@@ -102,7 +110,7 @@ class ProjectHeader extends StatelessWidget {
               onPress: () {
                 mainWindowController.saveProject(projectID, false);
               },
-              hint: 'Save (Ctrl+S)',
+              hint: 'Save',
             ),
             const SizedBox(width: 4),
             Button(

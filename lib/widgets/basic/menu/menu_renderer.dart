@@ -26,6 +26,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
+import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
@@ -51,11 +52,13 @@ double getMenuItemHeight(GenericMenuItem menuItem) {
 class MenuRenderer extends StatefulWidget {
   final MenuDef menu;
   final ID id;
+  final ProjectController projectController;
 
   const MenuRenderer({
     Key? key,
     required this.menu,
     required this.id,
+    required this.projectController,
   }) : super(key: key);
 
   @override
@@ -103,6 +106,7 @@ class _MenuRendererState extends State<MenuRenderer> {
         setState(() {
           isMouseInside = false;
         });
+        widget.projectController.clearHintText();
       },
       child: Container(
         decoration: BoxDecoration(
@@ -122,6 +126,7 @@ class _MenuRendererState extends State<MenuRenderer> {
                   (child) => MenuItemRenderer(
                     menuItem: child,
                     isMouseInMenu: isMouseInside,
+                    projectController: widget.projectController,
                   ),
                 )
                 .toList(),
@@ -135,11 +140,13 @@ class _MenuRendererState extends State<MenuRenderer> {
 class MenuItemRenderer extends StatefulWidget {
   final GenericMenuItem menuItem;
   final bool isMouseInMenu;
+  final ProjectController projectController;
 
   const MenuItemRenderer({
     Key? key,
     required this.menuItem,
     required this.isMouseInMenu,
+    required this.projectController,
   }) : super(key: key);
 
   @override
@@ -228,12 +235,20 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
           setState(() {
             isHovered = true;
           });
+
           if (item.submenu != null && !isSubmenuOpen) {
             startHoverTimer(
               screenOverlayController: screenOverlayController,
               item: item,
             );
           }
+
+          if (item.hint != null) {
+            widget.projectController.setHintText(item.hint!);
+          } else {
+            widget.projectController.clearHintText();
+          }
+
           cancelSubmenuCloseTimer();
         },
         onExit: (e) {
@@ -317,7 +332,11 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
           top: position.dy -
               _Constants.padding -
               1, // -1 to account for menu border
-          child: MenuRenderer(id: id, menu: item.submenu!),
+          child: MenuRenderer(
+            id: id,
+            menu: item.submenu!,
+            projectController: widget.projectController,
+          ),
         );
       },
     ));
