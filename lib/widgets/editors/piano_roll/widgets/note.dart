@@ -152,7 +152,7 @@ class _NoteWidgetState extends State<NoteWidget> {
                   onPointerDown: (e) {
                     widget.eventData.isResizeEvent = true;
                   },
-                  child: viewModel.selectedTool == EditorTool.pencil
+                  child: viewModel.tool == EditorTool.pencil
                       ? const MouseRegion(
                           cursor: SystemMouseCursors.resizeLeftRight,
                         )

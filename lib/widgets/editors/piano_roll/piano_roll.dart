@@ -197,9 +197,9 @@ class _PianoRollHeader extends StatelessWidget {
           const SizedBox(width: 4),
           Observer(builder: (context) {
             return ToolSelector(
-              selectedTool: viewModel.selectedTool,
+              selectedTool: viewModel.tool,
               setTool: (tool) {
-                viewModel.selectedTool = tool;
+                viewModel.tool = tool;
               },
             );
           }),

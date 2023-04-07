@@ -72,7 +72,7 @@ abstract class _PianoRollViewModel with Store {
   ActiveNoteAttribute activeNoteAttribute = ActiveNoteAttribute.velocity;
 
   @observable
-  EditorTool selectedTool = EditorTool.pencil;
+  EditorTool tool = EditorTool.pencil;
 
   // These don't need to be observable, since they're just used during event
   // handling.
