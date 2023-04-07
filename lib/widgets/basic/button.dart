@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,6 +18,7 @@
 */
 
 import 'dart:math';
+import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:vector_math/vector_math_64.dart';
 
@@ -143,6 +144,8 @@ class Button extends StatefulWidget {
   final Function? onPress;
   final bool? toggleState;
 
+  final String? hint;
+
   const Button({
     Key? key,
     this.variant,
@@ -161,6 +164,7 @@ class Button extends StatefulWidget {
     this.borderRadius,
     this.onPress,
     this.toggleState,
+    this.hint,
   }) : super(key: key);
 
   @override
@@ -172,6 +176,15 @@ class _ButtonState extends State<Button> {
   var pressed = false;
 
   _ButtonState();
+
+  @override
+  void didUpdateWidget(Button oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (hovered && oldWidget.hint != widget.hint) {
+      Provider.of<ProjectController>(context, listen: false)
+          .setHintText(widget.hint ?? '');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -345,12 +358,20 @@ class _ButtonState extends State<Button> {
         setState(() {
           hovered = true;
         });
+        if (widget.hint != null) {
+          Provider.of<ProjectController>(context, listen: false)
+              .setHintText(widget.hint!);
+        }
       },
       onExit: (e) {
         if (!mounted) return;
         setState(() {
           hovered = false;
         });
+        if (widget.hint != null) {
+          Provider.of<ProjectController>(context, listen: false)
+              .clearHintText();
+        }
       },
       child: Listener(
         onPointerDown: _onPointerDown,

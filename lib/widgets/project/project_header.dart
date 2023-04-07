@@ -92,6 +92,7 @@ class ProjectHeader extends StatelessWidget {
                 onPress: () {
                   menuController.open?.call();
                 },
+                hint: 'File...',
               ),
             ),
             const SizedBox(width: 4),
@@ -101,6 +102,7 @@ class ProjectHeader extends StatelessWidget {
               onPress: () {
                 mainWindowController.saveProject(projectID, false);
               },
+              hint: 'Save (Ctrl+S)',
             ),
             const SizedBox(width: 4),
             Button(
@@ -109,6 +111,7 @@ class ProjectHeader extends StatelessWidget {
               onPress: () {
                 projectController.undo();
               },
+              hint: 'Undo (Ctrl+Z)',
             ),
             const SizedBox(width: 4),
             Button(
@@ -117,6 +120,7 @@ class ProjectHeader extends StatelessWidget {
               onPress: () {
                 projectController.redo();
               },
+              hint: 'Redo (Ctrl+Shift+Z)',
             ),
           ],
         ),

@@ -96,6 +96,9 @@ class ProjectFooter extends StatelessWidget {
                 toggleState: projectModel.isPatternEditorVisible,
                 onPress: () => projectModel.isPatternEditorVisible =
                     !projectModel.isPatternEditorVisible,
+                hint: projectModel.isPatternEditorVisible
+                    ? 'Hide pattern editor'
+                    : 'Show pattern editor',
               );
             }),
             const SizedBox(width: 8),
@@ -130,13 +133,16 @@ class ProjectFooter extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Text(
-                  viewModel.hintText,
-                  style: TextStyle(
+                child: Observer(builder: (context) {
+                  return Text(
+                    viewModel.hintText,
+                    style: TextStyle(
                       fontSize: 11,
                       color: Theme.text.main,
-                      overflow: TextOverflow.ellipsis),
-                ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }),
               ),
             ),
             const SizedBox(width: 8),
