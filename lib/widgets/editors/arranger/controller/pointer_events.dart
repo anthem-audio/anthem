@@ -627,6 +627,31 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
           diff = -diff; // Means we don't need to modify the calculation above.
         }
 
+        // Make sure no clips have a time view starting < 0, and that no clips
+        // are resized to start before the start of the arrangement.
+        if (_clipResizeIsFromStartOfClip!) {
+          var firstNewTimeViewStart = 0x7FFFFFFFFFFFFFFF;
+          var firstNewOffset = 0x7FFFFFFFFFFFFFFF;
+
+          for (final id in _clipResizeStartOffsets!.keys) {
+            final newTimeViewStart =
+                _clipResizeStartTimeViewStarts![id]! + diff;
+            if (newTimeViewStart < firstNewTimeViewStart) {
+              firstNewTimeViewStart = newTimeViewStart;
+            }
+
+            final newOffset = _clipResizeStartOffsets![id]! + diff;
+            if (newOffset < firstNewOffset) {
+              firstNewOffset = newOffset;
+            }
+          }
+
+          if (firstNewTimeViewStart < 0 || firstNewOffset < 0) {
+            final correction = -min(firstNewTimeViewStart, firstNewOffset);
+            diff += correction;
+          }
+        }
+
         for (final clip in arrangement.clips.values
             .where((clip) => _clipResizeStartWidths!.containsKey(clip.id))) {
           if (clip.timeView == null) {
