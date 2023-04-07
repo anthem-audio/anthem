@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
+import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -47,104 +48,110 @@ class Project extends StatefulWidget {
 
 class _ProjectState extends State<Project> {
   ProjectController? controller;
+  ProjectViewModel? viewModel;
 
   @override
   Widget build(BuildContext context) {
     final projectModel = AnthemStore.instance.projects[widget.id]!;
-    this.controller ??= ProjectController(projectModel);
+
+    this.viewModel ??= ProjectViewModel();
+    final viewModel = this.viewModel!;
+
+    this.controller ??= ProjectController(projectModel, viewModel);
     final controller = this.controller!;
 
-    return Provider.value(
-      value: projectModel,
-      child: Provider.value(
-        value: controller,
-        child: ShortcutConsumer(
-          id: 'project',
-          global: true,
-          handler: controller.onShortcut,
-          child: Column(
-            children: [
-              ProjectHeader(
-                projectID: widget.id,
-              ),
-              const SizedBox(
-                height: 3,
-              ),
-              Expanded(
-                child: Observer(builder: (context) {
-                  return Panel(
-                    hidden: !projectModel.isProjectExplorerVisible,
-                    orientation: PanelOrientation.left,
-                    sizeBehavior: PanelSizeBehavior.pixels,
-                    panelStartSize: 200,
-                    panelMinSize: 200,
-                    // Left panel
-                    panelContent: Stack(
-                      children: [
-                        Positioned.fill(
-                          child: Visibility(
-                            maintainAnimation: false,
-                            maintainInteractivity: false,
-                            maintainSemantics: false,
-                            maintainSize: false,
-                            maintainState: true,
-                            visible: !projectModel.isDetailViewSelected,
-                            child: const ProjectExplorer(),
-                          ),
-                        ),
-                        Positioned.fill(
-                          child: Visibility(
-                            maintainAnimation: false,
-                            maintainInteractivity: false,
-                            maintainSemantics: false,
-                            maintainSize: false,
-                            maintainState: true,
-                            visible: projectModel.isDetailViewSelected,
-                            child: ProjectDetails(
-                              selectedProjectDetails:
-                                  projectModel.selectedDetailView,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    child: Panel(
-                      hidden: true,
-                      orientation: PanelOrientation.right,
-                      sizeBehavior: PanelSizeBehavior.pixels,
-                      panelStartSize: 200,
-                      // Right panel
-                      panelContent: Container(color: Theme.panel.main),
-
-                      child: Panel(
-                        orientation: PanelOrientation.bottom,
-                        panelMinSize: 300,
-                        contentMinSize: 300,
-                        // Bottom panel
-                        panelContent: const PianoRoll(),
-                        child: Panel(
-                          hidden: !projectModel.isPatternEditorVisible,
-                          orientation: PanelOrientation.left,
-                          panelStartSize: 500,
-                          panelMinSize: 500,
-                          contentMinSize: 500,
-                          sizeBehavior: PanelSizeBehavior.pixels,
-                          // Pattern editor
-                          panelContent: const PatternEditor(),
-                          child: const Arranger(),
+    return MultiProvider(
+      providers: [
+        Provider.value(value: projectModel),
+        Provider.value(value: controller),
+        Provider.value(value: viewModel),
+      ],
+      child: ShortcutConsumer(
+        id: 'project',
+        global: true,
+        handler: controller.onShortcut,
+        child: Column(
+          children: [
+            ProjectHeader(
+              projectID: widget.id,
+            ),
+            const SizedBox(
+              height: 3,
+            ),
+            Expanded(
+              child: Observer(builder: (context) {
+                return Panel(
+                  hidden: !projectModel.isProjectExplorerVisible,
+                  orientation: PanelOrientation.left,
+                  sizeBehavior: PanelSizeBehavior.pixels,
+                  panelStartSize: 200,
+                  panelMinSize: 200,
+                  // Left panel
+                  panelContent: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: Visibility(
+                          maintainAnimation: false,
+                          maintainInteractivity: false,
+                          maintainSemantics: false,
+                          maintainSize: false,
+                          maintainState: true,
+                          visible: !projectModel.isDetailViewSelected,
+                          child: const ProjectExplorer(),
                         ),
                       ),
+                      Positioned.fill(
+                        child: Visibility(
+                          maintainAnimation: false,
+                          maintainInteractivity: false,
+                          maintainSemantics: false,
+                          maintainSize: false,
+                          maintainState: true,
+                          visible: projectModel.isDetailViewSelected,
+                          child: ProjectDetails(
+                            selectedProjectDetails:
+                                projectModel.selectedDetailView,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  child: Panel(
+                    hidden: true,
+                    orientation: PanelOrientation.right,
+                    sizeBehavior: PanelSizeBehavior.pixels,
+                    panelStartSize: 200,
+                    // Right panel
+                    panelContent: Container(color: Theme.panel.main),
+
+                    child: Panel(
+                      orientation: PanelOrientation.bottom,
+                      panelMinSize: 300,
+                      contentMinSize: 300,
+                      // Bottom panel
+                      panelContent: const PianoRoll(),
+                      child: Panel(
+                        hidden: !projectModel.isPatternEditorVisible,
+                        orientation: PanelOrientation.left,
+                        panelStartSize: 500,
+                        panelMinSize: 500,
+                        contentMinSize: 500,
+                        sizeBehavior: PanelSizeBehavior.pixels,
+                        // Pattern editor
+                        panelContent: const PatternEditor(),
+                        child: const Arranger(),
+                      ),
                     ),
-                  );
-                }),
-              ),
-              const SizedBox(
-                height: 3,
-              ),
-              const ProjectFooter(),
-            ],
-          ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(
+              height: 3,
+            ),
+            const ProjectFooter(),
+          ],
         ),
       ),
     );
