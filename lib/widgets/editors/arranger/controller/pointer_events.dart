@@ -91,10 +91,12 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
     if (project.song.activeArrangementID == null) return;
 
     if (event.pointerEvent.buttons & kPrimaryMouseButton ==
-        kPrimaryMouseButton) {
+            kPrimaryMouseButton &&
+        viewModel.tool != EditorTool.eraser) {
       leftPointerDown(event);
     } else if (event.pointerEvent.buttons & kSecondaryMouseButton ==
-        kSecondaryMouseButton) {
+            kSecondaryMouseButton ||
+        viewModel.tool == EditorTool.eraser) {
       rightPointerDown(event);
     }
   }
@@ -103,7 +105,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
     final arrangement =
         project.song.arrangements[project.song.activeArrangementID]!;
 
-    if (event.keyboardModifiers.ctrl) {
+    if (event.keyboardModifiers.ctrl || viewModel.tool == EditorTool.select) {
       if (event.keyboardModifiers.shift &&
           event.clipUnderCursor != null &&
           viewModel.selectedClips.nonObservableInner
