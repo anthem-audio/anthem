@@ -35,7 +35,6 @@ import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.d
 import 'package:anthem/widgets/editors/arranger/widgets/track_header.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
-import 'package:anthem/widgets/editors/shared/tool_selector.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -161,11 +160,56 @@ class _ArrangerState extends State<Arranger> {
                                 ),
                                 const SizedBox(width: 4),
                                 Observer(builder: (context) {
-                                  return ToolSelector(
-                                    selectedTool: viewModel!.tool,
-                                    setTool: (tool) {
-                                      viewModel!.tool = tool;
-                                    },
+                                  return SizedBox(
+                                    width: 39,
+                                    child: Dropdown(
+                                      showNameOnButton: false,
+                                      allowNoSelection: false,
+                                      hint: 'Change the active tool',
+                                      selectedID: EditorTool.values
+                                          .firstWhere(
+                                            (tool) =>
+                                                tool.name ==
+                                                viewModel!.tool.name,
+                                          )
+                                          .name,
+                                      items: [
+                                        DropdownItem(
+                                          id: EditorTool.pencil.name,
+                                          name: 'Pencil',
+                                          hint:
+                                              'Pencil: left click to add clips, right click to delete',
+                                          icon: Icons.tools.pencil,
+                                        ),
+                                        DropdownItem(
+                                          id: EditorTool.eraser.name,
+                                          name: 'Eraser',
+                                          hint:
+                                              'Eraser: left click to delete clips',
+                                          icon: Icons.tools.erase,
+                                        ),
+                                        DropdownItem(
+                                          id: EditorTool.select.name,
+                                          name: 'Select',
+                                          hint:
+                                              'Select: left click and drag to select clips',
+                                          icon: Icons.tools.select,
+                                        ),
+                                        DropdownItem(
+                                          id: EditorTool.cut.name,
+                                          name: 'Cut',
+                                          hint:
+                                              'Cut: left click and drag to cut clips',
+                                          icon: Icons.tools.cut,
+                                        ),
+                                      ],
+                                      onChanged: (id) {
+                                        viewModel!.tool =
+                                            EditorTool.values.firstWhere(
+                                          (tool) => tool.name == id,
+                                        );
+                                      },
+                                    ),
                                   );
                                 }),
                                 const SizedBox(width: 4),
@@ -173,17 +217,19 @@ class _ArrangerState extends State<Arranger> {
                                   fit: FlexFit.tight,
                                   child: Observer(builder: (context) {
                                     return Dropdown(
+                                      hint: 'Change the active arrangement',
                                       selectedID:
                                           project.song.activeArrangementID,
                                       items: project.song.arrangementOrder
-                                          .map<DropdownItem>(
-                                            (id) => DropdownItem(
-                                              id: id.toString(),
-                                              name: project
-                                                  .song.arrangements[id]!.name,
-                                            ),
-                                          )
-                                          .toList(),
+                                          .map<DropdownItem>((id) {
+                                        final name =
+                                            project.song.arrangements[id]!.name;
+                                        return DropdownItem(
+                                          id: id.toString(),
+                                          name: name,
+                                          hint: name,
+                                        );
+                                      }).toList(),
                                       onChanged: (selectedID) {
                                         project.song.activeArrangementID =
                                             selectedID;
