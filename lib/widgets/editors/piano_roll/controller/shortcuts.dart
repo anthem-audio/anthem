@@ -38,12 +38,12 @@ mixin _PianoRollShortcutsMixin on _PianoRollController {
     else if (shortcut.matches(LogicalKeySet(LogicalKeyboardKey.keyB))) {
       viewModel.tool = EditorTool.pencil;
     }
-    // S - select
-    else if (shortcut.matches(LogicalKeySet(LogicalKeyboardKey.keyS))) {
+    // E - select
+    else if (shortcut.matches(LogicalKeySet(LogicalKeyboardKey.keyE))) {
       viewModel.tool = EditorTool.select;
     }
-    // E - erase
-    else if (shortcut.matches(LogicalKeySet(LogicalKeyboardKey.keyE))) {
+    // D - erase
+    else if (shortcut.matches(LogicalKeySet(LogicalKeyboardKey.keyD))) {
       viewModel.tool = EditorTool.eraser;
     }
     // C - cut
