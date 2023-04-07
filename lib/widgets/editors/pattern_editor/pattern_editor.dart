@@ -113,12 +113,14 @@ class _PatternEditorState extends State<PatternEditor> {
                         return Dropdown(
                           width: 169,
                           height: 26,
+                          hint: 'Change the active pattern',
                           items: project.song.patternOrder.map(
                             (id) {
                               final pattern = project.song.patterns[id]!;
                               return DropdownItem(
                                 id: id,
                                 name: pattern.name,
+                                hint: pattern.name,
                               );
                             },
                           ).toList(),
