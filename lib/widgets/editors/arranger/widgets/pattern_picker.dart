@@ -160,6 +160,7 @@ class _PatternPickerState extends State<PatternPicker> {
                           height: 17,
                           variant: ButtonVariant.ghost,
                           contentPadding: const EdgeInsets.all(0),
+                          hint: 'Create a new pattern',
                           onPress: () {
                             projectController.addPattern();
                           },

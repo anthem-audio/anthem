@@ -184,6 +184,7 @@ class _PatternEditorState extends State<PatternEditor> {
                           width: 105,
                           contentPadding: EdgeInsets.zero,
                           startIcon: Icons.add,
+                          hint: 'Add a new instrument',
                           onPress: () {
                             controller!.addGenerator(
                               'Instrument ${(Random()).nextInt(100).toString()}',
