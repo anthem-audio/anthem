@@ -45,7 +45,10 @@ class PianoRollController extends _PianoRollController
     with _PianoRollShortcutsMixin, _PianoRollPointerEventsMixin {
   @override
   PianoRollController({required project, required viewModel})
-      : super(project: project, viewModel: viewModel);
+      : super(project: project, viewModel: viewModel) {
+    // Register shortcuts for this editor
+    registerShortcuts();
+  }
 }
 
 class _PianoRollController {
