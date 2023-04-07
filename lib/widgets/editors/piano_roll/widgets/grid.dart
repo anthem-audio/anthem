@@ -142,6 +142,30 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
     );
+
+    // Row highlight for pressed note
+    if (viewModel.pressedNote != null && activePattern != null) {
+      final notes = activePattern.notes[project.activeGeneratorID];
+      if (notes != null) {
+        final key =
+            notes.firstWhere((note) => note.id == viewModel.pressedNote).key;
+
+        final keyHeight = viewModel.keyHeight;
+
+        final y = keyValueToPixels(
+          keyValue: key.toDouble(),
+          keyValueAtTop: keyValueAtTop,
+          keyHeight: keyHeight,
+        );
+
+        final isBlackKey = getKeyType(key) == KeyType.black;
+
+        canvas.drawRect(
+          Rect.fromLTWH(0, y - keyHeight, size.width, keyHeight),
+          Paint()..color = Color(isBlackKey ? 0x0EFFFFFF : 0x07FFFFFF),
+        );
+      }
+    }
   }
 
   @override
