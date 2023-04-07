@@ -71,7 +71,7 @@ class _DropdownState extends State<Dropdown> {
         children: widget.items
                 .map<GenericMenuItem>(
                   (item) => AnthemMenuItem(
-                    text: item.name,
+                    text: item.name ?? '',
                     onSelected: () => select(item.id),
                   ),
                 )

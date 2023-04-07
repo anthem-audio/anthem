@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -31,13 +31,17 @@ class MenuDef {
 class GenericMenuItem {}
 
 class AnthemMenuItem extends GenericMenuItem {
-  late String text;
-  late MenuDef? submenu;
+  final String text;
+  MenuDef? submenu;
   VoidCallback? onSelected;
+  String? hint;
 
-  AnthemMenuItem({String? text, this.submenu, this.onSelected}) : super() {
-    this.text = text ?? '';
-  }
+  AnthemMenuItem({
+    this.text = '',
+    this.submenu,
+    this.onSelected,
+    this.hint,
+  }) : super();
 }
 
 class Separator extends GenericMenuItem {

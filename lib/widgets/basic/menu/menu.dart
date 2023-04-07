@@ -21,6 +21,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
+import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
@@ -72,6 +73,9 @@ class _MenuState extends State<Menu> {
       ),
     );
     final id = getID();
+    final projectController =
+        Provider.of<ProjectController>(context, listen: false);
+
     screenOverlayController.add(
       id,
       ScreenOverlayEntry(
@@ -82,6 +86,7 @@ class _MenuState extends State<Menu> {
             child: MenuRenderer(
               menu: widget.menuDef,
               id: id,
+              projectController: projectController,
             ),
           );
         },

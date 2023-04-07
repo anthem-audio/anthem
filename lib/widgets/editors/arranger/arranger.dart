@@ -132,6 +132,7 @@ class _ArrangerState extends State<Arranger> {
                                     children: [
                                       AnthemMenuItem(
                                         text: 'New arrangement',
+                                        hint: 'Create a new arrangement',
                                         onSelected: () {
                                           projectController.addArrangement();
                                         },
@@ -142,8 +143,10 @@ class _ArrangerState extends State<Arranger> {
                                         submenu: MenuDef(
                                           children: [
                                             AnthemMenuItem(
-                                              text: 'Add time signature change',
-                                            ),
+                                                text:
+                                                    'Add time signature change',
+                                                hint:
+                                                    'Add a time signature change'),
                                           ],
                                         ),
                                       ),

@@ -168,6 +168,7 @@ class _PianoRollHeader extends StatelessWidget {
                     children: [
                       AnthemMenuItem(
                         text: 'Add time signature change',
+                        hint: 'Add a time signature change',
                         onSelected: () {
                           final controller = Provider.of<PianoRollController>(
                               context,

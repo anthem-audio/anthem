@@ -92,6 +92,7 @@ class _PatternEditorState extends State<PatternEditor> {
                           children: [
                             AnthemMenuItem(
                               text: 'New pattern',
+                              hint: 'Create a new pattern',
                               onSelected: () {
                                 projectController.addPattern();
                               },
