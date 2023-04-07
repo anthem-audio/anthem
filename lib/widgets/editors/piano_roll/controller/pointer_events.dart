@@ -97,8 +97,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         pattern.notes[project.activeGeneratorID]?.nonObservableInner ??
             <NoteModel>[];
 
-    if (event.keyboardModifiers.ctrl ||
-        viewModel.selectedTool == EditorTool.select) {
+    if (event.keyboardModifiers.ctrl || viewModel.tool == EditorTool.select) {
       if (event.keyboardModifiers.shift &&
           event.noteUnderCursor != null &&
           viewModel.selectedNotes.nonObservableInner
@@ -120,7 +119,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
       return;
     }
 
-    if (event.isResize && viewModel.selectedTool == EditorTool.pencil) {
+    if (event.isResize && viewModel.tool == EditorTool.pencil) {
       if (event.noteUnderCursor == null) {
         throw ArgumentError("Resize event didn't provide a noteUnderCursor");
       }
@@ -339,11 +338,11 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
     if (event.pointerEvent.buttons & kPrimaryMouseButton ==
             kPrimaryMouseButton &&
-        viewModel.selectedTool != EditorTool.eraser) {
+        viewModel.tool != EditorTool.eraser) {
       leftPointerDown(event);
     } else if (event.pointerEvent.buttons & kSecondaryMouseButton ==
             kSecondaryMouseButton ||
-        viewModel.selectedTool == EditorTool.eraser) {
+        viewModel.tool == EditorTool.eraser) {
       rightPointerDown(event);
     }
   }

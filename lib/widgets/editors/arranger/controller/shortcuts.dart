@@ -30,5 +30,25 @@ mixin _ArrangerShortcutsMixin on _ArrangerController {
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyA))) {
       selectAll();
     }
+    // P - pencil
+    else if (shortcut.matches(LogicalKeySet(LogicalKeyboardKey.keyP))) {
+      viewModel.tool = EditorTool.pencil;
+    }
+    // B - brush - we don't have a brush, but this is on the left hand so it's nicer
+    else if (shortcut.matches(LogicalKeySet(LogicalKeyboardKey.keyB))) {
+      viewModel.tool = EditorTool.pencil;
+    }
+    // S - select
+    else if (shortcut.matches(LogicalKeySet(LogicalKeyboardKey.keyS))) {
+      viewModel.tool = EditorTool.select;
+    }
+    // E - erase
+    else if (shortcut.matches(LogicalKeySet(LogicalKeyboardKey.keyE))) {
+      viewModel.tool = EditorTool.eraser;
+    }
+    // C - cut
+    else if (shortcut.matches(LogicalKeySet(LogicalKeyboardKey.keyC))) {
+      viewModel.tool = EditorTool.cut;
+    }
   }
 }
