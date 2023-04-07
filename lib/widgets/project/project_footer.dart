@@ -23,6 +23,7 @@ import 'package:anthem/widgets/basic/button_tabs.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
+import 'package:anthem/widgets/project/project_view_model.dart';
 
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
@@ -35,6 +36,7 @@ class ProjectFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     final projectController = Provider.of<ProjectController>(context);
     final projectModel = Provider.of<ProjectModel>(context);
+    final viewModel = Provider.of<ProjectViewModel>(context);
 
     return Container(
       height: 44,
@@ -124,6 +126,17 @@ class ProjectFooter extends StatelessWidget {
               decoration: BoxDecoration(
                 border: Border.all(color: Theme.panel.border),
                 color: Theme.panel.accentDark,
+              ),
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  viewModel.hintText,
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.text.main,
+                      overflow: TextOverflow.ellipsis),
+                ),
               ),
             ),
             const SizedBox(width: 8),
