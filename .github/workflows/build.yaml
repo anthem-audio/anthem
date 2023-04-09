@@ -48,7 +48,7 @@ jobs:
         shell: pwsh
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: anthem
           path: ${{ github.workspace }}/build/windows/runner/Release
