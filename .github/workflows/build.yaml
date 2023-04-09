@@ -46,3 +46,14 @@ jobs:
                 flutter build windows --verbose
               }
         shell: pwsh
+
+      - name: Zip folder
+        run: |
+          cd ${{ github.workspace }}/build/windows/runner
+          7z a -r -tzip Release.zip Release
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: windows-artifact
+          path: ${{ github.workspace }}/build/windows/runner/Release.zip
