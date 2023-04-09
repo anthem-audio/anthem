@@ -100,8 +100,9 @@ class _ClipNotesPainter extends CustomPainterObserver {
     bottom--;
 
     if (top - bottom < 12) {
-      top += ((top - bottom) / 2).ceil();
-      bottom -= ((top - bottom) / 2).floor();
+      final center = ((top - bottom) / 2) + bottom;
+      top = (center + 6).ceil();
+      bottom = (center - 6).floor();
     }
 
     final keyHeight = top - bottom;
@@ -109,10 +110,10 @@ class _ClipNotesPainter extends CustomPainterObserver {
 
     for (final noteList in noteLists) {
       for (final note in noteList) {
-        final left = (note.offset / ticksPerPixel).floorToDouble();
+        final left = ((note.offset - timeViewStart) / ticksPerPixel);
         final top =
             (size.height - (note.key - bottom) * yPixelsPerKey).floorToDouble();
-        final width = (note.length / ticksPerPixel).ceilToDouble();
+        final width = (note.length / ticksPerPixel);
         final height = (yPixelsPerKey).ceilToDouble();
 
         final topLeft =

@@ -17,9 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'piano_roll_controller.dart';
+part of 'arranger_controller.dart';
 
-mixin _PianoRollShortcutsMixin on _PianoRollController {
+mixin _ArrangerShortcutsMixin on _ArrangerController {
   ShortcutBehaviors shortcutManager = ShortcutBehaviors();
 
   void registerShortcuts() {

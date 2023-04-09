@@ -51,6 +51,14 @@ double pixelsToTime({
 // is confusing. Why doesn't this contain a Division? Should it? I don't want
 // to think this through now, so I'm leaving a note.
 
+/// Contains information about how to render and snap in a given section of
+/// time.
+///
+/// [offset] describes where this section starts. We may have multiple sections
+/// with different rendering and snapping characteristics because of time
+/// signature changes. If a pattern or arrangement has no time signature
+/// changes, then there will be one [DivisionChange] to describe the entire
+/// pattern or arrangement.
 class DivisionChange {
   DivisionChange({
     required this.offset,
@@ -64,11 +72,11 @@ class DivisionChange {
   Time divisionRenderSize;
   Time divisionSnapSize;
 
-  // Number of input units (snap) skipped for each division. Sometimes this is 1, but
-  // sometimes (always when zoomed far out) this is higher.
+  /// Number of input units (snap) skipped for each division. Sometimes this is 1, but
+  /// sometimes (always when zoomed far out) this is higher.
   int distanceBetween;
 
-  // For bar rendering. The bar number at the beginning of the first division (?)
+  /// For bar rendering. The bar number at the beginning of the first division (?)
   int startLabel;
 }
 
@@ -160,8 +168,8 @@ GetBestDivisionResult getBestDivision({
   required double minPixelsPerDivision,
   required int ticksPerQuarter,
 }) {
-  var barLength = getBarLength(ticksPerQuarter, timeSignature);
-  var divisionSizeLowerBound = ticksPerPixel * minPixelsPerDivision;
+  final barLength = getBarLength(ticksPerQuarter, timeSignature);
+  final divisionSizeLowerBound = ticksPerPixel * minPixelsPerDivision;
 
   // bestDivision starts at some small value and works up to the smallest valid
   // value
@@ -172,30 +180,32 @@ GetBestDivisionResult getBestDivision({
   if (snap is BarSnap) {
     bestDivision = barLength;
     snapSize = barLength;
-  } else if (snap is DivisionSnap) {
+  } else if (snap is DivisionSnap || snap is AutoSnap) {
     if (divisionSizeLowerBound >= barLength) {
       snapSize = barLength;
     } else {
-      var division = snap.division;
+      final division = snap is DivisionSnap
+          ? snap.division
+          : Division(multiplier: 1, divisor: 4);
       snapSize = division.getSizeInTicks(ticksPerQuarter, timeSignature);
     }
     bestDivision = snapSize;
   } else {
-    // This isn't TypeScript, so (I think) we can't verify completeness here.
-    // If Snap gets more subclasses then this could give a runtime error.
+    // We need to update the Snap class to be sealed when 3.0 comes out. Until
+    // then, if Snap gets more subclasses then this could give a runtime error.
     throw ArgumentError('Unhandled Snap type');
   }
 
-  var numDivisionsInBar = barLength ~/ snapSize;
+  final numDivisionsInBar = barLength ~/ snapSize;
 
   if (bestDivision < barLength) {
-    var multipliers = factors(numDivisionsInBar);
+    final multipliers = factors(numDivisionsInBar);
 
-    for (var multiplier in multipliers) {
+    for (final multiplier in multipliers) {
       if (bestDivision >= divisionSizeLowerBound) {
         return GetBestDivisionResult(
           renderSize: bestDivision,
-          snapSize: snapSize,
+          snapSize: snap is DivisionSnap ? snapSize : bestDivision,
           skip: skip,
         );
       }
@@ -218,6 +228,14 @@ GetBestDivisionResult getBestDivision({
   );
 }
 
+/// Takes information about the time signature changes in the current time
+/// view, and returns a list of [DivisionChange] objects that describe the
+/// regions within the current time view.
+///
+/// For example, if the [defaultTimeSignature] is 3/4 and there is a single
+/// change to 4/4, this function will return two [DivisionChange] objects, one
+/// describing the snapping behavior and bar lines for the initial 3/4 section
+/// section, and one describing the same for the 4/4 section.
 List<DivisionChange> getDivisionChanges({
   required double viewWidthInPixels,
   double minPixelsPerSection = 8,

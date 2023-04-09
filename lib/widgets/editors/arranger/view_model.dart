@@ -17,12 +17,15 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:mobx/mobx.dart';
 
-part 'arranger_view_model.g.dart';
+part 'view_model.g.dart';
 
 // ignore: library_private_types_in_public_api
 class ArrangerViewModel = _ArrangerViewModel with _$ArrangerViewModel;
@@ -45,6 +48,23 @@ abstract class _ArrangerViewModel with Store {
   /// Vertical scroll position, in pixels.
   @observable
   double verticalScrollPosition = 0;
+
+  /// Current pattern that will be placed when the user places a pattern.
+  @observable
+  ID? cursorPattern;
+
+  /// Time range for cursor pattern.
+  @observable
+  TimeViewModel? cursorTimeRange;
+
+  @observable
+  Rectangle<double>? selectionBox;
+
+  @observable
+  ObservableSet<ID> selectedClips = ObservableSet();
+
+  @observable
+  ID? pressedClip;
 
   _ArrangerViewModel({
     required this.baseTrackHeight,

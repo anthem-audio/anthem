@@ -45,7 +45,7 @@ abstract class PianoRollPointerEvent extends PianoRollEvent {
   /// Determines if this is caused by a right click.
   final PointerEvent pointerEvent;
 
-  /// Ctrl, alt and shift key states
+  /// Ctrl, alt and shift key states.
   final KeyboardModifiers keyboardModifiers;
 }
 

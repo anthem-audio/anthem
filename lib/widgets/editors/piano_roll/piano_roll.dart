@@ -27,6 +27,7 @@ import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
+import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
@@ -42,15 +43,14 @@ import '../shared/helpers/time_helpers.dart';
 import '../shared/helpers/types.dart';
 import '../shared/timeline/timeline_notification_handler.dart';
 import '../shared/timeline/timeline.dart';
-import '../shared/tool_selector.dart';
 import 'controller/piano_roll_controller.dart';
 import 'helpers.dart';
-import 'note.dart';
-import 'piano_control.dart';
-import 'piano_roll_attribute_editor.dart';
-import 'piano_roll_event_listener.dart';
-import 'piano_roll_grid.dart';
-import 'piano_roll_view_model.dart';
+import 'widgets/note.dart';
+import 'widgets/piano_control.dart';
+import 'attribute_editor.dart';
+import 'event_listener.dart';
+import 'widgets/grid.dart';
+import 'view_model.dart';
 
 const noContentBars = 16;
 
@@ -168,6 +168,7 @@ class _PianoRollHeader extends StatelessWidget {
                     children: [
                       AnthemMenuItem(
                         text: 'Add time signature change',
+                        hint: 'Add a time signature change',
                         onSelected: () {
                           final controller = Provider.of<PianoRollController>(
                               context,
@@ -196,11 +197,50 @@ class _PianoRollHeader extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Observer(builder: (context) {
-            return ToolSelector(
-              selectedTool: viewModel.selectedTool,
-              setTool: (tool) {
-                viewModel.selectedTool = tool;
-              },
+            return SizedBox(
+              width: 39,
+              child: Dropdown(
+                showNameOnButton: false,
+                allowNoSelection: false,
+                hint: 'Change the active tool',
+                selectedID: EditorTool.values
+                    .firstWhere(
+                      (tool) => tool.name == viewModel.tool.name,
+                    )
+                    .name,
+                items: [
+                  DropdownItem(
+                    id: EditorTool.pencil.name,
+                    name: 'Pencil',
+                    hint:
+                        'Pencil: left click to add notes, right click to delete',
+                    icon: Icons.tools.pencil,
+                  ),
+                  DropdownItem(
+                    id: EditorTool.eraser.name,
+                    name: 'Eraser',
+                    hint: 'Eraser: left click to delete notes',
+                    icon: Icons.tools.erase,
+                  ),
+                  DropdownItem(
+                    id: EditorTool.select.name,
+                    name: 'Select',
+                    hint: 'Select: left click and drag to select notes',
+                    icon: Icons.tools.select,
+                  ),
+                  DropdownItem(
+                    id: EditorTool.cut.name,
+                    name: 'Cut',
+                    hint: 'Cut: left click and drag to cut notes',
+                    icon: Icons.tools.cut,
+                  ),
+                ],
+                onChanged: (id) {
+                  viewModel.tool = EditorTool.values.firstWhere(
+                    (tool) => tool.name == id,
+                  );
+                },
+              ),
             );
           }),
         ],
@@ -285,7 +325,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
   }
 
   /// See [PianoRollEventListener] for details on what this is for.
-  NoteWidgetEventData noteWidgetEventData = NoteWidgetEventData();
+  final noteWidgetEventData = NoteWidgetEventData();
 
   @override
   Widget build(BuildContext context) {
@@ -506,13 +546,11 @@ class _PianoRollContentState extends State<_PianoRollContent>
       }),
     );
 
+    final controller = Provider.of<PianoRollController>(context);
+
     return ShortcutConsumer(
       id: 'piano-roll',
-      handler: (shortcut) {
-        final controller =
-            Provider.of<PianoRollController>(context, listen: false);
-        controller.onShortcut(shortcut);
-      },
+      handler: controller.onShortcut,
       child: Panel(
         orientation: PanelOrientation.bottom,
         sizeBehavior: PanelSizeBehavior.pixels,
@@ -544,6 +582,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
                         handleEnd: viewModel.timeView.end,
                         canScrollPastEnd: true,
                         minHandleSize: project.song.ticksPerQuarter * 4,
+                        disableAtFullSize: false,
                         onChange: (event) {
                           viewModel.timeView.start = event.handleStart;
                           viewModel.timeView.end = event.handleEnd;

@@ -18,9 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/model/shared/hydratable.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
@@ -29,35 +27,54 @@ part 'clip.g.dart';
 @JsonSerializable()
 class ClipModel extends _ClipModel with _$ClipModel {
   ClipModel(
-      {TimeViewModel? timeView,
+      {required ID id,
+      TimeViewModel? timeView,
       required ID patternID,
       required ID trackID,
       required int offset})
       : super(
-            timeView: timeView,
-            patternID: patternID,
-            trackID: trackID,
-            offset: offset);
+          id: id,
+          timeView: timeView,
+          patternID: patternID,
+          trackID: trackID,
+          offset: offset,
+        );
 
   ClipModel.create({
+    ID? id,
     TimeViewModel? timeView,
     required ID patternID,
     required ID trackID,
     required int offset,
-    required ProjectModel project,
   }) : super.create(
-            timeView: timeView,
-            patternID: patternID,
-            trackID: trackID,
-            offset: offset,
-            project: project);
+          id: id ?? getID(),
+          timeView: timeView,
+          patternID: patternID,
+          trackID: trackID,
+          offset: offset,
+        );
+
+  factory ClipModel.fromClipModel(ClipModel other) {
+    return ClipModel.create(
+      id: getID(),
+      patternID: other.patternID,
+      trackID: other.trackID,
+      offset: other.offset,
+      timeView: other.timeView != null
+          ? TimeViewModel(
+              start: other.timeView!.start,
+              end: other.timeView!.end,
+            )
+          : null,
+    );
+  }
 
   factory ClipModel.fromJson(Map<String, dynamic> json) =>
       _$ClipModelFromJson(json);
 }
 
-abstract class _ClipModel extends Hydratable with Store {
-  ID clipID = getID();
+abstract class _ClipModel with Store {
+  ID id;
 
   @observable
   TimeViewModel? timeView; // If null, we snap to content
@@ -71,21 +88,9 @@ abstract class _ClipModel extends Hydratable with Store {
   @observable
   int offset;
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  ProjectModel? _project;
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  PatternModel? _pattern;
-
-  ProjectModel get project {
-    return _project!;
-  }
-
-  PatternModel get pattern {
-    return _pattern!;
-  }
-
   /// Used for deserialization. Use ClipModel.create() instead.
   _ClipModel({
+    required this.id,
     this.timeView,
     required this.patternID,
     required this.trackID,
@@ -93,46 +98,49 @@ abstract class _ClipModel extends Hydratable with Store {
   }) : super();
 
   _ClipModel.create({
+    required this.id,
     this.timeView,
     required this.patternID,
     required this.trackID,
     required this.offset,
-    required ProjectModel project,
-  }) : super() {
-    hydrate(project: project);
-  }
+  });
 
   Map<String, dynamic> toJson() => _$ClipModelToJson(this as ClipModel);
 
-  void hydrate({required ProjectModel project}) {
-    _project = project;
-    _pattern = project.song.patterns[patternID]!;
-    isHydrated = true;
-  }
-
-  @computed
-  int get width {
+  int getWidth(ProjectModel project) {
     if (timeView != null) {
-      return timeView!.end - timeView!.start;
+      return timeView!.width;
     }
 
-    return pattern.getWidth();
+    return project.song.patterns[patternID]!.getWidth();
   }
 }
 
 @JsonSerializable()
-class TimeViewModel {
-  int start;
-  int end;
-
-  TimeViewModel({required this.start, required this.end});
+class TimeViewModel extends _TimeViewModel with _$TimeViewModel {
+  TimeViewModel({required int start, required int end})
+      : super(start: start, end: end);
 
   factory TimeViewModel.fromJson(Map<String, dynamic> json) =>
       _$TimeViewModelFromJson(json);
+}
 
-  Map<String, dynamic> toJson() => _$TimeViewModelToJson(this);
+abstract class _TimeViewModel with Store {
+  @observable
+  int start;
+
+  @observable
+  int end;
+
+  _TimeViewModel({required this.start, required this.end});
+
+  Map<String, dynamic> toJson() => _$TimeViewModelToJson(this as TimeViewModel);
 
   int get width {
     return end - start;
+  }
+
+  TimeViewModel clone() {
+    return TimeViewModel(start: start, end: end);
   }
 }

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,33 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
+import 'package:mobx/mobx.dart';
 
-enum MenuAlignment { topLeft, topRight, bottomLeft, bottomRight }
+part 'project_view_model.g.dart';
 
-class MenuDef {
-  List<GenericMenuItem> children;
+// ignore: library_private_types_in_public_api
+class ProjectViewModel = _ProjectViewModel with _$ProjectViewModel;
 
-  MenuDef({this.children = const []});
-}
-
-class GenericMenuItem {}
-
-class AnthemMenuItem extends GenericMenuItem {
-  final String text;
-  MenuDef? submenu;
-  VoidCallback? onSelected;
-  String? hint;
-
-  AnthemMenuItem({
-    this.text = '',
-    this.submenu,
-    this.onSelected,
-    this.hint,
-  }) : super();
-}
-
-class Separator extends GenericMenuItem {
-  Separator() : super();
+abstract class _ProjectViewModel with Store {
+  @observable
+  String hintText = '';
 }

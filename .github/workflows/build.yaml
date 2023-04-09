@@ -11,6 +11,7 @@ jobs:
         with:
           flutter-version: '3.7.7'
           channel: 'stable'
+          cache: true
       
       # Set up environment
       - name: Set up environment
@@ -29,11 +30,11 @@ jobs:
 
       # Check for formatting in Flutter project
       - name: Format Flutter code
-        run: flutter format . --set-exit-if-changed -o none
+        run: dart format . --set-exit-if-changed -o none
 
       # Lint Flutter project
       - name: Lint Flutter code
-        run: flutter analyze
+        run: dart analyze
       
       - name: Test Flutter code
         run: flutter test .

@@ -19,8 +19,8 @@
 
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll_event_listener.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
+import 'package:anthem/widgets/editors/piano_roll/event_listener.dart';
+import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -152,7 +152,7 @@ class _NoteWidgetState extends State<NoteWidget> {
                   onPointerDown: (e) {
                     widget.eventData.isResizeEvent = true;
                   },
-                  child: viewModel.selectedTool == EditorTool.pencil
+                  child: viewModel.tool == EditorTool.pencil
                       ? const MouseRegion(
                           cursor: SystemMouseCursors.resizeLeftRight,
                         )

@@ -81,9 +81,6 @@ abstract class _ArrangementModel extends Hydratable with Store {
 
   void hydrate({required ProjectModel project}) {
     _project = project;
-    for (final clip in clips.values) {
-      clip.hydrate(project: project);
-    }
     isHydrated = true;
   }
 
@@ -98,7 +95,8 @@ abstract class _ArrangementModel extends Hydratable with Store {
         defaultTimeSignature.numerator;
     final lastContent = clips.values.fold<int>(
       ticksPerBar * barMultiple * minPaddingInBarMultiples,
-      (previousValue, clip) => max(previousValue, clip.offset + clip.width),
+      (previousValue, clip) =>
+          max(previousValue, clip.offset + clip.getWidth(project)),
     );
 
     return (max(lastContent, 1) / (ticksPerBar * barMultiple)).ceil() *

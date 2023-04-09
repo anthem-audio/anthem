@@ -28,8 +28,8 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll_events.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
+import 'package:anthem/widgets/editors/piano_roll/events.dart';
+import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/box_intersection.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
@@ -45,7 +45,10 @@ class PianoRollController extends _PianoRollController
     with _PianoRollShortcutsMixin, _PianoRollPointerEventsMixin {
   @override
   PianoRollController({required project, required viewModel})
-      : super(project: project, viewModel: viewModel);
+      : super(project: project, viewModel: viewModel) {
+    // Register shortcuts for this editor
+    registerShortcuts();
+  }
 }
 
 class _PianoRollController {
@@ -103,7 +106,7 @@ class _PianoRollController {
 
       final divisionChanges = getDivisionChanges(
         viewWidthInPixels: pianoRollWidth,
-        snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+        snap: AutoSnap(),
         defaultTimeSignature: project.song.defaultTimeSignature,
         timeSignatureChanges: pattern.timeSignatureChanges,
         ticksPerQuarter: project.song.ticksPerQuarter,

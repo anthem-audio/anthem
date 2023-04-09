@@ -92,6 +92,7 @@ class _PatternEditorState extends State<PatternEditor> {
                           children: [
                             AnthemMenuItem(
                               text: 'New pattern',
+                              hint: 'Create a new pattern',
                               onSelected: () {
                                 projectController.addPattern();
                               },
@@ -112,12 +113,14 @@ class _PatternEditorState extends State<PatternEditor> {
                         return Dropdown(
                           width: 169,
                           height: 26,
+                          hint: 'Change the active pattern',
                           items: project.song.patternOrder.map(
                             (id) {
                               final pattern = project.song.patterns[id]!;
                               return DropdownItem(
                                 id: id,
                                 name: pattern.name,
+                                hint: pattern.name,
                               );
                             },
                           ).toList(),
@@ -184,6 +187,7 @@ class _PatternEditorState extends State<PatternEditor> {
                           width: 105,
                           contentPadding: EdgeInsets.zero,
                           startIcon: Icons.add,
+                          hint: 'Add a new instrument',
                           onPress: () {
                             controller!.addGenerator(
                               'Instrument ${(Random()).nextInt(100).toString()}',
