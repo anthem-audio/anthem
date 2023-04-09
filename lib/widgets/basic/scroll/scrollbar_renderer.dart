@@ -58,6 +58,10 @@ class ScrollbarRenderer extends StatefulWidget {
 
   final Function(ScrollbarChangeEvent event)? onChange;
 
+  /// If true, the scrollbar will show as disabled when the start is 0 and the
+  /// end is 1.
+  final bool disableAtFullSize;
+
   const ScrollbarRenderer({
     Key? key,
     this.minHandlePixelSize = 24,
@@ -69,6 +73,7 @@ class ScrollbarRenderer extends StatefulWidget {
     this.onChange,
     this.canScrollPastStart = false,
     this.canScrollPastEnd = false,
+    this.disableAtFullSize = true,
   }) : super(key: key);
 
   @override
@@ -183,8 +188,9 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
           color: Theme.panel.border,
         );
 
-        final isDisabled = widget.handleStart <= widget.scrollRegionStart &&
-            widget.handleEnd >= widget.scrollRegionEnd;
+        final isDisabled = widget.disableAtFullSize &&
+            (widget.handleStart <= widget.scrollRegionStart &&
+                widget.handleEnd >= widget.scrollRegionEnd);
 
         flexChildren.addAll([
           border,

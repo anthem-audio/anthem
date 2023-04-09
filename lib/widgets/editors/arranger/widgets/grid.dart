@@ -26,8 +26,8 @@ import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
 
-import 'arranger_view_model.dart';
-import 'helpers.dart';
+import '../view_model.dart';
+import '../helpers.dart';
 
 class ArrangerBackgroundPainter extends CustomPainterObserver {
   final double verticalScrollPosition;
@@ -80,7 +80,7 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
     paintTimeGrid(
       canvas: canvas,
       size: size,
-      snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+      snap: AutoSnap(),
       baseTimeSignature: TimeSignatureModel(4, 4),
       timeSignatureChanges: [],
       ticksPerQuarter: project.song.ticksPerQuarter,

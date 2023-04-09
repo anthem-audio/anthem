@@ -23,13 +23,15 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
+import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 class ProjectController {
   ProjectModel project;
+  ProjectViewModel viewModel;
 
-  ProjectController(this.project);
+  ProjectController(this.project, this.viewModel);
 
   void journalStartEntry() {
     project.startJournalPage();
@@ -120,5 +122,13 @@ class ProjectController {
             LogicalKeyboardKey.shift, LogicalKeyboardKey.keyZ))) {
       redo();
     }
+  }
+
+  void setHintText(String text) {
+    viewModel.hintText = text;
+  }
+
+  void clearHintText() {
+    viewModel.hintText = '';
   }
 }

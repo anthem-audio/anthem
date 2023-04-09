@@ -23,7 +23,7 @@ import 'package:anthem/commands/journal_commands.dart';
 import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/store.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
+import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 
 import '../shared/helpers/types.dart';

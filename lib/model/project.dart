@@ -206,6 +206,11 @@ abstract class _ProjectModel extends Hydratable with Store {
     _journalPageAccumulator = [];
     _journalPageActive = false;
 
+    if (accumulator.length == 1) {
+      _commandQueue.push(accumulator.first);
+      return;
+    }
+
     final command = JournalPageCommand(this as ProjectModel, accumulator);
     _commandQueue.push(command);
   }

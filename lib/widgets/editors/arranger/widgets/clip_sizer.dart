@@ -51,12 +51,17 @@ class ClipSizer extends StatelessObserverWidget {
     final clipModel =
         projectModel.song.arrangements[arrangementID]!.clips[clipID]!;
 
-    final width = timeToPixels(
-      timeViewStart: 0,
-      timeViewEnd: timeViewEnd - timeViewStart,
-      viewPixelWidth: editorWidth,
-      time: clipModel.width.toDouble(),
-    );
+    final width = (timeToPixels(
+              timeViewStart: 0,
+              timeViewEnd: timeViewEnd - timeViewStart,
+              viewPixelWidth: editorWidth,
+              time: clipModel.getWidth(projectModel).toDouble(),
+            )
+            // Subtracting 1 here helps clips not draw over bar lines.
+            -
+            1 +
+            clipResizeHandleOvershoot * 2)
+        .clamp(0.0, double.infinity);
 
     return ConstrainedBox(
       constraints: BoxConstraints(

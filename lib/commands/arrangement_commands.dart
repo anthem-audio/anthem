@@ -25,50 +25,35 @@ import 'package:anthem/model/project.dart';
 import 'command.dart';
 
 abstract class ArrangementCommand extends Command {
-  ID arrangementID;
+  final ID arrangementID;
 
   ArrangementCommand(ProjectModel project, this.arrangementID) : super(project);
 }
 
 /// Add a clip to an arrangement
 class AddClipCommand extends ArrangementCommand {
-  ID trackID;
-  ID patternID;
-  int offset;
-  ID clipID = getID();
-  TimeViewModel? timeView;
+  final ClipModel clip;
 
   AddClipCommand({
     required ProjectModel project,
     required ID arrangementID,
-    required this.trackID,
-    required this.patternID,
-    required this.offset,
-    this.timeView,
+    required this.clip,
   }) : super(project, arrangementID);
 
   @override
   void execute() {
-    final clipModel = ClipModel.create(
-      offset: offset,
-      patternID: patternID,
-      trackID: trackID,
-      timeView: timeView,
-      project: project,
-    );
-
-    project.song.arrangements[arrangementID]!.clips[clipID] = clipModel;
+    project.song.arrangements[arrangementID]!.clips[clip.id] = clip;
   }
 
   @override
   void rollback() {
-    project.song.arrangements[arrangementID]!.clips.remove(clipID);
+    project.song.arrangements[arrangementID]!.clips.remove(clip.id);
   }
 }
 
 class AddArrangementCommand extends Command {
-  ID arrangementID = getID();
-  String arrangementName;
+  final ID arrangementID = getID();
+  final String arrangementName;
 
   AddArrangementCommand({
     required ProjectModel project,
@@ -94,8 +79,8 @@ class AddArrangementCommand extends Command {
 }
 
 class SetArrangementNameCommand extends ArrangementCommand {
-  late String oldName;
-  String newName;
+  late final String oldName;
+  final String newName;
 
   SetArrangementNameCommand({
     required ProjectModel project,
@@ -113,5 +98,99 @@ class SetArrangementNameCommand extends ArrangementCommand {
   @override
   void rollback() {
     project.song.arrangements[arrangementID]!.name = oldName;
+  }
+}
+
+class MoveClipCommand extends ArrangementCommand {
+  final ID clipID;
+  final int oldOffset;
+  final int newOffset;
+  final ID oldTrack;
+  final ID newTrack;
+
+  MoveClipCommand({
+    required ProjectModel project,
+    required ID arrangementID,
+    required this.clipID,
+    required this.oldOffset,
+    required this.newOffset,
+    required this.oldTrack,
+    required this.newTrack,
+  }) : super(project, arrangementID);
+
+  @override
+  void execute() {
+    final arrangement = project.song.arrangements[arrangementID]!;
+    final clip = arrangement.clips[clipID]!;
+
+    clip.offset = newOffset;
+    clip.trackID = newTrack;
+  }
+
+  @override
+  void rollback() {
+    final arrangement = project.song.arrangements[arrangementID]!;
+    final clip = arrangement.clips[clipID]!;
+
+    clip.offset = oldOffset;
+    clip.trackID = oldTrack;
+  }
+}
+
+class DeleteClipCommand extends ArrangementCommand {
+  final ClipModel clip;
+
+  DeleteClipCommand({
+    required ProjectModel project,
+    required ID arrangementID,
+    required this.clip,
+  }) : super(project, arrangementID);
+
+  @override
+  void execute() {
+    final arrangement = project.song.arrangements[arrangementID]!;
+    arrangement.clips.remove(clip.id);
+  }
+
+  @override
+  void rollback() {
+    final arrangement = project.song.arrangements[arrangementID]!;
+    arrangement.clips[clip.id] = clip;
+  }
+}
+
+class ResizeClipCommand extends ArrangementCommand {
+  final ID clipID;
+  final int oldOffset;
+  final TimeViewModel? oldTimeView;
+  final int newOffset;
+  final TimeViewModel? newTimeView;
+
+  ResizeClipCommand({
+    required ProjectModel project,
+    required ID arrangementID,
+    required this.clipID,
+    required this.oldOffset,
+    required this.oldTimeView,
+    required this.newOffset,
+    required this.newTimeView,
+  }) : super(project, arrangementID);
+
+  @override
+  void execute() {
+    final arrangement = project.song.arrangements[arrangementID]!;
+    final clip = arrangement.clips[clipID]!;
+
+    clip.offset = newOffset;
+    clip.timeView = newTimeView;
+  }
+
+  @override
+  void rollback() {
+    final arrangement = project.song.arrangements[arrangementID]!;
+    final clip = arrangement.clips[clipID]!;
+
+    clip.offset = oldOffset;
+    clip.timeView = oldTimeView;
   }
 }

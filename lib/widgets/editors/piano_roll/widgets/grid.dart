@@ -20,13 +20,13 @@
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll_view_model.dart';
+import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
-import '../shared/helpers/grid_paint_helpers.dart';
-import '../shared/helpers/types.dart';
-import 'helpers.dart';
+import '../../shared/helpers/grid_paint_helpers.dart';
+import '../../shared/helpers/types.dart';
+import '../helpers.dart';
 
 class PianoRollGrid extends StatelessWidget {
   final AnimationController timeViewAnimationController;
@@ -136,12 +136,36 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
       canvas: canvas,
       size: size,
       ticksPerQuarter: project.song.ticksPerQuarter,
-      snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+      snap: AutoSnap(),
       baseTimeSignature: project.song.defaultTimeSignature,
       timeSignatureChanges: activePattern?.timeSignatureChanges ?? [],
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
     );
+
+    // Row highlight for pressed note
+    if (viewModel.pressedNote != null && activePattern != null) {
+      final notes = activePattern.notes[project.activeGeneratorID];
+      if (notes != null) {
+        final key =
+            notes.firstWhere((note) => note.id == viewModel.pressedNote).key;
+
+        final keyHeight = viewModel.keyHeight;
+
+        final y = keyValueToPixels(
+          keyValue: key.toDouble(),
+          keyValueAtTop: keyValueAtTop,
+          keyHeight: keyHeight,
+        );
+
+        final isBlackKey = getKeyType(key) == KeyType.black;
+
+        canvas.drawRect(
+          Rect.fromLTWH(0, y - keyHeight, size.width, keyHeight),
+          Paint()..color = Color(isBlackKey ? 0x0EFFFFFF : 0x07FFFFFF),
+        );
+      }
+    }
   }
 
   @override

@@ -63,7 +63,7 @@ class _TimelineNotificationHandlerState
 
           final divisionChanges = getDivisionChanges(
             viewWidthInPixels: notification.viewWidthInPixels,
-            snap: DivisionSnap(division: Division(multiplier: 1, divisor: 4)),
+            snap: AutoSnap(),
             defaultTimeSignature: project.song.defaultTimeSignature,
             timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
             ticksPerQuarter: project.song.ticksPerQuarter,

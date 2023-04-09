@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:collection/collection.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -82,7 +83,44 @@ class ShortcutProviderController {
   }
 }
 
-/// Mixin to check if two shortcuts match.
+/// Class to register shortcut behaviors. Incoming shortcuts can be sent to
+/// this class, and a matching behavior will be called if it exists.
+class ShortcutBehaviors {
+  final _behaviors = <String, void Function()>{};
+
+  void register(LogicalKeySet shortcut, void Function() behavior) {
+    _behaviors[_getShortcutID(shortcut)] = behavior;
+  }
+
+  void handleShortcut(LogicalKeySet shortcut) {
+    _behaviors[_getShortcutID(shortcut)]?.call();
+  }
+
+  String _getShortcutID(LogicalKeySet shortcut) {
+    return shortcut.keys
+        .map((key) {
+          if (key == LogicalKeyboardKey.control ||
+              key == LogicalKeyboardKey.controlLeft ||
+              key == LogicalKeyboardKey.controlRight) {
+            return LogicalKeyboardKey.control.toString();
+          } else if (key == LogicalKeyboardKey.alt ||
+              key == LogicalKeyboardKey.altLeft ||
+              key == LogicalKeyboardKey.altRight) {
+            return LogicalKeyboardKey.alt.toString();
+          } else if (key == LogicalKeyboardKey.shift ||
+              key == LogicalKeyboardKey.shiftLeft ||
+              key == LogicalKeyboardKey.shiftRight) {
+            return LogicalKeyboardKey.shift.toString();
+          } else {
+            return key.toString();
+          }
+        })
+        .sorted((a, b) => a.compareTo(b))
+        .join('-');
+  }
+}
+
+/// Extension method to check if two shortcuts match.
 extension ShortcutMatchesMixin on LogicalKeySet {
   /// Checks if two shortcuts match.
   ///
