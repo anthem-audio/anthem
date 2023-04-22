@@ -16,9 +16,9 @@
 	// 	"description": "Log output to console"
 	// }
 
-	"License Notice (Rust)": {
+	"License Notice (C++)": {
 		"prefix": ["license", "copyright"],
-		"scope": "rust",
+		"scope": "c,cpp",
 		"body": [
 			"/*",
 			"    Copyright (C) 2023 $1",
@@ -70,25 +70,5 @@
 			"$0",
 			""
 		]
-	},
-
-	"Command Impl": {
-		"prefix": ["command"],
-		"scope": "rust",
-		"body": [
-			"pub struct $1Command {",
-			"    $0",
-			"}",
-			"",
-			"impl Command for $1Command {",
-			"    fn execute(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {",
-			"        vec![]",
-			"    }",
-			"",
-			"    fn rollback(&self, project: &mut Project, request_id: u64) -> Vec<Reply> {",
-			"        vec![]",
-			"    }",
-			"}",
-		],
 	}
 }
