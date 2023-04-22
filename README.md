@@ -16,9 +16,24 @@ Anthem is developed with cross-platform technologies, and is designed to run on 
 
 Anthem is developed with the Flutter framework. You can see instructions for installing Flutter for your environment [here](https://docs.flutter.dev/get-started/install).
 
+In addition to Flutter, Anthem needs the following:
+- The MSVC C++ compiler (already required by Flutter)
+- CMake (https://cmake.org/)
+- Boost 1.82.0 or later (https://www.boost.org/). In order for Anthem to find Boost and link to it correctly, make sure to do the following (instructions for Windows):
+    1. Download the Boost distribution.
+    2. Unzip the distribution somewhere.
+    3. Set an evironment variable called `BOOST_ROOT` to the path of the folder you extracted boost into (e.g. "C:/.../Code/boost_1_82_0").
+    4. Open a terminal and navigate to the extracted Boost folder.
+    5. Run `.\bootstrap.bat`, which generates an executable `.\b2.exe`.
+    6. Run `.\b2.exe`.
+- The Flatbuffers v23.3.3 compiler (https://github.com/google/flatbuffers/releases/tag/v23.3.3).
+    - Be sure that the flatbuffers compiler (`flatc.exe`) is in your PATH. You should be able to run `flatc -h` from a terminal in any folder.
+
 ### Instructions
 
-1. Clone this repository
-2. Navigate to the repository and run `flutter pub get`.
-3. Open a new terminal session and run `flutter pub run build_runner watch`. This will run Dart-related code generation, and keep the generated files up-to-date as you develop.
-4. Use `flutter run` to run Anthem, or start Anthem via your IDE.
+1. Clone this repository with `--recurse-submodules`: `git clone --recurse-submodules https://github.com/anthem-audio/anthem.git`
+2. Navigate to the cloned repository.
+3. Run `.\scripts\bindgen.ps1`. We use Flatbuffers to encode messages between the UI and engine processes, and this script generates the Dart and C++ APIs for encoding and decoding the messages.
+4. Run `.\scripts\build.ps1`. This will build the engine executable and the UI-to-engine IPC layer.
+5. Open a new terminal session and run `flutter pub run build_runner watch`. This will run Dart-related code generation, and keep the generated files up-to-date as you develop.
+6. Use `flutter run` to run Anthem, or start Anthem via your IDE.
