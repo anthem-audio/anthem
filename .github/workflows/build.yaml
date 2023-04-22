@@ -6,19 +6,34 @@ jobs:
     steps:
       - name: Check out Anthem
         uses: actions/checkout@v3
+
+      - name: Install Boost
+        uses: MarkusJx/install-boost@v2.4.4
+        id: install-boost
+        with:
+          boost_version: 1.81.0
+          platform_version: 2022
+          toolset: msvc
+
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.7.7'
           channel: 'stable'
           cache: true
-      
+
+      # Navigate to repository root
+      - run: cd ${{ github.workspace }}
+
       # Set up environment
       - name: Set up environment
         run: .\scripts\setup.ps1
 
-      # Navigate to repository root
-      - run: cd ${{ github.workspace }}
+      # Build engine
+      - name: Build engine
+        run: .\scripts\build.ps1
+        env:
+          BOOST_ROOT: ${{ steps.install-boost.outputs.BOOST_ROOT }}
 
       # Get dependencies for Flutter
       - name: Get dependencies
