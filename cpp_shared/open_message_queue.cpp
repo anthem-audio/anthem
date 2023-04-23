@@ -17,7 +17,7 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "create_message_queue.h"
+#include "open_message_queue.h"
 
 std::unique_ptr<message_queue> openMessageQueue(const char *name)
 {

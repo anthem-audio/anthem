@@ -35,6 +35,10 @@ jobs:
       - name: Set up environment
         run: .\scripts\setup.ps1
 
+      # Run bindgen
+      - name: Run bindgen
+        run: .\scripts\bindgen.ps1
+
       # Build engine
       - name: Build engine
         run: .\scripts\build.ps1
