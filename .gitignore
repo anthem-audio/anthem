@@ -46,8 +46,11 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-logs/
+/lib/generated/
 
 # Engine
-assets/EngineConnector.dll
+/assets/EngineConnector.dll
+/assets/AnthemEngine.exe
 /engine_connector/build/
+/engine/build/
+/engine/generated/

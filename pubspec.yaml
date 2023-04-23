@@ -41,6 +41,7 @@ dependencies:
   vector_math: ^2.1.2
   mobx: ^2.1.4
   flutter_mobx: ^2.0.6+5
+  flat_buffers: ^2.0.5
 
 dev_dependencies:
   json_serializable: ^6.6.1

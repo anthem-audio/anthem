@@ -1,0 +1,33 @@
+table Add {
+  a: int;
+  b: int;
+}
+
+table Subtract {
+  a: int;
+  b: int;
+}
+
+table Exit {}
+
+union Command { Add, Subtract, Exit }
+
+table AddReturnValue {
+  value: int;
+}
+
+table SubtractReturnValue {
+  value: int;
+}
+
+union ReturnValue { AddReturnValue, SubtractReturnValue }
+
+table Request {
+  id: int;
+  command: Command;
+}
+
+table Response {
+  id: int;
+  return_value: ReturnValue;
+}

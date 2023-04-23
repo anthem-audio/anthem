@@ -16,8 +16,8 @@ include_directories(${CMAKE_SOURCE_DIR}/../cpp_shared)
 # Set the sources for the EngineConnector executable
 set(ENGINE_CONNECTOR_SOURCES
     src/main.cpp
-    ../cpp_shared/create_message_queue.h
-    ../cpp_shared/create_message_queue.cpp
+    ../cpp_shared/open_message_queue.h
+    ../cpp_shared/open_message_queue.cpp
 )
 
 # Create the EngineConnector shared library (DLL)

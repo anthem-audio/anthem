@@ -20,7 +20,7 @@
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <iostream>
 
-#include "create_message_queue.h"
+#include "open_message_queue.h"
 
 using namespace boost::interprocess;
 
