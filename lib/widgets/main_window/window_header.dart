@@ -128,6 +128,59 @@ class _WindowHeaderState extends State<WindowHeader> {
                           bottomRight: Radius.circular(1),
                         ),
                       ),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: Row(
+                          children: [
+                            const Expanded(child: SizedBox()),
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  top: 4, right: 4, bottom: 4),
+                              child: Button(
+                                width: 20,
+                                height: 20,
+                                contentPadding: const EdgeInsets.all(3),
+                                variant: ButtonVariant.label,
+                                startIcon: Icons.minimize,
+                                onPress: () {
+                                  appWindow.minimize();
+                                },
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  top: 4, right: 4, bottom: 4),
+                              child: Button(
+                                width: 20,
+                                height: 20,
+                                // Putting 2.9 here fixes a weird rounding
+                                // issue when drawing the SVG icon, at the cost
+                                // of a very slight 1px halo around the icon.
+                                contentPadding: const EdgeInsets.all(2.9),
+                                variant: ButtonVariant.label,
+                                startIcon: Icons.maximize,
+                                onPress: () {
+                                  appWindow.maximizeOrRestore();
+                                },
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  top: 4, right: 4, bottom: 4),
+                              child: Button(
+                                width: 20,
+                                height: 20,
+                                contentPadding: const EdgeInsets.all(3),
+                                variant: ButtonVariant.label,
+                                startIcon: Icons.close,
+                                onPress: () {
+                                  appWindow.close();
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
