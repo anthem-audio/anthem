@@ -40,27 +40,4 @@ abstract class _AppModel with Store {
       : projects = ObservableMap.of({}),
         projectOrder = ObservableList.of([]),
         activeProjectID = '';
-
-  void addProject(ProjectModel project) {
-    projects[project.id] = project;
-    projectOrder.add(project.id);
-    activeProjectID = project.id;
-  }
-
-  void setActiveProject(ID projectID) {
-    activeProjectID = projectID;
-  }
-
-  void closeProject(ID projectID) {
-    projects.remove(projectID);
-    projectOrder.removeWhere((element) => element == projectID);
-    if (activeProjectID == projectID && projectOrder.isNotEmpty) {
-      activeProjectID = projectOrder[0];
-    }
-  }
-
-  void init() {
-    final model = ProjectModel.create();
-    addProject(model);
-  }
 }

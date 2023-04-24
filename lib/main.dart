@@ -23,16 +23,36 @@ import 'package:anthem/theme.dart' as anthem_theme;
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_window_close/flutter_window_close.dart';
 import 'package:provider/provider.dart';
 
+import 'model/project.dart';
 import 'model/store.dart';
 import 'widgets/main_window/main_window.dart';
 
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 
 void main() async {
-  AnthemStore.instance.init();
+  final store = AnthemStore.instance;
+
+  final projectModel = ProjectModel.create();
+  store.projects[projectModel.id] = projectModel;
+  store.projectOrder.add(projectModel.id);
+  store.activeProjectID = projectModel.id;
+
   runApp(const MyApp());
+
+  // Make sure all engines are stopped before the application is closed
+  FlutterWindowClose.setWindowShouldCloseHandler(() async {
+    // Kill any running engine processes
+    final store = AnthemStore.instance;
+
+    for (final project in store.projects.values) {
+      project.engineConnector.dispose();
+    }
+
+    return true;
+  });
 
   doWhenWindowReady(() {
     // const initialSize = Size(800, 600);
