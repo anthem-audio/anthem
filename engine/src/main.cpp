@@ -20,11 +20,33 @@
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <iostream>
 #include <string>
+#include <thread>
+#include <chrono>
+#include <cstdlib>
 
 #include "messages_generated.h"
 #include "open_message_queue.h"
 
 using namespace boost::interprocess;
+
+std::unique_ptr<message_queue> mqToUi;
+std::unique_ptr<message_queue> mqFromUi;
+
+bool heartbeatOccurred = true;
+
+// Checks for a recent heartbeat every 10 seconds. If there wasn't one, we exit
+// the application.
+void heartbeat() {
+    while (true) {
+        if (!heartbeatOccurred) {
+            std::exit(0);
+        }
+
+        heartbeatOccurred = false;
+
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+    }
+}
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -39,7 +61,7 @@ int main(int argc, char* argv[]) {
     std::cout << "Creating engine-to-ui message queue" << std::endl;
 
     // Create a message_queue.
-    auto mqToUi = std::unique_ptr<message_queue>(
+    mqToUi = std::unique_ptr<message_queue>(
         new message_queue(
             create_only,
             mqToUiName.c_str(),
@@ -51,8 +73,10 @@ int main(int argc, char* argv[]) {
             65536));
 
     std::cout << "Opening ui-to-engine message queue" << std::endl;
-    auto mqFromUi = openMessageQueue(mqFromUiName.c_str());
+    mqFromUi = openMessageQueue(mqFromUiName.c_str());
     std::cout << "Opened successfully" << std::endl;
+
+    std::thread heartbeat_thread(heartbeat);
 
     uint8_t buffer[65536];
 
@@ -101,6 +125,10 @@ int main(int argc, char* argv[]) {
             }
             case Command_Exit: {
                 return 0;
+            }
+            case Command_Heartbeat: {
+                heartbeatOccurred = true;
+                continue;
             }
             // Handle other commands here
             default: {

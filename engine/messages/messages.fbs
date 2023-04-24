@@ -10,7 +10,9 @@ table Subtract {
 
 table Exit {}
 
-union Command { Add, Subtract, Exit }
+table Heartbeat {}
+
+union Command { Add, Subtract, Heartbeat, Exit }
 
 table AddReturnValue {
   value: int;

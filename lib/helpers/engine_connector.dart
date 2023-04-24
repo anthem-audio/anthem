@@ -25,9 +25,13 @@ import 'dart:isolate';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
 
+import 'package:anthem/generated/messages_generated.dart';
+
 const path = './data/flutter_assets/assets/EngineConnector.dll';
 final engineConnectorLib =
     DynamicLibrary.open('./data/flutter_assets/assets/EngineConnector.dll');
+
+var requestIdGen = 0;
 
 typedef ConnectFuncNative = Void Function(Pointer<Utf8>);
 typedef ConnectFuncDart = void Function(Pointer<Utf8>);
@@ -79,6 +83,10 @@ class EngineConnector {
 
   final List<Uint8List> _bufferedRequests = [];
 
+  /// Timer that sends a heartbeat message to the engine every 5 seconds. If
+  /// the engine doesn't receive one after 10 seconds, it will stop itself.
+  late Timer _engineHeartbeatTimer;
+
   EngineConnector(this.id, [this.onReply]) {
     _cleanUpMessageQueues = engineConnectorLib.lookupFunction<
         CleanUpMessageQueuesFuncNative,
@@ -105,9 +113,25 @@ class EngineConnector {
         send(request);
       }
     });
+
+    _engineHeartbeatTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (timer) {
+        final heartbeat = RequestObjectBuilder(
+          id: requestIdGen++,
+          commandType: CommandTypeId.Heartbeat,
+          command: HeartbeatObjectBuilder(),
+        ).toBytes();
+        send(heartbeat);
+      },
+    );
   }
 
   Future<void> _init() async {
+    if (kDebugMode) {
+      print('Starting engine with ID: $id');
+    }
+
     // We start the engine process before trying to connect. The connect
     // function blocks when trying to open the engine's message queue, so the
     // engine's message queue must already exist before we try to connect.
@@ -189,6 +213,9 @@ class EngineConnector {
 
     // Kill isolate that is waiting for engine replies
     receiveIsolate.kill();
+
+    // Stop the timer that sends heartbeat messages to the engine
+    _engineHeartbeatTimer.cancel();
 
     // Clean up message queues. These will be persisted by the OS if we don't
     // clean them up.
