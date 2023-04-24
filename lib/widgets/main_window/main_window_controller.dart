@@ -39,7 +39,7 @@ class MainWindowController {
   // Returns the ID of the new tab
   ID newProject() {
     ProjectModel project = ProjectModel.create();
-    
+
     _addProject(project);
 
     return project.id;
