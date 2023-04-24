@@ -139,8 +139,9 @@ class _WindowHeaderState extends State<WindowHeader> {
                               child: Button(
                                 width: 20,
                                 height: 20,
-                                contentPadding: const EdgeInsets.all(3),
-                                variant: ButtonVariant.label,
+                                contentPadding: const EdgeInsets.all(2),
+                                variant: ButtonVariant.ghost,
+                                hideBorder: true,
                                 startIcon: Icons.minimize,
                                 onPress: () {
                                   appWindow.minimize();
@@ -153,11 +154,9 @@ class _WindowHeaderState extends State<WindowHeader> {
                               child: Button(
                                 width: 20,
                                 height: 20,
-                                // Putting 2.9 here fixes a weird rounding
-                                // issue when drawing the SVG icon, at the cost
-                                // of a very slight 1px halo around the icon.
-                                contentPadding: const EdgeInsets.all(2.9),
-                                variant: ButtonVariant.label,
+                                contentPadding: const EdgeInsets.all(2),
+                                variant: ButtonVariant.ghost,
+                                hideBorder: true,
                                 startIcon: Icons.maximize,
                                 onPress: () {
                                   appWindow.maximizeOrRestore();
@@ -170,8 +169,9 @@ class _WindowHeaderState extends State<WindowHeader> {
                               child: Button(
                                 width: 20,
                                 height: 20,
-                                contentPadding: const EdgeInsets.all(3),
-                                variant: ButtonVariant.label,
+                                contentPadding: const EdgeInsets.all(2),
+                                variant: ButtonVariant.ghost,
+                                hideBorder: true,
                                 startIcon: Icons.close,
                                 onPress: () {
                                   appWindow.close();

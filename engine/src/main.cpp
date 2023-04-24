@@ -19,20 +19,30 @@
 
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <iostream>
+#include <string>
 
 #include "messages_generated.h"
 #include "open_message_queue.h"
 
 using namespace boost::interprocess;
 
-int main() {
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        std::cerr << "Engine ID was not provided. Exiting..." << std::endl;
+        return 1;
+    }
+
+    std::string idStr(argv[1]);
+    std::string mqToUiName = "engine-to-ui-" + idStr;
+    std::string mqFromUiName = "ui-to-engine-" + idStr;
+
     std::cout << "Creating engine-to-ui message queue" << std::endl;
 
     // Create a message_queue.
     auto mqToUi = std::unique_ptr<message_queue>(
         new message_queue(
             create_only,
-            "engine-to-ui",
+            mqToUiName.c_str(),
 
             // 100 messages can be in the queue at once
             100,
@@ -41,7 +51,7 @@ int main() {
             65536));
 
     std::cout << "Opening ui-to-engine message queue" << std::endl;
-    auto mqFromUi = openMessageQueue("ui-to-engine");
+    auto mqFromUi = openMessageQueue(mqFromUiName.c_str());
     std::cout << "Opened successfully" << std::endl;
 
     uint8_t buffer[65536];

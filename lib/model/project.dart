@@ -20,6 +20,7 @@
 import 'package:anthem/commands/command.dart';
 import 'package:anthem/commands/command_queue.dart';
 import 'package:anthem/commands/journal_commands.dart';
+import 'package:anthem/helpers/engine_connector.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/song.dart';
 import 'package:json_annotation/json_annotation.dart';
@@ -128,6 +129,13 @@ abstract class _ProjectModel extends Hydratable with Store {
   @JsonKey(includeFromJson: false, includeToJson: false)
   bool _journalPageActive = false;
 
+  // Engine
+
+  final engineConnectorID = getID();
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  late EngineConnector engineConnector;
+
   // This method is used for deserialization and so doesn't create new child
   // models.
   _ProjectModel() : super();
@@ -136,6 +144,8 @@ abstract class _ProjectModel extends Hydratable with Store {
     song = SongModel.create(
       project: this as ProjectModel,
     );
+
+    engineConnector = EngineConnector(engineConnectorID);
 
     // We don't need to hydrate here. All `SomeModel.Create()` functions should
     // call hydrate().
@@ -150,6 +160,9 @@ abstract class _ProjectModel extends Hydratable with Store {
     song.hydrate(
       project: this as ProjectModel,
     );
+
+    engineConnector = EngineConnector(engineConnectorID);
+
     isHydrated = true;
   }
 

@@ -28,18 +28,42 @@ import 'package:anthem/model/store.dart';
 import 'package:flutter/foundation.dart';
 
 class MainWindowController {
+  void _addProject(ProjectModel project) {
+    final store = AnthemStore.instance;
+
+    store.projects[project.id] = project;
+    store.projectOrder.add(project.id);
+    store.activeProjectID = project.id;
+  }
+
   // Returns the ID of the new tab
   ID newProject() {
     ProjectModel project = ProjectModel.create();
-    AnthemStore.instance.addProject(project);
+    
+    _addProject(project);
+
     return project.id;
   }
 
-  void switchTab(ID newTabID) =>
-      AnthemStore.instance.setActiveProject(newTabID);
+  void switchTab(ID newTabID) {
+    AnthemStore.instance.activeProjectID = newTabID;
+  }
 
-  void closeProject(ID projectID) =>
-      AnthemStore.instance.closeProject(projectID);
+  void closeProject(ID projectID) {
+    final store = AnthemStore.instance;
+
+    // Stop engine
+    store.projects[projectID]!.engineConnector.dispose();
+
+    // Remove project from model
+    store.projects.remove(projectID);
+    store.projectOrder.removeWhere((element) => element == projectID);
+
+    // If the active project was closed, set it to the first open project
+    if (store.activeProjectID == projectID && store.projectOrder.isNotEmpty) {
+      store.activeProjectID = store.projectOrder[0];
+    }
+  }
 
   /// Returns the ID of the loaded project, or null if the project load failed
   /// or was cancelled
@@ -54,7 +78,7 @@ class MainWindowController {
     final file = await File(path).readAsString();
 
     final project = ProjectModel.fromJson(json.decode(file))..hydrate();
-    AnthemStore.instance.addProject(project);
+    _addProject(project);
 
     return project.id;
   }

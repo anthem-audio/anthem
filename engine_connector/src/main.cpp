@@ -39,19 +39,27 @@ int request_id = 0;
 
 extern "C"
 {
-    _declspec(dllexport) void _stdcall cleanupPreviousMessageQueues()
+    _declspec(dllexport) void _stdcall cleanUpMessageQueues(const char* engineID)
     {
-        message_queue::remove("ui-to-engine");
-        message_queue::remove("engine-to-ui");
+        std::string engineIdStr(engineID);
+        auto mqToEngineName = "ui-to-engine-" + engineIdStr;
+        auto mqFromEngineName = "engine-to-ui-" + engineIdStr;
+
+        message_queue::remove(mqToEngineName.c_str());
+        message_queue::remove(mqFromEngineName.c_str());
     }
 
-    __declspec(dllexport) void __stdcall connect()
+    __declspec(dllexport) void __stdcall connect(const char* engineID)
     {
+        std::string engineIdStr(engineID);
+        auto mqToEngineName = "ui-to-engine-" + engineIdStr;
+        auto mqFromEngineName = "engine-to-ui-" + engineIdStr;
+
         // Create a message_queue.
         mqToEngine = std::unique_ptr<message_queue>(
             new message_queue(
                 create_only,
-                "ui-to-engine",
+                mqToEngineName.c_str(),
 
                 // 100 messages can be in the queue at once
                 100,
@@ -60,7 +68,7 @@ extern "C"
                 65536));
 
         std::cout << "Opening engine-to-ui message queue..." << std::endl;
-        mqFromEngine = openMessageQueue("engine-to-ui");
+        mqFromEngine = openMessageQueue(mqFromEngineName.c_str());
         std::cout << "Opened successfully." << std::endl;
     }
 

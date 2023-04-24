@@ -22,13 +22,18 @@ import 'dart:ffi';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
 
-typedef ConnectFuncNative = Void Function();
-typedef ConnectFuncDart = void Function();
+const path = './data/flutter_assets/assets/EngineConnector.dll';
+final engineConnectorLib =
+    DynamicLibrary.open('./data/flutter_assets/assets/EngineConnector.dll');
 
-typedef CleanupPreviousMessageQueuesFuncNative = Void Function();
-typedef CleanupPreviousMessageQueuesFuncDart = void Function();
+typedef ConnectFuncNative = Void Function(Pointer<Utf8>);
+typedef ConnectFuncDart = void Function(Pointer<Utf8>);
+
+typedef CleanUpMessageQueuesFuncNative = Void Function(Pointer<Utf8>);
+typedef CleanUpMessageQueuesFuncDart = void Function(Pointer<Utf8>);
 
 typedef GetMessageSendBufferFuncNative = Pointer<Uint8> Function();
 typedef GetMessageSendBufferFuncDart = Pointer<Uint8> Function();
@@ -49,10 +54,10 @@ typedef TryReceiveFuncNative = Bool Function();
 typedef TryReceiveFuncDart = bool Function();
 
 class EngineConnector {
-  DynamicLibrary engineConnectorLib;
+  String id;
 
   late ConnectFuncDart _connect;
-  late CleanupPreviousMessageQueuesFuncDart _cleanupPreviousMessageQueues;
+  late CleanUpMessageQueuesFuncDart _cleanUpMessageQueues;
   late GetMessageSendBufferFuncDart _getMessageSendBuffer;
   late GetMessageReceiveBufferFuncDart _getMessageReceiveBuffer;
   late GetLastReceivedMessageSizeFuncDart _getLastReceivedMessageSize;
@@ -74,10 +79,10 @@ class EngineConnector {
 
   final List<Uint8List> _bufferedRequests = [];
 
-  EngineConnector(this.engineConnectorLib, [this.onReply]) {
-    _cleanupPreviousMessageQueues = engineConnectorLib.lookupFunction<
-        CleanupPreviousMessageQueuesFuncNative,
-        CleanupPreviousMessageQueuesFuncDart>('cleanupPreviousMessageQueues');
+  EngineConnector(this.id, [this.onReply]) {
+    _cleanUpMessageQueues = engineConnectorLib.lookupFunction<
+        CleanUpMessageQueuesFuncNative,
+        CleanUpMessageQueuesFuncDart>('cleanUpMessageQueues');
     _connect = engineConnectorLib
         .lookupFunction<ConnectFuncNative, ConnectFuncDart>('connect');
     _getMessageSendBuffer = engineConnectorLib.lookupFunction<
@@ -103,23 +108,21 @@ class EngineConnector {
   }
 
   Future<void> _init() async {
-    // We have to clean up any possibly-not-cleaned-up message queues first, or
-    // the engine process will crash.
-    _cleanupPreviousMessageQueues();
-
     // We start the engine process before trying to connect. The connect
     // function blocks when trying to open the engine's message queue, so the
     // engine's message queue must already exist before we try to connect.
     final mainExecutablePath = File(Platform.resolvedExecutable);
     engineProcess = await Process.start(
-      '${mainExecutablePath.parent.path}/data/flutter_assets/assets/Engine.exe',
-      [],
+      '${mainExecutablePath.parent.path}/data/flutter_assets/assets/AnthemEngine.exe',
+      [id],
     );
 
     // Now that the engine has created its message queue and is waiting for
     // ours, we will create our message queue and open the engine's message
     // queue.
-    _connect();
+    final idPtr = id.toNativeUtf8();
+    _connect(idPtr);
+    calloc.free(idPtr);
 
     _messageSendBuffer = _getMessageSendBuffer();
     _messageReceiveBuffer = _getMessageReceiveBuffer();
@@ -181,7 +184,17 @@ class EngineConnector {
   }
 
   void dispose() {
+    // Kill engine process
     engineProcess.kill();
+
+    // Kill isolate that is waiting for engine replies
+    receiveIsolate.kill();
+
+    // Clean up message queues. These will be persisted by the OS if we don't
+    // clean them up.
+    final idPtr = id.toNativeUtf8();
+    _cleanUpMessageQueues(idPtr);
+    calloc.free(idPtr);
   }
 }
 

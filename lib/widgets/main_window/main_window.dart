@@ -70,10 +70,10 @@ class _MainWindowState extends State<MainWindow> {
                       selectedTabID: store.activeProjectID,
                       tabs: tabs,
                       setActiveProject: (ID id) {
-                        store.setActiveProject(id);
+                        controller.switchTab(id);
                       },
                       closeProject: (ID id) {
-                        store.closeProject(id);
+                        controller.closeProject(id);
                       },
                     ),
                     Expanded(
