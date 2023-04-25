@@ -27,10 +27,25 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(const Request*
             return std::nullopt;
         }
         case Command_GetPlugins: {
-            std::vector<flatbuffers::Offset<flatbuffers::String>> pluginList;
-            pluginList.push_back(builder.CreateString(":)"));
+            auto& pluginManager = anthem->engine->getPluginManager();
 
-            auto pluginListOffset = builder.CreateVector(pluginList);
+            auto plugins = pluginManager.knownPluginList.getTypes();
+
+            std::vector<flatbuffers::Offset<flatbuffers::String>> fbPluginList;
+
+            if (plugins.size() == 0) {
+                fbPluginList.push_back(builder.CreateString("(:"));
+            } else {
+                for (auto plugin : plugins) {
+                    fbPluginList.push_back(
+                        builder.CreateString(
+                            plugin.name.toStdString() + " - " + plugin.descriptiveName.toStdString()
+                        )
+                    );
+                }
+            }
+
+            auto pluginListOffset = builder.CreateVector(fbPluginList);
 
             auto response = CreateGetPluginsResponse(builder, pluginListOffset);
             auto response_offset = response.Union();
