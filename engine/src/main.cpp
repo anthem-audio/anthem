@@ -33,8 +33,12 @@
 
 #include "messages_generated.h"
 #include "open_message_queue.h"
+#include "anthem.h"
+#include "./command_handlers/project_command_handler.h"
 
 using namespace boost::interprocess;
+
+Anthem* anthem = new Anthem();
 
 std::unique_ptr<message_queue> mqToUi;
 std::unique_ptr<message_queue> mqFromUi;
@@ -115,26 +119,6 @@ void messageLoop() {
         int a, b;
         ReturnValue return_value_type;
         switch (command_type) {
-            case Command_Add: {
-                auto add = request->command_as_Add();
-                a = add->a();
-                b = add->b();
-                std::cout << "Received Add command: " << a << " + " << b << std::endl;
-                auto add_return_value = CreateAddReturnValue(builder, a + b);
-                return_value_offset = add_return_value.Union();
-                return_value_type = ReturnValue_AddReturnValue;
-                break;
-            }
-            case Command_Subtract: {
-                auto subtract = request->command_as_Subtract();
-                a = subtract->a();
-                b = subtract->b();
-                std::cout << "Received Subtract command: " << a << " - " << b << std::endl;
-                auto subtract_return_value = CreateSubtractReturnValue(builder, a - b);
-                return_value_offset = subtract_return_value.Union();
-                return_value_type = ReturnValue_SubtractReturnValue;
-                break;
-            }
             case Command_Exit: {
                 juce::JUCEApplication::quit();
             }
@@ -142,7 +126,9 @@ void messageLoop() {
                 heartbeatOccurred = true;
                 continue;
             }
-            // Handle other commands here
+            case Command_AddGenerator:
+                handleProjectCommand(request, anthem);
+                break;
             default: {
                 std::cerr << "Received unknown command" << std::endl;
                 break;
