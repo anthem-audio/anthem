@@ -6,6 +6,8 @@ jobs:
     steps:
       - name: Check out Anthem
         uses: actions/checkout@v3
+        with:
+          submodules: recursive
 
       - name: Install flatbuffers compiler
         run: |
@@ -24,12 +26,9 @@ jobs:
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.7.7'
+          flutter-version: '3.7.12'
           channel: 'stable'
           cache: true
-
-      # Navigate to repository root
-      - run: cd ${{ github.workspace }}
 
       # Set up environment
       - name: Set up environment

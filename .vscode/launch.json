@@ -1,0 +1,36 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "anthem",
+      "request": "launch",
+      "type": "dart"
+    },
+    {
+      "name": "anthem (profile mode)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "profile"
+    },
+    {
+      "name": "anthem (release mode)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "release"
+    },
+    {
+      "name": "(Windows) Launch Engine",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/engine/build/AnthemEngine_artefacts/Debug/AnthemEngine.exe",
+      "args": ["-4WDaIANDw0v9d"],
+      "stopAtEntry": false,
+      "cwd": "${fileDirname}",
+      "environment": [],
+      "console": "externalTerminal"
+    }
+  ]
+}

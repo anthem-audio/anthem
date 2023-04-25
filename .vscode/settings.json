@@ -12,6 +12,7 @@
     "dylib",
     "fuzzywuzzy",
     "flatbuffers",
+    "juce",
     "LTWH",
     "mobx",
     "relayout",

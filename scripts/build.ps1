@@ -8,6 +8,6 @@ Copy-Item -Path ".\engine_connector\build\Debug\EngineConnector.dll" -Destinatio
 
 # Build engine executable
 .\engine\build.ps1
-Copy-Item -Path ".\engine\build\Debug\AnthemEngine.exe" -Destination ".\assets\AnthemEngine.exe"
+Copy-Item -Path ".\engine\build\AnthemEngine_artefacts\Debug\AnthemEngine.exe" -Destination ".\assets\AnthemEngine.exe"
 
 Pop-Location
