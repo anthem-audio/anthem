@@ -53,7 +53,7 @@ class MainWindowController {
     final store = AnthemStore.instance;
 
     // Stop engine
-    store.projects[projectID]!.engineConnector.dispose();
+    store.projects[projectID]!.engine.dispose();
 
     // Remove project from model
     store.projects.remove(projectID);

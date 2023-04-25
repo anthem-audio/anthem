@@ -48,7 +48,7 @@ void main() async {
     final store = AnthemStore.instance;
 
     for (final project in store.projects.values) {
-      project.engineConnector.dispose();
+      project.engine.dispose();
     }
 
     return true;
