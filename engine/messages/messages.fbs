@@ -1,28 +1,18 @@
-table Add {
-  a: int;
-  b: int;
-}
-
-table Subtract {
-  a: int;
-  b: int;
-}
+include "project.fbs";
 
 table Exit {}
-
 table Heartbeat {}
 
-union Command { Add, Subtract, Heartbeat, Exit }
+union Command {
+  // Application commands
+  Heartbeat,
+  Exit,
 
-table AddReturnValue {
-  value: int;
+  // Project commands
+  AddGenerator,
 }
 
-table SubtractReturnValue {
-  value: int;
-}
-
-union ReturnValue { AddReturnValue, SubtractReturnValue }
+union ReturnValue { }
 
 table Request {
   id: int;

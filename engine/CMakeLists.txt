@@ -31,7 +31,12 @@ juce_add_console_app(AnthemEngine ANTHEM_ENGINE "Anthem Engine" VERSION "0.0.1")
 # Set the sources for the AnthemEngine executable
 set(ANTHEM_ENGINE_SOURCES
     src/main.cpp
+    src/anthem.h
+    src/anthem.cpp
+    src/command_handlers/project_command_handler.h
+    src/command_handlers/project_command_handler.cpp
     generated/messages_generated.h
+    generated/project_generated.h
     ../cpp_shared/open_message_queue.h
     ../cpp_shared/open_message_queue.cpp
 )
