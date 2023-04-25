@@ -81,7 +81,7 @@ class EngineConnector {
   late Isolate receiveIsolate;
   late ReceivePort mainToIsolateReceivePort;
 
-  late Process engineProcess;
+  Process? engineProcess;
 
   Function(Uint8List reply)? onReply;
 
@@ -216,7 +216,7 @@ class EngineConnector {
 
   void dispose() {
     // Kill engine process
-    engineProcess.kill();
+    engineProcess?.kill();
 
     // Kill isolate that is waiting for engine replies
     receiveIsolate.kill();

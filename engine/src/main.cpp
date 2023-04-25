@@ -185,6 +185,15 @@ public:
     {
         std::cout << "Engine application start" << std::endl;
         anthem = new Anthem();
+
+        // std::cout << "Start plugin scan..." << std::endl;
+        // anthem->engine->getPluginManager().startChildProcessPluginScan("");
+        // std::cout << "Done." << std::endl;
+
+        std::cout << "Initialising default Tracktion plugins..." << std::endl;
+        anthem->engine->getPluginManager().initialise();
+        std::cout << "Done." << std::endl;
+
         messageLoopThread = std::thread(messageLoop);
     }
 };
