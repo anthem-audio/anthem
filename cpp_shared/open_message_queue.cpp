@@ -40,7 +40,7 @@ std::unique_ptr<message_queue> openMessageQueue(const char *name)
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
 
-        if (count > 100)
+        if (count > 200)
         {
             throw std::runtime_error("Failed to open message queue.");
         }

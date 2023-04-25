@@ -17,7 +17,14 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <juce_core/juce_core.h>
+#include <juce_events/juce_events.h>
+#include <juce_audio_devices/juce_audio_devices.h>
+
+#include <tracktion_engine/tracktion_engine.h>
+
 #include <boost/interprocess/ipc/message_queue.hpp>
+
 #include <iostream>
 #include <string>
 #include <thread>
@@ -48,15 +55,20 @@ void heartbeat() {
     }
 }
 
-int main(int argc, char* argv[]) {
-    if (argc < 2) {
+std::thread messageLoopThread;
+
+// Main loop that listens for messages from the UI and responds to them
+void messageLoop() {
+    auto idStr = juce::JUCEApplication::getCommandLineParameters();
+
+    if (idStr.length() == 0) {
         std::cerr << "Engine ID was not provided. Exiting..." << std::endl;
-        return 1;
+        juce::JUCEApplication::quit();
+        return;
     }
 
-    std::string idStr(argv[1]);
-    std::string mqToUiName = "engine-to-ui-" + idStr;
-    std::string mqFromUiName = "ui-to-engine-" + idStr;
+    auto mqToUiName = "engine-to-ui-" + idStr;
+    auto mqFromUiName = "ui-to-engine-" + idStr;
 
     std::cout << "Creating engine-to-ui message queue" << std::endl;
 
@@ -64,7 +76,7 @@ int main(int argc, char* argv[]) {
     mqToUi = std::unique_ptr<message_queue>(
         new message_queue(
             create_only,
-            mqToUiName.c_str(),
+            mqToUiName.toStdString().c_str(),
 
             // 100 messages can be in the queue at once
             100,
@@ -73,7 +85,7 @@ int main(int argc, char* argv[]) {
             65536));
 
     std::cout << "Opening ui-to-engine message queue" << std::endl;
-    mqFromUi = openMessageQueue(mqFromUiName.c_str());
+    mqFromUi = openMessageQueue(mqFromUiName.toStdString().c_str());
     std::cout << "Opened successfully" << std::endl;
 
     std::thread heartbeat_thread(heartbeat);
@@ -124,7 +136,7 @@ int main(int argc, char* argv[]) {
                 break;
             }
             case Command_Exit: {
-                return 0;
+                juce::JUCEApplication::quit();
             }
             case Command_Heartbeat: {
                 heartbeatOccurred = true;
@@ -148,6 +160,45 @@ int main(int argc, char* argv[]) {
         // Send the response to the UI
         mqToUi->send(receive_buffer_ptr, buffer_size, 0);
     }
-
-    return 0;
 }
+
+class AnthemEngineApplication : public juce::JUCEApplicationBase, private juce::ChangeListener
+{
+private:
+    void changeListenerCallback(juce::ChangeBroadcaster *source) override
+    {
+        std::cout << "change detected" << std::endl;
+    }
+
+public:
+    AnthemEngineApplication() {}
+
+    const juce::String getApplicationName() override { return "JUCE_APPLICATION_NAME_STRING"; }
+    const juce::String getApplicationVersion() override { return "0.0.1"; }
+
+    bool moreThanOneInstanceAllowed() override { return true; }
+
+    void anotherInstanceStarted(const juce::String &commandLineParameters) override {}
+    void suspended() override {}
+    void resumed() override {}
+    void shutdown() override {}
+
+    void systemRequestedQuit() override
+    {
+        setApplicationReturnValue(0);
+        quit();
+    }
+
+    void unhandledException(const std::exception *exception, const juce::String &sourceFilename,
+                            int lineNumber) override
+    {
+        // This might not work
+    }
+
+    void initialise(const juce::String &commandLineParameters) override
+    {
+        messageLoopThread = std::thread(messageLoop);
+    }
+};
+
+START_JUCE_APPLICATION(AnthemEngineApplication);

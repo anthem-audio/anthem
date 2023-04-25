@@ -2,8 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 
 project(EngineConnector VERSION 1.0.0 LANGUAGES CXX)
 
-# Set the C++ standard to C++11
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 20)
 
 find_package(Boost 1.81.0 REQUIRED)
 
