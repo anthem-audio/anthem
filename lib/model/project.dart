@@ -20,7 +20,7 @@
 import 'package:anthem/commands/command.dart';
 import 'package:anthem/commands/command_queue.dart';
 import 'package:anthem/commands/journal_commands.dart';
-import 'package:anthem/helpers/engine_connector.dart';
+import 'package:anthem/engine_api/engine_connector.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/song.dart';
 import 'package:json_annotation/json_annotation.dart';
