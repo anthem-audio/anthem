@@ -2,6 +2,9 @@
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 Push-Location $scriptPath\..
 
+# Run bindgen
+.\scripts\bindgen.ps1
+
 # Build engine connector
 .\engine_connector\build.ps1
 Copy-Item -Path ".\engine_connector\build\Debug\EngineConnector.dll" -Destination ".\assets\EngineConnector.dll"

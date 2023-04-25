@@ -17,7 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:anthem/engine_api/engine_connector.dart';
+import 'package:anthem/generated/messages_generated.dart';
+import 'package:anthem/generated/project_generated.dart';
+
+part 'api/project.dart';
 
 /// Engine class, used for communicating with Tracktion Engine.
 ///
@@ -26,12 +33,39 @@ import 'package:anthem/engine_api/engine_connector.dart';
 class Engine {
   String id;
   late EngineConnector _engineConnector;
+  late Project project;
+
+  Map<int, void Function(Response response)> replyFunctions = {};
+
+  int Function() get _getRequestId => _engineConnector.getRequestId;
 
   Engine(this.id) {
-    _engineConnector = EngineConnector(id);
+    _engineConnector = EngineConnector(id, _onReply);
+    project = Project(this);
+  }
+
+  void _onReply(Uint8List reply) {
+    final response = Response(reply);
+
+    if (replyFunctions[response.id] != null) {
+      replyFunctions[response.id]!(response);
+      replyFunctions.remove(response.id);
+    }
   }
 
   void dispose() {
     _engineConnector.dispose();
+  }
+
+  /// Sends a request to the engine.
+  ///
+  /// If a [onResponse] function is provided, the function will be called with the
+  /// engine's response.
+  void _request(int id, RequestObjectBuilder request,
+      {void Function(Response response)? onResponse}) {
+    if (onResponse != null) {
+      replyFunctions[id] = onResponse;
+    }
+    _engineConnector.send(request.toBytes());
   }
 }

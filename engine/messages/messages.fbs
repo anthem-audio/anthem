@@ -10,9 +10,13 @@ union Command {
 
   // Project commands
   AddGenerator,
+  GetPlugins,
 }
 
-union ReturnValue { }
+union ReturnValue {
+  // Project commands
+  GetPluginsResponse,
+}
 
 table Request {
   id: int;
