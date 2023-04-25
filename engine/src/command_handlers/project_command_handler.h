@@ -22,4 +22,4 @@
 #include "messages_generated.h"
 #include "../anthem.h"
 
-void handleProjectCommand(const Request* request, Anthem* anthem);
+std::optional<flatbuffers::Offset<Response>> handleProjectCommand(const Request* request, flatbuffers::FlatBufferBuilder& builder, Anthem* anthem);

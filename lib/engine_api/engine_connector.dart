@@ -31,8 +31,6 @@ const path = './data/flutter_assets/assets/EngineConnector.dll';
 final engineConnectorLib =
     DynamicLibrary.open('./data/flutter_assets/assets/EngineConnector.dll');
 
-var requestIdGen = 0;
-
 typedef ConnectFuncNative = Void Function(Pointer<Utf8>);
 typedef ConnectFuncDart = void Function(Pointer<Utf8>);
 
@@ -58,6 +56,15 @@ typedef TryReceiveFuncNative = Bool Function();
 typedef TryReceiveFuncDart = bool Function();
 
 class EngineConnector {
+  var requestIdGen = 0;
+
+  int getRequestId() {
+    if (requestIdGen > 0x7FFFFFFFFFFFFFFE) {
+      requestIdGen = 0;
+    }
+    return requestIdGen++;
+  }
+
   String id;
 
   late ConnectFuncDart _connect;
@@ -118,7 +125,7 @@ class EngineConnector {
       const Duration(seconds: 5),
       (timer) {
         final heartbeat = RequestObjectBuilder(
-          id: requestIdGen++,
+          id: getRequestId(),
           commandType: CommandTypeId.Heartbeat,
           command: HeartbeatObjectBuilder(),
         ).toBytes();
@@ -225,6 +232,9 @@ class EngineConnector {
   }
 }
 
+// TODO: This has a major issue. There is no coordination with the main thread,
+// so if we get two messages back-to-back, we may overwrite the current message
+// before the UI has finished handling it.
 void responseReceiverIsolate(SendPort sendPort) {
   const path = './data/flutter_assets/assets/EngineConnector.dll';
   final engineConnectorLib = DynamicLibrary.open(path);
@@ -250,7 +260,7 @@ void responseReceiverIsolate(SendPort sendPort) {
     // message queue on a fast timer and fetch a response if we know there is
     // one.
     Timer.periodic(
-      const Duration(milliseconds: 10),
+      const Duration(milliseconds: 5),
       (timer) {
         final success = tryReceive();
 

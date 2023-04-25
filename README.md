@@ -31,7 +31,6 @@ In addition to Flutter, Anthem needs the following:
 
 1. Clone this repository with `--recurse-submodules`: `git clone --recurse-submodules https://github.com/anthem-audio/anthem.git`
 2. Navigate to the cloned repository.
-3. Run `.\scripts\bindgen.ps1`. We use Flatbuffers to encode messages between the UI and engine processes, and this script generates the Dart and C++ APIs for encoding and decoding the messages.
-4. Run `.\scripts\build.ps1`. This will build the engine executable and the UI-to-engine IPC layer.
-5. Open a new terminal session and run `flutter pub run build_runner watch`. This will run Dart-related code generation, and keep the generated files up-to-date as you develop.
-6. Use `flutter run` to run Anthem, or start Anthem via your IDE.
+3. Run `.\scripts\build.ps1`. This will generate Flatbuffers files, and will build the engine executable and the UI-to-engine IPC layer.
+4. Open a new terminal session and run `flutter pub run build_runner watch`. This will run Dart-related code generation, and keep the generated files up-to-date as you develop.
+5. Use `flutter run` to run Anthem, or start Anthem via your IDE.

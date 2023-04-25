@@ -1,1 +1,6 @@
 table AddGenerator {}
+
+table GetPlugins {}
+table GetPluginsResponse {
+  plugins: [string];
+}

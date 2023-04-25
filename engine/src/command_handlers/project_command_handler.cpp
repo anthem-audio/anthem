@@ -19,6 +19,29 @@
 
 #include "project_command_handler.h"
 
-void handleProjectCommand(const Request* request, Anthem* anthem) {
-    std::cout << "handle project command here" << std::endl;
+std::optional<flatbuffers::Offset<Response>> handleProjectCommand(const Request* request, flatbuffers::FlatBufferBuilder& builder, Anthem* anthem) {
+    auto commandType = request->command_type();
+
+    switch (commandType) {
+        case Command_AddGenerator: {
+            return std::nullopt;
+        }
+        case Command_GetPlugins: {
+            std::vector<flatbuffers::Offset<flatbuffers::String>> pluginList;
+            pluginList.push_back(builder.CreateString(":)"));
+
+            auto pluginListOffset = builder.CreateVector(pluginList);
+
+            auto response = CreateGetPluginsResponse(builder, pluginListOffset);
+            auto response_offset = response.Union();
+
+            auto message = CreateResponse(builder, request->id(), ReturnValue_GetPluginsResponse, response_offset);
+
+            return std::optional(message);
+        }
+        default: {
+            std::cerr << "Unknown command received by handleProjectCommand()" << std::endl;
+            return std::nullopt;
+        }
+    }
 }

@@ -38,7 +38,7 @@
 
 using namespace boost::interprocess;
 
-Anthem* anthem = new Anthem();
+Anthem* anthem;
 
 std::unique_ptr<message_queue> mqToUi;
 std::unique_ptr<message_queue> mqFromUi;
@@ -116,18 +116,19 @@ void messageLoop() {
         // Access the data in the buffer
         int request_id = request->id();
         auto command_type = request->command_type();
-        int a, b;
-        ReturnValue return_value_type;
+        std::optional<flatbuffers::Offset<Response>> response;
         switch (command_type) {
             case Command_Exit: {
                 juce::JUCEApplication::quit();
+                break;
             }
             case Command_Heartbeat: {
                 heartbeatOccurred = true;
-                continue;
+                break;
             }
             case Command_AddGenerator:
-                handleProjectCommand(request, anthem);
+            case Command_GetPlugins:
+                response = handleProjectCommand(request, builder, anthem);
                 break;
             default: {
                 std::cerr << "Received unknown command" << std::endl;
@@ -135,16 +136,15 @@ void messageLoop() {
             }
         }
 
-        // Create the response object
-        auto response = CreateResponse(builder, request_id, return_value_type, return_value_offset);
+        if (response.has_value()) {
+            builder.Finish(response.value());
 
-        builder.Finish(response);
+            auto receive_buffer_ptr = builder.GetBufferPointer();
+            auto buffer_size = builder.GetSize();
 
-        auto receive_buffer_ptr = builder.GetBufferPointer();
-        auto buffer_size = builder.GetSize();
-
-        // Send the response to the UI
-        mqToUi->send(receive_buffer_ptr, buffer_size, 0);
+            // Send the response to the UI
+            mqToUi->send(receive_buffer_ptr, buffer_size, 0);
+        }
     }
 }
 
@@ -183,6 +183,8 @@ public:
 
     void initialise(const juce::String &commandLineParameters) override
     {
+        std::cout << "Engine application start" << std::endl;
+        anthem = new Anthem();
         messageLoopThread = std::thread(messageLoop);
     }
 };
