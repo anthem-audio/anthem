@@ -33,7 +33,7 @@ part 'api/project.dart';
 class Engine {
   String id;
   late EngineConnector _engineConnector;
-  late Project project;
+  late Project projectApi;
 
   Map<int, void Function(Response response)> replyFunctions = {};
 
@@ -41,7 +41,7 @@ class Engine {
 
   Engine(this.id) {
     _engineConnector = EngineConnector(id, _onReply);
-    project = Project(this);
+    projectApi = Project(this);
   }
 
   void _onReply(Uint8List reply) {

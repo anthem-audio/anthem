@@ -126,7 +126,9 @@ void messageLoop() {
                 heartbeatOccurred = true;
                 break;
             }
+            case Command_AddArrangement:
             case Command_AddGenerator:
+            case Command_DeleteArrangement:
             case Command_GetPlugins:
                 response = handleProjectCommand(request, builder, anthem);
                 break;
