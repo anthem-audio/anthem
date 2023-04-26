@@ -19,11 +19,41 @@
 
 #include "project_command_handler.h"
 
-std::optional<flatbuffers::Offset<Response>> handleProjectCommand(const Request* request, flatbuffers::FlatBufferBuilder& builder, Anthem* anthem) {
+std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
+    const Request* request,
+    flatbuffers::FlatBufferBuilder& builder,
+    Anthem* anthem
+) {
     auto commandType = request->command_type();
 
     switch (commandType) {
+        case Command_AddArrangement: {
+            tracktion::createEmptyEdit(*anthem->engine, juce::File("./I-dont-know-where-this-is-going"));
+
+            return std::nullopt;
+        }
         case Command_AddGenerator: {
+            // Grab the plugin URI from the command
+            auto command = request->command_as_AddGenerator();
+            auto pluginUri = command->plugin_uri()->str();
+
+            // Create a JUCE plugin description
+            juce::PluginDescription pluginDescription;
+            pluginDescription.fileOrIdentifier = pluginUri;
+            pluginDescription.pluginFormatName = "VST3"; // Assume it's a VST3 for now
+
+            // Instnace the plugin
+            juce::String errorMessage;
+            auto pluginInstance = anthem->engine->getPluginManager().pluginFormatManager.createPluginInstance(
+                pluginDescription,
+                anthem->engine->getDeviceManager().getSampleRate(),
+                anthem->engine->getDeviceManager().getBlockSize(),
+                errorMessage
+            );
+
+            // TODO: Add a track?
+            // anthem->engine
+
             return std::nullopt;
         }
         case Command_GetPlugins: {

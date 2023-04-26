@@ -43,7 +43,7 @@ Anthem* anthem;
 std::unique_ptr<message_queue> mqToUi;
 std::unique_ptr<message_queue> mqFromUi;
 
-bool heartbeatOccurred = true;
+volatile bool heartbeatOccurred = true;
 
 // Checks for a recent heartbeat every 10 seconds. If there wasn't one, we exit
 // the application.
@@ -186,15 +186,11 @@ public:
         std::cout << "Engine application start" << std::endl;
         anthem = new Anthem();
 
-        // std::cout << "Start plugin scan..." << std::endl;
-        // anthem->engine->getPluginManager().startChildProcessPluginScan("");
-        // std::cout << "Done." << std::endl;
+        // auto& pluginManager = anthem->engine->getPluginManager();
+        // pluginManager.initialise();
+        // pluginManager.pluginFormatManager.addDefaultFormats();
 
-        std::cout << "Initialising default Tracktion plugins..." << std::endl;
-        anthem->engine->getPluginManager().initialise();
-        std::cout << "Done." << std::endl;
-
-        messageLoopThread = std::thread(messageLoop);
+        messageLoop();
     }
 };
 
