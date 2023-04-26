@@ -27,10 +27,23 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
     auto commandType = request->command_type();
 
     switch (commandType) {
+        // TODO: Delete arrangement
         case Command_AddArrangement: {
-            tracktion::createEmptyEdit(*anthem->engine, juce::File("./I-dont-know-where-this-is-going"));
+            auto edit = tracktion::createEmptyEdit(*anthem->engine, juce::File("./I-dont-know-where-this-is-going.tracktion-edit"));
 
-            return std::nullopt;
+            // We store this pointer with the arrangement model in the UI, so
+            auto editPtr = edit.release();
+
+            auto editPtrAsUint = static_cast<uint64_t>(
+                reinterpret_cast<uintptr_t>(editPtr)
+            );
+
+            auto response = CreateAddArrangementResponse(builder, editPtrAsUint);
+            auto responseOffset = response.Union();
+
+            auto message = CreateResponse(builder, request->id(), ReturnValue_AddArrangementResponse, responseOffset);
+
+            return std::optional(message);
         }
         case Command_AddGenerator: {
             // Grab the plugin URI from the command
@@ -78,9 +91,9 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
             auto pluginListOffset = builder.CreateVector(fbPluginList);
 
             auto response = CreateGetPluginsResponse(builder, pluginListOffset);
-            auto response_offset = response.Union();
+            auto responseOffset = response.Union();
 
-            auto message = CreateResponse(builder, request->id(), ReturnValue_GetPluginsResponse, response_offset);
+            auto message = CreateResponse(builder, request->id(), ReturnValue_GetPluginsResponse, responseOffset);
 
             return std::optional(message);
         }

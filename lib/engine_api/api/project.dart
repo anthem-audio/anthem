@@ -20,14 +20,52 @@
 part of 'package:anthem/engine_api/engine.dart';
 
 class Project {
-  Engine engine;
+  final Engine _engine;
 
-  Project(this.engine);
+  Project(this._engine);
+
+  /// Creates a new arrangement, which maps to an `Edit` in Tracktion Engine.
+  /// Returns a pointer to the Tracktion edit object within the engine process.
+  ///
+  /// The UI is responsible for cleaning up this memory.
+  Future<int> addArrangement() {
+    final completer = Completer<int>();
+
+    final id = _engine._getRequestId();
+
+    final request = RequestObjectBuilder(
+      id: id,
+      commandType: CommandTypeId.AddArrangement,
+      command: AddArrangementObjectBuilder(),
+    );
+
+    _engine._request(id, request, onResponse: (response) {
+      final inner = response.returnValue as AddArrangementResponse;
+      completer.complete(inner.editPointer);
+    });
+
+    return completer.future;
+  }
+
+  /// Removes an arrangement with the given `Edit` pointer.
+  ///
+  /// See [addArrangement].
+  void deleteArrangement(int editPointer) {
+    final id = _engine._getRequestId();
+
+    final request = RequestObjectBuilder(
+      id: id,
+      commandType: CommandTypeId.DeleteArrangement,
+      command: DeleteArrangementObjectBuilder(editPointer: editPointer),
+    );
+
+    _engine._request(id, request);
+  }
 
   Future<List<String>> getPlugins() {
     final completer = Completer<List<String>>();
 
-    final id = engine._getRequestId();
+    final id = _engine._getRequestId();
 
     final request = RequestObjectBuilder(
       id: id,
@@ -35,7 +73,7 @@ class Project {
       command: GetPluginsObjectBuilder(),
     );
 
-    engine._request(id, request, onResponse: (response) {
+    _engine._request(id, request, onResponse: (response) {
       final inner = response.returnValue as GetPluginsResponse;
       completer.complete(inner.plugins!);
     });

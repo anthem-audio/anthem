@@ -126,6 +126,24 @@ class ProjectHeader extends StatelessWidget {
               },
               hint: 'Redo (Ctrl+Shift+Z)',
             ),
+            const SizedBox(width: 4),
+            Button(
+              width: 150,
+              text: 'Print plugins to console',
+              onPress: () async {
+                final project = projectController.project;
+                final engine = project.engine;
+                final plugins = await engine.projectApi.getPlugins();
+
+                // ignore: avoid_print
+                print('Plugins:');
+                for (final plugin in plugins) {
+                  // ignore: avoid_print
+                  print(plugin);
+                }
+              },
+              hint: 'Redo (Ctrl+Shift+Z)',
+            ),
           ],
         ),
       ),
