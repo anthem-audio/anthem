@@ -1,4 +1,8 @@
-table AddGenerator {}
+table AddArrangement { }
+
+table AddGenerator {
+  plugin_uri: string;
+}
 
 table GetPlugins {}
 table GetPluginsResponse {

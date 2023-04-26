@@ -6,6 +6,7 @@
                 "${workspaceFolder}/engine/**",
                 "${workspaceFolder}/cpp_shared/**",
                 "${workspaceFolder}/engine_connector/**",
+                "${workspaceFolder}/engine/include",
                 "${default}"
             ],
             "defines": [

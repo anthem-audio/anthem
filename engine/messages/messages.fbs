@@ -9,6 +9,7 @@ union Command {
   Exit,
 
   // Project commands
+  AddArrangement,
   AddGenerator,
   GetPlugins,
 }
