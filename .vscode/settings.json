@@ -12,6 +12,7 @@
     "dylib",
     "fuzzywuzzy",
     "flatbuffers",
+    "interprocess",
     "juce",
     "LTWH",
     "mobx",
