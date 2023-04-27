@@ -45,6 +45,15 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
 
             return std::optional(message);
         }
+        case Command_DeleteArrangement: {
+            auto command = request->command_as_DeleteArrangement();
+            auto edit = reinterpret_cast<tracktion::engine::Edit*>(
+                static_cast<uintptr_t>(command->edit_pointer())
+            );
+            delete edit;
+
+            return std::nullopt;
+        }
         case Command_AddGenerator: {
             // Grab the plugin URI from the command
             auto command = request->command_as_AddGenerator();

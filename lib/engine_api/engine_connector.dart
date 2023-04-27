@@ -142,11 +142,11 @@ class EngineConnector {
     // We start the engine process before trying to connect. The connect
     // function blocks when trying to open the engine's message queue, so the
     // engine's message queue must already exist before we try to connect.
-    // final mainExecutablePath = File(Platform.resolvedExecutable);
-    // engineProcess = await Process.start(
-    //   '${mainExecutablePath.parent.path}/data/flutter_assets/assets/AnthemEngine.exe',
-    //   [id],
-    // );
+    final mainExecutablePath = File(Platform.resolvedExecutable);
+    engineProcess = await Process.start(
+      '${mainExecutablePath.parent.path}/data/flutter_assets/assets/AnthemEngine.exe',
+      [id],
+    );
 
     // Now that the engine has created its message queue and is waiting for
     // ours, we will create our message queue and open the engine's message
