@@ -64,7 +64,7 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
             pluginDescription.fileOrIdentifier = pluginUri;
             pluginDescription.pluginFormatName = "VST3"; // Assume it's a VST3 for now
 
-            // Instnace the plugin
+            // Instance the plugin
             juce::String errorMessage;
             auto pluginInstance = anthem->engine->getPluginManager().pluginFormatManager.createPluginInstance(
                 pluginDescription,
