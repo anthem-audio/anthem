@@ -170,8 +170,20 @@ class EngineConnector {
       },
     );
 
-    mainToIsolateReceivePort.listen((_) {
+    SendPort? sendPort;
+
+    mainToIsolateReceivePort.listen((message) {
+      // The first message is the send port
+      if (sendPort == null) {
+        sendPort = message;
+        return;
+      }
+
+      // Copy the message from the buffer in the dynamic library
       getReplyFromEngine();
+
+      // Tell the receiver thread that we're done using the buffer
+      sendPort!.send(null);
     });
 
     _initialized = true;
@@ -232,10 +244,7 @@ class EngineConnector {
   }
 }
 
-// TODO: This has a major issue. There is no coordination with the main thread,
-// so if we get two messages back-to-back, we may overwrite the current message
-// before the UI has finished handling it.
-void responseReceiverIsolate(SendPort sendPort) {
+void responseReceiverIsolate(SendPort sendPort) async {
   const path = './data/flutter_assets/assets/EngineConnector.dll';
   final engineConnectorLib = DynamicLibrary.open(path);
 
@@ -243,6 +252,17 @@ void responseReceiverIsolate(SendPort sendPort) {
       .lookupFunction<ReceiveFuncNative, ReceiveFuncDart>('receive');
   final tryReceive = engineConnectorLib
       .lookupFunction<ReceiveFuncNative, ReceiveFuncDart>('tryReceive');
+
+  final receivePort = ReceivePort();
+  sendPort.send(receivePort.sendPort);
+
+  Completer<void>? mainThreadCopyFromBufferCompleter;
+
+  // The main thread will send an empty message when it's done reading the
+  // message buffer.
+  receivePort.listen((message) {
+    mainThreadCopyFromBufferCompleter?.complete();
+  });
 
   if (kReleaseMode) {
     // This involves blocking the isolate, which breaks hot reloading.
@@ -254,6 +274,10 @@ void responseReceiverIsolate(SendPort sendPort) {
 
       // Once we get a response, notify the main thread
       sendPort.send(null);
+
+      // Wait for the UI thread to copy the reply
+      mainThreadCopyFromBufferCompleter = Completer();
+      await mainThreadCopyFromBufferCompleter.future;
     }
   } else {
     // In debug mode, we don't block this isolate. Instead, we check the
@@ -262,12 +286,19 @@ void responseReceiverIsolate(SendPort sendPort) {
     Timer.periodic(
       const Duration(milliseconds: 5),
       (timer) {
+        if (mainThreadCopyFromBufferCompleter?.isCompleted == false) {
+          return;
+        }
+
         final success = tryReceive();
 
         if (!success) return;
 
         // Once we get a response, notify the main thread
         sendPort.send(null);
+
+        // Wait for the UI thread to copy the reply
+        mainThreadCopyFromBufferCompleter = Completer();
       },
     );
   }
