@@ -55,6 +55,36 @@ typedef ReceiveFuncDart = bool Function();
 typedef TryReceiveFuncNative = Bool Function();
 typedef TryReceiveFuncDart = bool Function();
 
+/// Provides a way to communicate with the engine process.
+/// 
+/// The [EngineConnector] class manages an engine process. It uses a dynamic
+/// library written in C++ to communicate with the process.
+/// 
+/// The [send] method can be used to send a byte array to the engine. This
+/// should be a serialized FlatBuffers message. A message can be sent like so:
+/// 
+/// ```dart
+/// final engineConnectorID = getID();
+/// final engineConnector = EngineConnector(
+///   engineConnectorID,
+///   (Uint8List reply) {
+///     final response = Response(reply);
+///     // Handle reply here...
+///   }
+/// );
+/// 
+/// // ...
+/// 
+/// final id = engineConnector.getRequestId();
+/// 
+/// final request = RequestObjectBuilder(
+///   id: id,
+///   commandType: CommandTypeId.AddArrangement,
+///   command: AddArrangementObjectBuilder(),
+/// ).toBytes();
+/// 
+/// engineConnector.send(request);
+/// ```
 class EngineConnector {
   var requestIdGen = 0;
 
@@ -65,7 +95,11 @@ class EngineConnector {
     return requestIdGen++;
   }
 
-  String id;
+  /// Message queues need an agreed-upon ID to be set up, since they're
+  /// brokered by the operating system. This ID is used so we can have multiple
+  /// engines running at once, since otherwise the message queues for the
+  /// different engines would clash with each other.
+  final String _id;
 
   late ConnectFuncDart _connect;
   late CleanUpMessageQueuesFuncDart _cleanUpMessageQueues;
@@ -88,13 +122,16 @@ class EngineConnector {
   late Future<void> onInit;
   bool _initialized = false;
 
+  /// If any requests are sent before the engine starts and IPC is set up, this
+  /// list will hold the requests until the engine is initialized, at which
+  /// point they will all be sent.
   final List<Uint8List> _bufferedRequests = [];
 
   /// Timer that sends a heartbeat message to the engine every 5 seconds. If
   /// the engine doesn't receive one after 10 seconds, it will stop itself.
   late Timer _engineHeartbeatTimer;
 
-  EngineConnector(this.id, [this.onReply]) {
+  EngineConnector(this._id, [this.onReply]) {
     _cleanUpMessageQueues = engineConnectorLib.lookupFunction<
         CleanUpMessageQueuesFuncNative,
         CleanUpMessageQueuesFuncDart>('cleanUpMessageQueues');
@@ -134,9 +171,11 @@ class EngineConnector {
     );
   }
 
+  /// Starts the engine process, sets up IPC, and starts the reply listener
+  /// isolate.
   Future<void> _init() async {
     if (kDebugMode) {
-      print('Starting engine with ID: $id');
+      print('Starting engine with ID: $_id');
     }
 
     // We start the engine process before trying to connect. The connect
@@ -145,13 +184,13 @@ class EngineConnector {
     final mainExecutablePath = File(Platform.resolvedExecutable);
     engineProcess = await Process.start(
       '${mainExecutablePath.parent.path}/data/flutter_assets/assets/AnthemEngine.exe',
-      [id],
+      [_id],
     );
 
     // Now that the engine has created its message queue and is waiting for
     // ours, we will create our message queue and open the engine's message
     // queue.
-    final idPtr = id.toNativeUtf8();
+    final idPtr = _id.toNativeUtf8();
     _connect(idPtr);
     calloc.free(idPtr);
 
@@ -162,7 +201,7 @@ class EngineConnector {
 
     // Spawn an isolate to listen for replies from the engine
     Isolate.spawn(
-      responseReceiverIsolate,
+      _responseReceiverIsolate,
       mainToIsolateReceivePort.sendPort,
     ).then(
       (isolate) {
@@ -180,7 +219,7 @@ class EngineConnector {
       }
 
       // Copy the message from the buffer in the dynamic library
-      getReplyFromEngine();
+      _copyReplyAndNotify();
 
       // Tell the receiver thread that we're done using the buffer
       sendPort!.send(null);
@@ -189,6 +228,7 @@ class EngineConnector {
     _initialized = true;
   }
 
+  /// Sends the given [Uint8List] buffer to the engine.
   void send(Uint8List request) {
     if (!_initialized) {
       _bufferedRequests.add(request);
@@ -211,7 +251,9 @@ class EngineConnector {
     _sendFromBuffer(size);
   }
 
-  void getReplyFromEngine() {
+  /// If there is a listener for engine replies, copies the most recent reply
+  /// from the engine and notifies the listener.
+  void _copyReplyAndNotify() {
     if (onReply == null) return;
 
     final size = _getLastReceivedMessageSize();
@@ -226,6 +268,7 @@ class EngineConnector {
     onReply!(buffer);
   }
 
+  /// Stops the engine process and isolate, and cleans up the message queues.
   void dispose() {
     // Kill engine process
     engineProcess?.kill();
@@ -238,13 +281,24 @@ class EngineConnector {
 
     // Clean up message queues. These will be persisted by the OS if we don't
     // clean them up.
-    final idPtr = id.toNativeUtf8();
+    final idPtr = _id.toNativeUtf8();
     _cleanUpMessageQueues(idPtr);
     calloc.free(idPtr);
   }
 }
 
-void responseReceiverIsolate(SendPort sendPort) async {
+/// Isolate thread function for receiving responses from the engine.
+/// 
+/// Waiting for a response from the engine requires blocking, which we can't do
+/// on the main thread. This function runs in an isolate and listens for
+/// messages in the engine-to-UI message queue.
+/// 
+/// When a reply is received, it is stored in a buffer created by the dynamic
+/// library. This function then sends an empty message to the main thread and
+/// waits for a reply. The main thread copies the message out of the buffer and
+/// sends an empty message to this function, which then continues listening for
+/// new messages.
+void _responseReceiverIsolate(SendPort sendPort) async {
   const path = './data/flutter_assets/assets/EngineConnector.dll';
   final engineConnectorLib = DynamicLibrary.open(path);
 
