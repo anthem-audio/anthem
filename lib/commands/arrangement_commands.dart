@@ -86,6 +86,7 @@ class AddArrangementCommand extends Command {
 
 class DeleteArrangementCommand extends Command {
   final ArrangementModel arrangement;
+  late final int index;
 
   DeleteArrangementCommand({
     required ProjectModel project,
@@ -96,15 +97,15 @@ class DeleteArrangementCommand extends Command {
   void execute() {
     arrangement.deleteInEngine(project.engine);
     project.song.arrangements.remove(arrangement.id);
-    project.song.arrangementOrder.remove(arrangement.id);
+    index = project.song.arrangementOrder.indexOf(arrangement.id);
+    project.song.arrangementOrder.removeAt(index);
   }
 
   @override
   void rollback() {
     arrangement.createInEngine(project.engine);
     project.song.arrangements[arrangement.id] = arrangement;
-    // project.song.arrangementOrder
-    // TODO: Correct ordering and put it back in the arrangement!
+    project.song.arrangementOrder.insert(index, arrangement.id);
   }
 }
 

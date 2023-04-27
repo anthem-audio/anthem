@@ -148,6 +148,8 @@ abstract class _ProjectModel extends Hydratable with Store {
 
     engine = Engine(engineID);
 
+    song.createInEngine(engine);
+
     // We don't need to hydrate here. All `SomeModel.Create()` functions should
     // call hydrate().
     isHydrated = true;
