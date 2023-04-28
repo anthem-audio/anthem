@@ -61,7 +61,7 @@ When the UI wants to do something, it will send a message to the engine. A typic
 
 ## Project structure
 
-The following is an overview of the Anthem project structure:
+The following is an overview of the the folder structure in the Anthem repository:
 
 - **`assets`**: Contains icons and other assets used by the UI. The engine executable and the engine connector dynamic library are both copied here as well, as a way to include them in the Flutter build.
 - **`cpp_shared`**: Contains code that is included in multiple C++ projects within the repository.
