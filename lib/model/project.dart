@@ -137,6 +137,10 @@ abstract class _ProjectModel extends Hydratable with Store {
   @JsonKey(includeFromJson: false, includeToJson: false)
   late Engine engine;
 
+  @observable
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  var engineState = EngineState.stopped;
+
   // This method is used for deserialization and so doesn't create new child
   // models.
   _ProjectModel() : super();
@@ -147,6 +151,10 @@ abstract class _ProjectModel extends Hydratable with Store {
     );
 
     engine = Engine(engineID);
+
+    engine.engineStateStream.listen((state) {
+      (this as ProjectModel).engineState = state;
+    });
 
     song.createInEngine(engine);
 

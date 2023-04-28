@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,6 +21,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
+import 'package:anthem/widgets/main_window/window_header_engine_indicator.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/widgets.dart';
 
@@ -47,13 +48,18 @@ class WindowHeader extends StatefulWidget {
 class _WindowHeaderState extends State<WindowHeader> {
   @override
   Widget build(BuildContext context) {
-    var isFirstTab = true;
-
     return SizedBox(
       height: 29,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: widget.tabs.map<Widget>(
+        children: <Widget>[
+              const Padding(
+                padding: EdgeInsets.only(bottom: 1),
+                child: EngineIndicator(),
+              ),
+              const SizedBox(width: 1),
+            ] +
+            widget.tabs.map<Widget>(
               (tab) {
                 final isActiveProject = tab.id == widget.selectedTabID;
                 final result = GestureDetector(
@@ -70,14 +76,15 @@ class _WindowHeaderState extends State<WindowHeader> {
                             ? Theme.panel.accent
                             : Theme.panel.main,
                         borderRadius: isActiveProject
-                            ? BorderRadius.only(
-                                topLeft: Radius.circular(isFirstTab ? 4 : 2),
-                                topRight: const Radius.circular(2))
-                            : BorderRadius.only(
-                                topLeft: Radius.circular(isFirstTab ? 4 : 1),
-                                topRight: const Radius.circular(1),
-                                bottomRight: const Radius.circular(1),
-                                bottomLeft: const Radius.circular(1),
+                            ? const BorderRadius.only(
+                                topLeft: Radius.circular(2),
+                                topRight: Radius.circular(2),
+                              )
+                            : const BorderRadius.only(
+                                topLeft: Radius.circular(1),
+                                topRight: Radius.circular(1),
+                                bottomRight: Radius.circular(1),
+                                bottomLeft: Radius.circular(1),
                               ),
                       ),
                       child: Row(
@@ -107,8 +114,6 @@ class _WindowHeaderState extends State<WindowHeader> {
                     ),
                   ),
                 );
-
-                isFirstTab = false;
 
                 return result;
               },
