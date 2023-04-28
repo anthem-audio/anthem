@@ -18,7 +18,6 @@
 */
 
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:anthem/engine_api/engine_connector.dart';
 import 'package:anthem/generated/messages_generated.dart';
@@ -44,9 +43,7 @@ class Engine {
     projectApi = Project(this);
   }
 
-  void _onReply(Uint8List reply) {
-    final response = Response(reply);
-
+  void _onReply(Response response) {
     if (replyFunctions[response.id] != null) {
       replyFunctions[response.id]!(response);
       replyFunctions.remove(response.id);
@@ -66,6 +63,6 @@ class Engine {
     if (onResponse != null) {
       replyFunctions[id] = onResponse;
     }
-    _engineConnector.send(request.toBytes());
+    _engineConnector.send(request);
   }
 }
