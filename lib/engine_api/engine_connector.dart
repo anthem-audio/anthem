@@ -56,13 +56,13 @@ typedef TryReceiveFuncNative = Bool Function();
 typedef TryReceiveFuncDart = bool Function();
 
 /// Provides a way to communicate with the engine process.
-/// 
+///
 /// The [EngineConnector] class manages an engine process. It uses a dynamic
 /// library written in C++ to communicate with the process.
-/// 
+///
 /// The [send] method can be used to send a byte array to the engine. This
 /// should be a serialized FlatBuffers message. A message can be sent like so:
-/// 
+///
 /// ```dart
 /// final engineConnectorID = getID();
 /// final engineConnector = EngineConnector(
@@ -72,17 +72,17 @@ typedef TryReceiveFuncDart = bool Function();
 ///     // Handle reply here...
 ///   }
 /// );
-/// 
+///
 /// // ...
-/// 
+///
 /// final id = engineConnector.getRequestId();
-/// 
+///
 /// final request = RequestObjectBuilder(
 ///   id: id,
 ///   commandType: CommandTypeId.AddArrangement,
 ///   command: AddArrangementObjectBuilder(),
 /// ).toBytes();
-/// 
+///
 /// engineConnector.send(request);
 /// ```
 class EngineConnector {
@@ -288,11 +288,11 @@ class EngineConnector {
 }
 
 /// Isolate thread function for receiving responses from the engine.
-/// 
+///
 /// Waiting for a response from the engine requires blocking, which we can't do
 /// on the main thread. This function runs in an isolate and listens for
 /// messages in the engine-to-UI message queue.
-/// 
+///
 /// When a reply is received, it is stored in a buffer created by the dynamic
 /// library. This function then sends an empty message to the main thread and
 /// waits for a reply. The main thread copies the message out of the buffer and
