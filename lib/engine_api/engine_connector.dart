@@ -117,7 +117,7 @@ class EngineConnector {
 
   Process? engineProcess;
 
-  Function(Uint8List reply)? onReply;
+  Function(Response reply)? onReply;
 
   late Future<void> onInit;
   bool _initialized = false;
@@ -125,7 +125,7 @@ class EngineConnector {
   /// If any requests are sent before the engine starts and IPC is set up, this
   /// list will hold the requests until the engine is initialized, at which
   /// point they will all be sent.
-  final List<Uint8List> _bufferedRequests = [];
+  final List<RequestObjectBuilder> _bufferedRequests = [];
 
   /// Timer that sends a heartbeat message to the engine every 5 seconds. If
   /// the engine doesn't receive one after 10 seconds, it will stop itself.
@@ -165,7 +165,7 @@ class EngineConnector {
           id: getRequestId(),
           commandType: CommandTypeId.Heartbeat,
           command: HeartbeatObjectBuilder(),
-        ).toBytes();
+        );
         send(heartbeat);
       },
     );
@@ -225,17 +225,33 @@ class EngineConnector {
       sendPort!.send(null);
     });
 
+    _heartbeatCheckTimer = Timer(
+      // Maybe a bit long if this is our only way to tell if the engine died
+      const Duration(seconds: 10),
+      () {
+        if (!_heartbeatReceived) {
+          // TODO: Notify consumers, at which point they can restart the engine
+          // ignore: avoid_print
+          print('Engine died probably');
+        }
+
+        _heartbeatReceived = false;
+      },
+    );
+
     _initialized = true;
   }
 
-  /// Sends the given [Uint8List] buffer to the engine.
-  void send(Uint8List request) {
+  /// Sends the given [Request] to the engine.
+  void send(RequestObjectBuilder request) {
+    final bytes = request.toBytes();
+
     if (!_initialized) {
       _bufferedRequests.add(request);
       return;
     }
 
-    final size = request.length;
+    final size = bytes.length;
 
     if (size > 65536) {
       throw Exception(
@@ -244,12 +260,15 @@ class EngineConnector {
 
     // Copy message to buffer
     for (var i = 0; i < size; i++) {
-      _messageSendBuffer.elementAt(i).value = request.elementAt(i);
+      _messageSendBuffer.elementAt(i).value = bytes.elementAt(i);
     }
 
     // Send the message
     _sendFromBuffer(size);
   }
+
+  bool _heartbeatReceived = true;
+  Timer? _heartbeatCheckTimer;
 
   /// If there is a listener for engine replies, copies the most recent reply
   /// from the engine and notifies the listener.
@@ -265,11 +284,24 @@ class EngineConnector {
       buffer[i] = _messageReceiveBuffer.elementAt(i).value;
     }
 
-    onReply!(buffer);
+    final response = Response(buffer);
+
+    // Heartbeats are handled here and not passed on. If we haven't received a
+    // heartbeat reply in a certain amount of time, then we can assume the
+    // engine is dead.
+    if (response.returnValueType == ReturnValueTypeId.HeartbeatReply) {
+      _heartbeatReceived = true;
+      return;
+    }
+
+    onReply!(response);
   }
 
   /// Stops the engine process and isolate, and cleans up the message queues.
   void dispose() {
+    // Stop the heratbeat check timer
+    _heartbeatCheckTimer?.cancel();
+
     // Kill engine process
     engineProcess?.kill();
 

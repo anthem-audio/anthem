@@ -124,6 +124,11 @@ void messageLoop() {
             }
             case Command_Heartbeat: {
                 heartbeatOccurred = true;
+                auto heartbeatReply = CreateHeartbeatReply(builder);
+                auto heartbeatReplyOffset = heartbeatReply.Union();
+                response = std::optional(
+                    CreateResponse(builder, request->id(), ReturnValue_HeartbeatReply, heartbeatReplyOffset)
+                );
                 break;
             }
             case Command_AddArrangement:

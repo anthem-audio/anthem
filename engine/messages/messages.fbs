@@ -21,6 +21,7 @@ include "project.fbs";
 
 table Exit {}
 table Heartbeat {}
+table HeartbeatReply {}
 
 union Command {
   // Application commands
@@ -35,6 +36,9 @@ union Command {
 }
 
 union ReturnValue {
+  // Application commands
+  HeartbeatReply,
+
   // Project commands
   AddArrangementResponse,
   GetPluginsResponse,
