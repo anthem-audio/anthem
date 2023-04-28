@@ -334,25 +334,40 @@ void _responseReceiverIsolate(SendPort sendPort) async {
       await mainThreadCopyFromBufferCompleter.future;
     }
   } else {
+    bool timerActive = false;
+
     // In debug mode, we don't block this isolate. Instead, we check the
     // message queue on a fast timer and fetch a response if we know there is
     // one.
     Timer.periodic(
       const Duration(milliseconds: 5),
-      (timer) {
+      (timer) async {
+        // If a previous iteration of the timer is active but paused on an
+        // await, don't run another iteration.
+        if (timerActive) {
+          return;
+        }
+        timerActive = true;
+
+        // Shouldn't be possible, but just in case
         if (mainThreadCopyFromBufferCompleter?.isCompleted == false) {
           return;
         }
 
-        final success = tryReceive();
+        while (true) {
+          final success = tryReceive();
 
-        if (!success) return;
+          if (!success) break;
 
-        // Once we get a response, notify the main thread
-        sendPort.send(null);
+          // Once we get a response, notify the main thread
+          sendPort.send(null);
 
-        // Wait for the UI thread to copy the reply
-        mainThreadCopyFromBufferCompleter = Completer();
+          // Wait for the UI thread to copy the reply
+          mainThreadCopyFromBufferCompleter = Completer();
+          await mainThreadCopyFromBufferCompleter!.future;
+        }
+
+        timerActive = false;
       },
     );
   }
