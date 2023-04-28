@@ -5,12 +5,13 @@ Anthem is a modern, multi-workflow digital audio workstation (DAW) designed for 
 Anthem is developed and maintained by a group of volunteers, with a focus on maintainability, beautiful UI design, and strong usability. This has influenced several key architectural decisions, including:
 
 - **UI with Flutter**: Anthem's UI is built using Flutter, which provides:
-  - An excellent abstraction for building UIs
-  - A fantastic and time-saving developer experience, with features like hot-reload that improve iteration time
-  - A mature platform that allows us to focus on solving the problems we care about, instead of fixing the tools
+  - An effective abstraction for building UIs
+  - A time-saving developer experience, with features like hot-reload that improve iteration time
+  - A flexible and performant language (Dart) that doesn't get in the way when trying to build complex UIs
+  - A mature platform that allows us to focus on solving the problems we care about, instead of building and/or fixing the tools we're using
   - A rendering system that is fast-by-default, and tools for further optimizing performance
 
-- **Tracktion Engine**: The Anthem engine uses Tracktion Engine at its core, enabling the Anthem project to focus on UI design and usability without needing to reinvent an audio engine.
+- **Tracktion Engine**: The Anthem engine uses Tracktion Engine at its core, enabling the Anthem project to focus on UI design and usability without needing to reinvent an audio engine. Anthem is designed with a strong separation between the UI and the engine, and the engine can be replaced in the future if that serves a design goal. However, it doesn't serve the current project goals to reinvent the wheel here, and Tracktion Engine provides a number of advanced features, such as tempo automation and audio time stretching.
 
 ## Architecture
 
