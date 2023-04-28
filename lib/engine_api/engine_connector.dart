@@ -27,8 +27,8 @@ import 'package:flutter/foundation.dart';
 
 import 'package:anthem/generated/messages_generated.dart';
 
-final engineConnectorLib =
-    DynamicLibrary.open('./data/flutter_assets/assets/EngineConnector.dll');
+const dyLibPath = './data/flutter_assets/assets/EngineConnector.dll';
+final engineConnectorLib = DynamicLibrary.open(dyLibPath);
 
 typedef ConnectFuncNative = Void Function(Pointer<Utf8>);
 typedef ConnectFuncDart = void Function(Pointer<Utf8>);
@@ -105,14 +105,18 @@ class EngineConnector {
   late GetMessageSendBufferFuncDart _getMessageSendBuffer;
   late GetMessageReceiveBufferFuncDart _getMessageReceiveBuffer;
   late GetLastReceivedMessageSizeFuncDart _getLastReceivedMessageSize;
-  late SendFromBufferFuncDart _sendFromBuffer;
 
   // Buffer for writing messages
   late Pointer<Uint8> _messageSendBuffer;
   late Pointer<Uint8> _messageReceiveBuffer;
 
+  late Isolate requestIsolate;
+  late ReceivePort requestIsolateReceivePort;
+  SendPort? requestIsolateSendPort;
+  Timer? requestIsolateTimeout;
+
   late Isolate receiveIsolate;
-  late ReceivePort mainToIsolateReceivePort;
+  late ReceivePort responseIsolateReceivePort;
 
   Process? engineProcess;
 
@@ -146,8 +150,6 @@ class EngineConnector {
     _getLastReceivedMessageSize = engineConnectorLib.lookupFunction<
         GetLastReceivedMessageSizeFuncNative,
         GetLastReceivedMessageSizeFuncDart>('getLastReceivedMessageSize');
-    _sendFromBuffer = engineConnectorLib.lookupFunction<
-        SendFromBufferFuncNative, SendFromBufferFuncDart>('sendFromBuffer');
 
     onInit = _init();
 
@@ -197,24 +199,46 @@ class EngineConnector {
     _messageSendBuffer = _getMessageSendBuffer();
     _messageReceiveBuffer = _getMessageReceiveBuffer();
 
-    mainToIsolateReceivePort = ReceivePort();
+    requestIsolateReceivePort = ReceivePort();
+
+    Isolate.spawn(
+      _requestSenderIsolate,
+      requestIsolateReceivePort.sendPort,
+    ).then(
+      (isolate) {
+        requestIsolate = isolate;
+      },
+    );
+
+    requestIsolateReceivePort.listen((message) {
+      // The first message is the send port
+      if (requestIsolateSendPort == null) {
+        requestIsolateSendPort = message;
+        return;
+      }
+
+      // Cancel the timeout, since we got a response
+      requestIsolateTimeout?.cancel();
+    });
+
+    responseIsolateReceivePort = ReceivePort();
 
     // Spawn an isolate to listen for replies from the engine
     Isolate.spawn(
       _responseReceiverIsolate,
-      mainToIsolateReceivePort.sendPort,
+      responseIsolateReceivePort.sendPort,
     ).then(
       (isolate) {
         receiveIsolate = isolate;
       },
     );
 
-    SendPort? sendPort;
+    SendPort? responseIsolateSendPort;
 
-    mainToIsolateReceivePort.listen((message) {
+    responseIsolateReceivePort.listen((message) {
       // The first message is the send port
-      if (sendPort == null) {
-        sendPort = message;
+      if (responseIsolateSendPort == null) {
+        responseIsolateSendPort = message;
         return;
       }
 
@@ -222,7 +246,7 @@ class EngineConnector {
       _copyReplyAndNotify();
 
       // Tell the receiver thread that we're done using the buffer
-      sendPort!.send(null);
+      responseIsolateSendPort!.send(null);
     });
 
     _heartbeatCheckTimer = Timer.periodic(
@@ -262,8 +286,23 @@ class EngineConnector {
       _messageSendBuffer.elementAt(i).value = bytes.elementAt(i);
     }
 
-    // Send the message
-    _sendFromBuffer(size);
+    // TODO: If the timer is active, we must buffer the request, since we
+    // can't send multiple at once.
+
+    // Tell the request isolate to send the message in the request buffer
+    requestIsolateSendPort?.send(size);
+
+    // TODO: Remove this when we add request buffering
+    if (requestIsolateSendPort == null) return;
+
+    // Schedule a timeout, since the send might fail and cause the isolate to
+    // block indefinitely
+    requestIsolateTimeout = Timer(
+      const Duration(seconds: 1),
+      () {
+        onCrash?.call();
+      },
+    );
   }
 
   bool _heartbeatReceived = true;
@@ -318,6 +357,39 @@ class EngineConnector {
   }
 }
 
+/// Isolate thread function for sending messages to the engine.
+///
+/// When sending a request to the engine, we copy the bytes for the request
+/// into a buffer allocated by the engine connector dynamic library, and then
+/// we notify this isolate to send the message.
+///
+/// We do this because the `message_queue` `send()` function has a chance of
+/// blocking the current thread indefinitely. This will happen if the engine
+/// process dies for some reason, though it may happen for other reasons as
+/// well.
+///
+/// If we tell this thread to send a message and it doesn't reply after a
+/// certain amount of time, then we will report that the engine has crashed.
+void _requestSenderIsolate(SendPort sendPort) {
+  final engineConnectorLib = DynamicLibrary.open(dyLibPath);
+
+  final sendFromBuffer = engineConnectorLib.lookupFunction<
+      SendFromBufferFuncNative, SendFromBufferFuncDart>('sendFromBuffer');
+
+  final receivePort = ReceivePort();
+  sendPort.send(receivePort.sendPort);
+
+  // The main thread will send a message with the message size when it wants
+  // this thread to send from the dynamic library's buffer.
+  receivePort.listen((size) {
+    // Send the current buffer
+    sendFromBuffer(size as int);
+
+    // Notify the main thread when we're done
+    sendPort.send(null);
+  });
+}
+
 /// Isolate thread function for receiving responses from the engine.
 ///
 /// Waiting for a response from the engine requires blocking, which we can't do
@@ -330,8 +402,7 @@ class EngineConnector {
 /// sends an empty message to this function, which then continues listening for
 /// new messages.
 void _responseReceiverIsolate(SendPort sendPort) async {
-  const path = './data/flutter_assets/assets/EngineConnector.dll';
-  final engineConnectorLib = DynamicLibrary.open(path);
+  final engineConnectorLib = DynamicLibrary.open(dyLibPath);
 
   final receive = engineConnectorLib
       .lookupFunction<ReceiveFuncNative, ReceiveFuncDart>('receive');
