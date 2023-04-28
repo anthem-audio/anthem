@@ -30,6 +30,7 @@ import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_controller.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -188,10 +189,23 @@ class _PatternEditorState extends State<PatternEditor> {
                           contentPadding: EdgeInsets.zero,
                           startIcon: Icons.add,
                           hint: 'Add a new instrument',
-                          onPress: () {
+                          onPress: () async {
+                            final result = await FilePicker.platform.pickFiles(
+                              dialogTitle: 'Choose a plugin (VST3)',
+                              allowedExtensions: ['vst3'],
+                              initialDirectory:
+                                  'C:\\Program Files\\Common Files\\VST3',
+                            );
+
+                            final path = result?.files[0].path;
+
+                            if (path == null) return;
+
                             controller!.addGenerator(
-                              'Instrument ${(Random()).nextInt(100).toString()}',
-                              getColor(),
+                              name:
+                                  'Instrument ${(Random()).nextInt(100).toString()}',
+                              color: getColor(),
+                              pluginPath: path,
                             );
                           },
                         ),
