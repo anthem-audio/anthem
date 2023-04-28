@@ -27,7 +27,6 @@ import 'package:flutter/foundation.dart';
 
 import 'package:anthem/generated/messages_generated.dart';
 
-const path = './data/flutter_assets/assets/EngineConnector.dll';
 final engineConnectorLib =
     DynamicLibrary.open('./data/flutter_assets/assets/EngineConnector.dll');
 
@@ -117,7 +116,8 @@ class EngineConnector {
 
   Process? engineProcess;
 
-  Function(Response reply)? onReply;
+  void Function(Response reply)? onReply;
+  void Function()? onCrash;
 
   late Future<void> onInit;
   bool _initialized = false;
@@ -131,7 +131,7 @@ class EngineConnector {
   /// the engine doesn't receive one after 10 seconds, it will stop itself.
   late Timer _engineHeartbeatTimer;
 
-  EngineConnector(this._id, [this.onReply]) {
+  EngineConnector(this._id, {this.onReply, this.onCrash}) {
     _cleanUpMessageQueues = engineConnectorLib.lookupFunction<
         CleanUpMessageQueuesFuncNative,
         CleanUpMessageQueuesFuncDart>('cleanUpMessageQueues');
@@ -225,14 +225,13 @@ class EngineConnector {
       sendPort!.send(null);
     });
 
-    _heartbeatCheckTimer = Timer(
+    _heartbeatCheckTimer = Timer.periodic(
       // Maybe a bit long if this is our only way to tell if the engine died
       const Duration(seconds: 10),
-      () {
+      (_) {
         if (!_heartbeatReceived) {
-          // TODO: Notify consumers, at which point they can restart the engine
-          // ignore: avoid_print
-          print('Engine died probably');
+          onCrash?.call();
+          _heartbeatCheckTimer?.cancel();
         }
 
         _heartbeatReceived = false;
@@ -299,7 +298,7 @@ class EngineConnector {
 
   /// Stops the engine process and isolate, and cleans up the message queues.
   void dispose() {
-    // Stop the heratbeat check timer
+    // Stop the heartbeat check timer
     _heartbeatCheckTimer?.cancel();
 
     // Kill engine process

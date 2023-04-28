@@ -30,6 +30,7 @@ class IconDef {
 
 class Icons {
   static IconDef add = const IconDef('assets/icons/scrollbar/add.svg');
+  static IconDef anthem = const IconDef('assets/icons/main/anthem.svg');
   static IconDef arrowDown =
       const IconDef('assets/icons/misc/dropdown_arrow___down.svg');
   static IconDef audio = const IconDef('assets/icons/audio.svg');

@@ -25,6 +25,12 @@ import 'package:anthem/generated/project_generated.dart';
 
 part 'api/project.dart';
 
+enum EngineState {
+  stopped,
+  starting,
+  running,
+}
+
 /// Engine class, used for communicating with Tracktion Engine.
 ///
 /// This class manages the IPC connection between the UI and engine processes
@@ -38,8 +44,21 @@ class Engine {
 
   int Function() get _getRequestId => _engineConnector.getRequestId;
 
+  final StreamController<EngineState> _engineStateStreamController =
+      StreamController();
+  late final Stream<EngineState> engineStateStream;
+
   Engine(this.id) {
-    _engineConnector = EngineConnector(id, _onReply);
+    engineStateStream = _engineStateStreamController.stream;
+    _engineStateStreamController.add(EngineState.starting);
+
+    _engineConnector =
+        EngineConnector(id, onReply: _onReply, onCrash: _onCrash);
+
+    _engineConnector.onInit.then((_) {
+      _engineStateStreamController.add(EngineState.running);
+    });
+
     projectApi = Project(this);
   }
 
@@ -50,7 +69,12 @@ class Engine {
     }
   }
 
+  void _onCrash() {
+    _engineStateStreamController.add(EngineState.stopped);
+  }
+
   void dispose() {
+    _engineStateStreamController.close();
     _engineConnector.dispose();
   }
 
