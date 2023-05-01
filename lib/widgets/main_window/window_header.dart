@@ -174,10 +174,9 @@ class _TabState extends State<_Tab> {
       },
       child: Padding(
         padding: EdgeInsets.only(
-            right: 1,
-            bottom: widget.isSelected
-                ? 0
-                : 1), // height change is causing issues with button
+          right: 1,
+          bottom: widget.isSelected ? 0 : 1,
+        ),
         child: Container(
           width: 115,
           decoration: BoxDecoration(
@@ -194,30 +193,35 @@ class _TabState extends State<_Tab> {
                     bottomLeft: Radius.circular(1),
                   ),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  widget.title,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Theme.text.main),
+          child: Padding(
+            padding: EdgeInsets.only(
+              bottom: widget.isSelected ? 1 : 0,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Theme.text.main),
+                  ),
                 ),
-              ),
-              Button(
-                variant: ButtonVariant.ghost,
-                width: 22,
-                height: 22,
-                hideBorder: true,
-                icon: Icons.close,
-                onPress: () {
-                  closePressed = true;
-                  controller.closeProject(widget.id);
-                },
-              ),
-              const SizedBox(width: 8),
-            ],
+                Button(
+                  variant: ButtonVariant.ghost,
+                  width: 22,
+                  height: 22,
+                  hideBorder: true,
+                  icon: Icons.close,
+                  onPress: () {
+                    closePressed = true;
+                    controller.closeProject(widget.id);
+                  },
+                ),
+                const SizedBox(width: 8),
+              ],
+            ),
           ),
         ),
       ),
