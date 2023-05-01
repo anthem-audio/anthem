@@ -94,7 +94,7 @@ class ProjectHeader extends StatelessWidget {
                 ],
               ),
               child: Button(
-                startIcon: Icons.hamburger,
+                icon: Icons.hamburger,
                 showMenuIndicator: true,
                 onPress: () {
                   menuController.open?.call();
@@ -104,7 +104,7 @@ class ProjectHeader extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Button(
-              startIcon: Icons.save,
+              icon: Icons.save,
               onPress: () {
                 mainWindowController.saveProject(projectID, false);
               },
@@ -112,7 +112,7 @@ class ProjectHeader extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Button(
-              startIcon: Icons.undo,
+              icon: Icons.undo,
               onPress: () {
                 projectController.undo();
               },
@@ -120,7 +120,7 @@ class ProjectHeader extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Button(
-              startIcon: Icons.redo,
+              icon: Icons.redo,
               onPress: () {
                 projectController.redo();
               },

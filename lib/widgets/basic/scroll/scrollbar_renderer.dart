@@ -247,7 +247,7 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
                   child: Button(
                     hideBorder: true,
                     variant: ButtonVariant.ghost,
-                    startIcon: isHorizontal
+                    icon: isHorizontal
                         ? Icons.scrollbar.arrowLeft
                         : Icons.scrollbar.arrowUp,
                     contentPadding: EdgeInsets.zero,
@@ -285,7 +285,7 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
                   child: Button(
                     hideBorder: true,
                     variant: ButtonVariant.ghost,
-                    startIcon: isHorizontal
+                    icon: isHorizontal
                         ? Icons.scrollbar.arrowRight
                         : Icons.scrollbar.arrowDown,
                     contentPadding: EdgeInsets.zero,

@@ -71,7 +71,7 @@ class TrackHeader extends StatelessWidget {
               right: 0,
               child: Button(
                 variant: ButtonVariant.label,
-                startIcon: Icons.mute,
+                icon: Icons.mute,
                 contentPadding: EdgeInsets.symmetric(
                   horizontal: 8,
                   vertical: verticalPadding,

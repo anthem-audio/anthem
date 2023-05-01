@@ -156,7 +156,7 @@ class _PatternPickerState extends State<PatternPicker> {
                         ),
                         const SizedBox(height: 4),
                         Button(
-                          startIcon: Icons.add,
+                          icon: Icons.add,
                           height: 17,
                           variant: ButtonVariant.ghost,
                           contentPadding: const EdgeInsets.all(0),

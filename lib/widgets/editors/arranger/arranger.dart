@@ -154,7 +154,7 @@ class _ArrangerState extends State<Arranger> {
                                   menuController: menuController,
                                   child: Button(
                                     width: 26,
-                                    startIcon: Icons.kebab,
+                                    icon: Icons.kebab,
                                     onPress: () => menuController.open?.call(),
                                   ),
                                 ),

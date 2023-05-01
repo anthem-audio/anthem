@@ -94,7 +94,7 @@ class _WindowHeaderState extends State<WindowHeader> {
                                 contentPadding: const EdgeInsets.all(2),
                                 variant: ButtonVariant.ghost,
                                 hideBorder: true,
-                                startIcon: Icons.minimize,
+                                icon: Icons.minimize,
                                 onPress: () {
                                   appWindow.minimize();
                                 },
@@ -109,7 +109,7 @@ class _WindowHeaderState extends State<WindowHeader> {
                                 contentPadding: const EdgeInsets.all(2),
                                 variant: ButtonVariant.ghost,
                                 hideBorder: true,
-                                startIcon: Icons.maximize,
+                                icon: Icons.maximize,
                                 onPress: () {
                                   appWindow.maximizeOrRestore();
                                 },
@@ -124,7 +124,7 @@ class _WindowHeaderState extends State<WindowHeader> {
                                 contentPadding: const EdgeInsets.all(2),
                                 variant: ButtonVariant.ghost,
                                 hideBorder: true,
-                                startIcon: Icons.close,
+                                icon: Icons.close,
                                 onPress: () {
                                   appWindow.close();
                                 },
@@ -173,7 +173,11 @@ class _TabState extends State<_Tab> {
         closePressed = false;
       },
       child: Padding(
-        padding: EdgeInsets.only(right: 1, bottom: widget.isSelected ? 0 : 1),
+        padding: EdgeInsets.only(
+            right: 1,
+            bottom: widget.isSelected
+                ? 0
+                : 1), // height change is causing issues with button
         child: Container(
           width: 115,
           decoration: BoxDecoration(
@@ -206,7 +210,7 @@ class _TabState extends State<_Tab> {
                 width: 22,
                 height: 22,
                 hideBorder: true,
-                startIcon: Icons.close,
+                icon: Icons.close,
                 onPress: () {
                   closePressed = true;
                   controller.closeProject(widget.id);
