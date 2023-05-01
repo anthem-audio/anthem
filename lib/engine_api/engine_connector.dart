@@ -66,8 +66,7 @@ typedef TryReceiveFuncDart = bool Function();
 /// final engineConnectorID = getID();
 /// final engineConnector = EngineConnector(
 ///   engineConnectorID,
-///   (Uint8List reply) {
-///     final response = Response(reply);
+///   (Response response) {
 ///     // Handle reply here...
 ///   }
 /// );
@@ -80,7 +79,7 @@ typedef TryReceiveFuncDart = bool Function();
 ///   id: id,
 ///   commandType: CommandTypeId.AddArrangement,
 ///   command: AddArrangementObjectBuilder(),
-/// ).toBytes();
+/// );
 ///
 /// engineConnector.send(request);
 /// ```
@@ -190,7 +189,6 @@ class EngineConnector {
     // If we're in debug mode, start with a command line window so we can see logging
     if (kDebugMode && Platform.isWindows) {
       engineProcess = await Process.start('powershell', [
-        '-NoExit',
         '-Command',
         '& {Start-Process -FilePath "$anthemPathStr" -ArgumentList "$_id" -Wait}'
       ]);
