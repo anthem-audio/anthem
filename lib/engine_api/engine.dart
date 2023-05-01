@@ -31,12 +31,16 @@ enum EngineState {
   running,
 }
 
+var _engineIdGenerator = 0;
+
+int getEngineID() => _engineIdGenerator++;
+
 /// Engine class, used for communicating with Tracktion Engine.
 ///
 /// This class manages the IPC connection between the UI and engine processes
 /// and provides a higher-level async API to the rest of the UI.
 class Engine {
-  String id;
+  int id;
   late EngineConnector _engineConnector;
   late Project projectApi;
 

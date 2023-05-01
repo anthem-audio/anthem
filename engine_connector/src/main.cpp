@@ -39,9 +39,9 @@ int request_id = 0;
 
 extern "C"
 {
-    _declspec(dllexport) void _stdcall cleanUpMessageQueues(const char* engineID)
+    _declspec(dllexport) void _stdcall cleanUpMessageQueues(int64_t engineID)
     {
-        std::string engineIdStr(engineID);
+        std::string engineIdStr = std::to_string(engineID);
         auto mqToEngineName = "ui-to-engine-" + engineIdStr;
         auto mqFromEngineName = "engine-to-ui-" + engineIdStr;
 
@@ -49,9 +49,9 @@ extern "C"
         message_queue::remove(mqFromEngineName.c_str());
     }
 
-    __declspec(dllexport) void __stdcall connect(const char* engineID)
+    __declspec(dllexport) void __stdcall connect(int64_t engineID)
     {
-        std::string engineIdStr(engineID);
+        std::string engineIdStr = std::to_string(engineID);
         auto mqToEngineName = "ui-to-engine-" + engineIdStr;
         auto mqFromEngineName = "engine-to-ui-" + engineIdStr;
 

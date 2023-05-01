@@ -22,7 +22,6 @@ import 'dart:ffi';
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:anthem/generated/messages_generated.dart';
@@ -30,11 +29,11 @@ import 'package:anthem/generated/messages_generated.dart';
 const dyLibPath = './data/flutter_assets/assets/EngineConnector.dll';
 final engineConnectorLib = DynamicLibrary.open(dyLibPath);
 
-typedef ConnectFuncNative = Void Function(Pointer<Utf8>);
-typedef ConnectFuncDart = void Function(Pointer<Utf8>);
+typedef ConnectFuncNative = Void Function(Int64 id);
+typedef ConnectFuncDart = void Function(int id);
 
-typedef CleanUpMessageQueuesFuncNative = Void Function(Pointer<Utf8>);
-typedef CleanUpMessageQueuesFuncDart = void Function(Pointer<Utf8>);
+typedef CleanUpMessageQueuesFuncNative = Void Function(Int64 id);
+typedef CleanUpMessageQueuesFuncDart = void Function(int id);
 
 typedef GetMessageSendBufferFuncNative = Pointer<Uint8> Function();
 typedef GetMessageSendBufferFuncDart = Pointer<Uint8> Function();
@@ -97,7 +96,7 @@ class EngineConnector {
   /// brokered by the operating system. This ID is used so we can have multiple
   /// engines running at once, since otherwise the message queues for the
   /// different engines would clash with each other.
-  final String _id;
+  final int _id;
 
   late CleanUpMessageQueuesFuncDart _cleanUpMessageQueues;
   late GetMessageSendBufferFuncDart _getMessageSendBuffer;
@@ -176,6 +175,8 @@ class EngineConnector {
       print('Starting engine with ID: $_id');
     }
 
+    _cleanUpMessageQueues(_id);
+
     // We start the engine process before trying to connect. The connect
     // function blocks when trying to open the engine's message queue, so the
     // engine's message queue must already exist before we try to connect.
@@ -192,7 +193,7 @@ class EngineConnector {
     } else {
       engineProcess = await Process.start(
         anthemPathStr,
-        [_id],
+        [_id.toString()],
       );
     }
 
@@ -376,9 +377,7 @@ class EngineConnector {
 
     // Clean up message queues. These will be persisted by the OS if we don't
     // clean them up.
-    final idPtr = _id.toNativeUtf8();
-    _cleanUpMessageQueues(idPtr);
-    calloc.free(idPtr);
+    _cleanUpMessageQueues(_id);
   }
 }
 
@@ -402,10 +401,7 @@ void _initIsolate(SendPort sendPort) {
   // This isolate should be given the ID of the engine as the first and only
   // message.
   receivePort.first.then((id) {
-    final idPtr = (id as String).toNativeUtf8();
-    connect(idPtr);
-    calloc.free(idPtr);
-
+    connect(id as int);
     sendPort.send(null);
   });
 }
