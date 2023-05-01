@@ -184,10 +184,22 @@ class EngineConnector {
     // function blocks when trying to open the engine's message queue, so the
     // engine's message queue must already exist before we try to connect.
     final mainExecutablePath = File(Platform.resolvedExecutable);
-    engineProcess = await Process.start(
-      '${mainExecutablePath.parent.path}/data/flutter_assets/assets/AnthemEngine.exe',
-      [_id],
-    );
+    final anthemPathStr =
+        '${mainExecutablePath.parent.path}/data/flutter_assets/assets/AnthemEngine.exe';
+
+    // If we're in debug mode, start with a command line window so we can see logging
+    if (kDebugMode && Platform.isWindows) {
+      engineProcess = await Process.start('powershell', [
+        '-NoExit',
+        '-Command',
+        '& {Start-Process -FilePath "$anthemPathStr" -ArgumentList "$_id" -Wait}'
+      ]);
+    } else {
+      engineProcess = await Process.start(
+        anthemPathStr,
+        [_id],
+      );
+    }
 
     // Now that the engine has created its message queue and is waiting for
     // ours, we will create our message queue and open the engine's message
