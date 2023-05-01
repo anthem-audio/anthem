@@ -99,7 +99,6 @@ class EngineConnector {
   /// different engines would clash with each other.
   final String _id;
 
-  late ConnectFuncDart _connect;
   late CleanUpMessageQueuesFuncDart _cleanUpMessageQueues;
   late GetMessageSendBufferFuncDart _getMessageSendBuffer;
   late GetMessageReceiveBufferFuncDart _getMessageReceiveBuffer;
@@ -138,8 +137,6 @@ class EngineConnector {
     _cleanUpMessageQueues = engineConnectorLib.lookupFunction<
         CleanUpMessageQueuesFuncNative,
         CleanUpMessageQueuesFuncDart>('cleanUpMessageQueues');
-    _connect = engineConnectorLib
-        .lookupFunction<ConnectFuncNative, ConnectFuncDart>('connect');
     _getMessageSendBuffer = engineConnectorLib.lookupFunction<
         GetMessageSendBufferFuncNative,
         GetMessageSendBufferFuncDart>('getMessageSendBuffer');
@@ -201,10 +198,28 @@ class EngineConnector {
 
     // Now that the engine has created its message queue and is waiting for
     // ours, we will create our message queue and open the engine's message
-    // queue.
-    final idPtr = _id.toNativeUtf8();
-    _connect(idPtr);
-    calloc.free(idPtr);
+    // queue. We do this in an isolate, since this operation blocks the current
+    // thread.
+    final initIsolateReceivePort = ReceivePort();
+    final initIsolate =
+        await Isolate.spawn(_initIsolate, initIsolateReceivePort.sendPort);
+    final initCompleter = Completer();
+
+    // The first message is the send port, which we use to send the engine ID
+    // to the isolate. The second message lets us know that the init process is
+    // done.
+    initIsolateReceivePort.listen((message) {
+      if (message is SendPort) {
+        message.send(_id);
+        return;
+      }
+
+      initCompleter.complete();
+    });
+
+    await initCompleter.future;
+
+    initIsolate.kill();
 
     _messageSendBuffer = _getMessageSendBuffer();
     _messageReceiveBuffer = _getMessageReceiveBuffer();
@@ -365,6 +380,34 @@ class EngineConnector {
     _cleanUpMessageQueues(idPtr);
     calloc.free(idPtr);
   }
+}
+
+/// Isolate thread function to connect to the engine.
+///
+/// Connecting to a new enigne involves starting the engine process and then
+/// repeatedly checking for the engine-to-UI message queue that should be
+/// created by the engine. This task blocks the thread that does it, so we
+/// offload this work to an isolate. This allows Flutter to continue rendering
+/// frames while the engine is starting.
+///
+/// This isolate sends a message when it's done.
+void _initIsolate(SendPort sendPort) {
+  final receivePort = ReceivePort();
+  sendPort.send(receivePort.sendPort);
+
+  final engineConnectorLib = DynamicLibrary.open(dyLibPath);
+  final connect = engineConnectorLib
+      .lookupFunction<ConnectFuncNative, ConnectFuncDart>('connect');
+
+  // This isolate should be given the ID of the engine as the first and only
+  // message.
+  receivePort.first.then((id) {
+    final idPtr = (id as String).toNativeUtf8();
+    connect(idPtr);
+    calloc.free(idPtr);
+
+    sendPort.send(null);
+  });
 }
 
 /// Isolate thread function for sending messages to the engine.
