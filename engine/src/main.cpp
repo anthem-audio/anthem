@@ -74,7 +74,7 @@ void messageLoop() {
     auto mqToUiName = "engine-to-ui-" + idStr;
     auto mqFromUiName = "ui-to-engine-" + idStr;
 
-    std::cout << "Creating engine-to-ui message queue" << std::endl;
+    std::cout << "Creating engine-to-ui message queue..." << std::endl;
 
     // Create a message_queue.
     mqToUi = std::unique_ptr<message_queue>(
@@ -88,14 +88,16 @@ void messageLoop() {
             // Each message can be a maximum of 65536 bytes (?) long
             65536));
 
-    std::cout << "Opening ui-to-engine message queue" << std::endl;
+    std::cout << "Opening ui-to-engine message queue..." << std::endl;
     mqFromUi = openMessageQueue(mqFromUiName.toStdString().c_str());
-    std::cout << "Opened successfully" << std::endl;
+    std::cout << "Opened successfully." << std::endl;
 
+    std::cout << "Starting heartbeat thread..." << std::endl;
     std::thread heartbeat_thread(heartbeat);
 
     uint8_t buffer[65536];
 
+    std::cout << "Anthem engine started successfully. Listening for messages from UI..." << std::endl;
     while (true) {
         std::size_t received_size;
         unsigned int priority;
@@ -114,7 +116,6 @@ void messageLoop() {
         flatbuffers::Offset<void> return_value_offset;
 
         // Access the data in the buffer
-        int request_id = request->id();
         auto command_type = request->command_type();
         std::optional<flatbuffers::Offset<Response>> response;
         switch (command_type) {
@@ -190,12 +191,31 @@ public:
 
     void initialise(const juce::String &commandLineParameters) override
     {
-        std::cout << "Engine application start" << std::endl;
-        anthem = new Anthem();
+        //            ,++,
+        //           /####\
+        //          /##**##\
+        //         =##/  \##=              ,---.            ,--.  ,--.                       
+        //       /##=/    \=##\           /  O  \ ,--,--, ,-'  '-.|  ,---.  ,---. ,--,--,--. 
+        //      =##/   ..   \##=         |  .-.  ||      \'-.  .-'|  .-.  || .-. :|        | 
+        //    /##=/   /##\   \=##\       |  | |  ||  ||  |  |  |  |  | |  |\   --.|  |  |  | 
+        //   =##,    /####\    ,##=      `--' `--'`--''--'  `--'  `--' `--' `----'`--`--`--' 
+        // .#####---*##/\##*---#####.
+        //  *=#######*/  \*#######=*
 
-        // auto& pluginManager = anthem->engine->getPluginManager();
-        // pluginManager.initialise();
-        // pluginManager.pluginFormatManager.addDefaultFormats();
+        std::cout << "           ,++," << std::endl;
+        std::cout << "          /####\\" << std::endl;
+        std::cout << "         /##**##\\" << std::endl;
+        std::cout << "        =##/  \\##=              ,---.            ,--.  ,--.                       " << std::endl;
+        std::cout << "      /##=/    \\=##\\           /  O  \\ ,--,--, ,-'  '-.|  ,---.  ,---. ,--,--,--. " << std::endl;
+        std::cout << "     =##/   ..   \\##=         |  .-.  ||      \\'-.  .-'|  .-.  || .-. :|        | " << std::endl;
+        std::cout << "   /##=/   /##\\   \\=##\\       |  | |  ||  ||  |  |  |  |  | |  |\\   --.|  |  |  | " << std::endl;
+        std::cout << "  =##,    /####\\    ,##=      `--' `--'`--''--'  `--'  `--' `--' `----'`--`--`--' " << std::endl;
+        std::cout << ".#####---*##/\\##*---#####." << std::endl;
+        std::cout << " *=#######*/  \\*#######=*" << std::endl;
+        std::cout << std::endl << std::endl << std::endl;
+
+        std::cout << "Starting Anthem engine..." << std::endl;
+        anthem = new Anthem();
 
         messageLoop();
     }
