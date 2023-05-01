@@ -103,7 +103,7 @@ class _PatternEditorState extends State<PatternEditor> {
                         child: Button(
                           width: 26,
                           height: 26,
-                          startIcon: Icons.kebab,
+                          icon: Icons.kebab,
                           onPress: () {
                             menuController.open?.call();
                           },
@@ -187,7 +187,7 @@ class _PatternEditorState extends State<PatternEditor> {
                         Button(
                           width: 105,
                           contentPadding: EdgeInsets.zero,
-                          startIcon: Icons.add,
+                          icon: Icons.add,
                           hint: 'Add a new instrument',
                           onPress: () async {
                             final result = await FilePicker.platform.pickFiles(

@@ -61,12 +61,12 @@ class _ButtonColors {
 class _ButtonTheme {
   final _ButtonColors background;
   final _ButtonColors border;
-  final _ButtonColors text;
+  final _ButtonColors content;
 
   const _ButtonTheme({
     required this.background,
     required this.border,
-    required this.text,
+    required this.content,
   });
 }
 
@@ -85,7 +85,7 @@ final _lightTheme = _ButtonTheme(
   border: _ButtonColors.all(
     const Color(0xFF293136),
   ),
-  text: _textColors,
+  content: _textColors,
 );
 final _darkTheme = _ButtonTheme(
   background: _ButtonColors(
@@ -96,7 +96,7 @@ final _darkTheme = _ButtonTheme(
   border: _ButtonColors.all(
     const Color(0xFF293136),
   ),
-  text: _textColors,
+  content: _textColors,
 );
 final _labelTheme = _ButtonTheme(
   background: _ButtonColors(
@@ -109,7 +109,7 @@ final _labelTheme = _ButtonTheme(
     hover: const Color(0xFF293136),
     press: const Color(0xFF293136),
   ),
-  text: _textColors,
+  content: _textColors,
 );
 final _ghostTheme = _ButtonTheme(
   background: _ButtonColors(
@@ -120,14 +120,17 @@ final _ghostTheme = _ButtonTheme(
   border: _ButtonColors.all(
     const Color(0xFF293136),
   ),
-  text: _textColors,
+  content: _textColors,
 );
 
 class Button extends StatefulWidget {
   final ButtonVariant? variant;
+
   final String? text;
-  final IconDef? startIcon;
-  final IconDef? endIcon;
+  final IconDef? icon;
+
+  final Widget Function(BuildContext context, Color contentColor)?
+      contentBuilder;
 
   final double? width;
   final double? height;
@@ -150,8 +153,8 @@ class Button extends StatefulWidget {
     Key? key,
     this.variant,
     this.text,
-    this.startIcon,
-    this.endIcon,
+    this.icon,
+    this.contentBuilder,
     this.width,
     this.height,
     this.expand,
@@ -228,103 +231,23 @@ class _ButtonState extends State<Button> {
       backgroundColor = widget.backgroundHoverColor!;
     }
 
-    final textColor = theme.text.getColor(hovered, toggleState);
+    final contentColor = theme.content.getColor(hovered, toggleState);
 
-    final List<Widget> innerRowChildren = [];
-    final List<Widget> rowChildren = [];
+    Widget? buttonContent;
 
-    final startIconWidget = widget.startIcon != null
-        ? SvgIcon(
-            icon: widget.startIcon!,
-            color: textColor,
-          )
-        : null;
-
-    final textWidget = widget.text != null
-        ? Text(
-            widget.text!,
-            style: TextStyle(
-              color: textColor,
-              fontSize: 11,
-              overflow: TextOverflow.ellipsis,
-            ),
-          )
-        : null;
-
-    final endIconWidget = widget.endIcon != null
-        ? SvgIcon(
-            icon: widget.endIcon!,
-            color: textColor,
-          )
-        : null;
-
-    if (startIconWidget != null) {
-      innerRowChildren.add(startIconWidget);
-      if (widget.text != null) {
-        innerRowChildren.add(
-          const SizedBox(width: 4),
-        );
-      }
-    }
-
-    rowChildren.add(
-      Expanded(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: innerRowChildren,
+    if (widget.contentBuilder != null) {
+      buttonContent = widget.contentBuilder!(context, contentColor);
+    } else if (widget.text != null) {
+      buttonContent = Text(
+        widget.text!,
+        style: TextStyle(
+          color: contentColor,
+          fontSize: 11,
+          overflow: TextOverflow.ellipsis,
         ),
-      ),
-    );
-
-    if (textWidget != null) {
-      innerRowChildren.add(Expanded(child: textWidget));
-    }
-
-    if (endIconWidget != null) {
-      rowChildren.addAll(
-        [
-          const SizedBox(width: 4),
-          endIconWidget,
-        ],
       );
-    }
-
-    final Widget buttonContent;
-
-    final startIconOnly =
-        startIconWidget != null && textWidget == null && endIconWidget == null;
-    final startAndEndIconOnly =
-        startIconWidget != null && textWidget == null && endIconWidget != null;
-
-    // Hack to fix row overflow in some icon button cases
-    if (startIconOnly) {
-      buttonContent = startIconWidget;
-    } else if (startAndEndIconOnly) {
-      buttonContent = Stack(
-        children: [
-          Positioned(
-            top: 0,
-            left: 0,
-            bottom: 0,
-            child: Center(child: startIconWidget),
-          ),
-          Positioned(
-            top: 0,
-            right: 0,
-            bottom: 0,
-            child: Center(child: endIconWidget),
-          ),
-        ],
-      );
-    } else {
-      buttonContent = Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: widget.endIcon == null
-            ? MainAxisAlignment.spaceAround
-            : MainAxisAlignment.spaceBetween,
-        children: rowChildren,
-      );
+    } else if (widget.icon != null) {
+      buttonContent = SvgIcon(icon: widget.icon!, color: contentColor);
     }
 
     final List<Widget> stackChildren = [
@@ -344,7 +267,7 @@ class _ButtonState extends State<Button> {
             child: Container(
               width: 6 * sqrt2,
               height: 6 * sqrt2,
-              color: textColor,
+              color: contentColor,
             ),
           ),
         ),
