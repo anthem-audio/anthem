@@ -24,7 +24,6 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay.dart';
 import 'package:anthem/widgets/main_window/tab_content_switcher.dart';
@@ -69,12 +68,6 @@ class _MainWindowState extends State<MainWindow> {
                     WindowHeader(
                       selectedTabID: store.activeProjectID,
                       tabs: tabs,
-                      setActiveProject: (ID id) {
-                        controller.switchTab(id);
-                      },
-                      closeProject: (ID id) {
-                        controller.closeProject(id);
-                      },
                     ),
                     Expanded(
                       child: TabContentSwitcher(

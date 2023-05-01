@@ -31,11 +31,11 @@ class EngineIndicator extends StatelessObserverWidget {
   @override
   Widget build(BuildContext context) {
     final store = AnthemStore.instance;
-    final activeProject = store.projects[store.activeProjectID]!;
+    final activeProject = store.projects[store.activeProjectID];
 
     late final Widget indicator;
 
-    if (activeProject.engineState == EngineState.starting) {
+    if (activeProject?.engineState == EngineState.starting) {
       indicator = SizedBox(
         width: 12,
         height: 12,
@@ -47,7 +47,7 @@ class EngineIndicator extends StatelessObserverWidget {
     } else {
       indicator = SvgIcon(
         icon: Icons.anthem,
-        color: activeProject.engineState == EngineState.running
+        color: activeProject?.engineState == EngineState.running
             ? Theme.primary.main
             : Theme.text.main,
       );
