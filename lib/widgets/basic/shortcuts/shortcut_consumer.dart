@@ -62,9 +62,12 @@ class _ShortcutConsumerState extends State<ShortcutConsumer> {
     return '${project.id}-${widget.id}';
   }
 
+  late String id;
+
   void register() {
+    id = getID();
     controller!.register(
-      id: getID(),
+      id: id,
       global: widget.global,
       handler: (shortcut) {
         final project = Provider.of<ProjectModel>(context, listen: false);
@@ -93,7 +96,7 @@ class _ShortcutConsumerState extends State<ShortcutConsumer> {
 
     return Listener(
       onPointerDown: (e) {
-        controller!.focus(getID());
+        controller!.focus(id);
       },
       child: widget.child,
     );
@@ -101,7 +104,7 @@ class _ShortcutConsumerState extends State<ShortcutConsumer> {
 
   @override
   void dispose() {
-    controller!.unregister(getID());
+    controller!.unregister(id);
     super.dispose();
   }
 }
