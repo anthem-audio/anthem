@@ -24,18 +24,53 @@
 
 using namespace boost::interprocess;
 
-std::unique_ptr<boost::interprocess::message_queue> mqToEngine;
-std::unique_ptr<boost::interprocess::message_queue> mqFromEngine;
+// std::unique_ptr<boost::interprocess::message_queue> mqToEngine;
+// std::unique_ptr<boost::interprocess::message_queue> mqFromEngine;
 
-// Buffer for receiving messages from the server process
-uint8_t *message_receive_buffer = new uint8_t[65536];
+// // Buffer for receiving messages from the server process
+// uint8_t *message_receive_buffer = new uint8_t[65536];
 
-// Buffer for sending messages to the server process
-uint8_t *message_send_buffer = new uint8_t[65536];
-std::size_t last_received_size;
-unsigned int last_received_priority;
+// // Buffer for sending messages to the server process
+// uint8_t *message_send_buffer = new uint8_t[65536];
+// std::size_t last_received_size;
+// unsigned int last_received_priority;
 
-int request_id = 0;
+struct EngineConnection {
+    // ID of the connection
+    int64_t id;
+
+    // Message queue for sending mesasges to the engine
+    std::unique_ptr<boost::interprocess::message_queue> mqToEngine;
+
+    // Message queue for receiving mesasges from the engine
+    std::unique_ptr<boost::interprocess::message_queue> mqFromEngine;
+
+    // Buffer for receiving messages from the server process
+    uint8_t *message_receive_buffer = new uint8_t[65536];
+
+    // Buffer for sending messages to the server process
+    uint8_t *message_send_buffer = new uint8_t[65536];
+
+    // Size of the last message that was received from the engine
+    std::size_t last_received_size;
+
+    // Priority of the last message that was received from the engine
+    unsigned int last_received_priority;
+};
+
+// We have multiple EngineConnector classes in Dart, but they all effectively
+// use the same DLL, as any memory here is shared between these classes. This
+// vector stores data for each Dart EngineConnection class.
+std::vector<std::unique_ptr<EngineConnection>> engineConnections;
+
+EngineConnection& getEngineConnection(int64_t id) {
+    for (auto& connection : engineConnections) {
+        if (connection->id == id) {
+            return *connection;
+        }
+    }
+    throw std::runtime_error("EngineConnection not found for the given id");
+}
 
 extern "C"
 {
@@ -51,12 +86,16 @@ extern "C"
 
     __declspec(dllexport) void __stdcall connect(int64_t engineID)
     {
+        auto engineConnection = std::make_unique<EngineConnection>();
+
+        engineConnection->id = engineID;
+
         std::string engineIdStr = std::to_string(engineID);
         auto mqToEngineName = "ui-to-engine-" + engineIdStr;
         auto mqFromEngineName = "engine-to-ui-" + engineIdStr;
 
         // Create a message_queue.
-        mqToEngine = std::unique_ptr<message_queue>(
+        engineConnection->mqToEngine = std::unique_ptr<message_queue>(
             new message_queue(
                 create_only,
                 mqToEngineName.c_str(),
@@ -68,35 +107,68 @@ extern "C"
                 65536));
 
         std::cout << "Opening engine-to-ui message queue..." << std::endl;
-        mqFromEngine = openMessageQueue(mqFromEngineName.c_str());
+        engineConnection->mqFromEngine = openMessageQueue(mqFromEngineName.c_str());
         std::cout << "Opened successfully." << std::endl;
+
+        engineConnections.push_back(std::move(engineConnection));
     }
 
-    __declspec(dllexport) uint8_t *__stdcall getMessageSendBuffer()
+    __declspec(dllexport) void __stdcall freeEngineConnection(int64_t engineID)
     {
-        return message_send_buffer;
+        int index;
+        bool found = false;
+
+        for (int i = 0; i < engineConnections.size(); i++) {
+            auto& connection = engineConnections[i];
+            if (connection->id == engineID) {
+                index = i;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            throw std::runtime_error("EngineConnection not found for the given id");
+        }
+
+        engineConnections.erase(engineConnections.begin() + index);
     }
 
-    __declspec(dllexport) uint8_t *__stdcall getMessageReceiveBuffer()
+    __declspec(dllexport) uint8_t *__stdcall getMessageSendBuffer(int64_t engineID)
     {
-        return message_receive_buffer;
+        auto& engineConnection = getEngineConnection(engineID);
+        return engineConnection.message_send_buffer;
     }
 
-    __declspec(dllexport) std::size_t __stdcall getLastReceivedMessageSize()
+    __declspec(dllexport) uint8_t *__stdcall getMessageReceiveBuffer(int64_t engineID)
     {
-        return last_received_size;
+        auto& engineConnection = getEngineConnection(engineID);
+        return engineConnection.message_receive_buffer;
     }
 
-    __declspec(dllexport) void __stdcall sendFromBuffer(int64_t size)
+    __declspec(dllexport) std::size_t __stdcall getLastReceivedMessageSize(int64_t engineID)
     {
-        mqToEngine->send(message_send_buffer, size, 0);
+        auto& engineConnection = getEngineConnection(engineID);
+        return engineConnection.last_received_size;
+    }
+
+    __declspec(dllexport) void __stdcall sendFromBuffer(int64_t engineID, int64_t size)
+    {
+        auto& engineConnection = getEngineConnection(engineID);
+        engineConnection.mqToEngine->send(engineConnection.message_send_buffer, size, 0);
     }
 
     // This blocks the current thread until a message is received.
-    _declspec(dllexport) bool __stdcall receive()
+    _declspec(dllexport) bool __stdcall receive(int64_t engineID)
     {
         try {
-            mqFromEngine->receive(message_receive_buffer, 65536, last_received_size, last_received_priority);
+            auto& engineConnection = getEngineConnection(engineID);
+            engineConnection.mqFromEngine->receive(
+                engineConnection.message_receive_buffer,
+                65536,
+                engineConnection.last_received_size,
+                engineConnection.last_received_priority
+            );
             return true;
         }
         catch (const interprocess_exception &ex) {
@@ -109,10 +181,16 @@ extern "C"
         }
     }
 
-    _declspec(dllexport) bool __stdcall tryReceive()
+    _declspec(dllexport) bool __stdcall tryReceive(int64_t engineID)
     {
         try {
-            return mqFromEngine->try_receive(message_receive_buffer, 65536, last_received_size, last_received_priority);
+            auto& engineConnection = getEngineConnection(engineID);
+            return engineConnection.mqFromEngine->try_receive(
+                engineConnection.message_receive_buffer,
+                65536,
+                engineConnection.last_received_size,
+                engineConnection.last_received_priority
+            );
         }
         catch (const interprocess_exception &ex) {
             std::cerr << "Error receiving message: " << ex.what() << std::endl;
