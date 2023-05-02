@@ -29,29 +29,34 @@ import 'package:anthem/generated/messages_generated.dart';
 const dyLibPath = './data/flutter_assets/assets/EngineConnector.dll';
 final engineConnectorLib = DynamicLibrary.open(dyLibPath);
 
-typedef ConnectFuncNative = Void Function(Int64 id);
-typedef ConnectFuncDart = void Function(int id);
+typedef ConnectFuncNative = Void Function(Int64 engineID);
+typedef ConnectFuncDart = void Function(int engineID);
 
-typedef CleanUpMessageQueuesFuncNative = Void Function(Int64 id);
-typedef CleanUpMessageQueuesFuncDart = void Function(int id);
+typedef FreeEngineConnectionFuncNative = Void Function(Int64 engineID);
+typedef FreeEngineConnectionFuncDart = void Function(int engineID);
 
-typedef GetMessageSendBufferFuncNative = Pointer<Uint8> Function();
-typedef GetMessageSendBufferFuncDart = Pointer<Uint8> Function();
+typedef CleanUpMessageQueuesFuncNative = Void Function(Int64 engineID);
+typedef CleanUpMessageQueuesFuncDart = void Function(int engineID);
 
-typedef GetMessageReceiveBufferFuncNative = Pointer<Uint8> Function();
-typedef GetMessageReceiveBufferFuncDart = Pointer<Uint8> Function();
+typedef GetMessageSendBufferFuncNative = Pointer<Uint8> Function(
+    Int64 engineID);
+typedef GetMessageSendBufferFuncDart = Pointer<Uint8> Function(int engineID);
 
-typedef SendFromBufferFuncNative = Void Function(Int64 size);
-typedef SendFromBufferFuncDart = void Function(int size);
+typedef GetMessageReceiveBufferFuncNative = Pointer<Uint8> Function(
+    Int64 engineID);
+typedef GetMessageReceiveBufferFuncDart = Pointer<Uint8> Function(int engineID);
 
-typedef GetLastReceivedMessageSizeFuncNative = Int64 Function();
-typedef GetLastReceivedMessageSizeFuncDart = int Function();
+typedef SendFromBufferFuncNative = Void Function(Int64 engineID, Int64 size);
+typedef SendFromBufferFuncDart = void Function(int engineID, int size);
 
-typedef ReceiveFuncNative = Bool Function();
-typedef ReceiveFuncDart = bool Function();
+typedef GetLastReceivedMessageSizeFuncNative = Int64 Function(Int64 engineID);
+typedef GetLastReceivedMessageSizeFuncDart = int Function(int engineID);
 
-typedef TryReceiveFuncNative = Bool Function();
-typedef TryReceiveFuncDart = bool Function();
+typedef ReceiveFuncNative = Bool Function(Int64 engineID);
+typedef ReceiveFuncDart = bool Function(int engineID);
+
+typedef TryReceiveFuncNative = Bool Function(Int64 engineID);
+typedef TryReceiveFuncDart = bool Function(int engineID);
 
 /// Provides a way to communicate with the engine process.
 ///
@@ -99,6 +104,7 @@ class EngineConnector {
   final int _id;
 
   late CleanUpMessageQueuesFuncDart _cleanUpMessageQueues;
+  late FreeEngineConnectionFuncDart _freeEngineConnection;
   late GetMessageSendBufferFuncDart _getMessageSendBuffer;
   late GetMessageReceiveBufferFuncDart _getMessageReceiveBuffer;
   late GetLastReceivedMessageSizeFuncDart _getLastReceivedMessageSize;
@@ -136,6 +142,9 @@ class EngineConnector {
     _cleanUpMessageQueues = engineConnectorLib.lookupFunction<
         CleanUpMessageQueuesFuncNative,
         CleanUpMessageQueuesFuncDart>('cleanUpMessageQueues');
+    _freeEngineConnection = engineConnectorLib.lookupFunction<
+        CleanUpMessageQueuesFuncNative,
+        CleanUpMessageQueuesFuncDart>('freeEngineConnection');
     _getMessageSendBuffer = engineConnectorLib.lookupFunction<
         GetMessageSendBufferFuncNative,
         GetMessageSendBufferFuncDart>('getMessageSendBuffer');
@@ -222,15 +231,17 @@ class EngineConnector {
 
     initIsolate.kill();
 
-    _messageSendBuffer = _getMessageSendBuffer();
-    _messageReceiveBuffer = _getMessageReceiveBuffer();
+    _messageSendBuffer = _getMessageSendBuffer(_id);
+    _messageReceiveBuffer = _getMessageReceiveBuffer(_id);
 
     requestIsolateReceivePort = ReceivePort();
 
-    Isolate.spawn(
+    final requestSenderIsolateFuture = Isolate.spawn(
       _requestSenderIsolate,
       requestIsolateReceivePort.sendPort,
-    ).then(
+    );
+
+    requestSenderIsolateFuture.then(
       (isolate) {
         requestIsolate = isolate;
       },
@@ -240,6 +251,10 @@ class EngineConnector {
       // The first message is the send port
       if (requestIsolateSendPort == null) {
         requestIsolateSendPort = message;
+
+        // The request isolate expects the first message to be the engine ID
+        requestIsolateSendPort!.send(_id);
+
         return;
       }
 
@@ -250,10 +265,12 @@ class EngineConnector {
     responseIsolateReceivePort = ReceivePort();
 
     // Spawn an isolate to listen for replies from the engine
-    Isolate.spawn(
+    final responseIsolateFuture = Isolate.spawn(
       _responseReceiverIsolate,
       responseIsolateReceivePort.sendPort,
-    ).then(
+    );
+
+    responseIsolateFuture.then(
       (isolate) {
         receiveIsolate = isolate;
       },
@@ -265,6 +282,10 @@ class EngineConnector {
       // The first message is the send port
       if (responseIsolateSendPort == null) {
         responseIsolateSendPort = message;
+
+        // The response isolate expects the first message to be the engine ID
+        responseIsolateSendPort!.send(_id);
+
         return;
       }
 
@@ -289,6 +310,9 @@ class EngineConnector {
     );
 
     _initialized = true;
+
+    await requestSenderIsolateFuture;
+    await responseIsolateFuture;
   }
 
   /// Sends the given [Request] to the engine.
@@ -339,7 +363,7 @@ class EngineConnector {
   void _copyReplyAndNotify() {
     if (onReply == null) return;
 
-    final size = _getLastReceivedMessageSize();
+    final size = _getLastReceivedMessageSize(_id);
 
     final buffer = Uint8List(size);
 
@@ -378,6 +402,9 @@ class EngineConnector {
     // Clean up message queues. These will be persisted by the OS if we don't
     // clean them up.
     _cleanUpMessageQueues(_id);
+
+    // Free any memory that the dynamic library allocated for the connection
+    _freeEngineConnection(_id);
   }
 }
 
@@ -428,11 +455,19 @@ void _requestSenderIsolate(SendPort sendPort) {
   final receivePort = ReceivePort();
   sendPort.send(receivePort.sendPort);
 
+  int? engineID;
+
   // The main thread will send a message with the message size when it wants
   // this thread to send from the dynamic library's buffer.
-  receivePort.listen((size) {
+  receivePort.listen((message) {
+    // The first message will alwyas be the engine ID
+    if (engineID == null) {
+      engineID = message as int;
+      return;
+    }
+
     // Send the current buffer
-    sendFromBuffer(size as int);
+    sendFromBuffer(engineID!, message as int);
 
     // Notify the main thread when we're done
     sendPort.send(null);
@@ -461,11 +496,20 @@ void _responseReceiverIsolate(SendPort sendPort) async {
   final receivePort = ReceivePort();
   sendPort.send(receivePort.sendPort);
 
+  Completer<void> engineIDCompleter = Completer();
   Completer<void>? mainThreadCopyFromBufferCompleter;
+
+  int? engineID;
 
   // The main thread will send an empty message when it's done reading the
   // message buffer.
   receivePort.listen((message) {
+    // The first message will be the engine ID
+    if (engineID == null) {
+      engineID = message as int;
+      engineIDCompleter.complete();
+    }
+
     mainThreadCopyFromBufferCompleter?.complete();
   });
 
@@ -473,7 +517,7 @@ void _responseReceiverIsolate(SendPort sendPort) async {
     // This involves blocking the isolate, which breaks hot reloading.
     while (true) {
       // Block this thread while waiting for a response
-      final success = receive();
+      final success = receive(engineID!);
 
       if (!success) break;
 
@@ -506,7 +550,7 @@ void _responseReceiverIsolate(SendPort sendPort) async {
         }
 
         while (true) {
-          final success = tryReceive();
+          final success = tryReceive(engineID!);
 
           if (!success) break;
 
