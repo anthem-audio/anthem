@@ -26,5 +26,6 @@
     "unfocus",
     "Unregisters",
     "vsync"
-  ]
+  ],
+  "C_Cpp.autoAddFileAssociations": false
 }
