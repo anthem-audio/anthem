@@ -117,10 +117,16 @@ void messageLoop() {
 
         // Access the data in the buffer
         auto command_type = request->command_type();
+        bool isExit = false;
         std::optional<flatbuffers::Offset<Response>> response;
         switch (command_type) {
             case Command_Exit: {
-                juce::JUCEApplication::quit();
+                auto exitReply = CreateExitReply(builder);
+                auto exitReplyOffset = exitReply.Union();
+                response = std::optional(
+                    CreateResponse(builder, request->id(), ReturnValue_ExitReply, exitReplyOffset)
+                );
+                isExit = true;
                 break;
             }
             case Command_Heartbeat: {
@@ -152,6 +158,12 @@ void messageLoop() {
 
             // Send the response to the UI
             mqToUi->send(receive_buffer_ptr, buffer_size, 0);
+        }
+
+        if (isExit) {
+            std::cout << "Engine received exit message. Shutting down..." << std::endl;
+            juce::JUCEApplication::quit();
+            break;
         }
     }
 }
