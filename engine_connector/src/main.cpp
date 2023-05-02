@@ -19,10 +19,19 @@
 
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <iostream>
+#include <vector>
 
 #include "open_message_queue.h"
 
 using namespace boost::interprocess;
+
+#ifdef _WIN32
+    #define DYLIB_EXPORT __declspec(dllexport)
+    #define CALL_CONV __stdcall
+#else
+    #define DYLIB_EXPORT __attribute__((visibility("default")))
+    #define CALL_CONV
+#endif
 
 struct EngineConnection {
     // ID of the connection
@@ -63,7 +72,7 @@ EngineConnection& getEngineConnection(int64_t id) {
 
 extern "C"
 {
-    _declspec(dllexport) void _stdcall cleanUpMessageQueues(int64_t engineID)
+    DYLIB_EXPORT void CALL_CONV cleanUpMessageQueues(int64_t engineID)
     {
         std::string engineIdStr = std::to_string(engineID);
         auto mqToEngineName = "ui-to-engine-" + engineIdStr;
@@ -73,7 +82,7 @@ extern "C"
         message_queue::remove(mqFromEngineName.c_str());
     }
 
-    __declspec(dllexport) void __stdcall connect(int64_t engineID)
+    DYLIB_EXPORT void CALL_CONV connect(int64_t engineID)
     {
         auto engineConnection = std::make_unique<EngineConnection>();
 
@@ -102,7 +111,7 @@ extern "C"
         engineConnections.push_back(std::move(engineConnection));
     }
 
-    __declspec(dllexport) void __stdcall freeEngineConnection(int64_t engineID)
+    DYLIB_EXPORT void CALL_CONV freeEngineConnection(int64_t engineID)
     {
         int index;
         bool found = false;
@@ -123,32 +132,32 @@ extern "C"
         engineConnections.erase(engineConnections.begin() + index);
     }
 
-    __declspec(dllexport) uint8_t *__stdcall getMessageSendBuffer(int64_t engineID)
+    DYLIB_EXPORT uint8_t *CALL_CONV getMessageSendBuffer(int64_t engineID)
     {
         auto& engineConnection = getEngineConnection(engineID);
         return engineConnection.message_send_buffer;
     }
 
-    __declspec(dllexport) uint8_t *__stdcall getMessageReceiveBuffer(int64_t engineID)
+    DYLIB_EXPORT uint8_t *CALL_CONV getMessageReceiveBuffer(int64_t engineID)
     {
         auto& engineConnection = getEngineConnection(engineID);
         return engineConnection.message_receive_buffer;
     }
 
-    __declspec(dllexport) std::size_t __stdcall getLastReceivedMessageSize(int64_t engineID)
+    DYLIB_EXPORT std::size_t CALL_CONV getLastReceivedMessageSize(int64_t engineID)
     {
         auto& engineConnection = getEngineConnection(engineID);
         return engineConnection.last_received_size;
     }
 
-    __declspec(dllexport) void __stdcall sendFromBuffer(int64_t engineID, int64_t size)
+    DYLIB_EXPORT void CALL_CONV sendFromBuffer(int64_t engineID, int64_t size)
     {
         auto& engineConnection = getEngineConnection(engineID);
         engineConnection.mqToEngine->send(engineConnection.message_send_buffer, size, 0);
     }
 
     // This blocks the current thread until a message is received.
-    _declspec(dllexport) bool __stdcall receive(int64_t engineID)
+    DYLIB_EXPORT bool CALL_CONV receive(int64_t engineID)
     {
         try {
             auto& engineConnection = getEngineConnection(engineID);
@@ -170,7 +179,7 @@ extern "C"
         }
     }
 
-    _declspec(dllexport) bool __stdcall tryReceive(int64_t engineID)
+    DYLIB_EXPORT bool CALL_CONV tryReceive(int64_t engineID)
     {
         try {
             auto& engineConnection = getEngineConnection(engineID);
