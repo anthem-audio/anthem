@@ -24,17 +24,6 @@
 
 using namespace boost::interprocess;
 
-// std::unique_ptr<boost::interprocess::message_queue> mqToEngine;
-// std::unique_ptr<boost::interprocess::message_queue> mqFromEngine;
-
-// // Buffer for receiving messages from the server process
-// uint8_t *message_receive_buffer = new uint8_t[65536];
-
-// // Buffer for sending messages to the server process
-// uint8_t *message_send_buffer = new uint8_t[65536];
-// std::size_t last_received_size;
-// unsigned int last_received_priority;
-
 struct EngineConnection {
     // ID of the connection
     int64_t id;

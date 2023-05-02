@@ -77,7 +77,26 @@ class Engine {
     _engineStateStreamController.add(EngineState.stopped);
   }
 
-  void dispose() {
+  Future<void> _exit() async {
+    final id = _getRequestId();
+
+    final request = RequestObjectBuilder(
+      id: id,
+      commandType: CommandTypeId.Exit,
+      command: ExitObjectBuilder(),
+    );
+
+    final completer = Completer<void>();
+
+    _request(id, request, onResponse: (response) {
+      completer.complete();
+    });
+
+    await completer.future;
+  }
+
+  Future<void> dispose() async {
+    await _exit();
     _engineStateStreamController.close();
     _engineConnector.dispose();
   }
