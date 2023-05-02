@@ -15,33 +15,15 @@ Anthem is developed and maintained by a group of volunteers, with a focus on mai
 
 ## Getting Started
 
-Anthem is developed with cross-platform technologies, and is designed to run on Windows, macOS and Linux. However, it is currently being developed on Windows and may not run correctly on other platforms yet. If you have any trouble compiling for macOS or Linux, please open an issue.
+Anthem is developed with cross-platform technologies, and is designed to run on Windows, macOS and Linux. However, it is currently not tested on macOS, and so may not work correctly there. If you have any trouble compiling for or running on macOS, please open an issue.
 
-_Note: The following instructions are for Windows users. macOS and Linux users may need to adapt them accordingly._
+### Windows
 
-### Prerequisites
+[Setup instructions for Windows](./setup_windows.md)
 
-Anthem is developed with the Flutter framework. You can see instructions for installing Flutter for your environment [here](https://docs.flutter.dev/get-started/install).
+### Linux
 
-In addition to Flutter, Anthem needs the following:
-
-- **The MSVC C++ compiler**: Already required by Flutter for Windows development.
-- **CMake**: Required to build the C++ components of Anthem. Download and install CMake from [here](https://cmake.org/).
-- **Boost 1.81.0 or later**: Required for inter-process communication between the UI and engine. Download and install Boost from [here](https://www.boost.org/), and follow the instructions below to set it up:
-    1. Download the Boost distribution.
-    2. Unzip the distribution somewhere.
-    3. Set an environment variable called `BOOST_ROOT` to the path of the folder you extracted Boost into (e.g., "C:/.../Code/boost_1_81_0").
-    4. If you're using Visual Studio Code, you will also need to add the Boost folder to your include path. Open settings (`ctrl + ,` on Windows), type `C_Cpp.default.includePath` in the search bar, click 'Add Item`, and paste in your Boost folder path.
-- **FlatBuffers v23.3.3 compiler**: Required for message serialization between the UI and engine. Download the compiler from [here](https://github.com/google/flatbuffers/releases/tag/v23.3.3), and ensure that the FlatBuffers compiler (`flatc.exe`) is in your PATH. You should be able to run `flatc -h` from a terminal in any folder.
-
-### Instructions
-
-1. Clone this repository with `--recurse-submodules`: `git clone --recurse-submodules https://github.com/anthem-audio/anthem.git`
-2. Navigate to the cloned repository.
-3. Run `.\scripts\build.ps1`. This will generate FlatBuffers files, and build the engine executable and the UI-to-engine IPC layer.
-4. (Optional) Open the project in your preferred IDE, such as Visual Studio Code.
-5. Open a new terminal session and run `flutter pub run build_runner watch`. This will run Dart-related code generation, and keep the generated files up-to-date as you develop.
-6. Use `flutter run` to run Anthem, or start Anthem via your IDE.
+[Setup instructions for Linux](./setup_linux.md)
 
 ## Architecture
 
