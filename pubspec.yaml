@@ -73,8 +73,7 @@ flutter:
   uses-material-design: false
 
   assets:
-  - assets/AnthemEngine.exe
-  - assets/EngineConnector.dll
+  - assets/engine/
   - assets/icons/
   - assets/icons/add/
   - assets/icons/arranger/

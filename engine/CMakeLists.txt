@@ -4,10 +4,18 @@ project(AnthemEngine)
 
 set(CMAKE_CXX_STANDARD 20)
 
+# JUCE is having trouble finding GTK
+if (LINUX)
+  find_package(PkgConfig REQUIRED)
+  find_package(CURL REQUIRED)
+  pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
+  pkg_check_modules(WEBKIT2GTK REQUIRED webkit2gtk-4.0)
+endif()
+
 # Set up Boost
 
 find_package(Boost
-  1.81.0
+  1.72.0
   REQUIRED
 )
 
@@ -48,6 +56,19 @@ target_sources(AnthemEngine PRIVATE ${ANTHEM_ENGINE_SOURCES})
 
 target_link_libraries(AnthemEngine ${Boost_LIBRARIES})
 
+if (LINUX)
+  target_include_directories(AnthemEngine PRIVATE ${GTK3_INCLUDE_DIRS})
+  target_link_directories(AnthemEngine PRIVATE ${GTK3_LIBRARY_DIRS})
+  target_link_libraries(AnthemEngine PRIVATE ${GTK3_LIBRARIES})
+
+  target_include_directories(AnthemEngine PRIVATE ${WEBKIT2GTK_INCLUDE_DIRS})
+  target_link_directories(AnthemEngine PRIVATE ${WEBKIT2GTK_LIBRARY_DIRS})
+  target_link_libraries(AnthemEngine PRIVATE ${WEBKIT2GTK_LIBRARIES})
+
+  target_link_libraries(AnthemEngine PRIVATE CURL::libcurl)
+  target_link_libraries(AnthemEngine PRIVATE atomic)
+endif()
+
 target_link_libraries(
   AnthemEngine
 
@@ -58,5 +79,12 @@ target_link_libraries(
   PUBLIC
   juce::juce_recommended_config_flags
   juce::juce_recommended_lto_flags
-  juce::juce_recommended_warning_flags
 )
+
+if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_link_libraries(
+      AnthemEngine
+      PUBLIC
+      juce::juce_recommended_warning_flags
+    )
+endif()
