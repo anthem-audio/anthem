@@ -52,16 +52,10 @@ class Engine {
       StreamController();
   late final Stream<EngineState> engineStateStream;
 
+  EngineState _engineState = EngineState.stopped;
+
   Engine(this.id) {
     engineStateStream = _engineStateStreamController.stream;
-    _engineStateStreamController.add(EngineState.starting);
-
-    _engineConnector =
-        EngineConnector(id, onReply: _onReply, onCrash: _onCrash);
-
-    _engineConnector.onInit.then((_) {
-      _engineStateStreamController.add(EngineState.running);
-    });
 
     projectApi = Project(this);
   }
@@ -74,7 +68,7 @@ class Engine {
   }
 
   void _onCrash() {
-    _engineStateStreamController.add(EngineState.stopped);
+    _setEngineState(EngineState.stopped);
   }
 
   Future<void> _exit() async {
@@ -93,12 +87,38 @@ class Engine {
     });
 
     await completer.future;
+
+    // This force-kills the engine... Maybe we should give it some time to
+    // shut down? Not sure how to tell when the process stops.
+    _engineConnector.dispose();
+
+    _setEngineState(EngineState.stopped);
   }
 
   Future<void> dispose() async {
     await _exit();
     _engineStateStreamController.close();
-    _engineConnector.dispose();
+  }
+
+  Future<void> stop() async {
+    if (_engineState != EngineState.stopped) {
+      await _exit();
+    }
+  }
+
+  Future<void> start() async {
+    if (_engineState != EngineState.stopped) {
+      return;
+    }
+
+    _setEngineState(EngineState.starting);
+
+    _engineConnector =
+        EngineConnector(id, onReply: _onReply, onCrash: _onCrash);
+
+    await _engineConnector.onInit;
+
+    _setEngineState(EngineState.running);
   }
 
   /// Sends a request to the engine.
@@ -111,5 +131,10 @@ class Engine {
       replyFunctions[id] = onResponse;
     }
     _engineConnector.send(request);
+  }
+
+  void _setEngineState(EngineState state) {
+    _engineState = state;
+    _engineStateStreamController.add(state);
   }
 }

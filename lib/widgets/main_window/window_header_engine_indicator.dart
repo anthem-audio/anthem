@@ -20,6 +20,7 @@
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/widgets.dart';
@@ -32,41 +33,47 @@ class EngineIndicator extends StatelessObserverWidget {
   Widget build(BuildContext context) {
     final store = AnthemStore.instance;
     final activeProject = store.projects[store.activeProjectID];
+    final engineState = activeProject?.engineState;
 
-    late final Widget indicator;
-
-    if (activeProject?.engineState == EngineState.starting) {
-      indicator = SizedBox(
-        width: 12,
-        height: 12,
-        child: material.CircularProgressIndicator(
-          color: Theme.text.main,
-          strokeWidth: 2,
-        ),
-      );
-    } else {
-      indicator = SvgIcon(
-        icon: Icons.anthem,
-        color: activeProject?.engineState == EngineState.running
-            ? Theme.primary.main
-            : Theme.text.main,
-      );
-    }
-
-    return Container(
+    return Button(
+      hideBorder: true,
       width: 28,
-      decoration: BoxDecoration(
-        color: Theme.panel.accent,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(4),
-          topRight: Radius.circular(2),
-          bottomLeft: Radius.circular(1),
-          bottomRight: Radius.circular(1),
-        ),
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(4),
+        topRight: Radius.circular(2),
+        bottomLeft: Radius.circular(1),
+        bottomRight: Radius.circular(1),
       ),
-      child: Center(
-        child: indicator,
-      ),
+      onPress: () {
+        if (engineState != EngineState.stopped) {
+          activeProject?.engine.stop();
+        } else {
+          activeProject?.engine.start();
+        }
+      },
+      contentBuilder: (context, color) {
+        late final Widget indicator;
+
+        if (engineState == EngineState.starting) {
+          indicator = SizedBox(
+            width: 12,
+            height: 12,
+            child: material.CircularProgressIndicator(
+              color: color,
+              strokeWidth: 2,
+            ),
+          );
+        } else {
+          indicator = SvgIcon(
+            icon: Icons.anthem,
+            color: activeProject?.engineState == EngineState.running
+                ? Theme.primary.main
+                : color,
+          );
+        }
+
+        return material.Center(child: indicator);
+      },
     );
   }
 }

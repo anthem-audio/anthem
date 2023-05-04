@@ -150,7 +150,7 @@ abstract class _ProjectModel extends Hydratable with Store {
       project: this as ProjectModel,
     );
 
-    engine = Engine(engineID);
+    engine = Engine(engineID)..start();
 
     engine.engineStateStream.listen((state) {
       (this as ProjectModel).engineState = state;
@@ -172,7 +172,7 @@ abstract class _ProjectModel extends Hydratable with Store {
       project: this as ProjectModel,
     );
 
-    engine = Engine(engineID);
+    engine = Engine(engineID)..start();
 
     isHydrated = true;
   }
