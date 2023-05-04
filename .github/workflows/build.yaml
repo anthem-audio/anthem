@@ -1,8 +1,9 @@
 name: Build Anthem
 on: [push]
 jobs:
-  build:
+  build-windows:
     runs-on: [windows-latest]
+    if: false
     steps:
       - name: Check out Anthem
         uses: actions/checkout@v3
@@ -66,9 +67,9 @@ jobs:
       # Build Flutter project
       - name: Build Flutter project
         run: |
-              if ($Env:RUNNER_OS -eq "Windows") {
-                flutter build windows --verbose
-              }
+          if ($Env:RUNNER_OS -eq "Windows") {
+            flutter build windows --verbose
+          }
         shell: pwsh
 
       - name: Upload artifact
@@ -76,3 +77,19 @@ jobs:
         with:
           name: anthem
           path: ${{ github.workspace }}/build/windows/runner/Release
+
+  build-linux:
+    runs-on: [ubuntu-latest]
+    steps:
+      - name: Check out Anthem
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install flatbuffers compiler
+        run: |
+          wget "https://github.com/google/flatbuffers/releases/download/v23.3.3/Linux.flatc.binary.clang++-12.zip" -O flatc.zip
+          7z e flatc.zip -oflatc
+          sudo cp flatc/flatc /usr/local/bin/
+          flatc -h
+          
