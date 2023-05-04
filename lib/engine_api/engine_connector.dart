@@ -26,6 +26,12 @@ import 'package:flutter/foundation.dart';
 
 import 'package:anthem/generated/messages_generated.dart';
 
+/// Set this to override the path to the engine.
+///
+/// This will allow you to stop the engine from Anthem, compile a new engine,
+/// and start the new enine, all without re-building the Anthem UI.
+const String? enginePathOverride = null;
+
 const dyLibPath = './data/flutter_assets/assets/EngineConnector.dll';
 final engineConnectorLib = DynamicLibrary.open(dyLibPath);
 
@@ -190,7 +196,7 @@ class EngineConnector {
     // function blocks when trying to open the engine's message queue, so the
     // engine's message queue must already exist before we try to connect.
     final mainExecutablePath = File(Platform.resolvedExecutable);
-    final anthemPathStr =
+    final anthemPathStr = enginePathOverride ??
         '${mainExecutablePath.parent.path}/data/flutter_assets/assets/AnthemEngine.exe';
 
     // If we're in debug mode, start with a command line window so we can see logging
