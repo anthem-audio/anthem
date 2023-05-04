@@ -1,5 +1,7 @@
 ## Setup on Linux
 
+_Note: These instructions were created on Ubuntu and match our Ubuntu CI builds. You may need to modify these  instructions if you're using a different distro._
+
 ### Prerequisites
 
 Anthem is developed with the Flutter framework. [You can see instructions for installing Flutter for Linux here.](https://docs.flutter.dev/get-started/install/linux)
@@ -7,10 +9,15 @@ Anthem is developed with the Flutter framework. [You can see instructions for in
 In addition to Flutter, Anthem needs the following:
 
 - **Powershell for Linux**: The build scripts for Anthem are written in Powershell.
-- **The Clang compiler**: Also required by Flutter. Used to compile multiple components within Anthem.
-- **CMake**: Also required by Flutter. Build tool used for multiple components within Anthem.
-- **Boost 1.81.0 or later**: Required for inter-process communication between the UI and engine.
-- **FlatBuffers v23.3.3 compiler**: Required for message serialization between the UI and the engine.
+- **The Clang compiler**: Used to compile multiple components within Anthem.
+- **CMake**: Build tool used for multiple components within Anthem.
+- **Make**: Used for assembling Anthem components.
+- **Boost 1.72.0 or later**: Required for inter-process communication between the UI and engine.
+- **FlatBuffers v23.3.3 compiler**: Required for message serialization between the UI and the engine. Download the compiled Linux binary for 23.3.3 from [the releases page](https://github.com/google/flatbuffers/releases/tag/v23.3.3) and copy the `flatc` binary to `/usr/bin`.
+- **Apt packages**: The following packages are required by JUCE, and can be installed with `apt` or a similar package manager:
+    ```
+    llvm clang libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libfreetype-dev mesa-common-dev libasound2-dev freeglut3-dev libxcomposite-dev libcurl4-gnutls-dev libgtk-3-dev libasound2-dev libcurl4-openssl-dev libwebkit2gtk-4.0-dev
+    ```
 
 ### Instructions
 

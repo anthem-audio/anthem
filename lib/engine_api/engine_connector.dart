@@ -32,7 +32,10 @@ import 'package:anthem/generated/messages_generated.dart';
 /// and start the new enine, all without re-building the Anthem UI.
 const String? enginePathOverride = null;
 
-const dyLibPath = './data/flutter_assets/assets/EngineConnector.dll';
+final mainExecutablePath = File(Platform.resolvedExecutable);
+final dyLibPath = Platform.isWindows
+    ? '${mainExecutablePath.parent.path}/data/flutter_assets/assets/engine/EngineConnector.dll'
+    : '${mainExecutablePath.parent.path}/data/flutter_assets/assets/engine/libEngineConnector.so';
 final engineConnectorLib = DynamicLibrary.open(dyLibPath);
 
 typedef ConnectFuncNative = Void Function(Int64 engineID);
@@ -195,9 +198,10 @@ class EngineConnector {
     // We start the engine process before trying to connect. The connect
     // function blocks when trying to open the engine's message queue, so the
     // engine's message queue must already exist before we try to connect.
-    final mainExecutablePath = File(Platform.resolvedExecutable);
     final anthemPathStr = enginePathOverride ??
-        '${mainExecutablePath.parent.path}/data/flutter_assets/assets/AnthemEngine.exe';
+        (Platform.isWindows
+            ? '${mainExecutablePath.parent.path}/data/flutter_assets/assets/engine/AnthemEngine.exe'
+            : '${mainExecutablePath.parent.path}/data/flutter_assets/assets/engine/AnthemEngine');
 
     // If we're in debug mode, start with a command line window so we can see logging
     if (kDebugMode && Platform.isWindows) {

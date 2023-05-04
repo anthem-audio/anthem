@@ -4,7 +4,7 @@ project(EngineConnector VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 
-find_package(Boost 1.81.0 REQUIRED)
+find_package(Boost 1.72.0 REQUIRED)
 
 include_directories(${Boost_INCLUDE_DIR})
 link_directories(${Boost_LIBRARY_DIRS})

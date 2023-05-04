@@ -7,10 +7,32 @@ Push-Location $scriptPath\..
 
 # Build engine connector
 .\engine_connector\build.ps1
-Copy-Item -Path ".\engine_connector\build\Debug\EngineConnector.dll" -Destination ".\assets\EngineConnector.dll"
+
+# Set engine connector source and destination paths
+$platform = [System.Environment]::OSVersion.Platform
+if ($platform -eq [System.PlatformID]::Win32NT) {
+    $engineConnectorSrc = ".\engine_connector\build\Debug\EngineConnector.dll"
+    $engineConnectorDest = ".\assets\engine\EngineConnector.dll"
+} else {
+    $engineConnectorSrc = "./engine_connector/build/libEngineConnector.so"
+    $engineConnectorDest = "./assets/engine/libEngineConnector.so"
+}
+
+New-Item -ItemType Directory -Path ".\assets\engine" -Force | Out-Null
+Copy-Item -Path $engineConnectorSrc -Destination $engineConnectorDest
 
 # Build engine executable
 .\engine\build.ps1
-Copy-Item -Path ".\engine\build\AnthemEngine_artefacts\Debug\AnthemEngine.exe" -Destination ".\assets\AnthemEngine.exe"
+
+# Set engine executable source and destination paths
+if ($platform -eq [System.PlatformID]::Win32NT) {
+    $engineExeSrc = ".\engine\build\AnthemEngine_artefacts\Debug\AnthemEngine.exe"
+    $engineExeDest = ".\assets\engine\AnthemEngine.exe"
+} else {
+    $engineExeSrc = "./engine/build/AnthemEngine_artefacts/AnthemEngine"
+    $engineExeDest = "./assets/engine/AnthemEngine"
+}
+
+Copy-Item -Path $engineExeSrc -Destination $engineExeDest
 
 Pop-Location
