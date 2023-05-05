@@ -90,7 +90,7 @@ class ProjectFooter extends StatelessWidget {
             const SizedBox(width: 8),
             Observer(builder: (context) {
               return Button(
-                startIcon: Icons.patternEditor,
+                icon: Icons.patternEditor,
                 width: 32,
                 height: 32,
                 toggleState: projectModel.isPatternEditorVisible,
@@ -147,7 +147,7 @@ class ProjectFooter extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Button(
-              startIcon: Icons.automationMatrixPanel,
+              icon: Icons.automationMatrixPanel,
               width: 32,
               height: 32,
             ),

@@ -29,14 +29,22 @@ class PatternEditorController {
 
   PatternEditorController({required this.project});
 
-  void addGenerator(String name, Color color) {
+  void addGenerator({
+    required String name,
+    required Color color,
+    required String pluginPath,
+  }) {
+    // TODO: Use plugin path to send this to the engine
+
     final id = getID();
+
     project.execute(AddGeneratorCommand(
       project: project,
       generatorID: id,
       name: name,
       color: color,
     ));
+
     project.activeGeneratorID = id;
   }
 

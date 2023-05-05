@@ -1,0 +1,7 @@
+[submodule "engine/include/JUCE"]
+	path = engine/include/JUCE
+	url = https://github.com/juce-framework/JUCE.git
+[submodule "engine/include/tracktion_engine"]
+	path = engine/include/tracktion_engine
+	url = https://github.com/Tracktion/tracktion_engine.git
+	shallow = true

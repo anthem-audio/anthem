@@ -157,9 +157,33 @@ class _DropdownState extends State<Dropdown> {
             },
             width: widget.width,
             height: widget.height,
-            text: widget.showNameOnButton ? selectedItem.name : null,
-            startIcon: selectedItem.icon,
-            endIcon: Icons.arrowDown,
+            contentBuilder: (context, contentColor) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (selectedItem.icon != null)
+                    SvgIcon(
+                      icon: selectedItem.icon!,
+                      color: contentColor,
+                    ),
+                  Expanded(
+                    child: Text(
+                      (widget.showNameOnButton ? selectedItem.name : null) ??
+                          '',
+                      style: TextStyle(
+                        color: contentColor,
+                        fontSize: 11,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  SvgIcon(
+                    icon: Icons.arrowDown,
+                    color: contentColor,
+                  ),
+                ],
+              );
+            },
             hint: widget.hint,
           ),
         ),

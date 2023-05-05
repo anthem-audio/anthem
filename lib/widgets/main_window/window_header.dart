@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,23 +21,21 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
+import 'package:anthem/widgets/main_window/window_header_engine_indicator.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/widgets.dart';
+import 'package:provider/provider.dart';
 
 import 'main_window_controller.dart';
 
 class WindowHeader extends StatefulWidget {
   final ID selectedTabID;
   final List<TabDef> tabs;
-  final Function(ID) setActiveProject;
-  final Function(ID) closeProject;
 
   const WindowHeader({
     Key? key,
     required this.selectedTabID,
     required this.tabs,
-    required this.setActiveProject,
-    required this.closeProject,
   }) : super(key: key);
 
   @override
@@ -47,72 +45,26 @@ class WindowHeader extends StatefulWidget {
 class _WindowHeaderState extends State<WindowHeader> {
   @override
   Widget build(BuildContext context) {
-    var isFirstTab = true;
-
     return SizedBox(
       height: 29,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: widget.tabs.map<Widget>(
-              (tab) {
-                final isActiveProject = tab.id == widget.selectedTabID;
-                final result = GestureDetector(
-                  onTap: () {
-                    widget.setActiveProject(tab.id);
-                  },
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                        right: 1, bottom: isActiveProject ? 0 : 1),
-                    child: Container(
-                      width: 115,
-                      decoration: BoxDecoration(
-                        color: isActiveProject
-                            ? Theme.panel.accent
-                            : Theme.panel.main,
-                        borderRadius: isActiveProject
-                            ? BorderRadius.only(
-                                topLeft: Radius.circular(isFirstTab ? 4 : 2),
-                                topRight: const Radius.circular(2))
-                            : BorderRadius.only(
-                                topLeft: Radius.circular(isFirstTab ? 4 : 1),
-                                topRight: const Radius.circular(1),
-                                bottomRight: const Radius.circular(1),
-                                bottomLeft: const Radius.circular(1),
-                              ),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              tab.title,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: Theme.text.main),
-                            ),
-                          ),
-                          Button(
-                            variant: ButtonVariant.ghost,
-                            width: 22,
-                            height: 22,
-                            hideBorder: true,
-                            startIcon: Icons.close,
-                            onPress: () {
-                              widget.closeProject(tab.id);
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                      ),
-                    ),
+        children: <Widget>[
+              const Padding(
+                padding: EdgeInsets.only(bottom: 1),
+                child: EngineIndicator(),
+              ),
+              const SizedBox(width: 1),
+            ] +
+            widget.tabs
+                .map<Widget>(
+                  (tab) => _Tab(
+                    isSelected: tab.id == widget.selectedTabID,
+                    id: tab.id,
+                    title: tab.title,
                   ),
-                );
-
-                isFirstTab = false;
-
-                return result;
-              },
-            ).toList() +
+                )
+                .toList() +
             [
               Expanded(
                 child: MoveWindow(
@@ -128,6 +80,59 @@ class _WindowHeaderState extends State<WindowHeader> {
                           bottomRight: Radius.circular(1),
                         ),
                       ),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: Row(
+                          children: [
+                            const Expanded(child: SizedBox()),
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  top: 4, right: 4, bottom: 4),
+                              child: Button(
+                                width: 20,
+                                height: 20,
+                                contentPadding: const EdgeInsets.all(2),
+                                variant: ButtonVariant.ghost,
+                                hideBorder: true,
+                                icon: Icons.minimize,
+                                onPress: () {
+                                  appWindow.minimize();
+                                },
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  top: 4, right: 4, bottom: 4),
+                              child: Button(
+                                width: 20,
+                                height: 20,
+                                contentPadding: const EdgeInsets.all(2),
+                                variant: ButtonVariant.ghost,
+                                hideBorder: true,
+                                icon: Icons.maximize,
+                                onPress: () {
+                                  appWindow.maximizeOrRestore();
+                                },
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  top: 4, right: 4, bottom: 4),
+                              child: Button(
+                                width: 20,
+                                height: 20,
+                                contentPadding: const EdgeInsets.all(2),
+                                variant: ButtonVariant.ghost,
+                                hideBorder: true,
+                                icon: Icons.close,
+                                onPress: () {
+                                  appWindow.close();
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -135,5 +140,93 @@ class _WindowHeaderState extends State<WindowHeader> {
             ],
       ),
     );
+  }
+}
+
+class _Tab extends StatefulWidget {
+  final bool isSelected;
+  final ID id;
+  final String title;
+
+  const _Tab({
+    required this.isSelected,
+    required this.id,
+    required this.title,
+  });
+
+  @override
+  State<_Tab> createState() => _TabState();
+}
+
+class _TabState extends State<_Tab> {
+  bool closePressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Provider.of<MainWindowController>(context);
+
+    final result = GestureDetector(
+      onTap: () {
+        if (!closePressed) {
+          controller.switchTab(widget.id);
+        }
+        closePressed = false;
+      },
+      child: Padding(
+        padding: EdgeInsets.only(
+          right: 1,
+          bottom: widget.isSelected ? 0 : 1,
+        ),
+        child: Container(
+          width: 115,
+          decoration: BoxDecoration(
+            color: widget.isSelected ? Theme.panel.accent : Theme.panel.main,
+            borderRadius: widget.isSelected
+                ? const BorderRadius.only(
+                    topLeft: Radius.circular(2),
+                    topRight: Radius.circular(2),
+                  )
+                : const BorderRadius.only(
+                    topLeft: Radius.circular(1),
+                    topRight: Radius.circular(1),
+                    bottomRight: Radius.circular(1),
+                    bottomLeft: Radius.circular(1),
+                  ),
+          ),
+          child: Padding(
+            padding: EdgeInsets.only(
+              bottom: widget.isSelected ? 1 : 0,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Theme.text.main),
+                  ),
+                ),
+                Button(
+                  variant: ButtonVariant.ghost,
+                  width: 22,
+                  height: 22,
+                  hideBorder: true,
+                  icon: Icons.close,
+                  onPress: () {
+                    closePressed = true;
+                    controller.closeProject(widget.id);
+                  },
+                ),
+                const SizedBox(width: 8),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    return result;
   }
 }

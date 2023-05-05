@@ -5,19 +5,27 @@
     "autorun",
     "bitsdojo",
     "budislav",
+    "calloc",
     "codegen",
     "curn",
     "Diagnosticable",
     "dylib",
     "fuzzywuzzy",
+    "flatbuffers",
+    "flatc",
+    "interprocess",
+    "juce",
     "LTWH",
     "mobx",
+    "msvc",
     "relayout",
     "scrollbars",
     "stepanov",
     "topbar",
+    "tracktion",
     "unfocus",
     "Unregisters",
     "vsync"
-  ]
+  ],
+  "C_Cpp.autoAddFileAssociations": false
 }
