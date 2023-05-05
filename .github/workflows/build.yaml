@@ -3,7 +3,6 @@ on: [push]
 jobs:
   build-windows:
     runs-on: [windows-latest]
-    if: false
     steps:
       - name: Check out Anthem
         uses: actions/checkout@v3
