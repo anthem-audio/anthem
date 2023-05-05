@@ -31,6 +31,12 @@ In addition to Flutter, Anthem needs the following:
         export CXX=clang++
         export CMAKE_MAKE_PROGRAM=make
         ```
-5. (Optional) Open the project in your preferred IDE, such as Visual Studio Code.
-6. Open a new terminal session and run `flutter pub run build_runner watch`. This will run Dart-related code generation, and keep the generated files up-to-date as you develop.
-7. Use `flutter run` to run Anthem, or start Anthem via your IDE.
+5. When debugging on Linux, you must override the path that Anthem uses to look for the engine executable. This is because Flutter removes the executable permission when copying the engine executable to the build output directory.
+
+    You can override this by modifying `(repo root)/lib/engine_api/engine_connector.dart`:
+    ```dart
+    const String? enginePathOverride = "(full path to repo)/assets/engine/AnthemEngine";
+    ```
+6. (Optional) Open the project in your preferred IDE, such as Visual Studio Code.
+7. Open a new terminal session and run `flutter pub run build_runner watch`. This will run Dart-related code generation, and keep the generated files up-to-date as you develop.
+8. Use `flutter run` to run Anthem, or start Anthem via your IDE.
