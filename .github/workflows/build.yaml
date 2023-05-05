@@ -62,16 +62,12 @@ jobs:
 
       # Build Flutter project
       - name: Build Flutter project
-        run: |
-          if ($Env:RUNNER_OS -eq "Windows") {
-            flutter build windows --verbose
-          }
-        shell: pwsh
+        run: flutter build windows --verbose --release
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
-          name: anthem
+          name: anthem-windows
           path: ${{ github.workspace }}/build/windows/runner/Release
 
   build-linux:
@@ -90,7 +86,7 @@ jobs:
 
       - name: Install dependencies from apt
         run: |
-          sudo apt install -y libboost-dev llvm clang libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libfreetype-dev mesa-common-dev libasound2-dev freeglut3-dev libxcomposite-dev libgtk-3-dev libasound2-dev libwebkit2gtk-4.0-dev
+          sudo apt install -y libboost-dev llvm clang libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libfreetype-dev mesa-common-dev libasound2-dev freeglut3-dev libxcomposite-dev libgtk-3-dev libasound2-dev libwebkit2gtk-4.0-dev libcurl4-openssl-dev
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2
@@ -98,7 +94,37 @@ jobs:
           flutter-version: '3.7.12'
           channel: 'stable'
           cache: true
-      
+
       # Build engine
       - name: Build engine
-        run: .\scripts\build.ps1
+        run: ./scripts/build.ps1
+        shell: pwsh
+
+      # Get dependencies for Flutter
+      - name: Get dependencies
+        run: flutter pub get
+
+      # Run code generation
+      - name: Run code generation
+        run: flutter pub run build_runner build
+
+      # Check for formatting in Flutter project
+      - name: Format Flutter code
+        run: dart format . --set-exit-if-changed -o none
+
+      # Lint Flutter project
+      - name: Lint Flutter code
+        run: dart analyze
+      
+      - name: Test Flutter code
+        run: flutter test .
+
+      # Build Flutter project
+      - name: Build Flutter project
+        run: flutter build linux --verbose --release
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: anthem-linux
+          path: ${{ github.workspace }}/build/linux/x64/release/bundle

@@ -16,7 +16,7 @@ In addition to Flutter, Anthem needs the following:
 - **FlatBuffers v23.3.3 compiler**: Required for message serialization between the UI and the engine. Download the compiled Linux binary for 23.3.3 from [the releases page](https://github.com/google/flatbuffers/releases/tag/v23.3.3) and copy the `flatc` binary to `/usr/bin`.
 - **Apt packages**: The following packages are required by JUCE, and can be installed with `apt` or a similar package manager:
     ```
-    llvm clang libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libfreetype-dev mesa-common-dev libasound2-dev freeglut3-dev libxcomposite-dev libcurl4-gnutls-dev libgtk-3-dev libasound2-dev libcurl4-openssl-dev libwebkit2gtk-4.0-dev
+    llvm clang libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libfreetype-dev mesa-common-dev libasound2-dev freeglut3-dev libxcomposite-dev libgtk-3-dev libasound2-dev libcurl4-openssl-dev libwebkit2gtk-4.0-dev
     ```
 
 ### Instructions
