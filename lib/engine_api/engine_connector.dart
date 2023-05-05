@@ -30,6 +30,7 @@ import 'package:anthem/generated/messages_generated.dart';
 ///
 /// This will allow you to stop the engine from Anthem, compile a new engine,
 /// and start the new enine, all without re-building the Anthem UI.
+// ignore: unnecessary_nullable_for_final_variable_declarations
 const String? enginePathOverride = null;
 
 final mainExecutablePath = File(Platform.resolvedExecutable);
