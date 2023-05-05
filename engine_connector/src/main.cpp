@@ -82,7 +82,7 @@ extern "C"
         message_queue::remove(mqFromEngineName.c_str());
     }
 
-    DYLIB_EXPORT void CALL_CONV connect(int64_t engineID)
+    DYLIB_EXPORT bool CALL_CONV connect(int64_t engineID)
     {
         auto engineConnection = std::make_unique<EngineConnection>();
 
@@ -105,10 +105,17 @@ extern "C"
                 65536));
 
         std::cout << "Opening engine-to-ui message queue..." << std::endl;
-        engineConnection->mqFromEngine = openMessageQueue(mqFromEngineName.c_str());
+        try {
+            engineConnection->mqFromEngine = openMessageQueue(mqFromEngineName.c_str());
+        }
+        catch (...) {
+            std::cerr << "Failed to open Engine message queue." << std::endl;
+            return false;
+        }
         std::cout << "Opened successfully." << std::endl;
 
         engineConnections.push_back(std::move(engineConnection));
+        return true;
     }
 
     DYLIB_EXPORT void CALL_CONV freeEngineConnection(int64_t engineID)

@@ -39,8 +39,8 @@ final dyLibPath = Platform.isWindows
     : '${mainExecutablePath.parent.path}/data/flutter_assets/assets/engine/libEngineConnector.so';
 final engineConnectorLib = DynamicLibrary.open(dyLibPath);
 
-typedef ConnectFuncNative = Void Function(Int64 engineID);
-typedef ConnectFuncDart = void Function(int engineID);
+typedef ConnectFuncNative = Bool Function(Int64 engineID);
+typedef ConnectFuncDart = bool Function(int engineID);
 
 typedef FreeEngineConnectionFuncNative = Void Function(Int64 engineID);
 typedef FreeEngineConnectionFuncDart = void Function(int engineID);
@@ -136,7 +136,7 @@ class EngineConnector {
   void Function(Response reply)? onReply;
   void Function()? onCrash;
 
-  late Future<void> onInit;
+  late Future<bool> onInit;
   bool _initialized = false;
 
   /// If any requests are sent before the engine starts and IPC is set up, this
@@ -168,7 +168,8 @@ class EngineConnector {
     onInit = _init();
 
     // If any requests came in before the engine was started, send them now.
-    onInit.then((value) {
+    onInit.then((success) {
+      if (!success) return;
       for (final request in _bufferedRequests) {
         send(request);
       }
@@ -189,7 +190,7 @@ class EngineConnector {
 
   /// Starts the engine process, sets up IPC, and starts the reply listener
   /// isolate.
-  Future<void> _init() async {
+  Future<bool> _init() async {
     if (kDebugMode) {
       print('Starting engine with ID: $_id');
     }
@@ -248,7 +249,7 @@ class EngineConnector {
     final initIsolateReceivePort = ReceivePort();
     final initIsolate =
         await Isolate.spawn(_initIsolate, initIsolateReceivePort.sendPort);
-    final initCompleter = Completer();
+    final initCompleter = Completer<bool>();
 
     // The first message is the send port, which we use to send the engine ID
     // to the isolate. The second message lets us know that the init process is
@@ -259,10 +260,15 @@ class EngineConnector {
         return;
       }
 
-      initCompleter.complete();
+      final result = message as bool;
+      initCompleter.complete(result);
     });
 
-    await initCompleter.future;
+    final result = await initCompleter.future;
+
+    if (!result) {
+      return false;
+    }
 
     initIsolate.kill();
 
@@ -348,6 +354,8 @@ class EngineConnector {
 
     await requestSenderIsolateFuture;
     await responseIsolateFuture;
+
+    return true;
   }
 
   /// Sends the given [Request] to the engine.
@@ -463,8 +471,8 @@ void _initIsolate(SendPort sendPort) {
   // This isolate should be given the ID of the engine as the first and only
   // message.
   receivePort.first.then((id) {
-    connect(id as int);
-    sendPort.send(null);
+    final result = connect(id as int);
+    sendPort.send(result);
   });
 }
 

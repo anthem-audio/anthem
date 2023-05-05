@@ -116,9 +116,9 @@ class Engine {
     _engineConnector =
         EngineConnector(id, onReply: _onReply, onCrash: _onCrash);
 
-    await _engineConnector.onInit;
+    final success = await _engineConnector.onInit;
 
-    _setEngineState(EngineState.running);
+    _setEngineState(success ? EngineState.running : EngineState.stopped);
   }
 
   /// Sends a request to the engine.
