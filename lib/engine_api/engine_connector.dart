@@ -210,8 +210,8 @@ class EngineConnector {
         engineProcess = await Process.start(
           'powershell',
           [
-        '-Command',
-        '& {Start-Process -FilePath "$anthemPathStr" -ArgumentList "$_id" -Wait}'
+            '-Command',
+            '& {Start-Process -FilePath "$anthemPathStr" -ArgumentList "$_id" -Wait}'
           ],
         );
       } else if (Platform.isLinux) {
@@ -548,7 +548,9 @@ void _responseReceiverIsolate(SendPort sendPort) async {
     mainThreadCopyFromBufferCompleter?.complete();
   });
 
-  if (kReleaseMode) {
+  await engineIDCompleter.future;
+
+  if (!kDebugMode) {
     // This involves blocking the isolate, which breaks hot reloading.
     while (true) {
       // Block this thread while waiting for a response
