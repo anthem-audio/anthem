@@ -123,20 +123,31 @@ class EngineConnector {
   late Pointer<Uint8> _messageSendBuffer;
   late Pointer<Uint8> _messageReceiveBuffer;
 
-  late Isolate requestIsolate;
-  late ReceivePort requestIsolateReceivePort;
-  SendPort? requestIsolateSendPort;
-  Timer? requestIsolateTimeout;
+  // ignore: unused_field
+  late Isolate _requestIsolate;
+  late ReceivePort _requestIsolateReceivePort;
+  SendPort? _requestIsolateSendPort;
+  final Completer<void> _requestIsolateSendPortAvailable = Completer();
 
-  late Isolate receiveIsolate;
-  late ReceivePort responseIsolateReceivePort;
+  /// Timer that is started when send() is called in the send isolate. This
+  /// will be cancelled if the send call completes. If the timer fires, that
+  /// likely means something went wrong trying to send the request, so we tell
+  /// the UI that the engine has crashed.
+  Timer? _requestIsolateTimeout;
 
-  Process? engineProcess;
+  /// Future that will be incomplete if a request is being sent, and will be
+  /// completed when the request is sent.
+  Completer<void> _requestCompleted = Completer()..complete();
 
-  void Function(Response reply)? onReply;
-  void Function()? onCrash;
+  late Isolate _receiveIsolate;
+  late ReceivePort _responseIsolateReceivePort;
 
-  late Future<bool> onInit;
+  Process? _engineProcess;
+
+  final void Function(Response reply)? _onReply;
+  final void Function()? _onCrash;
+
+  late final Future<bool> onInit;
   bool _initialized = false;
 
   /// If any requests are sent before the engine starts and IPC is set up, this
@@ -148,7 +159,10 @@ class EngineConnector {
   /// the engine doesn't receive one after 10 seconds, it will stop itself.
   late Timer _engineHeartbeatTimer;
 
-  EngineConnector(this._id, {this.onReply, this.onCrash}) {
+  EngineConnector(this._id,
+      {void Function(Response)? onReply, void Function()? onCrash})
+      : _onCrash = onCrash,
+        _onReply = onReply {
     _cleanUpMessageQueues = engineConnectorLib.lookupFunction<
         CleanUpMessageQueuesFuncNative,
         CleanUpMessageQueuesFuncDart>('cleanUpMessageQueues');
@@ -208,7 +222,7 @@ class EngineConnector {
     // If we're in debug mode, start with a command line window so we can see logging
     if (kDebugMode) {
       if (Platform.isWindows) {
-        engineProcess = await Process.start(
+        _engineProcess = await Process.start(
           'powershell',
           [
             '-Command',
@@ -218,17 +232,17 @@ class EngineConnector {
       } else if (Platform.isLinux) {
         // Can't figure out a good way to start in a shell window on Linux, so
         // this mirrors the engine output to our standard out.
-        engineProcess = await Process.start(
+        _engineProcess = await Process.start(
           anthemPathStr,
           [_id.toString()],
         );
-        engineProcess!.stdout.listen((msg) {
+        _engineProcess!.stdout.listen((msg) {
           for (final line in String.fromCharCodes(msg).split('\n')) {
             // ignore: avoid_print
             print('[Engine $_id] $line');
           }
         });
-        engineProcess!.stderr.listen((msg) {
+        _engineProcess!.stderr.listen((msg) {
           for (final line in String.fromCharCodes(msg).split('\n')) {
             // ignore: avoid_print
             print('[Engine $_id stderr] $line');
@@ -236,7 +250,7 @@ class EngineConnector {
         });
       }
     } else {
-      engineProcess = await Process.start(
+      _engineProcess = await Process.start(
         anthemPathStr,
         [_id.toString()],
       );
@@ -275,51 +289,55 @@ class EngineConnector {
     _messageSendBuffer = _getMessageSendBuffer(_id);
     _messageReceiveBuffer = _getMessageReceiveBuffer(_id);
 
-    requestIsolateReceivePort = ReceivePort();
+    _requestIsolateReceivePort = ReceivePort();
 
     final requestSenderIsolateFuture = Isolate.spawn(
       _requestSenderIsolate,
-      requestIsolateReceivePort.sendPort,
+      _requestIsolateReceivePort.sendPort,
     );
 
     requestSenderIsolateFuture.then(
       (isolate) {
-        requestIsolate = isolate;
+        _requestIsolate = isolate;
       },
     );
 
-    requestIsolateReceivePort.listen((message) {
+    _requestIsolateReceivePort.listen((message) {
       // The first message is the send port
-      if (requestIsolateSendPort == null) {
-        requestIsolateSendPort = message;
+      if (_requestIsolateSendPort == null) {
+        _requestIsolateSendPort = message;
+        _requestIsolateSendPortAvailable.complete();
 
         // The request isolate expects the first message to be the engine ID
-        requestIsolateSendPort!.send(_id);
+        _requestIsolateSendPort!.send(_id);
 
         return;
       }
 
       // Cancel the timeout, since we got a response
-      requestIsolateTimeout?.cancel();
+      _requestIsolateTimeout?.cancel();
+
+      // Notify that the current request is completed
+      _requestCompleted.complete();
     });
 
-    responseIsolateReceivePort = ReceivePort();
+    _responseIsolateReceivePort = ReceivePort();
 
     // Spawn an isolate to listen for replies from the engine
     final responseIsolateFuture = Isolate.spawn(
       _responseReceiverIsolate,
-      responseIsolateReceivePort.sendPort,
+      _responseIsolateReceivePort.sendPort,
     );
 
     responseIsolateFuture.then(
       (isolate) {
-        receiveIsolate = isolate;
+        _receiveIsolate = isolate;
       },
     );
 
     SendPort? responseIsolateSendPort;
 
-    responseIsolateReceivePort.listen((message) {
+    _responseIsolateReceivePort.listen((message) {
       // The first message is the send port
       if (responseIsolateSendPort == null) {
         responseIsolateSendPort = message;
@@ -342,7 +360,7 @@ class EngineConnector {
       const Duration(seconds: 10),
       (_) {
         if (!_heartbeatReceived) {
-          onCrash?.call();
+          _onCrash?.call();
           _heartbeatCheckTimer?.cancel();
         }
 
@@ -359,7 +377,7 @@ class EngineConnector {
   }
 
   /// Sends the given [Request] to the engine.
-  void send(RequestObjectBuilder request) {
+  Future<void> send(RequestObjectBuilder request) async {
     final bytes = request.toBytes();
 
     if (!_initialized) {
@@ -379,23 +397,26 @@ class EngineConnector {
       _messageSendBuffer.elementAt(i).value = bytes.elementAt(i);
     }
 
-    // TODO: If the timer is active, we must buffer the request, since we
-    // can't send multiple at once.
+    // Wait for the request isolate to be available
+    if (!_requestIsolateSendPortAvailable.isCompleted) {
+      await _requestIsolateSendPortAvailable.future;
+    }
+
+    _requestCompleted = Completer();
 
     // Tell the request isolate to send the message in the request buffer
-    requestIsolateSendPort?.send(size);
-
-    // TODO: Remove this when we add request buffering
-    if (requestIsolateSendPort == null) return;
+    _requestIsolateSendPort?.send(size);
 
     // Schedule a timeout, since the send might fail and cause the isolate to
     // block indefinitely
-    requestIsolateTimeout = Timer(
+    _requestIsolateTimeout = Timer(
       const Duration(seconds: 1),
       () {
-        onCrash?.call();
+        _onCrash?.call();
       },
     );
+
+    await _requestCompleted.future;
   }
 
   bool _heartbeatReceived = true;
@@ -404,7 +425,7 @@ class EngineConnector {
   /// If there is a listener for engine replies, copies the most recent reply
   /// from the engine and notifies the listener.
   void _copyReplyAndNotify() {
-    if (onReply == null) return;
+    if (_onReply == null) return;
 
     final size = _getLastReceivedMessageSize(_id);
 
@@ -425,7 +446,7 @@ class EngineConnector {
       return;
     }
 
-    onReply!(response);
+    _onReply!(response);
   }
 
   /// Stops the engine process and isolate, and cleans up the message queues.
@@ -434,10 +455,10 @@ class EngineConnector {
     _heartbeatCheckTimer?.cancel();
 
     // Kill engine process
-    engineProcess?.kill();
+    _engineProcess?.kill();
 
     // Kill isolate that is waiting for engine replies
-    receiveIsolate.kill();
+    _receiveIsolate.kill();
 
     // Stop the timer that sends heartbeat messages to the engine
     _engineHeartbeatTimer.cancel();
