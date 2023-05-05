@@ -68,7 +68,7 @@ class EngineIndicator extends StatelessObserverWidget {
             icon: Icons.anthem,
             color: activeProject?.engineState == EngineState.running
                 ? Theme.primary.main
-                : color,
+                : Theme.text.main,
           );
         }
 
