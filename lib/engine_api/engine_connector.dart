@@ -205,11 +205,35 @@ class EngineConnector {
             : '${mainExecutablePath.parent.path}/data/flutter_assets/assets/engine/AnthemEngine');
 
     // If we're in debug mode, start with a command line window so we can see logging
-    if (kDebugMode && Platform.isWindows) {
-      engineProcess = await Process.start('powershell', [
+    if (kDebugMode) {
+      if (Platform.isWindows) {
+        engineProcess = await Process.start(
+          'powershell',
+          [
         '-Command',
         '& {Start-Process -FilePath "$anthemPathStr" -ArgumentList "$_id" -Wait}'
-      ]);
+          ],
+        );
+      } else if (Platform.isLinux) {
+        // Can't figure out a good way to start in a shell window on Linux, so
+        // this mirrors the engine output to our standard out.
+        engineProcess = await Process.start(
+          anthemPathStr,
+          [_id.toString()],
+        );
+        engineProcess!.stdout.listen((msg) {
+          for (final line in String.fromCharCodes(msg).split('\n')) {
+            // ignore: avoid_print
+            print('[Engine $_id] $line');
+          }
+        });
+        engineProcess!.stderr.listen((msg) {
+          for (final line in String.fromCharCodes(msg).split('\n')) {
+            // ignore: avoid_print
+            print('[Engine $_id stderr] $line');
+          }
+        });
+      }
     } else {
       engineProcess = await Process.start(
         anthemPathStr,
