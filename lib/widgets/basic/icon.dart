@@ -30,6 +30,7 @@ class IconDef {
 
 class Icons {
   static IconDef add = const IconDef('assets/icons/scrollbar/add.svg');
+  static IconDef anthem = const IconDef('assets/icons/main/anthem.svg');
   static IconDef arrowDown =
       const IconDef('assets/icons/misc/dropdown_arrow___down.svg');
   static IconDef audio = const IconDef('assets/icons/audio.svg');
@@ -46,8 +47,10 @@ class Icons {
   static IconDef hamburger = const IconDef('assets/icons/misc/hamburgner.svg');
   static IconDef file = const IconDef('assets/icons/file.svg');
   static IconDef kebab = const IconDef('assets/icons/misc.svg');
-  static IconDef mixer = const IconDef('assets/icons/bottom_bar/mixer.svg');
+  static IconDef maximize = const IconDef('assets/icons/small/maximize.svg');
   static IconDef midi = const IconDef('assets/icons/midi.svg');
+  static IconDef minimize = const IconDef('assets/icons/small/minimize.svg');
+  static IconDef mixer = const IconDef('assets/icons/bottom_bar/mixer.svg');
   static IconDef mute = const IconDef('assets/icons/power.svg');
   static IconDef patternEditor =
       const IconDef('assets/icons/bottom_bar/pattern_editor.svg');

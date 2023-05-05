@@ -127,7 +127,7 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Button(startIcon: Icons.kebab, width: 26),
+                  Button(icon: Icons.kebab, width: 26),
                   const SizedBox(width: 4),
                   Expanded(
                     child: ButtonTabs(

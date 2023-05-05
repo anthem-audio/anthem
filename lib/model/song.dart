@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -118,6 +119,12 @@ abstract class _SongModel extends Hydratable with Store {
     hydrate(
       project: project,
     );
+  }
+
+  void createInEngine(Engine engine) {
+    arrangements.forEach((key, value) {
+      value.createInEngine(engine);
+    });
   }
 
   Map<String, dynamic> toJson() => _$SongModelToJson(this as SongModel);

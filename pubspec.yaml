@@ -41,6 +41,9 @@ dependencies:
   vector_math: ^2.1.2
   mobx: ^2.1.4
   flutter_mobx: ^2.0.6+5
+  flat_buffers: ^2.0.5
+  flutter_window_close: ^0.2.2
+  ffi: ^2.0.1
 
 dev_dependencies:
   json_serializable: ^6.6.1
@@ -70,6 +73,7 @@ flutter:
   uses-material-design: false
 
   assets:
+  - assets/engine/
   - assets/icons/
   - assets/icons/add/
   - assets/icons/arranger/
