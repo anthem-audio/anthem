@@ -56,6 +56,8 @@ target_sources(AnthemEngine PRIVATE ${ANTHEM_ENGINE_SOURCES})
 
 target_link_libraries(AnthemEngine ${Boost_LIBRARIES})
 
+target_compile_definitions(AnthemEngine PRIVATE JUCE_PLUGINHOST_VST3=1)
+
 if (LINUX)
   target_include_directories(AnthemEngine PRIVATE ${GTK3_INCLUDE_DIRS})
   target_link_directories(AnthemEngine PRIVATE ${GTK3_LIBRARY_DIRS})
@@ -73,7 +75,6 @@ target_link_libraries(
   AnthemEngine
 
   PRIVATE
-  juce::juce_audio_utils
   tracktion::tracktion_engine
 
   PUBLIC
