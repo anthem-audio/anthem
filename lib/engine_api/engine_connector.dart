@@ -26,7 +26,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:anthem/generated/messages_generated.dart';
 
-/// Set this to override the path to the engine.
+/// Set this to override the path to the engine. Should be a full path.
 ///
 /// This will allow you to stop the engine from Anthem, compile a new engine,
 /// and start the new enine, all without re-building the Anthem UI.
