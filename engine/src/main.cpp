@@ -171,6 +171,8 @@ void messageLoop() {
 class AnthemEngineApplication : public juce::JUCEApplicationBase, private juce::ChangeListener
 {
 private:
+    std::unique_ptr<std::thread> message_loop_thread;
+
     void changeListenerCallback(juce::ChangeBroadcaster *source) override
     {
         std::cout << "change detected" << std::endl;
@@ -224,7 +226,20 @@ public:
         std::cout << "Starting Anthem engine..." << std::endl;
         anthem = new Anthem();
 
-        messageLoop();
+        // This starts the message loop in a thread. It also means that all our
+        // commands will be handled on a separate thread from the main JUCE
+        // event loop thread. This might be fine, since we're not using JUCE as
+        // a GUI library, but I don't know.
+        //
+        // However, this does fix an issue. JUCE crashes the application if we
+        // try to exit before the `initialize()` function is returned from. I'm
+        // guessing that JUCE needs to do at least something in the main thread
+        // after it calls our initialize function.
+        //
+        // If we start getting weird crashes, then this might be something to
+        // look at.
+        message_loop_thread = std::make_unique<std::thread>(std::thread(messageLoop));
+        message_loop_thread->detach();
     }
 };
 
