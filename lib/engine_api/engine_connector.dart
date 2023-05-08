@@ -402,6 +402,12 @@ class EngineConnector {
       await _requestIsolateSendPortAvailable.future;
     }
 
+    // Acts as a mutex. If there are multiple requests that reach here, only
+    // one will be able to pass at a time.
+    while (!_requestCompleted.isCompleted) {
+      await _requestCompleted.future;
+    }
+
     _requestCompleted = Completer();
 
     // Tell the request isolate to send the message in the request buffer
