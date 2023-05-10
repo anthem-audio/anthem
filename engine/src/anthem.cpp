@@ -23,9 +23,7 @@ Anthem::Anthem() {
     engine = std::unique_ptr<tracktion::Engine>(new tracktion::Engine("anthem"));
 
     auto& pluginManager = engine->getPluginManager();
-
-    // Set up JUCE to be able to scan and load plugins of all supported plugin formats
-    pluginManager.pluginFormatManager.addDefaultFormats();
+    pluginManager.initialise();
 
     std::cout << "We can support " << pluginManager.pluginFormatManager.getNumFormats() << " plugin types:" << std::endl;
     for (auto format : pluginManager.pluginFormatManager.getFormats()) {
