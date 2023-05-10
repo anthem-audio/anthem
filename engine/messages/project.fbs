@@ -26,8 +26,12 @@ table DeleteArrangement {
   edit_pointer: ulong;
 }
 
-table AddGenerator {
+table AddPlugin {
   plugin_uri: string;
+}
+table AddPluginResponse {
+  plugin_pointer: ulong;
+  success: bool;
 }
 
 table GetPlugins {}

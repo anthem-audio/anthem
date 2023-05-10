@@ -22,6 +22,7 @@ import 'dart:async';
 import 'package:anthem/engine_api/engine_connector.dart';
 import 'package:anthem/generated/messages_generated.dart';
 import 'package:anthem/generated/project_generated.dart';
+import 'package:anthem/model/project.dart';
 
 part 'api/project.dart';
 
@@ -42,6 +43,9 @@ int getEngineID() => _engineIdGenerator++;
 class Engine {
   int id;
   late EngineConnector _engineConnector;
+
+  ProjectModel project;
+
   late Project projectApi;
 
   Map<int, void Function(Response response)> replyFunctions = {};
@@ -54,7 +58,7 @@ class Engine {
 
   EngineState _engineState = EngineState.stopped;
 
-  Engine(this.id) {
+  Engine(this.id, this.project) {
     engineStateStream = _engineStateStreamController.stream;
 
     projectApi = Project(this);

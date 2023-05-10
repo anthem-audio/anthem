@@ -32,6 +32,7 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
             auto edit = tracktion::createEmptyEdit(*anthem->engine, juce::File("./I-dont-know-where-this-is-going.tracktion-edit"));
 
             // We store this pointer with the arrangement model in the UI, so
+            // we need to extract it from the unique_ptr.
             auto editPtr = edit.release();
 
             auto editPtrAsUint = static_cast<uint64_t>(
@@ -54,29 +55,66 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
 
             return std::nullopt;
         }
-        case Command_AddGenerator: {
+        case Command_AddPlugin: {
+            auto errorResponse = CreateAddPluginResponse(builder, 0, false);
+            auto errorResponseOffset = errorResponse.Union();
+            auto errorResponseMessage = CreateResponse(builder, request->id(), ReturnValue_AddPluginResponse, errorResponseOffset);
+
+            auto& pluginManager = anthem->engine->getPluginManager();
+            
             // Grab the plugin URI from the command
-            auto command = request->command_as_AddGenerator();
+            auto command = request->command_as_AddPlugin();
             auto pluginUri = command->plugin_uri()->str();
 
-            // Create a JUCE plugin description
-            juce::PluginDescription pluginDescription;
-            pluginDescription.fileOrIdentifier = pluginUri;
-            pluginDescription.pluginFormatName = "VST3"; // Assume it's a VST3 for now
+            juce::OwnedArray<juce::PluginDescription> typesFound;
+
+            std::cout << "Scanning the plugin..." << std::endl;
+
+            // Scan the plugin
+            pluginManager.knownPluginList.scanAndAddFile(
+                pluginUri,
+                true,
+                typesFound,
+                *pluginManager.pluginFormatManager.getFormat(0) // We just support VST3 for now
+            );
+
+            std::cout << "Scanned plugin." << std::endl;
+
+            if (typesFound.size() == 0) {
+                std::cout << "Plugin scan didn't idenitfy the plugin as valid." << std::endl;
+                return std::optional(errorResponseMessage);
+            }
 
             // Instance the plugin
             juce::String errorMessage;
-            auto pluginInstance = anthem->engine->getPluginManager().pluginFormatManager.createPluginInstance(
-                pluginDescription,
+            auto pluginInstance = pluginManager.pluginFormatManager.createPluginInstance(
+                *typesFound[0],
                 anthem->engine->getDeviceManager().getSampleRate(),
                 anthem->engine->getDeviceManager().getBlockSize(),
                 errorMessage
             );
 
-            // TODO: Add a track?
-            // anthem->engine
+            if (pluginInstance) {
+                std::cout << "Loaded plugin: " << pluginInstance->getName() << std::endl;
+            } else {
+                std::cout << "Error: " << errorMessage.toStdString() << std::endl;
+                return std::optional(errorResponseMessage);
+            }
 
-            return std::nullopt;
+            // We store this pointer with the plugin model in the UI, so we
+            // need to extract it from the unique_ptr.
+            auto pluginPtr = pluginInstance.release();
+
+            auto pluginPtrAsUint = static_cast<uint64_t>(
+                reinterpret_cast<uintptr_t>(pluginPtr)
+            );
+
+            auto response = CreateAddPluginResponse(builder, pluginPtrAsUint, true);
+            auto responseOffset = response.Union();
+
+            auto message = CreateResponse(builder, request->id(), ReturnValue_AddPluginResponse, responseOffset);
+
+            return std::optional(message);
         }
         case Command_GetPlugins: {
             auto& pluginManager = anthem->engine->getPluginManager();

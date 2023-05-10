@@ -21,6 +21,7 @@ import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/generator.dart';
+import 'package:anthem/model/plugin.dart';
 import 'package:anthem/model/project.dart';
 
 import 'command.dart';
@@ -36,18 +37,24 @@ class AddGeneratorCommand extends Command {
   ID generatorID;
   String name;
   Color color;
+  String pluginPath;
 
   AddGeneratorCommand({
     required ProjectModel project,
     required this.generatorID,
     required this.name,
     required this.color,
+    required this.pluginPath,
   }) : super(project);
 
   @override
   void execute() {
+    final plugin = PluginModel(path: pluginPath)
+      ..createInEngine(project.engine);
+    final generator = GeneratorModel(name: name, color: color, plugin: plugin);
+
     project.generatorList.add(generatorID);
-    project.generators[generatorID] = GeneratorModel(name: name, color: color);
+    project.generators[generatorID] = generator;
   }
 
   @override

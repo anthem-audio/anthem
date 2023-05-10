@@ -80,4 +80,27 @@ class Project {
 
     return completer.future;
   }
+
+  Future<int> addPlugin(String pluginPath) {
+    final id = _engine._getRequestId();
+
+    final request = RequestObjectBuilder(
+      id: id,
+      commandType: CommandTypeId.AddPlugin,
+      command: AddPluginObjectBuilder(pluginUri: pluginPath),
+    );
+
+    final completer = Completer<int>();
+
+    _engine._request(id, request, onResponse: (response) {
+      final inner = response.returnValue as AddPluginResponse;
+      if (inner.success) {
+        completer.complete(inner.pluginPointer);
+      } else {
+        completer.completeError(inner.pluginPointer);
+      }
+    });
+
+    return completer.future;
+  }
 }

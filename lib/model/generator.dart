@@ -20,6 +20,7 @@
 import 'dart:ui';
 import 'package:anthem/helpers/convert.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/plugin.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
@@ -27,8 +28,9 @@ part 'generator.g.dart';
 
 @JsonSerializable()
 class GeneratorModel extends _GeneratorModel with _$GeneratorModel {
-  GeneratorModel({required String name, required Color color})
-      : super(name: name, color: color);
+  GeneratorModel(
+      {required String name, required Color color, required PluginModel plugin})
+      : super(name: name, color: color, plugin: plugin);
 
   factory GeneratorModel.fromJson(Map<String, dynamic> json) =>
       _$GeneratorModelFromJson(json);
@@ -44,9 +46,13 @@ abstract class _GeneratorModel with Store {
   @observable
   Color color;
 
+  @observable
+  PluginModel plugin;
+
   _GeneratorModel({
     required this.name,
     required this.color,
+    required this.plugin,
   }) : id = getID();
 
   Map<String, dynamic> toJson() =>

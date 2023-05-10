@@ -17,6 +17,8 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#define JUCE_CHECK_MEMORY_LEAKS 0
+
 #include <juce_core/juce_core.h>
 #include <juce_events/juce_events.h>
 #include <juce_audio_devices/juce_audio_devices.h>
@@ -139,7 +141,7 @@ void messageLoop() {
                 break;
             }
             case Command_AddArrangement:
-            case Command_AddGenerator:
+            case Command_AddPlugin:
             case Command_DeleteArrangement:
             case Command_GetPlugins:
                 response = handleProjectCommand(request, builder, anthem);
@@ -205,6 +207,7 @@ public:
 
     void initialise(const juce::String &commandLineParameters) override
     {
+                                    // wow, C++ sure is weird
         const char * anthemSplash = R"V0G0N(
            ,++,
           /####\

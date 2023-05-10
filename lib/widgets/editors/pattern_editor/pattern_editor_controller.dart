@@ -34,8 +34,6 @@ class PatternEditorController {
     required Color color,
     required String pluginPath,
   }) {
-    // TODO: Use plugin path to send this to the engine
-
     final id = getID();
 
     project.execute(AddGeneratorCommand(
@@ -43,6 +41,7 @@ class PatternEditorController {
       generatorID: id,
       name: name,
       color: color,
+      pluginPath: pluginPath,
     ));
 
     project.activeGeneratorID = id;
