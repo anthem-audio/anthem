@@ -58,7 +58,7 @@ class Division {
   }
 }
 
-abstract class Snap {}
+sealed class Snap {}
 
 class BarSnap extends Snap {}
 

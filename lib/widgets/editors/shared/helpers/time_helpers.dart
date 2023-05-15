@@ -177,23 +177,26 @@ GetBestDivisionResult getBestDivision({
   int snapSize;
   int skip = 1;
 
-  if (snap is BarSnap) {
-    bestDivision = barLength;
-    snapSize = barLength;
-  } else if (snap is DivisionSnap || snap is AutoSnap) {
-    if (divisionSizeLowerBound >= barLength) {
-      snapSize = barLength;
-    } else {
-      final division = snap is DivisionSnap
-          ? snap.division
-          : Division(multiplier: 1, divisor: 4);
-      snapSize = division.getSizeInTicks(ticksPerQuarter, timeSignature);
-    }
-    bestDivision = snapSize;
-  } else {
-    // We need to update the Snap class to be sealed when 3.0 comes out. Until
-    // then, if Snap gets more subclasses then this could give a runtime error.
-    throw ArgumentError('Unhandled Snap type');
+  switch (snap) {
+    case BarSnap():
+      {
+        bestDivision = barLength;
+        snapSize = barLength;
+        break;
+      }
+    case DivisionSnap() || AutoSnap():
+      {
+        if (divisionSizeLowerBound >= barLength) {
+          snapSize = barLength;
+        } else {
+          final division = snap is DivisionSnap
+              ? snap.division
+              : Division(multiplier: 1, divisor: 4);
+          snapSize = division.getSizeInTicks(ticksPerQuarter, timeSignature);
+        }
+        bestDivision = snapSize;
+        break;
+      }
   }
 
   final numDivisionsInBar = barLength ~/ snapSize;
