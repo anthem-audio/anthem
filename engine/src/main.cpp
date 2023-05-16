@@ -19,8 +19,8 @@
 
 #define JUCE_CHECK_MEMORY_LEAKS 0
 
-#include <juce_core/juce_core.h>
 #include <juce_events/juce_events.h>
+#include <juce_core/juce_core.h>
 #include <juce_audio_devices/juce_audio_devices.h>
 
 #include <tracktion_engine/tracktion_engine.h>
@@ -32,6 +32,8 @@
 #include <thread>
 #include <chrono>
 #include <cstdlib>
+#include <mutex>
+#include <condition_variable>
 
 #include "messages_generated.h"
 #include "open_message_queue.h"
@@ -52,7 +54,7 @@ volatile bool heartbeatOccurred = true;
 void heartbeat() {
     while (true) {
         if (!heartbeatOccurred) {
-            std::exit(0);
+            juce::JUCEApplication::quit();
         }
 
         heartbeatOccurred = false;
@@ -61,56 +63,30 @@ void heartbeat() {
     }
 }
 
-std::thread messageLoopThread;
+// When we send a message to the main thread, these allow the message thread to
+// wait until the main thread is done reading from the message buffer before
+// fetching a new message.
+std::mutex messageHandledMutex;
+std::condition_variable messageHandledCv;
+volatile bool canWriteToBuffer = true;
 
-// Main loop that listens for messages from the UI and responds to them
-void messageLoop() {
-    auto idStr = juce::JUCEApplication::getCommandLineParameters();
-
-    if (idStr.length() == 0) {
-        std::cerr << "Engine ID was not provided. Exiting..." << std::endl;
-        juce::JUCEApplication::quit();
-        return;
+class CommandMessage : public juce::Message
+{
+public:
+    CommandMessage(const Request* request) {
+        this->request = request;
     }
 
-    auto mqToUiName = "engine-to-ui-" + idStr;
-    auto mqFromUiName = "ui-to-engine-" + idStr;
+    const Request* request;
+};
 
-    std::cout << "Creating engine-to-ui message queue..." << std::endl;
+class CommandMessageListener : public juce::MessageListener
+{
+public:
+    void handleMessage(const juce::Message& message) override {
+        const CommandMessage& command = dynamic_cast<const CommandMessage&>(message);
 
-    // Create a message_queue.
-    mqToUi = std::unique_ptr<message_queue>(
-        new message_queue(
-            create_only,
-            mqToUiName.toStdString().c_str(),
-
-            // 100 messages can be in the queue at once
-            100,
-
-            // Each message can be a maximum of 65536 bytes (?) long
-            65536));
-
-    std::cout << "Opening ui-to-engine message queue..." << std::endl;
-    mqFromUi = openMessageQueue(mqFromUiName.toStdString().c_str());
-    std::cout << "Opened successfully." << std::endl;
-
-    std::cout << "Starting heartbeat thread..." << std::endl;
-    std::thread heartbeat_thread(heartbeat);
-
-    uint8_t buffer[65536];
-
-    std::cout << "Anthem engine started successfully. Listening for messages from UI..." << std::endl;
-    while (true) {
-        std::size_t received_size;
-        unsigned int priority;
-
-        mqFromUi->receive(buffer, sizeof(buffer), received_size, priority);
-
-        // Create a const pointer to the start of the buffer
-        const void* send_buffer_ptr = static_cast<const void*>(buffer);
-
-        // Get the root of the buffer
-        auto request = flatbuffers::GetRoot<Request>(send_buffer_ptr);
+        auto request = command.request;
 
         // Create flatbuffers builder
         auto builder = flatbuffers::FlatBufferBuilder();
@@ -165,8 +141,69 @@ void messageLoop() {
         if (isExit) {
             std::cout << "Engine received exit message. Shutting down..." << std::endl;
             juce::JUCEApplication::quit();
-            break;
+        } else {
+            canWriteToBuffer = true;
+            messageHandledCv.notify_one();
         }
+    }
+};
+
+std::thread messageLoopThread;
+
+// Main loop that listens for messages from the UI and responds to them
+void messageLoop(CommandMessageListener& messageListener) {
+    auto idStr = juce::JUCEApplication::getCommandLineParameters();
+
+    if (idStr.length() == 0) {
+        std::cerr << "Engine ID was not provided. Exiting..." << std::endl;
+        juce::JUCEApplication::quit();
+        return;
+    }
+
+    auto mqToUiName = "engine-to-ui-" + idStr;
+    auto mqFromUiName = "ui-to-engine-" + idStr;
+
+    std::cout << "Creating engine-to-ui message queue..." << std::endl;
+
+    // Create a message_queue.
+    mqToUi = std::unique_ptr<message_queue>(
+        new message_queue(
+            create_only,
+            mqToUiName.toStdString().c_str(),
+
+            // 100 messages can be in the queue at once
+            100,
+
+            // Each message can be a maximum of 65536 bytes (?) long
+            65536));
+
+    std::cout << "Opening ui-to-engine message queue..." << std::endl;
+    mqFromUi = openMessageQueue(mqFromUiName.toStdString().c_str());
+    std::cout << "Opened successfully." << std::endl;
+
+    std::cout << "Starting heartbeat thread..." << std::endl;
+    std::thread heartbeat_thread(heartbeat);
+
+    uint8_t buffer[65536];
+
+    std::cout << "Anthem engine started successfully. Listening for messages from UI..." << std::endl;
+    while (true) {
+        std::unique_lock<std::mutex> lock(messageHandledMutex);
+        messageHandledCv.wait(lock, []() { return canWriteToBuffer; });
+        canWriteToBuffer = false;
+
+        std::size_t received_size;
+        unsigned int priority;
+
+        mqFromUi->receive(buffer, sizeof(buffer), received_size, priority);
+
+        // Create a const pointer to the start of the buffer
+        const void* send_buffer_ptr = static_cast<const void*>(buffer);
+
+        // Get the root of the buffer
+        auto request = flatbuffers::GetRoot<Request>(send_buffer_ptr);
+
+        messageListener.postMessage(new CommandMessage(request));
     }
 }
 
@@ -174,6 +211,7 @@ class AnthemEngineApplication : public juce::JUCEApplicationBase, private juce::
 {
 private:
     std::unique_ptr<std::thread> message_loop_thread;
+    CommandMessageListener commandMessageListener;
 
     void changeListenerCallback(juce::ChangeBroadcaster *source) override
     {
@@ -241,7 +279,7 @@ public:
         //
         // If we start getting weird crashes, then this might be something to
         // look at.
-        message_loop_thread = std::make_unique<std::thread>(std::thread(messageLoop));
+        message_loop_thread = std::make_unique<std::thread>(messageLoop, std::ref(commandMessageListener));
         message_loop_thread->detach();
     }
 };
