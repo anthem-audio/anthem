@@ -97,9 +97,15 @@ class _PanelState extends State<Panel> {
         }
       }
 
-      final panelSize = widget.sizeBehavior == PanelSizeBehavior.flex
+      var panelSize = widget.sizeBehavior == PanelSizeBehavior.flex
           ? flexPanelSize * mainAxisSize
           : pixelPanelSize;
+
+      // Make sure we're snapping to a pixel boundary
+      final queryData = MediaQuery.of(context);
+      panelSize *= queryData.devicePixelRatio;
+      panelSize = panelSize.round().toDouble();
+      panelSize /= queryData.devicePixelRatio;
 
       final panelFirst = _isPanelFirst(widget.orientation);
 
