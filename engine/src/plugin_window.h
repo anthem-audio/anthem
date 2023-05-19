@@ -20,9 +20,16 @@
 #pragma once
 
 #include <tracktion_engine/tracktion_engine.h>
+#include <juce_gui_basics/juce_gui_basics.h>
 
-#include "messages_generated.h"
-#include "../anthem.h"
-#include "../plugin_window.h"
+class PluginWindow : public juce::DocumentWindow
+{
+public:
+    PluginWindow(juce::AudioProcessor* processor);
+    ~PluginWindow();
 
-std::optional<flatbuffers::Offset<Response>> handleProjectCommand(const Request* request, flatbuffers::FlatBufferBuilder& builder, Anthem* anthem);
+    void closeButtonPressed() override;
+
+private:
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginWindow)
+};

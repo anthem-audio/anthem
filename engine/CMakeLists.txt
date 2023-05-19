@@ -41,6 +41,8 @@ set(ANTHEM_ENGINE_SOURCES
     src/main.cpp
     src/anthem.h
     src/anthem.cpp
+    src/plugin_window.h
+    src/plugin_window.cpp
     src/command_handlers/project_command_handler.h
     src/command_handlers/project_command_handler.cpp
     generated/messages_generated.h
@@ -76,6 +78,7 @@ target_link_libraries(
 
   PRIVATE
   tracktion::tracktion_engine
+  juce::juce_gui_basics
 
   PUBLIC
   juce::juce_recommended_config_flags

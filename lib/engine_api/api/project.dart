@@ -81,13 +81,16 @@ class Project {
     return completer.future;
   }
 
-  Future<int> addPlugin(String pluginPath) {
+  Future<int> addPlugin(String pluginPath, int editPointer) {
     final id = _engine._getRequestId();
 
     final request = RequestObjectBuilder(
       id: id,
       commandType: CommandTypeId.AddPlugin,
-      command: AddPluginObjectBuilder(pluginUri: pluginPath),
+      command: AddPluginObjectBuilder(
+        pluginUri: pluginPath,
+        editPointer: editPointer,
+      ),
     );
 
     final completer = Completer<int>();
