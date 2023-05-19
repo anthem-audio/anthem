@@ -28,6 +28,7 @@ table DeleteArrangement {
 
 table AddPlugin {
   plugin_uri: string;
+  edit_pointer: ulong;
 }
 table AddPluginResponse {
   plugin_pointer: ulong;

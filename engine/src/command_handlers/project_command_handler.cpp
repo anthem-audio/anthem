@@ -81,7 +81,7 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
             std::cout << "Scanned plugin." << std::endl;
 
             if (typesFound.size() == 0) {
-                std::cout << "Plugin scan didn't idenitfy the plugin as valid." << std::endl;
+                std::cout << "Plugin scan didn't identify the plugin as valid." << std::endl;
                 return std::optional(errorResponseMessage);
             }
 
@@ -96,6 +96,30 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
 
             if (pluginInstance) {
                 std::cout << "Loaded plugin: " << pluginInstance->getName() << std::endl;
+                // Create a window for the plugin
+                auto pluginWindow = std::make_unique<PluginWindow>(pluginInstance.get());
+                pluginWindow->setVisible(true);
+                
+                // TODO: This is a memory leak, but means the window pointer
+                // isn't deleted. I'm not sure what to do with this yet, but
+                // either way the pointer should be stored somewhere for access
+                // later.
+                pluginWindow.release();
+
+                auto edit = reinterpret_cast<tracktion::engine::Edit*>(
+                    static_cast<uintptr_t>(command->edit_pointer())
+                );
+
+                // Get a reference to the main track list
+                // auto& trackList = edit->getTrackList();
+
+                // Create the TrackInsertPoint
+                // tracktion::TrackInsertPoint tip(nullptr, nullptr); // Always inserts at the start - TODO figure this out lol
+
+                // // Insert the new audio track
+                // auto newTrack = edit->insertNewAudioTrack(tip, nullptr);
+
+                // newTrack->pluginList.insertPlugin(pluginInstance);
             } else {
                 std::cout << "Error: " << errorMessage.toStdString() << std::endl;
                 return std::optional(errorResponseMessage);

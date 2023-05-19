@@ -267,18 +267,10 @@ public:
         std::cout << "Starting Anthem engine..." << std::endl;
         anthem = new Anthem();
 
-        // This starts the message loop in a thread. It also means that all our
-        // commands will be handled on a separate thread from the main JUCE
-        // event loop thread. This might be fine, since we're not using JUCE as
-        // a GUI library, but I don't know.
-        //
-        // However, this does fix an issue. JUCE crashes the application if we
-        // try to exit before the `initialize()` function is returned from. I'm
-        // guessing that JUCE needs to do at least something in the main thread
-        // after it calls our initialize function.
-        //
-        // If we start getting weird crashes, then this might be something to
-        // look at.
+        // This starts the message loop in a thread. The message loop thread
+        // communicates back to the main thread every time it receives a
+        // message from the UI, and the main thread takes care of processing
+        // the message.
         message_loop_thread = std::make_unique<std::thread>(messageLoop, std::ref(commandMessageListener));
         message_loop_thread->detach();
     }
