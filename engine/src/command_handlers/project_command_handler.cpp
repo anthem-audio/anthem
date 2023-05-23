@@ -31,6 +31,9 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
         case Command_AddArrangement: {
             auto edit = tracktion::createEmptyEdit(*anthem->engine, juce::File("./I-dont-know-where-this-is-going.tracktion-edit"));
 
+            edit->playInStopEnabled = true;
+            edit->getTransport().ensureContextAllocated(true);
+
             // We store this pointer with the arrangement model in the UI, so
             // we need to extract it from the unique_ptr.
             auto editPtr = edit.release();

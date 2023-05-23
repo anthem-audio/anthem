@@ -26,5 +26,6 @@ class Anthem {
 private:
 public:
     std::unique_ptr<tracktion::Engine> engine;
+    tracktion::engine::Project::Ptr project;
     Anthem();
 };
