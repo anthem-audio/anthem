@@ -35,9 +35,6 @@ class PluginModel extends _PluginModel with _$PluginModel {
 abstract class _PluginModel with Store {
   String path;
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  late int pluginInstancePointer;
-
   _PluginModel({required this.path});
 
   Map<String, dynamic> toJson() => _$PluginModelToJson(this as PluginModel);
@@ -54,7 +51,7 @@ abstract class _PluginModel with Store {
     //
     // Maybe we need a better abstraction between us and Tracktion Engine?
     try {
-      pluginInstancePointer = await engine.projectApi.addPlugin(
+      await engine.projectApi.addPlugin(
         path,
         engine.project.song
             .arrangements[engine.project.song.activeArrangementID]!.editPointer,

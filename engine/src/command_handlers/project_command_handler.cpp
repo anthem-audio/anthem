@@ -56,7 +56,7 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
             return std::nullopt;
         }
         case Command_AddPlugin: {
-            auto errorResponse = CreateAddPluginResponse(builder, 0, false);
+            auto errorResponse = CreateAddPluginResponse(builder, false);
             auto errorResponseOffset = errorResponse.Union();
             auto errorResponseMessage = CreateResponse(builder, request->id(), ReturnValue_AddPluginResponse, errorResponseOffset);
 
@@ -85,55 +85,42 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
                 return std::optional(errorResponseMessage);
             }
 
-            // Instance the plugin
-            juce::String errorMessage;
-            auto pluginInstance = pluginManager.pluginFormatManager.createPluginInstance(
-                *typesFound[0],
-                anthem->engine->getDeviceManager().getSampleRate(),
-                anthem->engine->getDeviceManager().getBlockSize(),
-                errorMessage
+            auto edit = reinterpret_cast<tracktion::engine::Edit*>(
+                static_cast<uintptr_t>(command->edit_pointer())
+            );
+
+            auto pluginInstance = edit->getPluginCache().createNewPlugin(
+                tracktion::ExternalPlugin::xmlTypeName,
+                *typesFound[0]
             );
 
             if (pluginInstance) {
-                std::cout << "Loaded plugin: " << pluginInstance->getName() << std::endl;
-                // Create a window for the plugin
-                auto pluginWindow = std::make_unique<PluginWindow>(pluginInstance.get());
-                pluginWindow->setVisible(true);
-                
-                // TODO: This is a memory leak, but means the window pointer
-                // isn't deleted. I'm not sure what to do with this yet, but
-                // either way the pointer should be stored somewhere for access
-                // later.
-                pluginWindow.release();
-
-                auto edit = reinterpret_cast<tracktion::engine::Edit*>(
-                    static_cast<uintptr_t>(command->edit_pointer())
-                );
-
                 // Get a reference to the main track list
-                // auto& trackList = edit->getTrackList();
+                auto& trackList = edit->getTrackList();
 
                 // Create the TrackInsertPoint
-                // tracktion::TrackInsertPoint tip(nullptr, nullptr); // Always inserts at the start - TODO figure this out lol
+                tracktion::TrackInsertPoint tip(nullptr, nullptr); // Always inserts at the start - TODO figure this out lol
 
-                // // Insert the new audio track
-                // auto newTrack = edit->insertNewAudioTrack(tip, nullptr);
+                // Insert the new audio track
+                auto newTrack = edit->insertNewAudioTrack(tip, nullptr);
 
-                // newTrack->pluginList.insertPlugin(pluginInstance);
+                newTrack->pluginList.insertPlugin(pluginInstance, -1, nullptr);
+
+                auto processor = pluginInstance->getWrappedAudioProcessor();
+
+                // Create a window manually, since Tracktion doesn't seem to want to open an external plugin window
+                auto window = new PluginWindow(processor); // TODO ha ha this is bad
+                window->setVisible(true);
+
+                window->setTopLeftPosition(juce::Point(10, 10));
+
+                std::cout << "Loaded plugin: " << pluginInstance->getName() << std::endl;
             } else {
-                std::cout << "Error: " << errorMessage.toStdString() << std::endl;
+                std::cout << "Error adding plugin";
                 return std::optional(errorResponseMessage);
             }
 
-            // We store this pointer with the plugin model in the UI, so we
-            // need to extract it from the unique_ptr.
-            auto pluginPtr = pluginInstance.release();
-
-            auto pluginPtrAsUint = static_cast<uint64_t>(
-                reinterpret_cast<uintptr_t>(pluginPtr)
-            );
-
-            auto response = CreateAddPluginResponse(builder, pluginPtrAsUint, true);
+            auto response = CreateAddPluginResponse(builder, true);
             auto responseOffset = response.Union();
 
             auto message = CreateResponse(builder, request->id(), ReturnValue_AddPluginResponse, responseOffset);
