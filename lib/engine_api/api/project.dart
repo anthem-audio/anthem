@@ -81,7 +81,8 @@ class Project {
     return completer.future;
   }
 
-  Future<int> addPlugin(String pluginPath, int editPointer) {
+  /// Adds the plugin at the given path.
+  Future<void> addPlugin(String pluginPath, int editPointer) {
     final id = _engine._getRequestId();
 
     final request = RequestObjectBuilder(
@@ -93,14 +94,14 @@ class Project {
       ),
     );
 
-    final completer = Completer<int>();
+    final completer = Completer<void>();
 
     _engine._request(id, request, onResponse: (response) {
       final inner = response.returnValue as AddPluginResponse;
       if (inner.success) {
-        completer.complete(inner.pluginPointer);
+        completer.complete();
       } else {
-        completer.completeError(inner.pluginPointer);
+        completer.completeError(false);
       }
     });
 

@@ -31,7 +31,6 @@ table AddPlugin {
   edit_pointer: ulong;
 }
 table AddPluginResponse {
-  plugin_pointer: ulong;
   success: bool;
 }
 
