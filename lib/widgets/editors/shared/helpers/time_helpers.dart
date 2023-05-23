@@ -23,8 +23,8 @@ import 'package:anthem/model/shared/time_signature.dart';
 
 import 'types.dart';
 
-const minorMinPixels = 8.0;
-const majorMinPixels = 20.0;
+const minorMinPixels = 12.0;
+const majorMinPixels = 25.0;
 
 double timeToPixels({
   required double timeViewStart,
@@ -241,7 +241,7 @@ GetBestDivisionResult getBestDivision({
 /// section, and one describing the same for the 4/4 section.
 List<DivisionChange> getDivisionChanges({
   required double viewWidthInPixels,
-  double minPixelsPerSection = 8,
+  double minPixelsPerSection = minorMinPixels,
   required Snap snap,
   required TimeSignatureModel defaultTimeSignature,
   required List<TimeSignatureChangeModel> timeSignatureChanges,
