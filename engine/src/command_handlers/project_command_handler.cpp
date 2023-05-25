@@ -158,6 +158,47 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
 
             return std::optional(message);
         }
+        case Command_LiveNoteOn: {
+            std::cout << "Received LiveNoteOn" << std::endl;
+
+            auto command = request->command_as_LiveNoteOn();
+
+            auto edit = reinterpret_cast<tracktion::engine::Edit*>(
+                static_cast<uintptr_t>(command->edit_pointer())
+            );
+
+            if (edit->getTrackList().size() == 0) return std::nullopt;
+
+            auto midiChannel = command->channel();
+            auto midiNoteNumber = command->note();
+            auto velocity = command->velocity();
+
+            std::cout << "Channel: " << midiChannel << ", note number: " << midiNoteNumber << std::endl;
+
+            juce::MidiMessage message = juce::MidiMessage::noteOn(midiChannel, midiNoteNumber, velocity);
+
+            auto track = static_cast<tracktion::AudioTrack*>(edit->getTrackList().at(0));
+
+            track->injectLiveMidiMessage(message, 0);
+
+            return std::nullopt;
+        }
+        case Command_LiveNoteOff: {
+            auto command = request->command_as_LiveNoteOff();
+
+            auto edit = reinterpret_cast<tracktion::engine::Edit*>(
+                static_cast<uintptr_t>(command->edit_pointer())
+            );
+
+            if (edit->getTrackList().size() == 0) return std::nullopt;
+
+            auto midiChannel = command->channel();
+            auto midiNoteNumber = command->note();
+
+            juce::MidiMessage message = juce::MidiMessage::noteOff(midiChannel, midiNoteNumber);
+
+            return std::nullopt;
+        }
         default: {
             std::cerr << "Unknown command received by handleProjectCommand()" << std::endl;
             return std::nullopt;

@@ -107,4 +107,46 @@ class Project {
 
     return completer.future;
   }
+
+  void noteOn({
+    int channel = 1,
+    required int note,
+    double velocity = 0.5,
+    required int editPointer,
+  }) {
+    final id = _engine._getRequestId();
+
+    final request = RequestObjectBuilder(
+      id: id,
+      commandType: CommandTypeId.LiveNoteOn,
+      command: LiveNoteOnObjectBuilder(
+        editPointer: editPointer,
+        channel: channel,
+        note: note,
+        velocity: velocity,
+      ),
+    );
+
+    _engine._request(id, request);
+  }
+
+  void noteOff({
+    int channel = 1,
+    required int note,
+    required int editPointer,
+  }) {
+    final id = _engine._getRequestId();
+
+    final request = RequestObjectBuilder(
+      id: id,
+      commandType: CommandTypeId.LiveNoteOff,
+      command: LiveNoteOffObjectBuilder(
+        editPointer: editPointer,
+        channel: channel,
+        note: note,
+      ),
+    );
+
+    _engine._request(id, request);
+  }
 }

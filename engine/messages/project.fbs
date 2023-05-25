@@ -38,3 +38,19 @@ table GetPlugins {}
 table GetPluginsResponse {
   plugins: [string];
 }
+
+// Maybe these should be moved out into another file
+table LiveNoteOn {
+  edit_pointer: ulong;
+
+  // how on earth are we linking things
+  channel: ubyte;
+  note: ubyte;
+  velocity: float; // JUCE apparently encodes this in float
+}
+table LiveNoteOff {
+  edit_pointer: ulong;
+
+  channel: ubyte;
+  note: ubyte;
+}
