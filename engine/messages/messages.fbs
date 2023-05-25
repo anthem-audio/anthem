@@ -35,6 +35,10 @@ union Command {
   AddPlugin,
   DeleteArrangement,
   GetPlugins,
+
+  // ??
+  LiveNoteOn,
+  LiveNoteOff,
 }
 
 union ReturnValue {
