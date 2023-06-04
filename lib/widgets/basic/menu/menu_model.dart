@@ -35,12 +35,14 @@ class AnthemMenuItem extends GenericMenuItem {
   MenuDef? submenu;
   VoidCallback? onSelected;
   String? hint;
+  bool disabled;
 
   AnthemMenuItem({
     this.text = '',
     this.submenu,
     this.onSelected,
     this.hint,
+    this.disabled = false,
   }) : super();
 }
 

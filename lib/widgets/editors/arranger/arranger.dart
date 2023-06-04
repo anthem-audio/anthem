@@ -130,6 +130,7 @@ class _ArrangerState extends State<Arranger> {
                                   menuDef: MenuDef(
                                     children: [
                                       AnthemMenuItem(
+                                        disabled: true,
                                         text: 'New arrangement',
                                         hint: 'Create a new arrangement',
                                         onSelected: () {
