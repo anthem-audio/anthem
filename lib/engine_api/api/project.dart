@@ -80,4 +80,73 @@ class Project {
 
     return completer.future;
   }
+
+  /// Adds the plugin at the given path.
+  Future<void> addPlugin(String pluginPath, int editPointer) {
+    final id = _engine._getRequestId();
+
+    final request = RequestObjectBuilder(
+      id: id,
+      commandType: CommandTypeId.AddPlugin,
+      command: AddPluginObjectBuilder(
+        pluginUri: pluginPath,
+        editPointer: editPointer,
+      ),
+    );
+
+    final completer = Completer<void>();
+
+    _engine._request(id, request, onResponse: (response) {
+      final inner = response.returnValue as AddPluginResponse;
+      if (inner.success) {
+        completer.complete();
+      } else {
+        completer.completeError(false);
+      }
+    });
+
+    return completer.future;
+  }
+
+  void noteOn({
+    int channel = 1,
+    required int note,
+    double velocity = 0.5,
+    required int editPointer,
+  }) {
+    final id = _engine._getRequestId();
+
+    final request = RequestObjectBuilder(
+      id: id,
+      commandType: CommandTypeId.LiveNoteOn,
+      command: LiveNoteOnObjectBuilder(
+        editPointer: editPointer,
+        channel: channel,
+        note: note,
+        velocity: velocity,
+      ),
+    );
+
+    _engine._request(id, request);
+  }
+
+  void noteOff({
+    int channel = 1,
+    required int note,
+    required int editPointer,
+  }) {
+    final id = _engine._getRequestId();
+
+    final request = RequestObjectBuilder(
+      id: id,
+      commandType: CommandTypeId.LiveNoteOff,
+      command: LiveNoteOffObjectBuilder(
+        editPointer: editPointer,
+        channel: channel,
+        note: note,
+      ),
+    );
+
+    _engine._request(id, request);
+  }
 }

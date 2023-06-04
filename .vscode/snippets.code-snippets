@@ -70,5 +70,29 @@
 			"$0",
 			""
 		]
+	},
+
+	"Model Class": {
+		"prefix": ["Model Item"],
+		"scope": "dart",
+		"body": [
+			"import 'package:json_annotation/json_annotation.dart';",
+			"import 'package:mobx/mobx.dart';",
+			"",
+			"part '$2.g.dart';",
+			"",
+			"@JsonSerializable()",
+			"class $1Model extends _$1Model with _$$1Model {",
+			"  $1Model() : super();",
+			"",
+			"  factory $1Model.fromJson(Map<String, dynamic> json) => _$$1ModelFromJson(json);",
+			"}",
+			"",
+			"abstract class _$1Model with Store {",
+			"  _$1Model();",
+			"",
+			"  Map<String, dynamic> toJson() => _$$1ModelToJson(this as PluginModel);",
+			"}"
+		]
 	}
 }

@@ -18,7 +18,6 @@
 */
 
 import 'package:anthem/model/store.dart';
-import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/main_window/main_window_controller.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
@@ -47,38 +46,36 @@ class _MainWindowState extends State<MainWindow> {
 
     return Provider.value(
       value: controller,
-      child: ShortcutProvider(
-        child: ScreenOverlay(
-          child: Container(
-            color: const Color(0xFF2A3237),
-            child: Padding(
-              padding: const EdgeInsets.all(3),
-              child: Observer(builder: (context) {
-                final tabs = store.projectOrder
-                    .map<TabDef>(
-                      (projectID) => TabDef(
-                        id: projectID,
-                        title: store.projects[projectID]!.id,
-                      ),
-                    )
-                    .toList();
+      child: ScreenOverlay(
+        child: Container(
+          color: const Color(0xFF2A3237),
+          child: Padding(
+            padding: const EdgeInsets.all(3),
+            child: Observer(builder: (context) {
+              final tabs = store.projectOrder
+                  .map<TabDef>(
+                    (projectID) => TabDef(
+                      id: projectID,
+                      title: store.projects[projectID]!.id,
+                    ),
+                  )
+                  .toList();
 
-                return Column(
-                  children: [
-                    WindowHeader(
-                      selectedTabID: store.activeProjectID,
+              return Column(
+                children: [
+                  WindowHeader(
+                    selectedTabID: store.activeProjectID,
+                    tabs: tabs,
+                  ),
+                  Expanded(
+                    child: TabContentSwitcher(
                       tabs: tabs,
+                      selectedTabID: store.activeProjectID,
                     ),
-                    Expanded(
-                      child: TabContentSwitcher(
-                        tabs: tabs,
-                        selectedTabID: store.activeProjectID,
-                      ),
-                    ),
-                  ],
-                );
-              }),
-            ),
+                  ),
+                ],
+              );
+            }),
           ),
         ),
       ),

@@ -52,15 +52,25 @@ class KeyboardModifiers with ChangeNotifier, DiagnosticableTreeMixin {
   }
 }
 
-/// This class listens for shortcuts and sends them to the active
+/// This widget listens for shortcuts and sends them to the active
 /// [ShortcutConsumer].
 ///
-/// This class also provides an object to descendants which tells which
-/// modifier keys (control, alt, shift) are currently pressed.
+/// Each open project renders a [ShortcutProvider] widget, and this widget
+/// tracks an active consumer within that provider's scope. This consumer will
+/// usually be an editor, such as the piano roll. Tracking an active UI region
+/// in this way allows us to specify which editor is currently accepting
+/// shortcuts like copy and paste.
+///
+/// This class also provides an object to descendants which tells which modifier
+/// keys (control, alt, shift) are currently pressed.
 class ShortcutProvider extends StatefulWidget {
   final Widget child;
 
-  const ShortcutProvider({Key? key, required this.child}) : super(key: key);
+  /// Determines if this [ShortcutProvider] should process keystrokes.
+  final bool active;
+
+  const ShortcutProvider({Key? key, required this.child, this.active = true})
+      : super(key: key);
 
   @override
   State<ShortcutProvider> createState() => _ShortcutProviderState();
@@ -82,6 +92,8 @@ class _ShortcutProviderState extends State<ShortcutProvider> {
   }
 
   bool _onKey(KeyEvent e) {
+    if (!widget.active) return false;
+
     final keyDown = e is KeyDownEvent;
     final keyUp = e is KeyUpEvent;
     final keyRepeat = e is KeyRepeatEvent;
@@ -103,8 +115,8 @@ class _ShortcutProviderState extends State<ShortcutProvider> {
     if (shift && keyDown) keyboardModifiers.setShift(true);
     if (shift && keyUp) keyboardModifiers.setShift(false);
 
-    if (keyDown || keyRepeat) controller.handleKeyDown(e.logicalKey);
-    if (keyUp) controller.handleKeyUp(e.logicalKey);
+    if (keyDown || keyRepeat) controller.handleKeyDown(e);
+    if (keyUp) controller.handleKeyUp(e);
 
     return false;
   }

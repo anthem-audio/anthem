@@ -23,5 +23,6 @@
 
 #include "messages_generated.h"
 #include "../anthem.h"
+#include "../plugin_window.h"
 
 std::optional<flatbuffers::Offset<Response>> handleProjectCommand(const Request* request, flatbuffers::FlatBufferBuilder& builder, Anthem* anthem);

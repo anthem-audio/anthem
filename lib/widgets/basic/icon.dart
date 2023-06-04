@@ -62,6 +62,7 @@ class Icons {
   static IconDef undo = const IconDef('assets/icons/edit/undo.svg');
   static _ScrollbarIcons scrollbar = _ScrollbarIcons();
   static _ToolIcons tools = _ToolIcons();
+  static _MainToolbarIcons mainToolbar = _MainToolbarIcons();
 }
 
 class _ScrollbarIcons {
@@ -76,6 +77,11 @@ class _ToolIcons {
   IconDef erase = const IconDef('assets/icons/tools/erase.svg');
   IconDef pencil = const IconDef('assets/icons/tools/pencil.svg');
   IconDef select = const IconDef('assets/icons/tools/select.svg');
+}
+
+class _MainToolbarIcons {
+  IconDef typingKeyboardToPianoKeyboard = const IconDef(
+      'assets/icons/main_toolbar/typing_keyboard_to_piano_keyboard.svg');
 }
 
 class SvgIcon extends StatelessWidget {

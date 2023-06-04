@@ -31,7 +31,11 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
         case Command_AddArrangement: {
             auto edit = tracktion::createEmptyEdit(*anthem->engine, juce::File("./I-dont-know-where-this-is-going.tracktion-edit"));
 
+            edit->playInStopEnabled = true;
+            edit->getTransport().ensureContextAllocated(true);
+
             // We store this pointer with the arrangement model in the UI, so
+            // we need to extract it from the unique_ptr.
             auto editPtr = edit.release();
 
             auto editPtrAsUint = static_cast<uint64_t>(
@@ -54,29 +58,77 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
 
             return std::nullopt;
         }
-        case Command_AddGenerator: {
+        case Command_AddPlugin: {
+            auto errorResponse = CreateAddPluginResponse(builder, false);
+            auto errorResponseOffset = errorResponse.Union();
+            auto errorResponseMessage = CreateResponse(builder, request->id(), ReturnValue_AddPluginResponse, errorResponseOffset);
+
+            auto& pluginManager = anthem->engine->getPluginManager();
+            
             // Grab the plugin URI from the command
-            auto command = request->command_as_AddGenerator();
+            auto command = request->command_as_AddPlugin();
             auto pluginUri = command->plugin_uri()->str();
 
-            // Create a JUCE plugin description
-            juce::PluginDescription pluginDescription;
-            pluginDescription.fileOrIdentifier = pluginUri;
-            pluginDescription.pluginFormatName = "VST3"; // Assume it's a VST3 for now
+            juce::OwnedArray<juce::PluginDescription> typesFound;
 
-            // Instance the plugin
-            juce::String errorMessage;
-            auto pluginInstance = anthem->engine->getPluginManager().pluginFormatManager.createPluginInstance(
-                pluginDescription,
-                anthem->engine->getDeviceManager().getSampleRate(),
-                anthem->engine->getDeviceManager().getBlockSize(),
-                errorMessage
+            std::cout << "Scanning the plugin..." << std::endl;
+
+            // Scan the plugin
+            pluginManager.knownPluginList.scanAndAddFile(
+                pluginUri,
+                true,
+                typesFound,
+                *pluginManager.pluginFormatManager.getFormat(0) // We just support VST3 for now
             );
 
-            // TODO: Add a track?
-            // anthem->engine
+            std::cout << "Scanned plugin." << std::endl;
 
-            return std::nullopt;
+            if (typesFound.size() == 0) {
+                std::cout << "Plugin scan didn't identify the plugin as valid." << std::endl;
+                return std::optional(errorResponseMessage);
+            }
+
+            auto edit = reinterpret_cast<tracktion::engine::Edit*>(
+                static_cast<uintptr_t>(command->edit_pointer())
+            );
+
+            auto pluginInstance = edit->getPluginCache().createNewPlugin(
+                tracktion::ExternalPlugin::xmlTypeName,
+                *typesFound[0]
+            );
+
+            if (pluginInstance) {
+                // Get a reference to the main track list
+                auto& trackList = edit->getTrackList();
+
+                // Create the TrackInsertPoint
+                tracktion::TrackInsertPoint tip(nullptr, nullptr); // Always inserts at the start - TODO figure this out lol
+
+                // Insert the new audio track
+                auto newTrack = edit->insertNewAudioTrack(tip, nullptr);
+
+                newTrack->pluginList.insertPlugin(pluginInstance, -1, nullptr);
+
+                auto processor = pluginInstance->getWrappedAudioProcessor();
+
+                // Create a window manually, since Tracktion doesn't seem to want to open an external plugin window
+                auto window = new PluginWindow(processor); // TODO ha ha this is bad
+                window->setVisible(true);
+
+                window->setTopLeftPosition(juce::Point(10, 10));
+
+                std::cout << "Loaded plugin: " << pluginInstance->getName() << std::endl;
+            } else {
+                std::cout << "Error adding plugin";
+                return std::optional(errorResponseMessage);
+            }
+
+            auto response = CreateAddPluginResponse(builder, true);
+            auto responseOffset = response.Union();
+
+            auto message = CreateResponse(builder, request->id(), ReturnValue_AddPluginResponse, responseOffset);
+
+            return std::optional(message);
         }
         case Command_GetPlugins: {
             auto& pluginManager = anthem->engine->getPluginManager();
@@ -105,6 +157,58 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
             auto message = CreateResponse(builder, request->id(), ReturnValue_GetPluginsResponse, responseOffset);
 
             return std::optional(message);
+        }
+        case Command_LiveNoteOn: {
+            auto command = request->command_as_LiveNoteOn();
+
+            auto edit = reinterpret_cast<tracktion::engine::Edit*>(
+                static_cast<uintptr_t>(command->edit_pointer())
+            );
+
+            if (edit->getTrackList().size() < 6) return std::nullopt;
+
+            auto midiChannel = command->channel();
+            auto midiNoteNumber = command->note();
+            auto velocity = command->velocity();
+
+            juce::MidiMessage message = juce::MidiMessage::noteOn(midiChannel, midiNoteNumber, velocity);
+
+            // No idea why this is 5. Tracktion starts with a few tracks by
+            // default, and the one we added isn't the first one. The reasons
+            // for this are probably spooky Tracktion reasons that I don't fully
+            // understand yet. Tracktion Waveform does start with three "global"
+            // tracks, but I don't know where the other two come from.
+            auto uncastTrack = edit->getTrackList().at(5);
+
+            auto track = dynamic_cast<tracktion::AudioTrack*>(uncastTrack);
+
+            if (track == nullptr) return std::nullopt;
+
+            track->injectLiveMidiMessage(message, 0);
+
+            return std::nullopt;
+        }
+        case Command_LiveNoteOff: {
+            auto command = request->command_as_LiveNoteOff();
+
+            auto edit = reinterpret_cast<tracktion::engine::Edit*>(
+                static_cast<uintptr_t>(command->edit_pointer())
+            );
+
+            if (edit->getTrackList().size() < 6) return std::nullopt;
+
+            auto midiChannel = command->channel();
+            auto midiNoteNumber = command->note();
+
+            juce::MidiMessage message = juce::MidiMessage::noteOff(midiChannel, midiNoteNumber);
+
+            auto uncastTrack = edit->getTrackList().at(5);
+
+            auto track = dynamic_cast<tracktion::AudioTrack*>(uncastTrack);
+
+            track->injectLiveMidiMessage(message, 0);
+
+            return std::nullopt;
         }
         default: {
             std::cerr << "Unknown command received by handleProjectCommand()" << std::endl;

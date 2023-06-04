@@ -200,7 +200,11 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
       final showHoverState =
           isHovered || (isSubmenuOpen && !widget.isMouseInMenu);
 
-      final textColor = showHoverState ? Theme.primary.main : Theme.text.main;
+      final textColor = showHoverState
+          ? Theme.primary.main
+          : item.disabled
+              ? Theme.text.disabled
+              : Theme.text.main;
 
       final rowChildren = [
         Text(
@@ -232,6 +236,8 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
 
       return MouseRegion(
         onEnter: (e) {
+          if (item.disabled) return;
+
           setState(() {
             isHovered = true;
           });
@@ -252,6 +258,8 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
           cancelSubmenuCloseTimer();
         },
         onExit: (e) {
+          if (item.disabled) return;
+
           setState(() {
             isHovered = false;
           });
@@ -260,6 +268,8 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
         },
         child: GestureDetector(
           onTap: () {
+            if (item.disabled) return;
+
             item.onSelected?.call();
             if (item.submenu == null) {
               screenOverlayController.clear();

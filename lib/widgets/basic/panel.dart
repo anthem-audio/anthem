@@ -33,6 +33,11 @@ bool _isPanelFirst(PanelOrientation orientation) {
       orientation == PanelOrientation.top;
 }
 
+// Tracks if a resize is already active. We use this to enable logic that
+// prevents multiple resize handles from triggering resize operations at once,
+// in the case that resize indicators are overlapping.
+bool isResizeActive = false;
+
 class Panel extends StatefulWidget {
   final Widget panelContent;
   final Widget child;
@@ -73,7 +78,7 @@ class _PanelState extends State<Panel> {
   double pixelPanelSize = -1;
 
   // event variables, not used during render
-  bool mouseDown = false;
+  bool resizeActive = false;
   double startPos = -1;
   double startSize = -1;
 
@@ -97,9 +102,15 @@ class _PanelState extends State<Panel> {
         }
       }
 
-      final panelSize = widget.sizeBehavior == PanelSizeBehavior.flex
+      var panelSize = widget.sizeBehavior == PanelSizeBehavior.flex
           ? flexPanelSize * mainAxisSize
           : pixelPanelSize;
+
+      // Make sure we're snapping to a pixel boundary
+      final queryData = MediaQuery.of(context);
+      panelSize *= queryData.devicePixelRatio;
+      panelSize = panelSize.round().toDouble();
+      panelSize /= queryData.devicePixelRatio;
 
       final panelFirst = _isPanelFirst(widget.orientation);
 
@@ -184,17 +195,22 @@ class _PanelState extends State<Panel> {
                 opaque: false,
                 child: Listener(
                   onPointerDown: (e) {
-                    mouseDown = true;
+                    if (isResizeActive) return;
+                    isResizeActive = true;
+                    resizeActive = true;
                     startPos = (horizontal ? e.position.dx : e.position.dy);
                     startSize = panelSize;
                   },
                   onPointerUp: (e) {
-                    mouseDown = false;
+                    resizeActive = false;
+                    isResizeActive = false;
                   },
                   onPointerCancel: (e) {
-                    mouseDown = false;
+                    resizeActive = false;
+                    isResizeActive = false;
                   },
                   onPointerMove: (e) {
+                    if (!resizeActive) return;
                     final delta =
                         ((horizontal ? e.position.dx : e.position.dy) -
                                 startPos) *

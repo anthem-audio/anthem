@@ -24,6 +24,7 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
+import 'package:anthem/widgets/project/typing_keyboard_piano_handler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -122,6 +123,34 @@ class ProjectController {
             LogicalKeyboardKey.shift, LogicalKeyboardKey.keyZ))) {
       redo();
     }
+  }
+
+  bool onKey(KeyEvent event) {
+    if (event is KeyRepeatEvent) return false;
+
+    final key = event.logicalKey;
+
+    if (viewModel.keyboardPianoEnabled && isTypingPianoKey(key)) {
+      final note = getMidiNoteFromKeyboardKey(key)!;
+
+      if (event is KeyDownEvent) {
+        project.engine.projectApi.noteOn(
+          note: note,
+          editPointer: project
+              .song.arrangements[project.song.activeArrangementID]!.editPointer,
+        );
+      } else {
+        project.engine.projectApi.noteOff(
+          note: note,
+          editPointer: project
+              .song.arrangements[project.song.activeArrangementID]!.editPointer,
+        );
+      }
+
+      return true;
+    }
+
+    return false;
   }
 
   void setHintText(String text) {

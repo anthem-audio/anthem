@@ -41,6 +41,8 @@ set(ANTHEM_ENGINE_SOURCES
     src/main.cpp
     src/anthem.h
     src/anthem.cpp
+    src/plugin_window.h
+    src/plugin_window.cpp
     src/command_handlers/project_command_handler.h
     src/command_handlers/project_command_handler.cpp
     generated/messages_generated.h
@@ -55,6 +57,8 @@ target_sources(AnthemEngine PRIVATE ${ANTHEM_ENGINE_SOURCES})
 # add_executable(AnthemEngine ${ANTHEM_ENGINE_SOURCES})
 
 target_link_libraries(AnthemEngine ${Boost_LIBRARIES})
+
+target_compile_definitions(AnthemEngine PRIVATE JUCE_PLUGINHOST_VST3=1)
 
 if (LINUX)
   target_include_directories(AnthemEngine PRIVATE ${GTK3_INCLUDE_DIRS})
@@ -73,8 +77,8 @@ target_link_libraries(
   AnthemEngine
 
   PRIVATE
-  juce::juce_audio_utils
   tracktion::tracktion_engine
+  juce::juce_gui_basics
 
   PUBLIC
   juce::juce_recommended_config_flags
