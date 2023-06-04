@@ -1,5 +1,5 @@
 name: Build Anthem
-on: [push]
+on: [push, pull_request]
 jobs:
   build-windows:
     runs-on: [windows-latest]
@@ -26,7 +26,7 @@ jobs:
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.10.2'
+          flutter-version: '3.10.3'
           channel: 'stable'
           cache: true
 
@@ -91,7 +91,7 @@ jobs:
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.10.2'
+          flutter-version: '3.10.3'
           channel: 'stable'
           cache: true
 
