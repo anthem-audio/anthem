@@ -76,7 +76,7 @@ class _ProjectState extends State<Project> {
               projectID: widget.id,
             ),
             const SizedBox(
-              height: 6,
+              height: 3,
             ),
             Expanded(
               child: Observer(builder: (context) {
@@ -148,7 +148,7 @@ class _ProjectState extends State<Project> {
               }),
             ),
             const SizedBox(
-              height: 6,
+              height: 3,
             ),
             const ProjectFooter(),
           ],

@@ -52,7 +52,7 @@ class _MainWindowState extends State<MainWindow> {
           child: Container(
             color: const Color(0xFF2A3237),
             child: Padding(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(3),
               child: Observer(builder: (context) {
                 final tabs = store.projectOrder
                     .map<TabDef>(
