@@ -54,6 +54,10 @@ app.*.map.json
 /engine/build/
 /engine/generated/
 
+# Visual Studio
+**/out/build/**
+.vs/**
+
 # Flutter generated platform code
 /linux/flutter/generated_plugin_registrant.cc
 /linux/flutter/generated_plugin_registrant.h

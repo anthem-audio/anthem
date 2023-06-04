@@ -17,8 +17,10 @@
     along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <juce_core/juce_core.h>
+#define JUCE_CHECK_MEMORY_LEAKS 0
+
 #include <juce_events/juce_events.h>
+#include <juce_core/juce_core.h>
 #include <juce_audio_devices/juce_audio_devices.h>
 
 #include <tracktion_engine/tracktion_engine.h>
@@ -30,6 +32,8 @@
 #include <thread>
 #include <chrono>
 #include <cstdlib>
+#include <mutex>
+#include <condition_variable>
 
 #include "messages_generated.h"
 #include "open_message_queue.h"
@@ -50,7 +54,7 @@ volatile bool heartbeatOccurred = true;
 void heartbeat() {
     while (true) {
         if (!heartbeatOccurred) {
-            std::exit(0);
+            juce::JUCEApplication::quit();
         }
 
         heartbeatOccurred = false;
@@ -59,10 +63,97 @@ void heartbeat() {
     }
 }
 
+// When we send a message to the main thread, these allow the message thread to
+// wait until the main thread is done reading from the message buffer before
+// fetching a new message.
+std::mutex messageHandledMutex;
+std::condition_variable messageHandledCv;
+volatile bool canWriteToBuffer = true;
+
+class CommandMessage : public juce::Message
+{
+public:
+    CommandMessage(const Request* request) {
+        this->request = request;
+    }
+
+    const Request* request;
+};
+
+class CommandMessageListener : public juce::MessageListener
+{
+public:
+    void handleMessage(const juce::Message& message) override {
+        const CommandMessage& command = dynamic_cast<const CommandMessage&>(message);
+
+        auto request = command.request;
+
+        // Create flatbuffers builder
+        auto builder = flatbuffers::FlatBufferBuilder();
+
+        flatbuffers::Offset<void> return_value_offset;
+
+        // Access the data in the buffer
+        auto command_type = request->command_type();
+        bool isExit = false;
+        std::optional<flatbuffers::Offset<Response>> response;
+        switch (command_type) {
+            case Command_Exit: {
+                auto exitReply = CreateExitReply(builder);
+                auto exitReplyOffset = exitReply.Union();
+                response = std::optional(
+                    CreateResponse(builder, request->id(), ReturnValue_ExitReply, exitReplyOffset)
+                );
+                isExit = true;
+                break;
+            }
+            case Command_Heartbeat: {
+                heartbeatOccurred = true;
+                auto heartbeatReply = CreateHeartbeatReply(builder);
+                auto heartbeatReplyOffset = heartbeatReply.Union();
+                response = std::optional(
+                    CreateResponse(builder, request->id(), ReturnValue_HeartbeatReply, heartbeatReplyOffset)
+                );
+                break;
+            }
+            case Command_AddArrangement:
+            case Command_AddPlugin:
+            case Command_DeleteArrangement:
+            case Command_GetPlugins:
+            case Command_LiveNoteOn:
+            case Command_LiveNoteOff:
+                response = handleProjectCommand(request, builder, anthem);
+                break;
+            default: {
+                std::cerr << "Received unknown command" << std::endl;
+                break;
+            }
+        }
+
+        if (response.has_value()) {
+            builder.Finish(response.value());
+
+            auto receive_buffer_ptr = builder.GetBufferPointer();
+            auto buffer_size = builder.GetSize();
+
+            // Send the response to the UI
+            mqToUi->send(receive_buffer_ptr, buffer_size, 0);
+        }
+
+        if (isExit) {
+            std::cout << "Engine received exit message. Shutting down..." << std::endl;
+            juce::JUCEApplication::quit();
+        } else {
+            canWriteToBuffer = true;
+            messageHandledCv.notify_one();
+        }
+    }
+};
+
 std::thread messageLoopThread;
 
 // Main loop that listens for messages from the UI and responds to them
-void messageLoop() {
+void messageLoop(CommandMessageListener& messageListener) {
     auto idStr = juce::JUCEApplication::getCommandLineParameters();
 
     if (idStr.length() == 0) {
@@ -99,6 +190,10 @@ void messageLoop() {
 
     std::cout << "Anthem engine started successfully. Listening for messages from UI..." << std::endl;
     while (true) {
+        std::unique_lock<std::mutex> lock(messageHandledMutex);
+        messageHandledCv.wait(lock, []() { return canWriteToBuffer; });
+        canWriteToBuffer = false;
+
         std::size_t received_size;
         unsigned int priority;
 
@@ -110,67 +205,16 @@ void messageLoop() {
         // Get the root of the buffer
         auto request = flatbuffers::GetRoot<Request>(send_buffer_ptr);
 
-        // Create flatbuffers builder
-        auto builder = flatbuffers::FlatBufferBuilder();
-
-        flatbuffers::Offset<void> return_value_offset;
-
-        // Access the data in the buffer
-        auto command_type = request->command_type();
-        bool isExit = false;
-        std::optional<flatbuffers::Offset<Response>> response;
-        switch (command_type) {
-            case Command_Exit: {
-                auto exitReply = CreateExitReply(builder);
-                auto exitReplyOffset = exitReply.Union();
-                response = std::optional(
-                    CreateResponse(builder, request->id(), ReturnValue_ExitReply, exitReplyOffset)
-                );
-                isExit = true;
-                break;
-            }
-            case Command_Heartbeat: {
-                heartbeatOccurred = true;
-                auto heartbeatReply = CreateHeartbeatReply(builder);
-                auto heartbeatReplyOffset = heartbeatReply.Union();
-                response = std::optional(
-                    CreateResponse(builder, request->id(), ReturnValue_HeartbeatReply, heartbeatReplyOffset)
-                );
-                break;
-            }
-            case Command_AddArrangement:
-            case Command_AddGenerator:
-            case Command_DeleteArrangement:
-            case Command_GetPlugins:
-                response = handleProjectCommand(request, builder, anthem);
-                break;
-            default: {
-                std::cerr << "Received unknown command" << std::endl;
-                break;
-            }
-        }
-
-        if (response.has_value()) {
-            builder.Finish(response.value());
-
-            auto receive_buffer_ptr = builder.GetBufferPointer();
-            auto buffer_size = builder.GetSize();
-
-            // Send the response to the UI
-            mqToUi->send(receive_buffer_ptr, buffer_size, 0);
-        }
-
-        if (isExit) {
-            std::cout << "Engine received exit message. Shutting down..." << std::endl;
-            juce::JUCEApplication::quit();
-            break;
-        }
+        messageListener.postMessage(new CommandMessage(request));
     }
 }
 
 class AnthemEngineApplication : public juce::JUCEApplicationBase, private juce::ChangeListener
 {
 private:
+    std::unique_ptr<std::thread> message_loop_thread;
+    CommandMessageListener commandMessageListener;
+
     void changeListenerCallback(juce::ChangeBroadcaster *source) override
     {
         std::cout << "change detected" << std::endl;
@@ -203,6 +247,7 @@ public:
 
     void initialise(const juce::String &commandLineParameters) override
     {
+                                    // wow, C++ sure is weird
         const char * anthemSplash = R"V0G0N(
            ,++,
           /####\
@@ -224,7 +269,12 @@ public:
         std::cout << "Starting Anthem engine..." << std::endl;
         anthem = new Anthem();
 
-        messageLoop();
+        // This starts the message loop in a thread. The message loop thread
+        // communicates back to the main thread every time it receives a
+        // message from the UI, and the main thread takes care of processing
+        // the message.
+        message_loop_thread = std::make_unique<std::thread>(messageLoop, std::ref(commandMessageListener));
+        message_loop_thread->detach();
     }
 };
 

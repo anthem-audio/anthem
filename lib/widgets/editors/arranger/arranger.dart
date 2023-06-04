@@ -106,7 +106,7 @@ class _ArrangerState extends State<Arranger> {
         child: ArrangerTimeViewProvider(
           child: ShortcutConsumer(
             id: 'arranger',
-            handler: controller!.onShortcut,
+            shortcutHandler: controller!.onShortcut,
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(4),
@@ -130,6 +130,7 @@ class _ArrangerState extends State<Arranger> {
                                   menuDef: MenuDef(
                                     children: [
                                       AnthemMenuItem(
+                                        disabled: true,
                                         text: 'New arrangement',
                                         hint: 'Create a new arrangement',
                                         onSelected: () {
@@ -779,7 +780,9 @@ class _TrackHeadersState extends State<_TrackHeaders> {
           var trackPositionPointer = -widget.verticalScrollPosition;
 
           for (final trackID in project.song.trackOrder) {
-            final heightModifier = viewModel.trackHeightModifiers[trackID]!;
+            final heightModifier = viewModel.trackHeightModifiers[trackID];
+
+            if (heightModifier == null) continue;
 
             final trackHeight = getTrackHeight(
               viewModel.baseTrackHeight,

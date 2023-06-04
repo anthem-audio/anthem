@@ -24,7 +24,9 @@ import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/main_window/main_window_controller.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
+import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 import '../basic/icon.dart';
@@ -39,6 +41,7 @@ class ProjectHeader extends StatelessWidget {
     final menuController = MenuController();
     final mainWindowController = context.read<MainWindowController>();
     final projectController = context.read<ProjectController>();
+    final projectViewModel = context.read<ProjectViewModel>();
 
     return Container(
       height: 40,
@@ -125,6 +128,21 @@ class ProjectHeader extends StatelessWidget {
                 projectController.redo();
               },
               hint: 'Redo (Ctrl+Shift+Z)',
+            ),
+            const SizedBox(width: 4),
+            Observer(
+              builder: (context) {
+                return Button(
+                  toggleState: projectViewModel.keyboardPianoEnabled,
+                  icon: Icons.mainToolbar.typingKeyboardToPianoKeyboard,
+                  onPress: () {
+                    projectViewModel.keyboardPianoEnabled =
+                        !projectViewModel.keyboardPianoEnabled;
+                  },
+                  hint:
+                      'Send notes to the active instrument with the typing keyboard',
+                );
+              },
             ),
           ],
         ),

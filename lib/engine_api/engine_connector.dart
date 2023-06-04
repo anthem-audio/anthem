@@ -26,10 +26,10 @@ import 'package:flutter/foundation.dart';
 
 import 'package:anthem/generated/messages_generated.dart';
 
-/// Set this to override the path to the engine.
+/// Set this to override the path to the engine. Should be a full path.
 ///
 /// This will allow you to stop the engine from Anthem, compile a new engine,
-/// and start the new enine, all without re-building the Anthem UI.
+/// and start the new engine, all without re-building the Anthem UI.
 // ignore: unnecessary_nullable_for_final_variable_declarations
 const String? enginePathOverride = null;
 
@@ -402,6 +402,12 @@ class EngineConnector {
       await _requestIsolateSendPortAvailable.future;
     }
 
+    // Acts as a mutex. If there are multiple requests that reach here, only
+    // one will be able to pass at a time.
+    while (!_requestCompleted.isCompleted) {
+      await _requestCompleted.future;
+    }
+
     _requestCompleted = Completer();
 
     // Tell the request isolate to send the message in the request buffer
@@ -474,7 +480,7 @@ class EngineConnector {
 
 /// Isolate thread function to connect to the engine.
 ///
-/// Connecting to a new enigne involves starting the engine process and then
+/// Connecting to a new engine involves starting the engine process and then
 /// repeatedly checking for the engine-to-UI message queue that should be
 /// created by the engine. This task blocks the thread that does it, so we
 /// offload this work to an isolate. This allows Flutter to continue rendering
@@ -524,7 +530,7 @@ void _requestSenderIsolate(SendPort sendPort) {
   // The main thread will send a message with the message size when it wants
   // this thread to send from the dynamic library's buffer.
   receivePort.listen((message) {
-    // The first message will alwyas be the engine ID
+    // The first message will always be the engine ID
     if (engineID == null) {
       engineID = message as int;
       return;

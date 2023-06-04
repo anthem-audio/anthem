@@ -27,4 +27,8 @@ class ProjectViewModel = _ProjectViewModel with _$ProjectViewModel;
 abstract class _ProjectViewModel with Store {
   @observable
   String hintText = '';
+
+  // We should probably persist this between sessions
+  @observable
+  bool keyboardPianoEnabled = false;
 }

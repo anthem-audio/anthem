@@ -50,42 +50,90 @@ enum EventHandlingState {
   resizingSelection,
 }
 
-mixin _ArrangerPointerEventsMixin on _ArrangerController {
-  var _eventHandlingState = EventHandlingState.idle;
+class _ClipMoveActionData {
+  ClipModel clipUnderCursor;
+  double timeOffset;
+  double trackOffset;
+  Map<ID, Time> startTimes;
+  Map<ID, int> startTracks;
+  Time startOfFirstClip;
+  int trackOfTopClip;
+  int trackOfBottomClip;
 
-  // Data for clip moves
-  ClipModel? _clipMoveClipUnderCursor;
-  double? _clipMoveTimeOffset;
-  double? _clipMoveTrackOffset;
-  Map<ID, Time>? _clipMoveStartTimes;
-  Map<ID, int>? _clipMoveStartTracks;
-  Time? _clipMoveStartOfFirstClip;
-  int? _clipMoveTrackOfTopClip;
-  int? _clipMoveTrackOfBottomClip;
+  _ClipMoveActionData({
+    required this.clipUnderCursor,
+    required this.timeOffset,
+    required this.trackOffset,
+    required this.startTimes,
+    required this.startTracks,
+    required this.startOfFirstClip,
+    required this.trackOfTopClip,
+    required this.trackOfBottomClip,
+  });
+}
 
-  // Data for selection box
-  Point<double>? _selectionBoxStart;
-  Set<ID>? _selectionBoxOriginalSelection;
+class _SelectionBoxActionData {
+  Point<double> start;
+  Set<ID> originalSelection;
 
-  // Data for deleting clips
+  _SelectionBoxActionData({
+    required this.start,
+    required this.originalSelection,
+  });
+}
 
+class _DeleteActionData {
   /// We ignore clips under the cursor, except the topmost one, until the user
   /// moves the mouse off the note and back on. This means that the user
   /// doesn't right click to delete an overlapping note, accidentally move the
   /// mouse by one pixel, and delete additional clips.
-  Set<ClipModel>? _deleteClipsToTemporarilyIgnore;
-  Set<ClipModel>? _deleteClipsDeleted;
-  Point? _deleteMostRecentPoint;
+  Set<ClipModel> clipsToTemporarilyIgnore;
+  Set<ClipModel> clipsDeleted;
+  Point mostRecentPoint;
+
+  _DeleteActionData({
+    required this.clipsToTemporarilyIgnore,
+    required this.clipsDeleted,
+    required this.mostRecentPoint,
+  });
+}
+
+class _ClipResizeActionData {
+  double pointerStartOffset;
+  Map<ID, Time> startWidths;
+  Map<ID, Time> startTimeViewStarts;
+  Map<ID, Time> startOffsets;
+  TimeRange smallestStartTimeRange;
+  ID smallestClip;
+  ClipModel pressedClip;
+  bool isFromStartOfClip;
+
+  _ClipResizeActionData({
+    required this.pointerStartOffset,
+    required this.startWidths,
+    required this.startTimeViewStarts,
+    required this.startOffsets,
+    required this.smallestStartTimeRange,
+    required this.smallestClip,
+    required this.pressedClip,
+    required this.isFromStartOfClip,
+  });
+}
+
+mixin _ArrangerPointerEventsMixin on _ArrangerController {
+  var _eventHandlingState = EventHandlingState.idle;
+
+  // Data for clip moves
+  _ClipMoveActionData? _clipMoveActionData;
+
+  // Data for selection box
+  _SelectionBoxActionData? _selectionBoxActionData;
+
+  // Data for deleting clips
+  _DeleteActionData? _deleteActionData;
 
   // Data for clip resize
-  double? _clipResizePointerStartOffset;
-  Map<ID, Time>? _clipResizeStartWidths;
-  Map<ID, Time>? _clipResizeStartTimeViewStarts;
-  Map<ID, Time>? _clipResizeStartOffsets;
-  TimeRange? _clipResizeSmallestStartTimeRange;
-  ID? _clipResizeSmallestClip;
-  ClipModel? _clipResizePressedClip;
-  bool? _clipResizeIsFromStartOfClip;
+  _ClipResizeActionData? _clipResizeActionData;
 
   void pointerDown(ArrangerPointerEvent event) {
     if (project.song.activeArrangementID == null) return;
@@ -120,9 +168,11 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         viewModel.selectedClips.clear();
       }
 
-      _selectionBoxStart = Point(event.offset, event.track);
-      _selectionBoxOriginalSelection =
-          viewModel.selectedClips.nonObservableInner;
+      _selectionBoxActionData = _SelectionBoxActionData(
+        start: Point(event.offset, event.track),
+        originalSelection: viewModel.selectedClips.nonObservableInner,
+      );
+
       return;
     }
 
@@ -135,12 +185,11 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
       viewModel.pressedClip = pressedClip.id;
 
-      _clipResizePointerStartOffset = event.offset;
-      _clipResizePressedClip = pressedClip;
-
-      // If we somehow get both as true, we only want to call it a start resize
-      // if it's not an end resize.
-      _clipResizeIsFromStartOfClip = !event.isResizeFromEnd;
+      late Map<String, int> startWidths;
+      late Map<String, int> startOffsets;
+      late Map<String, int> startTimeViewStarts;
+      late TimeRange smallestStartTimeRange;
+      late String smallestClipId;
 
       if (viewModel.selectedClips.contains(pressedClip.id)) {
         _eventHandlingState = EventHandlingState.resizingSelection;
@@ -150,16 +199,16 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
         var smallestClip = selectedClips.first;
         var smallestClipWidth = smallestClip.getWidth(project);
-        _clipResizeStartWidths = {};
-        _clipResizeStartOffsets = {};
-        _clipResizeStartTimeViewStarts = {};
+        startWidths = {};
+        startOffsets = {};
+        startTimeViewStarts = {};
 
         for (final clip in selectedClips) {
           final clipWidth = clip.getWidth(project);
 
-          _clipResizeStartWidths![clip.id] = clipWidth;
-          _clipResizeStartOffsets![clip.id] = clip.offset;
-          _clipResizeStartTimeViewStarts![clip.id] = clip.timeView?.start ?? 0;
+          startWidths[clip.id] = clipWidth;
+          startOffsets[clip.id] = clip.offset;
+          startTimeViewStarts[clip.id] = clip.timeView?.start ?? 0;
 
           if (clipWidth < smallestClipWidth) {
             smallestClip = clip;
@@ -167,28 +216,43 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
           }
         }
 
-        _clipResizeSmallestStartTimeRange = TimeRange(
+        smallestStartTimeRange = TimeRange(
           smallestClip.timeView?.start.toDouble() ?? 0,
           smallestClip.timeView?.end.toDouble() ?? smallestClipWidth.toDouble(),
         );
-        _clipResizeSmallestClip = smallestClip.id;
+        smallestClipId = smallestClip.id;
       } else {
         _eventHandlingState = EventHandlingState.resizingSingleClip;
         viewModel.selectedClips.clear();
 
         final clipWidth = pressedClip.getWidth(project);
 
-        _clipResizeStartWidths = {pressedClip.id: clipWidth};
-        _clipResizeStartOffsets = {pressedClip.id: pressedClip.offset};
-        _clipResizeStartTimeViewStarts = {
+        startWidths = {pressedClip.id: clipWidth};
+        startOffsets = {pressedClip.id: pressedClip.offset};
+        startTimeViewStarts = {
           pressedClip.id: pressedClip.timeView?.start ?? 0
         };
-        _clipResizeSmallestStartTimeRange = TimeRange(
+        smallestStartTimeRange = TimeRange(
           pressedClip.timeView?.start.toDouble() ?? 0,
           pressedClip.timeView?.end.toDouble() ?? clipWidth.toDouble(),
         );
-        _clipResizeSmallestClip = pressedClip.id;
+        smallestClipId = pressedClip.id;
       }
+
+      _clipResizeActionData = _ClipResizeActionData(
+        pointerStartOffset: event.offset,
+        pressedClip: pressedClip,
+
+        // If we somehow get both as true, we only want to call it a start resize
+        // if it's not an end resize.
+        isFromStartOfClip: !event.isResizeFromEnd,
+
+        startWidths: startWidths,
+        startOffsets: startOffsets,
+        startTimeViewStarts: startTimeViewStarts,
+        smallestStartTimeRange: smallestStartTimeRange,
+        smallestClip: smallestClipId,
+      );
 
       return;
     }
@@ -197,45 +261,54 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
     if (viewModel.cursorPattern == null) return;
 
     void setMoveClipInfo(ClipModel clipUnderCursor) {
-      _clipMoveClipUnderCursor = clipUnderCursor;
-      _clipMoveTimeOffset = event.offset - clipUnderCursor.offset;
-      _clipMoveTrackOffset = 0.5;
-      _clipMoveStartTimes = {clipUnderCursor.id: clipUnderCursor.offset};
-      _clipMoveStartTracks = {
-        clipUnderCursor.id:
-            project.song.trackOrder.indexOf(clipUnderCursor.trackID)
-      };
+      _clipMoveActionData = _ClipMoveActionData(
+        clipUnderCursor: clipUnderCursor,
+        timeOffset: event.offset - clipUnderCursor.offset,
+        trackOffset: 0.5,
+        startTimes: {clipUnderCursor.id: clipUnderCursor.offset},
+        startTracks: {
+          clipUnderCursor.id:
+              project.song.trackOrder.indexOf(clipUnderCursor.trackID)
+        },
+        startOfFirstClip: -1,
+        trackOfTopClip: -1,
+        trackOfBottomClip: -1,
+      );
 
       // If we're moving a selection, record the start times
       for (final clip in viewModel.selectedClips
           .map((clipID) => arrangement.clips[clipID]!)) {
-        _clipMoveStartTimes![clip.id] = clip.offset;
-        _clipMoveStartTracks![clip.id] =
+        _clipMoveActionData!.startTimes[clip.id] = clip.offset;
+        _clipMoveActionData!.startTracks[clip.id] =
             project.song.trackOrder.indexOf(clip.trackID);
       }
 
       if (_eventHandlingState == EventHandlingState.movingSelection) {
-        _clipMoveStartOfFirstClip = viewModel.selectedClips.fold<int>(
+        _clipMoveActionData!.startOfFirstClip =
+            viewModel.selectedClips.fold<int>(
           0x7FFFFFFFFFFFFFFF,
           (previousValue, clipID) =>
               min(previousValue, arrangement.clips[clipID]!.offset),
         );
 
-        _clipMoveTrackOfTopClip = 0x7FFFFFFFFFFFFFFF;
-        _clipMoveTrackOfBottomClip = 0;
+        _clipMoveActionData!.trackOfTopClip = 0x7FFFFFFFFFFFFFFF;
+        _clipMoveActionData!.trackOfBottomClip = 0;
 
         // This has a worst-case complexity of clipCount * trackCount
         for (final clipID in viewModel.selectedClips) {
           final clipIndex = project.song.trackOrder
               .indexOf(arrangement.clips[clipID]!.trackID);
-          _clipMoveTrackOfTopClip = min(_clipMoveTrackOfTopClip!, clipIndex);
-          _clipMoveTrackOfBottomClip =
-              max(_clipMoveTrackOfBottomClip!, clipIndex);
+          _clipMoveActionData!.trackOfTopClip =
+              min(_clipMoveActionData!.trackOfTopClip, clipIndex);
+          _clipMoveActionData!.trackOfBottomClip =
+              max(_clipMoveActionData!.trackOfBottomClip, clipIndex);
         }
       } else {
-        _clipMoveStartOfFirstClip = clipUnderCursor.offset;
-        _clipMoveTrackOfTopClip = _clipMoveStartTracks![clipUnderCursor.id]!;
-        _clipMoveTrackOfBottomClip = _clipMoveStartTracks![clipUnderCursor.id]!;
+        _clipMoveActionData!.startOfFirstClip = clipUnderCursor.offset;
+        _clipMoveActionData!.trackOfTopClip =
+            _clipMoveActionData!.startTracks[clipUnderCursor.id]!;
+        _clipMoveActionData!.trackOfBottomClip =
+            _clipMoveActionData!.startTracks[clipUnderCursor.id]!;
       }
     }
 
@@ -342,15 +415,16 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
   void rightPointerDown(ArrangerPointerEvent event) {
     _eventHandlingState = EventHandlingState.deleting;
 
-    _deleteMostRecentPoint = Point(event.offset, event.track);
-
     project.startJournalPage();
 
     final arrangement =
         project.song.arrangements[project.song.activeArrangementID]!;
 
-    _deleteClipsDeleted = {};
-    _deleteClipsToTemporarilyIgnore = {};
+    _deleteActionData = _DeleteActionData(
+      mostRecentPoint: Point(event.offset, event.track),
+      clipsToTemporarilyIgnore: {},
+      clipsDeleted: {},
+    );
 
     if (event.clipUnderCursor != null) {
       arrangement.clips.removeWhere((clipID, clip) {
@@ -360,7 +434,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
             clip.offset + clip.getWidth(project) > event.offset;
 
         if (remove) {
-          _deleteClipsDeleted!.add(clip);
+          _deleteActionData!.clipsDeleted.add(clip);
           viewModel.selectedClips.remove(clip.id);
         }
         return remove;
@@ -379,15 +453,15 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         final isSelectionMove =
             _eventHandlingState == EventHandlingState.movingSelection;
 
-        final track = event.track - _clipMoveTrackOffset!;
-        final offset = event.offset - _clipMoveTimeOffset!;
+        final track = event.track - _clipMoveActionData!.trackOffset;
+        final offset = event.offset - _clipMoveActionData!.timeOffset;
 
         final arrangement =
             project.song.arrangements[project.song.activeArrangementID]!;
         final clips = isSelectionMove
             ? viewModel.selectedClips
                 .map((clipID) => arrangement.clips[clipID]!)
-            : [_clipMoveClipUnderCursor!];
+            : [_clipMoveActionData!.clipUnderCursor];
 
         var snappedOffset = offset.floor();
 
@@ -406,41 +480,48 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
             rawTime: offset.floor(),
             divisionChanges: divisionChanges,
             round: true,
-            startTime: _clipMoveStartTimes![_clipMoveClipUnderCursor!.id]!,
+            startTime: _clipMoveActionData!
+                .startTimes[_clipMoveActionData!.clipUnderCursor.id]!,
           );
         }
 
-        var timeOffsetFromEventStart =
-            snappedOffset - _clipMoveStartTimes![_clipMoveClipUnderCursor!.id]!;
+        var timeOffsetFromEventStart = snappedOffset -
+            _clipMoveActionData!
+                .startTimes[_clipMoveActionData!.clipUnderCursor.id]!;
         var trackOffsetFromEventStart = track.round() -
-            _clipMoveStartTracks![_clipMoveClipUnderCursor!.id]!;
+            _clipMoveActionData!
+                .startTracks[_clipMoveActionData!.clipUnderCursor.id]!;
 
         // Prevent the leftmost track from going earlier than the start of the arrangement
-        if (_clipMoveStartOfFirstClip! + timeOffsetFromEventStart < 0) {
-          timeOffsetFromEventStart = -_clipMoveStartOfFirstClip!;
+        if (_clipMoveActionData!.startOfFirstClip + timeOffsetFromEventStart <
+            0) {
+          timeOffsetFromEventStart = -_clipMoveActionData!.startOfFirstClip;
         }
 
         // Prevent the top key from going above the highest allowed note
-        if (_clipMoveTrackOfTopClip! + trackOffsetFromEventStart < 0) {
-          trackOffsetFromEventStart = -_clipMoveTrackOfTopClip!;
+        if (_clipMoveActionData!.trackOfTopClip + trackOffsetFromEventStart <
+            0) {
+          trackOffsetFromEventStart = -_clipMoveActionData!.trackOfTopClip;
         }
 
         // Prevent the bottom key from going below the lowest allowed note
-        if (_clipMoveTrackOfBottomClip! + trackOffsetFromEventStart >=
+        if (_clipMoveActionData!.trackOfBottomClip +
+                trackOffsetFromEventStart >=
             project.song.trackOrder.length) {
-          trackOffsetFromEventStart =
-              project.song.trackOrder.length - 1 - _clipMoveTrackOfBottomClip!;
+          trackOffsetFromEventStart = project.song.trackOrder.length -
+              1 -
+              _clipMoveActionData!.trackOfBottomClip;
         }
 
         for (final clip in clips) {
           final shift = event.keyboardModifiers.shift;
           final ctrl = event.keyboardModifiers.ctrl;
 
-          final track = _clipMoveStartTracks![clip.id]! +
+          final track = _clipMoveActionData!.startTracks[clip.id]! +
               (shift ? 0 : trackOffsetFromEventStart);
           clip.trackID = project.song.trackOrder[track];
 
-          clip.offset = _clipMoveStartTimes![clip.id]! +
+          clip.offset = _clipMoveActionData!.startTimes[clip.id]! +
               (!shift && ctrl ? 0 : timeOffsetFromEventStart);
         }
 
@@ -455,7 +536,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
             EventHandlingState.creatingSubtractiveSelectionBox;
 
         viewModel.selectionBox = Rectangle.fromPoints(
-          _selectionBoxStart!,
+          _selectionBoxActionData!.start,
           Point(event.offset, event.track),
         );
 
@@ -475,11 +556,12 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
         if (isSubtractive) {
           viewModel.selectedClips = ObservableSet.of(
-            _selectionBoxOriginalSelection!.difference(clipsInSelection),
+            _selectionBoxActionData!.originalSelection
+                .difference(clipsInSelection),
           );
         } else {
           viewModel.selectedClips = ObservableSet.of(
-            _selectionBoxOriginalSelection!.union(clipsInSelection),
+            _selectionBoxActionData!.originalSelection.union(clipsInSelection),
           );
         }
 
@@ -506,7 +588,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
           return rectanglesIntersect(
                 Rectangle.fromPoints(
-                  _deleteMostRecentPoint!,
+                  _deleteActionData!.mostRecentPoint,
                   thisPoint,
                 ),
                 Rectangle.fromPoints(
@@ -515,7 +597,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
                 ),
               ) &&
               lineIntersectsBox(
-                _deleteMostRecentPoint!,
+                _deleteActionData!.mostRecentPoint,
                 thisPoint,
                 clipTopLeft,
                 clipBottomRight,
@@ -524,27 +606,27 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
         final clipsToRemoveFromIgnore = <ClipModel>[];
 
-        for (final clip in _deleteClipsToTemporarilyIgnore!) {
+        for (final clip in _deleteActionData!.clipsToTemporarilyIgnore) {
           if (!clipsUnderCursorPath.contains(clip)) {
             clipsToRemoveFromIgnore.add(clip);
           }
         }
 
         for (final clip in clipsToRemoveFromIgnore) {
-          _deleteClipsToTemporarilyIgnore!.remove(clip);
+          _deleteActionData!.clipsToTemporarilyIgnore.remove(clip);
         }
 
         for (final clip in clipsUnderCursorPath) {
-          if (_deleteClipsToTemporarilyIgnore!.contains(clip)) {
+          if (_deleteActionData!.clipsToTemporarilyIgnore.contains(clip)) {
             continue;
           }
 
           arrangement.clips.remove(clip.id);
-          _deleteClipsDeleted!.add(clip);
+          _deleteActionData!.clipsDeleted.add(clip);
           viewModel.selectedClips.remove(clip.id);
         }
 
-        _deleteMostRecentPoint = thisPoint;
+        _deleteActionData!.mostRecentPoint = thisPoint;
 
         break;
       case EventHandlingState.resizingSingleClip:
@@ -552,7 +634,8 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         final arrangement =
             project.song.arrangements[project.song.activeArrangementID]!;
 
-        var snappedOriginalTime = _clipResizePointerStartOffset!.floor();
+        var snappedOriginalTime =
+            _clipResizeActionData!.pointerStartOffset.floor();
         var snappedEventTime = event.offset.floor();
 
         final divisionChanges = getDivisionChanges(
@@ -567,7 +650,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
         if (!event.keyboardModifiers.alt) {
           snappedOriginalTime = getSnappedTime(
-            rawTime: _clipResizePointerStartOffset!.floor(),
+            rawTime: _clipResizeActionData!.pointerStartOffset.floor(),
             divisionChanges: divisionChanges,
             round: true,
           );
@@ -581,8 +664,8 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
         late int snapAtSmallestClipStart;
 
-        final offsetOfSmallestClipAtStart =
-            _clipResizeStartWidths![_clipResizeSmallestClip]!;
+        final offsetOfSmallestClipAtStart = _clipResizeActionData!
+            .startWidths[_clipResizeActionData!.smallestClip]!;
 
         for (var i = 0; i < divisionChanges.length; i++) {
           if (i < divisionChanges.length - 1 &&
@@ -597,17 +680,18 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
         var diff = snappedEventTime - snappedOriginalTime;
 
-        if (_clipResizeIsFromStartOfClip!) {
+        if (_clipResizeActionData!.isFromStartOfClip) {
           diff = -diff; // Means we don't need to modify the calculation below.
         }
 
         // Make sure no clips go below the smallest snap size if snapping is
         // enabled.
         if (!event.keyboardModifiers.alt &&
-            _clipResizeSmallestStartTimeRange!.width + diff <
+            _clipResizeActionData!.smallestStartTimeRange.width + diff <
                 snapAtSmallestClipStart) {
           int snapCount = ((snapAtSmallestClipStart -
-                      (_clipResizeSmallestStartTimeRange!.width + diff)) /
+                      (_clipResizeActionData!.smallestStartTimeRange.width +
+                          diff)) /
                   snapAtSmallestClipStart)
               .ceil();
           diff = diff + snapCount * snapAtSmallestClipStart;
@@ -617,30 +701,31 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         // least 1.
         if (event.keyboardModifiers.alt) {
           final newSmallestClipSize =
-              (_clipResizeSmallestStartTimeRange!.width + diff).round();
+              (_clipResizeActionData!.smallestStartTimeRange.width + diff)
+                  .round();
           if (newSmallestClipSize < 1) {
             diff += 1 - newSmallestClipSize;
           }
         }
 
-        if (_clipResizeIsFromStartOfClip!) {
+        if (_clipResizeActionData!.isFromStartOfClip) {
           diff = -diff; // Means we don't need to modify the calculation above.
         }
 
         // Make sure no clips have a time view starting < 0, and that no clips
         // are resized to start before the start of the arrangement.
-        if (_clipResizeIsFromStartOfClip!) {
+        if (_clipResizeActionData!.isFromStartOfClip) {
           var firstNewTimeViewStart = 0x7FFFFFFFFFFFFFFF;
           var firstNewOffset = 0x7FFFFFFFFFFFFFFF;
 
-          for (final id in _clipResizeStartOffsets!.keys) {
+          for (final id in _clipResizeActionData!.startOffsets.keys) {
             final newTimeViewStart =
-                _clipResizeStartTimeViewStarts![id]! + diff;
+                _clipResizeActionData!.startTimeViewStarts[id]! + diff;
             if (newTimeViewStart < firstNewTimeViewStart) {
               firstNewTimeViewStart = newTimeViewStart;
             }
 
-            final newOffset = _clipResizeStartOffsets![id]! + diff;
+            final newOffset = _clipResizeActionData!.startOffsets[id]! + diff;
             if (newOffset < firstNewOffset) {
               firstNewOffset = newOffset;
             }
@@ -652,27 +737,30 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
           }
         }
 
-        for (final clip in arrangement.clips.values
-            .where((clip) => _clipResizeStartWidths!.containsKey(clip.id))) {
+        for (final clip in arrangement.clips.values.where((clip) =>
+            _clipResizeActionData!.startWidths.containsKey(clip.id))) {
           if (clip.timeView == null) {
-            final width = _clipResizeStartWidths![clip.id]!;
+            final width = _clipResizeActionData!.startWidths[clip.id]!;
             clip.timeView = TimeViewModel(start: 0, end: width);
           }
 
-          if (_clipResizeIsFromStartOfClip!) {
+          if (_clipResizeActionData!.isFromStartOfClip) {
             clip.timeView!.start =
-                _clipResizeStartTimeViewStarts![clip.id]! + diff;
-            clip.offset = _clipResizeStartOffsets![clip.id]! + diff;
+                _clipResizeActionData!.startTimeViewStarts[clip.id]! + diff;
+            clip.offset = _clipResizeActionData!.startOffsets[clip.id]! + diff;
           } else {
-            clip.timeView!.end =
-                clip.timeView!.start + _clipResizeStartWidths![clip.id]! + diff;
+            clip.timeView!.end = clip.timeView!.start +
+                _clipResizeActionData!.startWidths[clip.id]! +
+                diff;
           }
         }
 
         if (_eventHandlingState == EventHandlingState.resizingSingleClip) {
           // Update cursor pattern and time range
-          viewModel.cursorPattern = _clipResizePressedClip!.patternID;
-          viewModel.cursorTimeRange = _clipResizePressedClip!.timeView?.clone();
+          viewModel.cursorPattern =
+              _clipResizeActionData!.pressedClip.patternID;
+          viewModel.cursorTimeRange =
+              _clipResizeActionData!.pressedClip.timeView?.clone();
         }
 
         break;
@@ -692,7 +780,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
           _eventHandlingState == EventHandlingState.movingSingleClip;
 
       final relevantClips = isSingleClip
-          ? [_clipMoveClipUnderCursor!]
+          ? [_clipMoveActionData!.clipUnderCursor]
           : viewModel.selectedClips.map((clipID) => clips[clipID]!).toList();
 
       final commands = relevantClips.map((clip) {
@@ -700,9 +788,10 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
           project: project,
           arrangementID: arrangement.id,
           clipID: clip.id,
-          oldOffset: _clipMoveStartTimes![clip.id]!,
+          oldOffset: _clipMoveActionData!.startTimes[clip.id]!,
           newOffset: clip.offset,
-          oldTrack: project.song.trackOrder[_clipMoveStartTracks![clip.id]!],
+          oldTrack: project
+              .song.trackOrder[_clipMoveActionData!.startTracks[clip.id]!],
           newTrack: clip.trackID,
         );
       }).toList();
@@ -711,7 +800,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
     } else if (_eventHandlingState == EventHandlingState.deleting) {
       // There should already be an active journal page, so we don't need to
       // collect these manually.
-      for (final clip in _deleteClipsDeleted!) {
+      for (final clip in _deleteActionData!.clipsDeleted) {
         final command = DeleteClipCommand(
           project: project,
           arrangementID: project.song.activeArrangementID!,
@@ -725,16 +814,16 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       final arrangement =
           project.song.arrangements[project.song.activeArrangementID]!;
 
-      final commands = _clipResizeStartWidths!.keys.map((id) {
+      final commands = _clipResizeActionData!.startWidths.keys.map((id) {
         final clip = arrangement.clips[id]!;
-        final oldStart = _clipResizeStartTimeViewStarts![id]!;
-        final oldWidth = _clipResizeStartWidths![id]!;
+        final oldStart = _clipResizeActionData!.startTimeViewStarts[id]!;
+        final oldWidth = _clipResizeActionData!.startWidths[id]!;
 
         return ResizeClipCommand(
           project: project,
           arrangementID: project.song.activeArrangementID!,
           clipID: id,
-          oldOffset: _clipResizeStartOffsets![id]!,
+          oldOffset: _clipResizeActionData!.startOffsets[id]!,
           oldTimeView: TimeViewModel(
             start: oldStart,
             end: oldStart + oldWidth,
@@ -760,29 +849,9 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
     project.commitJournalPage();
 
-    _clipMoveClipUnderCursor = null;
-    _clipMoveTimeOffset = null;
-    _clipMoveTrackOffset = null;
-    _clipMoveStartTimes = null;
-    _clipMoveStartTracks = null;
-    _clipMoveStartOfFirstClip = null;
-    _clipMoveTrackOfTopClip = null;
-    _clipMoveTrackOfBottomClip = null;
-
-    _selectionBoxStart = null;
-    _selectionBoxOriginalSelection = null;
-
-    _deleteClipsToTemporarilyIgnore = null;
-    _deleteClipsDeleted = null;
-    _deleteMostRecentPoint = null;
-
-    _clipResizePointerStartOffset = null;
-    _clipResizeStartWidths = null;
-    _clipResizeStartOffsets = null;
-    _clipResizeStartTimeViewStarts = null;
-    _clipResizeSmallestStartTimeRange = null;
-    _clipResizeSmallestClip = null;
-    _clipResizePressedClip = null;
-    _clipResizeIsFromStartOfClip = null;
+    _clipMoveActionData = null;
+    _selectionBoxActionData = null;
+    _deleteActionData = null;
+    _clipResizeActionData = null;
   }
 }

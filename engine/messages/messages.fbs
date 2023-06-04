@@ -27,23 +27,28 @@ table HeartbeatReply {}
 
 union Command {
   // Application commands
-  Heartbeat,
   Exit,
+  Heartbeat,
 
   // Project commands
   AddArrangement,
-  AddGenerator,
+  AddPlugin,
   DeleteArrangement,
   GetPlugins,
+
+  // ??
+  LiveNoteOn,
+  LiveNoteOff,
 }
 
 union ReturnValue {
   // Application commands
-  HeartbeatReply,
   ExitReply,
+  HeartbeatReply,
 
   // Project commands
   AddArrangementResponse,
+  AddPluginResponse,
   GetPluginsResponse,
 }
 

@@ -44,11 +44,12 @@ class EngineIndicator extends StatelessObserverWidget {
         bottomLeft: Radius.circular(1),
         bottomRight: Radius.circular(1),
       ),
-      onPress: () {
+      onPress: () async {
         if (engineState != EngineState.stopped) {
           activeProject?.engine.stop();
         } else {
-          activeProject?.engine.start();
+          await activeProject?.engine.start();
+          activeProject?.createInEngine();
         }
       },
       contentBuilder: (context, color) {

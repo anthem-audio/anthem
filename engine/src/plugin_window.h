@@ -19,13 +19,17 @@
 
 #pragma once
 
-#include <memory>
 #include <tracktion_engine/tracktion_engine.h>
+#include <juce_gui_basics/juce_gui_basics.h>
 
-class Anthem {
-private:
+class PluginWindow : public juce::DocumentWindow
+{
 public:
-    std::unique_ptr<tracktion::Engine> engine;
-    tracktion::engine::Project::Ptr project;
-    Anthem();
+    PluginWindow(juce::AudioProcessor* processor);
+    ~PluginWindow();
+
+    void closeButtonPressed() override;
+
+private:
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginWindow)
 };

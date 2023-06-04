@@ -59,8 +59,11 @@ class _Control {
   Color border = const Color(0xFF293136);
 }
 
+const _textMain = Color(0xFF9DB9CC);
+
 class _Text {
-  Color main = const Color(0xFF9DB9CC);
+  Color main = _textMain;
+  Color disabled = _textMain.withAlpha(125);
 }
 
 class _ByBackgroundType {
