@@ -69,7 +69,8 @@ class _ProjectState extends State<Project> {
       child: ShortcutConsumer(
         id: 'project',
         global: true,
-        handler: controller.onShortcut,
+        shortcutHandler: controller.onShortcut,
+        rawKeyHandler: controller.onKey,
         child: Column(
           children: [
             ProjectHeader(

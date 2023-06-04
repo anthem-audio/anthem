@@ -36,7 +36,10 @@ class ShortcutConsumer extends StatefulWidget {
   final Widget? child;
 
   /// This function will be called when this consumer receives a shortcut.
-  final Function(LogicalKeySet shortcut)? handler;
+  final Function(LogicalKeySet shortcut)? shortcutHandler;
+
+  /// This function will be called when this consumer receives a shortcut.
+  final bool Function(KeyEvent event)? rawKeyHandler;
 
   /// If true, this handler will always be called when a shortcut is triggered.
   final bool global;
@@ -45,7 +48,8 @@ class ShortcutConsumer extends StatefulWidget {
     super.key,
     required this.id,
     this.child,
-    this.handler,
+    this.shortcutHandler,
+    this.rawKeyHandler,
     this.global = false,
   });
 
@@ -66,23 +70,28 @@ class _ShortcutConsumerState extends State<ShortcutConsumer> {
 
   void register() {
     id = getID();
-    controller!.register(
+    controller!.registerRawKeyHandler(
+        id: id,
+        handler: (event) {
+          return widget.rawKeyHandler?.call(event) ?? false;
+        });
+    controller!.registerShortcutHandler(
       id: id,
       global: widget.global,
-      handler: (shortcut) {
+      handler: (event) {
         final project = Provider.of<ProjectModel>(context, listen: false);
 
         // Don't process shortcuts if this tab is not selected
         if (project.id != AnthemStore.instance.activeProjectID) return;
 
-        onShortcut(shortcut);
+        onShortcut(event);
       },
     );
     registered = true;
   }
 
   void onShortcut(LogicalKeySet shortcut) {
-    widget.handler?.call(shortcut);
+    widget.shortcutHandler?.call(shortcut);
   }
 
   @override
@@ -96,7 +105,7 @@ class _ShortcutConsumerState extends State<ShortcutConsumer> {
 
     return Listener(
       onPointerDown: (e) {
-        controller!.focus(id);
+        controller!.setActiveConsumer(id);
       },
       child: widget.child,
     );
@@ -104,7 +113,8 @@ class _ShortcutConsumerState extends State<ShortcutConsumer> {
 
   @override
   void dispose() {
-    controller!.unregister(id);
+    controller!.unregisterRawKeyHandler(id);
+    controller!.unregisterShortcutHandler(id);
     super.dispose();
   }
 }

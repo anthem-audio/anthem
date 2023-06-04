@@ -550,7 +550,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
 
     return ShortcutConsumer(
       id: 'piano-roll',
-      handler: controller.onShortcut,
+      shortcutHandler: controller.onShortcut,
       child: Panel(
         orientation: PanelOrientation.bottom,
         sizeBehavior: PanelSizeBehavior.pixels,
