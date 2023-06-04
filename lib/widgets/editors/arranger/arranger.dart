@@ -106,7 +106,7 @@ class _ArrangerState extends State<Arranger> {
         child: ArrangerTimeViewProvider(
           child: ShortcutConsumer(
             id: 'arranger',
-            handler: controller!.onShortcut,
+            shortcutHandler: controller!.onShortcut,
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(4),

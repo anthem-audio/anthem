@@ -159,25 +159,30 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
             return std::optional(message);
         }
         case Command_LiveNoteOn: {
-            std::cout << "Received LiveNoteOn" << std::endl;
-
             auto command = request->command_as_LiveNoteOn();
 
             auto edit = reinterpret_cast<tracktion::engine::Edit*>(
                 static_cast<uintptr_t>(command->edit_pointer())
             );
 
-            if (edit->getTrackList().size() == 0) return std::nullopt;
+            if (edit->getTrackList().size() < 6) return std::nullopt;
 
             auto midiChannel = command->channel();
             auto midiNoteNumber = command->note();
             auto velocity = command->velocity();
 
-            std::cout << "Channel: " << midiChannel << ", note number: " << midiNoteNumber << std::endl;
-
             juce::MidiMessage message = juce::MidiMessage::noteOn(midiChannel, midiNoteNumber, velocity);
 
-            auto track = static_cast<tracktion::AudioTrack*>(edit->getTrackList().at(0));
+            // No idea why this is 5. Tracktion starts with a few tracks by
+            // default, and the one we added isn't the first one. The reasons
+            // for this are probably spooky Tracktion reasons that I don't fully
+            // understand yet. Tracktion Waveform does start with three "global"
+            // tracks, but I don't know where the other two come from.
+            auto uncastTrack = edit->getTrackList().at(5);
+
+            auto track = dynamic_cast<tracktion::AudioTrack*>(uncastTrack);
+
+            if (track == nullptr) return std::nullopt;
 
             track->injectLiveMidiMessage(message, 0);
 
@@ -190,12 +195,18 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
                 static_cast<uintptr_t>(command->edit_pointer())
             );
 
-            if (edit->getTrackList().size() == 0) return std::nullopt;
+            if (edit->getTrackList().size() < 6) return std::nullopt;
 
             auto midiChannel = command->channel();
             auto midiNoteNumber = command->note();
 
             juce::MidiMessage message = juce::MidiMessage::noteOff(midiChannel, midiNoteNumber);
+
+            auto uncastTrack = edit->getTrackList().at(5);
+
+            auto track = dynamic_cast<tracktion::AudioTrack*>(uncastTrack);
+
+            track->injectLiveMidiMessage(message, 0);
 
             return std::nullopt;
         }

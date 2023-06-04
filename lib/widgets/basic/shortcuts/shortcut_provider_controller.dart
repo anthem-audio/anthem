@@ -21,70 +21,108 @@ import 'package:collection/collection.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-typedef Handler = void Function(LogicalKeySet shortcut);
+typedef RawKeyHandler = bool Function(KeyEvent keyEvent);
+typedef ShortcutHandler = void Function(LogicalKeySet shortcut);
 
 /// Controller for a [ShortcutProvider]. [ShortcutProvider] is rendered at the
-/// root of every project, and a controller instance is provided to the tree
-/// via [Provider]. This fact is used by [ShortcutConsumer] widgets to
+/// root of every project, and a controller instance is provided to the tree via
+/// [Provider]. [ShortcutConsumer] widgets can then access this provider to
+/// subscribe to high-level shortcut events, as well as to raw key events.
 class ShortcutProviderController {
-  final handlers = <String, Handler>{};
-  final globalHandlers = <String, Handler>{};
+  final rawHandlers = <String, RawKeyHandler>{};
+  final globalShortcutHandlers = <String, ShortcutHandler>{};
+  final shortcutHandlers = <String, ShortcutHandler>{};
 
   String? activeConsumer;
 
   final pressedKeys = <LogicalKeyboardKey>{};
 
-  /// Registers a handler. This handler will receive shortcuts if it is marked
-  /// as the active consumer via [activeConsumer].
-  void register({
+  /// Registers a shortcut handler. This handler will receive shortcuts if it is
+  /// marked as the active consumer via [activeConsumer].
+  void registerShortcutHandler({
     required String id,
-    required Handler handler,
+    required ShortcutHandler handler,
     bool global = false,
   }) {
     if (global) {
-      globalHandlers[id] = handler;
+      globalShortcutHandlers[id] = handler;
     } else {
-      handlers[id] = handler;
+      shortcutHandlers[id] = handler;
     }
   }
 
-  /// Unregisters the handler with the given ID.
-  void unregister(String id) {
-    handlers.remove(id);
-    globalHandlers.remove(id);
+  /// Unregisters the shortcut handler with the given ID.
+  void unregisterShortcutHandler(String id) {
+    shortcutHandlers.remove(id);
+    globalShortcutHandlers.remove(id);
   }
 
-  /// The associated [ShortcutProvider] should call this function when it
+  /// Registers a raw key handler.
+  ///
+  /// Raw key handlers receive raw key events. These handlers are processed
+  /// before shortcut handlers. Raw key handlers must return a value indicating
+  /// if the key event has been handled. If the event has been handled, then it
+  /// will not be processed as part of a shortcut.
+  void registerRawKeyHandler({
+    required String id,
+    required RawKeyHandler handler,
+  }) {
+    rawHandlers[id] = handler;
+  }
+
+  /// Unregisters a raw key handler.
+  void unregisterRawKeyHandler(String id) {
+    rawHandlers.remove(id);
+  }
+
+  /// The associated [ShortcutProvider] will call this function when it
   /// receives a key down event.
-  void handleKeyDown(LogicalKeyboardKey key) {
-    pressedKeys.add(key);
+  void handleKeyDown(KeyEvent event) {
+    var handled = false;
+
+    for (final handler in rawHandlers.values) {
+      handled = handled || handler(event);
+    }
+
+    if (handled) return;
+
+    pressedKeys.add(event.logicalKey);
 
     final shortcut = LogicalKeySet.fromSet(pressedKeys);
 
-    for (final handler in globalHandlers.values) {
+    for (final handler in globalShortcutHandlers.values) {
       handler(shortcut);
     }
 
     if (activeConsumer == null) return;
 
-    handlers[activeConsumer]!(shortcut);
+    shortcutHandlers[activeConsumer]!(shortcut);
   }
 
-  /// The associated [ShortcutProvider] should call this function when it
-  /// receives a key up event.
-  void handleKeyUp(LogicalKeyboardKey key) {
-    pressedKeys.remove(key);
+  /// The associated [ShortcutProvider] will call this function when it receives
+  /// a key up event.
+  void handleKeyUp(KeyEvent event) {
+    var handled = false;
+
+    for (final handler in rawHandlers.values) {
+      handled = handled || handler(event);
+    }
+
+    if (handled) return;
+
+    pressedKeys.remove(event.logicalKey);
   }
 
   /// Marks the given consumer as active. This consumer will receive shortcut
   /// events.
-  void focus(String id) {
+  void setActiveConsumer(String id) {
     activeConsumer = id;
   }
 }
 
-/// Class to register shortcut behaviors. Incoming shortcuts can be sent to
-/// this class, and a matching behavior will be called if it exists.
+/// This class allows behaviors to be attached to specific shortcuts. Incoming
+/// shortcuts can be sent to this class, and a matching behavior will be called
+/// if it exists.
 class ShortcutBehaviors {
   final _behaviors = <String, void Function()>{};
 

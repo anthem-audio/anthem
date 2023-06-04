@@ -17,12 +17,15 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/widgets.dart';
 import 'main_window_controller.dart';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/project/project.dart';
 
+/// This widget takes a list of tabs and a selected tab ID, and renders the
+/// active project based on it.
 class TabContentSwitcher extends StatelessWidget {
   final List<TabDef> tabs;
   final ID selectedTabID;
@@ -36,15 +39,18 @@ class TabContentSwitcher extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Stack(
-      children: tabs
-          .map(
-            (tab) => Positioned(
-              left: 0,
-              right: 0,
-              top: 0,
-              bottom: 0,
+      children: tabs.map(
+        (tab) {
+          final active = tab.id == selectedTabID;
+          return Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
+            child: ShortcutProvider(
+              active: active,
               child: Visibility(
-                visible: tab.id == selectedTabID,
+                visible: active,
                 maintainAnimation: false,
                 maintainInteractivity: false,
                 maintainSemantics: false,
@@ -53,8 +59,9 @@ class TabContentSwitcher extends StatelessWidget {
                 child: Project(id: tab.id),
               ),
             ),
-          )
-          .toList(),
+          );
+        },
+      ).toList(),
     );
   }
 }
