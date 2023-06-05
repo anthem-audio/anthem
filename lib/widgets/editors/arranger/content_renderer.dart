@@ -19,6 +19,7 @@
 
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
@@ -84,42 +85,56 @@ class ClipPainter extends CustomPainterObserver {
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     arrangement.clips.forEach((key, clip) {
+      final pattern = project.song.patterns[clip.patternID];
+      if (pattern == null) return;
+
       final x = timeToPixels(
-            timeViewStart: timeViewStart,
-            timeViewEnd: timeViewEnd,
-            viewPixelWidth: size.width,
-            time: clip.offset.toDouble(),
-          ) +
-          1;
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: size.width,
+        time: clip.offset.toDouble(),
+      );
       final width = timeToPixels(
             timeViewStart: timeViewStart,
             timeViewEnd: timeViewEnd,
             viewPixelWidth: size.width,
             time: clip.offset.toDouble() + clip.getWidth(project),
           ) -
-          x;
+          x +
+          1;
 
       if (x > size.width || x + width < 0) return;
 
       final y = trackIndexToPos(
-        trackIndex: project.song.trackOrder
-            .indexWhere((trackID) => trackID == clip.trackID)
-            .toDouble(),
-        baseTrackHeight: viewModel.baseTrackHeight,
-        trackOrder: project.song.trackOrder,
-        trackHeightModifiers: viewModel.trackHeightModifiers,
-        scrollPosition: verticalScrollPosition,
-      );
+            trackIndex: project.song.trackOrder
+                .indexWhere((trackID) => trackID == clip.trackID)
+                .toDouble(),
+            baseTrackHeight: viewModel.baseTrackHeight,
+            trackOrder: project.song.trackOrder,
+            trackHeightModifiers: viewModel.trackHeightModifiers,
+            scrollPosition: verticalScrollPosition,
+          ) -
+          1;
       final trackHeight = getTrackHeight(
             viewModel.baseTrackHeight,
             viewModel.trackHeightModifiers[clip.trackID]!,
-          ) -
+          ) +
           1;
 
       if (y > size.height || y + trackHeight < 0) return;
 
-      final rectPaint = Paint()..color = const Color(0xFFFF1234);
-      canvas.drawRect(Rect.fromLTWH(x, y, width, trackHeight), rectPaint);
+      paintClip(
+        canvas: canvas,
+        size: size,
+        pattern: pattern,
+        clip: clip,
+        x: x,
+        y: y,
+        width: width,
+        height: trackHeight,
+        selected: viewModel.selectedClips.contains(clip.id),
+        pressed: viewModel.pressedClip == clip.id,
+      );
     });
   }
 }
