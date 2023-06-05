@@ -25,6 +25,7 @@ import 'package:anthem/theme.dart';
 
 import 'clip.dart';
 
+/// Paints a clip onto the given canvas with the given position and size.
 void paintClip({
   required Canvas canvas,
   required Size size,
@@ -37,6 +38,8 @@ void paintClip({
   required bool selected,
   required bool pressed,
 }) {
+  // Container
+
   final color = getBaseColor(
     color: pattern.color,
     selected: selected,
@@ -49,11 +52,63 @@ void paintClip({
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1.0;
 
-  final rect = RRect.fromRectAndRadius(
+  final rect = Rect.fromLTWH(x + 0.5, y + 0.5, width - 1, height - 1);
+  final rRect = RRect.fromRectAndRadius(
     Rect.fromLTWH(x + 0.5, y + 0.5, width - 1, height - 1),
     const Radius.circular(3),
   );
 
-  canvas.drawRRect(rect, rectPaint);
-  canvas.drawRRect(rect, rectStrokePaint);
+  canvas.drawRRect(rRect, rectPaint);
+  canvas.drawRRect(rRect, rectStrokePaint);
+
+  // Title
+
+  // This is drawn in two steps into a separate layer, which is then composited
+  // back into the main layer. The first step is to draw the text with our
+  // preferred color. The second step is to draw over the text with a gradient
+  // that fades from white to transparent, and to set the blend mode to
+  // BlendMode.dstIn when we do it. This has the effect of fading the text out
+  // with the same gradient, but with the text color we selected instead of
+  // white.
+
+  canvas.saveLayer(rect, Paint());
+
+  final textColor = getTextColor(
+    color: pattern.color,
+    selected: selected,
+    pressed: pressed,
+  );
+
+  final paragraphStyle = ParagraphStyle(
+    textAlign: TextAlign.left,
+  );
+
+  final paragraphBuilder = ParagraphBuilder(paragraphStyle)
+    ..pushStyle(TextStyle(color: textColor, fontSize: 11))
+    ..addText(pattern.name);
+
+  final paragraph = paragraphBuilder.build();
+  final constraints = ParagraphConstraints(width: size.width);
+  paragraph.layout(constraints);
+
+  canvas.drawParagraph(
+    paragraph,
+    Offset(x + 3, y),
+  );
+
+  // Fade out gradient
+  final textFadeOutGradient = Gradient.linear(
+    Offset(x, y),
+    Offset(x + width - 3, y),
+    const [Color(0xFFFFFFFF), Color(0xFFFFFFFF), Color(0x00000000)],
+    [0, 1 - (10 / width), 1],
+  );
+
+  final textPaint = Paint()
+    ..shader = textFadeOutGradient
+    ..blendMode = BlendMode.dstIn;
+
+  canvas.drawRect(Rect.fromLTWH(x, y, width, height), textPaint);
+
+  canvas.restore();
 }
