@@ -30,6 +30,7 @@ import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
+import 'package:anthem/widgets/editors/arranger/content_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/event_listener.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/widgets/track_header.dart';
@@ -665,7 +666,13 @@ class _ArrangerCanvas extends StatelessWidget {
                     animation: timeViewAnimationController,
                     builder: (context, child) {
                       if (useNewArrangerRenderer) {
-                        return const SizedBox();
+                        return ArrangerContentRenderer(
+                          timeViewStart: timeViewStartAnimation.value,
+                          timeViewEnd: timeViewEndAnimation.value,
+                          verticalScrollPosition:
+                              verticalScrollPositionAnimation.value,
+                          viewModel: viewModel,
+                        );
                       }
 
                       return Observer(builder: (context) {
