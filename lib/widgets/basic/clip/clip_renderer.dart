@@ -63,24 +63,104 @@ void paintClip({
 
   // Title
 
-  // This is drawn in two steps into a separate layer, which is then composited
-  // back into the main layer. The first step is to draw the text with our
-  // preferred color. The second step is to draw over the text with a gradient
-  // that fades from white to transparent, and to set the blend mode to
-  // BlendMode.dstIn when we do it. This has the effect of fading the text out
-  // with the same gradient, but with the text color we selected instead of
-  // white.
+  // Make sure we're observing both the name and the image cache
+  final titleImage = pattern.renderedTitle;
+  pattern.name;
 
-  canvas.saveLayer(rect, Paint());
+  if (titleImage != null) {
+    final textColor = getTextColor(
+      color: pattern.color,
+      selected: selected,
+      pressed: pressed,
+    );
 
-  final textColor = getTextColor(
-    color: pattern.color,
-    selected: selected,
-    pressed: pressed,
-  );
+    final rect = Rect.fromLTWH(0, 0, width - 1, height);
+
+    // canvas.drawImage(titleImage, Offset(x, y), textPaint);
+    canvas.drawAtlas(
+      titleImage,
+      [
+        RSTransform.fromComponents(
+          rotation: 0,
+          scale: 1,
+          anchorX: 0,
+          anchorY: 0,
+          translateX: x,
+          translateY: y,
+        ),
+      ],
+      [rect],
+      [textColor],
+      BlendMode.dstIn,
+      null,
+      Paint(),
+    );
+
+    final transparentColor = color.withAlpha(0);
+
+    // Fade out gradient
+    final textFadeOutGradient = Gradient.linear(
+      Offset(x, y),
+      Offset(x + width - 3, y),
+      [transparentColor, transparentColor, color],
+      [0, 1 - (10 / width), 1],
+    );
+
+    final textFadeOutPaint = Paint()..shader = textFadeOutGradient;
+
+    canvas.drawRRect(
+      RRect.fromRectAndCorners(
+        Rect.fromLTWH(x, y + 1, width - 1, 15),
+        topRight: const Radius.circular(3),
+      ),
+      textFadeOutPaint,
+    );
+  } else {
+    // Fallback if the image hasn't been generated yet
+    drawPatternTitle(
+      canvas: canvas,
+      size: size,
+      clipRect: rect,
+      pattern: pattern,
+      x: x,
+      y: y,
+      width: width,
+      height: height,
+      selected: selected,
+      pressed: pressed,
+    );
+  }
+}
+
+void drawPatternTitle({
+  required Canvas canvas,
+  required Size size,
+  required Rect clipRect,
+  required PatternModel pattern,
+  required double x,
+  required double y,
+  required double width,
+  required double height,
+  bool whiteText = false,
+  bool selected = false,
+  bool pressed = false,
+  bool saveLayer = true,
+}) {
+  final Color textColor;
+  if (whiteText) {
+    textColor = const Color(0xFFFFFFFF);
+  } else {
+    textColor = getTextColor(
+      color: pattern.color,
+      selected: selected,
+      pressed: pressed,
+    );
+  }
 
   final paragraphStyle = ParagraphStyle(
     textAlign: TextAlign.left,
+    ellipsis: '...',
+    maxLines: 1,
   );
 
   final paragraphBuilder = ParagraphBuilder(paragraphStyle)
@@ -88,27 +168,11 @@ void paintClip({
     ..addText(pattern.name);
 
   final paragraph = paragraphBuilder.build();
-  final constraints = ParagraphConstraints(width: size.width);
+  const constraints = ParagraphConstraints(width: 500);
   paragraph.layout(constraints);
 
   canvas.drawParagraph(
     paragraph,
     Offset(x + 3, y),
   );
-
-  // Fade out gradient
-  final textFadeOutGradient = Gradient.linear(
-    Offset(x, y),
-    Offset(x + width - 3, y),
-    const [Color(0xFFFFFFFF), Color(0xFFFFFFFF), Color(0x00000000)],
-    [0, 1 - (10 / width), 1],
-  );
-
-  final textPaint = Paint()
-    ..shader = textFadeOutGradient
-    ..blendMode = BlendMode.dstIn;
-
-  canvas.drawRect(Rect.fromLTWH(x, y, width, height), textPaint);
-
-  canvas.restore();
 }

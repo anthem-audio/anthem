@@ -114,12 +114,16 @@ class SetPatternNameCommand extends Command {
 
   @override
   void execute() {
-    project.song.patterns[patternID]!.name = newName;
+    final pattern = project.song.patterns[patternID]!;
+    pattern.name = newName;
+    pattern.updateClipTitleCache();
   }
 
   @override
   void rollback() {
-    project.song.patterns[patternID]!.name = oldName;
+    final pattern = project.song.patterns[patternID]!;
+    pattern.name = oldName;
+    pattern.updateClipTitleCache();
   }
 }
 
