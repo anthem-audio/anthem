@@ -421,6 +421,8 @@ class _ArrangerContentState extends State<_ArrangerContent>
     super.dispose();
   }
 
+  bool useNewArrangerRenderer = false;
+
   @override
   Widget build(BuildContext context) {
     const trackHeaderWidth = 130.0;
@@ -514,15 +516,39 @@ class _ArrangerContentState extends State<_ArrangerContent>
                   ),
                   Container(width: 1, color: Theme.panel.border),
                   Expanded(
-                    child: _ArrangerCanvas(
-                      timeViewStartAnimation: _timeViewStartAnimation,
-                      timeViewEndAnimation: _timeViewEndAnimation,
-                      timeViewAnimationController: _timeViewAnimationController,
-                      verticalScrollPositionAnimation:
-                          _verticalScrollPositionAnimation,
-                      verticalScrollPositionAnimationController:
-                          _verticalScrollPositionAnimationController,
-                      clipWidgetEventData: clipWidgetEventData,
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: _ArrangerCanvas(
+                            timeViewStartAnimation: _timeViewStartAnimation,
+                            timeViewEndAnimation: _timeViewEndAnimation,
+                            timeViewAnimationController:
+                                _timeViewAnimationController,
+                            verticalScrollPositionAnimation:
+                                _verticalScrollPositionAnimation,
+                            verticalScrollPositionAnimationController:
+                                _verticalScrollPositionAnimationController,
+                            clipWidgetEventData: clipWidgetEventData,
+                            useNewArrangerRenderer: useNewArrangerRenderer,
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Button(
+                            width: 30,
+                            height: 30,
+                            toggleState: useNewArrangerRenderer,
+                            icon: Icons.anthem,
+                            onPress: () {
+                              setState(() {
+                                useNewArrangerRenderer =
+                                    !useNewArrangerRenderer;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -547,6 +573,8 @@ class _ArrangerCanvas extends StatelessWidget {
 
   final ClipWidgetEventData clipWidgetEventData;
 
+  final bool useNewArrangerRenderer;
+
   const _ArrangerCanvas({
     Key? key,
     required this.timeViewStartAnimation,
@@ -555,6 +583,7 @@ class _ArrangerCanvas extends StatelessWidget {
     required this.verticalScrollPositionAnimation,
     required this.verticalScrollPositionAnimationController,
     required this.clipWidgetEventData,
+    this.useNewArrangerRenderer = false,
   }) : super(key: key);
 
   @override
@@ -635,6 +664,10 @@ class _ArrangerCanvas extends StatelessWidget {
                   return AnimatedBuilder(
                     animation: timeViewAnimationController,
                     builder: (context, child) {
+                      if (useNewArrangerRenderer) {
+                        return const SizedBox();
+                      }
+
                       return Observer(builder: (context) {
                         // Subscribe to updates for track heights
                         viewModel.baseTrackHeight;
