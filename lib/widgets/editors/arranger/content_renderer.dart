@@ -60,6 +60,7 @@ class ArrangerContentRenderer extends StatelessObserverWidget {
         viewModel: viewModel,
         devicePixelRatio: View.of(context).devicePixelRatio,
       ),
+      isComplex: true,
     );
   }
 }
