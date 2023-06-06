@@ -25,6 +25,9 @@ import 'package:anthem/theme.dart';
 
 import 'clip.dart';
 
+// Clips that are shorter than this will not render content
+const smallSizeThreshold = 38;
+
 /// Paints a clip onto the given canvas with the given position and size.
 void paintClip({
   required Canvas canvas,
@@ -68,6 +71,10 @@ void paintClip({
   final titleImage = pattern.renderedTitle;
   pattern.name;
 
+  const textHeight = 15.0;
+  final textY =
+      height > smallSizeThreshold ? y : y + (height / 2) - (textHeight / 2);
+
   if (titleImage != null) {
     final textColor = getTextColor(
       color: pattern.color,
@@ -86,7 +93,7 @@ void paintClip({
           anchorX: 0,
           anchorY: 0,
           translateX: x,
-          translateY: y,
+          translateY: textY,
         ),
       ],
       [rect],
@@ -94,26 +101,6 @@ void paintClip({
       BlendMode.dstIn,
       null,
       Paint(),
-    );
-
-    final transparentColor = color.withAlpha(0);
-
-    // Fade out gradient
-    final textFadeOutGradient = Gradient.linear(
-      Offset(x, y),
-      Offset(x + width - 3, y),
-      [transparentColor, transparentColor, color],
-      [0, 1 - (10 / width), 1],
-    );
-
-    final textFadeOutPaint = Paint()..shader = textFadeOutGradient;
-
-    canvas.drawRRect(
-      RRect.fromRectAndCorners(
-        Rect.fromLTWH(x, y + 1, width - 1, 15),
-        topRight: const Radius.circular(3),
-      ),
-      textFadeOutPaint,
     );
   } else {
     // Fallback if the image hasn't been generated yet
@@ -123,13 +110,68 @@ void paintClip({
       clipRect: rect,
       pattern: pattern,
       x: x,
-      y: y,
+      y: textY,
       width: width,
       height: height,
       selected: selected,
       pressed: pressed,
       devicePixelRatio: devicePixelRatio,
     );
+  }
+
+  final transparentColor = color.withAlpha(0);
+
+  // Fade out gradient
+  final textFadeOutGradient = Gradient.linear(
+    Offset(x, textY),
+    Offset(x + width - 3, textY),
+    [transparentColor, transparentColor, color],
+    [0, 1 - (10 / width), 1],
+  );
+
+  final textFadeOutPaint = Paint()..shader = textFadeOutGradient;
+
+  canvas.drawRRect(
+    RRect.fromRectAndCorners(
+      Rect.fromLTWH(x, textY + 1, width - 1.5, textHeight),
+      topRight: const Radius.circular(3),
+    ),
+    textFadeOutPaint,
+  );
+
+  // Notes
+
+  // Subscribes to the update signal for notes in this pattern
+  pattern.clipNotesUpdateSignal.value;
+
+  if (height > smallSizeThreshold) {
+    final noteColor = getTextColor(
+      color: pattern.color,
+      selected: selected,
+      pressed: pressed,
+    );
+
+    final notePaint = Paint()..color = noteColor;
+
+    for (final clipNotesEntry in pattern.clipNotesRenderCache.values) {
+      if (clipNotesEntry.renderedVertices == null) continue;
+
+      canvas.save();
+
+      canvas.translate(x, y);
+      canvas.scale(
+        width / clip.getWidth(pattern.project).toDouble(),
+        height,
+      );
+
+      canvas.drawVertices(
+        clipNotesEntry.renderedVertices!,
+        BlendMode.srcOver,
+        notePaint,
+      );
+
+      canvas.restore();
+    }
   }
 }
 
@@ -149,6 +191,7 @@ void drawPatternTitle({
   bool saveLayer = true,
 }) {
   final Color textColor;
+
   if (whiteText) {
     textColor = const Color(0xFFFFFFFF);
   } else {

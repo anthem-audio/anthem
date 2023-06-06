@@ -161,6 +161,7 @@ void _addNote(
   }
 
   pattern.notes[generatorID]!.add(note);
+  pattern.scheduleClipNotesRenderCacheUpdate();
 }
 
 void _removeNote(
@@ -169,6 +170,7 @@ void _removeNote(
   ID noteID,
 ) {
   pattern.notes[generatorID]!.removeWhere((element) => element.id == noteID);
+  pattern.scheduleClipNotesRenderCacheUpdate();
 }
 
 NoteModel _getNote(
@@ -290,6 +292,17 @@ class SetNoteAttributeCommand extends Command {
     }
   }
 
+  void updateClipRenderCacheIfNeeded(PatternModel pattern) {
+    switch (attribute) {
+      case NoteAttribute.key:
+      case NoteAttribute.offset:
+      case NoteAttribute.length:
+        pattern.scheduleClipNotesRenderCacheUpdate();
+      default:
+        break;
+    }
+  }
+
   @override
   void execute() {
     final pattern = project.song.patterns[patternID];
@@ -301,6 +314,7 @@ class SetNoteAttributeCommand extends Command {
     final note = _getNote(pattern, generatorID, noteID);
 
     setAttribute(note, newValue);
+    updateClipRenderCacheIfNeeded(pattern);
   }
 
   @override
@@ -314,5 +328,6 @@ class SetNoteAttributeCommand extends Command {
     final note = _getNote(pattern, generatorID, noteID);
 
     setAttribute(note, oldValue);
+    updateClipRenderCacheIfNeeded(pattern);
   }
 }
