@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 
@@ -25,6 +26,7 @@ import 'package:anthem/main.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/shared/hydratable.dart';
+import 'package:anthem/widgets/basic/clip/clip_notes_render_cache.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
 import 'package:flutter/widgets.dart' as widgets;
 import 'package:json_annotation/json_annotation.dart';
@@ -35,23 +37,36 @@ import 'note.dart';
 
 part 'pattern.g.dart';
 part 'package:anthem/widgets/basic/clip/clip_title_render_cache_mixin.dart';
+part 'package:anthem/widgets/basic/clip/clip_notes_render_cache_mixin.dart';
 
 @JsonSerializable()
 class PatternModel extends _PatternModel
-    with _$PatternModel, _ClipTitleRenderCacheMixin {
+    with
+        _$PatternModel,
+        _ClipTitleRenderCacheMixin,
+        _ClipNotesRenderCacheMixin {
   PatternModel() : super() {
-    updateClipTitleCache();
+    _init();
   }
 
   PatternModel.create({required String name, required ProjectModel project})
       : super.create(name: name, project: project) {
-    updateClipTitleCache();
+    _init();
   }
 
   factory PatternModel.fromJson(Map<String, dynamic> json) {
     final result = _$PatternModelFromJson(json);
-    result.updateClipTitleCache();
+    result._init();
     return result;
+  }
+
+  void _init() {
+    incrementClipUpdateSignal = Action(() {
+      clipNotesUpdateSignal.value =
+          (clipNotesUpdateSignal.value + 1) % 0xFFFFFFFF;
+    });
+    updateClipTitleCache();
+    updateClipNotesRenderCache();
   }
 }
 

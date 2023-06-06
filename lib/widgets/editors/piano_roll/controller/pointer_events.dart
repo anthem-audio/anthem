@@ -486,6 +486,8 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
               (!shift && ctrl ? 0 : timeOffsetFromEventStart);
         }
 
+        pattern.scheduleClipNotesRenderCacheUpdate();
+
         break;
       case EventHandlingState.creatingAdditiveSelectionBox:
       case EventHandlingState.creatingSubtractiveSelectionBox:
@@ -581,6 +583,8 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
         _deleteActionData!.mostRecentPoint = thisPoint;
 
+        pattern.scheduleClipNotesRenderCacheUpdate();
+
         break;
       case EventHandlingState.resizingSingleNote:
       case EventHandlingState.resizingSelection:
@@ -663,6 +667,8 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         if (_eventHandlingState == EventHandlingState.resizingSingleNote) {
           setCursorNoteParameters(_noteResizeActionData!.pressedNote);
         }
+
+        pattern.scheduleClipNotesRenderCacheUpdate();
 
         break;
     }
@@ -755,6 +761,9 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
       project.push(command);
     }
+
+    project.song.patterns[project.song.activePatternID]
+        ?.scheduleClipNotesRenderCacheUpdate();
 
     project.commitJournalPage();
 
