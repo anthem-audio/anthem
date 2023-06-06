@@ -58,6 +58,7 @@ class ArrangerContentRenderer extends StatelessObserverWidget {
         project: project,
         arrangement: arrangement,
         viewModel: viewModel,
+        devicePixelRatio: View.of(context).devicePixelRatio,
       ),
     );
   }
@@ -70,6 +71,7 @@ class ClipPainter extends CustomPainterObserver {
   final ProjectModel project;
   final ArrangementModel arrangement;
   final ArrangerViewModel viewModel;
+  final double devicePixelRatio;
 
   ClipPainter({
     required this.timeViewStart,
@@ -78,6 +80,7 @@ class ClipPainter extends CustomPainterObserver {
     required this.project,
     required this.arrangement,
     required this.viewModel,
+    required this.devicePixelRatio,
   });
 
   @override
@@ -134,6 +137,7 @@ class ClipPainter extends CustomPainterObserver {
         height: trackHeight,
         selected: viewModel.selectedClips.contains(clip.id),
         pressed: viewModel.pressedClip == clip.id,
+        devicePixelRatio: devicePixelRatio,
       );
     });
   }

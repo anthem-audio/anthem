@@ -21,10 +21,12 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/main.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/shared/hydratable.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
+import 'package:flutter/widgets.dart' as widgets;
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
@@ -36,7 +38,7 @@ part 'package:anthem/widgets/basic/clip/clip_title_render_cache_mixin.dart';
 
 @JsonSerializable()
 class PatternModel extends _PatternModel
-    with _$PatternModel, ClipTitleRenderCacheMixin {
+    with _$PatternModel, _ClipTitleRenderCacheMixin {
   PatternModel() : super() {
     updateClipTitleCache();
   }
