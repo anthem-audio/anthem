@@ -26,7 +26,7 @@ part of 'package:anthem/model/pattern/pattern.dart';
 /// with everything else we're drawing.
 
 // ignore: library_private_types_in_public_api
-mixin ClipTitleRenderCacheMixin on _PatternModel {
+mixin _ClipTitleRenderCacheMixin on _PatternModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @observable
   Image? renderedTitle;
@@ -35,21 +35,25 @@ mixin ClipTitleRenderCacheMixin on _PatternModel {
     final recorder = PictureRecorder();
     final canvas = Canvas(recorder);
 
-    const width = 250.0;
-    const height = 15.0;
+    final devicePixelRatio =
+        widgets.View.of(mainWindowKey.currentContext!).devicePixelRatio;
+
+    final width = 250.0 * devicePixelRatio;
+    final height = 15.0 * devicePixelRatio;
 
     drawPatternTitle(
       canvas: canvas,
-      size: const Size(width, height),
-      clipRect: const Rect.fromLTWH(0, 0, width, height),
+      size: Size(width, height),
+      clipRect: Rect.fromLTWH(0, 0, width, height),
       pattern: this as PatternModel,
-      x: 0,
+      x: 3,
       y: 0,
-      width: 500,
-      height: 15,
+      width: width,
+      height: height,
       // We draw the text in white so we can recolor it when rendering from the
       // cache.
       whiteText: true,
+      devicePixelRatio: devicePixelRatio,
     );
 
     final picture = recorder.endRecording();

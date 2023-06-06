@@ -37,6 +37,7 @@ void paintClip({
   required double height,
   required bool selected,
   required bool pressed,
+  required double devicePixelRatio,
 }) {
   // Container
 
@@ -74,15 +75,14 @@ void paintClip({
       pressed: pressed,
     );
 
-    final rect = Rect.fromLTWH(0, 0, width - 1, height);
+    final rect = Rect.fromLTWH(0, 0, (width - 2) * devicePixelRatio, height);
 
-    // canvas.drawImage(titleImage, Offset(x, y), textPaint);
     canvas.drawAtlas(
       titleImage,
       [
         RSTransform.fromComponents(
           rotation: 0,
-          scale: 1,
+          scale: 1 / devicePixelRatio,
           anchorX: 0,
           anchorY: 0,
           translateX: x,
@@ -128,6 +128,7 @@ void paintClip({
       height: height,
       selected: selected,
       pressed: pressed,
+      devicePixelRatio: devicePixelRatio,
     );
   }
 }
@@ -141,6 +142,7 @@ void drawPatternTitle({
   required double y,
   required double width,
   required double height,
+  required double devicePixelRatio,
   bool whiteText = false,
   bool selected = false,
   bool pressed = false,
@@ -164,11 +166,11 @@ void drawPatternTitle({
   );
 
   final paragraphBuilder = ParagraphBuilder(paragraphStyle)
-    ..pushStyle(TextStyle(color: textColor, fontSize: 11))
+    ..pushStyle(TextStyle(color: textColor, fontSize: 11 * devicePixelRatio))
     ..addText(pattern.name);
 
   final paragraph = paragraphBuilder.build();
-  const constraints = ParagraphConstraints(width: 500);
+  final constraints = ParagraphConstraints(width: width);
   paragraph.layout(constraints);
 
   canvas.drawParagraph(
