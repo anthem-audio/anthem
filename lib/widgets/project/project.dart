@@ -109,9 +109,11 @@ class _ProjectState extends State<Project> {
                           maintainSize: false,
                           maintainState: true,
                           visible: projectModel.isDetailViewSelected,
-                          child: ProjectDetails(
-                            selectedProjectDetails:
-                                projectModel.selectedDetailView,
+                          child: RepaintBoundary(
+                            child: ProjectDetails(
+                              selectedProjectDetails:
+                                  projectModel.selectedDetailView,
+                            ),
                           ),
                         ),
                       ),
@@ -131,7 +133,7 @@ class _ProjectState extends State<Project> {
                       panelMinSize: 300,
                       contentMinSize: 300,
                       // Bottom panel
-                      panelContent: const PianoRoll(),
+                      panelContent: const RepaintBoundary(child: PianoRoll()),
                       child: Panel(
                         hidden: !projectModel.isPatternEditorVisible,
                         orientation: PanelOrientation.left,
@@ -140,8 +142,9 @@ class _ProjectState extends State<Project> {
                         contentMinSize: 500,
                         sizeBehavior: PanelSizeBehavior.pixels,
                         // Pattern editor
-                        panelContent: const PatternEditor(),
-                        child: const Arranger(),
+                        panelContent:
+                            const RepaintBoundary(child: PatternEditor()),
+                        child: const RepaintBoundary(child: Arranger()),
                       ),
                     ),
                   ),
