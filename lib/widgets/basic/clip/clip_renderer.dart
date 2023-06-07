@@ -28,6 +28,8 @@ import 'clip.dart';
 // Clips that are shorter than this will not render content
 const smallSizeThreshold = 38;
 
+const clipTitleHeight = 16;
+
 /// Paints a clip onto the given canvas with the given position and size.
 void paintClip({
   required Canvas canvas,
@@ -158,11 +160,33 @@ void paintClip({
 
       canvas.save();
 
-      canvas.translate(x, y);
+      canvas.clipRRect(RRect.fromRectAndRadius(
+        Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2),
+        const Radius.circular(3),
+      ));
+
+      final innerHeight = height - 2;
+
+      final dist = clipNotesEntry.highestNote - clipNotesEntry.lowestNote;
+      final notePadding =
+          (innerHeight - clipTitleHeight) * (0.4 - dist * 0.05).clamp(0.1, 0.4);
+
+      // The vertices for the notes are in a coordinate system based on notes,
+      // where X is time and Y is normalized. The transformations below
+      // translate this to the correct position and scale it to convert it into
+      // pixel coordnates.
+
+      final clipScaleFactor = width / clip.getWidth(pattern.project).toDouble();
+
+      canvas.translate(
+          -(clip.timeView?.start.toDouble() ?? 0.0) * clipScaleFactor, 0);
+      canvas.translate(x, y + 1 + clipTitleHeight + notePadding);
       canvas.scale(
-        width / clip.getWidth(pattern.project).toDouble(),
-        height,
+        clipScaleFactor,
+        innerHeight - clipTitleHeight - notePadding * 2,
       );
+
+      // The clip may not start at the beginning, which we account for here.
 
       canvas.drawVertices(
         clipNotesEntry.renderedVertices!,
