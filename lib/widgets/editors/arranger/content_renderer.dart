@@ -28,6 +28,12 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
+/// Size of the resize handles, in pixels.
+const clipResizeHandleWidth = 12.0;
+
+/// How far over the clip the resize handle extends, in pixels.
+const clipResizeHandleOvershoot = 2.0;
+
 class ArrangerContentRenderer extends StatelessObserverWidget {
   final double timeViewStart;
   final double timeViewEnd;
@@ -86,6 +92,9 @@ class ClipPainter extends CustomPainterObserver {
 
   @override
   void observablePaint(Canvas canvas, Size size) {
+    viewModel.visibleClips.clear();
+    viewModel.visibleResizeAreas.clear();
+
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     arrangement.clips.forEach((key, clip) {
@@ -139,6 +148,44 @@ class ClipPainter extends CustomPainterObserver {
         selected: viewModel.selectedClips.contains(clip.id),
         pressed: viewModel.pressedClip == clip.id,
         devicePixelRatio: devicePixelRatio,
+      );
+
+      viewModel.visibleClips.add(
+        rect: Rect.fromLTWH(x, y, width - 1, trackHeight - 1),
+        metadata: (id: clip.id),
+      );
+
+      const minimumClickableClipArea = 30;
+
+      final startResizeHandleRect = Rect.fromLTWH(
+        x - clipResizeHandleOvershoot,
+        y,
+        clipResizeHandleWidth
+            // Ensures there's a bit of the clip still showing
+            -
+            (minimumClickableClipArea - width)
+                .clamp(0, (clipResizeHandleWidth - clipResizeHandleOvershoot)),
+        trackHeight - 1,
+      );
+      viewModel.visibleResizeAreas.add(
+        rect: startResizeHandleRect,
+        metadata: (id: clip.id, type: ResizeAreaType.start),
+      );
+
+      // Notice this is fromLTRB. We generally use fromLTWH elsewhere.
+      final endResizeHandleRect = Rect.fromLTRB(
+        x +
+            (width - (clipResizeHandleWidth - clipResizeHandleOvershoot))
+                // Ensures there's a bit of the clip still showing
+                .clamp(minimumClickableClipArea, double.infinity)
+                .clamp(0, width),
+        y,
+        x + width + clipResizeHandleOvershoot,
+        y + trackHeight - 1,
+      );
+      viewModel.visibleResizeAreas.add(
+        rect: endResizeHandleRect,
+        metadata: (id: clip.id, type: ResizeAreaType.end),
       );
     });
   }
