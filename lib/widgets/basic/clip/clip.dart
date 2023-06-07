@@ -21,7 +21,6 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes.dart';
-import 'package:anthem/widgets/editors/arranger/event_listener.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -38,7 +37,6 @@ class Clip extends StatelessWidget {
   final ID? arrangementID;
   final double ticksPerPixel;
   final bool selected;
-  final ClipWidgetEventData? eventData;
   final bool hasResizeHandles;
   final bool pressed;
 
@@ -49,7 +47,6 @@ class Clip extends StatelessWidget {
     required this.arrangementID,
     required this.ticksPerPixel,
     this.selected = false,
-    this.eventData,
     this.hasResizeHandles = true,
     this.pressed = false,
   })  : patternID = null,
@@ -65,12 +62,7 @@ class Clip extends StatelessWidget {
   })  : selected = false,
         clipID = null,
         arrangementID = null,
-        eventData = null,
         super(key: key);
-
-  void _onPointerEvent(PointerEvent e) {
-    eventData?.clipsUnderCursor.add(clipID!);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,10 +75,6 @@ class Clip extends StatelessWidget {
     final overshoot = hasResizeHandles ? clipResizeHandleOvershoot : 0.0;
 
     return Listener(
-      onPointerDown: _onPointerEvent,
-      onPointerMove: _onPointerEvent,
-      onPointerUp: _onPointerEvent,
-      onPointerCancel: _onPointerEvent,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -156,39 +144,25 @@ class Clip extends StatelessWidget {
               ],
             ),
           ),
-          Positioned(
+          const Positioned(
             left: 0,
             top: 0,
             bottom: 0,
-            child: Listener(
-              onPointerDown: (e) {
-                if (eventData != null) {
-                  eventData!.isResizeStartEvent = true;
-                }
-              },
-              child: const SizedBox(
-                width: clipResizeHandleWidth,
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.resizeLeftRight,
-                ),
+            child: SizedBox(
+              width: clipResizeHandleWidth,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.resizeLeftRight,
               ),
             ),
           ),
-          Positioned(
+          const Positioned(
             right: 0,
             top: 0,
             bottom: 0,
-            child: Listener(
-              onPointerDown: (e) {
-                if (eventData != null) {
-                  eventData!.isResizeEndEvent = true;
-                }
-              },
-              child: const SizedBox(
-                width: clipResizeHandleWidth,
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.resizeLeftRight,
-                ),
+            child: SizedBox(
+              width: clipResizeHandleWidth,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.resizeLeftRight,
               ),
             ),
           ),
