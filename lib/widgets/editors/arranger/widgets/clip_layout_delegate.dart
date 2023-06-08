@@ -19,7 +19,6 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/widgets/basic/clip/clip.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:flutter/widgets.dart';
@@ -54,12 +53,11 @@ class ClipLayoutDelegate extends MultiChildLayoutDelegate {
           project.song.arrangements[arrangementID]!.clips[clipID]!;
 
       final x = timeToPixels(
-            timeViewStart: timeViewStart,
-            timeViewEnd: timeViewEnd,
-            viewPixelWidth: size.width,
-            time: clipModel.offset.toDouble(),
-          ) -
-          clipResizeHandleOvershoot;
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: size.width,
+        time: clipModel.offset.toDouble(),
+      );
 
       final y = trackIndexToPos(
         trackIndex: trackIDs
