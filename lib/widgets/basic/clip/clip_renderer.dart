@@ -176,11 +176,12 @@ void paintClip({
       // translate this to the correct position and scale it to convert it into
       // pixel coordnates.
 
-      final clipScaleFactor = width / clip.getWidth(pattern.project).toDouble();
+      final clipScaleFactor =
+          (width - 1) / clip.getWidth(pattern.project).toDouble();
 
       canvas.translate(
           -(clip.timeView?.start.toDouble() ?? 0.0) * clipScaleFactor, 0);
-      canvas.translate(x, y + 1 + clipTitleHeight + notePadding);
+      canvas.translate(x + 1, y + 1 + clipTitleHeight + notePadding);
       canvas.scale(
         clipScaleFactor,
         innerHeight - clipTitleHeight - notePadding * 2,
