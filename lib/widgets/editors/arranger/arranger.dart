@@ -588,9 +588,6 @@ class _ArrangerCanvas extends StatelessWidget {
               ),
             );
 
-            ArrangementModel? getArrangement() =>
-                project.song.arrangements[project.song.activeArrangementID];
-
             final clipsContainer = Observer(builder: (context) {
               Widget clips() {
                 return AnimatedBuilder(
