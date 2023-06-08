@@ -21,7 +21,6 @@ import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
-import 'package:anthem/widgets/basic/clip/clip.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/icon.dart';
@@ -45,8 +44,6 @@ import 'package:provider/provider.dart';
 import '../shared/helpers/time_helpers.dart';
 import 'widgets/grid.dart';
 import 'view_model.dart';
-import './widgets/clip_layout_delegate.dart';
-import './widgets/clip_sizer.dart';
 import 'helpers.dart';
 import 'widgets/pattern_picker.dart';
 
@@ -514,38 +511,15 @@ class _ArrangerContentState extends State<_ArrangerContent>
                   ),
                   Container(width: 1, color: Theme.panel.border),
                   Expanded(
-                    child: Stack(
-                      children: [
-                        Positioned.fill(
-                          child: _ArrangerCanvas(
-                            timeViewStartAnimation: _timeViewStartAnimation,
-                            timeViewEndAnimation: _timeViewEndAnimation,
-                            timeViewAnimationController:
-                                _timeViewAnimationController,
-                            verticalScrollPositionAnimation:
-                                _verticalScrollPositionAnimation,
-                            verticalScrollPositionAnimationController:
-                                _verticalScrollPositionAnimationController,
-                            useNewArrangerRenderer: useNewArrangerRenderer,
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Button(
-                            width: 30,
-                            height: 30,
-                            toggleState: useNewArrangerRenderer,
-                            icon: Icons.anthem,
-                            onPress: () {
-                              setState(() {
-                                useNewArrangerRenderer =
-                                    !useNewArrangerRenderer;
-                              });
-                            },
-                          ),
-                        ),
-                      ],
+                    child: _ArrangerCanvas(
+                      timeViewStartAnimation: _timeViewStartAnimation,
+                      timeViewEndAnimation: _timeViewEndAnimation,
+                      timeViewAnimationController: _timeViewAnimationController,
+                      verticalScrollPositionAnimation:
+                          _verticalScrollPositionAnimation,
+                      verticalScrollPositionAnimationController:
+                          _verticalScrollPositionAnimationController,
+                      useNewArrangerRenderer: useNewArrangerRenderer,
                     ),
                   ),
                 ],
@@ -617,40 +591,6 @@ class _ArrangerCanvas extends StatelessWidget {
             ArrangementModel? getArrangement() =>
                 project.song.arrangements[project.song.activeArrangementID];
 
-            List<Widget> getClipWidgets() =>
-                (getArrangement()?.clips.keys ?? []).map<Widget>(
-                  (id) {
-                    return LayoutId(
-                      key: Key(id),
-                      id: id,
-                      child: AnimatedBuilder(
-                        animation: timeViewAnimationController,
-                        builder: (context, child) {
-                          return Observer(builder: (context) {
-                            return ClipSizer(
-                              clipID: id,
-                              arrangementID: project.song.activeArrangementID!,
-                              editorWidth: constraints.maxWidth,
-                              timeViewStart: timeViewStartAnimation.value,
-                              timeViewEnd: timeViewEndAnimation.value,
-                              child: Clip(
-                                clipID: id,
-                                arrangementID:
-                                    project.song.activeArrangementID!,
-                                ticksPerPixel: (timeViewEndAnimation.value -
-                                        timeViewStartAnimation.value) /
-                                    constraints.maxWidth,
-                                selected: viewModel.selectedClips.contains(id),
-                                pressed: viewModel.pressedClip == id,
-                              ),
-                            );
-                          });
-                        },
-                      ),
-                    );
-                  },
-                ).toList();
-
             final clipsContainer = Observer(builder: (context) {
               Widget clips() {
                 return AnimatedBuilder(
@@ -659,48 +599,13 @@ class _ArrangerCanvas extends StatelessWidget {
                     return AnimatedBuilder(
                       animation: timeViewAnimationController,
                       builder: (context, child) {
-                        if (useNewArrangerRenderer) {
-                          return ArrangerContentRenderer(
-                            timeViewStart: timeViewStartAnimation.value,
-                            timeViewEnd: timeViewEndAnimation.value,
-                            verticalScrollPosition:
-                                verticalScrollPositionAnimation.value,
-                            viewModel: viewModel,
-                          );
-                        }
-
-                        return Observer(builder: (context) {
-                          // Subscribe to updates for track heights
-                          viewModel.baseTrackHeight;
-                          viewModel.trackHeightModifiers
-                              .forEach((key, value) {});
-
-                          // Subscribe to updates for clip positions
-                          final arrangement = getArrangement()!;
-                          for (final clip in arrangement.clips.values) {
-                            clip.offset;
-                            clip.trackID;
-                          }
-
-                          return CustomMultiChildLayout(
-                            delegate: ClipLayoutDelegate(
-                              baseTrackHeight: viewModel.baseTrackHeight,
-                              trackHeightModifiers:
-                                  viewModel.trackHeightModifiers,
-                              timeViewStart: timeViewStartAnimation.value,
-                              timeViewEnd: timeViewEndAnimation.value,
-                              project: project,
-                              trackIDs:
-                                  project.song.trackOrder.nonObservableInner,
-                              clipIDs:
-                                  getArrangement()?.clips.keys.toList() ?? [],
-                              arrangementID: project.song.activeArrangementID!,
-                              verticalScrollPosition:
-                                  verticalScrollPositionAnimation.value,
-                            ),
-                            children: getClipWidgets(),
-                          );
-                        });
+                        return ArrangerContentRenderer(
+                          timeViewStart: timeViewStartAnimation.value,
+                          timeViewEnd: timeViewEndAnimation.value,
+                          verticalScrollPosition:
+                              verticalScrollPositionAnimation.value,
+                          viewModel: viewModel,
+                        );
                       },
                     );
                   },
