@@ -33,9 +33,9 @@ const clipTitleHeight = 16;
 /// Paints a clip onto the given canvas with the given position and size.
 void paintClip({
   required Canvas canvas,
-  required Size size,
+  required Size canvasSize,
   required PatternModel pattern,
-  required ClipModel clip,
+  ClipModel? clip,
   required double x,
   required double y,
   required double width,
@@ -108,7 +108,7 @@ void paintClip({
     // Fallback if the image hasn't been generated yet
     drawPatternTitle(
       canvas: canvas,
-      size: size,
+      size: canvasSize,
       clipRect: rect,
       pattern: pattern,
       x: x,
@@ -176,11 +176,12 @@ void paintClip({
       // translate this to the correct position and scale it to convert it into
       // pixel coordnates.
 
-      final clipScaleFactor =
-          (width - 1) / clip.getWidth(pattern.project).toDouble();
+      final clipScaleFactor = (width - 1) /
+          (clip?.getWidth(pattern.project).toDouble() ??
+              pattern.getWidth().toDouble());
 
       canvas.translate(
-          -(clip.timeView?.start.toDouble() ?? 0.0) * clipScaleFactor, 0);
+          -(clip?.timeView?.start.toDouble() ?? 0.0) * clipScaleFactor, 0);
       canvas.translate(x + 1, y + 1 + clipTitleHeight + notePadding);
       canvas.scale(
         clipScaleFactor,

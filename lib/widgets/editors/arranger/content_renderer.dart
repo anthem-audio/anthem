@@ -57,7 +57,7 @@ class ArrangerContentRenderer extends StatelessObserverWidget {
     if (arrangement == null) return const SizedBox();
 
     return CustomPaintObserver(
-      painterBuilder: () => ClipPainter(
+      painterBuilder: () => ArrangerContentPainter(
         timeViewStart: timeViewStart,
         timeViewEnd: timeViewEnd,
         verticalScrollPosition: verticalScrollPosition,
@@ -71,7 +71,7 @@ class ArrangerContentRenderer extends StatelessObserverWidget {
   }
 }
 
-class ClipPainter extends CustomPainterObserver {
+class ArrangerContentPainter extends CustomPainterObserver {
   final double timeViewStart;
   final double timeViewEnd;
   final double verticalScrollPosition;
@@ -80,7 +80,7 @@ class ClipPainter extends CustomPainterObserver {
   final ArrangerViewModel viewModel;
   final double devicePixelRatio;
 
-  ClipPainter({
+  ArrangerContentPainter({
     required this.timeViewStart,
     required this.timeViewEnd,
     required this.verticalScrollPosition,
@@ -89,6 +89,18 @@ class ClipPainter extends CustomPainterObserver {
     required this.viewModel,
     required this.devicePixelRatio,
   });
+
+  @override
+  bool shouldRepaint(ArrangerContentPainter oldDelegate) {
+    return timeViewStart != oldDelegate.timeViewStart ||
+        timeViewEnd != oldDelegate.timeViewEnd ||
+        verticalScrollPosition != oldDelegate.verticalScrollPosition ||
+        project != oldDelegate.project ||
+        arrangement != oldDelegate.arrangement ||
+        viewModel != oldDelegate.viewModel ||
+        devicePixelRatio != oldDelegate.devicePixelRatio ||
+        super.shouldRepaint(oldDelegate);
+  }
 
   @override
   void observablePaint(Canvas canvas, Size size) {
@@ -138,7 +150,7 @@ class ClipPainter extends CustomPainterObserver {
 
       paintClip(
         canvas: canvas,
-        size: size,
+        canvasSize: size,
         pattern: pattern,
         clip: clip,
         x: x,
