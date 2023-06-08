@@ -70,63 +70,34 @@ class _ClipNotesPainter extends CustomPainterObserver {
 
   @override
   void observablePaint(Canvas canvas, Size size) {
-    final noteLists = generatorID == null
-        ? pattern.notes.values.toList()
-        : [pattern.notes[generatorID!]!];
+    pattern.clipNotesUpdateSignal;
 
-    if (noteLists.isEmpty) return;
+    final cacheItems = generatorID != null
+        ? [pattern.clipNotesRenderCache[generatorID]!]
+        : pattern.clipNotesRenderCache.values;
 
-    int? nullableBottom;
-    int? nullableTop;
+    canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
-    for (var notes in noteLists) {
-      for (var note in notes) {
-        if (nullableBottom == null || nullableTop == null) {
-          nullableBottom = note.key;
-          nullableTop = note.key;
-          continue;
-        }
+    for (final cacheItem in cacheItems) {
+      if (cacheItem.renderedVertices == null) continue;
 
-        if (note.key < nullableBottom) nullableBottom = note.key;
-        if (note.key > nullableTop) nullableTop = note.key;
-      }
-    }
+      canvas.save();
 
-    if (nullableBottom == null || nullableTop == null) return;
+      final dist = cacheItem.highestNote - cacheItem.lowestNote;
+      final notePadding = size.height * (0.4 - dist * 0.05).clamp(0.1, 0.4);
 
-    int bottom = nullableBottom;
-    int top = nullableTop;
+      final clipScaleFactor = 1 / ticksPerPixel;
 
-    bottom--;
+      canvas.translate(-timeViewStart * clipScaleFactor, notePadding);
+      canvas.scale(clipScaleFactor, size.height - notePadding * 2);
 
-    if (top - bottom < 12) {
-      final center = ((top - bottom) / 2) + bottom;
-      top = (center + 6).ceil();
-      bottom = (center - 6).floor();
-    }
+      canvas.drawVertices(
+        cacheItem.renderedVertices!,
+        BlendMode.srcOver,
+        Paint()..color = color,
+      );
 
-    final keyHeight = top - bottom;
-    final yPixelsPerKey = size.height / keyHeight;
-
-    for (final noteList in noteLists) {
-      for (final note in noteList) {
-        final left = ((note.offset - timeViewStart) / ticksPerPixel);
-        final top =
-            (size.height - (note.key - bottom) * yPixelsPerKey).floorToDouble();
-        final width = (note.length / ticksPerPixel);
-        final height = (yPixelsPerKey).ceilToDouble();
-
-        final topLeft =
-            Offset(left.clamp(0, size.width), top.clamp(0, size.height));
-        final bottomRight = Offset((left + width).clamp(0, size.width),
-            (top + height).clamp(0, size.height));
-
-        final noteSize = bottomRight - topLeft;
-        if (noteSize.dx == 0 || noteSize.dy == 0) continue;
-
-        canvas.drawRect(
-            Rect.fromPoints(topLeft, bottomRight), Paint()..color = color);
-      }
+      canvas.restore();
     }
   }
 
