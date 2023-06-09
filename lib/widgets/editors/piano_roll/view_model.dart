@@ -72,6 +72,9 @@ abstract class _PianoRollViewModel with Store {
   ID? pressedNote;
 
   @observable
+  ID? hoveredNote;
+
+  @observable
   ActiveNoteAttribute activeNoteAttribute = ActiveNoteAttribute.velocity;
 
   @observable

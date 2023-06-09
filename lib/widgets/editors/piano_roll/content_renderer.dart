@@ -121,7 +121,7 @@ class PianoRollPainter extends CustomPainterObserver {
 
       final isPressed = viewModel.pressedNote == note.id;
       final isSelected = viewModel.selectedNotes.contains(note.id);
-      // final isHovered = false;
+      final isHovered = viewModel.hoveredNote == note.id;
 
       var saturation = isPressed
           ? 0.6
@@ -135,10 +135,10 @@ class PianoRollPainter extends CustomPainterObserver {
               ? 0.37
               : 0.31;
 
-      // if (isHovered && !isPressed) {
-      //   saturation -= 0.06;
-      //   lightness += 0.04;
-      // }
+      if (isHovered && !isPressed) {
+        saturation -= 0.06;
+        lightness += 0.04;
+      }
 
       final color = HSLColor.fromAHSL(1, 166, saturation, lightness).toColor();
       final borderColor = const HSLColor.fromAHSL(1, 166, 0.35, 0.45).toColor();
