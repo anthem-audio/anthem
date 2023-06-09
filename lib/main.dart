@@ -32,6 +32,8 @@ import 'widgets/main_window/main_window.dart';
 
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 
+GlobalKey mainWindowKey = GlobalKey();
+
 void main() async {
   final store = AnthemStore.instance;
 
@@ -104,7 +106,7 @@ class MyApp extends StatelessWidget {
                         Container(
                           color: anthem_theme.Theme.panel.border,
                         ),
-                        const MainWindow(),
+                        MainWindow(key: mainWindowKey),
                       ],
                     ),
                   ),

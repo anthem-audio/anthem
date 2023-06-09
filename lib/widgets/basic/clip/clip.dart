@@ -18,19 +18,14 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/arrangement/clip.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
-import 'package:anthem/widgets/basic/clip/clip_notes.dart';
-import 'package:anthem/widgets/editors/arranger/event_listener.dart';
+import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
+import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
-
-/// Size of the resize handles, in pixels.
-const clipResizeHandleWidth = 10.0;
-
-/// How far over the clip the resize handle extends, in pixels.
-const clipResizeHandleOvershoot = 2.0;
 
 class Clip extends StatelessWidget {
   final ID? clipID;
@@ -38,7 +33,6 @@ class Clip extends StatelessWidget {
   final ID? arrangementID;
   final double ticksPerPixel;
   final bool selected;
-  final ClipWidgetEventData? eventData;
   final bool hasResizeHandles;
   final bool pressed;
 
@@ -49,7 +43,6 @@ class Clip extends StatelessWidget {
     required this.arrangementID,
     required this.ticksPerPixel,
     this.selected = false,
-    this.eventData,
     this.hasResizeHandles = true,
     this.pressed = false,
   })  : patternID = null,
@@ -65,12 +58,7 @@ class Clip extends StatelessWidget {
   })  : selected = false,
         clipID = null,
         arrangementID = null,
-        eventData = null,
         super(key: key);
-
-  void _onPointerEvent(PointerEvent e) {
-    eventData?.clipsUnderCursor.add(clipID!);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,122 +68,47 @@ class Clip extends StatelessWidget {
     final patternModel =
         projectModel.song.patterns[clipModel?.patternID ?? patternID!]!;
 
-    final overshoot = hasResizeHandles ? clipResizeHandleOvershoot : 0.0;
-
-    return Listener(
-      onPointerDown: _onPointerEvent,
-      onPointerMove: _onPointerEvent,
-      onPointerUp: _onPointerEvent,
-      onPointerCancel: _onPointerEvent,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Positioned.fill(
-            left: overshoot,
-            right: overshoot,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Observer(builder: (context) {
-                  return Container(
-                    height: 15,
-                    decoration: BoxDecoration(
-                      color: getBaseColor(
-                        color: patternModel.color,
-                        selected: selected,
-                        pressed: pressed,
-                      ),
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(3),
-                      ),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(
-                      patternModel.name,
-                      style: TextStyle(
-                        color: getTextColor(
-                          color: patternModel.color,
-                          selected: selected,
-                          pressed: pressed,
-                        ),
-                        fontSize: 10,
-                      ),
-                    ),
-                  );
-                }),
-                Observer(builder: (context) {
-                  return Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: getBaseColor(
-                          color: patternModel.color,
-                          selected: selected,
-                          pressed: pressed,
-                        ).withAlpha(0x66),
-                        borderRadius: const BorderRadius.vertical(
-                          bottom: Radius.circular(3),
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: ClipNotes(
-                          color: getContentColor(
-                            color: patternModel.color,
-                            selected: selected,
-                            pressed: pressed,
-                          ),
-                          timeViewStart:
-                              clipModel?.timeView?.start.toDouble() ?? 0,
-                          ticksPerPixel: ticksPerPixel,
-                          pattern: patternModel,
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ],
-            ),
-          ),
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            child: Listener(
-              onPointerDown: (e) {
-                if (eventData != null) {
-                  eventData!.isResizeStartEvent = true;
-                }
-              },
-              child: const SizedBox(
-                width: clipResizeHandleWidth,
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.resizeLeftRight,
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            right: 0,
-            top: 0,
-            bottom: 0,
-            child: Listener(
-              onPointerDown: (e) {
-                if (eventData != null) {
-                  eventData!.isResizeEndEvent = true;
-                }
-              },
-              child: const SizedBox(
-                width: clipResizeHandleWidth,
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.resizeLeftRight,
-                ),
-              ),
-            ),
-          ),
-        ],
+    return CustomPaintObserver(
+      painterBuilder: () => ClipPainter(
+        devicePixelRatio: View.of(context).devicePixelRatio,
+        pattern: patternModel,
       ),
     );
   }
+}
+
+class ClipPainter extends CustomPainterObserver {
+  final double devicePixelRatio;
+  final PatternModel pattern;
+  final ClipModel? clip;
+
+  ClipPainter({
+    required this.devicePixelRatio,
+    required this.pattern,
+    this.clip,
+  });
+
+  @override
+  void observablePaint(Canvas canvas, Size size) {
+    paintClip(
+      canvas: canvas,
+      canvasSize: size,
+      pattern: pattern,
+      x: 0,
+      y: 0,
+      width: size.width,
+      height: size.height,
+      selected: false,
+      pressed: false,
+      devicePixelRatio: devicePixelRatio,
+    );
+  }
+
+  @override
+  bool shouldRepaint(ClipPainter oldDelegate) => false;
+
+  @override
+  bool shouldRebuildSemantics(ClipPainter oldDelegate) => false;
 }
 
 Color getBaseColor({
