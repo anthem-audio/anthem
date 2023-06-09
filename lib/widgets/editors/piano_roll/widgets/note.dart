@@ -19,9 +19,7 @@
 
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
-import 'package:anthem/widgets/editors/piano_roll/event_listener.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
-import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -37,15 +35,11 @@ class NoteWidget extends StatefulObserverWidget {
     required this.note,
     required this.isSelected,
     required this.isPressed,
-    required this.eventData,
   }) : super(key: key);
 
   final NoteModel note;
   final bool isSelected;
   final bool isPressed;
-
-  /// See [PianoRollEventListener] for details on what this is for.
-  final NoteWidgetEventData eventData;
 
   @override
   State<NoteWidget> createState() => _NoteWidgetState();
@@ -53,10 +47,6 @@ class NoteWidget extends StatefulObserverWidget {
 
 class _NoteWidgetState extends State<NoteWidget> {
   bool isHovered = false;
-
-  void _onPointerEvent(PointerEvent e) {
-    widget.eventData.notesUnderCursor.add(widget.note.id);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -106,62 +96,29 @@ class _NoteWidgetState extends State<NoteWidget> {
           )
         : null;
 
-    return Listener(
-      onPointerDown: _onPointerEvent,
-      onPointerMove: _onPointerEvent,
-      onPointerUp: _onPointerEvent,
-      onPointerCancel: _onPointerEvent,
-      child: MouseRegion(
-        onEnter: (e) {
-          setState(() {
-            isHovered = true;
-          });
-        },
-        onExit: (e) {
-          setState(() {
-            isHovered = false;
-          });
-        },
-        child: Stack(
-          clipBehavior: Clip.none,
-          fit: StackFit.expand,
-          children: [
-            Positioned.fill(
-              right: noteResizeHandleOvershoot,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: const BorderRadius.all(Radius.circular(1)),
-                  border: Border.all(
-                    color: widget.isSelected
-                        ? const HSLColor.fromAHSL(1, 166, 0.35, 0.45).toColor()
-                        : const Color(0x00000000),
-                    width: 1,
-                  ),
-                ),
-                child: textOverlay,
-              ),
-            ),
-            Positioned(
-              top: 0,
-              bottom: 0,
-              right: 0,
-              child: SizedBox(
-                width: noteResizeHandleWidth,
-                child: Listener(
-                  onPointerDown: (e) {
-                    widget.eventData.isResizeEvent = true;
-                  },
-                  child: viewModel.tool == EditorTool.pencil
-                      ? const MouseRegion(
-                          cursor: SystemMouseCursors.resizeLeftRight,
-                        )
-                      : null,
-                ),
-              ),
-            ),
-          ],
+    return MouseRegion(
+      onEnter: (e) {
+        setState(() {
+          isHovered = true;
+        });
+      },
+      onExit: (e) {
+        setState(() {
+          isHovered = false;
+        });
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: const BorderRadius.all(Radius.circular(1)),
+          border: Border.all(
+            color: widget.isSelected
+                ? const HSLColor.fromAHSL(1, 166, 0.35, 0.45).toColor()
+                : const Color(0x00000000),
+            width: 1,
+          ),
         ),
+        child: textOverlay,
       ),
     );
   }

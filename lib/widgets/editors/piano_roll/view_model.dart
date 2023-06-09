@@ -18,9 +18,12 @@
 */
 
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:collection/collection.dart';
 import 'package:mobx/mobx.dart';
 
 part 'view_model.g.dart';
@@ -77,9 +80,31 @@ abstract class _PianoRollViewModel with Store {
   @observable
   bool useNewRenderer = false;
 
+  final visibleNotes = CanvasAnnotationSet<({ID id})>();
+  final visibleResizeAreas = CanvasAnnotationSet<({ID id})>();
+
   // These don't need to be observable, since they're just used during event
   // handling.
   Time cursorNoteLength = 96;
   int cursorNoteVelocity = 128 * 3 ~/ 4;
   int cursorNotePan = 0;
+
+  /// Calculates the note and resize handle under the cursor, if there is one.
+  ({
+    CanvasAnnotation<({ID id})>? note,
+    CanvasAnnotation<({ID id})>? resizeHandle,
+  }) getContentUnderCursor(Offset pos) {
+    final noteUnderCursor = visibleNotes.hitTest(pos);
+    final resizeHandleUnderCursor = visibleResizeAreas
+        .hitTestAll(pos)
+        // We only report a resize handle if the cursor is also over the
+        // associated note, or if the cursor is over no note. This makes the
+        // behavior for note resizing a bit more predictable, as it then doesn't
+        // depend on the Z-ordering of notes for notes that are right next to
+        // each other.
+        .firstWhereOrNull((element) =>
+            noteUnderCursor == null ||
+            element.metadata.id == noteUnderCursor.metadata.id);
+    return (note: noteUnderCursor, resizeHandle: resizeHandleUnderCursor);
+  }
 }

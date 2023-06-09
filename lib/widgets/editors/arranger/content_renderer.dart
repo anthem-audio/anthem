@@ -29,10 +29,14 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 /// Size of the resize handles, in pixels.
-const clipResizeHandleWidth = 12.0;
+const _clipResizeHandleWidth = 12.0;
 
 /// How far over the clip the resize handle extends, in pixels.
-const clipResizeHandleOvershoot = 2.0;
+const _clipResizeHandleOvershoot = 2.0;
+
+/// There will be at least this much clickable area on a clip. Resize handles
+/// will shrink to make room for this if necessary.
+const _minimumClickableClipArea = 30;
 
 class ArrangerContentRenderer extends StatelessObserverWidget {
   final double timeViewStart;
@@ -167,16 +171,14 @@ class ArrangerContentPainter extends CustomPainterObserver {
         metadata: (id: clip.id),
       );
 
-      const minimumClickableClipArea = 30;
-
       final startResizeHandleRect = Rect.fromLTWH(
-        x - clipResizeHandleOvershoot,
+        x - _clipResizeHandleOvershoot,
         y,
-        clipResizeHandleWidth
+        _clipResizeHandleWidth
             // Ensures there's a bit of the clip still showing
             -
-            (minimumClickableClipArea - width)
-                .clamp(0, (clipResizeHandleWidth - clipResizeHandleOvershoot)),
+            (_minimumClickableClipArea - width).clamp(
+                0, (_clipResizeHandleWidth - _clipResizeHandleOvershoot)),
         trackHeight - 1,
       );
       viewModel.visibleResizeAreas.add(
@@ -187,12 +189,12 @@ class ArrangerContentPainter extends CustomPainterObserver {
       // Notice this is fromLTRB. We generally use fromLTWH elsewhere.
       final endResizeHandleRect = Rect.fromLTRB(
         x +
-            (width - (clipResizeHandleWidth - clipResizeHandleOvershoot))
+            (width - (_clipResizeHandleWidth - _clipResizeHandleOvershoot))
                 // Ensures there's a bit of the clip still showing
-                .clamp(minimumClickableClipArea, double.infinity)
+                .clamp(_minimumClickableClipArea, double.infinity)
                 .clamp(0, width),
         y,
-        x + width + clipResizeHandleOvershoot,
+        x + width + _clipResizeHandleOvershoot,
         y + trackHeight - 1,
       );
       viewModel.visibleResizeAreas.add(
