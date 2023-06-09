@@ -337,9 +337,6 @@ class _PianoRollContentState extends State<_PianoRollContent>
     super.dispose();
   }
 
-  /// See [PianoRollEventListener] for details on what this is for.
-  final noteWidgetEventData = NoteWidgetEventData();
-
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
@@ -436,7 +433,6 @@ class _PianoRollContentState extends State<_PianoRollContent>
       child: LayoutBuilder(builder: (context, constraints) {
         _pianoRollCanvasSize = constraints.biggest;
         return PianoRollEventListener(
-          noteWidgetEventData: noteWidgetEventData,
           child: ClipRect(
             child: Stack(
               fit: StackFit.expand,
@@ -485,7 +481,6 @@ class _PianoRollContentState extends State<_PianoRollContent>
                                     isSelected: viewModel.selectedNotes
                                         .contains(note.id),
                                     isPressed: viewModel.pressedNote == note.id,
-                                    eventData: noteWidgetEventData,
                                   ),
                                 ),
                               )

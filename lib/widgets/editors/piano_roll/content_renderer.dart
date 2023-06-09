@@ -25,6 +25,16 @@ import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
+/// Size of the resize handles, in pixels.
+const _noteResizeHandleWidth = 12.0;
+
+/// How far over the note the resize handle extends, in pixels.
+const _noteResizeHandleOvershoot = 2.0;
+
+/// There will be at least this much clickable area on a note. Resize handles
+/// will shrink to make room for this if necessary.
+const _minimumClickableNoteArea = 30;
+
 class PianoRollContentRenderer extends StatelessWidget {
   final double timeViewStart;
   final double timeViewEnd;
@@ -71,6 +81,9 @@ class PianoRollPainter extends CustomPainterObserver {
 
   @override
   void observablePaint(Canvas canvas, Size size) {
+    viewModel.visibleNotes.clear();
+    viewModel.visibleResizeAreas.clear();
+
     final pattern = project.song.patterns[project.song.activePatternID];
     if (pattern == null) return;
 
@@ -80,6 +93,32 @@ class PianoRollPainter extends CustomPainterObserver {
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     for (final note in notes) {
+      final keyHeight = viewModel.keyHeight;
+      final x = timeToPixels(
+            timeViewStart: timeViewStart,
+            timeViewEnd: timeViewEnd,
+            viewPixelWidth: size.width,
+            time: note.offset.toDouble(),
+          ) +
+          1;
+      final y = keyValueToPixels(
+            keyValue: note.key.toDouble() + 1,
+            keyValueAtTop: keyValueAtTop,
+            keyHeight: keyHeight,
+          ) +
+          1;
+      final width = timeToPixels(
+            timeViewStart: timeViewStart,
+            timeViewEnd: timeViewEnd,
+            viewPixelWidth: size.width,
+            time: (note.offset + note.length).toDouble(),
+          ) -
+          x;
+      final height = keyHeight - 1;
+
+      if (x > size.width || x + width < 0) continue;
+      if (y > size.height || y + height < 0) continue;
+
       final isPressed = viewModel.pressedNote == note.id;
       final isSelected = viewModel.selectedNotes.contains(note.id);
       // final isHovered = false;
@@ -102,40 +141,13 @@ class PianoRollPainter extends CustomPainterObserver {
       // }
 
       final color = HSLColor.fromAHSL(1, 166, saturation, lightness).toColor();
-      final borderColor = isSelected
-          ? const HSLColor.fromAHSL(1, 166, 0.35, 0.45).toColor()
-          : const Color(0x00000000);
+      final borderColor = const HSLColor.fromAHSL(1, 166, 0.35, 0.45).toColor();
       // final textColor = HSLColor.fromAHSL(
       //   1,
       //   166,
       //   (saturation * 0.6).clamp(0, 1),
       //   (lightness * 2).clamp(0, 1),
       // ).toColor();
-
-      final x = timeToPixels(
-            timeViewStart: timeViewStart,
-            timeViewEnd: timeViewEnd,
-            viewPixelWidth: size.width,
-            time: note.offset.toDouble(),
-          ) +
-          1;
-      final y = keyValueToPixels(
-            keyValue: note.key.toDouble() + 1,
-            keyValueAtTop: keyValueAtTop,
-            keyHeight: viewModel.keyHeight,
-          ) +
-          1;
-      final width = timeToPixels(
-            timeViewStart: timeViewStart,
-            timeViewEnd: timeViewEnd,
-            viewPixelWidth: size.width,
-            time: (note.offset + note.length).toDouble(),
-          ) -
-          x;
-      final height = viewModel.keyHeight - 1;
-
-      if (x > size.width || x + width < 0) continue;
-      if (y > size.height || y + height < 0) continue;
 
       final rect = RRect.fromRectAndRadius(
         Rect.fromLTWH(x, y, width, height),
@@ -153,17 +165,47 @@ class PianoRollPainter extends CustomPainterObserver {
         rect,
         Paint()..color = color,
       );
-      canvas.drawRRect(
-        borderRect,
-        Paint()
-          ..color = borderColor
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1,
+
+      if (isSelected) {
+        canvas.drawRRect(
+          borderRect,
+          Paint()
+            ..color = borderColor
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1,
+        );
+      }
+
+      viewModel.visibleNotes.add(
+        rect: rect.outerRect,
+        metadata: (id: note.id),
+      );
+
+      // Notice this is fromLTRB. We generally use fromLTWH elsewhere.
+      final endResizeHandleRect = Rect.fromLTRB(
+        x +
+            (width - (_noteResizeHandleWidth - _noteResizeHandleOvershoot))
+                // Ensures there's a bit of the note still showing
+                .clamp(_minimumClickableNoteArea, double.infinity)
+                .clamp(0, width),
+        y,
+        x + width + _noteResizeHandleOvershoot,
+        y + keyHeight - 1,
+      );
+
+      viewModel.visibleResizeAreas.add(
+        rect: endResizeHandleRect,
+        metadata: (id: note.id),
       );
     }
   }
 
   @override
   bool shouldRepaint(PianoRollPainter oldDelegate) =>
+      timeViewStart != oldDelegate.timeViewStart ||
+      timeViewEnd != oldDelegate.timeViewEnd ||
+      keyValueAtTop != oldDelegate.keyValueAtTop ||
+      viewModel != oldDelegate.viewModel ||
+      project != oldDelegate.project ||
       super.shouldRepaint(oldDelegate);
 }

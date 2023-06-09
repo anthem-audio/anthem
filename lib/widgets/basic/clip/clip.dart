@@ -105,10 +105,11 @@ class ClipPainter extends CustomPainterObserver {
   }
 
   @override
-  bool shouldRepaint(ClipPainter oldDelegate) => false;
-
-  @override
-  bool shouldRebuildSemantics(ClipPainter oldDelegate) => false;
+  bool shouldRepaint(ClipPainter oldDelegate) =>
+      devicePixelRatio != oldDelegate.devicePixelRatio ||
+      pattern != oldDelegate.pattern ||
+      clip != oldDelegate.clip ||
+      super.shouldRepaint(oldDelegate);
 }
 
 Color getBaseColor({
