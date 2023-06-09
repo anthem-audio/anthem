@@ -17,12 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/scroll_manager.dart';
-import 'package:collection/collection.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -34,12 +32,10 @@ import 'helpers.dart';
 
 class ArrangerEventListener extends StatefulWidget {
   final Widget? child;
-  final ClipWidgetEventData eventData;
 
   const ArrangerEventListener({
     Key? key,
     this.child,
-    required this.eventData,
   }) : super(key: key);
 
   @override
@@ -79,24 +75,24 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
           },
           child: Listener(
             onPointerDown: (event) {
-              controller.pointerDown(convertPointerEvent(
-                  event, boxConstraints.biggest, widget.eventData));
-              widget.eventData.reset();
+              controller.pointerDown(
+                convertPointerEvent(event, boxConstraints.biggest),
+              );
             },
             onPointerMove: (event) {
-              controller.pointerMove(convertPointerEvent(
-                  event, boxConstraints.biggest, widget.eventData));
-              widget.eventData.reset();
+              controller.pointerMove(
+                convertPointerEvent(event, boxConstraints.biggest),
+              );
             },
             onPointerUp: (event) {
-              controller.pointerUp(convertPointerEvent(
-                  event, boxConstraints.biggest, widget.eventData));
-              widget.eventData.reset();
+              controller.pointerUp(
+                convertPointerEvent(event, boxConstraints.biggest),
+              );
             },
             onPointerCancel: (event) {
-              controller.pointerUp(convertPointerEvent(
-                  event, boxConstraints.biggest, widget.eventData));
-              widget.eventData.reset();
+              controller.pointerUp(
+                convertPointerEvent(event, boxConstraints.biggest),
+              );
             },
             child: widget.child,
           ),
@@ -108,7 +104,6 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
   ArrangerPointerEvent convertPointerEvent(
     PointerEvent event,
     Size viewSize,
-    ClipWidgetEventData eventData,
   ) {
     final viewModel = Provider.of<ArrangerViewModel>(context, listen: false);
     final project = Provider.of<ProjectModel>(context, listen: false);
@@ -130,43 +125,21 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
       scrollPosition: viewModel.verticalScrollPosition,
     );
 
+    final (clip: clipUnderCursor, resizeHandle: resizeHandleUnderCursor) =
+        viewModel.getContentUnderCursor(event.localPosition);
+
     return ArrangerPointerEvent(
       offset: offset,
       track: track,
       pointerEvent: event,
       arrangerSize: viewSize,
       keyboardModifiers: keyboardModifiers,
-      clipUnderCursor: eventData.clipsUnderCursor.firstOrNull,
-      isResizeFromStart: eventData.isResizeStartEvent,
-      isResizeFromEnd: eventData.isResizeEndEvent,
+      clipUnderCursor:
+          clipUnderCursor?.metadata.id ?? resizeHandleUnderCursor?.metadata.id,
+      isResizeFromStart:
+          resizeHandleUnderCursor?.metadata.type == ResizeAreaType.start,
+      isResizeFromEnd:
+          resizeHandleUnderCursor?.metadata.type == ResizeAreaType.end,
     );
-  }
-}
-
-/// A single instance of this class is handed to every clip in the arranger.
-/// The fields here are used during event handling.
-class ClipWidgetEventData {
-  /// Flutter sends pointer events to the innermost [Listener] first, and then
-  /// moves up the tree. We use this fact to our advantage here; this list is
-  /// passed to all clip widgets, and they have listeners that add their clip
-  /// IDs to this list. It is the responsibility of the
-  /// [PianoRollEventListener] to clear this list at the end of each event
-  /// handler.
-  ///
-  /// The result is that, during event handling, this list contains a list of
-  /// clip IDs for clips that are currently under the pointer.
-  List<ID> clipsUnderCursor = [];
-
-  /// True if the cursor is over the start resize handle
-  bool isResizeStartEvent = false;
-
-  /// True if the cursor is over the end resize handle
-  bool isResizeEndEvent = false;
-
-  /// Resets this class to its original state.
-  void reset() {
-    clipsUnderCursor.clear();
-    isResizeStartEvent = false;
-    isResizeEndEvent = false;
   }
 }

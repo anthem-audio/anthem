@@ -54,7 +54,7 @@ jobs:
 
       # Lint Flutter project
       - name: Lint Flutter code
-        run: dart analyze
+        run: dart analyze --fatal-infos
       
       - name: Test Flutter code
         run: flutter test .
@@ -114,7 +114,7 @@ jobs:
 
       # Lint Flutter project
       - name: Lint Flutter code
-        run: dart analyze
+        run: dart analyze --fatal-infos
       
       - name: Test Flutter code
         run: flutter test .

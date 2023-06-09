@@ -18,17 +18,22 @@
 */
 
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
+import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:collection/collection.dart';
 import 'package:mobx/mobx.dart';
 
 part 'view_model.g.dart';
 
 // ignore: library_private_types_in_public_api
 class ArrangerViewModel = _ArrangerViewModel with _$ArrangerViewModel;
+
+enum ResizeAreaType { start, end }
 
 abstract class _ArrangerViewModel with Store {
   @observable
@@ -66,6 +71,10 @@ abstract class _ArrangerViewModel with Store {
   @observable
   ID? pressedClip;
 
+  final visibleClips = CanvasAnnotationSet<({ID id})>();
+  final visibleResizeAreas =
+      CanvasAnnotationSet<({ID id, ResizeAreaType type})>();
+
   _ArrangerViewModel({
     required this.baseTrackHeight,
     required this.trackHeightModifiers,
@@ -76,4 +85,23 @@ abstract class _ArrangerViewModel with Store {
   @computed
   double get scrollAreaHeight =>
       getScrollAreaHeight(baseTrackHeight, trackHeightModifiers);
+
+  /// Calculates the clip and resize handle under the cursor, if there is one.
+  ({
+    CanvasAnnotation<({ID id})>? clip,
+    CanvasAnnotation<({ID id, ResizeAreaType type})>? resizeHandle,
+  }) getContentUnderCursor(Offset pos) {
+    final clipUnderCursor = visibleClips.hitTest(pos);
+    final resizeHandleUnderCursor = visibleResizeAreas
+        .hitTestAll(pos)
+        // We only report a resize handle if the cursor is also over the
+        // associated clip, or if the cursor is over no clip. This makes the
+        // behavior for clip resizing a bit more predictable, as it then doesn't
+        // depend on the Z-ordering of clips for clips that are right next to
+        // each other.
+        .firstWhereOrNull((element) =>
+            clipUnderCursor == null ||
+            element.metadata.id == clipUnderCursor.metadata.id);
+    return (clip: clipUnderCursor, resizeHandle: resizeHandleUnderCursor);
+  }
 }

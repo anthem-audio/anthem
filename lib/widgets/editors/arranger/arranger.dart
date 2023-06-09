@@ -21,7 +21,6 @@ import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
-import 'package:anthem/widgets/basic/clip/clip.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/icon.dart';
@@ -30,6 +29,7 @@ import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
+import 'package:anthem/widgets/editors/arranger/content_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/event_listener.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/widgets/track_header.dart';
@@ -44,8 +44,6 @@ import 'package:provider/provider.dart';
 import '../shared/helpers/time_helpers.dart';
 import 'widgets/grid.dart';
 import 'view_model.dart';
-import './widgets/clip_layout_delegate.dart';
-import './widgets/clip_sizer.dart';
 import 'helpers.dart';
 import 'widgets/pattern_picker.dart';
 
@@ -411,15 +409,14 @@ class _ArrangerContentState extends State<_ArrangerContent>
 
   mobx.ReactionDisposer? verticalScrollPosTweenUpdaterSub;
 
-  /// See [PianoRollEventListener] for details on what this is for.
-  final clipWidgetEventData = ClipWidgetEventData();
-
   @override
   void dispose() {
     _timeViewAnimationController.dispose();
     verticalScrollPosTweenUpdaterSub?.call();
     super.dispose();
   }
+
+  bool useNewArrangerRenderer = true;
 
   @override
   Widget build(BuildContext context) {
@@ -522,7 +519,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
                           _verticalScrollPositionAnimation,
                       verticalScrollPositionAnimationController:
                           _verticalScrollPositionAnimationController,
-                      clipWidgetEventData: clipWidgetEventData,
+                      useNewArrangerRenderer: useNewArrangerRenderer,
                     ),
                   ),
                 ],
@@ -545,7 +542,7 @@ class _ArrangerCanvas extends StatelessWidget {
   final Animation<double> verticalScrollPositionAnimation;
   final AnimationController verticalScrollPositionAnimationController;
 
-  final ClipWidgetEventData clipWidgetEventData;
+  final bool useNewArrangerRenderer;
 
   const _ArrangerCanvas({
     Key? key,
@@ -554,7 +551,7 @@ class _ArrangerCanvas extends StatelessWidget {
     required this.timeViewAnimationController,
     required this.verticalScrollPositionAnimation,
     required this.verticalScrollPositionAnimationController,
-    required this.clipWidgetEventData,
+    this.useNewArrangerRenderer = false,
   }) : super(key: key);
 
   @override
@@ -562,189 +559,169 @@ class _ArrangerCanvas extends StatelessWidget {
     final project = Provider.of<ProjectModel>(context);
     final viewModel = Provider.of<ArrangerViewModel>(context);
 
-    return ClipRect(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final grid = Positioned.fill(
-            child: AnimatedBuilder(
-              animation: verticalScrollPositionAnimationController,
-              builder: (context, child) {
-                return AnimatedBuilder(
-                  animation: timeViewAnimationController,
-                  builder: (context, child) {
-                    return CustomPaintObserver(
-                      painterBuilder: () => ArrangerBackgroundPainter(
-                        viewModel: viewModel,
-                        activeArrangement: project.song
-                            .arrangements[project.song.activeArrangementID],
-                        project: project,
-                        verticalScrollPosition:
-                            verticalScrollPositionAnimation.value,
-                        timeViewStart: timeViewStartAnimation.value,
-                        timeViewEnd: timeViewEndAnimation.value,
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          );
-
-          ArrangementModel? getArrangement() =>
-              project.song.arrangements[project.song.activeArrangementID];
-
-          List<Widget> getClipWidgets() =>
-              (getArrangement()?.clips.keys ?? []).map<Widget>(
-                (id) {
-                  return LayoutId(
-                    key: Key(id),
-                    id: id,
-                    child: AnimatedBuilder(
-                      animation: timeViewAnimationController,
-                      builder: (context, child) {
-                        return Observer(builder: (context) {
-                          return ClipSizer(
-                            clipID: id,
-                            arrangementID: project.song.activeArrangementID!,
-                            editorWidth: constraints.maxWidth,
-                            timeViewStart: timeViewStartAnimation.value,
-                            timeViewEnd: timeViewEndAnimation.value,
-                            child: Clip(
-                              clipID: id,
-                              arrangementID: project.song.activeArrangementID!,
-                              ticksPerPixel: (timeViewEndAnimation.value -
-                                      timeViewStartAnimation.value) /
-                                  constraints.maxWidth,
-                              selected: viewModel.selectedClips.contains(id),
-                              eventData: clipWidgetEventData,
-                              pressed: viewModel.pressedClip == id,
-                            ),
-                          );
-                        });
-                      },
-                    ),
-                  );
-                },
-              ).toList();
-
-          final clipsContainer = Observer(builder: (context) {
-            Widget clips() {
-              return AnimatedBuilder(
+    return _ArrangerCanvasCursor(
+      child: ClipRect(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final grid = Positioned.fill(
+              child: AnimatedBuilder(
                 animation: verticalScrollPositionAnimationController,
                 builder: (context, child) {
                   return AnimatedBuilder(
                     animation: timeViewAnimationController,
                     builder: (context, child) {
-                      return Observer(builder: (context) {
-                        // Subscribe to updates for track heights
-                        viewModel.baseTrackHeight;
-                        viewModel.trackHeightModifiers.forEach((key, value) {});
-
-                        // Subscribe to updates for clip positions
-                        final arrangement = getArrangement()!;
-                        for (final clip in arrangement.clips.values) {
-                          clip.offset;
-                          clip.trackID;
-                        }
-
-                        return CustomMultiChildLayout(
-                          delegate: ClipLayoutDelegate(
-                            baseTrackHeight: viewModel.baseTrackHeight,
-                            trackHeightModifiers:
-                                viewModel.trackHeightModifiers,
-                            timeViewStart: timeViewStartAnimation.value,
-                            timeViewEnd: timeViewEndAnimation.value,
-                            project: project,
-                            trackIDs:
-                                project.song.trackOrder.nonObservableInner,
-                            clipIDs:
-                                getArrangement()?.clips.keys.toList() ?? [],
-                            arrangementID: project.song.activeArrangementID!,
-                            verticalScrollPosition:
-                                verticalScrollPositionAnimation.value,
-                          ),
-                          children: getClipWidgets(),
-                        );
-                      });
+                      return CustomPaintObserver(
+                        painterBuilder: () => ArrangerBackgroundPainter(
+                          viewModel: viewModel,
+                          activeArrangement: project.song
+                              .arrangements[project.song.activeArrangementID],
+                          project: project,
+                          verticalScrollPosition:
+                              verticalScrollPositionAnimation.value,
+                          timeViewStart: timeViewStartAnimation.value,
+                          timeViewEnd: timeViewEndAnimation.value,
+                        ),
+                      );
                     },
                   );
                 },
-              );
-            }
-
-            return Positioned.fill(
-              child: project.song.activeArrangementID == null
-                  ? const SizedBox()
-                  : clips(),
+              ),
             );
-          });
 
-          final selectionBox = Observer(
-            builder: (context) {
-              if (viewModel.selectionBox == null) {
-                return const SizedBox();
+            final clipsContainer = Observer(builder: (context) {
+              Widget clips() {
+                return AnimatedBuilder(
+                  animation: verticalScrollPositionAnimationController,
+                  builder: (context, child) {
+                    return AnimatedBuilder(
+                      animation: timeViewAnimationController,
+                      builder: (context, child) {
+                        return ArrangerContentRenderer(
+                          timeViewStart: timeViewStartAnimation.value,
+                          timeViewEnd: timeViewEndAnimation.value,
+                          verticalScrollPosition:
+                              verticalScrollPositionAnimation.value,
+                          viewModel: viewModel,
+                        );
+                      },
+                    );
+                  },
+                );
               }
 
-              final selectionBox = viewModel.selectionBox!;
-
-              final left = timeToPixels(
-                timeViewStart: viewModel.timeView.start,
-                timeViewEnd: viewModel.timeView.end,
-                viewPixelWidth: constraints.maxWidth,
-                time: selectionBox.left,
+              return Positioned.fill(
+                child: project.song.activeArrangementID == null
+                    ? const SizedBox()
+                    : clips(),
               );
+            });
 
-              final width = timeToPixels(
-                timeViewStart: viewModel.timeView.start,
-                timeViewEnd: viewModel.timeView.end,
-                viewPixelWidth: constraints.maxWidth,
-                time: viewModel.timeView.start + selectionBox.width,
-              );
+            final selectionBox = Observer(
+              builder: (context) {
+                if (viewModel.selectionBox == null) {
+                  return const SizedBox();
+                }
 
-              final top = trackIndexToPos(
-                baseTrackHeight: viewModel.baseTrackHeight,
-                scrollPosition: viewModel.verticalScrollPosition,
-                trackHeightModifiers: viewModel.trackHeightModifiers,
-                trackOrder: project.song.trackOrder,
-                trackIndex: selectionBox.top,
-              );
+                final selectionBox = viewModel.selectionBox!;
 
-              final bottom = trackIndexToPos(
-                baseTrackHeight: viewModel.baseTrackHeight,
-                scrollPosition: viewModel.verticalScrollPosition,
-                trackHeightModifiers: viewModel.trackHeightModifiers,
-                trackOrder: project.song.trackOrder,
-                trackIndex: selectionBox.top + selectionBox.height,
-              );
+                final left = timeToPixels(
+                  timeViewStart: viewModel.timeView.start,
+                  timeViewEnd: viewModel.timeView.end,
+                  viewPixelWidth: constraints.maxWidth,
+                  time: selectionBox.left,
+                );
 
-              final borderColor =
-                  const HSLColor.fromAHSL(1, 166, 0.6, 0.35).toColor();
-              final backgroundColor = borderColor.withAlpha(100);
+                final width = timeToPixels(
+                  timeViewStart: viewModel.timeView.start,
+                  timeViewEnd: viewModel.timeView.end,
+                  viewPixelWidth: constraints.maxWidth,
+                  time: viewModel.timeView.start + selectionBox.width,
+                );
 
-              return Positioned(
-                left: left,
-                top: top,
-                child: Container(
-                  width: width,
-                  height: bottom - top,
-                  decoration: BoxDecoration(
-                    color: backgroundColor,
-                    border: Border.all(color: borderColor),
-                    borderRadius: const BorderRadius.all(Radius.circular(2)),
+                final top = trackIndexToPos(
+                  baseTrackHeight: viewModel.baseTrackHeight,
+                  scrollPosition: viewModel.verticalScrollPosition,
+                  trackHeightModifiers: viewModel.trackHeightModifiers,
+                  trackOrder: project.song.trackOrder,
+                  trackIndex: selectionBox.top,
+                );
+
+                final bottom = trackIndexToPos(
+                  baseTrackHeight: viewModel.baseTrackHeight,
+                  scrollPosition: viewModel.verticalScrollPosition,
+                  trackHeightModifiers: viewModel.trackHeightModifiers,
+                  trackOrder: project.song.trackOrder,
+                  trackIndex: selectionBox.top + selectionBox.height,
+                );
+
+                final borderColor =
+                    const HSLColor.fromAHSL(1, 166, 0.6, 0.35).toColor();
+                final backgroundColor = borderColor.withAlpha(100);
+
+                return Positioned(
+                  left: left,
+                  top: top,
+                  child: Container(
+                    width: width,
+                    height: bottom - top,
+                    decoration: BoxDecoration(
+                      color: backgroundColor,
+                      border: Border.all(color: borderColor),
+                      borderRadius: const BorderRadius.all(Radius.circular(2)),
+                    ),
                   ),
-                ),
-              );
-            },
-          );
+                );
+              },
+            );
 
-          return ArrangerEventListener(
-            eventData: clipWidgetEventData,
-            child: Stack(
-              children: [grid, clipsContainer, selectionBox],
-            ),
-          );
-        },
+            return ArrangerEventListener(
+              child: Stack(
+                children: [grid, clipsContainer, selectionBox],
+              ),
+            );
+          },
+        ),
       ),
+    );
+  }
+}
+
+/// Determines the current cursor for the arranger canvas.
+class _ArrangerCanvasCursor extends StatefulWidget {
+  final Widget? child;
+
+  const _ArrangerCanvasCursor({Key? key, this.child}) : super(key: key);
+
+  @override
+  State<_ArrangerCanvasCursor> createState() => _ArrangerCanvasCursorState();
+}
+
+class _ArrangerCanvasCursorState extends State<_ArrangerCanvasCursor> {
+  MouseCursor cursor = MouseCursor.defer;
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = Provider.of<ArrangerViewModel>(context);
+
+    return MouseRegion(
+      cursor: cursor,
+      onHover: (e) {
+        final pos = e.localPosition;
+
+        final contentUnderCursor = viewModel.getContentUnderCursor(pos);
+        final newCursor = contentUnderCursor.resizeHandle != null
+            ? SystemMouseCursors.resizeLeftRight
+            : contentUnderCursor.clip != null
+                ? SystemMouseCursors.move
+                : MouseCursor.defer;
+
+        if (cursor == newCursor) return;
+
+        setState(() {
+          cursor = newCursor;
+        });
+      },
+      child: widget.child,
     );
   }
 }
