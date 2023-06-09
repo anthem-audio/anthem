@@ -34,6 +34,7 @@ import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
+import 'package:anthem/widgets/editors/piano_roll/content_renderer.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart' as mobx;
@@ -243,6 +244,18 @@ class _PianoRollHeader extends StatelessWidget {
               ),
             );
           }),
+          const SizedBox(width: 4),
+          Observer(
+            builder: (context) {
+              return Button(
+                icon: Icons.anthem,
+                toggleState: viewModel.useNewRenderer,
+                onPress: () {
+                  viewModel.useNewRenderer = !viewModel.useNewRenderer;
+                },
+              );
+            },
+          ),
         ],
       ),
     );
@@ -443,6 +456,14 @@ class _PianoRollContentState extends State<_PianoRollContent>
                       animation: _timeViewAnimationController,
                       builder: (context, child) {
                         return Observer(builder: (context) {
+                          if (viewModel.useNewRenderer) {
+                            return PianoRollContentRenderer(
+                              timeViewStart: _timeViewStartAnimation.value,
+                              timeViewEnd: _timeViewEndAnimation.value,
+                              keyValueAtTop: _keyValueAtTopAnimation.value,
+                            );
+                          }
+
                           final notes = getPattern()
                                   ?.notes[project.activeGeneratorID]
                                   ?.toList() ??
