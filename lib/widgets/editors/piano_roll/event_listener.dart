@@ -80,7 +80,8 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
       offset: time,
       pointerEvent: e,
       pianoRollSize: contentRenderBox.size,
-      noteUnderCursor: noteUnderCursor?.metadata.id,
+      noteUnderCursor:
+          noteUnderCursor?.metadata.id ?? resizeHandleUnderCursor?.metadata.id,
       keyboardModifiers: keyboardModifiers,
       isResize: resizeHandleUnderCursor != null,
     );

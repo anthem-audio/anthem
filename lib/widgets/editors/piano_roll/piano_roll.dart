@@ -433,129 +433,132 @@ class _PianoRollContentState extends State<_PianoRollContent>
       child: LayoutBuilder(builder: (context, constraints) {
         _pianoRollCanvasSize = constraints.biggest;
         return PianoRollEventListener(
-          child: ClipRect(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                PianoRollGrid(
-                  timeViewAnimationController: _timeViewAnimationController,
-                  timeViewStartAnimation: _timeViewStartAnimation,
-                  timeViewEndAnimation: _timeViewEndAnimation,
-                  keyValueAtTopAnimationController:
-                      _keyValueAtTopAnimationController,
-                  keyValueAtTopAnimation: _keyValueAtTopAnimation,
-                ),
-                AnimatedBuilder(
-                  animation: _keyValueAtTopAnimationController,
-                  builder: (context, child) {
-                    return AnimatedBuilder(
-                      animation: _timeViewAnimationController,
-                      builder: (context, child) {
-                        return Observer(builder: (context) {
-                          if (viewModel.useNewRenderer) {
-                            return PianoRollContentRenderer(
-                              timeViewStart: _timeViewStartAnimation.value,
-                              timeViewEnd: _timeViewEndAnimation.value,
-                              keyValueAtTop: _keyValueAtTopAnimation.value,
-                            );
-                          }
+          child: _PianoRollCanvasCursor(
+            child: ClipRect(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  PianoRollGrid(
+                    timeViewAnimationController: _timeViewAnimationController,
+                    timeViewStartAnimation: _timeViewStartAnimation,
+                    timeViewEndAnimation: _timeViewEndAnimation,
+                    keyValueAtTopAnimationController:
+                        _keyValueAtTopAnimationController,
+                    keyValueAtTopAnimation: _keyValueAtTopAnimation,
+                  ),
+                  AnimatedBuilder(
+                    animation: _keyValueAtTopAnimationController,
+                    builder: (context, child) {
+                      return AnimatedBuilder(
+                        animation: _timeViewAnimationController,
+                        builder: (context, child) {
+                          return Observer(builder: (context) {
+                            if (viewModel.useNewRenderer) {
+                              return PianoRollContentRenderer(
+                                timeViewStart: _timeViewStartAnimation.value,
+                                timeViewEnd: _timeViewEndAnimation.value,
+                                keyValueAtTop: _keyValueAtTopAnimation.value,
+                              );
+                            }
 
-                          final notes = getPattern()
-                                  ?.notes[project.activeGeneratorID]
-                                  ?.toList() ??
-                              [];
+                            final notes = getPattern()
+                                    ?.notes[project.activeGeneratorID]
+                                    ?.toList() ??
+                                [];
 
-                          // Observe all note values
-                          for (var note in notes) {
-                            note.key;
-                            note.length;
-                            note.offset;
-                          }
+                            // Observe all note values
+                            for (var note in notes) {
+                              note.key;
+                              note.length;
+                              note.offset;
+                            }
 
-                          final noteWidgets = notes
-                              .map(
-                                (note) => LayoutId(
-                                  id: note.id,
-                                  child: NoteWidget(
-                                    note: note,
-                                    isSelected: viewModel.selectedNotes
-                                        .contains(note.id),
-                                    isPressed: viewModel.pressedNote == note.id,
+                            final noteWidgets = notes
+                                .map(
+                                  (note) => LayoutId(
+                                    id: note.id,
+                                    child: NoteWidget(
+                                      note: note,
+                                      isSelected: viewModel.selectedNotes
+                                          .contains(note.id),
+                                      isPressed:
+                                          viewModel.pressedNote == note.id,
+                                    ),
                                   ),
-                                ),
-                              )
-                              .toList();
+                                )
+                                .toList();
 
-                          return CustomMultiChildLayout(
-                            delegate: NoteLayoutDelegate(
-                              notes: notes,
-                              keyHeight: viewModel.keyHeight,
-                              keyValueAtTop: _keyValueAtTopAnimation.value,
-                              timeViewStart: _timeViewStartAnimation.value,
-                              timeViewEnd: _timeViewEndAnimation.value,
-                            ),
-                            children: noteWidgets,
-                          );
-                        });
-                      },
-                    );
-                  },
-                ),
-                Observer(
-                  builder: (context) {
-                    if (viewModel.selectionBox == null) {
-                      return const SizedBox();
-                    }
+                            return CustomMultiChildLayout(
+                              delegate: NoteLayoutDelegate(
+                                notes: notes,
+                                keyHeight: viewModel.keyHeight,
+                                keyValueAtTop: _keyValueAtTopAnimation.value,
+                                timeViewStart: _timeViewStartAnimation.value,
+                                timeViewEnd: _timeViewEndAnimation.value,
+                              ),
+                              children: noteWidgets,
+                            );
+                          });
+                        },
+                      );
+                    },
+                  ),
+                  Observer(
+                    builder: (context) {
+                      if (viewModel.selectionBox == null) {
+                        return const SizedBox();
+                      }
 
-                    final selectionBox = viewModel.selectionBox!;
+                      final selectionBox = viewModel.selectionBox!;
 
-                    final left = timeToPixels(
-                      timeViewStart: viewModel.timeView.start,
-                      timeViewEnd: viewModel.timeView.end,
-                      viewPixelWidth: constraints.maxWidth,
-                      time: selectionBox.left,
-                    );
+                      final left = timeToPixels(
+                        timeViewStart: viewModel.timeView.start,
+                        timeViewEnd: viewModel.timeView.end,
+                        viewPixelWidth: constraints.maxWidth,
+                        time: selectionBox.left,
+                      );
 
-                    final width = timeToPixels(
-                      timeViewStart: viewModel.timeView.start,
-                      timeViewEnd: viewModel.timeView.end,
-                      viewPixelWidth: constraints.maxWidth,
-                      time: viewModel.timeView.start + selectionBox.width,
-                    );
+                      final width = timeToPixels(
+                        timeViewStart: viewModel.timeView.start,
+                        timeViewEnd: viewModel.timeView.end,
+                        viewPixelWidth: constraints.maxWidth,
+                        time: viewModel.timeView.start + selectionBox.width,
+                      );
 
-                    final top = keyValueToPixels(
-                      keyValueAtTop: viewModel.keyValueAtTop,
-                      keyHeight: viewModel.keyHeight,
-                      keyValue: selectionBox.bottom,
-                    );
+                      final top = keyValueToPixels(
+                        keyValueAtTop: viewModel.keyValueAtTop,
+                        keyHeight: viewModel.keyHeight,
+                        keyValue: selectionBox.bottom,
+                      );
 
-                    final height = keyValueToPixels(
-                      keyValueAtTop: viewModel.keyValueAtTop,
-                      keyHeight: viewModel.keyHeight,
-                      keyValue: viewModel.keyValueAtTop - selectionBox.height,
-                    );
+                      final height = keyValueToPixels(
+                        keyValueAtTop: viewModel.keyValueAtTop,
+                        keyHeight: viewModel.keyHeight,
+                        keyValue: viewModel.keyValueAtTop - selectionBox.height,
+                      );
 
-                    final borderColor =
-                        const HSLColor.fromAHSL(1, 166, 0.6, 0.35).toColor();
-                    final backgroundColor = borderColor.withAlpha(100);
+                      final borderColor =
+                          const HSLColor.fromAHSL(1, 166, 0.6, 0.35).toColor();
+                      final backgroundColor = borderColor.withAlpha(100);
 
-                    return Positioned(
-                      left: left,
-                      top: top,
-                      child: Container(
-                        width: width,
-                        height: height,
-                        decoration: BoxDecoration(
-                          color: backgroundColor,
-                          border: Border.all(color: borderColor),
-                          borderRadius:
-                              const BorderRadius.all(Radius.circular(2)),
+                      return Positioned(
+                        left: left,
+                        top: top,
+                        child: Container(
+                          width: width,
+                          height: height,
+                          decoration: BoxDecoration(
+                            color: backgroundColor,
+                            border: Border.all(color: borderColor),
+                            borderRadius:
+                                const BorderRadius.all(Radius.circular(2)),
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              ],
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -680,6 +683,53 @@ class _PianoRollContentState extends State<_PianoRollContent>
           ],
         ),
       ),
+    );
+  }
+}
+
+class _PianoRollCanvasCursor extends StatefulWidget {
+  final Widget? child;
+
+  const _PianoRollCanvasCursor({Key? key, this.child}) : super(key: key);
+
+  @override
+  State<_PianoRollCanvasCursor> createState() => _PianoRollCanvasCursorState();
+}
+
+class _PianoRollCanvasCursorState extends State<_PianoRollCanvasCursor> {
+  MouseCursor cursor = MouseCursor.defer;
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = Provider.of<PianoRollViewModel>(context);
+
+    return MouseRegion(
+      cursor: cursor,
+      onHover: (e) {
+        final pos = e.localPosition;
+
+        final contentUnderCursor = viewModel.getContentUnderCursor(pos);
+        final newCursor = contentUnderCursor.resizeHandle != null
+            ? SystemMouseCursors.resizeLeftRight
+            : contentUnderCursor.note != null
+                ? SystemMouseCursors.move
+                : MouseCursor.defer;
+
+        final note = contentUnderCursor.note?.metadata.id;
+        if (note != viewModel.hoveredNote) {
+          viewModel.hoveredNote = note;
+        }
+
+        if (cursor == newCursor) return;
+
+        setState(() {
+          cursor = newCursor;
+        });
+      },
+      onExit: (e) {
+        viewModel.hoveredNote = null;
+      },
+      child: widget.child,
     );
   }
 }
