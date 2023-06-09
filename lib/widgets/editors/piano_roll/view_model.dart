@@ -74,6 +74,9 @@ abstract class _PianoRollViewModel with Store {
   @observable
   EditorTool tool = EditorTool.pencil;
 
+  @observable
+  bool useNewRenderer = false;
+
   // These don't need to be observable, since they're just used during event
   // handling.
   Time cursorNoteLength = 96;
