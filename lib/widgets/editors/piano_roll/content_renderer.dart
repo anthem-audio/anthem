@@ -20,10 +20,12 @@
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
+import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
+import 'dart:ui' as ui;
 
 /// Size of the resize handles, in pixels.
 const _noteResizeHandleWidth = 12.0;
@@ -59,6 +61,7 @@ class PianoRollContentRenderer extends StatelessWidget {
         keyValueAtTop: keyValueAtTop,
         project: project,
         viewModel: viewModel,
+        devicePixelRatio: View.of(context).devicePixelRatio,
       ),
     );
   }
@@ -70,6 +73,7 @@ class PianoRollPainter extends CustomPainterObserver {
   final double keyValueAtTop;
   final PianoRollViewModel viewModel;
   final ProjectModel project;
+  final double devicePixelRatio;
 
   PianoRollPainter({
     required this.timeViewStart,
@@ -77,6 +81,7 @@ class PianoRollPainter extends CustomPainterObserver {
     required this.keyValueAtTop,
     required this.viewModel,
     required this.project,
+    required this.devicePixelRatio,
   });
 
   @override
@@ -94,6 +99,7 @@ class PianoRollPainter extends CustomPainterObserver {
 
     for (final note in notes) {
       final keyHeight = viewModel.keyHeight;
+      final key = note.key;
       final x = timeToPixels(
             timeViewStart: timeViewStart,
             timeViewEnd: timeViewEnd,
@@ -102,7 +108,7 @@ class PianoRollPainter extends CustomPainterObserver {
           ) +
           1;
       final y = keyValueToPixels(
-            keyValue: note.key.toDouble() + 1,
+            keyValue: key.toDouble() + 1,
             keyValueAtTop: keyValueAtTop,
             keyHeight: keyHeight,
           ) +
@@ -142,12 +148,6 @@ class PianoRollPainter extends CustomPainterObserver {
 
       final color = HSLColor.fromAHSL(1, 166, saturation, lightness).toColor();
       final borderColor = const HSLColor.fromAHSL(1, 166, 0.35, 0.45).toColor();
-      // final textColor = HSLColor.fromAHSL(
-      //   1,
-      //   166,
-      //   (saturation * 0.6).clamp(0, 1),
-      //   (lightness * 2).clamp(0, 1),
-      // ).toColor();
 
       final rect = RRect.fromRectAndRadius(
         Rect.fromLTWH(x, y, width, height),
@@ -174,6 +174,68 @@ class PianoRollPainter extends CustomPainterObserver {
             ..style = PaintingStyle.stroke
             ..strokeWidth = 1,
         );
+      }
+
+      if (keyHeight > 25) {
+        canvas.save();
+        final clipRect = Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2);
+        canvas.clipRect(clipRect);
+
+        final cachedLabel = noteLabelImageCache.get(key);
+        if (cachedLabel == null) return;
+
+        final textColor = HSLColor.fromAHSL(
+          1,
+          166,
+          (saturation * 0.6).clamp(0, 1),
+          (lightness * 2).clamp(0, 1),
+        ).toColor();
+
+        final textX = x + 5;
+        final textY = y + (keyHeight - noteLabelHeight) * 0.5 - 1;
+
+        // canvas.drawImageRect(cachedLabel, Rect.fromLTWH(x, y, cachedLabel.width.toDouble(), cachedLabel.height.toDouble()), Paint());
+        canvas.drawAtlas(
+          cachedLabel,
+          [
+            RSTransform.fromComponents(
+              rotation: 0,
+              scale: 1 / devicePixelRatio,
+              anchorX: 0,
+              anchorY: 0,
+              translateX: textX,
+              translateY: textY,
+            ),
+          ],
+          [
+            Rect.fromLTWH(
+              0,
+              0,
+              noteLabelWidth * devicePixelRatio,
+              noteLabelHeight * devicePixelRatio,
+            )
+          ],
+          [textColor],
+          BlendMode.dstIn,
+          null,
+          Paint(),
+        );
+
+        final transparentColor = color.withAlpha(0);
+
+        // Fade out gradient
+        final textFadeOutGradient = ui.Gradient.linear(
+          Offset(x, textY),
+          Offset(x + width - 3, textY),
+          [transparentColor, transparentColor, color],
+          [0, 1 - (10 / width), 1],
+        );
+
+        final textFadeOutPaint = Paint()..shader = textFadeOutGradient;
+
+        canvas.drawRect(clipRect, textFadeOutPaint);
+
+        canvas.restore();
       }
 
       viewModel.visibleNotes.add(
