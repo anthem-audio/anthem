@@ -35,6 +35,7 @@ import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/piano_roll/content_renderer.dart';
+import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart' as mobx;
@@ -254,6 +255,13 @@ class _PianoRollHeader extends StatelessWidget {
                   viewModel.useNewRenderer = !viewModel.useNewRenderer;
                 },
               );
+            },
+          ),
+          const SizedBox(width: 4),
+          Button(
+            icon: Icons.audio,
+            onPress: () {
+              noteLabelImageCache.init(View.of(context).devicePixelRatio);
             },
           ),
         ],
