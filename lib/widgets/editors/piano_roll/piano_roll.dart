@@ -17,10 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:math';
-
 import 'package:anthem/commands/timeline_commands.dart';
-import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
@@ -35,7 +32,6 @@ import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/piano_roll/content_renderer.dart';
-import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart' as mobx;
@@ -47,7 +43,6 @@ import '../shared/timeline/timeline_notification_handler.dart';
 import '../shared/timeline/timeline.dart';
 import 'controller/piano_roll_controller.dart';
 import 'helpers.dart';
-import 'widgets/note.dart';
 import 'widgets/piano_control.dart';
 import 'attribute_editor.dart';
 import 'event_listener.dart';
@@ -245,25 +240,6 @@ class _PianoRollHeader extends StatelessWidget {
               ),
             );
           }),
-          const SizedBox(width: 4),
-          Observer(
-            builder: (context) {
-              return Button(
-                icon: Icons.anthem,
-                toggleState: viewModel.useNewRenderer,
-                onPress: () {
-                  viewModel.useNewRenderer = !viewModel.useNewRenderer;
-                },
-              );
-            },
-          ),
-          const SizedBox(width: 4),
-          Button(
-            icon: Icons.audio,
-            onPress: () {
-              noteLabelImageCache.init(View.of(context).devicePixelRatio);
-            },
-          ),
         ],
       ),
     );
@@ -460,53 +436,11 @@ class _PianoRollContentState extends State<_PianoRollContent>
                       return AnimatedBuilder(
                         animation: _timeViewAnimationController,
                         builder: (context, child) {
-                          return Observer(builder: (context) {
-                            if (viewModel.useNewRenderer) {
-                              return PianoRollContentRenderer(
-                                timeViewStart: _timeViewStartAnimation.value,
-                                timeViewEnd: _timeViewEndAnimation.value,
-                                keyValueAtTop: _keyValueAtTopAnimation.value,
-                              );
-                            }
-
-                            final notes = getPattern()
-                                    ?.notes[project.activeGeneratorID]
-                                    ?.toList() ??
-                                [];
-
-                            // Observe all note values
-                            for (var note in notes) {
-                              note.key;
-                              note.length;
-                              note.offset;
-                            }
-
-                            final noteWidgets = notes
-                                .map(
-                                  (note) => LayoutId(
-                                    id: note.id,
-                                    child: NoteWidget(
-                                      note: note,
-                                      isSelected: viewModel.selectedNotes
-                                          .contains(note.id),
-                                      isPressed:
-                                          viewModel.pressedNote == note.id,
-                                    ),
-                                  ),
-                                )
-                                .toList();
-
-                            return CustomMultiChildLayout(
-                              delegate: NoteLayoutDelegate(
-                                notes: notes,
-                                keyHeight: viewModel.keyHeight,
-                                keyValueAtTop: _keyValueAtTopAnimation.value,
-                                timeViewStart: _timeViewStartAnimation.value,
-                                timeViewEnd: _timeViewEndAnimation.value,
-                              ),
-                              children: noteWidgets,
-                            );
-                          });
+                          return PianoRollContentRenderer(
+                            timeViewStart: _timeViewStartAnimation.value,
+                            timeViewEnd: _timeViewEndAnimation.value,
+                            keyValueAtTop: _keyValueAtTopAnimation.value,
+                          );
                         },
                       );
                     },
@@ -739,79 +673,5 @@ class _PianoRollCanvasCursorState extends State<_PianoRollCanvasCursor> {
       },
       child: widget.child,
     );
-  }
-}
-
-class NoteLayoutDelegate extends MultiChildLayoutDelegate {
-  NoteLayoutDelegate({
-    required this.notes,
-    required this.keyHeight,
-    required this.keyValueAtTop,
-    required this.timeViewStart,
-    required this.timeViewEnd,
-  });
-
-  final List<NoteModel> notes;
-  final double timeViewStart;
-  final double timeViewEnd;
-  final double keyValueAtTop;
-  final double keyHeight;
-
-  @override
-  void performLayout(Size size) {
-    for (var note in notes) {
-      final y = keyValueToPixels(
-              keyValue: note.key.toDouble(),
-              keyValueAtTop: keyValueAtTop,
-              keyHeight: keyHeight) -
-          keyHeight +
-          // this is why I want Dart support for Prettier
-          1;
-      final height = keyHeight.toDouble() - 1;
-      final startX = timeToPixels(
-              timeViewStart: timeViewStart,
-              timeViewEnd: timeViewEnd,
-              viewPixelWidth: size.width,
-              time: note.offset.toDouble()) +
-          1;
-      final width = timeToPixels(
-              timeViewStart: timeViewStart,
-              timeViewEnd: timeViewEnd,
-              viewPixelWidth: size.width,
-              time: timeViewStart + note.length.toDouble()) -
-          1
-          // We make a bit of extra room here for the resize handle. Flutter
-          // refuses to change the cursor to ResizeLeftRight on hover unless
-          // the MouseRegion is fully inside the note, so here we are.
-          +
-          noteResizeHandleOvershoot;
-
-      layoutChild(
-        note.id,
-        BoxConstraints(maxHeight: height, maxWidth: max(width, 0)),
-      );
-      positionChild(note.id, Offset(startX, y));
-    }
-  }
-
-  @override
-  bool shouldRelayout(covariant NoteLayoutDelegate oldDelegate) {
-    if (oldDelegate.timeViewStart != timeViewStart ||
-        oldDelegate.timeViewEnd != timeViewEnd ||
-        oldDelegate.notes != notes ||
-        oldDelegate.keyHeight != keyHeight ||
-        oldDelegate.keyValueAtTop != keyValueAtTop) return true;
-    for (var i = 0; i < notes.length; i++) {
-      var oldNote = oldDelegate.notes[i];
-      var newNote = notes[i];
-
-      // No re-layout on velocity. I think this is okay?
-      if (oldNote.key != newNote.key ||
-          oldNote.length != newNote.length ||
-          oldNote.offset != newNote.offset) {
-        return true;
-      }
-    }
-    return false;
   }
 }

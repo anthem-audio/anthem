@@ -80,9 +80,6 @@ abstract class _PianoRollViewModel with Store {
   @observable
   EditorTool tool = EditorTool.pencil;
 
-  @observable
-  bool useNewRenderer = false;
-
   final visibleNotes = CanvasAnnotationSet<({ID id})>();
   final visibleResizeAreas = CanvasAnnotationSet<({ID id})>();
 
