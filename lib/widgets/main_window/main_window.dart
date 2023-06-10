@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/model/store.dart';
+import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:anthem/widgets/main_window/main_window_controller.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
@@ -42,6 +43,10 @@ class _MainWindowState extends State<MainWindow> {
 
   @override
   Widget build(BuildContext context) {
+    if (!noteLabelImageCache.initialized) {
+      noteLabelImageCache.init(View.of(context).devicePixelRatio);
+    }
+
     final store = AnthemStore.instance;
 
     return Provider.value(
