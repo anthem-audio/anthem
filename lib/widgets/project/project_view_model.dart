@@ -21,6 +21,13 @@ import 'package:mobx/mobx.dart';
 
 part 'project_view_model.g.dart';
 
+enum EditorKind {
+  detail,
+  automation,
+  channelRack,
+  mixer,
+}
+
 // ignore: library_private_types_in_public_api
 class ProjectViewModel = _ProjectViewModel with _$ProjectViewModel;
 
@@ -31,4 +38,7 @@ abstract class _ProjectViewModel with Store {
   // We should probably persist this between sessions
   @observable
   bool keyboardPianoEnabled = false;
+
+  @observable
+  EditorKind selectedEditor = EditorKind.detail;
 }

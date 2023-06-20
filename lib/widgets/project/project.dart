@@ -81,6 +81,38 @@ class _ProjectState extends State<Project> {
             ),
             Expanded(
               child: Observer(builder: (context) {
+                const automationEditor = Text('Automation Editor');
+                const channelRack = Text('Channel Rack');
+                const pianoRoll = PianoRoll();
+                const mixer = Text('Mixer');
+
+                final selectedEditor = Stack(
+                  children: [
+                    Visibility(
+                      maintainState: true,
+                      visible:
+                          viewModel.selectedEditor == EditorKind.automation,
+                      child: automationEditor,
+                    ),
+                    Visibility(
+                      maintainState: true,
+                      visible:
+                          viewModel.selectedEditor == EditorKind.channelRack,
+                      child: channelRack,
+                    ),
+                    Visibility(
+                      maintainState: true,
+                      visible: viewModel.selectedEditor == EditorKind.detail,
+                      child: pianoRoll,
+                    ),
+                    Visibility(
+                      maintainState: true,
+                      visible: viewModel.selectedEditor == EditorKind.mixer,
+                      child: mixer,
+                    ),
+                  ],
+                );
+
                 return Panel(
                   hidden: !projectModel.isProjectExplorerVisible,
                   orientation: PanelOrientation.left,
@@ -133,7 +165,7 @@ class _ProjectState extends State<Project> {
                       panelMinSize: 300,
                       contentMinSize: 300,
                       // Bottom panel
-                      panelContent: const RepaintBoundary(child: PianoRoll()),
+                      panelContent: RepaintBoundary(child: selectedEditor),
                       child: Panel(
                         hidden: !projectModel.isPatternEditorVisible,
                         orientation: PanelOrientation.left,

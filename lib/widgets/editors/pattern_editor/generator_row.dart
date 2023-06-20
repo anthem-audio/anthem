@@ -22,6 +22,7 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes.dart';
+import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -42,10 +43,12 @@ class GeneratorRow extends StatelessWidget {
     PatternModel? getPattern() =>
         project.song.patterns[project.song.activePatternID];
     final generator = project.generators[generatorID]!;
+    final projectViewModel = Provider.of<ProjectViewModel>(context);
 
     return GestureDetector(
       onTap: () {
         project.activeGeneratorID = generatorID;
+        projectViewModel.selectedEditor = EditorKind.detail;
       },
       child: SizedBox(
         height: 34,
