@@ -33,13 +33,6 @@ part 'project.g.dart';
 
 enum ProjectLayoutKind { arrange, edit, mix }
 
-enum EditorKind {
-  detail,
-  automation,
-  channelRack,
-  mixer,
-}
-
 @JsonSerializable()
 class ProjectModel extends _ProjectModel with _$ProjectModel {
   ProjectModel() : super();
@@ -113,10 +106,6 @@ abstract class _ProjectModel extends Hydratable with Store {
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
   ProjectLayoutKind layout = ProjectLayoutKind.arrange;
-
-  @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  EditorKind selectedEditor = EditorKind.detail;
 
   // Undo / redo & etc
 
