@@ -103,5 +103,5 @@ class _MenuState extends State<Menu> {
 }
 
 class MenuController {
-  Function? open;
+  late void Function() open;
 }
