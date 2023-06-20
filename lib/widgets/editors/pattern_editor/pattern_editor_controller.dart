@@ -17,10 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:ui';
-
 import 'package:anthem/commands/pattern_commands.dart';
-import 'package:anthem/commands/project_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 
@@ -28,24 +25,6 @@ class PatternEditorController {
   final ProjectModel project;
 
   PatternEditorController({required this.project});
-
-  void addGenerator({
-    required String name,
-    required Color color,
-    required String pluginPath,
-  }) {
-    final id = getID();
-
-    project.execute(AddGeneratorCommand(
-      project: project,
-      generatorID: id,
-      name: name,
-      color: color,
-      pluginPath: pluginPath,
-    ));
-
-    project.activeGeneratorID = id;
-  }
 
   void deletePattern(ID patternID) {
     project.execute(DeletePatternCommand(

@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:math';
-
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/background.dart';
@@ -29,8 +27,8 @@ import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_controller.dart';
+import 'package:anthem/widgets/menus/add_channel_menu.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -50,19 +48,14 @@ class _PatternEditorState extends State<PatternEditor> {
 
   PatternEditorController? controller;
 
-  Color getColor() {
-    final color = HSLColor.fromAHSL(1, nextHue, 0.33, 0.5).toColor();
-    nextHue = (nextHue + 330) % 360;
-    return color;
-  }
-
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     final projectController = Provider.of<ProjectController>(context);
     controller ??= PatternEditorController(project: project);
 
-    final menuController = MenuController();
+    final kebabMenuController = MenuController();
+    final addChannelMenuController = MenuController();
 
     return Provider.value(
       value: controller!,
@@ -88,7 +81,7 @@ class _PatternEditorState extends State<PatternEditor> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Menu(
-                        menuController: menuController,
+                        menuController: kebabMenuController,
                         menuDef: MenuDef(
                           children: [
                             AnthemMenuItem(
@@ -105,7 +98,7 @@ class _PatternEditorState extends State<PatternEditor> {
                           height: 26,
                           icon: Icons.kebab,
                           onPress: () {
-                            menuController.open?.call();
+                            kebabMenuController.open();
                           },
                         ),
                       ),
@@ -184,30 +177,17 @@ class _PatternEditorState extends State<PatternEditor> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const SizedBox(width: 136),
-                        Button(
-                          width: 105,
-                          contentPadding: EdgeInsets.zero,
-                          icon: Icons.add,
-                          hint: 'Add a new instrument',
-                          onPress: () async {
-                            final result = await FilePicker.platform.pickFiles(
-                              dialogTitle: 'Choose a plugin (VST3)',
-                              allowedExtensions: ['vst3'],
-                              initialDirectory:
-                                  'C:\\Program Files\\Common Files\\VST3',
-                            );
-
-                            final path = result?.files[0].path;
-
-                            if (path == null) return;
-
-                            controller!.addGenerator(
-                              name:
-                                  'Instrument ${(Random()).nextInt(100).toString()}',
-                              color: getColor(),
-                              pluginPath: path,
-                            );
-                          },
+                        AddChannelMenu(
+                          menuController: addChannelMenuController,
+                          child: Button(
+                            width: 105,
+                            contentPadding: EdgeInsets.zero,
+                            icon: Icons.add,
+                            hint: 'Add a new instrument',
+                            onPress: () {
+                              addChannelMenuController.open();
+                            },
+                          ),
                         ),
                         const SizedBox(width: 24),
                         const Expanded(child: SizedBox()),

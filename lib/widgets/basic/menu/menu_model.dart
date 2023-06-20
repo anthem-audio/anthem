@@ -28,7 +28,7 @@ class MenuDef {
   MenuDef({this.children = const []});
 }
 
-class GenericMenuItem {}
+sealed class GenericMenuItem {}
 
 class AnthemMenuItem extends GenericMenuItem {
   final String text;

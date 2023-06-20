@@ -154,7 +154,7 @@ class _ArrangerState extends State<Arranger> {
                                   child: Button(
                                     width: 26,
                                     icon: Icons.kebab,
-                                    onPress: () => menuController.open?.call(),
+                                    onPress: () => menuController.open(),
                                   ),
                                 ),
                                 const SizedBox(width: 4),

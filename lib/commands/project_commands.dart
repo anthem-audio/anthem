@@ -37,7 +37,7 @@ class AddGeneratorCommand extends Command {
   ID generatorID;
   String name;
   Color color;
-  String pluginPath;
+  String? pluginPath;
 
   AddGeneratorCommand({
     required ProjectModel project,

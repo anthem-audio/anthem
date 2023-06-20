@@ -17,14 +17,18 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
 import 'package:anthem/commands/arrangement_commands.dart';
 import 'package:anthem/commands/pattern_commands.dart';
+import 'package:anthem/commands/project_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:anthem/widgets/project/typing_keyboard_piano_handler.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -160,4 +164,48 @@ class ProjectController {
   void clearHintText() {
     viewModel.hintText = '';
   }
+
+  void addGenerator({
+    required String name,
+    required Color color,
+    String? pluginPath,
+  }) {
+    final id = getID();
+
+    project.execute(AddGeneratorCommand(
+      project: project,
+      generatorID: id,
+      name: name,
+      color: color,
+      pluginPath: pluginPath,
+    ));
+
+    project.activeGeneratorID = id;
+  }
+
+  void addVst3Generator() async {
+    final result = await FilePicker.platform.pickFiles(
+      dialogTitle: 'Choose a plugin (VST3)',
+      allowedExtensions: ['vst3'],
+      initialDirectory: 'C:\\Program Files\\Common Files\\VST3',
+    );
+
+    final path = result?.files[0].path;
+
+    if (path == null) return;
+
+    addGenerator(
+      name: 'Instrument ${(Random()).nextInt(100).toString()}',
+      color: getColor(),
+      pluginPath: path,
+    );
+  }
+}
+
+var nextHue = 0.0;
+
+Color getColor() {
+  final color = HSLColor.fromAHSL(1, nextHue, 0.33, 0.5).toColor();
+  nextHue = (nextHue + 330) % 360;
+  return color;
 }
