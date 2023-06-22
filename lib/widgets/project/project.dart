@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
+import 'package:anthem/widgets/editors/automation_editor/automation_editor.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -81,7 +82,7 @@ class _ProjectState extends State<Project> {
             ),
             Expanded(
               child: Observer(builder: (context) {
-                const automationEditor = Text('Automation Editor');
+                const automationEditor = AutomationEditor();
                 const channelRack = Text('Channel Rack');
                 const pianoRoll = PianoRoll();
                 const mixer = Text('Mixer');
