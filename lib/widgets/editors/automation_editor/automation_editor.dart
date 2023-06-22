@@ -17,12 +17,15 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
+import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 import 'package:mobx/mobx.dart' as mobx;
 
@@ -83,7 +86,7 @@ class _AutomationEditorHeader extends StatelessWidget {
   }
 }
 
-class _AutomationEditorContent extends StatefulWidget {
+class _AutomationEditorContent extends StatefulObserverWidget {
   const _AutomationEditorContent();
 
   @override
@@ -129,6 +132,7 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<AutomationEditorViewModel>(context);
+    final project = Provider.of<ProjectModel>(context);
 
     // Updates the time view animation if the time view has changed
     if (viewModel.timeView.start != _lastTimeViewStart ||
@@ -155,15 +159,35 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
       setState(() {});
     });
 
+    final activePatternID = project.song.activePatternID;
+    final pattern = project.song.patterns[activePatternID];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        SizedBox(
+          height: 26,
+          child: ScrollbarRenderer(
+            handleStart: viewModel.timeView.start,
+            handleEnd: viewModel.timeView.end,
+            scrollRegionStart: 0,
+            scrollRegionEnd: pattern?.getWidth().toDouble() ?? 3072,
+            canScrollPastEnd: true,
+            disableAtFullSize: pattern != null,
+            minHandleSize: project.song.ticksPerQuarter * 4,
+            onChange: (event) {
+              viewModel.timeView.start = event.handleStart;
+              viewModel.timeView.end = event.handleEnd;
+            },
+          ),
+        ),
+        const SizedBox(height: 4),
         Provider.value(
           value: viewModel.timeView,
           child: SizedBox(
             height: 21,
             child: Timeline.pattern(
-              patternID: null,
+              patternID: activePatternID,
               timeViewStartAnimation: _timeViewStartAnimation,
               timeViewEndAnimation: _timeViewEndAnimation,
               timeViewAnimationController: _timeViewAnimationController,
