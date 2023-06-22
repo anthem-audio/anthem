@@ -19,6 +19,7 @@
 
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
@@ -83,6 +84,13 @@ class AutomationEditorPainter extends CustomPainterObserver {
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
     );
+
+    for (var i = 0.0; i < size.height; i += size.height / 5) {
+      canvas.drawRect(
+        Rect.fromLTWH(0, i, size.width, 1),
+        Paint()..color = Theme.grid.major,
+      );
+    }
   }
 
   @override
