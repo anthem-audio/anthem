@@ -18,10 +18,12 @@
 */
 
 import 'package:anthem/model/project.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
+import 'package:anthem/widgets/editors/automation_editor/content_renderer.dart';
 import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
@@ -171,7 +173,7 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
             handleStart: viewModel.timeView.start,
             handleEnd: viewModel.timeView.end,
             scrollRegionStart: 0,
-            scrollRegionEnd: pattern?.getWidth().toDouble() ?? 3072,
+            scrollRegionEnd: pattern?.getWidth().toDouble() ?? 3072 * 2,
             canScrollPastEnd: true,
             disableAtFullSize: pattern != null,
             minHandleSize: project.song.ticksPerQuarter * 4,
@@ -182,15 +184,45 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
           ),
         ),
         const SizedBox(height: 4),
-        Provider.value(
-          value: viewModel.timeView,
-          child: SizedBox(
-            height: 21,
-            child: Timeline.pattern(
-              patternID: activePatternID,
-              timeViewStartAnimation: _timeViewStartAnimation,
-              timeViewEndAnimation: _timeViewEndAnimation,
-              timeViewAnimationController: _timeViewAnimationController,
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: Theme.panel.border,
+              ),
+              borderRadius: const BorderRadius.all(Radius.circular(4)),
+            ),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.all(Radius.circular(4)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Provider.value(
+                    value: viewModel.timeView,
+                    child: SizedBox(
+                      height: 21,
+                      child: Timeline.pattern(
+                        patternID: activePatternID,
+                        timeViewStartAnimation: _timeViewStartAnimation,
+                        timeViewEndAnimation: _timeViewEndAnimation,
+                        timeViewAnimationController:
+                            _timeViewAnimationController,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: AnimatedBuilder(
+                      animation: _timeViewAnimationController,
+                      builder: (context, child) {
+                        return AutomationEditorContentRenderer(
+                          timeViewStart: _timeViewStartAnimation.value,
+                          timeViewEnd: _timeViewEndAnimation.value,
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
