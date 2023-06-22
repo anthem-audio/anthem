@@ -408,7 +408,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
     ),
   );
 
-  mobx.ReactionDisposer? verticalScrollPosTweenUpdaterDisposer;
+  mobx.ReactionDisposer? animationTweenUpdaterDisposer;
 
   StreamSubscription? baseTrackHeightChangedSub;
 
@@ -417,7 +417,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
     timeViewAnimationController.dispose();
     verticalScrollPositionAnimationController.dispose();
     baseTrackHeightChangedSub?.cancel();
-    verticalScrollPosTweenUpdaterDisposer?.call();
+    animationTweenUpdaterDisposer?.call();
     super.dispose();
   }
 
@@ -440,9 +440,8 @@ class _ArrangerContentState extends State<_ArrangerContent>
       lastVerticalScrollPosition = viewModel.verticalScrollPosition;
     });
 
-    // Updates the vertical scroll position animation whenever the vertical
-    // scroll position changes.
-    verticalScrollPosTweenUpdaterDisposer ??= mobx.autorun((p0) {
+    // Updates the animations whenever the vertical scroll position changes.
+    animationTweenUpdaterDisposer ??= mobx.autorun((p0) {
       viewModel.verticalScrollPosition;
       viewModel.timeView.start;
       viewModel.timeView.end;
@@ -450,7 +449,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
       setState(() {});
     });
 
-    // Updates the time view animation if the time view has changed
+    // Updates the time view animation if the time view has changed.
     if (viewModel.timeView.start != lastTimeViewStart ||
         viewModel.timeView.end != lastTimeViewEnd) {
       timeViewStartTween.begin = _timeViewStartAnimation.value;

@@ -19,10 +19,16 @@
 
 import 'package:mobx/mobx.dart';
 
+import '../shared/helpers/types.dart';
+
 part 'view_model.g.dart';
 
 // ignore: library_private_types_in_public_api
 class AutomationEditorViewModel = _AutomationEditorViewModel
     with _$AutomationEditorViewModel;
 
-abstract class _AutomationEditorViewModel with Store {}
+abstract class _AutomationEditorViewModel with Store {
+  TimeRange timeView;
+
+  _AutomationEditorViewModel({required this.timeView});
+}
