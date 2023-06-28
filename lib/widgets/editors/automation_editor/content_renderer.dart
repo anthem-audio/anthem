@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:ui';
+
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
@@ -25,6 +27,7 @@ import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:flutter_shaders/flutter_shaders.dart';
 import 'package:provider/provider.dart';
 
 class AutomationEditorContentRenderer extends StatelessObserverWidget {
@@ -42,15 +45,19 @@ class AutomationEditorContentRenderer extends StatelessObserverWidget {
     final project = Provider.of<ProjectModel>(context);
     final pattern = project.song.patterns[project.song.activePatternID];
 
-    return CustomPaintObserver(
-      painterBuilder: () => AutomationEditorPainter(
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        ticksPerQuarter: project.song.ticksPerQuarter,
-        project: project,
-        pattern: pattern,
+    return ShaderBuilder(
+      assetKey: 'assets/shaders/automation_curve.frag',
+      (context, shader, child) => CustomPaintObserver(
+        painterBuilder: () => AutomationEditorPainter(
+          timeViewStart: timeViewStart,
+          timeViewEnd: timeViewEnd,
+          ticksPerQuarter: project.song.ticksPerQuarter,
+          project: project,
+          pattern: pattern,
+          shader: shader,
+        ),
+        isComplex: true,
       ),
-      isComplex: true,
     );
   }
 }
@@ -61,6 +68,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
   final int ticksPerQuarter;
   final ProjectModel project;
   final PatternModel? pattern;
+  final FragmentShader shader;
 
   AutomationEditorPainter({
     required this.timeViewStart,
@@ -68,14 +76,18 @@ class AutomationEditorPainter extends CustomPainterObserver {
     required this.ticksPerQuarter,
     required this.project,
     this.pattern,
+    required this.shader,
   });
 
   @override
   void observablePaint(Canvas canvas, Size size) {
-    canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    final recorder = PictureRecorder();
+    final recorderCanvas = Canvas(recorder);
+
+    recorderCanvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     paintTimeGrid(
-      canvas: canvas,
+      canvas: recorderCanvas,
       size: size,
       ticksPerQuarter: ticksPerQuarter,
       snap: AutoSnap(),
@@ -86,14 +98,32 @@ class AutomationEditorPainter extends CustomPainterObserver {
     );
 
     for (var i = 0.0; i < size.height; i += size.height / 5) {
-      canvas.drawRect(
+      recorderCanvas.drawRect(
         Rect.fromLTWH(0, i, size.width, 1),
         Paint()..color = Theme.grid.major,
       );
     }
+
+    final backgroundImage = recorder.endRecording().toImageSync(
+          size.width.toInt(),
+          size.height.toInt(),
+        );
+
+    shader.setFloat(0, size.width);
+    shader.setFloat(1, size.height);
+    shader.setImageSampler(0, backgroundImage);
+
+    final paint = Paint()..shader = shader;
+
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), paint);
   }
 
   @override
   bool shouldRepaint(AutomationEditorPainter oldDelegate) =>
+      timeViewStart != oldDelegate.timeViewStart ||
+      timeViewEnd != oldDelegate.timeViewEnd ||
+      ticksPerQuarter != oldDelegate.ticksPerQuarter ||
+      project != oldDelegate.project ||
+      pattern != oldDelegate.pattern ||
       super.shouldRepaint(oldDelegate);
 }
