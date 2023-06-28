@@ -34,7 +34,7 @@ import 'package:bitsdojo_window/bitsdojo_window.dart';
 
 GlobalKey mainWindowKey = GlobalKey();
 
-void main() async {
+void main() {
   final store = AnthemStore.instance;
 
   final projectModel = ProjectModel.create();

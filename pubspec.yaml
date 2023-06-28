@@ -24,6 +24,7 @@ dependencies:
   flat_buffers: ^2.0.5
   flutter_window_close: ^0.2.2
   ffi: ^2.0.1
+  flutter_shaders: ^0.1.2
 
 dev_dependencies:
   json_serializable: ^6.6.1
@@ -38,9 +39,11 @@ dev_dependencies:
 flutter:
   uses-material-design: false
 
+  shaders:
+  - assets/shaders/automation_curve.frag
+
   assets:
   - assets/engine/
-  - assets/shaders/
   - assets/icons/
   - assets/icons/add/
   - assets/icons/arranger/
