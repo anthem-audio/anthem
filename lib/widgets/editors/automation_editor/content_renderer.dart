@@ -109,9 +109,14 @@ class AutomationEditorPainter extends CustomPainterObserver {
           size.height.toInt(),
         );
 
-    shader.setFloat(0, size.width);
-    shader.setFloat(1, size.height);
     shader.setImageSampler(0, backgroundImage);
+
+    shader.setFloatUniforms((setter) {
+      setter.setFloat(size.width);
+      setter.setFloat(size.height);
+      setter.setFloat(timeViewStart);
+      setter.setFloat(timeViewEnd);
+    });
 
     final paint = Paint()..shader = shader;
 

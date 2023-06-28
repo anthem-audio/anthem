@@ -26,6 +26,9 @@ precision mediump float;
 uniform vec2 resolution;
 uniform sampler2D uBackground;
 
+uniform float timeViewStart;
+uniform float timeViewEnd;
+
 out vec4 fragColor;
 
 void main() {
@@ -36,6 +39,11 @@ void main() {
   // Specify your target color. Here's an example of blue-green.
   vec4 targetColor = vec4(0.0, 0.5, 0.5, 1.0);
 
+  float amt = max(
+    sin(st.x * 0.01 * (timeViewEnd - timeViewStart) + timeViewStart * 0.01),
+    0
+  );
+
   // Use the x component of st as a mix factor to create a gradient along the x axis
-  fragColor = mix(colorFromBackground, targetColor, st.x);
+  fragColor = mix(colorFromBackground, targetColor, amt);
 }
