@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/generator.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
@@ -43,7 +44,13 @@ class AddChannelMenu extends StatelessWidget {
         children: [
           AnthemMenuItem(
             text: 'Add automation channel',
-            onSelected: () {},
+            onSelected: () {
+              projectController.addGenerator(
+                name: 'Blank Automation Channel',
+                generatorType: GeneratorType.automation,
+                color: getColor(),
+              );
+            },
           ),
           AnthemMenuItem(
             text: 'Add instrument channel',
@@ -60,6 +67,7 @@ class AddChannelMenu extends StatelessWidget {
                   onSelected: () {
                     projectController.addGenerator(
                       name: 'Blank Instrument',
+                      generatorType: GeneratorType.instrument,
                       color: getColor(),
                     );
                   },

@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/button.dart';
@@ -47,8 +48,25 @@ class GeneratorRow extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
-        project.activeGeneratorID = generatorID;
-        projectViewModel.selectedEditor = EditorKind.detail;
+        final generator = project.generators[generatorID]!;
+
+        switch (generator.generatorType) {
+          case GeneratorType.instrument:
+            {
+              project.activeInstrumentID = generatorID;
+              break;
+            }
+          case GeneratorType.automation:
+            {
+              project.activeAutomationGeneratorID = generatorID;
+              break;
+            }
+        }
+
+        projectViewModel.selectedEditor = switch (generator.generatorType) {
+          GeneratorType.instrument => EditorKind.detail,
+          GeneratorType.automation => EditorKind.automation,
+        };
       },
       child: SizedBox(
         height: 34,

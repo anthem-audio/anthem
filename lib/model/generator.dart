@@ -26,11 +26,26 @@ import 'package:mobx/mobx.dart';
 
 part 'generator.g.dart';
 
+// Note: I'm not sure about how we're differentiating generator types here. This
+// deals with the actual audio engine side of things which is not sketched out.
+// For now, we're just marking each generator with an enum saying what kind it
+// is, and we can rethink later.
+
+enum GeneratorType { instrument, automation }
+
 @JsonSerializable()
 class GeneratorModel extends _GeneratorModel with _$GeneratorModel {
-  GeneratorModel(
-      {required String name, required Color color, required PluginModel plugin})
-      : super(name: name, color: color, plugin: plugin);
+  GeneratorModel({
+    required String name,
+    required GeneratorType generatorType,
+    required Color color,
+    required PluginModel plugin,
+  }) : super(
+          name: name,
+          generatorType: generatorType,
+          color: color,
+          plugin: plugin,
+        );
 
   factory GeneratorModel.fromJson(Map<String, dynamic> json) =>
       _$GeneratorModelFromJson(json);
@@ -42,6 +57,9 @@ abstract class _GeneratorModel with Store {
   @observable
   String name;
 
+  @observable
+  GeneratorType generatorType;
+
   @JsonKey(toJson: ColorConvert.colorToInt, fromJson: ColorConvert.intToColor)
   @observable
   Color color;
@@ -51,6 +69,7 @@ abstract class _GeneratorModel with Store {
 
   _GeneratorModel({
     required this.name,
+    required this.generatorType,
     required this.color,
     required this.plugin,
   }) : id = getID();

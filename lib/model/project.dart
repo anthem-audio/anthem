@@ -57,7 +57,12 @@ abstract class _ProjectModel extends Hydratable with Store {
   ObservableList<ID> generatorList = ObservableList();
 
   @observable
-  ID? activeGeneratorID;
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  ID? activeInstrumentID;
+
+  @observable
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  ID? activeAutomationGeneratorID;
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   ID id = getID();
@@ -239,8 +244,12 @@ abstract class _ProjectModel extends Hydratable with Store {
     _commandQueue.push(command);
   }
 
-  void setActiveGenerator(ID? generatorID) {
-    activeGeneratorID = generatorID;
+  void setActiveInstrument(ID? generatorID) {
+    activeInstrumentID = generatorID;
+  }
+
+  void setActiveAutomationGenerator(ID? generatorID) {
+    activeAutomationGeneratorID = generatorID;
   }
 }
 
