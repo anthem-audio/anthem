@@ -91,7 +91,7 @@
 			"abstract class _$1Model with Store {",
 			"  _$1Model();",
 			"",
-			"  Map<String, dynamic> toJson() => _$$1ModelToJson(this as PluginModel);",
+			"  Map<String, dynamic> toJson() => _$$1ModelToJson(this as $1Model);",
 			"}"
 		]
 	}
