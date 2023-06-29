@@ -55,6 +55,7 @@ class AutomationEditorContentRenderer extends StatelessObserverWidget {
           project: project,
           pattern: pattern,
           shader: shader,
+          devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
         ),
         isComplex: true,
       ),
@@ -69,6 +70,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
   final ProjectModel project;
   final PatternModel? pattern;
   final FragmentShader shader;
+  final double devicePixelRatio;
 
   AutomationEditorPainter({
     required this.timeViewStart,
@@ -77,6 +79,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
     required this.project,
     this.pattern,
     required this.shader,
+    required this.devicePixelRatio,
   });
 
   @override
@@ -84,7 +87,21 @@ class AutomationEditorPainter extends CustomPainterObserver {
     final recorder = PictureRecorder();
     final recorderCanvas = Canvas(recorder);
 
-    recorderCanvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    recorderCanvas.clipRect(Rect.fromLTWH(
+      0,
+      0,
+      size.width * devicePixelRatio,
+      size.height * devicePixelRatio,
+    ));
+
+    for (var i = 0.0;
+        i < size.height * devicePixelRatio;
+        i += size.height * devicePixelRatio / 5) {
+      recorderCanvas.drawRect(
+        Rect.fromLTWH(0, i, size.width * devicePixelRatio, devicePixelRatio),
+        Paint()..color = Theme.grid.major,
+      );
+    }
 
     paintTimeGrid(
       canvas: recorderCanvas,
@@ -95,18 +112,12 @@ class AutomationEditorPainter extends CustomPainterObserver {
       timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
+      devicePixelRatio: devicePixelRatio,
     );
 
-    for (var i = 0.0; i < size.height; i += size.height / 5) {
-      recorderCanvas.drawRect(
-        Rect.fromLTWH(0, i, size.width, 1),
-        Paint()..color = Theme.grid.major,
-      );
-    }
-
     final backgroundImage = recorder.endRecording().toImageSync(
-          size.width.toInt(),
-          size.height.toInt(),
+          (size.width * devicePixelRatio).toInt(),
+          (size.height * devicePixelRatio).toInt(),
         );
 
     shader.setImageSampler(0, backgroundImage);
