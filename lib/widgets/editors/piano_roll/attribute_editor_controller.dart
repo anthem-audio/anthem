@@ -66,7 +66,7 @@ class AttributeEditorController {
 
     if (pattern == null) return;
 
-    final notes = pattern.notes[project.activeGeneratorID];
+    final notes = pattern.notes[project.activeInstrumentID];
 
     if (notes == null || notes.isEmpty) return;
 
@@ -173,7 +173,7 @@ class AttributeEditorController {
     final pattern = project.song.patterns[project.song.activePatternID];
 
     if (pattern == null) return;
-    if (project.activeGeneratorID == null) return;
+    if (project.activeInstrumentID == null) return;
 
     late NoteAttribute attribute;
 
@@ -190,7 +190,7 @@ class AttributeEditorController {
         .map((noteID) => SetNoteAttributeCommand(
               project: project,
               patternID: pattern.id,
-              generatorID: project.activeGeneratorID!,
+              generatorID: project.activeInstrumentID!,
               noteID: noteID,
               attribute: attribute,
               oldValue: oldValues[noteID]!,

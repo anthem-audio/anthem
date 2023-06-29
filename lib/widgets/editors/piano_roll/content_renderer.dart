@@ -92,7 +92,7 @@ class PianoRollPainter extends CustomPainterObserver {
     final pattern = project.song.patterns[project.song.activePatternID];
     if (pattern == null) return;
 
-    final notes = pattern.notes[project.activeGeneratorID];
+    final notes = pattern.notes[project.activeInstrumentID];
     if (notes == null) return;
 
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));

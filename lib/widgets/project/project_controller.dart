@@ -23,6 +23,7 @@ import 'package:anthem/commands/arrangement_commands.dart';
 import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/commands/project_commands.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
@@ -60,7 +61,7 @@ class ProjectController {
   }
 
   void setActiveGeneratorID(ID id) {
-    project.activeGeneratorID = id;
+    project.activeInstrumentID = id;
   }
 
   ID addPattern([String? name]) {
@@ -167,6 +168,7 @@ class ProjectController {
 
   void addGenerator({
     required String name,
+    required GeneratorType generatorType,
     required Color color,
     String? pluginPath,
   }) {
@@ -176,11 +178,12 @@ class ProjectController {
       project: project,
       generatorID: id,
       name: name,
+      generatorType: generatorType,
       color: color,
       pluginPath: pluginPath,
     ));
 
-    project.activeGeneratorID = id;
+    project.activeInstrumentID = id;
   }
 
   void addVst3Generator() async {
@@ -196,6 +199,7 @@ class ProjectController {
 
     addGenerator(
       name: 'Instrument ${(Random()).nextInt(100).toString()}',
+      generatorType: GeneratorType.instrument,
       color: getColor(),
       pluginPath: path,
     );
