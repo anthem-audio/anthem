@@ -42,7 +42,7 @@ void main() {
   float amt = max(
     sin(st.x * 0.01 * (timeViewEnd - timeViewStart) + timeViewStart * 0.01),
     0
-  );
+  ) * 0.2;
 
   // Use the x component of st as a mix factor to create a gradient along the x axis
   fragColor = mix(colorFromBackground, targetColor, amt);
