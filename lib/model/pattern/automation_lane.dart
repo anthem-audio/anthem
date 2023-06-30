@@ -28,7 +28,12 @@ part 'automation_lane.g.dart';
 @JsonSerializable()
 class AutomationLaneModel extends _AutomationLaneModel
     with _$AutomationLaneModel {
-  AutomationLaneModel() : super();
+  AutomationLaneModel() : super() {
+    // TODO: remove this
+    points.add(AutomationPointModel(offset: 0, y: 0));
+    points.add(AutomationPointModel(offset: 96 * 4, y: 1));
+    points.add(AutomationPointModel(offset: 96 * 8, y: 0.5, tension: 0.5));
+  }
 
   factory AutomationLaneModel.fromJson(Map<String, dynamic> json) =>
       _$AutomationLaneModelFromJson(json);

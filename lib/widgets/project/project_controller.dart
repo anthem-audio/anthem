@@ -183,7 +183,11 @@ class ProjectController {
       pluginPath: pluginPath,
     ));
 
-    project.activeInstrumentID = id;
+    if (generatorType == GeneratorType.instrument) {
+      project.activeInstrumentID = id;
+    } else if (generatorType == GeneratorType.automation) {
+      project.activeAutomationGeneratorID = id;
+    }
   }
 
   void addVst3Generator() async {

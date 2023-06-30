@@ -23,6 +23,7 @@ import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/main.dart';
+import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/shared/hydratable.dart';
@@ -53,6 +54,11 @@ class PatternModel extends _PatternModel
   PatternModel.create({required String name, required ProjectModel project})
       : super.create(name: name, project: project) {
     _init();
+    // TODO: remove
+    for (final generator in project.generators.values.where(
+        (generator) => generator.generatorType == GeneratorType.automation)) {
+      automationLanes[generator.id] = AutomationLaneModel();
+    }
   }
 
   factory PatternModel.fromJson(Map<String, dynamic> json) {

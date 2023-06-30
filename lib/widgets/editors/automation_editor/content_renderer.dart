@@ -19,11 +19,14 @@
 
 import 'dart:ui';
 
+import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
+import 'package:anthem/widgets/editors/automation_editor/curves/smooth.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
+import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -132,6 +135,59 @@ class AutomationEditorPainter extends CustomPainterObserver {
     final paint = Paint()..shader = shader;
 
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), paint);
+
+    canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    AutomationPointModel? lastPoint;
+    for (final point in pattern
+            ?.automationLanes[project.activeAutomationGeneratorID]?.points ??
+        <AutomationPointModel>[]) {
+      final x = timeToPixels(
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: size.width,
+        time: point.offset,
+      );
+      final y = (1 - point.y) * size.height;
+
+      canvas.drawCircle(
+          Offset(x, y), 5, Paint()..color = const Color(0xFFab1593));
+
+      if (lastPoint != null) {
+        final resolution = (timeToPixels(
+              timeViewStart: timeViewStart,
+              timeViewEnd: timeViewEnd,
+              viewPixelWidth: size.width,
+              time: point.offset,
+            ) -
+            timeToPixels(
+              timeViewStart: timeViewStart,
+              timeViewEnd: timeViewEnd,
+              viewPixelWidth: size.width,
+              time: lastPoint.offset,
+            ));
+
+        for (int i = 0; i < resolution; i++) {
+          final normalizedX = i / resolution;
+          final normalizedY = evaluateSmooth(normalizedX, point.tension) *
+                  (point.y - lastPoint.y) +
+              lastPoint.y;
+
+          final x = timeToPixels(
+            timeViewStart: timeViewStart,
+            timeViewEnd: timeViewEnd,
+            viewPixelWidth: size.width,
+            time: normalizedX * (point.offset - lastPoint.offset) +
+                lastPoint.offset,
+          );
+          final y = (1 - normalizedY) * size.height;
+          canvas.drawCircle(
+              Offset(x, y), 2, Paint()..color = const Color(0xFF15ab93));
+        }
+      }
+
+      lastPoint = point;
+    }
   }
 
   @override

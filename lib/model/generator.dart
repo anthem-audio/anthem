@@ -19,7 +19,6 @@
 
 import 'dart:ui';
 import 'package:anthem/helpers/convert.dart';
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/plugin.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
@@ -36,11 +35,13 @@ enum GeneratorType { instrument, automation }
 @JsonSerializable()
 class GeneratorModel extends _GeneratorModel with _$GeneratorModel {
   GeneratorModel({
+    required String id,
     required String name,
     required GeneratorType generatorType,
     required Color color,
     required PluginModel plugin,
   }) : super(
+          id: id,
           name: name,
           generatorType: generatorType,
           color: color,
@@ -68,11 +69,12 @@ abstract class _GeneratorModel with Store {
   PluginModel plugin;
 
   _GeneratorModel({
+    required this.id,
     required this.name,
     required this.generatorType,
     required this.color,
     required this.plugin,
-  }) : id = getID();
+  });
 
   Map<String, dynamic> toJson() =>
       _$GeneratorModelToJson(this as GeneratorModel);

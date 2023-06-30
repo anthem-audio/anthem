@@ -23,6 +23,7 @@ import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
+import 'package:anthem/widgets/editors/automation_editor/automation_editor_controller.dart';
 import 'package:anthem/widgets/editors/automation_editor/content_renderer.dart';
 import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
@@ -33,6 +34,8 @@ import 'package:mobx/mobx.dart' as mobx;
 
 import '../shared/timeline/timeline.dart';
 
+const noContentBars = 16;
+
 class AutomationEditor extends StatefulWidget {
   const AutomationEditor({super.key});
 
@@ -42,10 +45,14 @@ class AutomationEditor extends StatefulWidget {
 
 class AutomationEditorState extends State<AutomationEditor> {
   AutomationEditorViewModel? viewModel;
+  AutomationEditorController? controller;
 
   @override
   Widget build(BuildContext context) {
+    final project = Provider.of<ProjectModel>(context);
     viewModel ??= AutomationEditorViewModel(timeView: TimeRange(0, 3072));
+    controller ??=
+        AutomationEditorController(viewModel: viewModel!, project: project);
 
     return Provider.value(
       value: viewModel!,
@@ -173,7 +180,8 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
             handleStart: viewModel.timeView.start,
             handleEnd: viewModel.timeView.end,
             scrollRegionStart: 0,
-            scrollRegionEnd: pattern?.getWidth().toDouble() ?? 3072 * 2,
+            scrollRegionEnd: pattern?.lastContent.toDouble() ??
+                (project.song.ticksPerQuarter * 4 * noContentBars).toDouble(),
             canScrollPastEnd: true,
             disableAtFullSize: pattern != null,
             minHandleSize: project.song.ticksPerQuarter * 4,
