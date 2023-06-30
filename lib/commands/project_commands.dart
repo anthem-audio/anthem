@@ -54,6 +54,7 @@ class AddGeneratorCommand extends Command {
     final plugin = PluginModel(path: pluginPath)
       ..createInEngine(project.engine);
     final generator = GeneratorModel(
+      id: generatorID,
       name: name,
       generatorType: generatorType,
       color: color,

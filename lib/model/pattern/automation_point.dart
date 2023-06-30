@@ -22,18 +22,42 @@ import 'package:mobx/mobx.dart';
 
 part 'automation_point.g.dart';
 
+enum AutomationCurveType { smooth, stairs, wave, hold }
+
 @JsonSerializable()
 class AutomationPointModel extends _AutomationPointModel
     with _$AutomationPointModel {
-  AutomationPointModel() : super();
+  AutomationPointModel({
+    required double offset,
+    required double y,
+    double tension = 0,
+    AutomationCurveType curve = AutomationCurveType.smooth,
+  }) : super(offset: offset, y: y, tension: tension, curve: curve);
 
   factory AutomationPointModel.fromJson(Map<String, dynamic> json) =>
       _$AutomationPointModelFromJson(json);
 }
 
 abstract class _AutomationPointModel with Store {
-  _AutomationPointModel();
+  _AutomationPointModel({
+    required this.offset,
+    required this.y,
+    required this.tension,
+    required this.curve,
+  });
 
   Map<String, dynamic> toJson() =>
       _$AutomationPointModelToJson(this as AutomationPointModel);
+
+  @observable
+  double offset;
+
+  @observable
+  double y;
+
+  @observable
+  double tension;
+
+  @observable
+  AutomationCurveType curve;
 }
