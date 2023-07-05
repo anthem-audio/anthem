@@ -34,10 +34,6 @@ void paintTimeGrid({
   required List<TimeSignatureChangeModel> timeSignatureChanges,
   required double timeViewStart,
   required double timeViewEnd,
-
-  /// Used to correct for DPI. Should only be set if rendering to a
-  /// PictureRecorder.
-  double devicePixelRatio = 1,
 }) {
   final shadedPaint = Paint()..color = Theme.grid.shaded;
   final accentLinePaint = Paint()..color = Theme.grid.accent;
@@ -62,7 +58,6 @@ void paintTimeGrid({
     divisionChanges: minorDivisionChanges,
     size: size,
     paint: minorLinePaint,
-    devicePixelRatio: devicePixelRatio,
   );
 
   final majorDivisionChanges = getDivisionChanges(
@@ -83,7 +78,6 @@ void paintTimeGrid({
     divisionChanges: majorDivisionChanges,
     size: size,
     paint: majorLinePaint,
-    devicePixelRatio: devicePixelRatio,
   );
 
   final barDivisionChanges = getDivisionChanges(
@@ -104,7 +98,6 @@ void paintTimeGrid({
     divisionChanges: barDivisionChanges,
     size: size,
     paint: accentLinePaint,
-    devicePixelRatio: devicePixelRatio,
   );
 
   paintPhraseShading(
@@ -116,7 +109,6 @@ void paintTimeGrid({
     size: size,
     paint: shadedPaint,
     ticksPerQuarter: ticksPerQuarter,
-    devicePixelRatio: devicePixelRatio,
   );
 }
 
@@ -127,7 +119,6 @@ void paintVerticalLines({
   required List<DivisionChange> divisionChanges,
   required Size size,
   required Paint paint,
-  double devicePixelRatio = 1,
 }) {
   var i = 0;
   // There should always be at least one division change. The first change
@@ -158,12 +149,12 @@ void paintVerticalLines({
       final x = timeToPixels(
         timeViewStart: timeViewStart,
         timeViewEnd: timeViewEnd,
-        viewPixelWidth: size.width * devicePixelRatio,
+        viewPixelWidth: size.width,
         time: timePtr.toDouble(),
       );
 
       canvas.drawRect(
-        Rect.fromLTWH(x, 0, devicePixelRatio, size.height * devicePixelRatio),
+        Rect.fromLTWH(x, 0, 1, size.height),
         paint,
       );
 
@@ -188,7 +179,6 @@ void paintPhraseShading({
   required Size size,
   required Paint paint,
   required int ticksPerQuarter,
-  required double devicePixelRatio,
 }) {
   var tick = 0;
   var shadeThisPhrase = false;
@@ -222,28 +212,25 @@ void paintPhraseShading({
     }
 
     final startX = timeToPixels(
-          timeViewStart: timeViewStart,
-          timeViewEnd: timeViewEnd,
-          viewPixelWidth: size.width,
-          time: tick.toDouble(),
-        ) *
-        devicePixelRatio;
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      viewPixelWidth: size.width,
+      time: tick.toDouble(),
+    );
 
     final endX = timeToPixels(
-          timeViewStart: timeViewStart,
-          timeViewEnd: timeViewEnd,
-          viewPixelWidth: size.width,
-          time: (tick + phraseWidth).toDouble(),
-        ) *
-        devicePixelRatio;
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      viewPixelWidth: size.width,
+      time: (tick + phraseWidth).toDouble(),
+    );
 
     // If it's actually on screen
     if (tick <= timeViewEnd && tick + phraseWidth >= timeViewStart) {
       // If it should be shaded
       if (shadeThisPhrase) {
         canvas.drawRect(
-          Rect.fromLTWH(
-              startX, 0, endX - startX, size.height * devicePixelRatio),
+          Rect.fromLTWH(startX, 0, endX - startX, size.height),
           paint,
         );
       }

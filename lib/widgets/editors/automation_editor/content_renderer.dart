@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:ui';
+import 'dart:ui' as ui;
 
 import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/pattern/pattern.dart';
@@ -85,29 +85,21 @@ class AutomationEditorPainter extends CustomPainterObserver {
     required this.devicePixelRatio,
   });
 
+  ui.Image? imageCache;
+
   @override
   void observablePaint(Canvas canvas, Size size) {
-    final recorder = PictureRecorder();
-    final recorderCanvas = Canvas(recorder);
+    canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
-    recorderCanvas.clipRect(Rect.fromLTWH(
-      0,
-      0,
-      size.width * devicePixelRatio,
-      size.height * devicePixelRatio,
-    ));
-
-    for (var i = 0.0;
-        i < size.height * devicePixelRatio;
-        i += size.height * devicePixelRatio / 5) {
-      recorderCanvas.drawRect(
-        Rect.fromLTWH(0, i, size.width * devicePixelRatio, devicePixelRatio),
+    for (var i = 0.0; i < size.height; i += size.height / 5) {
+      canvas.drawRect(
+        Rect.fromLTWH(0, i, size.width, 1),
         Paint()..color = Theme.grid.major,
       );
     }
 
     paintTimeGrid(
-      canvas: recorderCanvas,
+      canvas: canvas,
       size: size,
       ticksPerQuarter: ticksPerQuarter,
       snap: AutoSnap(),
@@ -115,33 +107,104 @@ class AutomationEditorPainter extends CustomPainterObserver {
       timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
-      devicePixelRatio: devicePixelRatio,
     );
 
-    final backgroundImage = recorder.endRecording().toImageSync(
+    final points =
+        pattern?.automationLanes[project.activeAutomationGeneratorID]?.points ??
+            <AutomationPointModel>[];
+
+    // This section draws each curve section one at a time to a texture, and
+    // then draws that texture to the canvas.
+
+    final recorder = ui.PictureRecorder();
+    final recorderCanvas = ui.Canvas(recorder);
+    recorderCanvas.clipRect(Rect.fromLTWH(
+      0,
+      0,
+      size.width * devicePixelRatio,
+      size.height * devicePixelRatio,
+    ));
+
+    AutomationPointModel? lastPoint;
+
+    for (final point in points) {
+      if (lastPoint == null) {
+        lastPoint = point;
+        continue;
+      }
+
+      final lastPointX = timeToPixels(
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: size.width,
+        time: lastPoint.offset,
+      );
+      final pointX = timeToPixels(
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: size.width,
+        time: point.offset,
+      );
+
+      final lastPointXFloor = lastPointX.floorToDouble();
+
+      final xOffset = lastPointXFloor * devicePixelRatio;
+      const yOffset = 0.0;
+
+      shader.setFloatUniforms((setter) {
+        lastPoint!;
+
+        setter.setFloat((pointX - lastPointX) * devicePixelRatio);
+        setter.setFloat(size.height * devicePixelRatio);
+
+        setter.setFloat(xOffset);
+        setter.setFloat(yOffset);
+
+        setter.setFloat(lastPoint.offset);
+        setter.setFloat(lastPoint.y);
+        setter.setFloat(point.offset);
+        setter.setFloat(point.y);
+        setter.setFloat(point.tension);
+      });
+
+      final paint = Paint()..shader = shader;
+
+      // TODO: We haven't yet dealt with the fact that the rectangle may be
+      // wider than the thing it's supposed to draw. The rectangle will always
+      // be on a pixel boundary, but the curve may not be. We should handle this
+      // in the shader but we're not yet.
+      recorderCanvas.drawRect(
+        Rect.fromLTWH(
+          xOffset,
+          yOffset,
+          (pointX.ceilToDouble() - lastPointXFloor) * devicePixelRatio,
+          size.height * devicePixelRatio,
+        ),
+        paint,
+      );
+
+      lastPoint = point;
+    }
+
+    final curvesImage = recorder.endRecording().toImageSync(
           (size.width * devicePixelRatio).toInt(),
           (size.height * devicePixelRatio).toInt(),
         );
 
-    shader.setImageSampler(0, backgroundImage);
+    canvas.drawImageRect(
+      curvesImage,
+      Rect.fromLTWH(
+          0, 0, size.width * devicePixelRatio, size.height * devicePixelRatio),
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Paint(),
+    );
 
-    shader.setFloatUniforms((setter) {
-      setter.setFloat(size.width);
-      setter.setFloat(size.height);
-      setter.setFloat(timeViewStart);
-      setter.setFloat(timeViewEnd);
-    });
+    // This section draws circles for each node, as well as circles for each
+    // tension handle.
 
-    final paint = Paint()..shader = shader;
+    lastPoint = null;
 
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), paint);
-
-    canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
-
-    AutomationPointModel? lastPoint;
-    for (final point in pattern
-            ?.automationLanes[project.activeAutomationGeneratorID]?.points ??
-        <AutomationPointModel>[]) {
+    for (final point in points) {
       final x = timeToPixels(
         timeViewStart: timeViewStart,
         timeViewEnd: timeViewEnd,
@@ -153,37 +216,23 @@ class AutomationEditorPainter extends CustomPainterObserver {
       canvas.drawCircle(
           Offset(x, y), 5, Paint()..color = const Color(0xFFab1593));
 
+      // Tension handle
       if (lastPoint != null) {
-        final resolution = (timeToPixels(
-              timeViewStart: timeViewStart,
-              timeViewEnd: timeViewEnd,
-              viewPixelWidth: size.width,
-              time: point.offset,
-            ) -
-            timeToPixels(
-              timeViewStart: timeViewStart,
-              timeViewEnd: timeViewEnd,
-              viewPixelWidth: size.width,
-              time: lastPoint.offset,
-            ));
+        const normalizedX = 0.5;
+        final normalizedY = evaluateSmooth(normalizedX, point.tension) *
+                (point.y - lastPoint.y) +
+            lastPoint.y;
 
-        for (int i = 0; i < resolution; i++) {
-          final normalizedX = i / resolution;
-          final normalizedY = evaluateSmooth(normalizedX, point.tension) *
-                  (point.y - lastPoint.y) +
-              lastPoint.y;
-
-          final x = timeToPixels(
-            timeViewStart: timeViewStart,
-            timeViewEnd: timeViewEnd,
-            viewPixelWidth: size.width,
-            time: normalizedX * (point.offset - lastPoint.offset) +
-                lastPoint.offset,
-          );
-          final y = (1 - normalizedY) * size.height;
-          canvas.drawCircle(
-              Offset(x, y), 2, Paint()..color = const Color(0xFF15ab93));
-        }
+        final x = timeToPixels(
+          timeViewStart: timeViewStart,
+          timeViewEnd: timeViewEnd,
+          viewPixelWidth: size.width,
+          time: normalizedX * (point.offset - lastPoint.offset) +
+              lastPoint.offset,
+        );
+        final y = (1 - normalizedY) * size.height;
+        canvas.drawCircle(
+            Offset(x, y), 2, Paint()..color = const Color(0xFF15ab93));
       }
 
       lastPoint = point;
