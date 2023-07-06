@@ -30,9 +30,7 @@ uniform vec2 resolution;
 // top-left of the canvas. The uniform below uniform encodes this offset.
 uniform vec2 offset;
 
-uniform float lastPointTime;
 uniform float lastPointY;
-uniform float thisPointTime;
 uniform float thisPointY;
 uniform float tension;
 
@@ -49,40 +47,104 @@ float g(float x) {
 }
 
 float getLinearCenterInterpolation(float tension) {
-  return 1 -
+  return 1.0 -
       (g(tension + linearCenterWidth) +
-          (1 - g(tension - linearCenterWidth)) -
-          1);
+          (1.0 - g(tension - linearCenterWidth)) -
+          1.0);
 }
 
 float getRawTensionForSmooth(float tension) {
-  float linearCenterInterpolation = getLinearCenterInterpolation(tension);
+    float scaledTension = tension * 15.0;
+    float linearCenterInterpolation = getLinearCenterInterpolation(scaledTension);
 
-  return pow(tension / 2.0, 2.2) * linearCenterInterpolation +
-      0.7 * tension * (1 - linearCenterInterpolation);
+    // This is also why we're having issues in the Dart version of this function
+    float powVal = 1.0;
+    if (tension > 0.0) {
+        powVal = pow(scaledTension / 2.0, 2.2);
+    } else if (tension < 1.0) {
+        powVal = -pow(-scaledTension / 2.0, 2.2);
+    }
+
+    return powVal * linearCenterInterpolation +
+        0.7 * scaledTension * (1.0 - linearCenterInterpolation);
 }
 
-float smoothCurve(float normalizedX, float tension) {
-  float rawTension = getRawTensionForSmooth(tension * 10);
-  if (tension >= 0) {
-    return pow(normalizedX, rawTension + 1);
+float smoothCurve(float normalizedX, float rawTension) {
+  if (rawTension >= 0.0) {
+    return pow(normalizedX, rawTension + 1.0);
   } else {
-    return 1 - pow(1 - normalizedX, -rawTension + 1);
+    return 1.0 - pow(1.0 - normalizedX, -rawTension + 1.0);
   }
+}
+
+// This is the derivative of smoothCurve
+float smoothCurveSlope(float normalizedX, float rawTension) {
+  if (rawTension >= 0.0) {
+    return (rawTension + 1.0) * pow(normalizedX, rawTension);
+  } else {
+    // return 1 - pow(1 - normalizedX, -rawTension + 1);
+    return (-rawTension + 1.0) * pow(-normalizedX + 1.0, -rawTension);
+  }
+}
+
+vec2 projectPointOntoLine(vec2 A, vec2 B, vec2 point) {
+    // Compute vectors relative to A
+    vec2 AP = point - A;
+    vec2 AB = B - A;
+    
+    // Compute the projection of point onto the line AB
+    vec2 projection = A + (dot(AP, AB) / dot(AB, AB)) * AB;
+    
+    return projection;
+}
+
+float getY(float x, float startY, float endY, float tension) {
+    return smoothCurve(x, tension) * (endY - startY) + startY;
+}
+
+float getSlope(float x, float startY, float endY, float tension) {
+    return smoothCurveSlope(x, tension) * (endY - startY);
+}
+
+float getDistFromLine(vec2 uv, float valueAtUvX, float slope, float startY, float endY, float tension) {
+    float rawTension = getRawTensionForSmooth(tension);
+    float y = valueAtUvX;
+    
+    vec2 p1 = vec2(uv.x, y);
+    vec2 p2 = vec2(uv.x + 1.0, y + slope);
+    vec2 projectedPoint = projectPointOntoLine(p1, p2, uv);
+    float dist = distance(projectedPoint * resolution.xy, uv * resolution.xy);
+    
+    return dist;
 }
 
 void main() {
-  vec2 st = (FlutterFragCoord().xy - offset) / resolution.xy;
+  vec2 uv = (FlutterFragCoord().xy - offset) / resolution.xy;
+  uv = vec2(uv.x, 1 - uv.y);
+
+  float startY = lastPointY;
+  float endY = thisPointY;
+  float strokeWidth = 4.0; // TODO: DPI
 
   vec4 targetColor = vec4(0.0, 0.5, 0.5, 1.0);
 
-  float normalizedX = st.x;
-  float rawCurveY = smoothCurve(normalizedX, tension);
-  float curveY = rawCurveY * (thisPointY - lastPointY) + lastPointY;
+  float rawTension = getRawTensionForSmooth(tension);
+  float y = getY(uv.x, startY, endY, rawTension);
+  float slope = getSlope(uv.x, startY, endY, rawTension);
 
-  if (abs(curveY - (1-st.y)) < 2.0 / resolution.y) {
-    fragColor = targetColor;
-  } else {
-    fragColor = vec4(0.0, 0.0, 0.0, 0.0);
-  }
+  float dist = getDistFromLine(uv, y, slope, startY, endY, rawTension);
+
+  float shadedOpacity = 0.1;
+
+  vec4 backgroundColor = vec4(0.0, 0.0, 0.0, 0.0);
+  // if (uv.y < y) {
+  //   backgroundColor = vec4(targetColor.xyz, shadedOpacity);
+  // }
+
+  float lineStrength = ((strokeWidth + 2.0) * 0.5) - dist; // TODO: DPI
+
+  // Mix with line
+  fragColor = mix(backgroundColor, targetColor, lineStrength);
+
+  // fragColor = vec4(0.0, 0.0, 0.0, 0.0);
 }
