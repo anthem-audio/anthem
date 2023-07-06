@@ -160,9 +160,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
         setter.setFloat(xOffset);
         setter.setFloat(yOffset);
 
-        setter.setFloat(lastPoint.offset);
         setter.setFloat(lastPoint.y);
-        setter.setFloat(point.offset);
         setter.setFloat(point.y);
         setter.setFloat(point.tension);
       });

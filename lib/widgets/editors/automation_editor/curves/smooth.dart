@@ -38,12 +38,19 @@ double _getLinearCenterInterpolation(double tension) {
 double _getRawTension(double tension) {
   double linearCenterInterpolation = _getLinearCenterInterpolation(tension);
 
-  return pow(tension / 2, 2.2).toDouble() * linearCenterInterpolation +
+  var powVal = 0.0;
+  if (tension >= 0) {
+    powVal = pow(tension / 2, 2.2).toDouble();
+  } else if (tension < 0) {
+    powVal = -pow(-tension / 2, 2.2).toDouble();
+  }
+
+  return powVal * linearCenterInterpolation +
       0.7 * tension * (1 - linearCenterInterpolation);
 }
 
 double evaluateSmooth(double normalizedX, double tension) {
-  final rawTension = _getRawTension(tension * 10);
+  final rawTension = _getRawTension(tension * 15);
   if (tension >= 0) {
     return pow(normalizedX, rawTension + 1).toDouble();
   } else {
