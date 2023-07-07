@@ -24,6 +24,7 @@
 precision mediump float;
 
 uniform vec2 resolution;
+uniform float devicePixelRatio;
 
 // FlutterFragCoord() is relative to the top-left of the canvas. This shader
 // pass represents a single curve, and will likely have an offset from the
@@ -124,7 +125,7 @@ void main() {
 
   float startY = lastPointY;
   float endY = thisPointY;
-  float strokeWidth = 4.0; // TODO: DPI
+  float strokeWidth = 2.0 * devicePixelRatio;
 
   vec4 targetColor = vec4(0.0, 0.5, 0.5, 1.0);
 
@@ -148,7 +149,7 @@ void main() {
   //   backgroundColor = vec4(targetColor.xyz, shadedOpacity);
   // }
 
-  float lineStrength = ((strokeWidth + 2.0) * 0.5) - dist; // TODO: DPI
+  float lineStrength = ((strokeWidth + devicePixelRatio) * 0.5) - dist;
 
   // Mix with line
   fragColor = mix(backgroundColor, targetColor, lineStrength);
