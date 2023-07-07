@@ -156,6 +156,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
 
         setter.setFloat((pointX - lastPointX) * devicePixelRatio);
         setter.setFloat(size.height * devicePixelRatio);
+        setter.setFloat(devicePixelRatio);
 
         setter.setFloat(xOffset);
         setter.setFloat(yOffset);
