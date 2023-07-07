@@ -106,14 +106,14 @@ float getSlope(float x, float startY, float endY, float tension) {
     return smoothCurveSlope(x, tension) * (endY - startY);
 }
 
-float getDistFromLine(vec2 uv, float valueAtUvX, float slope, float startY, float endY, float tension) {
+float getDistFromLine(vec2 pixelCoord, float pixelValueAtX, float slope, float startY, float endY, float tension) {
     float rawTension = getRawTensionForSmooth(tension);
-    float y = valueAtUvX;
+    float y = pixelValueAtX;
     
-    vec2 p1 = vec2(uv.x, y);
-    vec2 p2 = vec2(uv.x + 1.0, y + slope);
-    vec2 projectedPoint = projectPointOntoLine(p1, p2, uv);
-    float dist = distance(projectedPoint * resolution.xy, uv * resolution.xy);
+    vec2 p1 = vec2(pixelCoord.x, y);
+    vec2 p2 = vec2(pixelCoord.x + 1.0, y + slope);
+    vec2 projectedPoint = projectPointOntoLine(p1, p2, pixelCoord);
+    float dist = distance(projectedPoint, pixelCoord);
     
     return dist;
 }
@@ -132,7 +132,14 @@ void main() {
   float y = getY(uv.x, startY, endY, rawTension);
   float slope = getSlope(uv.x, startY, endY, rawTension);
 
-  float dist = getDistFromLine(uv, y, slope, startY, endY, rawTension);
+  float dist = getDistFromLine(
+    uv * resolution,
+    y * resolution.y,
+    slope * resolution.y / resolution.x,
+    startY * resolution.y,
+    endY * resolution.x,
+    rawTension
+  );
 
   float shadedOpacity = 0.1;
 
