@@ -119,6 +119,19 @@ float getDistFromLine(vec2 pixelCoord, float pixelValueAtX, float slope, float s
     return dist;
 }
 
+// From https://stackoverflow.com/a/28095165/8166701
+// Gold Noise ©2015 dcerisano@standard3d.com
+// - based on the Golden Ratio
+// - uniform normalized distribution
+// - fastest static noise generator function (also runs at low precision)
+// - use with indicated fractional seeding method. 
+
+float PHI = 1.61803398874989484820459;  // Φ = Golden Ratio   
+
+float goldNoise(in vec2 xy, in float seed) {
+       return fract(tan(distance(xy * PHI, xy) * seed) * xy.x);
+}
+
 void main() {
   vec2 uv = (FlutterFragCoord().xy - offset) / resolution.xy;
   uv = vec2(uv.x, 1 - uv.y);
@@ -142,17 +155,18 @@ void main() {
     rawTension
   );
 
-  float shadedOpacity = 0.1;
+  float shadedOpacity = 0.4;
 
   vec4 backgroundColor = vec4(0.0, 0.0, 0.0, 0.0);
-  // if (uv.y < y) {
-  //   backgroundColor = vec4(targetColor.xyz, shadedOpacity);
-  // }
+  if (uv.y < y) {
+    // Flutter requires us to supply colors with premultiplied alpha, which is
+    // why we multiply the color component with shadedOpacity.
+    float rand = goldNoise(uv * resolution, 0.25) * 0.2 + 0.8;
+    backgroundColor = vec4(targetColor.xyz * shadedOpacity * uv.y * rand, shadedOpacity * uv.y * rand);
+  }
 
   float lineStrength = ((strokeWidth + devicePixelRatio) * 0.5) - dist;
 
   // Mix with line
-  fragColor = mix(backgroundColor, targetColor, lineStrength);
-
-  // fragColor = vec4(0.0, 0.0, 0.0, 0.0);
+  fragColor = mix(backgroundColor, targetColor, min(1, max(0, lineStrength)));
 }
