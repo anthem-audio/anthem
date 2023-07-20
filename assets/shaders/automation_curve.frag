@@ -143,8 +143,7 @@ float goldNoise(in vec2 xy, in float seed) {
 }
 
 void main() {
-  vec2 uv = (FlutterFragCoord().xy - offset - startOffset) / resolution.xy;
-  // vec2 uv = (FlutterFragCoord().xy - offset - startOffset) / vec2(resolution.x - startOffset - endOffset, resolution.y);
+  vec2 uv = vec2(FlutterFragCoord().x - offset.x - startOffset, FlutterFragCoord().y - offset.y) / resolution.xy;
   uv = vec2(uv.x, 1 - uv.y);
 
   float startY = lastPointY;
