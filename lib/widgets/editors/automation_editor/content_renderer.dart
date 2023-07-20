@@ -148,6 +148,12 @@ class AutomationEditorPainter extends CustomPainterObserver {
         time: point.offset,
       );
 
+      if ((lastPointX < 0 && pointX < 0) ||
+          (lastPointX > size.width && pointX > size.width)) {
+        lastPoint = point;
+        continue;
+      }
+
       final xOffset = (lastPointX - strokeWidth * 0.5) * devicePixelRatio;
       const yOffset = 0.0;
 
