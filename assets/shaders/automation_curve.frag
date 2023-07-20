@@ -17,6 +17,21 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+// This shader has an issue. We have line thickness working correctly for steep
+// slopes, but not for steep slopes that change quickly.
+//
+// Currently, we find the y-value of the fucntion at the x-value of the current
+// pixel, and then we get the tangent line. We project the point at the current
+// pixel onto the tangent line, and get the distance between the pixel and that
+// projected point. If that distance is below 0.5 * our line width, we shade in
+// the pixel, otherwise we don't.
+//
+// I'm not ready to implement it, but here's the fix I'd propose. When we
+// project the point onto the tangent line, we could take the resulting x-value
+// of the projected point, and get a new y-value and tangent line for the
+// x-value of that point. I believe if we use this tangent line for our final
+// calculation, the result will be more accurate.
+
 #version 460 core
 
 #include <flutter/runtime_effect.glsl>

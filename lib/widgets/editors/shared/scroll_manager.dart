@@ -25,7 +25,21 @@ import 'package:provider/provider.dart';
 import 'helpers/time_helpers.dart';
 import 'helpers/types.dart';
 
-/// Abstracts scroll events for editors
+/// Abstracts scroll and zoom events for editors.
+///
+/// This widget is meant to be rendered around an editor canvas. It intercepts
+/// mouse events related to scrolling (e.g. middle-mouse click + drag) and
+/// handles them appropriately.
+///
+/// For horizontal scroll and zoom, this widget has a [TimeRange] property that
+/// it directly manipulates. We encode time in the same way across all editors,
+/// and since [TimeRange] is a MobX object, we can just mutate it directly from
+/// this widget.
+///
+/// Vertical scrolling means different things to different editors (tracks for
+/// the arranger, notes for the piano roll, etc.), so for vertical scroll, we
+/// allow consumers to provide event handlers to this widget to monitor and
+/// react to changes.
 class EditorScrollManager extends StatefulWidget {
   final Widget? child;
   final TimeRange timeView;
