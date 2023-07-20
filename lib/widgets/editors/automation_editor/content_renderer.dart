@@ -109,6 +109,8 @@ class AutomationEditorPainter extends CustomPainterObserver {
       timeViewEnd: timeViewEnd,
     );
 
+    const strokeWidth = 2.0;
+
     final points =
         pattern?.automationLanes[project.activeAutomationGeneratorID]?.points ??
             <AutomationPointModel>[];
@@ -146,8 +148,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
         time: point.offset,
       );
 
-      final xOffset =
-          (lastPointX - 1) * devicePixelRatio; // TODO: 0.5 * line width
+      final xOffset = (lastPointX - strokeWidth * 0.5) * devicePixelRatio;
       const yOffset = 0.0;
 
       shader.setFloatUniforms((setter) {
@@ -164,23 +165,20 @@ class AutomationEditorPainter extends CustomPainterObserver {
         setter.setFloat(point.y);
         setter.setFloat(point.tension);
 
-        setter.setFloat(1 * devicePixelRatio);
-        setter.setFloat(1 *
-            devicePixelRatio); // TODO: Set line width in shader and use line width * 0.5 here instead of hard-coding
+        setter.setFloat(strokeWidth * 0.5 * devicePixelRatio);
+        setter.setFloat(strokeWidth * 0.5 * devicePixelRatio);
+
+        setter.setFloat(strokeWidth);
       });
 
       final paint = Paint()..shader = shader;
 
-      // TODO: We haven't yet dealt with the fact that the rectangle may be
-      // wider than the thing it's supposed to draw. The rectangle will always
-      // be on a pixel boundary, but the curve may not be. We should handle this
-      // in the shader but we're not yet.
       recorderCanvas.drawRect(
         Rect.fromLTWH(
           xOffset,
           yOffset,
           (pointX - lastPointX) * devicePixelRatio +
-              1 * 2 * devicePixelRatio, // TODO: 0.5 * line width
+              0.5 * strokeWidth * 2 * devicePixelRatio,
           size.height * devicePixelRatio,
         ),
         paint,

@@ -42,6 +42,9 @@ uniform float startOffset;
 // end of the curve
 uniform float endOffset;
 
+// Stroke width in display-independent pixels (multiply by devicePixelRatio to get actual pixels)
+uniform float unAdjustedStrokeWidth;
+
 out vec4 fragColor;
 
 const float linearCenterTransitionRate = 0.27;
@@ -146,7 +149,7 @@ void main() {
 
   float startY = lastPointY;
   float endY = thisPointY;
-  float strokeWidth = 2.0 * devicePixelRatio;
+  float strokeWidth = unAdjustedStrokeWidth * devicePixelRatio;
 
   vec4 targetColor = vec4(0.0, 0.5, 0.5, 1.0);
 
