@@ -45,6 +45,8 @@ uniform float endOffset;
 // Stroke width in display-independent pixels (multiply by devicePixelRatio to get actual pixels)
 uniform float unAdjustedStrokeWidth;
 
+uniform vec4 color;
+
 out vec4 fragColor;
 
 const float linearCenterTransitionRate = 0.27;
@@ -65,19 +67,19 @@ float getLinearCenterInterpolation(float tension) {
 }
 
 float getRawTensionForSmooth(float tension) {
-    float scaledTension = tension * 15.0;
-    float linearCenterInterpolation = getLinearCenterInterpolation(scaledTension);
+  float scaledTension = tension * 15.0;
+  float linearCenterInterpolation = getLinearCenterInterpolation(scaledTension);
 
-    // This is also why we're having issues in the Dart version of this function
-    float powVal = 1.0;
-    if (tension > 0.0) {
-        powVal = pow(scaledTension / 2.0, 2.2);
-    } else if (tension < 1.0) {
-        powVal = -pow(-scaledTension / 2.0, 2.2);
-    }
+  // This is also why we're having issues in the Dart version of this function
+  float powVal = 1.0;
+  if (tension > 0.0) {
+    powVal = pow(scaledTension / 2.0, 2.2);
+  } else if (tension < 1.0) {
+    powVal = -pow(-scaledTension / 2.0, 2.2);
+  }
 
-    return powVal * linearCenterInterpolation +
-        0.7 * scaledTension * (1.0 - linearCenterInterpolation);
+  return powVal * linearCenterInterpolation +
+      0.7 * scaledTension * (1.0 - linearCenterInterpolation);
 }
 
 float smoothCurve(float normalizedX, float rawTension) {
@@ -99,34 +101,34 @@ float smoothCurveSlope(float normalizedX, float rawTension) {
 }
 
 vec2 projectPointOntoLine(vec2 A, vec2 B, vec2 point) {
-    // Compute vectors relative to A
-    vec2 AP = point - A;
-    vec2 AB = B - A;
-    
-    // Compute the projection of point onto the line AB
-    vec2 projection = A + (dot(AP, AB) / dot(AB, AB)) * AB;
-    
-    return projection;
+  // Compute vectors relative to A
+  vec2 AP = point - A;
+  vec2 AB = B - A;
+  
+  // Compute the projection of point onto the line AB
+  vec2 projection = A + (dot(AP, AB) / dot(AB, AB)) * AB;
+  
+  return projection;
 }
 
 float getY(float x, float startY, float endY, float tension) {
-    return smoothCurve(x, tension) * (endY - startY) + startY;
+  return smoothCurve(x, tension) * (endY - startY) + startY;
 }
 
 float getSlope(float x, float startY, float endY, float tension) {
-    return smoothCurveSlope(x, tension) * (endY - startY);
+  return smoothCurveSlope(x, tension) * (endY - startY);
 }
 
 float getDistFromLine(vec2 pixelCoord, float pixelValueAtX, float slope, float startY, float endY, float tension) {
-    float rawTension = getRawTensionForSmooth(tension);
-    float y = pixelValueAtX;
-    
-    vec2 p1 = vec2(pixelCoord.x, y);
-    vec2 p2 = vec2(pixelCoord.x + 1.0, y + slope);
-    vec2 projectedPoint = projectPointOntoLine(p1, p2, pixelCoord);
-    float dist = distance(projectedPoint, pixelCoord);
-    
-    return dist;
+  float rawTension = getRawTensionForSmooth(tension);
+  float y = pixelValueAtX;
+  
+  vec2 p1 = vec2(pixelCoord.x, y);
+  vec2 p2 = vec2(pixelCoord.x + 1.0, y + slope);
+  vec2 projectedPoint = projectPointOntoLine(p1, p2, pixelCoord);
+  float dist = distance(projectedPoint, pixelCoord);
+  
+  return dist;
 }
 
 // From https://stackoverflow.com/a/28095165/8166701
@@ -139,7 +141,7 @@ float getDistFromLine(vec2 pixelCoord, float pixelValueAtX, float slope, float s
 float PHI = 1.61803398874989484820459;  // Φ = Golden Ratio   
 
 float goldNoise(in vec2 xy, in float seed) {
-       return fract(tan(distance(xy * PHI, xy) * seed) * xy.x);
+  return fract(tan(distance(xy * PHI, xy) * seed) * xy.x);
 }
 
 void main() {
@@ -149,8 +151,6 @@ void main() {
   float startY = lastPointY;
   float endY = thisPointY;
   float strokeWidth = unAdjustedStrokeWidth * devicePixelRatio;
-
-  vec4 targetColor = vec4(0.0, 0.5, 0.5, 1.0);
 
   float rawTension = getRawTensionForSmooth(tension);
   float y = getY(uv.x, startY, endY, rawTension);
@@ -165,14 +165,13 @@ void main() {
     rawTension
   );
 
-  float shadedOpacity = 0.4;
-
   vec4 backgroundColor = vec4(0.0, 0.0, 0.0, 0.0);
   if (uv.y < y && uv.x >= 0 && uv.x < 1) {
     float rand = goldNoise(uv * resolution, 0.25) * 0.1 + 0.9;
     // Flutter requires us to supply colors with premultiplied alpha, which is
     // why we multiply the color component with shadedOpacity.
-    backgroundColor = vec4(targetColor.xyz * shadedOpacity * uv.y * rand, shadedOpacity * uv.y * rand);
+    float opacity = uv.y * 0.2 + 0.03 * rand;
+    backgroundColor = vec4(color.xyz * opacity, opacity);
   }
 
   float lineStrength = ((strokeWidth + devicePixelRatio) * 0.5) - dist;
@@ -199,5 +198,5 @@ void main() {
   }
 
   // Mix with line
-  fragColor = mix(backgroundColor, targetColor, min(1, max(0, lineStrength)));
+  fragColor = mix(backgroundColor, color, min(1, max(0, lineStrength)));
 }

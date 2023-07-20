@@ -169,6 +169,8 @@ class AutomationEditorPainter extends CustomPainterObserver {
         setter.setFloat(strokeWidth * 0.5 * devicePixelRatio);
 
         setter.setFloat(strokeWidth);
+
+        setter.setColor(Theme.primary.main);
       });
 
       final paint = Paint()..shader = shader;
@@ -215,7 +217,18 @@ class AutomationEditorPainter extends CustomPainterObserver {
       final y = (1 - point.y) * size.height;
 
       canvas.drawCircle(
-          Offset(x, y), 5, Paint()..color = const Color(0xFFab1593));
+        Offset(x, y),
+        3.5,
+        Paint()..color = Theme.grid.backgroundDark,
+      );
+      canvas.drawCircle(
+        Offset(x, y),
+        3.5,
+        Paint()
+          ..color = Theme.primary.main
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth,
+      );
 
       // Tension handle
       if (lastPoint != null) {
@@ -232,8 +245,20 @@ class AutomationEditorPainter extends CustomPainterObserver {
               lastPoint.offset,
         );
         final y = (1 - normalizedY) * size.height;
+
         canvas.drawCircle(
-            Offset(x, y), 2, Paint()..color = const Color(0xFF15ab93));
+          Offset(x, y),
+          2.5,
+          Paint()..color = Theme.grid.backgroundDark,
+        );
+        canvas.drawCircle(
+          Offset(x, y),
+          2.5,
+          Paint()
+            ..color = Theme.primary.main
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = strokeWidth,
+        );
       }
 
       lastPoint = point;
