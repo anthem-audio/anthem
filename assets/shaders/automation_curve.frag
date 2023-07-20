@@ -159,13 +159,34 @@ void main() {
 
   vec4 backgroundColor = vec4(0.0, 0.0, 0.0, 0.0);
   if (uv.y < y) {
+    float rand = goldNoise(uv * resolution, 0.25) * 0.1 + 0.9;
     // Flutter requires us to supply colors with premultiplied alpha, which is
     // why we multiply the color component with shadedOpacity.
-    float rand = goldNoise(uv * resolution, 0.25) * 0.2 + 0.8;
     backgroundColor = vec4(targetColor.xyz * shadedOpacity * uv.y * rand, shadedOpacity * uv.y * rand);
   }
 
   float lineStrength = ((strokeWidth + devicePixelRatio) * 0.5) - dist;
+
+  // Prevent line from painting above the top point or below the bottom.
+  //
+  // The best thing would be something like finding a tangent line and the
+  // associated vector, and using that to create a round line cap. We have to
+  // basically draw a half-circle in that case, but the half-circle must be
+  // aligned with the tangent line and facing the correct direction. There are
+  // more pressing issues to deal with in the shader right now, so I'm leaving
+  // this as-is for the moment.
+  //
+  // As-is, the code is pretty simplistic. It fades out the line over the course
+  // of one pixel, starting at 0.5 * stroke width above the top of the curve and
+  // below the bottom.
+  float top = max(startY, endY);
+  float bottom = min(startY, endY);
+  if (uv.y > top) {
+    //                                                         \/ I have no idea why + 2 here is necessary
+    lineStrength = lineStrength * min(1, max(0, (strokeWidth + 2) * 0.5 - (uv.y - top) * resolution.y));
+  } else if (uv.y < bottom) {
+    lineStrength = lineStrength * min(1, max(0, (strokeWidth + 2) * 0.5 - (bottom - uv.y) * resolution.y));
+  }
 
   // Mix with line
   fragColor = mix(backgroundColor, targetColor, min(1, max(0, lineStrength)));
