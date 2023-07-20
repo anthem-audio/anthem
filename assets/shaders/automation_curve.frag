@@ -35,6 +35,13 @@ uniform float lastPointY;
 uniform float thisPointY;
 uniform float tension;
 
+// The number of pixels between the left side of the shader draw area and the
+// start of the curve
+uniform float startOffset;
+// The number of pixels between the right side of the shader draw area and the
+// end of the curve
+uniform float endOffset;
+
 out vec4 fragColor;
 
 const float linearCenterTransitionRate = 0.27;
@@ -133,7 +140,8 @@ float goldNoise(in vec2 xy, in float seed) {
 }
 
 void main() {
-  vec2 uv = (FlutterFragCoord().xy - offset) / resolution.xy;
+  vec2 uv = (FlutterFragCoord().xy - offset - startOffset) / resolution.xy;
+  // vec2 uv = (FlutterFragCoord().xy - offset - startOffset) / vec2(resolution.x - startOffset - endOffset, resolution.y);
   uv = vec2(uv.x, 1 - uv.y);
 
   float startY = lastPointY;
@@ -158,7 +166,7 @@ void main() {
   float shadedOpacity = 0.4;
 
   vec4 backgroundColor = vec4(0.0, 0.0, 0.0, 0.0);
-  if (uv.y < y) {
+  if (uv.y < y && uv.x >= 0 && uv.x < 1) {
     float rand = goldNoise(uv * resolution, 0.25) * 0.1 + 0.9;
     // Flutter requires us to supply colors with premultiplied alpha, which is
     // why we multiply the color component with shadedOpacity.

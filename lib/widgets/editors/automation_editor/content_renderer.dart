@@ -146,9 +146,8 @@ class AutomationEditorPainter extends CustomPainterObserver {
         time: point.offset,
       );
 
-      final lastPointXFloor = lastPointX.floorToDouble();
-
-      final xOffset = lastPointXFloor * devicePixelRatio;
+      final xOffset =
+          (lastPointX - 1) * devicePixelRatio; // TODO: 0.5 * line width
       const yOffset = 0.0;
 
       shader.setFloatUniforms((setter) {
@@ -164,6 +163,10 @@ class AutomationEditorPainter extends CustomPainterObserver {
         setter.setFloat(lastPoint.y);
         setter.setFloat(point.y);
         setter.setFloat(point.tension);
+
+        setter.setFloat(1 * devicePixelRatio);
+        setter.setFloat(1 *
+            devicePixelRatio); // TODO: Set line width in shader and use line width * 0.5 here instead of hard-coding
       });
 
       final paint = Paint()..shader = shader;
@@ -176,7 +179,8 @@ class AutomationEditorPainter extends CustomPainterObserver {
         Rect.fromLTWH(
           xOffset,
           yOffset,
-          (pointX.ceilToDouble() - lastPointXFloor) * devicePixelRatio,
+          (pointX - lastPointX) * devicePixelRatio +
+              1 * 2 * devicePixelRatio, // TODO: 0.5 * line width
           size.height * devicePixelRatio,
         ),
         paint,
@@ -195,7 +199,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
       Rect.fromLTWH(
           0, 0, size.width * devicePixelRatio, size.height * devicePixelRatio),
       Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint(),
+      Paint()..blendMode = BlendMode.srcOver,
     );
 
     // This section draws circles for each node, as well as circles for each
