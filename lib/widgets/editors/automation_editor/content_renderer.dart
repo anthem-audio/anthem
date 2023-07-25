@@ -25,6 +25,8 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/automation_editor/curves/smooth.dart';
+import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
+import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
@@ -47,6 +49,8 @@ class AutomationEditorContentRenderer extends StatelessObserverWidget {
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     final pattern = project.song.patterns[project.song.activePatternID];
+    final viewModel = Provider.of<AutomationEditorViewModel>(context);
+    viewModel.hoveredPointAnnotation;
 
     return ShaderBuilder(
       assetKey: 'assets/shaders/automation_curve.frag',
@@ -59,12 +63,16 @@ class AutomationEditorContentRenderer extends StatelessObserverWidget {
           pattern: pattern,
           shader: shader,
           devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
+          visiblePoints: viewModel.visiblePoints,
+          hoveredPointAnnotation: viewModel.hoveredPointAnnotation,
         ),
         isComplex: true,
       ),
     );
   }
 }
+
+const pointAnnotationMargin = 8;
 
 class AutomationEditorPainter extends CustomPainterObserver {
   final double timeViewStart;
@@ -74,6 +82,8 @@ class AutomationEditorPainter extends CustomPainterObserver {
   final PatternModel? pattern;
   final FragmentShader shader;
   final double devicePixelRatio;
+  final CanvasAnnotationSet<PointAnnotation> visiblePoints;
+  final PointAnnotation? hoveredPointAnnotation;
 
   AutomationEditorPainter({
     required this.timeViewStart,
@@ -83,12 +93,16 @@ class AutomationEditorPainter extends CustomPainterObserver {
     this.pattern,
     required this.shader,
     required this.devicePixelRatio,
+    required this.visiblePoints,
+    required this.hoveredPointAnnotation,
   });
 
   ui.Image? imageCache;
 
   @override
   void observablePaint(Canvas canvas, Size size) {
+    visiblePoints.clear();
+
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     for (var i = 0.0; i < size.height; i += size.height / 5) {
@@ -212,6 +226,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
     // tension handle.
 
     lastPoint = null;
+    var i = 0;
 
     for (final point in points) {
       final x = timeToPixels(
@@ -221,19 +236,37 @@ class AutomationEditorPainter extends CustomPainterObserver {
         time: point.offset,
       );
       final y = (1 - point.y) * size.height;
+      final center = Offset(x, y);
+      const radius = 3.5;
+      final radiusMultipler = (hoveredPointAnnotation?.pointIndex == i &&
+              hoveredPointAnnotation?.kind == HandleKind.point)
+          ? 1.5
+          : 1;
 
       canvas.drawCircle(
-        Offset(x, y),
-        3.5,
+        center,
+        radius * radiusMultipler,
         Paint()..color = Theme.grid.backgroundDark,
       );
       canvas.drawCircle(
-        Offset(x, y),
-        3.5,
+        center,
+        radius * radiusMultipler,
         Paint()
           ..color = Theme.primary.main
           ..style = PaintingStyle.stroke
           ..strokeWidth = strokeWidth,
+      );
+      visiblePoints.add(
+        rect: Rect.fromCenter(
+          center: center,
+          width: radius * 2 + pointAnnotationMargin,
+          height: radius * 2 + pointAnnotationMargin,
+        ),
+        metadata: (
+          kind: HandleKind.point,
+          center: center,
+          pointIndex: i,
+        ),
       );
 
       // Tension handle
@@ -251,23 +284,42 @@ class AutomationEditorPainter extends CustomPainterObserver {
               lastPoint.offset,
         );
         final y = (1 - normalizedY) * size.height;
+        final center = Offset(x, y);
+        const radius = 2.5;
+        final radiusMultipler = (hoveredPointAnnotation?.pointIndex == i &&
+                hoveredPointAnnotation?.kind == HandleKind.tensionHandle)
+            ? 1.5
+            : 1;
 
         canvas.drawCircle(
-          Offset(x, y),
-          2.5,
+          center,
+          radius * radiusMultipler,
           Paint()..color = Theme.grid.backgroundDark,
         );
         canvas.drawCircle(
-          Offset(x, y),
-          2.5,
+          center,
+          radius * radiusMultipler,
           Paint()
             ..color = Theme.primary.main
             ..style = PaintingStyle.stroke
             ..strokeWidth = strokeWidth,
         );
+        visiblePoints.add(
+          rect: Rect.fromCenter(
+            center: center,
+            width: radius * 2 + pointAnnotationMargin,
+            height: radius * 2 + pointAnnotationMargin,
+          ),
+          metadata: (
+            kind: HandleKind.tensionHandle,
+            center: center,
+            pointIndex: i,
+          ),
+        );
       }
 
       lastPoint = point;
+      i++;
     }
   }
 
@@ -278,5 +330,9 @@ class AutomationEditorPainter extends CustomPainterObserver {
       ticksPerQuarter != oldDelegate.ticksPerQuarter ||
       project != oldDelegate.project ||
       pattern != oldDelegate.pattern ||
+      shader != oldDelegate.shader ||
+      devicePixelRatio != oldDelegate.devicePixelRatio ||
+      visiblePoints != oldDelegate.visiblePoints ||
+      hoveredPointAnnotation != oldDelegate.hoveredPointAnnotation ||
       super.shouldRepaint(oldDelegate);
 }

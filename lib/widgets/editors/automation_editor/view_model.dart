@@ -17,11 +17,25 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:ui';
+
+import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:mobx/mobx.dart';
 
 import '../shared/helpers/types.dart';
 
 part 'view_model.g.dart';
+
+enum HandleKind {
+  tensionHandle,
+  point,
+}
+
+typedef PointAnnotation = ({
+  HandleKind kind,
+  int pointIndex,
+  Offset center,
+});
 
 // ignore: library_private_types_in_public_api
 class AutomationEditorViewModel = _AutomationEditorViewModel
@@ -29,6 +43,11 @@ class AutomationEditorViewModel = _AutomationEditorViewModel
 
 abstract class _AutomationEditorViewModel with Store {
   TimeRange timeView;
+
+  final visiblePoints = CanvasAnnotationSet<PointAnnotation>();
+
+  @observable
+  PointAnnotation? hoveredPointAnnotation; // TODO: This should be animated
 
   _AutomationEditorViewModel({required this.timeView});
 }

@@ -27,6 +27,7 @@ import 'package:anthem/widgets/editors/automation_editor/automation_editor_contr
 import 'package:anthem/widgets/editors/automation_editor/content_renderer.dart';
 import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -219,14 +220,28 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
                     ),
                   ),
                   Expanded(
-                    child: AnimatedBuilder(
-                      animation: _timeViewAnimationController,
-                      builder: (context, child) {
-                        return AutomationEditorContentRenderer(
-                          timeViewStart: _timeViewStartAnimation.value,
-                          timeViewEnd: _timeViewEndAnimation.value,
-                        );
+                    child: MouseRegion(
+                      onHover: (e) {
+                        final annotations =
+                            viewModel.visiblePoints.hitTestAll(e.localPosition);
+
+                        final hovered = annotations.firstWhereOrNull(
+                                (element) =>
+                                    element.metadata.kind ==
+                                    HandleKind.point) ??
+                            annotations.firstOrNull;
+
+                        viewModel.hoveredPointAnnotation = hovered?.metadata;
                       },
+                      child: AnimatedBuilder(
+                        animation: _timeViewAnimationController,
+                        builder: (context, child) {
+                          return AutomationEditorContentRenderer(
+                            timeViewStart: _timeViewStartAnimation.value,
+                            timeViewEnd: _timeViewEndAnimation.value,
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ],
