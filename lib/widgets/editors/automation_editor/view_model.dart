@@ -19,6 +19,7 @@
 
 import 'dart:ui';
 
+import 'package:anthem/widgets/editors/automation_editor/automation_point_animation_tracker.dart';
 import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:mobx/mobx.dart';
 
@@ -47,7 +48,12 @@ abstract class _AutomationEditorViewModel with Store {
   final visiblePoints = CanvasAnnotationSet<PointAnnotation>();
 
   @observable
-  PointAnnotation? hoveredPointAnnotation; // TODO: This should be animated
+  PointAnnotation? hoveredPointAnnotation;
+
+  @observable
+  PointAnnotation? pressedPointAnnotation;
+
+  final pointAnimationTracker = AutomationPointAnimationTracker();
 
   _AutomationEditorViewModel({required this.timeView});
 }

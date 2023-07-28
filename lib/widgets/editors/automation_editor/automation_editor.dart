@@ -27,7 +27,6 @@ import 'package:anthem/widgets/editors/automation_editor/automation_editor_contr
 import 'package:anthem/widgets/editors/automation_editor/content_renderer.dart';
 import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
-import 'package:collection/collection.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -57,18 +56,21 @@ class AutomationEditorState extends State<AutomationEditor> {
 
     return Provider.value(
       value: viewModel!,
-      child: const Background(
-        type: BackgroundType.dark,
-        borderRadius: BorderRadius.all(Radius.circular(4)),
-        child: Padding(
-          padding: EdgeInsets.all(6),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _AutomationEditorHeader(),
-              SizedBox(height: 4),
-              Flexible(child: _AutomationEditorContent()),
-            ],
+      child: Provider.value(
+        value: controller!,
+        child: const Background(
+          type: BackgroundType.dark,
+          borderRadius: BorderRadius.all(Radius.circular(4)),
+          child: Padding(
+            padding: EdgeInsets.all(6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _AutomationEditorHeader(),
+                SizedBox(height: 4),
+                Flexible(child: _AutomationEditorContent()),
+              ],
+            ),
           ),
         ),
       ),
@@ -142,6 +144,7 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<AutomationEditorViewModel>(context);
+    final controller = Provider.of<AutomationEditorController>(context);
     final project = Provider.of<ProjectModel>(context);
 
     // Updates the time view animation if the time view has changed
@@ -221,26 +224,31 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
                   ),
                   Expanded(
                     child: MouseRegion(
-                      onHover: (e) {
-                        final annotations =
-                            viewModel.visiblePoints.hitTestAll(e.localPosition);
-
-                        final hovered = annotations.firstWhereOrNull(
-                                (element) =>
-                                    element.metadata.kind ==
-                                    HandleKind.point) ??
-                            annotations.firstOrNull;
-
-                        viewModel.hoveredPointAnnotation = hovered?.metadata;
+                      onExit: (e) {
+                        controller.mouseOut();
                       },
-                      child: AnimatedBuilder(
-                        animation: _timeViewAnimationController,
-                        builder: (context, child) {
-                          return AutomationEditorContentRenderer(
-                            timeViewStart: _timeViewStartAnimation.value,
-                            timeViewEnd: _timeViewEndAnimation.value,
-                          );
+                      onHover: (e) {
+                        controller.hover(e.localPosition);
+                      },
+                      child: Listener(
+                        onPointerDown: (e) {
+                          controller.press(e.localPosition);
                         },
+                        onPointerUp: (e) {
+                          controller.release();
+                        },
+                        onPointerCancel: (e) {
+                          controller.release();
+                        },
+                        child: AnimatedBuilder(
+                          animation: _timeViewAnimationController,
+                          builder: (context, child) {
+                            return AutomationEditorContentRenderer(
+                              timeViewStart: _timeViewStartAnimation.value,
+                              timeViewEnd: _timeViewEndAnimation.value,
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ),
