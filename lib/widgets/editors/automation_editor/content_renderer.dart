@@ -24,18 +24,20 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
+import 'package:anthem/widgets/editors/automation_editor/automation_point_animation_tracker.dart';
 import 'package:anthem/widgets/editors/automation_editor/curves/smooth.dart';
 import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
 import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_shaders/flutter_shaders.dart';
 import 'package:provider/provider.dart';
 
-class AutomationEditorContentRenderer extends StatelessObserverWidget {
+class AutomationEditorContentRenderer extends StatefulObserverWidget {
   final double timeViewStart;
   final double timeViewEnd;
 
@@ -46,25 +48,42 @@ class AutomationEditorContentRenderer extends StatelessObserverWidget {
   });
 
   @override
+  State<AutomationEditorContentRenderer> createState() =>
+      _AutomationEditorContentRendererState();
+}
+
+class _AutomationEditorContentRendererState
+    extends State<AutomationEditorContentRenderer> {
+  @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     final pattern = project.song.patterns[project.song.activePatternID];
     final viewModel = Provider.of<AutomationEditorViewModel>(context);
+
+    // Rebuild when these two change
     viewModel.hoveredPointAnnotation;
+    viewModel.pressedPointAnnotation;
+
+    // Ensure animation continues if it's still going
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (viewModel.pointAnimationTracker.isActive) {
+        setState(() {});
+      }
+    });
 
     return ShaderBuilder(
       assetKey: 'assets/shaders/automation_curve.frag',
       (context, shader, child) => CustomPaintObserver(
         painterBuilder: () => AutomationEditorPainter(
-          timeViewStart: timeViewStart,
-          timeViewEnd: timeViewEnd,
+          timeViewStart: widget.timeViewStart,
+          timeViewEnd: widget.timeViewEnd,
           ticksPerQuarter: project.song.ticksPerQuarter,
           project: project,
           pattern: pattern,
           shader: shader,
           devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
           visiblePoints: viewModel.visiblePoints,
-          hoveredPointAnnotation: viewModel.hoveredPointAnnotation,
+          viewModel: viewModel,
         ),
         isComplex: true,
       ),
@@ -83,7 +102,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
   final FragmentShader shader;
   final double devicePixelRatio;
   final CanvasAnnotationSet<PointAnnotation> visiblePoints;
-  final PointAnnotation? hoveredPointAnnotation;
+  final AutomationEditorViewModel viewModel;
 
   AutomationEditorPainter({
     required this.timeViewStart,
@@ -94,7 +113,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
     required this.shader,
     required this.devicePixelRatio,
     required this.visiblePoints,
-    required this.hoveredPointAnnotation,
+    required this.viewModel,
   });
 
   ui.Image? imageCache;
@@ -102,6 +121,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
   @override
   void observablePaint(Canvas canvas, Size size) {
     visiblePoints.clear();
+    viewModel.pointAnimationTracker.update();
 
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
@@ -238,10 +258,15 @@ class AutomationEditorPainter extends CustomPainterObserver {
       final y = (1 - point.y) * size.height;
       final center = Offset(x, y);
       const radius = 3.5;
-      final radiusMultipler = (hoveredPointAnnotation?.pointIndex == i &&
-              hoveredPointAnnotation?.kind == HandleKind.point)
-          ? 1.5
-          : 1;
+      final hoveredPoint = viewModel.hoveredPointAnnotation;
+      final pressedPoint = viewModel.pressedPointAnnotation;
+      final radiusMultipler = getRadiusMultiplier(
+        tracker: viewModel.pointAnimationTracker,
+        pointIndex: i,
+        hoveredPoint: hoveredPoint,
+        pressedPoint: pressedPoint,
+        handleKind: HandleKind.point,
+      );
 
       canvas.drawCircle(
         center,
@@ -286,10 +311,13 @@ class AutomationEditorPainter extends CustomPainterObserver {
         final y = (1 - normalizedY) * size.height;
         final center = Offset(x, y);
         const radius = 2.5;
-        final radiusMultipler = (hoveredPointAnnotation?.pointIndex == i &&
-                hoveredPointAnnotation?.kind == HandleKind.tensionHandle)
-            ? 1.5
-            : 1;
+        final radiusMultipler = getRadiusMultiplier(
+          tracker: viewModel.pointAnimationTracker,
+          pointIndex: i,
+          hoveredPoint: hoveredPoint,
+          pressedPoint: pressedPoint,
+          handleKind: HandleKind.tensionHandle,
+        );
 
         canvas.drawCircle(
           center,
@@ -325,6 +353,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
 
   @override
   bool shouldRepaint(AutomationEditorPainter oldDelegate) =>
+      viewModel.pointAnimationTracker.isActive ||
       timeViewStart != oldDelegate.timeViewStart ||
       timeViewEnd != oldDelegate.timeViewEnd ||
       ticksPerQuarter != oldDelegate.ticksPerQuarter ||
@@ -333,6 +362,35 @@ class AutomationEditorPainter extends CustomPainterObserver {
       shader != oldDelegate.shader ||
       devicePixelRatio != oldDelegate.devicePixelRatio ||
       visiblePoints != oldDelegate.visiblePoints ||
-      hoveredPointAnnotation != oldDelegate.hoveredPointAnnotation ||
+      viewModel != oldDelegate.viewModel ||
       super.shouldRepaint(oldDelegate);
+}
+
+double getRadiusMultiplier({
+  required AutomationPointAnimationTracker tracker,
+  required int pointIndex,
+  required PointAnnotation? hoveredPoint,
+  required PointAnnotation? pressedPoint,
+  required HandleKind handleKind,
+}) {
+  final animationValue = tracker.values.firstWhereOrNull(
+    (element) =>
+        element.pointIndex == pointIndex && element.handleKind == handleKind,
+  );
+
+  if (animationValue != null) {
+    return animationValue.current;
+  }
+
+  if (pressedPoint?.pointIndex == pointIndex &&
+      pressedPoint?.kind == handleKind) {
+    return automationPointPressedSizeMultiplier;
+  }
+
+  if (hoveredPoint?.pointIndex == pointIndex &&
+      hoveredPoint?.kind == handleKind) {
+    return automationPointHoveredSizeMultiplier;
+  }
+
+  return 1;
 }
