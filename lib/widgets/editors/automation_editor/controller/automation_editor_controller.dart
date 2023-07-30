@@ -23,15 +23,25 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
 import 'package:collection/collection.dart';
 
-import 'automation_point_animation_tracker.dart';
+import '../automation_point_animation_tracker.dart';
+
+part 'pointer_events.dart';
 
 enum _HandleState { out, hovered, pressed }
 
-class AutomationEditorController {
+class AutomationEditorController extends _AutomationEditorController
+    with _AutomationEditorPointerEventsMixin {
+  AutomationEditorController(
+      {required AutomationEditorViewModel viewModel,
+      required ProjectModel project})
+      : super(viewModel: viewModel, project: project);
+}
+
+class _AutomationEditorController {
   AutomationEditorViewModel viewModel;
   ProjectModel project;
 
-  AutomationEditorController({required this.viewModel, required this.project});
+  _AutomationEditorController({required this.viewModel, required this.project});
 
   void mouseOut() {
     for (final value in viewModel.pointAnimationTracker.values) {
