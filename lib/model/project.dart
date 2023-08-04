@@ -182,6 +182,8 @@ abstract class _ProjectModel extends Hydratable with Store {
     isHydrated = true;
   }
 
+  /// Executes the given command on the project and pushes it to the undo/redo
+  /// queue.
   void execute(Command command, {bool push = true}) {
     command.execute();
 
@@ -192,6 +194,8 @@ abstract class _ProjectModel extends Hydratable with Store {
     }
   }
 
+  /// Pushes the given command to the undo/redoo queue without executing it
+  /// (unless [execute] is set to true).
   void push(Command command, {bool execute = false}) {
     if (execute) {
       command.execute();

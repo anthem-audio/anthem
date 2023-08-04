@@ -169,14 +169,39 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
   }
 
   void release() {
+    if (project.song.activePatternID == null) return;
+    if (project.activeAutomationGeneratorID == null) return;
+
     switch (_eventHandlingState) {
       case EventHandlingState.movingPoint:
+        final point = project
+            .song
+            .patterns[project.song.activePatternID]!
+            .automationLanes[project.activeAutomationGeneratorID]!
+            .points[_pointMoveActionData!.pointIndex];
+
+        project.startJournalPage();
+        if (_pointMoveActionData!.startValue != point.value) {
+          project.push(
+            SetAutomationPointValueCommand(
+              project: project,
+              patternID: project.song.activePatternID!,
+              automationGeneratorID: project.activeAutomationGeneratorID!,
+              pointIndex: _pointMoveActionData!.pointIndex,
+              oldValue: _pointMoveActionData!.startValue,
+              newValue: point.value,
+            ),
+          );
+        }
+        project.commitJournalPage();
         break;
       default:
         break;
     }
 
     _eventHandlingState = EventHandlingState.idle;
+
+    _pointMoveActionData = null;
 
     _handleReleaseAnimation();
   }
