@@ -81,7 +81,6 @@ class _PianoRollController {
     );
 
     project.execute(AddNoteCommand(
-      project: project,
       patternID: project.song.activePatternID!,
       generatorID: project.activeInstrumentID!,
       note: note,
@@ -124,7 +123,6 @@ class _PianoRollController {
     project.execute(
       AddTimeSignatureChangeCommand(
         timelineKind: TimelineKind.pattern,
-        project: project,
         patternID: project.song.activePatternID!,
         change: TimeSignatureChangeModel(
           offset: snappedOffset,
@@ -153,14 +151,13 @@ class _PianoRollController {
         .where((note) => viewModel.selectedNotes.contains(note.id))
         .map((note) {
       return DeleteNoteCommand(
-        project: project,
         patternID: project.song.activePatternID!,
         generatorID: project.activeInstrumentID!,
         note: note,
       );
     }).toList();
 
-    final command = JournalPageCommand(project, commands);
+    final command = JournalPageCommand(commands);
 
     project.execute(command);
 

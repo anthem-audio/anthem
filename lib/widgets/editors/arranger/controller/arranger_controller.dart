@@ -102,7 +102,6 @@ abstract class _ArrangerController {
 
     for (final clipID in viewModel.selectedClips) {
       project.execute(DeleteClipCommand(
-        project: project,
         arrangementID: project.song.activeArrangementID!,
         clip: arrangement.clips[clipID]!,
       ));

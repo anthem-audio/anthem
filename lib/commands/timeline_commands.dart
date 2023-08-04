@@ -63,14 +63,13 @@ class AddTimeSignatureChangeCommand extends Command {
 
   AddTimeSignatureChangeCommand({
     required this.timelineKind,
-    required ProjectModel project,
     this.patternID,
     this.arrangementID,
     required this.change,
-  }) : super(project);
+  });
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     if (timelineKind == TimelineKind.pattern) {
       _addTimeSignatureChangeToPattern(
         project: project,
@@ -85,7 +84,7 @@ class AddTimeSignatureChangeCommand extends Command {
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     if (timelineKind == TimelineKind.pattern) {
       _removeTimeSignatureChangeFromPattern(
         project: project,
@@ -112,7 +111,7 @@ class RemoveTimeSignatureChangeCommand extends Command {
     this.patternID,
     this.arrangementID,
     required ID changeID,
-  }) : super(project) {
+  }) {
     if (timelineKind == TimelineKind.pattern) {
       change = project.song.patterns[patternID]!.timeSignatureChanges
           .firstWhere((change) => change.id == changeID);
@@ -124,7 +123,7 @@ class RemoveTimeSignatureChangeCommand extends Command {
   }
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     if (timelineKind == TimelineKind.pattern) {
       _removeTimeSignatureChangeFromPattern(
         project: project,
@@ -139,7 +138,7 @@ class RemoveTimeSignatureChangeCommand extends Command {
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     if (timelineKind == TimelineKind.pattern) {
       _addTimeSignatureChangeToPattern(
         project: project,
@@ -171,14 +170,14 @@ class MoveTimeSignatureChangeCommand extends Command {
     required ID changeID,
     Time? oldOffset,
     required this.newOffset,
-  }) : super(project) {
+  }) {
     changeList = project.song.patterns[patternID]!.timeSignatureChanges;
     change = changeList.firstWhere((change) => change.id == changeID);
     this.oldOffset = oldOffset ?? change.offset;
   }
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     if (timelineKind == TimelineKind.arrangement) {
       throw Exception('Not supported yet');
     }
@@ -188,7 +187,7 @@ class MoveTimeSignatureChangeCommand extends Command {
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     if (timelineKind == TimelineKind.arrangement) {
       throw Exception('Not supported yet');
     }
@@ -212,7 +211,7 @@ class SetTimeSignatureNumeratorCommand extends Command {
     this.arrangementID,
     required ID changeID,
     required this.numerator,
-  }) : super(project) {
+  }) {
     if (patternID != null) {
       timelineKind = TimelineKind.pattern;
     } else if (arrangementID != null) {
@@ -229,12 +228,12 @@ class SetTimeSignatureNumeratorCommand extends Command {
   }
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     change.timeSignature.numerator = numerator;
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     change.timeSignature.numerator = oldNumerator;
   }
 }
@@ -253,7 +252,7 @@ class SetTimeSignatureDenominatorCommand extends Command {
     this.arrangementID,
     required ID changeID,
     required this.denominator,
-  }) : super(project) {
+  }) {
     if (patternID != null) {
       timelineKind = TimelineKind.pattern;
     } else if (arrangementID != null) {
@@ -270,12 +269,12 @@ class SetTimeSignatureDenominatorCommand extends Command {
   }
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     change.timeSignature.denominator = denominator;
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     change.timeSignature.denominator = oldDenominator;
   }
 }

@@ -41,16 +41,15 @@ class AddGeneratorCommand extends Command {
   String? pluginPath;
 
   AddGeneratorCommand({
-    required ProjectModel project,
     required this.generatorID,
     required this.name,
     required this.generatorType,
     required this.color,
     required this.pluginPath,
-  }) : super(project);
+  });
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     final plugin = PluginModel(path: pluginPath)
       ..createInEngine(project.engine);
     final generator = GeneratorModel(
@@ -66,7 +65,7 @@ class AddGeneratorCommand extends Command {
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     _removeGenerator(project, generatorID);
   }
 }

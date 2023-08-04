@@ -188,7 +188,6 @@ class AttributeEditorController {
 
     final commands = oldValues.keys
         .map((noteID) => SetNoteAttributeCommand(
-              project: project,
               patternID: pattern.id,
               generatorID: project.activeInstrumentID!,
               noteID: noteID,
@@ -198,7 +197,7 @@ class AttributeEditorController {
             ))
         .toList();
 
-    final journalPageCommand = JournalPageCommand(project, commands);
+    final journalPageCommand = JournalPageCommand(commands);
 
     project.push(journalPageCommand);
 

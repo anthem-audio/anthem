@@ -281,7 +281,6 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
             final newNote = NoteModel.fromNoteModel(note);
 
             project.execute(AddNoteCommand(
-              project: project,
               patternID: project.song.activePatternID!,
               generatorID: project.activeInstrumentID!,
               note: newNote,
@@ -304,7 +303,6 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
           final newNote = NoteModel.fromNoteModel(pressedNote);
 
           project.execute(AddNoteCommand(
-            project: project,
             patternID: project.song.activePatternID!,
             generatorID: project.activeInstrumentID!,
             note: newNote,
@@ -695,7 +693,6 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
       // position, which will be used for undo/redo.
       final offsetCommands = relevantNotes.map((note) {
         return SetNoteAttributeCommand(
-          project: project,
           patternID: pattern.id,
           generatorID: project.activeInstrumentID!,
           noteID: note.id,
@@ -707,7 +704,6 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
       final keyCommands = relevantNotes.map((note) {
         return SetNoteAttributeCommand(
-          project: project,
           patternID: pattern.id,
           generatorID: project.activeInstrumentID!,
           noteID: note.id,
@@ -718,7 +714,8 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
       });
 
       final command = JournalPageCommand(
-          project, offsetCommands.followedBy(keyCommands).toList());
+        offsetCommands.followedBy(keyCommands).toList(),
+      );
 
       project.push(command);
     } else if (_eventHandlingState == EventHandlingState.deleting) {
@@ -726,7 +723,6 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
       // collect these manually.
       for (final note in _deleteActionData!.notesDeleted) {
         final command = DeleteNoteCommand(
-          project: project,
           patternID: project.song.activePatternID!,
           generatorID: project.activeInstrumentID!,
           note: note,
@@ -747,7 +743,6 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
       final commands = _noteResizeActionData!.startLengths.entries.map((entry) {
         return SetNoteAttributeCommand(
-          project: project,
           patternID: project.song.activePatternID!,
           generatorID: project.activeInstrumentID!,
           noteID: entry.key,
@@ -757,7 +752,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         );
       }).toList();
 
-      final command = JournalPageCommand(project, commands);
+      final command = JournalPageCommand(commands);
 
       project.push(command);
     }
