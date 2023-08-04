@@ -20,7 +20,7 @@
 import 'dart:ui';
 
 import 'package:anthem/commands/journal_commands.dart';
-import 'package:anthem/commands/pattern_commands.dart';
+import 'package:anthem/commands/pattern_note_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
