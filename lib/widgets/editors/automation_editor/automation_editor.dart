@@ -223,34 +223,40 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
                     ),
                   ),
                   Expanded(
-                    child: MouseRegion(
-                      onExit: (e) {
-                        controller.mouseOut();
-                      },
-                      onHover: (e) {
-                        controller.hover(e.localPosition);
-                      },
-                      child: Listener(
-                        onPointerDown: (e) {
-                          controller.press(e.localPosition);
+                    child: LayoutBuilder(builder: (context, constraints) {
+                      return MouseRegion(
+                        onExit: (e) {
+                          controller.mouseOut();
                         },
-                        onPointerUp: (e) {
-                          controller.release();
+                        onHover: (e) {
+                          controller.hover(e.localPosition);
                         },
-                        onPointerCancel: (e) {
-                          controller.release();
-                        },
-                        child: AnimatedBuilder(
-                          animation: _timeViewAnimationController,
-                          builder: (context, child) {
-                            return AutomationEditorContentRenderer(
-                              timeViewStart: _timeViewStartAnimation.value,
-                              timeViewEnd: _timeViewEndAnimation.value,
-                            );
+                        child: Listener(
+                          onPointerDown: (e) {
+                            controller.press(e.localPosition, e.buttons);
                           },
+                          onPointerUp: (e) {
+                            controller.release();
+                          },
+                          onPointerCancel: (e) {
+                            controller.release();
+                          },
+                          onPointerMove: (e) {
+                            controller.move(
+                                e.localPosition, constraints.biggest);
+                          },
+                          child: AnimatedBuilder(
+                            animation: _timeViewAnimationController,
+                            builder: (context, child) {
+                              return AutomationEditorContentRenderer(
+                                timeViewStart: _timeViewStartAnimation.value,
+                                timeViewEnd: _timeViewEndAnimation.value,
+                              );
+                            },
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    }),
                   ),
                 ],
               ),
