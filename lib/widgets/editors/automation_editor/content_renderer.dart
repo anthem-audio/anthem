@@ -173,13 +173,13 @@ class AutomationEditorPainter extends CustomPainterObserver {
         timeViewStart: timeViewStart,
         timeViewEnd: timeViewEnd,
         viewPixelWidth: size.width,
-        time: lastPoint.offset,
+        time: lastPoint.offset.toDouble(),
       );
       final pointX = timeToPixels(
         timeViewStart: timeViewStart,
         timeViewEnd: timeViewEnd,
         viewPixelWidth: size.width,
-        time: point.offset,
+        time: point.offset.toDouble(),
       );
 
       if ((lastPointX < 0 && pointX < 0) ||
@@ -201,8 +201,8 @@ class AutomationEditorPainter extends CustomPainterObserver {
         setter.setFloat(xOffset);
         setter.setFloat(yOffset);
 
-        setter.setFloat(lastPoint.y);
-        setter.setFloat(point.y);
+        setter.setFloat(lastPoint.value);
+        setter.setFloat(point.value);
         setter.setFloat(point.tension);
 
         setter.setFloat(strokeWidth * 0.5 * devicePixelRatio);
@@ -253,9 +253,9 @@ class AutomationEditorPainter extends CustomPainterObserver {
         timeViewStart: timeViewStart,
         timeViewEnd: timeViewEnd,
         viewPixelWidth: size.width,
-        time: point.offset,
+        time: point.offset.toDouble(),
       );
-      final y = (1 - point.y) * size.height;
+      final y = (1 - point.value) * size.height;
       final center = Offset(x, y);
       const radius = 3.5;
       final hoveredPoint = viewModel.hoveredPointAnnotation;
@@ -298,8 +298,8 @@ class AutomationEditorPainter extends CustomPainterObserver {
       if (lastPoint != null) {
         const normalizedX = 0.5;
         final normalizedY = evaluateSmooth(normalizedX, point.tension) *
-                (point.y - lastPoint.y) +
-            lastPoint.y;
+                (point.value - lastPoint.value) +
+            lastPoint.value;
 
         final x = timeToPixels(
           timeViewStart: timeViewStart,

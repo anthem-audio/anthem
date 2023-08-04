@@ -21,13 +21,44 @@ part of 'automation_editor_controller.dart';
 
 enum _HandleState { out, hovered, pressed }
 
+/// These are the possible states that the automation editor can have during
+/// event handing. The current state tells the controller how to handle incoming
+/// pointer events.
+enum EventHandlingState {
+  /// Nothing is happening right now.
+  idle,
+
+  /// A point is being moved. Note that horizontal point movements will also
+  /// cause all points after the pressed point to move.
+  movingPoint,
+
+  /// The tension value for a point is being changed.
+  changingTension,
+}
+
+class _PointMoveActionData {
+  int pointIndex;
+  Time startTime;
+  double startValue;
+  Offset startPointerOffset;
+  List<({int index, Time startTime})> pointsToMoveInTime;
+
+  _PointMoveActionData({
+    required this.pointIndex,
+    required this.startTime,
+    required this.startValue,
+    required this.startPointerOffset,
+    required this.pointsToMoveInTime,
+  });
+}
+
+// class _TensionChangeActionData {}
+
 mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
-  void mouseOut() {
-    for (final value in viewModel.pointAnimationTracker.values) {
-      value.target = 1;
-    }
-    viewModel.hoveredPointAnnotation = null;
-  }
+  var _eventHandlingState = EventHandlingState.idle;
+
+  _PointMoveActionData? _pointMoveActionData;
+  // _TensionChangeActionData? _tensionChangeActionData;
 
   double _getTargetValue(_HandleState state) {
     return switch (state) {
@@ -64,26 +95,93 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
   }
 
   void hover(Offset pos) {
-    _handleHoverAnimation(pos);
-  }
-
-  void press(Offset pos) {
-    _handlePressAnimation(pos);
-  }
-
-  void move(Offset pos) {}
-
-  void release() {
-    _handleReleaseAnimation();
-  }
-
-  void _handleHoverAnimation(Offset pos) {
     final annotations = viewModel.visiblePoints.hitTestAll(pos);
 
     final hovered = annotations.firstWhereOrNull(
             (element) => element.metadata.kind == HandleKind.point) ??
         annotations.firstOrNull;
 
+    _handleHoverAnimation(hovered);
+  }
+
+  void press(Offset pos, int buttons) {
+    final pattern = project.song.patterns[project.song.activePatternID];
+    if (pattern == null) return;
+    final automationLane =
+        pattern.automationLanes[project.activeAutomationGeneratorID];
+    if (automationLane == null) return;
+
+    final annotations = viewModel.visiblePoints.hitTestAll(pos);
+
+    final pressed = annotations.firstWhereOrNull(
+            (element) => element.metadata.kind == HandleKind.point) ??
+        annotations.firstOrNull;
+
+    if (pressed == null) {
+      if (buttons & kSecondaryButton > 0) {
+        // TODO: Create a point
+        // pressed = ...
+      } else {
+        return;
+      }
+    }
+
+    pressed!;
+
+    _eventHandlingState = EventHandlingState.movingPoint;
+
+    final point =
+        automationLane.points.nonObservableInner[pressed.metadata.pointIndex];
+
+    _pointMoveActionData = _PointMoveActionData(
+      pointIndex: pressed.metadata.pointIndex,
+      startTime: point.offset,
+      startValue: point.value,
+      startPointerOffset: pos,
+      pointsToMoveInTime: List.generate(
+        automationLane.points.length - 1 - pressed.metadata.pointIndex,
+        (index) => (
+          index: index,
+          startTime: automationLane
+              .points[pressed.metadata.pointIndex + 1 + index].offset,
+        ),
+      ),
+    );
+
+    _handlePressAnimation(pressed);
+  }
+
+  void move(Offset pos, Size viewSize) {
+    final pattern = project.song.patterns[project.song.activePatternID];
+    if (pattern == null) return;
+    final automationLane =
+        pattern.automationLanes[project.activeAutomationGeneratorID];
+    if (automationLane == null) return;
+
+    if (_eventHandlingState == EventHandlingState.movingPoint) {
+      final deltaFromStart = pos - _pointMoveActionData!.startPointerOffset;
+
+      final normalizedYDelta = -deltaFromStart.dy / viewSize.height;
+
+      automationLane.points[_pointMoveActionData!.pointIndex].value =
+          (_pointMoveActionData!.startValue + normalizedYDelta).clamp(0, 1);
+    }
+  }
+
+  void release() {
+    switch (_eventHandlingState) {
+      case EventHandlingState.movingPoint:
+        break;
+      default:
+        break;
+    }
+
+    _eventHandlingState = EventHandlingState.idle;
+
+    _handleReleaseAnimation();
+  }
+
+  void _handleHoverAnimation(CanvasAnnotation<PointAnnotation>? hovered) {
     final hoveredAnnotation = hovered?.metadata;
     final oldHoveredAnnotation = viewModel.hoveredPointAnnotation;
     viewModel.hoveredPointAnnotation = hoveredAnnotation;
@@ -112,15 +210,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
     }
   }
 
-  void _handlePressAnimation(Offset pos) {
-    final annotations = viewModel.visiblePoints.hitTestAll(pos);
-
-    final pressed = annotations.firstWhereOrNull(
-            (element) => element.metadata.kind == HandleKind.point) ??
-        annotations.firstOrNull;
-
-    if (pressed == null) return;
-
+  void _handlePressAnimation(CanvasAnnotation<PointAnnotation> pressed) {
     final pressedAnnotation = pressed.metadata;
 
     viewModel.pressedPointAnnotation = pressedAnnotation;
@@ -150,5 +240,12 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
           ? _HandleState.hovered
           : _HandleState.out,
     );
+  }
+
+  void mouseOut() {
+    for (final value in viewModel.pointAnimationTracker.values) {
+      value.target = 1;
+    }
+    viewModel.hoveredPointAnnotation = null;
   }
 }

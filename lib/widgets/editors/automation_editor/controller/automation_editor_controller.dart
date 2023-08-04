@@ -21,7 +21,10 @@ import 'dart:ui';
 
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
+import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
+import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:collection/collection.dart';
+import 'package:flutter/gestures.dart';
 
 import '../automation_point_animation_tracker.dart';
 

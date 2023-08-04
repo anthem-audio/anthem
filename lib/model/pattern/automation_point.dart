@@ -28,11 +28,11 @@ enum AutomationCurveType { smooth, stairs, wave, hold }
 class AutomationPointModel extends _AutomationPointModel
     with _$AutomationPointModel {
   AutomationPointModel({
-    required double offset,
-    required double y,
+    required int offset,
+    required double value,
     double tension = 0,
     AutomationCurveType curve = AutomationCurveType.smooth,
-  }) : super(offset: offset, y: y, tension: tension, curve: curve);
+  }) : super(offset: offset, value: value, tension: tension, curve: curve);
 
   factory AutomationPointModel.fromJson(Map<String, dynamic> json) =>
       _$AutomationPointModelFromJson(json);
@@ -41,7 +41,7 @@ class AutomationPointModel extends _AutomationPointModel
 abstract class _AutomationPointModel with Store {
   _AutomationPointModel({
     required this.offset,
-    required this.y,
+    required this.value,
     required this.tension,
     required this.curve,
   });
@@ -50,10 +50,10 @@ abstract class _AutomationPointModel with Store {
       _$AutomationPointModelToJson(this as AutomationPointModel);
 
   @observable
-  double offset;
+  int offset;
 
   @observable
-  double y;
+  double value;
 
   @observable
   double tension;
