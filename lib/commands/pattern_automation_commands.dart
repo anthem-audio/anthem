@@ -29,22 +29,21 @@ class SetAutomationPointValueCommand extends Command {
   double newValue;
 
   SetAutomationPointValueCommand({
-    required ProjectModel project,
     required this.patternID,
     required this.automationGeneratorID,
     required this.pointIndex,
     required this.oldValue,
     required this.newValue,
-  }) : super(project);
+  });
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     project.song.patterns[patternID]!.automationLanes[automationGeneratorID]!
         .points[pointIndex].value = newValue;
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     project.song.patterns[patternID]!.automationLanes[automationGeneratorID]!
         .points[pointIndex].value = oldValue;
   }

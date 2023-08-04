@@ -17,11 +17,16 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/project.dart';
+
 import 'command.dart';
 
 class CommandQueue {
+  ProjectModel project;
   List<Command> commands = [];
   int commandPointer = 0;
+
+  CommandQueue(this.project);
 
   void push(Command command) {
     commands.removeRange(commandPointer, commands.length);
@@ -31,18 +36,18 @@ class CommandQueue {
 
   void executeAndPush(Command command) {
     push(command);
-    command.execute();
+    command.execute(project);
   }
 
   void undo() {
     if (commandPointer - 1 < 0) return;
     commandPointer--;
-    commands[commandPointer].rollback();
+    commands[commandPointer].rollback(project);
   }
 
   void redo() {
     if (commandPointer + 1 > commands.length) return;
     commandPointer++;
-    commands[commandPointer - 1].execute();
+    commands[commandPointer - 1].execute(project);
   }
 }

@@ -61,14 +61,13 @@ class AddNoteCommand extends Command {
   NoteModel note;
 
   AddNoteCommand({
-    required ProjectModel project,
     required this.patternID,
     required this.generatorID,
     required this.note,
-  }) : super(project);
+  });
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     final pattern = project.song.patterns[patternID];
 
     if (pattern == null) {
@@ -79,7 +78,7 @@ class AddNoteCommand extends Command {
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     final pattern = project.song.patterns[patternID];
 
     if (pattern == null) {
@@ -96,14 +95,13 @@ class DeleteNoteCommand extends Command {
   NoteModel note;
 
   DeleteNoteCommand({
-    required ProjectModel project,
     required this.patternID,
     required this.generatorID,
     required this.note,
-  }) : super(project);
+  });
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     final pattern = project.song.patterns[patternID];
 
     if (pattern == null) {
@@ -114,7 +112,7 @@ class DeleteNoteCommand extends Command {
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     final pattern = project.song.patterns[patternID];
 
     if (pattern == null) {
@@ -136,14 +134,13 @@ class SetNoteAttributeCommand extends Command {
   int newValue;
 
   SetNoteAttributeCommand({
-    required ProjectModel project,
     required this.patternID,
     required this.generatorID,
     required this.noteID,
     required this.attribute,
     required this.oldValue,
     required this.newValue,
-  }) : super(project);
+  });
 
   void setAttribute(NoteModel note, int value) {
     switch (attribute) {
@@ -177,7 +174,7 @@ class SetNoteAttributeCommand extends Command {
   }
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     final pattern = project.song.patterns[patternID];
 
     if (pattern == null) {
@@ -191,7 +188,7 @@ class SetNoteAttributeCommand extends Command {
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     final pattern = project.song.patterns[patternID];
 
     if (pattern == null) {

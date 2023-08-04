@@ -115,7 +115,7 @@ abstract class _ProjectModel extends Hydratable with Store {
   // Undo / redo & etc
 
   @JsonKey(includeFromJson: false, includeToJson: false)
-  final CommandQueue _commandQueue = CommandQueue();
+  late final CommandQueue _commandQueue;
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   List<Command> _journalPageAccumulator = [];
@@ -137,9 +137,13 @@ abstract class _ProjectModel extends Hydratable with Store {
 
   // This method is used for deserialization and so doesn't create new child
   // models.
-  _ProjectModel() : super();
+  _ProjectModel() : super() {
+    _commandQueue = CommandQueue(this as ProjectModel);
+  }
 
   _ProjectModel.create() : super() {
+    _commandQueue = CommandQueue(this as ProjectModel);
+
     song = SongModel.create(
       project: this as ProjectModel,
     );
@@ -185,7 +189,7 @@ abstract class _ProjectModel extends Hydratable with Store {
   /// Executes the given command on the project and pushes it to the undo/redo
   /// queue.
   void execute(Command command, {bool push = true}) {
-    command.execute();
+    command.execute(this as ProjectModel);
 
     if (_journalPageActive) {
       _journalPageAccumulator.add(command);
@@ -198,7 +202,7 @@ abstract class _ProjectModel extends Hydratable with Store {
   /// (unless [execute] is set to true).
   void push(Command command, {bool execute = false}) {
     if (execute) {
-      command.execute();
+      command.execute(this as ProjectModel);
     }
 
     if (_journalPageActive) {
@@ -244,7 +248,7 @@ abstract class _ProjectModel extends Hydratable with Store {
       return;
     }
 
-    final command = JournalPageCommand(this as ProjectModel, accumulator);
+    final command = JournalPageCommand(accumulator);
     _commandQueue.push(command);
   }
 

@@ -46,13 +46,12 @@ class AddPatternCommand extends Command {
   int index;
 
   AddPatternCommand({
-    required ProjectModel project,
     required this.pattern,
     required this.index,
-  }) : super(project);
+  });
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     _addPatternToProject(
       project: project,
       pattern: pattern,
@@ -61,7 +60,7 @@ class AddPatternCommand extends Command {
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     _removePatternFromProject(
       project: project,
       patternID: pattern.id,
@@ -74,13 +73,12 @@ class DeletePatternCommand extends Command {
   int index;
 
   DeletePatternCommand({
-    required ProjectModel project,
     required this.pattern,
     required this.index,
-  }) : super(project);
+  });
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     _removePatternFromProject(
       project: project,
       patternID: pattern.id,
@@ -88,7 +86,7 @@ class DeletePatternCommand extends Command {
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     _addPatternToProject(
       project: project,
       pattern: pattern,
@@ -106,19 +104,19 @@ class SetPatternNameCommand extends Command {
     required ProjectModel project,
     required this.patternID,
     required this.newName,
-  }) : super(project) {
+  }) {
     oldName = project.song.patterns[patternID]!.name;
   }
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     final pattern = project.song.patterns[patternID]!;
     pattern.name = newName;
     pattern.updateClipTitleCache();
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     final pattern = project.song.patterns[patternID]!;
     pattern.name = oldName;
     pattern.updateClipTitleCache();
@@ -134,17 +132,17 @@ class SetPatternColorCommand extends Command {
     required ProjectModel project,
     required this.patternID,
     required this.newColor,
-  }) : super(project) {
+  }) {
     oldColor = project.song.patterns[patternID]!.color;
   }
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     project.song.patterns[patternID]!.color = newColor;
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     project.song.patterns[patternID]!.color = oldColor;
   }
 }

@@ -27,7 +27,7 @@ import 'command.dart';
 abstract class ArrangementCommand extends Command {
   final ID arrangementID;
 
-  ArrangementCommand(ProjectModel project, this.arrangementID) : super(project);
+  ArrangementCommand(this.arrangementID);
 }
 
 /// Add a clip to an arrangement
@@ -35,18 +35,17 @@ class AddClipCommand extends ArrangementCommand {
   final ClipModel clip;
 
   AddClipCommand({
-    required ProjectModel project,
     required ID arrangementID,
     required this.clip,
-  }) : super(project, arrangementID);
+  }) : super(arrangementID);
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     project.song.arrangements[arrangementID]!.clips[clip.id] = clip;
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     project.song.arrangements[arrangementID]!.clips.remove(clip.id);
   }
 }
@@ -58,10 +57,10 @@ class AddArrangementCommand extends Command {
   AddArrangementCommand({
     required ProjectModel project,
     required this.arrangementName,
-  }) : super(project);
+  });
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     final arrangement = ArrangementModel.create(
       name: arrangementName,
       id: arrangementID,
@@ -74,7 +73,7 @@ class AddArrangementCommand extends Command {
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     final arrangement = project.song.arrangements.remove(arrangementID)!;
     project.song.arrangementOrder.removeLast();
 
@@ -91,10 +90,10 @@ class DeleteArrangementCommand extends Command {
   DeleteArrangementCommand({
     required ProjectModel project,
     required this.arrangement,
-  }) : super(project);
+  });
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     arrangement.deleteInEngine(project.engine);
     project.song.arrangements.remove(arrangement.id);
     index = project.song.arrangementOrder.indexOf(arrangement.id);
@@ -102,7 +101,7 @@ class DeleteArrangementCommand extends Command {
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     arrangement.createInEngine(project.engine);
     project.song.arrangements[arrangement.id] = arrangement;
     project.song.arrangementOrder.insert(index, arrangement.id);
@@ -117,17 +116,17 @@ class SetArrangementNameCommand extends ArrangementCommand {
     required ProjectModel project,
     required ID arrangementID,
     required this.newName,
-  }) : super(project, arrangementID) {
+  }) : super(arrangementID) {
     oldName = project.song.arrangements[arrangementID]!.name;
   }
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     project.song.arrangements[arrangementID]!.name = newName;
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     project.song.arrangements[arrangementID]!.name = oldName;
   }
 }
@@ -140,17 +139,16 @@ class MoveClipCommand extends ArrangementCommand {
   final ID newTrack;
 
   MoveClipCommand({
-    required ProjectModel project,
     required ID arrangementID,
     required this.clipID,
     required this.oldOffset,
     required this.newOffset,
     required this.oldTrack,
     required this.newTrack,
-  }) : super(project, arrangementID);
+  }) : super(arrangementID);
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     final arrangement = project.song.arrangements[arrangementID]!;
     final clip = arrangement.clips[clipID]!;
 
@@ -159,7 +157,7 @@ class MoveClipCommand extends ArrangementCommand {
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     final arrangement = project.song.arrangements[arrangementID]!;
     final clip = arrangement.clips[clipID]!;
 
@@ -172,19 +170,18 @@ class DeleteClipCommand extends ArrangementCommand {
   final ClipModel clip;
 
   DeleteClipCommand({
-    required ProjectModel project,
     required ID arrangementID,
     required this.clip,
-  }) : super(project, arrangementID);
+  }) : super(arrangementID);
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     final arrangement = project.song.arrangements[arrangementID]!;
     arrangement.clips.remove(clip.id);
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     final arrangement = project.song.arrangements[arrangementID]!;
     arrangement.clips[clip.id] = clip;
   }
@@ -198,17 +195,16 @@ class ResizeClipCommand extends ArrangementCommand {
   final TimeViewModel? newTimeView;
 
   ResizeClipCommand({
-    required ProjectModel project,
     required ID arrangementID,
     required this.clipID,
     required this.oldOffset,
     required this.oldTimeView,
     required this.newOffset,
     required this.newTimeView,
-  }) : super(project, arrangementID);
+  }) : super(arrangementID);
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     final arrangement = project.song.arrangements[arrangementID]!;
     final clip = arrangement.clips[clipID]!;
 
@@ -217,7 +213,7 @@ class ResizeClipCommand extends ArrangementCommand {
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     final arrangement = project.song.arrangements[arrangementID]!;
     final clip = arrangement.clips[clipID]!;
 

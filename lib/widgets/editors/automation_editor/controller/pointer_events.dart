@@ -184,7 +184,6 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
         if (_pointMoveActionData!.startValue != point.value) {
           project.push(
             SetAutomationPointValueCommand(
-              project: project,
               patternID: project.song.activePatternID!,
               automationGeneratorID: project.activeAutomationGeneratorID!,
               pointIndex: _pointMoveActionData!.pointIndex,
