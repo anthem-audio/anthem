@@ -42,6 +42,7 @@ class _PointMoveActionData {
   double startValue;
   Offset startPointerOffset;
   List<({int index, Time startTime})> pointsToMoveInTime;
+  int? insertedPointIndex;
 
   _PointMoveActionData({
     required this.pointIndex,
@@ -49,6 +50,7 @@ class _PointMoveActionData {
     required this.startValue,
     required this.startPointerOffset,
     required this.pointsToMoveInTime,
+    required this.insertedPointIndex,
   });
 }
 
@@ -113,20 +115,56 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
 
     final annotations = viewModel.visiblePoints.hitTestAll(event.pos);
 
-    final pressed = annotations.firstWhereOrNull(
+    var pressed = annotations.firstWhereOrNull(
             (element) => element.metadata.kind == HandleKind.point) ??
         annotations.firstOrNull;
 
+    int? insertedPointIndex;
+
     if (pressed == null) {
       if (event.buttons & kSecondaryButton > 0) {
-        // TODO: Create a point
-        // pressed = ...
+        int newPointTime;
+
+        if (event.keyboardModifiers.alt) {
+          newPointTime = pixelsToTime(
+            timeViewStart: viewModel.timeView.start,
+            timeViewEnd: viewModel.timeView.end,
+            viewPixelWidth: event.viewSize.width,
+            pixelOffsetFromLeft: event.pos.dx,
+          ).round();
+        } else {
+          newPointTime = pixelsToTime(
+            timeViewStart: viewModel.timeView.start,
+            timeViewEnd: viewModel.timeView.end,
+            viewPixelWidth: event.viewSize.width,
+            pixelOffsetFromLeft: event.pos.dx,
+          ).round(); // TODO
+        }
+
+        insertedPointIndex =
+            _findIndexForNewPoint(automationLane, newPointTime);
+        final point = AutomationPointModel(
+          offset: newPointTime,
+          value: 1 - (event.pos.dy / event.viewSize.height),
+        );
+        automationLane.points.insert(
+          insertedPointIndex,
+          point,
+        );
+        // Note: we don't calculate a valid center or rect here, since it's not needed
+        // after click detection, which has already happened.
+        pressed = (
+          metadata: (
+            center: const Offset(0, 0),
+            kind: HandleKind.point,
+            pointIndex: insertedPointIndex
+          ),
+          rect: const Rect.fromLTWH(0, 0, 0, 0),
+        );
       } else {
         return;
       }
     }
-
-    pressed!;
 
     _eventHandlingState = EventHandlingState.movingPoint;
 
@@ -143,9 +181,10 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
         (index) => (
           index: index,
           startTime: automationLane
-              .points[pressed.metadata.pointIndex + 1 + index].offset,
+              .points[pressed!.metadata.pointIndex + 1 + index].offset,
         ),
       ),
+      insertedPointIndex: insertedPointIndex,
     );
 
     _handlePressAnimation(pressed);
@@ -182,6 +221,18 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
             .points[_pointMoveActionData!.pointIndex];
 
         project.startJournalPage();
+
+        if (_pointMoveActionData!.insertedPointIndex != null) {
+          project.push(
+            AddAutomationPointCommand(
+              patternID: project.song.activePatternID!,
+              automationGeneratorID: project.activeAutomationGeneratorID!,
+              point: point,
+              index: _pointMoveActionData!.insertedPointIndex!,
+            ),
+          );
+        }
+
         if (_pointMoveActionData!.startValue != point.value) {
           project.push(
             SetAutomationPointValueCommand(
@@ -193,7 +244,9 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
             ),
           );
         }
+
         project.commitJournalPage();
+
         break;
       default:
         break;
@@ -273,4 +326,19 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
     }
     viewModel.hoveredPointAnnotation = null;
   }
+}
+
+/// Finds the correct index to insert a point at, given the time value for that
+/// point.
+int _findIndexForNewPoint(AutomationLaneModel automationLane, int time) {
+  final points = automationLane.points;
+
+  for (var i = 0; i < points.length; i++) {
+    final point = points[i];
+    if (point.offset > time) {
+      return i;
+    }
+  }
+
+  return points.length;
 }

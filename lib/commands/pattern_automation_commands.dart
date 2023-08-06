@@ -19,7 +19,36 @@
 
 import 'package:anthem/commands/command.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/project.dart';
+
+class AddAutomationPointCommand extends Command {
+  ID patternID;
+  ID automationGeneratorID;
+  AutomationPointModel point;
+  int index;
+
+  AddAutomationPointCommand({
+    required this.patternID,
+    required this.automationGeneratorID,
+    required this.point,
+    required this.index,
+  });
+
+  @override
+  void execute(ProjectModel project) {
+    project.song.patterns[patternID]!.automationLanes[automationGeneratorID]!
+        .points
+        .insert(index, point);
+  }
+
+  @override
+  void rollback(ProjectModel project) {
+    project.song.patterns[patternID]!.automationLanes[automationGeneratorID]!
+        .points
+        .removeAt(index);
+  }
+}
 
 class SetAutomationPointValueCommand extends Command {
   ID patternID;
