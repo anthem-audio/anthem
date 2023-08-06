@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/widgets/editors/automation_editor/controller/automation_editor_controller.dart';
+import 'package:anthem/widgets/editors/automation_editor/events.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
@@ -41,16 +42,26 @@ class AutomationEditorEventListener extends StatelessWidget {
           },
           child: Listener(
             onPointerDown: (e) {
-              controller.press(e.localPosition, e.buttons);
-            },
-            onPointerUp: (e) {
-              controller.release();
-            },
-            onPointerCancel: (e) {
-              controller.release();
+              controller.pointerDown(
+                AutomationEditorPointerDownEvent(
+                  pos: e.localPosition,
+                  buttons: e.buttons,
+                ),
+              );
             },
             onPointerMove: (e) {
-              controller.move(e.localPosition, constraints.biggest);
+              controller.pointerMove(
+                AutomationEditorPointerMoveEvent(
+                  pos: e.localPosition,
+                  viewSize: constraints.biggest,
+                ),
+              );
+            },
+            onPointerUp: (e) {
+              controller.pointerUp();
+            },
+            onPointerCancel: (e) {
+              controller.pointerUp();
             },
             child: child,
           ),

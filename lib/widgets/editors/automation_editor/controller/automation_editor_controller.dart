@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:ui';
-
 import 'package:anthem/commands/pattern_automation_commands.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
@@ -28,6 +26,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/gestures.dart';
 
 import '../automation_point_animation_tracker.dart';
+import '../events.dart';
 
 part 'pointer_events.dart';
 
