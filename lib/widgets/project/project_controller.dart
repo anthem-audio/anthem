@@ -81,7 +81,6 @@ class ProjectController {
 
     project.execute(
       AddPatternCommand(
-        project: project,
         pattern: patternModel,
         index: project.song.patternOrder.length,
       ),
@@ -175,7 +174,6 @@ class ProjectController {
     final id = getID();
 
     project.execute(AddGeneratorCommand(
-      project: project,
       generatorID: id,
       name: name,
       generatorType: generatorType,

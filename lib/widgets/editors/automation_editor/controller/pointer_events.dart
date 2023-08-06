@@ -104,21 +104,21 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
     _handleHoverAnimation(hovered);
   }
 
-  void press(Offset pos, int buttons) {
+  void pointerDown(AutomationEditorPointerDownEvent event) {
     final pattern = project.song.patterns[project.song.activePatternID];
     if (pattern == null) return;
     final automationLane =
         pattern.automationLanes[project.activeAutomationGeneratorID];
     if (automationLane == null) return;
 
-    final annotations = viewModel.visiblePoints.hitTestAll(pos);
+    final annotations = viewModel.visiblePoints.hitTestAll(event.pos);
 
     final pressed = annotations.firstWhereOrNull(
             (element) => element.metadata.kind == HandleKind.point) ??
         annotations.firstOrNull;
 
     if (pressed == null) {
-      if (buttons & kSecondaryButton > 0) {
+      if (event.buttons & kSecondaryButton > 0) {
         // TODO: Create a point
         // pressed = ...
       } else {
@@ -137,7 +137,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
       pointIndex: pressed.metadata.pointIndex,
       startTime: point.offset,
       startValue: point.value,
-      startPointerOffset: pos,
+      startPointerOffset: event.pos,
       pointsToMoveInTime: List.generate(
         automationLane.points.length - 1 - pressed.metadata.pointIndex,
         (index) => (
@@ -151,7 +151,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
     _handlePressAnimation(pressed);
   }
 
-  void move(Offset pos, Size viewSize) {
+  void pointerMove(AutomationEditorPointerMoveEvent event) {
     final pattern = project.song.patterns[project.song.activePatternID];
     if (pattern == null) return;
     final automationLane =
@@ -159,16 +159,17 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
     if (automationLane == null) return;
 
     if (_eventHandlingState == EventHandlingState.movingPoint) {
-      final deltaFromStart = pos - _pointMoveActionData!.startPointerOffset;
+      final deltaFromStart =
+          event.pos - _pointMoveActionData!.startPointerOffset;
 
-      final normalizedYDelta = -deltaFromStart.dy / viewSize.height;
+      final normalizedYDelta = -deltaFromStart.dy / event.viewSize.height;
 
       automationLane.points[_pointMoveActionData!.pointIndex].value =
           (_pointMoveActionData!.startValue + normalizedYDelta).clamp(0, 1);
     }
   }
 
-  void release() {
+  void pointerUp() {
     if (project.song.activePatternID == null) return;
     if (project.activeAutomationGeneratorID == null) return;
 
