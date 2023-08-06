@@ -17,10 +17,15 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:ui';
+
 import 'package:anthem/commands/pattern_automation_commands.dart';
+import 'package:anthem/model/pattern/automation_lane.dart';
+import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
 import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
+import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/gestures.dart';

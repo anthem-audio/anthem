@@ -19,11 +19,20 @@
 
 import 'dart:ui';
 
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
+
 class AutomationEditorPointerDownEvent {
   Offset pos;
+  Size viewSize;
   int buttons;
+  KeyboardModifiers keyboardModifiers;
 
-  AutomationEditorPointerDownEvent({required this.pos, required this.buttons});
+  AutomationEditorPointerDownEvent({
+    required this.pos,
+    required this.viewSize,
+    required this.buttons,
+    required this.keyboardModifiers,
+  });
 }
 
 class AutomationEditorPointerMoveEvent {
