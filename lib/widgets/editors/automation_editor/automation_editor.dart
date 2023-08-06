@@ -25,6 +25,7 @@ import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/editors/automation_editor/controller/automation_editor_controller.dart';
 import 'package:anthem/widgets/editors/automation_editor/content_renderer.dart';
+import 'package:anthem/widgets/editors/automation_editor/event_listener.dart';
 import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
@@ -144,7 +145,6 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<AutomationEditorViewModel>(context);
-    final controller = Provider.of<AutomationEditorController>(context);
     final project = Provider.of<ProjectModel>(context);
 
     // Updates the time view animation if the time view has changed
@@ -223,40 +223,17 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
                     ),
                   ),
                   Expanded(
-                    child: LayoutBuilder(builder: (context, constraints) {
-                      return MouseRegion(
-                        onExit: (e) {
-                          controller.mouseOut();
+                    child: AutomationEditorEventListener(
+                      child: AnimatedBuilder(
+                        animation: _timeViewAnimationController,
+                        builder: (context, child) {
+                          return AutomationEditorContentRenderer(
+                            timeViewStart: _timeViewStartAnimation.value,
+                            timeViewEnd: _timeViewEndAnimation.value,
+                          );
                         },
-                        onHover: (e) {
-                          controller.hover(e.localPosition);
-                        },
-                        child: Listener(
-                          onPointerDown: (e) {
-                            controller.press(e.localPosition, e.buttons);
-                          },
-                          onPointerUp: (e) {
-                            controller.release();
-                          },
-                          onPointerCancel: (e) {
-                            controller.release();
-                          },
-                          onPointerMove: (e) {
-                            controller.move(
-                                e.localPosition, constraints.biggest);
-                          },
-                          child: AnimatedBuilder(
-                            animation: _timeViewAnimationController,
-                            builder: (context, child) {
-                              return AutomationEditorContentRenderer(
-                                timeViewStart: _timeViewStartAnimation.value,
-                                timeViewEnd: _timeViewEndAnimation.value,
-                              );
-                            },
-                          ),
-                        ),
-                      );
-                    }),
+                      ),
+                    ),
                   ),
                 ],
               ),
