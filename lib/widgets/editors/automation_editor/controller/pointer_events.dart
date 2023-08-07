@@ -125,20 +125,29 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
       if (event.buttons & kSecondaryButton > 0) {
         int newPointTime;
 
-        if (event.keyboardModifiers.alt) {
-          newPointTime = pixelsToTime(
+        newPointTime = pixelsToTime(
+          timeViewStart: viewModel.timeView.start,
+          timeViewEnd: viewModel.timeView.end,
+          viewPixelWidth: event.viewSize.width,
+          pixelOffsetFromLeft: event.pos.dx,
+        ).round();
+
+        if (!event.keyboardModifiers.alt) {
+          final divisionChanges = getDivisionChanges(
+            viewWidthInPixels: event.viewSize.width,
+            snap: AutoSnap(),
+            defaultTimeSignature: project.song.defaultTimeSignature,
+            timeSignatureChanges: pattern.timeSignatureChanges,
+            ticksPerQuarter: project.song.ticksPerQuarter,
             timeViewStart: viewModel.timeView.start,
             timeViewEnd: viewModel.timeView.end,
-            viewPixelWidth: event.viewSize.width,
-            pixelOffsetFromLeft: event.pos.dx,
-          ).round();
-        } else {
-          newPointTime = pixelsToTime(
-            timeViewStart: viewModel.timeView.start,
-            timeViewEnd: viewModel.timeView.end,
-            viewPixelWidth: event.viewSize.width,
-            pixelOffsetFromLeft: event.pos.dx,
-          ).round(); // TODO
+          );
+
+          newPointTime = getSnappedTime(
+            rawTime: newPointTime,
+            divisionChanges: divisionChanges,
+            round: true,
+          );
         }
 
         insertedPointIndex =
