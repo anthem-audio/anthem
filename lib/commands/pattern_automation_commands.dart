@@ -77,3 +77,31 @@ class SetAutomationPointValueCommand extends Command {
         .points[pointIndex].value = oldValue;
   }
 }
+
+class SetAutomationPointOffsetCommand extends Command {
+  ID patternID;
+  ID automationGeneratorID;
+  int pointIndex;
+  int oldOffset;
+  int newOffset;
+
+  SetAutomationPointOffsetCommand({
+    required this.patternID,
+    required this.automationGeneratorID,
+    required this.pointIndex,
+    required this.oldOffset,
+    required this.newOffset,
+  });
+
+  @override
+  void execute(ProjectModel project) {
+    project.song.patterns[patternID]!.automationLanes[automationGeneratorID]!
+        .points[pointIndex].offset = newOffset;
+  }
+
+  @override
+  void rollback(ProjectModel project) {
+    project.song.patterns[patternID]!.automationLanes[automationGeneratorID]!
+        .points[pointIndex].offset = oldOffset;
+  }
+}

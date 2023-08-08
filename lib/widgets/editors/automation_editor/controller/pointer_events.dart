@@ -186,12 +186,15 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
       startValue: point.value,
       startPointerOffset: event.pos,
       pointsToMoveInTime: List.generate(
-        automationLane.points.length - 1 - pressed.metadata.pointIndex,
-        (index) => (
-          index: index,
-          startTime: automationLane
-              .points[pressed!.metadata.pointIndex + 1 + index].offset,
-        ),
+        automationLane.points.length - pressed.metadata.pointIndex,
+        (index) {
+          pressed!;
+          return (
+            index: index + pressed.metadata.pointIndex,
+            startTime: automationLane
+                .points[pressed.metadata.pointIndex + index].offset,
+          );
+        },
       ),
       insertedPointIndex: insertedPointIndex,
     );
@@ -214,6 +217,34 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
 
       automationLane.points[_pointMoveActionData!.pointIndex].value =
           (_pointMoveActionData!.startValue + normalizedYDelta).clamp(0, 1);
+
+      var xDelta = (pixelsToTime(
+                timeViewStart: viewModel.timeView.start,
+                timeViewEnd: viewModel.timeView.end,
+                viewPixelWidth: event.viewSize.width,
+                pixelOffsetFromLeft: deltaFromStart.dx,
+              ) -
+              viewModel.timeView.start)
+          .round();
+
+      final thisPointStartOffset = _pointMoveActionData!.startTime;
+
+      if (_pointMoveActionData!.pointIndex == 0 &&
+          thisPointStartOffset + xDelta < 0) {
+        xDelta = -thisPointStartOffset;
+      } else if (_pointMoveActionData!.pointIndex > 0) {
+        final lastPointStartOffset =
+            automationLane.points[_pointMoveActionData!.pointIndex - 1].offset;
+
+        if (thisPointStartOffset + xDelta < lastPointStartOffset) {
+          xDelta = lastPointStartOffset - thisPointStartOffset;
+        }
+      }
+
+      for (final pointToMove in _pointMoveActionData!.pointsToMoveInTime) {
+        automationLane.points[pointToMove.index].offset =
+            pointToMove.startTime + xDelta;
+      }
     }
   }
 
@@ -252,6 +283,24 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
               newValue: point.value,
             ),
           );
+        }
+
+        if (_pointMoveActionData!.startTime != point.offset) {
+          final delta = point.offset - _pointMoveActionData!.startTime;
+
+          var i = 0;
+          for (final pointToMove in _pointMoveActionData!.pointsToMoveInTime) {
+            project.push(
+              SetAutomationPointOffsetCommand(
+                patternID: project.song.activePatternID!,
+                automationGeneratorID: project.activeAutomationGeneratorID!,
+                pointIndex: _pointMoveActionData!.pointIndex + i,
+                oldOffset: pointToMove.startTime,
+                newOffset: pointToMove.startTime + delta,
+              ),
+            );
+            i++;
+          }
         }
 
         project.commitJournalPage();
