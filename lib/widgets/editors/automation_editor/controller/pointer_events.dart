@@ -54,13 +54,25 @@ class _PointMoveActionData {
   });
 }
 
-// class _TensionChangeActionData {}
+class _TensionChangeActionData {
+  int pointIndex;
+  double startTension;
+  Offset startPointerOffset;
+  bool invert;
+
+  _TensionChangeActionData({
+    required this.pointIndex,
+    required this.startTension,
+    required this.startPointerOffset,
+    required this.invert,
+  });
+}
 
 mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
   var _eventHandlingState = EventHandlingState.idle;
 
   _PointMoveActionData? _pointMoveActionData;
-  // _TensionChangeActionData? _tensionChangeActionData;
+  _TensionChangeActionData? _tensionChangeActionData;
 
   double _getTargetValue(_HandleState state) {
     return switch (state) {
@@ -175,29 +187,44 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
       }
     }
 
-    _eventHandlingState = EventHandlingState.movingPoint;
-
     final point =
         automationLane.points.nonObservableInner[pressed.metadata.pointIndex];
 
-    _pointMoveActionData = _PointMoveActionData(
-      pointIndex: pressed.metadata.pointIndex,
-      startTime: point.offset,
-      startValue: point.value,
-      startPointerOffset: event.pos,
-      pointsToMoveInTime: List.generate(
-        automationLane.points.length - pressed.metadata.pointIndex,
-        (index) {
-          pressed!;
-          return (
-            index: index + pressed.metadata.pointIndex,
-            startTime: automationLane
-                .points[pressed.metadata.pointIndex + index].offset,
-          );
-        },
-      ),
-      insertedPointIndex: insertedPointIndex,
-    );
+    if (pressed.metadata.kind == HandleKind.point) {
+      _eventHandlingState = EventHandlingState.movingPoint;
+
+      _pointMoveActionData = _PointMoveActionData(
+        pointIndex: pressed.metadata.pointIndex,
+        startTime: point.offset,
+        startValue: point.value,
+        startPointerOffset: event.pos,
+        pointsToMoveInTime: List.generate(
+          automationLane.points.length - pressed.metadata.pointIndex,
+          (index) {
+            pressed!;
+            return (
+              index: index + pressed.metadata.pointIndex,
+              startTime: automationLane
+                  .points[pressed.metadata.pointIndex + index].offset,
+            );
+          },
+        ),
+        insertedPointIndex: insertedPointIndex,
+      );
+    } else {
+      _eventHandlingState = EventHandlingState.changingTension;
+
+      // The first point doesn't have a tension handle, so this is safe
+      final previousPoint = automationLane
+          .points.nonObservableInner[pressed.metadata.pointIndex - 1];
+
+      _tensionChangeActionData = _TensionChangeActionData(
+        pointIndex: pressed.metadata.pointIndex,
+        startTension: point.tension,
+        startPointerOffset: event.pos,
+        invert: previousPoint.value < point.value,
+      );
+    }
 
     _handlePressAnimation(pressed);
   }
@@ -278,6 +305,17 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
               pointToMove.startTime;
         }
       }
+    } else if (_eventHandlingState == EventHandlingState.changingTension) {
+      final point = automationLane.points[_tensionChangeActionData!.pointIndex];
+
+      final deltaY =
+          event.pos.dy - _tensionChangeActionData!.startPointerOffset.dy;
+      final deltaTension = -deltaY / 250;
+      final invertMult = _tensionChangeActionData!.invert ? -1 : 1;
+
+      point.tension =
+          (_tensionChangeActionData!.startTension + invertMult * deltaTension)
+              .clamp(-1, 1);
     }
   }
 
@@ -339,13 +377,36 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
         project.commitJournalPage();
 
         break;
-      default:
+      case EventHandlingState.changingTension:
+        final point = project
+            .song
+            .patterns[project.song.activePatternID]!
+            .automationLanes[project.activeAutomationGeneratorID]!
+            .points[_tensionChangeActionData!.pointIndex];
+
+        project.startJournalPage();
+
+        project.push(
+          SetAutomationPointTensionCommand(
+            patternID: project.song.activePatternID!,
+            automationGeneratorID: project.activeAutomationGeneratorID!,
+            pointIndex: _tensionChangeActionData!.pointIndex,
+            oldTension: _tensionChangeActionData!.startTension,
+            newTension: point.tension,
+          ),
+        );
+
+        project.commitJournalPage();
+
+        break;
+      case EventHandlingState.idle:
         break;
     }
 
     _eventHandlingState = EventHandlingState.idle;
 
     _pointMoveActionData = null;
+    _tensionChangeActionData = null;
 
     _handleReleaseAnimation();
   }
