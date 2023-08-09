@@ -267,9 +267,16 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
         }
       }
 
-      for (final pointToMove in _pointMoveActionData!.pointsToMoveInTime) {
-        automationLane.points[pointToMove.index].offset =
-            pointToMove.startTime + xDelta;
+      if (!event.keyboardModifiers.ctrl) {
+        for (final pointToMove in _pointMoveActionData!.pointsToMoveInTime) {
+          automationLane.points[pointToMove.index].offset =
+              pointToMove.startTime + xDelta;
+        }
+      } else {
+        for (final pointToMove in _pointMoveActionData!.pointsToMoveInTime) {
+          automationLane.points[pointToMove.index].offset =
+              pointToMove.startTime;
+        }
       }
     }
   }
