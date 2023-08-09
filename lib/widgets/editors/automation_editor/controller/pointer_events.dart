@@ -215,8 +215,13 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
 
       final normalizedYDelta = -deltaFromStart.dy / event.viewSize.height;
 
-      automationLane.points[_pointMoveActionData!.pointIndex].value =
-          (_pointMoveActionData!.startValue + normalizedYDelta).clamp(0, 1);
+      if (!event.keyboardModifiers.shift) {
+        automationLane.points[_pointMoveActionData!.pointIndex].value =
+            (_pointMoveActionData!.startValue + normalizedYDelta).clamp(0, 1);
+      } else {
+        automationLane.points[_pointMoveActionData!.pointIndex].value =
+            _pointMoveActionData!.startValue;
+      }
 
       var xDelta = (pixelsToTime(
                 timeViewStart: viewModel.timeView.start,
