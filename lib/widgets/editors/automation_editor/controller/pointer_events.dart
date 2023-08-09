@@ -227,6 +227,27 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
               viewModel.timeView.start)
           .round();
 
+      if (!event.keyboardModifiers.alt) {
+        final divisionChanges = getDivisionChanges(
+          viewWidthInPixels: event.viewSize.width,
+          snap: AutoSnap(),
+          defaultTimeSignature: project.song.defaultTimeSignature,
+          timeSignatureChanges: pattern.timeSignatureChanges,
+          ticksPerQuarter: project.song.ticksPerQuarter,
+          timeViewStart: viewModel.timeView.start,
+          timeViewEnd: viewModel.timeView.end,
+        );
+
+        final snappedTime = getSnappedTime(
+          rawTime: _pointMoveActionData!.startTime + xDelta,
+          divisionChanges: divisionChanges,
+          round: true,
+          startTime: _pointMoveActionData!.startTime,
+        );
+
+        xDelta = snappedTime - _pointMoveActionData!.startTime;
+      }
+
       final thisPointStartOffset = _pointMoveActionData!.startTime;
 
       if (_pointMoveActionData!.pointIndex == 0 &&
