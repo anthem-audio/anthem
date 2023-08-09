@@ -56,10 +56,13 @@ class AutomationEditorEventListener extends StatelessWidget {
               );
             },
             onPointerMove: (e) {
+              final keyboardModifiers =
+                  Provider.of<KeyboardModifiers>(context, listen: false);
               controller.pointerMove(
                 AutomationEditorPointerMoveEvent(
                   pos: e.localPosition,
                   viewSize: constraints.biggest,
+                  keyboardModifiers: keyboardModifiers,
                 ),
               );
             },
