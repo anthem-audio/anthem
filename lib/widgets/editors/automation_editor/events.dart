@@ -38,6 +38,11 @@ class AutomationEditorPointerDownEvent {
 class AutomationEditorPointerMoveEvent {
   Offset pos;
   Size viewSize;
+  KeyboardModifiers keyboardModifiers;
 
-  AutomationEditorPointerMoveEvent({required this.pos, required this.viewSize});
+  AutomationEditorPointerMoveEvent({
+    required this.pos,
+    required this.viewSize,
+    required this.keyboardModifiers,
+  });
 }
