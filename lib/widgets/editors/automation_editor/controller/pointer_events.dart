@@ -212,6 +212,22 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
         insertedPointIndex: insertedPointIndex,
       );
     } else {
+      if (event.buttons & kSecondaryButton > 0) {
+        project.execute(
+          SetAutomationPointTensionCommand(
+            patternID: project.song.activePatternID!,
+            automationGeneratorID: project.activeAutomationGeneratorID!,
+            pointIndex: pressed.metadata.pointIndex,
+            oldTension: point.tension,
+            newTension: 0,
+          ),
+        );
+
+        _handleHoverAnimation(null);
+
+        return;
+      }
+
       _eventHandlingState = EventHandlingState.changingTension;
 
       // The first point doesn't have a tension handle, so this is safe
