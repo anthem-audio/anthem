@@ -52,6 +52,9 @@ abstract class _AutomationEditorViewModel with Store {
 
   @observable
   PointAnnotation? pressedPointAnnotation;
+  
+  /// Used to preserve tension when adding points
+  double? lastInteractedTension;
 
   final pointAnimationTracker = AutomationPointAnimationTracker();
 
