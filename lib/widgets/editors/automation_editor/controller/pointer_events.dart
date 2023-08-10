@@ -167,6 +167,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
         final point = AutomationPointModel(
           offset: newPointTime,
           value: 1 - (event.pos.dy / event.viewSize.height),
+          tension: viewModel.lastInteractedTension ?? 0,
         );
         automationLane.points.insert(
           insertedPointIndex,
@@ -211,6 +212,8 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
         ),
         insertedPointIndex: insertedPointIndex,
       );
+
+      viewModel.lastInteractedTension = point.tension;
     } else {
       if (event.buttons & kSecondaryButton > 0) {
         project.execute(
@@ -222,6 +225,8 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
             newTension: 0,
           ),
         );
+
+        viewModel.lastInteractedTension = 0;
 
         _handleHoverAnimation(null);
 
@@ -402,15 +407,19 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
 
         project.startJournalPage();
 
+        final tension = point.tension;
+
         project.push(
           SetAutomationPointTensionCommand(
             patternID: project.song.activePatternID!,
             automationGeneratorID: project.activeAutomationGeneratorID!,
             pointIndex: _tensionChangeActionData!.pointIndex,
             oldTension: _tensionChangeActionData!.startTension,
-            newTension: point.tension,
+            newTension: tension,
           ),
         );
+
+        viewModel.lastInteractedTension = tension;
 
         project.commitJournalPage();
 
