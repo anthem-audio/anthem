@@ -32,6 +32,7 @@ class Menu extends StatefulWidget {
   final MenuDef menuDef;
   final Widget? child;
   late final MenuAlignment menuAlignment;
+  final void Function()? onClose;
 
   Menu({
     Key? key,
@@ -39,6 +40,7 @@ class Menu extends StatefulWidget {
     this.child,
     required this.menuDef,
     MenuAlignment? alignment,
+    this.onClose,
   }) : super(key: key) {
     menuAlignment = alignment ?? MenuAlignment.bottomLeft;
   }
@@ -53,25 +55,29 @@ class _MenuState extends State<Menu> {
 
   @override
   Widget build(BuildContext context) {
-    final screenOverlayCubit = Provider.of<ScreenOverlayController>(context);
-    widget.menuController.open = () => openMenu(screenOverlayCubit);
+    final screenOverlayController =
+        Provider.of<ScreenOverlayController>(context);
+    widget.menuController.open =
+        ([pos]) => openMenu(screenOverlayController, pos);
     return widget.child ?? const SizedBox();
   }
 
-  void openMenu(ScreenOverlayController screenOverlayController) {
+  void openMenu(
+      ScreenOverlayController screenOverlayController, Offset? incomingPos) {
     final contentRenderBox = context.findRenderObject() as RenderBox;
-    final pos = contentRenderBox.localToGlobal(
-      Offset(
-        widget.menuAlignment == MenuAlignment.topLeft ||
-                widget.menuAlignment == MenuAlignment.bottomLeft
-            ? 0
-            : contentRenderBox.size.width,
-        widget.menuAlignment == MenuAlignment.topLeft ||
-                widget.menuAlignment == MenuAlignment.topRight
-            ? 0
-            : contentRenderBox.size.height,
-      ),
-    );
+    final pos = incomingPos ??
+        contentRenderBox.localToGlobal(
+          Offset(
+            widget.menuAlignment == MenuAlignment.topLeft ||
+                    widget.menuAlignment == MenuAlignment.bottomLeft
+                ? 0
+                : contentRenderBox.size.width,
+            widget.menuAlignment == MenuAlignment.topLeft ||
+                    widget.menuAlignment == MenuAlignment.topRight
+                ? 0
+                : contentRenderBox.size.height,
+          ),
+        );
     final id = getID();
     final projectController =
         Provider.of<ProjectController>(context, listen: false);
@@ -90,6 +96,7 @@ class _MenuState extends State<Menu> {
             ),
           );
         },
+        onClose: widget.onClose,
       ),
     );
     openMenus.add(id);
@@ -99,9 +106,11 @@ class _MenuState extends State<Menu> {
     for (var menu in openMenus) {
       screenOverlayController.remove(menu);
     }
+
+    widget.onClose?.call();
   }
 }
 
 class MenuController {
-  late void Function() open;
+  late void Function([Offset? pos]) open;
 }

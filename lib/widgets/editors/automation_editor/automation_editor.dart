@@ -26,6 +26,7 @@ import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/editors/automation_editor/controller/automation_editor_controller.dart';
 import 'package:anthem/widgets/editors/automation_editor/content_renderer.dart';
 import 'package:anthem/widgets/editors/automation_editor/event_listener.dart';
+import 'package:anthem/widgets/editors/automation_editor/point_context_menu.dart';
 import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
@@ -223,15 +224,17 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
                     ),
                   ),
                   Expanded(
-                    child: AutomationEditorEventListener(
-                      child: AnimatedBuilder(
-                        animation: _timeViewAnimationController,
-                        builder: (context, child) {
-                          return AutomationEditorContentRenderer(
-                            timeViewStart: _timeViewStartAnimation.value,
-                            timeViewEnd: _timeViewEndAnimation.value,
-                          );
-                        },
+                    child: AutomationPointContextMenu(
+                      child: AutomationEditorEventListener(
+                        child: AnimatedBuilder(
+                          animation: _timeViewAnimationController,
+                          builder: (context, child) {
+                            return AutomationEditorContentRenderer(
+                              timeViewStart: _timeViewStartAnimation.value,
+                              timeViewEnd: _timeViewEndAnimation.value,
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ),
