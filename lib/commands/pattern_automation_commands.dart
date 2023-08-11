@@ -50,6 +50,34 @@ class AddAutomationPointCommand extends Command {
   }
 }
 
+class DeleteAutomationPointCommand extends Command {
+  ID patternID;
+  ID automationGeneratorID;
+  AutomationPointModel point;
+  int index;
+
+  DeleteAutomationPointCommand({
+    required this.patternID,
+    required this.automationGeneratorID,
+    required this.point,
+    required this.index,
+  });
+
+  @override
+  void execute(ProjectModel project) {
+    project.song.patterns[patternID]!.automationLanes[automationGeneratorID]!
+        .points
+        .removeAt(index);
+  }
+
+  @override
+  void rollback(ProjectModel project) {
+    project.song.patterns[patternID]!.automationLanes[automationGeneratorID]!
+        .points
+        .insert(index, point);
+  }
+}
+
 class SetAutomationPointValueCommand extends Command {
   ID patternID;
   ID automationGeneratorID;

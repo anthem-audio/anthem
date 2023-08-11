@@ -19,6 +19,8 @@
 
 import 'dart:ui';
 
+import 'package:anthem/widgets/basic/menu/menu.dart';
+import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/editors/automation_editor/automation_point_animation_tracker.dart';
 import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:mobx/mobx.dart';
@@ -52,11 +54,15 @@ abstract class _AutomationEditorViewModel with Store {
 
   @observable
   PointAnnotation? pressedPointAnnotation;
-  
+
   /// Used to preserve tension when adding points
   double? lastInteractedTension;
 
   final pointAnimationTracker = AutomationPointAnimationTracker();
+
+  MenuController pointMenuController = MenuController();
+
+  MenuDef pointMenu = MenuDef();
 
   _AutomationEditorViewModel({required this.timeView});
 }

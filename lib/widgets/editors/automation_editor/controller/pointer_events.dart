@@ -186,6 +186,27 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
       } else {
         return;
       }
+    } else {
+      if (pressed.metadata.kind == HandleKind.point &&
+          event.buttons & kSecondaryButton > 0) {
+        viewModel.pointMenu.children = [
+          AnthemMenuItem(
+            text: 'Delete',
+            onSelected: () {
+              project.execute(
+                DeleteAutomationPointCommand(
+                  patternID: project.song.activePatternID!,
+                  automationGeneratorID: project.activeAutomationGeneratorID!,
+                  point: automationLane.points[pressed!.metadata.pointIndex],
+                  index: pressed.metadata.pointIndex,
+                ),
+              );
+            },
+          ),
+        ];
+        viewModel.pointMenuController.open(event.globalPos);
+        return;
+      }
     }
 
     final point =
@@ -434,6 +455,10 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
     _tensionChangeActionData = null;
 
     _handleReleaseAnimation();
+  }
+
+  void pointMenuClosed() {
+    viewModel.pointMenu.children = [];
   }
 
   void _handleHoverAnimation(CanvasAnnotation<PointAnnotation>? hovered) {

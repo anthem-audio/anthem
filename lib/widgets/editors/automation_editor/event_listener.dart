@@ -49,6 +49,7 @@ class AutomationEditorEventListener extends StatelessWidget {
               controller.pointerDown(
                 AutomationEditorPointerDownEvent(
                   pos: e.localPosition,
+                  globalPos: e.position,
                   viewSize: constraints.biggest,
                   buttons: e.buttons,
                   keyboardModifiers: keyboardModifiers,
