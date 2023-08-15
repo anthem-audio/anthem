@@ -19,6 +19,7 @@
 
 import 'dart:ui' as ui;
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -31,7 +32,6 @@ import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
-import 'package:collection/collection.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_shaders/flutter_shaders.dart';
@@ -262,7 +262,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
       final pressedPoint = viewModel.pressedPointAnnotation;
       final radiusMultipler = getRadiusMultiplier(
         tracker: viewModel.pointAnimationTracker,
-        pointIndex: i,
+        pointId: point.id,
         hoveredPoint: hoveredPoint,
         pressedPoint: pressedPoint,
         handleKind: HandleKind.point,
@@ -291,6 +291,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
           kind: HandleKind.point,
           center: center,
           pointIndex: i,
+          pointId: point.id,
         ),
       );
 
@@ -313,7 +314,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
         const radius = 2.5;
         final radiusMultipler = getRadiusMultiplier(
           tracker: viewModel.pointAnimationTracker,
-          pointIndex: i,
+          pointId: point.id,
           hoveredPoint: hoveredPoint,
           pressedPoint: pressedPoint,
           handleKind: HandleKind.tensionHandle,
@@ -342,6 +343,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
             kind: HandleKind.tensionHandle,
             center: center,
             pointIndex: i,
+            pointId: point.id,
           ),
         );
       }
@@ -368,27 +370,22 @@ class AutomationEditorPainter extends CustomPainterObserver {
 
 double getRadiusMultiplier({
   required AutomationPointAnimationTracker tracker,
-  required int pointIndex,
+  required ID pointId,
   required PointAnnotation? hoveredPoint,
   required PointAnnotation? pressedPoint,
   required HandleKind handleKind,
 }) {
-  final animationValue = tracker.values.firstWhereOrNull(
-    (element) =>
-        element.pointIndex == pointIndex && element.handleKind == handleKind,
-  );
+  final animationValue = tracker.values[(id: pointId, handleKind: handleKind)];
 
   if (animationValue != null) {
     return animationValue.current;
   }
 
-  if (pressedPoint?.pointIndex == pointIndex &&
-      pressedPoint?.kind == handleKind) {
+  if (pressedPoint?.pointId == pointId && pressedPoint?.kind == handleKind) {
     return automationPointPressedSizeMultiplier;
   }
 
-  if (hoveredPoint?.pointIndex == pointIndex &&
-      hoveredPoint?.kind == handleKind) {
+  if (hoveredPoint?.pointId == pointId && hoveredPoint?.kind == handleKind) {
     return automationPointHoveredSizeMultiplier;
   }
 

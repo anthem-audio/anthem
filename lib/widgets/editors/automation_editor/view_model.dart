@@ -19,6 +19,7 @@
 
 import 'dart:ui';
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/editors/automation_editor/automation_point_animation_tracker.dart';
@@ -37,6 +38,7 @@ enum HandleKind {
 typedef PointAnnotation = ({
   HandleKind kind,
   int pointIndex,
+  ID pointId,
   Offset center,
 });
 
