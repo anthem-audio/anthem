@@ -19,6 +19,7 @@
 
 import 'dart:math';
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
 
 const automationPointHoveredSizeMultiplier = 1.6;
@@ -30,7 +31,7 @@ class AutomationPointAnimationValue {
   double start;
   late double current;
   double target;
-  int pointIndex;
+  ID pointId;
   HandleKind handleKind;
 
   /// Determines how fast the value will approach the target.
@@ -46,7 +47,7 @@ class AutomationPointAnimationValue {
     required this.start,
     required this.target,
     this.speedFactor = 0.3,
-    required this.pointIndex,
+    required this.pointId,
     required this.handleKind,
   }) {
     current = start;
@@ -81,25 +82,32 @@ class AutomationPointAnimationValue {
 /// generic way to track this animation state that can be tied to either the
 /// automation editor or the arranger.
 class AutomationPointAnimationTracker {
-  final _values = <AutomationPointAnimationValue>[];
+  final values =
+      <({ID id, HandleKind handleKind}), AutomationPointAnimationValue>{};
 
   /// Adds a value to be tracked.
-  void addValue(AutomationPointAnimationValue value) => _values.add(value);
+  void addValue({
+    required ID id,
+    required HandleKind handleKind,
+    required AutomationPointAnimationValue value,
+  }) =>
+      values[(
+        id: id,
+        handleKind: handleKind,
+      )] = value;
 
   /// Updates the values for all points that are currently animating.
   void update() {
     final currentTime = DateTime.now();
 
-    for (final value in _values) {
+    for (final value in values.values) {
       value.update(currentTime);
     }
 
-    _values.removeWhere((element) => element.isStopped);
+    values.removeWhere((key, value) => value.isStopped);
   }
 
   /// This value is true if there are values that are currently animating, and
   /// is false otherwise.
-  bool get isActive => _values.isNotEmpty;
-
-  Iterable<AutomationPointAnimationValue> get values => _values;
+  bool get isActive => values.isNotEmpty;
 }

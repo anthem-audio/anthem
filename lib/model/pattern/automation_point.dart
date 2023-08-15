@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
@@ -39,15 +40,7 @@ class AutomationPointModel extends _AutomationPointModel
 }
 
 abstract class _AutomationPointModel with Store {
-  _AutomationPointModel({
-    required this.offset,
-    required this.value,
-    required this.tension,
-    required this.curve,
-  });
-
-  Map<String, dynamic> toJson() =>
-      _$AutomationPointModelToJson(this as AutomationPointModel);
+  late final ID id;
 
   @observable
   int offset;
@@ -60,4 +53,16 @@ abstract class _AutomationPointModel with Store {
 
   @observable
   AutomationCurveType curve;
+
+  _AutomationPointModel({
+    required this.offset,
+    required this.value,
+    required this.tension,
+    required this.curve,
+  }) {
+    id = getID();
+  }
+
+  Map<String, dynamic> toJson() =>
+      _$AutomationPointModelToJson(this as AutomationPointModel);
 }

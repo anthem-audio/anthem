@@ -83,24 +83,23 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
   }
 
   void _setPointTargetPos({
-    required int pointIndex,
+    required ID pointId,
     required HandleKind handleKind,
     required _HandleState startState,
     required _HandleState endState,
   }) {
-    var didSetTarget = false;
-    for (final point in viewModel.pointAnimationTracker.values) {
-      if (point.pointIndex == pointIndex && point.handleKind == handleKind) {
-        point.target = _getTargetValue(endState);
-        didSetTarget = true;
-        continue;
-      }
-    }
-    if (!didSetTarget) {
+    final animationValue = viewModel
+        .pointAnimationTracker.values[(id: pointId, handleKind: handleKind)];
+
+    if (animationValue != null) {
+      animationValue.target = _getTargetValue(endState);
+    } else {
       viewModel.pointAnimationTracker.addValue(
-        AutomationPointAnimationValue(
+        id: pointId,
+        handleKind: handleKind,
+        value: AutomationPointAnimationValue(
           handleKind: handleKind,
-          pointIndex: pointIndex,
+          pointId: pointId,
           start: _getTargetValue(startState),
           target: _getTargetValue(endState),
         ),
@@ -179,7 +178,8 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
           metadata: (
             center: const Offset(0, 0),
             kind: HandleKind.point,
-            pointIndex: insertedPointIndex
+            pointIndex: insertedPointIndex,
+            pointId: point.id,
           ),
           rect: const Rect.fromLTWH(0, 0, 0, 0),
         );
@@ -469,7 +469,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
     if (hoveredAnnotation != oldHoveredAnnotation) {
       if (oldHoveredAnnotation != null) {
         _setPointTargetPos(
-          pointIndex: oldHoveredAnnotation.pointIndex,
+          pointId: oldHoveredAnnotation.pointId,
           handleKind: oldHoveredAnnotation.kind,
           startState: viewModel.pressedPointAnnotation == oldHoveredAnnotation
               ? _HandleState.pressed
@@ -479,7 +479,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
       }
       if (hoveredAnnotation != null) {
         _setPointTargetPos(
-          pointIndex: hoveredAnnotation.pointIndex,
+          pointId: hoveredAnnotation.pointId,
           handleKind: hoveredAnnotation.kind,
           startState: _HandleState.out,
           endState: viewModel.pressedPointAnnotation == hoveredAnnotation
@@ -496,7 +496,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
     viewModel.pressedPointAnnotation = pressedAnnotation;
 
     _setPointTargetPos(
-      pointIndex: pressedAnnotation.pointIndex,
+      pointId: pressedAnnotation.pointId,
       handleKind: pressedAnnotation.kind,
       startState: pressedAnnotation == viewModel.hoveredPointAnnotation
           ? _HandleState.hovered
@@ -513,7 +513,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
     viewModel.pressedPointAnnotation = null;
 
     _setPointTargetPos(
-      pointIndex: pressedAnnotation.pointIndex,
+      pointId: pressedAnnotation.pointId,
       handleKind: pressedAnnotation.kind,
       startState: _HandleState.pressed,
       endState: pressedAnnotation == viewModel.hoveredPointAnnotation
@@ -523,7 +523,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
   }
 
   void mouseOut() {
-    for (final value in viewModel.pointAnimationTracker.values) {
+    for (final value in viewModel.pointAnimationTracker.values.values) {
       value.target = 1;
     }
     viewModel.hoveredPointAnnotation = null;
