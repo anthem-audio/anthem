@@ -74,39 +74,6 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
   _PointMoveActionData? _pointMoveActionData;
   _TensionChangeActionData? _tensionChangeActionData;
 
-  double _getTargetValue(_HandleState state) {
-    return switch (state) {
-      _HandleState.out => 1,
-      _HandleState.hovered => automationPointHoveredSizeMultiplier,
-      _HandleState.pressed => automationPointPressedSizeMultiplier,
-    };
-  }
-
-  void _setPointTargetPos({
-    required ID pointId,
-    required HandleKind handleKind,
-    required _HandleState startState,
-    required _HandleState endState,
-  }) {
-    final animationValue = viewModel
-        .pointAnimationTracker.values[(id: pointId, handleKind: handleKind)];
-
-    if (animationValue != null) {
-      animationValue.target = _getTargetValue(endState);
-    } else {
-      viewModel.pointAnimationTracker.addValue(
-        id: pointId,
-        handleKind: handleKind,
-        value: AutomationPointAnimationValue(
-          handleKind: handleKind,
-          pointId: pointId,
-          start: _getTargetValue(startState),
-          target: _getTargetValue(endState),
-        ),
-      );
-    }
-  }
-
   void hover(Offset pos) {
     final annotations = viewModel.visiblePoints.hitTestAll(pos);
 
@@ -114,7 +81,8 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
             (element) => element.metadata.kind == HandleKind.point) ??
         annotations.firstOrNull;
 
-    _handleHoverAnimation(hovered);
+    final hoveredAnnotation = hovered?.metadata;
+    viewModel.hoveredPointAnnotation = hoveredAnnotation;
   }
 
   void pointerDown(AutomationEditorPointerDownEvent event) {
@@ -249,7 +217,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
 
         viewModel.lastInteractedTension = 0;
 
-        _handleHoverAnimation(null);
+        viewModel.hoveredPointAnnotation = null;
 
         return;
       }
@@ -268,7 +236,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
       );
     }
 
-    _handlePressAnimation(pressed);
+    viewModel.pressedPointAnnotation = pressed.metadata;
   }
 
   void pointerMove(AutomationEditorPointerMoveEvent event) {
@@ -454,72 +422,11 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
     _pointMoveActionData = null;
     _tensionChangeActionData = null;
 
-    _handleReleaseAnimation();
+    viewModel.pressedPointAnnotation = null;
   }
 
   void pointMenuClosed() {
     viewModel.pointMenu.children = [];
-  }
-
-  void _handleHoverAnimation(CanvasAnnotation<PointAnnotation>? hovered) {
-    final hoveredAnnotation = hovered?.metadata;
-    final oldHoveredAnnotation = viewModel.hoveredPointAnnotation;
-    viewModel.hoveredPointAnnotation = hoveredAnnotation;
-
-    if (hoveredAnnotation != oldHoveredAnnotation) {
-      if (oldHoveredAnnotation != null) {
-        _setPointTargetPos(
-          pointId: oldHoveredAnnotation.pointId,
-          handleKind: oldHoveredAnnotation.kind,
-          startState: viewModel.pressedPointAnnotation == oldHoveredAnnotation
-              ? _HandleState.pressed
-              : _HandleState.hovered,
-          endState: _HandleState.out,
-        );
-      }
-      if (hoveredAnnotation != null) {
-        _setPointTargetPos(
-          pointId: hoveredAnnotation.pointId,
-          handleKind: hoveredAnnotation.kind,
-          startState: _HandleState.out,
-          endState: viewModel.pressedPointAnnotation == hoveredAnnotation
-              ? _HandleState.pressed
-              : _HandleState.hovered,
-        );
-      }
-    }
-  }
-
-  void _handlePressAnimation(CanvasAnnotation<PointAnnotation> pressed) {
-    final pressedAnnotation = pressed.metadata;
-
-    viewModel.pressedPointAnnotation = pressedAnnotation;
-
-    _setPointTargetPos(
-      pointId: pressedAnnotation.pointId,
-      handleKind: pressedAnnotation.kind,
-      startState: pressedAnnotation == viewModel.hoveredPointAnnotation
-          ? _HandleState.hovered
-          : _HandleState.out,
-      endState: _HandleState.pressed,
-    );
-  }
-
-  void _handleReleaseAnimation() {
-    final pressedAnnotation = viewModel.pressedPointAnnotation;
-
-    if (pressedAnnotation == null) return;
-
-    viewModel.pressedPointAnnotation = null;
-
-    _setPointTargetPos(
-      pointId: pressedAnnotation.pointId,
-      handleKind: pressedAnnotation.kind,
-      startState: _HandleState.pressed,
-      endState: pressedAnnotation == viewModel.hoveredPointAnnotation
-          ? _HandleState.hovered
-          : _HandleState.out,
-    );
   }
 
   void mouseOut() {

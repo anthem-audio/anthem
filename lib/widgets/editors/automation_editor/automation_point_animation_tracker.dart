@@ -33,15 +33,24 @@ class AutomationPointAnimationValue {
   double target;
   ID pointId;
   HandleKind handleKind;
+  double restPos;
 
   /// Determines how fast the value will approach the target.
   ///
   /// This value should be between 0 and 1, where 0 is stopped and 1 is instant.
   double speedFactor;
 
-  /// Checks if the current value has moved at least 99.5% of the way to the
-  /// target.
-  bool get isStopped => ((target - current) / (target - start)).abs() < 0.005;
+  /// Checks if the current value is close to the target.
+  bool get isStopped => (target - current).abs() < 0.005;
+
+  /// Is true if the value has returned to its starting position.
+  bool get isAtRest => isStopped && (current - restPos).abs() < 0.005;
+
+  void setTarget(double target) {
+    start = current;
+    this.target = target;
+    lastUpdated = DateTime.now();
+  }
 
   AutomationPointAnimationValue({
     required this.start,
@@ -49,6 +58,7 @@ class AutomationPointAnimationValue {
     this.speedFactor = 0.3,
     required this.pointId,
     required this.handleKind,
+    required this.restPos,
   }) {
     current = start;
   }
@@ -104,10 +114,16 @@ class AutomationPointAnimationTracker {
       value.update(currentTime);
     }
 
-    values.removeWhere((key, value) => value.isStopped);
+    values.removeWhere((key, value) => value.isAtRest);
   }
 
   /// This value is true if there are values that are currently animating, and
   /// is false otherwise.
-  bool get isActive => values.isNotEmpty;
+  bool get isActive {
+    return values.isNotEmpty &&
+        values.values.fold(
+          false,
+          (previousValue, element) => previousValue || !element.isStopped,
+        );
+  }
 }
