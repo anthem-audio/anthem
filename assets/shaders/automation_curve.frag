@@ -189,7 +189,7 @@ void main() {
     backgroundColor = vec4(color.xyz * opacity, opacity);
   }
 
-  float lineStrength = ((strokeWidth + devicePixelRatio) * 0.5) - dist;
+  float lineStrength = ((strokeWidth + devicePixelRatio * 2) * 0.5) - dist * devicePixelRatio;
 
   // Prevent line from painting above the top point or below the bottom.
   //
