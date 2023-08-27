@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
@@ -154,7 +156,7 @@ class _ArrangerState extends State<Arranger> {
                                   child: Button(
                                     width: 26,
                                     icon: Icons.kebab,
-                                    onPress: () => menuController.open?.call(),
+                                    onPress: () => menuController.open(),
                                   ),
                                 ),
                                 const SizedBox(width: 4),
@@ -357,78 +359,89 @@ class _ArrangerContentState extends State<_ArrangerContent>
     with TickerProviderStateMixin {
   // Fields for time view animation
 
-  late final AnimationController _timeViewAnimationController =
+  late final AnimationController timeViewAnimationController =
       AnimationController(
     duration: const Duration(milliseconds: 250),
     vsync: this,
   );
 
-  double _lastTimeViewStart = 0;
-  double _lastTimeViewEnd = 1;
+  double lastTimeViewStart = 0;
+  double lastTimeViewEnd = 1;
 
-  late final Tween<double> _timeViewStartTween =
-      Tween<double>(begin: _lastTimeViewStart, end: _lastTimeViewStart);
-  late final Tween<double> _timeViewEndTween =
-      Tween<double>(begin: _lastTimeViewEnd, end: _lastTimeViewEnd);
+  late final Tween<double> timeViewStartTween =
+      Tween<double>(begin: lastTimeViewStart, end: lastTimeViewStart);
+  late final Tween<double> timeViewEndTween =
+      Tween<double>(begin: lastTimeViewEnd, end: lastTimeViewEnd);
 
   late final Animation<double> _timeViewStartAnimation =
-      _timeViewStartTween.animate(
+      timeViewStartTween.animate(
     CurvedAnimation(
-      parent: _timeViewAnimationController,
+      parent: timeViewAnimationController,
       curve: Curves.easeOutExpo,
     ),
   );
-  late final Animation<double> _timeViewEndAnimation =
-      _timeViewEndTween.animate(
+  late final Animation<double> _timeViewEndAnimation = timeViewEndTween.animate(
     CurvedAnimation(
-      parent: _timeViewAnimationController,
+      parent: timeViewAnimationController,
       curve: Curves.easeOutExpo,
     ),
   );
 
   // Fields for vertical scroll position animation
 
-  late final AnimationController _verticalScrollPositionAnimationController =
+  late final AnimationController verticalScrollPositionAnimationController =
       AnimationController(
     duration: const Duration(milliseconds: 250),
     vsync: this,
   );
 
-  double _lastVerticalScrollPosition = 0;
+  double lastVerticalScrollPosition = 0;
 
-  late final Tween<double> _verticalScrollPositionTween = Tween<double>(
-      begin: _lastVerticalScrollPosition, end: _lastVerticalScrollPosition);
+  late final Tween<double> verticalScrollPositionTween = Tween<double>(
+      begin: lastVerticalScrollPosition, end: lastVerticalScrollPosition);
 
-  late final Animation<double> _verticalScrollPositionAnimation =
-      _verticalScrollPositionTween.animate(
+  late final Animation<double> verticalScrollPositionAnimation =
+      verticalScrollPositionTween.animate(
     CurvedAnimation(
-      parent: _verticalScrollPositionAnimationController,
+      parent: verticalScrollPositionAnimationController,
       curve: Curves.easeOutExpo,
     ),
   );
 
-  mobx.ReactionDisposer? verticalScrollPosTweenUpdaterSub;
+  mobx.ReactionDisposer? animationTweenUpdaterDisposer;
+
+  StreamSubscription? baseTrackHeightChangedSub;
 
   @override
   void dispose() {
-    _timeViewAnimationController.dispose();
-    verticalScrollPosTweenUpdaterSub?.call();
+    timeViewAnimationController.dispose();
+    verticalScrollPositionAnimationController.dispose();
+    baseTrackHeightChangedSub?.cancel();
+    animationTweenUpdaterDisposer?.call();
     super.dispose();
   }
-
-  bool useNewArrangerRenderer = true;
 
   @override
   Widget build(BuildContext context) {
     const trackHeaderWidth = 130.0;
 
     final viewModel = Provider.of<ArrangerViewModel>(context);
+    final controller = Provider.of<ArrangerController>(context);
 
     final project = Provider.of<ProjectModel>(context);
 
-    // Updates the vertical scroll position animation whenever the vertical
-    // scroll position changes.
-    verticalScrollPosTweenUpdaterSub ??= mobx.autorun((p0) {
+    // Snap vertical scrol position when base track height is changed
+    baseTrackHeightChangedSub ??=
+        controller.onBaseTrackHeightChanged.stream.listen((event) {
+      verticalScrollPositionTween.begin = viewModel.verticalScrollPosition;
+      verticalScrollPositionAnimationController.reset();
+      verticalScrollPositionTween.end = viewModel.verticalScrollPosition;
+      verticalScrollPositionAnimationController.forward();
+      lastVerticalScrollPosition = viewModel.verticalScrollPosition;
+    });
+
+    // Updates the animations whenever the vertical scroll position changes.
+    animationTweenUpdaterDisposer ??= mobx.autorun((p0) {
       viewModel.verticalScrollPosition;
       viewModel.timeView.start;
       viewModel.timeView.end;
@@ -436,30 +449,29 @@ class _ArrangerContentState extends State<_ArrangerContent>
       setState(() {});
     });
 
-    // Updates the time view animation if the time view has changed
-    if (viewModel.timeView.start != _lastTimeViewStart ||
-        viewModel.timeView.end != _lastTimeViewEnd) {
-      _timeViewStartTween.begin = _timeViewStartAnimation.value;
-      _timeViewEndTween.begin = _timeViewEndAnimation.value;
+    // Updates the time view animation if the time view has changed.
+    if (viewModel.timeView.start != lastTimeViewStart ||
+        viewModel.timeView.end != lastTimeViewEnd) {
+      timeViewStartTween.begin = _timeViewStartAnimation.value;
+      timeViewEndTween.begin = _timeViewEndAnimation.value;
 
-      _timeViewAnimationController.reset();
+      timeViewAnimationController.reset();
 
-      _timeViewStartTween.end = viewModel.timeView.start;
-      _timeViewEndTween.end = viewModel.timeView.end;
+      timeViewStartTween.end = viewModel.timeView.start;
+      timeViewEndTween.end = viewModel.timeView.end;
 
-      _timeViewAnimationController.forward();
+      timeViewAnimationController.forward();
 
-      _lastTimeViewStart = viewModel.timeView.start;
-      _lastTimeViewEnd = viewModel.timeView.end;
+      lastTimeViewStart = viewModel.timeView.start;
+      lastTimeViewEnd = viewModel.timeView.end;
     }
 
-    if (viewModel.verticalScrollPosition != _lastVerticalScrollPosition) {
-      _verticalScrollPositionTween.begin =
-          _verticalScrollPositionAnimation.value;
-      _verticalScrollPositionAnimationController.reset();
-      _verticalScrollPositionTween.end = viewModel.verticalScrollPosition;
-      _verticalScrollPositionAnimationController.forward();
-      _lastVerticalScrollPosition = viewModel.verticalScrollPosition;
+    if (viewModel.verticalScrollPosition != lastVerticalScrollPosition) {
+      verticalScrollPositionTween.begin = verticalScrollPositionAnimation.value;
+      verticalScrollPositionAnimationController.reset();
+      verticalScrollPositionTween.end = viewModel.verticalScrollPosition;
+      verticalScrollPositionAnimationController.forward();
+      lastVerticalScrollPosition = viewModel.verticalScrollPosition;
     }
 
     return Container(
@@ -482,7 +494,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
                     child: Observer(builder: (context) {
                       return Timeline.arrangement(
                         timeViewAnimationController:
-                            _timeViewAnimationController,
+                            timeViewAnimationController,
                         timeViewStartAnimation: _timeViewStartAnimation,
                         timeViewEndAnimation: _timeViewEndAnimation,
                         arrangementID: project.song.activeArrangementID,
@@ -500,11 +512,11 @@ class _ArrangerContentState extends State<_ArrangerContent>
                   SizedBox(
                     width: trackHeaderWidth,
                     child: AnimatedBuilder(
-                      animation: _verticalScrollPositionAnimationController,
+                      animation: verticalScrollPositionAnimationController,
                       builder: (context, child) {
                         return _TrackHeaders(
                           verticalScrollPosition:
-                              _verticalScrollPositionAnimation.value,
+                              verticalScrollPositionAnimation.value,
                         );
                       },
                     ),
@@ -514,12 +526,11 @@ class _ArrangerContentState extends State<_ArrangerContent>
                     child: _ArrangerCanvas(
                       timeViewStartAnimation: _timeViewStartAnimation,
                       timeViewEndAnimation: _timeViewEndAnimation,
-                      timeViewAnimationController: _timeViewAnimationController,
+                      timeViewAnimationController: timeViewAnimationController,
                       verticalScrollPositionAnimation:
-                          _verticalScrollPositionAnimation,
+                          verticalScrollPositionAnimation,
                       verticalScrollPositionAnimationController:
-                          _verticalScrollPositionAnimationController,
-                      useNewArrangerRenderer: useNewArrangerRenderer,
+                          verticalScrollPositionAnimationController,
                     ),
                   ),
                 ],
@@ -542,8 +553,6 @@ class _ArrangerCanvas extends StatelessWidget {
   final Animation<double> verticalScrollPositionAnimation;
   final AnimationController verticalScrollPositionAnimationController;
 
-  final bool useNewArrangerRenderer;
-
   const _ArrangerCanvas({
     Key? key,
     required this.timeViewStartAnimation,
@@ -551,7 +560,6 @@ class _ArrangerCanvas extends StatelessWidget {
     required this.timeViewAnimationController,
     required this.verticalScrollPositionAnimation,
     required this.verticalScrollPositionAnimationController,
-    this.useNewArrangerRenderer = false,
   }) : super(key: key);
 
   @override

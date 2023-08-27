@@ -30,10 +30,15 @@ class ScreenOverlayController {
   }
 
   void remove(ID id) {
-    viewModel.entries.remove(id);
+    final entry = viewModel.entries.remove(id);
+    entry?.onClose?.call();
   }
 
   void clear() {
+    for (final entry in viewModel.entries.nonObservableInner.values) {
+      entry.onClose?.call();
+    }
+
     viewModel.entries.clear();
   }
 }

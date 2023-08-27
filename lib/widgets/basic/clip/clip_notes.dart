@@ -70,7 +70,7 @@ class _ClipNotesPainter extends CustomPainterObserver {
 
   @override
   void observablePaint(Canvas canvas, Size size) {
-    pattern.clipNotesUpdateSignal;
+    pattern.clipNotesUpdateSignal.value;
 
     final cacheItems = generatorID != null
         ? [pattern.clipNotesRenderCache[generatorID]!]

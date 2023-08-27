@@ -18,11 +18,9 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
-import 'package:mobx/mobx.dart';
 
 import 'command.dart';
 
@@ -48,13 +46,12 @@ class AddPatternCommand extends Command {
   int index;
 
   AddPatternCommand({
-    required ProjectModel project,
     required this.pattern,
     required this.index,
-  }) : super(project);
+  });
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     _addPatternToProject(
       project: project,
       pattern: pattern,
@@ -63,7 +60,7 @@ class AddPatternCommand extends Command {
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     _removePatternFromProject(
       project: project,
       patternID: pattern.id,
@@ -76,13 +73,12 @@ class DeletePatternCommand extends Command {
   int index;
 
   DeletePatternCommand({
-    required ProjectModel project,
     required this.pattern,
     required this.index,
-  }) : super(project);
+  });
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     _removePatternFromProject(
       project: project,
       patternID: pattern.id,
@@ -90,7 +86,7 @@ class DeletePatternCommand extends Command {
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     _addPatternToProject(
       project: project,
       pattern: pattern,
@@ -108,19 +104,19 @@ class SetPatternNameCommand extends Command {
     required ProjectModel project,
     required this.patternID,
     required this.newName,
-  }) : super(project) {
+  }) {
     oldName = project.song.patterns[patternID]!.name;
   }
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     final pattern = project.song.patterns[patternID]!;
     pattern.name = newName;
     pattern.updateClipTitleCache();
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     final pattern = project.song.patterns[patternID]!;
     pattern.name = oldName;
     pattern.updateClipTitleCache();
@@ -136,198 +132,17 @@ class SetPatternColorCommand extends Command {
     required ProjectModel project,
     required this.patternID,
     required this.newColor,
-  }) : super(project) {
+  }) {
     oldColor = project.song.patterns[patternID]!.color;
   }
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     project.song.patterns[patternID]!.color = newColor;
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     project.song.patterns[patternID]!.color = oldColor;
-  }
-}
-
-void _addNote(
-  PatternModel pattern,
-  ID generatorID,
-  NoteModel note,
-) {
-  if (!pattern.notes.containsKey(generatorID)) {
-    pattern.notes[generatorID] = ObservableList();
-  }
-
-  pattern.notes[generatorID]!.add(note);
-  pattern.scheduleClipNotesRenderCacheUpdate();
-}
-
-void _removeNote(
-  PatternModel pattern,
-  ID generatorID,
-  ID noteID,
-) {
-  pattern.notes[generatorID]!.removeWhere((element) => element.id == noteID);
-  pattern.scheduleClipNotesRenderCacheUpdate();
-}
-
-NoteModel _getNote(
-  PatternModel pattern,
-  ID generatorID,
-  ID noteID,
-) {
-  return pattern.notes[generatorID]!
-      .firstWhere((element) => element.id == noteID);
-}
-
-class AddNoteCommand extends Command {
-  ID patternID;
-  ID generatorID;
-  NoteModel note;
-
-  AddNoteCommand({
-    required ProjectModel project,
-    required this.patternID,
-    required this.generatorID,
-    required this.note,
-  }) : super(project);
-
-  @override
-  void execute() {
-    final pattern = project.song.patterns[patternID];
-
-    if (pattern == null) {
-      return;
-    }
-
-    _addNote(pattern, generatorID, note);
-  }
-
-  @override
-  void rollback() {
-    final pattern = project.song.patterns[patternID];
-
-    if (pattern == null) {
-      return;
-    }
-
-    _removeNote(pattern, generatorID, note.id);
-  }
-}
-
-class DeleteNoteCommand extends Command {
-  ID patternID;
-  ID generatorID;
-  NoteModel note;
-
-  DeleteNoteCommand({
-    required ProjectModel project,
-    required this.patternID,
-    required this.generatorID,
-    required this.note,
-  }) : super(project);
-
-  @override
-  void execute() {
-    final pattern = project.song.patterns[patternID];
-
-    if (pattern == null) {
-      return;
-    }
-
-    _removeNote(pattern, generatorID, note.id);
-  }
-
-  @override
-  void rollback() {
-    final pattern = project.song.patterns[patternID];
-
-    if (pattern == null) {
-      return;
-    }
-
-    _addNote(pattern, generatorID, note);
-  }
-}
-
-enum NoteAttribute { key, offset, length, velocity, pan }
-
-class SetNoteAttributeCommand extends Command {
-  ID patternID;
-  ID generatorID;
-  ID noteID;
-  NoteAttribute attribute;
-  int oldValue;
-  int newValue;
-
-  SetNoteAttributeCommand({
-    required ProjectModel project,
-    required this.patternID,
-    required this.generatorID,
-    required this.noteID,
-    required this.attribute,
-    required this.oldValue,
-    required this.newValue,
-  }) : super(project);
-
-  void setAttribute(NoteModel note, int value) {
-    switch (attribute) {
-      case NoteAttribute.key:
-        note.key = value;
-        break;
-      case NoteAttribute.offset:
-        note.offset = value;
-        break;
-      case NoteAttribute.length:
-        note.length = value;
-        break;
-      case NoteAttribute.velocity:
-        note.velocity = value;
-        break;
-      case NoteAttribute.pan:
-        note.pan = value;
-        break;
-    }
-  }
-
-  void updateClipRenderCacheIfNeeded(PatternModel pattern) {
-    switch (attribute) {
-      case NoteAttribute.key:
-      case NoteAttribute.offset:
-      case NoteAttribute.length:
-        pattern.scheduleClipNotesRenderCacheUpdate();
-      default:
-        break;
-    }
-  }
-
-  @override
-  void execute() {
-    final pattern = project.song.patterns[patternID];
-
-    if (pattern == null) {
-      return;
-    }
-
-    final note = _getNote(pattern, generatorID, noteID);
-
-    setAttribute(note, newValue);
-    updateClipRenderCacheIfNeeded(pattern);
-  }
-
-  @override
-  void rollback() {
-    final pattern = project.song.patterns[patternID];
-
-    if (pattern == null) {
-      return;
-    }
-
-    final note = _getNote(pattern, generatorID, noteID);
-
-    setAttribute(note, oldValue);
-    updateClipRenderCacheIfNeeded(pattern);
   }
 }

@@ -20,7 +20,7 @@
 import 'dart:ui';
 
 import 'package:anthem/commands/journal_commands.dart';
-import 'package:anthem/commands/pattern_commands.dart';
+import 'package:anthem/commands/pattern_note_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
@@ -66,7 +66,7 @@ class AttributeEditorController {
 
     if (pattern == null) return;
 
-    final notes = pattern.notes[project.activeGeneratorID];
+    final notes = pattern.notes[project.activeInstrumentID];
 
     if (notes == null || notes.isEmpty) return;
 
@@ -173,7 +173,7 @@ class AttributeEditorController {
     final pattern = project.song.patterns[project.song.activePatternID];
 
     if (pattern == null) return;
-    if (project.activeGeneratorID == null) return;
+    if (project.activeInstrumentID == null) return;
 
     late NoteAttribute attribute;
 
@@ -188,9 +188,8 @@ class AttributeEditorController {
 
     final commands = oldValues.keys
         .map((noteID) => SetNoteAttributeCommand(
-              project: project,
               patternID: pattern.id,
-              generatorID: project.activeGeneratorID!,
+              generatorID: project.activeInstrumentID!,
               noteID: noteID,
               attribute: attribute,
               oldValue: oldValues[noteID]!,
@@ -198,7 +197,7 @@ class AttributeEditorController {
             ))
         .toList();
 
-    final journalPageCommand = JournalPageCommand(project, commands);
+    final journalPageCommand = JournalPageCommand(commands);
 
     project.push(journalPageCommand);
 

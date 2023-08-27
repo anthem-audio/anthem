@@ -242,7 +242,7 @@ class PianoRollAttributePainter extends CustomPainterObserver {
       canvas.drawRect(rect, minorLinePaint);
     }
 
-    final notes = activePattern?.notes[project.activeGeneratorID];
+    final notes = activePattern?.notes[project.activeInstrumentID];
 
     if (notes == null) return;
 

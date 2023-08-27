@@ -20,7 +20,7 @@
 import 'dart:math';
 
 import 'package:anthem/commands/journal_commands.dart';
-import 'package:anthem/commands/pattern_commands.dart';
+import 'package:anthem/commands/pattern_note_commands.dart';
 import 'package:anthem/commands/timeline_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
@@ -68,7 +68,7 @@ class _PianoRollController {
     required int pan,
   }) {
     if (project.song.activePatternID == null ||
-        project.activeGeneratorID == null) {
+        project.activeInstrumentID == null) {
       throw Exception('Active pattern and/or active generator are not set');
     }
 
@@ -81,9 +81,8 @@ class _PianoRollController {
     );
 
     project.execute(AddNoteCommand(
-      project: project,
       patternID: project.song.activePatternID!,
-      generatorID: project.activeGeneratorID!,
+      generatorID: project.activeInstrumentID!,
       note: note,
     ));
 
@@ -124,7 +123,6 @@ class _PianoRollController {
     project.execute(
       AddTimeSignatureChangeCommand(
         timelineKind: TimelineKind.pattern,
-        project: project,
         patternID: project.song.activePatternID!,
         change: TimeSignatureChangeModel(
           offset: snappedOffset,
@@ -146,21 +144,20 @@ class _PianoRollController {
   void deleteSelected() {
     if (viewModel.selectedNotes.isEmpty ||
         project.song.activePatternID == null ||
-        project.activeGeneratorID == null) return;
+        project.activeInstrumentID == null) return;
 
     final commands = project.song.patterns[project.song.activePatternID]!
-        .notes[project.activeGeneratorID]!
+        .notes[project.activeInstrumentID]!
         .where((note) => viewModel.selectedNotes.contains(note.id))
         .map((note) {
       return DeleteNoteCommand(
-        project: project,
         patternID: project.song.activePatternID!,
-        generatorID: project.activeGeneratorID!,
+        generatorID: project.activeInstrumentID!,
         note: note,
       );
     }).toList();
 
-    final command = JournalPageCommand(project, commands);
+    final command = JournalPageCommand(commands);
 
     project.execute(command);
 
@@ -170,11 +167,11 @@ class _PianoRollController {
   /// Adds all notes to the selection set in the view model.
   void selectAll() {
     if (project.song.activePatternID == null ||
-        project.activeGeneratorID == null) return;
+        project.activeInstrumentID == null) return;
 
     viewModel.selectedNotes = ObservableSet.of(
       project.song.patterns[project.song.activePatternID]!
-          .notes[project.activeGeneratorID]!
+          .notes[project.activeInstrumentID]!
           .map((note) => note.id)
           .toSet(),
     );

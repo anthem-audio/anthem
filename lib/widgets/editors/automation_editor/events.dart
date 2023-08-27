@@ -17,28 +17,34 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:mobx/mobx.dart';
+import 'dart:ui';
 
-part 'project_view_model.g.dart';
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 
-enum EditorKind {
-  detail,
-  automation,
-  channelRack,
-  mixer,
+class AutomationEditorPointerDownEvent {
+  Offset pos;
+  Offset globalPos;
+  Size viewSize;
+  int buttons;
+  KeyboardModifiers keyboardModifiers;
+
+  AutomationEditorPointerDownEvent({
+    required this.pos,
+    required this.globalPos,
+    required this.viewSize,
+    required this.buttons,
+    required this.keyboardModifiers,
+  });
 }
 
-// ignore: library_private_types_in_public_api
-class ProjectViewModel = _ProjectViewModel with _$ProjectViewModel;
+class AutomationEditorPointerMoveEvent {
+  Offset pos;
+  Size viewSize;
+  KeyboardModifiers keyboardModifiers;
 
-abstract class _ProjectViewModel with Store {
-  @observable
-  String hintText = '';
-
-  // We should probably persist this between sessions
-  @observable
-  bool keyboardPianoEnabled = false;
-
-  @observable
-  EditorKind selectedEditor = EditorKind.detail;
+  AutomationEditorPointerMoveEvent({
+    required this.pos,
+    required this.viewSize,
+    required this.keyboardModifiers,
+  });
 }

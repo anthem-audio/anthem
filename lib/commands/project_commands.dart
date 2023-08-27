@@ -36,29 +36,36 @@ void _removeGenerator(ProjectModel project, ID generatorID) {
 class AddGeneratorCommand extends Command {
   ID generatorID;
   String name;
+  GeneratorType generatorType;
   Color color;
-  String pluginPath;
+  String? pluginPath;
 
   AddGeneratorCommand({
-    required ProjectModel project,
     required this.generatorID,
     required this.name,
+    required this.generatorType,
     required this.color,
     required this.pluginPath,
-  }) : super(project);
+  });
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     final plugin = PluginModel(path: pluginPath)
       ..createInEngine(project.engine);
-    final generator = GeneratorModel(name: name, color: color, plugin: plugin);
+    final generator = GeneratorModel(
+      id: generatorID,
+      name: name,
+      generatorType: generatorType,
+      color: color,
+      plugin: plugin,
+    );
 
     project.generatorList.add(generatorID);
     project.generators[generatorID] = generator;
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     _removeGenerator(project, generatorID);
   }
 }

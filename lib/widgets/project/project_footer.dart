@@ -102,26 +102,33 @@ class ProjectFooter extends StatelessWidget {
               );
             }),
             const SizedBox(width: 8),
-            ButtonTabs(
-              // selected: EditorKind.detail,
-              tabs: [
-                ButtonTabDef.withIcon(
-                  icon: Icons.detailEditor,
-                  id: EditorKind.detail,
-                ),
-                ButtonTabDef.withIcon(
-                  icon: Icons.automation,
-                  id: EditorKind.automation,
-                ),
-                ButtonTabDef.withIcon(
-                  icon: Icons.channelRack,
-                  id: EditorKind.channelRack,
-                ),
-                ButtonTabDef.withIcon(
-                  icon: Icons.mixer,
-                  id: EditorKind.mixer,
-                ),
-              ],
+            Observer(
+              builder: (context) {
+                return ButtonTabs(
+                  selected: viewModel.selectedEditor,
+                  onChange: (editorKind) {
+                    viewModel.selectedEditor = editorKind;
+                  },
+                  tabs: [
+                    ButtonTabDef.withIcon(
+                      icon: Icons.detailEditor,
+                      id: EditorKind.detail,
+                    ),
+                    ButtonTabDef.withIcon(
+                      icon: Icons.automation,
+                      id: EditorKind.automation,
+                    ),
+                    ButtonTabDef.withIcon(
+                      icon: Icons.channelRack,
+                      id: EditorKind.channelRack,
+                    ),
+                    ButtonTabDef.withIcon(
+                      icon: Icons.mixer,
+                      id: EditorKind.mixer,
+                    ),
+                  ],
+                );
+              },
             ),
             const Expanded(child: SizedBox()),
             Container(
