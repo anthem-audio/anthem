@@ -189,7 +189,7 @@ class _PianoRollHeader extends StatelessWidget {
             child: Button(
               width: 26,
               icon: Icons.kebab,
-              onPress: () => menuController.open?.call(),
+              onPress: () => menuController.open(),
             ),
           ),
           const SizedBox(width: 4),

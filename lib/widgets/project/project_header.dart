@@ -100,7 +100,7 @@ class ProjectHeader extends StatelessWidget {
                 icon: Icons.hamburger,
                 showMenuIndicator: true,
                 onPress: () {
-                  menuController.open?.call();
+                  menuController.open();
                 },
                 hint: 'File...',
               ),

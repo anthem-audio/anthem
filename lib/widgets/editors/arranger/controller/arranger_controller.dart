@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
 import 'dart:math';
 
 import 'package:anthem/commands/arrangement_commands.dart';
@@ -83,7 +84,12 @@ abstract class _ArrangerController {
     viewModel.baseTrackHeight = trackHeight;
     viewModel.verticalScrollPosition = oldVerticalScrollPosition *
         (clampedTrackHeight / oldClampedTrackHeight);
+
+    onBaseTrackHeightChanged.add(null);
   }
+
+  /// We need to snap the vertical scroll position animation when this happens.
+  final onBaseTrackHeightChanged = StreamController<void>();
 
   void deleteSelected() {
     if (viewModel.selectedClips.isEmpty ||
@@ -96,7 +102,6 @@ abstract class _ArrangerController {
 
     for (final clipID in viewModel.selectedClips) {
       project.execute(DeleteClipCommand(
-        project: project,
         arrangementID: project.song.activeArrangementID!,
         clip: arrangement.clips[clipID]!,
       ));

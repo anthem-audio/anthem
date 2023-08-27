@@ -23,6 +23,7 @@ import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/main.dart';
+import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/shared/hydratable.dart';
@@ -33,6 +34,7 @@ import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
 import '../shared/time_signature.dart';
+import 'automation_lane.dart';
 import 'note.dart';
 
 part 'pattern.g.dart';
@@ -52,6 +54,11 @@ class PatternModel extends _PatternModel
   PatternModel.create({required String name, required ProjectModel project})
       : super.create(name: name, project: project) {
     _init();
+    // TODO: remove
+    for (final generator in project.generators.values.where(
+        (generator) => generator.generatorType == GeneratorType.automation)) {
+      automationLanes[generator.id] = AutomationLaneModel();
+    }
   }
 
   factory PatternModel.fromJson(Map<String, dynamic> json) {
@@ -83,6 +90,11 @@ abstract class _PatternModel extends Hydratable with Store {
   @observable
   @JsonKey(fromJson: _notesFromJson, toJson: _notesToJson)
   ObservableMap<ID, ObservableList<NoteModel>> notes = ObservableMap();
+
+  /// The ID here is channel ID
+  @observable
+  @JsonKey(fromJson: _automationLanesFromJson, toJson: _automationLanesToJson)
+  ObservableMap<ID, AutomationLaneModel> automationLanes = ObservableMap();
 
   @observable
   @JsonKey(
@@ -188,4 +200,24 @@ ObservableList<TimeSignatureChangeModel> _timeSignatureChangesFromJson(
 List<dynamic> _timeSignatureChangesToJson(
     ObservableList<TimeSignatureChangeModel> model) {
   return model.map((value) => value.toJson()).toList();
+}
+
+typedef AutomationLanesJsonType = Map<String, Map<String, dynamic>>;
+typedef AutomationLanesModelType = ObservableMap<ID, AutomationLaneModel>;
+
+AutomationLanesModelType _automationLanesFromJson(Map<String, dynamic> json) {
+  return ObservableMap.of(
+    json.cast<String, Map<String, dynamic>>().map(
+          (key, value) => MapEntry(
+            key,
+            AutomationLaneModel.fromJson(value),
+          ),
+        ),
+  );
+}
+
+AutomationLanesJsonType _automationLanesToJson(AutomationLanesModelType model) {
+  return model.map(
+    (key, value) => MapEntry(key, value.toJson()),
+  );
 }

@@ -27,5 +27,8 @@
     "Unregisters",
     "vsync"
   ],
-  "C_Cpp.autoAddFileAssociations": false
+  "C_Cpp.autoAddFileAssociations": false,
+  "search.exclude": {
+    "engine/include/*": true
+  }
 }

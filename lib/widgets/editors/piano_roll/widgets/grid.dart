@@ -145,7 +145,7 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
 
     // Row highlight for pressed note
     if (viewModel.pressedNote != null && activePattern != null) {
-      final notes = activePattern.notes[project.activeGeneratorID];
+      final notes = activePattern.notes[project.activeInstrumentID];
       if (notes != null) {
         final key =
             notes.firstWhere((note) => note.id == viewModel.pressedNote).key;

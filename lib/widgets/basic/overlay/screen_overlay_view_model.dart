@@ -32,11 +32,9 @@ abstract class _ScreenOverlayViewModel with Store {
   ObservableMap<ID, ScreenOverlayEntry> entries = ObservableMap();
 }
 
-// ignore: library_private_types_in_public_api
-class ScreenOverlayEntry = _ScreenOverlayEntry with _$ScreenOverlayEntry;
-
-abstract class _ScreenOverlayEntry with Store {
+class ScreenOverlayEntry {
   final Widget Function(BuildContext, ID) builder;
+  final void Function()? onClose;
 
-  const _ScreenOverlayEntry({required this.builder});
+  const ScreenOverlayEntry({required this.builder, this.onClose});
 }

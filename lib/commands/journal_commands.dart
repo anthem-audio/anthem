@@ -24,19 +24,19 @@ import 'command.dart';
 class JournalPageCommand extends Command {
   List<Command> commands;
 
-  JournalPageCommand(ProjectModel project, this.commands) : super(project);
+  JournalPageCommand(this.commands);
 
   @override
-  void execute() {
+  void execute(ProjectModel project) {
     for (final command in commands) {
-      command.execute();
+      command.execute(project);
     }
   }
 
   @override
-  void rollback() {
+  void rollback(ProjectModel project) {
     for (final command in commands.reversed) {
-      command.rollback();
+      command.rollback(project);
     }
   }
 }

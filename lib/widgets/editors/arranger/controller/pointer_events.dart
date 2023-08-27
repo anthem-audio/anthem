@@ -333,7 +333,6 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
             }
 
             project.execute(AddClipCommand(
-              project: project,
               arrangementID: arrangement.id,
               clip: newClip,
             ));
@@ -355,7 +354,6 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
           final newClip = ClipModel.fromClipModel(pressedClip);
 
           project.execute(AddClipCommand(
-            project: project,
             arrangementID: arrangement.id,
             clip: newClip,
           ));
@@ -397,7 +395,6 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
     );
 
     final command = AddClipCommand(
-      project: project,
       arrangementID: arrangement.id,
       clip: clip,
     );
@@ -785,7 +782,6 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
       final commands = relevantClips.map((clip) {
         return MoveClipCommand(
-          project: project,
           arrangementID: arrangement.id,
           clipID: clip.id,
           oldOffset: _clipMoveActionData!.startTimes[clip.id]!,
@@ -796,13 +792,12 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         );
       }).toList();
 
-      project.push(JournalPageCommand(project, commands));
+      project.push(JournalPageCommand(commands));
     } else if (_eventHandlingState == EventHandlingState.deleting) {
       // There should already be an active journal page, so we don't need to
       // collect these manually.
       for (final clip in _deleteActionData!.clipsDeleted) {
         final command = DeleteClipCommand(
-          project: project,
           arrangementID: project.song.activeArrangementID!,
           clip: clip,
         );
@@ -820,7 +815,6 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         final oldWidth = _clipResizeActionData!.startWidths[id]!;
 
         return ResizeClipCommand(
-          project: project,
           arrangementID: project.song.activeArrangementID!,
           clipID: id,
           oldOffset: _clipResizeActionData!.startOffsets[id]!,
@@ -837,7 +831,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         );
       }).toList();
 
-      final command = JournalPageCommand(project, commands);
+      final command = JournalPageCommand(commands);
 
       project.push(command);
     }

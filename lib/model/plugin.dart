@@ -26,20 +26,22 @@ part 'plugin.g.dart';
 /// A model representing a plugin.
 @JsonSerializable()
 class PluginModel extends _PluginModel with _$PluginModel {
-  PluginModel({required String path}) : super(path: path);
+  PluginModel({required String? path}) : super(path: path);
 
   factory PluginModel.fromJson(Map<String, dynamic> json) =>
       _$PluginModelFromJson(json);
 }
 
 abstract class _PluginModel with Store {
-  String path;
+  String? path;
 
   _PluginModel({required this.path});
 
   Map<String, dynamic> toJson() => _$PluginModelToJson(this as PluginModel);
 
   Future<bool> createInEngine(Engine engine) async {
+    if (path == null) return false;
+
     // TODO: For now, we're just grabbing the first arrangement. Really,
     // plugins should be added to all arrangements. This is an issue with
     // trying to align with Tracktion Engine, since Tracktion Engine treats
@@ -52,7 +54,7 @@ abstract class _PluginModel with Store {
     // Maybe we need a better abstraction between us and Tracktion Engine?
     try {
       await engine.projectApi.addPlugin(
-        path,
+        path!,
         engine.project.song
             .arrangements[engine.project.song.activeArrangementID]!.editPointer,
       );

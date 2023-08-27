@@ -33,13 +33,6 @@ part 'project.g.dart';
 
 enum ProjectLayoutKind { arrange, edit, mix }
 
-enum EditorKind {
-  detail,
-  automation,
-  channelRack,
-  mixer,
-}
-
 @JsonSerializable()
 class ProjectModel extends _ProjectModel with _$ProjectModel {
   ProjectModel() : super();
@@ -64,7 +57,12 @@ abstract class _ProjectModel extends Hydratable with Store {
   ObservableList<ID> generatorList = ObservableList();
 
   @observable
-  ID? activeGeneratorID;
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  ID? activeInstrumentID;
+
+  @observable
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  ID? activeAutomationGeneratorID;
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   ID id = getID();
@@ -114,14 +112,10 @@ abstract class _ProjectModel extends Hydratable with Store {
   @JsonKey(includeFromJson: false, includeToJson: false)
   ProjectLayoutKind layout = ProjectLayoutKind.arrange;
 
-  @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  EditorKind selectedEditor = EditorKind.detail;
-
   // Undo / redo & etc
 
   @JsonKey(includeFromJson: false, includeToJson: false)
-  final CommandQueue _commandQueue = CommandQueue();
+  late final CommandQueue _commandQueue;
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   List<Command> _journalPageAccumulator = [];
@@ -143,9 +137,13 @@ abstract class _ProjectModel extends Hydratable with Store {
 
   // This method is used for deserialization and so doesn't create new child
   // models.
-  _ProjectModel() : super();
+  _ProjectModel() : super() {
+    _commandQueue = CommandQueue(this as ProjectModel);
+  }
 
   _ProjectModel.create() : super() {
+    _commandQueue = CommandQueue(this as ProjectModel);
+
     song = SongModel.create(
       project: this as ProjectModel,
     );
@@ -188,8 +186,10 @@ abstract class _ProjectModel extends Hydratable with Store {
     isHydrated = true;
   }
 
+  /// Executes the given command on the project and pushes it to the undo/redo
+  /// queue.
   void execute(Command command, {bool push = true}) {
-    command.execute();
+    command.execute(this as ProjectModel);
 
     if (_journalPageActive) {
       _journalPageAccumulator.add(command);
@@ -198,9 +198,11 @@ abstract class _ProjectModel extends Hydratable with Store {
     }
   }
 
+  /// Pushes the given command to the undo/redoo queue without executing it
+  /// (unless [execute] is set to true).
   void push(Command command, {bool execute = false}) {
     if (execute) {
-      command.execute();
+      command.execute(this as ProjectModel);
     }
 
     if (_journalPageActive) {
@@ -246,12 +248,16 @@ abstract class _ProjectModel extends Hydratable with Store {
       return;
     }
 
-    final command = JournalPageCommand(this as ProjectModel, accumulator);
+    final command = JournalPageCommand(accumulator);
     _commandQueue.push(command);
   }
 
-  void setActiveGenerator(ID? generatorID) {
-    activeGeneratorID = generatorID;
+  void setActiveInstrument(ID? generatorID) {
+    activeInstrumentID = generatorID;
+  }
+
+  void setActiveAutomationGenerator(ID? generatorID) {
+    activeAutomationGeneratorID = generatorID;
   }
 }
 
