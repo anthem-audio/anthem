@@ -22,6 +22,7 @@ import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/clip/clip_automation.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/widgets.dart';
@@ -117,14 +118,34 @@ class GeneratorRow extends StatelessWidget {
                       return const SizedBox();
                     }
 
-                    return ClipNotes(
-                      pattern: pattern,
-                      generatorID: generatorID,
-                      timeViewStart: 0,
-                      // 1 bar is 100 pixels, can be tweaked (and should probably be set above?)
-                      ticksPerPixel: (project.song.ticksPerQuarter * 4) / 100,
-                      color: generator.color,
-                    );
+                    final generator = project.generators[generatorID];
+
+                    if (generator == null) {
+                      return const SizedBox();
+                    }
+
+                    if (generator.generatorType == GeneratorType.instrument) {
+                      return ClipNotes(
+                        pattern: pattern,
+                        generatorID: generatorID,
+                        timeViewStart: 0,
+                        // 1 bar is 100 pixels, can be tweaked (and should probably be set above?)
+                        ticksPerPixel: (project.song.ticksPerQuarter * 4) / 100,
+                        color: generator.color,
+                      );
+                    } else if (generator.generatorType ==
+                        GeneratorType.automation) {
+                      return ClipAutomation(
+                        pattern: pattern,
+                        generatorID: generatorID,
+                        timeViewStart: 0,
+                        // 1 bar is 100 pixels, can be tweaked (and should probably be set above?)
+                        ticksPerPixel: (project.song.ticksPerQuarter * 4) / 100,
+                        color: generator.color,
+                      );
+                    } else {
+                      throw Exception('Unsupported generator type');
+                    }
                   }),
                 ),
               ),
