@@ -43,6 +43,7 @@ class _PointMoveActionData {
   Offset startPointerOffset;
   List<({int index, Time startTime})> pointsToMoveInTime;
   int? insertedPointIndex;
+  bool didCreateAutomationLane;
 
   _PointMoveActionData({
     required this.pointIndex,
@@ -51,6 +52,7 @@ class _PointMoveActionData {
     required this.startPointerOffset,
     required this.pointsToMoveInTime,
     required this.insertedPointIndex,
+    required this.didCreateAutomationLane,
   });
 }
 
@@ -88,8 +90,21 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
   void pointerDown(AutomationEditorPointerDownEvent event) {
     final pattern = project.song.patterns[project.song.activePatternID];
     if (pattern == null) return;
+
+    if (project.activeAutomationGeneratorID == null) return;
+
+    var didCreateAutomationLane = false;
+
+    if (event.buttons & kSecondaryButton > 0 &&
+        pattern.automationLanes[project.activeAutomationGeneratorID] == null) {
+      pattern.automationLanes[project.activeAutomationGeneratorID!] =
+          AutomationLaneModel();
+      didCreateAutomationLane = true;
+    }
+
     final automationLane =
         pattern.automationLanes[project.activeAutomationGeneratorID];
+
     if (automationLane == null) return;
 
     final annotations = viewModel.visiblePoints.hitTestAll(event.pos);
@@ -200,6 +215,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
           },
         ),
         insertedPointIndex: insertedPointIndex,
+        didCreateAutomationLane: didCreateAutomationLane,
       );
 
       viewModel.lastInteractedTension = point.tension;
@@ -350,6 +366,8 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
               automationGeneratorID: project.activeAutomationGeneratorID!,
               point: point,
               index: _pointMoveActionData!.insertedPointIndex!,
+              createAutomationLane:
+                  _pointMoveActionData!.didCreateAutomationLane,
             ),
           );
         }
