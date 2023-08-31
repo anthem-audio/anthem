@@ -142,10 +142,19 @@ abstract class _PatternModel extends Hydratable with Store {
     final ticksPerBar = project.song.ticksPerQuarter ~/
         (_project!.song.defaultTimeSignature.denominator ~/ 4) *
         _project!.song.defaultTimeSignature.numerator;
-    final lastContent = notes.values.expand((e) => e).fold<int>(
+
+    final lastNoteContent = notes.values.expand((e) => e).fold<int>(
         ticksPerBar * barMultiple * minPaddingInBarMultiples,
         (previousValue, note) =>
             max(previousValue, (note.offset + note.length)));
+
+    final lastAutomationContent = automationLanes.values.fold<int>(
+      ticksPerBar * barMultiple * minPaddingInBarMultiples,
+      (previousValue, automationLane) =>
+          max(previousValue, automationLane.points.lastOrNull?.offset ?? 0),
+    );
+
+    final lastContent = max(lastNoteContent, lastAutomationContent);
 
     return (max(lastContent, 1) / (ticksPerBar * barMultiple)).ceil() *
         ticksPerBar *
