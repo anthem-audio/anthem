@@ -89,53 +89,53 @@ class _GeneratorRowAutomationPainter extends CustomPainterObserver {
 
     final timeViewEnd = timeViewStart + ticksPerPixel * size.width;
 
-    for (final lane in pattern.automationLanes.values) {
-      for (var i = 1; i < lane.points.length; i++) {
-        final previousPoint = lane.points[i - 1];
-        final thisPoint = lane.points[i];
+    final lane = pattern.automationLanes[generatorID]!;
 
-        final lastPointX = timeToPixels(
-          timeViewStart: timeViewStart,
-          timeViewEnd: timeViewEnd,
-          viewPixelWidth: size.width,
-          time: previousPoint.offset.toDouble(),
-        );
-        final pointX = timeToPixels(
-          timeViewStart: timeViewStart,
-          timeViewEnd: timeViewEnd,
-          viewPixelWidth: size.width,
-          time: thisPoint.offset.toDouble(),
-        );
+    for (var i = 1; i < lane.points.length; i++) {
+      final previousPoint = lane.points[i - 1];
+      final thisPoint = lane.points[i];
 
-        if ((lastPointX < 0 && pointX < 0) ||
-            (lastPointX > size.width && pointX > size.width)) {
-          continue;
-        }
+      final lastPointX = timeToPixels(
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: size.width,
+        time: previousPoint.offset.toDouble(),
+      );
+      final pointX = timeToPixels(
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: size.width,
+        time: thisPoint.offset.toDouble(),
+      );
 
-        const strokeWidth = 2.0;
-
-        final xOffset = (lastPointX - strokeWidth * 0.5);
-        const yOffset = 0.0;
-
-        drawCurve(
-          canvas,
-          shader,
-          drawArea: Rectangle(
-            xOffset,
-            yOffset,
-            pointX - lastPointX,
-            size.height,
-          ),
-          devicePixelRatio: devicePixelRatio,
-          firstPointValue: previousPoint.value,
-          secondPointValue: thisPoint.value,
-          tension: thisPoint.tension,
-          strokeWidth: strokeWidth,
-          color: color,
-          gradientOpacityTop: 0.1,
-          gradientOpacityBottom: 0.1,
-        );
+      if ((lastPointX < 0 && pointX < 0) ||
+          (lastPointX > size.width && pointX > size.width)) {
+        continue;
       }
+
+      const strokeWidth = 2.0;
+
+      final xOffset = (lastPointX - strokeWidth * 0.5);
+      const yOffset = 0.0;
+
+      drawCurve(
+        canvas,
+        shader,
+        drawArea: Rectangle(
+          xOffset,
+          yOffset,
+          pointX - lastPointX,
+          size.height,
+        ),
+        devicePixelRatio: devicePixelRatio,
+        firstPointValue: previousPoint.value,
+        secondPointValue: thisPoint.value,
+        tension: thisPoint.tension,
+        strokeWidth: strokeWidth,
+        color: color,
+        gradientOpacityTop: 0.1,
+        gradientOpacityBottom: 0.1,
+      );
     }
   }
 
