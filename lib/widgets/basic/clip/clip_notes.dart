@@ -25,7 +25,7 @@ import '../mobx_custom_painter.dart';
 
 class ClipNotes extends StatelessWidget {
   final PatternModel pattern;
-  final ID? generatorID;
+  final ID generatorID;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;
@@ -33,7 +33,7 @@ class ClipNotes extends StatelessWidget {
   const ClipNotes({
     Key? key,
     required this.pattern,
-    this.generatorID,
+    required this.generatorID,
     required this.timeViewStart,
     required this.ticksPerPixel,
     required this.color,
@@ -72,33 +72,29 @@ class _ClipNotesPainter extends CustomPainterObserver {
   void observablePaint(Canvas canvas, Size size) {
     pattern.clipNotesUpdateSignal.value;
 
-    final cacheItems = generatorID != null
-        ? [pattern.clipNotesRenderCache[generatorID]!]
-        : pattern.clipNotesRenderCache.values;
+    final cacheItem = pattern.clipNotesRenderCache[generatorID]!;
 
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
-    for (final cacheItem in cacheItems) {
-      if (cacheItem.renderedVertices == null) continue;
+    if (cacheItem.renderedVertices == null) return;
 
-      canvas.save();
+    canvas.save();
 
-      final dist = cacheItem.highestNote - cacheItem.lowestNote;
-      final notePadding = size.height * (0.4 - dist * 0.05).clamp(0.1, 0.4);
+    final dist = cacheItem.highestNote - cacheItem.lowestNote;
+    final notePadding = size.height * (0.4 - dist * 0.05).clamp(0.1, 0.4);
 
-      final clipScaleFactor = 1 / ticksPerPixel;
+    final clipScaleFactor = 1 / ticksPerPixel;
 
-      canvas.translate(-timeViewStart * clipScaleFactor, notePadding);
-      canvas.scale(clipScaleFactor, size.height - notePadding * 2);
+    canvas.translate(-timeViewStart * clipScaleFactor, notePadding);
+    canvas.scale(clipScaleFactor, size.height - notePadding * 2);
 
-      canvas.drawVertices(
-        cacheItem.renderedVertices!,
-        BlendMode.srcOver,
-        Paint()..color = color,
-      );
+    canvas.drawVertices(
+      cacheItem.renderedVertices!,
+      BlendMode.srcOver,
+      Paint()..color = color,
+    );
 
-      canvas.restore();
-    }
+    canvas.restore();
   }
 
   @override

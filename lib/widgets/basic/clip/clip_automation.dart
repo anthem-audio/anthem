@@ -29,7 +29,7 @@ import 'package:flutter_shaders/flutter_shaders.dart';
 
 class ClipAutomation extends StatelessWidget {
   final PatternModel pattern;
-  final ID? generatorID;
+  final ID generatorID;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;
@@ -37,7 +37,7 @@ class ClipAutomation extends StatelessWidget {
   const ClipAutomation({
     Key? key,
     required this.pattern,
-    this.generatorID,
+    required this.generatorID,
     required this.timeViewStart,
     required this.ticksPerPixel,
     required this.color,
@@ -67,7 +67,7 @@ class ClipAutomation extends StatelessWidget {
 class _ClipAutomationPainter extends CustomPainterObserver {
   final FragmentShader shader;
   final PatternModel pattern;
-  final ID? generatorID;
+  final ID generatorID;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;
@@ -76,7 +76,7 @@ class _ClipAutomationPainter extends CustomPainterObserver {
   _ClipAutomationPainter({
     required this.shader,
     required this.pattern,
-    this.generatorID,
+    required this.generatorID,
     required this.timeViewStart,
     required this.ticksPerPixel,
     required this.color,
