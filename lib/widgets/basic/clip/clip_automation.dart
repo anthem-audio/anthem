@@ -132,6 +132,8 @@ class _ClipAutomationPainter extends CustomPainterObserver {
           tension: thisPoint.tension,
           strokeWidth: strokeWidth,
           color: color,
+          gradientOpacityTop: 0.1,
+          gradientOpacityBottom: 0.1,
         );
       }
     }

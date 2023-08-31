@@ -198,6 +198,8 @@ class AutomationEditorPainter extends CustomPainterObserver {
         tension: point.tension,
         strokeWidth: strokeWidth,
         color: Theme.primary.main,
+        gradientOpacityTop: 0.2,
+        gradientOpacityBottom: 0.03,
       );
 
       lastPoint = point;

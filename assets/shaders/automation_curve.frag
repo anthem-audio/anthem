@@ -61,6 +61,8 @@ uniform float endOffset;
 uniform float unAdjustedStrokeWidth;
 
 uniform vec4 color;
+uniform float gradientOpacityTop;
+uniform float gradientOpacityBottom;
 
 out vec4 fragColor;
 
@@ -183,9 +185,9 @@ void main() {
   vec4 backgroundColor = vec4(0.0, 0.0, 0.0, 0.0);
   if (uv.y < y && uv.x >= 0 && uv.x < 1) {
     float rand = goldNoise(uv * resolution, 0.25) * 0.1 + 0.9;
+    float opacity = (uv.y * (gradientOpacityTop - gradientOpacityBottom) + gradientOpacityBottom) * rand;
     // Flutter requires us to supply colors with premultiplied alpha, which is
     // why we multiply the color component with shadedOpacity.
-    float opacity = uv.y * 0.2 + 0.03 * rand;
     backgroundColor = vec4(color.xyz * opacity, opacity);
   }
 
