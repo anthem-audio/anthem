@@ -19,18 +19,17 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
+import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:flutter/widgets.dart';
 
-import '../mobx_custom_painter.dart';
-
-class ClipNotes extends StatelessWidget {
+class GeneratorRowNotes extends StatelessWidget {
   final PatternModel pattern;
   final ID generatorID;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;
 
-  const ClipNotes({
+  const GeneratorRowNotes({
     Key? key,
     required this.pattern,
     required this.generatorID,
@@ -42,7 +41,7 @@ class ClipNotes extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaintObserver(
-      painterBuilder: () => _ClipNotesPainter(
+      painterBuilder: () => _GeneratorRowNotesPainter(
         pattern: pattern,
         generatorID: generatorID,
         timeViewStart: timeViewStart,
@@ -53,14 +52,14 @@ class ClipNotes extends StatelessWidget {
   }
 }
 
-class _ClipNotesPainter extends CustomPainterObserver {
+class _GeneratorRowNotesPainter extends CustomPainterObserver {
   final PatternModel pattern;
   final ID? generatorID;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;
 
-  _ClipNotesPainter({
+  _GeneratorRowNotesPainter({
     required this.pattern,
     this.generatorID,
     required this.timeViewStart,
@@ -98,7 +97,7 @@ class _ClipNotesPainter extends CustomPainterObserver {
   }
 
   @override
-  bool shouldRepaint(_ClipNotesPainter oldDelegate) {
+  bool shouldRepaint(_GeneratorRowNotesPainter oldDelegate) {
     return oldDelegate.pattern != pattern ||
         oldDelegate.generatorID != generatorID ||
         oldDelegate.timeViewStart != timeViewStart ||
