@@ -27,14 +27,14 @@ import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_shaders/flutter_shaders.dart';
 
-class ClipAutomation extends StatelessWidget {
+class GeneratorRowAutomation extends StatelessWidget {
   final PatternModel pattern;
   final ID generatorID;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;
 
-  const ClipAutomation({
+  const GeneratorRowAutomation({
     Key? key,
     required this.pattern,
     required this.generatorID,
@@ -49,7 +49,7 @@ class ClipAutomation extends StatelessWidget {
       assetKey: 'assets/shaders/automation_curve.frag',
       (context, shader, child) {
         return CustomPaintObserver(
-          painterBuilder: () => _ClipAutomationPainter(
+          painterBuilder: () => _GeneratorRowAutomationPainter(
             shader: shader,
             pattern: pattern,
             generatorID: generatorID,
@@ -64,7 +64,7 @@ class ClipAutomation extends StatelessWidget {
   }
 }
 
-class _ClipAutomationPainter extends CustomPainterObserver {
+class _GeneratorRowAutomationPainter extends CustomPainterObserver {
   final FragmentShader shader;
   final PatternModel pattern;
   final ID generatorID;
@@ -73,7 +73,7 @@ class _ClipAutomationPainter extends CustomPainterObserver {
   final Color color;
   final double devicePixelRatio;
 
-  _ClipAutomationPainter({
+  _GeneratorRowAutomationPainter({
     required this.shader,
     required this.pattern,
     required this.generatorID,
@@ -140,7 +140,7 @@ class _ClipAutomationPainter extends CustomPainterObserver {
   }
 
   @override
-  bool shouldRepaint(_ClipAutomationPainter oldDelegate) {
+  bool shouldRepaint(_GeneratorRowAutomationPainter oldDelegate) {
     return oldDelegate.pattern != pattern ||
         oldDelegate.generatorID != generatorID ||
         oldDelegate.timeViewStart != timeViewStart ||

@@ -22,8 +22,8 @@ import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/button.dart';
-import 'package:anthem/widgets/basic/clip/clip_automation.dart';
-import 'package:anthem/widgets/basic/clip/clip_notes.dart';
+import 'package:anthem/widgets/editors/pattern_editor/generator_row_automation.dart';
+import 'package:anthem/widgets/editors/pattern_editor/generator_row_notes.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -125,7 +125,7 @@ class GeneratorRow extends StatelessWidget {
                     }
 
                     if (generator.generatorType == GeneratorType.instrument) {
-                      return ClipNotes(
+                      return GeneratorRowNotes(
                         pattern: pattern,
                         generatorID: generatorID,
                         timeViewStart: 0,
@@ -135,7 +135,7 @@ class GeneratorRow extends StatelessWidget {
                       );
                     } else if (generator.generatorType ==
                         GeneratorType.automation) {
-                      return ClipAutomation(
+                      return GeneratorRowAutomation(
                         pattern: pattern,
                         generatorID: generatorID,
                         timeViewStart: 0,
