@@ -50,6 +50,8 @@ void drawCurve(
   required double tension,
   required double strokeWidth,
   required Color color,
+  required double gradientOpacityTop,
+  required double gradientOpacityBottom,
 }) {
   shader.setFloatUniforms((setter) {
     // lastPoint!;
@@ -71,6 +73,8 @@ void drawCurve(
     setter.setFloat(strokeWidth * 0.5);
 
     setter.setColor(color);
+    setter.setFloat(gradientOpacityTop);
+    setter.setFloat(gradientOpacityBottom);
   });
 
   final paint = Paint()..shader = shader;
