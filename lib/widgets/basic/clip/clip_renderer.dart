@@ -224,7 +224,7 @@ void paintClip({
 
         final timeViewStart = clip?.timeView?.start.toDouble() ?? 0;
         final timeViewEnd =
-            clip?.timeView?.end.toDouble() ?? pattern.lastContent.toDouble();
+            clip?.timeView?.end.toDouble() ?? pattern.getWidth().toDouble();
 
         final lastPointX = timeToPixels(
               timeViewStart: timeViewStart,
@@ -259,7 +259,7 @@ void paintClip({
             xOffset,
             y + clipTitleHeight,
             pointX - lastPointX,
-            height - clipTitleHeight,
+            height - clipTitleHeight - 2,
           ),
           devicePixelRatio: devicePixelRatio,
           firstPointValue: previousPoint.value,
