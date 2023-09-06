@@ -136,8 +136,7 @@ float getSlope(float x, float startY, float endY, float tension) {
   return smoothCurveSlope(x, tension) * (endY - startY);
 }
 
-float getDistFromLine(vec2 pixelCoord, float pixelValueAtX, float slope, float startY, float endY, float tension) {
-  float rawTension = getRawTensionForSmooth(tension);
+float getDistFromLine(vec2 pixelCoord, float pixelValueAtX, float slope, float startY, float endY) {
   float y = pixelValueAtX;
   
   vec2 p1 = vec2(pixelCoord.x, y);
@@ -178,8 +177,7 @@ void main() {
     y * resolution.y,
     slope * resolution.y / resolution.x,
     startY * resolution.y,
-    endY * resolution.x,
-    rawTension
+    endY * resolution.x
   );
 
   vec4 backgroundColor = vec4(0.0, 0.0, 0.0, 0.0);
