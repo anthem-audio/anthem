@@ -188,7 +188,7 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
             scrollRegionEnd: pattern?.lastContent.toDouble() ??
                 (project.song.ticksPerQuarter * 4 * noContentBars).toDouble(),
             canScrollPastEnd: true,
-            disableAtFullSize: pattern != null,
+            disableAtFullSize: false,
             minHandleSize: project.song.ticksPerQuarter * 4,
             onChange: (event) {
               viewModel.timeView.start = event.handleStart;
