@@ -70,6 +70,9 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
           handleScroll(event);
         }
       },
+      onPointerPanZoomUpdate: (PointerPanZoomUpdateEvent event) {
+        handlePanZoomUpdate(event);
+      },
       onPointerDown: (event) {
         final contentRenderBox = context.findRenderObject() as RenderBox;
         final pointerPos = contentRenderBox.globalToLocal(event.position);
@@ -184,5 +187,26 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
     // Vertical scroll
 
     widget.onVerticalScrollChange?.call(delta);
+  }
+
+  void handlePanZoomUpdate(PointerPanZoomUpdateEvent event) {
+    if (event.scale != 1) return;
+
+    final contentRenderBox = context.findRenderObject() as RenderBox;
+    final ticksPerPixel = widget.timeView.width / contentRenderBox.size.width;
+
+    final horizontalDelta = event.localPanDelta.dx;
+
+    var horizontalDeltaTicks = -horizontalDelta * ticksPerPixel;
+
+    if (widget.timeView.start + horizontalDeltaTicks < 0) {
+      horizontalDeltaTicks = -widget.timeView.start;
+    }
+
+    widget.timeView.start += horizontalDeltaTicks;
+    widget.timeView.end += horizontalDeltaTicks;
+
+    // 1.5 feels right here
+    widget.onVerticalScrollChange?.call(-event.localPanDelta.dy * 1.5);
   }
 }
