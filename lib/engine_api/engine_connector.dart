@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -394,7 +394,7 @@ class EngineConnector {
 
     // Copy message to buffer
     for (var i = 0; i < size; i++) {
-      _messageSendBuffer.elementAt(i).value = bytes.elementAt(i);
+      (_messageSendBuffer + i).value = bytes.elementAt(i);
     }
 
     // Wait for the request isolate to be available
@@ -439,7 +439,7 @@ class EngineConnector {
 
     // Copy message from receive buffer
     for (var i = 0; i < size; i++) {
-      buffer[i] = _messageReceiveBuffer.elementAt(i).value;
+      buffer[i] = (_messageReceiveBuffer + i).value;
     }
 
     final response = Response(buffer);
