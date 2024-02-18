@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021, 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,11 +23,12 @@ Size measureText(
     {required String text,
     required TextStyle textStyle,
     required BuildContext context}) {
-  return (TextPainter(
-          text: TextSpan(text: text, style: textStyle),
-          maxLines: 1,
-          textScaleFactor: MediaQuery.of(context).textScaleFactor,
-          textDirection: TextDirection.ltr)
-        ..layout())
-      .size;
+  final textPainter = TextPainter(
+    text: TextSpan(text: text, style: textStyle),
+    maxLines: 1,
+    textScaler: MediaQuery.of(context).textScaler,
+    textDirection: TextDirection.ltr,
+  )..layout();
+
+  return textPainter.size;
 }
