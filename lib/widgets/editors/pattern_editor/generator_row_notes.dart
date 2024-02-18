@@ -19,21 +19,20 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
+import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:flutter/widgets.dart';
 
-import '../mobx_custom_painter.dart';
-
-class ClipNotes extends StatelessWidget {
+class GeneratorRowNotes extends StatelessWidget {
   final PatternModel pattern;
-  final ID? generatorID;
+  final ID generatorID;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;
 
-  const ClipNotes({
+  const GeneratorRowNotes({
     Key? key,
     required this.pattern,
-    this.generatorID,
+    required this.generatorID,
     required this.timeViewStart,
     required this.ticksPerPixel,
     required this.color,
@@ -42,7 +41,7 @@ class ClipNotes extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaintObserver(
-      painterBuilder: () => _ClipNotesPainter(
+      painterBuilder: () => _GeneratorRowNotesPainter(
         pattern: pattern,
         generatorID: generatorID,
         timeViewStart: timeViewStart,
@@ -53,14 +52,14 @@ class ClipNotes extends StatelessWidget {
   }
 }
 
-class _ClipNotesPainter extends CustomPainterObserver {
+class _GeneratorRowNotesPainter extends CustomPainterObserver {
   final PatternModel pattern;
   final ID? generatorID;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;
 
-  _ClipNotesPainter({
+  _GeneratorRowNotesPainter({
     required this.pattern,
     this.generatorID,
     required this.timeViewStart,
@@ -72,37 +71,33 @@ class _ClipNotesPainter extends CustomPainterObserver {
   void observablePaint(Canvas canvas, Size size) {
     pattern.clipNotesUpdateSignal.value;
 
-    final cacheItems = generatorID != null
-        ? [pattern.clipNotesRenderCache[generatorID]!]
-        : pattern.clipNotesRenderCache.values;
+    final cacheItem = pattern.clipNotesRenderCache[generatorID]!;
 
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
-    for (final cacheItem in cacheItems) {
-      if (cacheItem.renderedVertices == null) continue;
+    if (cacheItem.renderedVertices == null) return;
 
-      canvas.save();
+    canvas.save();
 
-      final dist = cacheItem.highestNote - cacheItem.lowestNote;
-      final notePadding = size.height * (0.4 - dist * 0.05).clamp(0.1, 0.4);
+    final dist = cacheItem.highestNote - cacheItem.lowestNote;
+    final notePadding = size.height * (0.4 - dist * 0.05).clamp(0.1, 0.4);
 
-      final clipScaleFactor = 1 / ticksPerPixel;
+    final clipScaleFactor = 1 / ticksPerPixel;
 
-      canvas.translate(-timeViewStart * clipScaleFactor, notePadding);
-      canvas.scale(clipScaleFactor, size.height - notePadding * 2);
+    canvas.translate(-timeViewStart * clipScaleFactor, notePadding);
+    canvas.scale(clipScaleFactor, size.height - notePadding * 2);
 
-      canvas.drawVertices(
-        cacheItem.renderedVertices!,
-        BlendMode.srcOver,
-        Paint()..color = color,
-      );
+    canvas.drawVertices(
+      cacheItem.renderedVertices!,
+      BlendMode.srcOver,
+      Paint()..color = color,
+    );
 
-      canvas.restore();
-    }
+    canvas.restore();
   }
 
   @override
-  bool shouldRepaint(_ClipNotesPainter oldDelegate) {
+  bool shouldRepaint(_GeneratorRowNotesPainter oldDelegate) {
     return oldDelegate.pattern != pattern ||
         oldDelegate.generatorID != generatorID ||
         oldDelegate.timeViewStart != timeViewStart ||

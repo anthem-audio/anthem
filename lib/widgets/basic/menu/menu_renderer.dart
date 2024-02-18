@@ -271,8 +271,10 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
             if (item.disabled) return;
 
             item.onSelected?.call();
+
             if (item.submenu == null) {
               screenOverlayController.clear();
+              widget.projectController.clearHintText();
             } else {
               openSubmenu(
                 screenOverlayController: screenOverlayController,

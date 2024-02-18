@@ -226,7 +226,7 @@ GetBestDivisionResult getBestDivision({
 
   return GetBestDivisionResult(
     renderSize: bestDivision,
-    snapSize: snapSize,
+    snapSize: snap is DivisionSnap ? snapSize : bestDivision,
     skip: skip,
   );
 }
