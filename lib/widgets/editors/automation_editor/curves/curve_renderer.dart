@@ -22,7 +22,7 @@ import 'dart:ui';
 
 import 'package:flutter_shaders/flutter_shaders.dart';
 
-/// This funciton renders an automation curve on the given canvas with the given
+/// This function renders an automation curve on the given canvas with the given
 /// parameters.
 ///
 /// The [FragmentShader] parameter is the `automation_curve.frag` shader, which
@@ -37,7 +37,7 @@ import 'package:flutter_shaders/flutter_shaders.dart';
 /// );
 /// ```
 ///
-/// As of the time of writing, this code assumes a cnavas that doesn't take DPI
+/// As of the time of writing, this code assumes a canvas that doesn't take DPI
 /// into account (e.g. a [PictureRecorder] canvas). This may need adjustments to
 /// work on a regular canvas.
 void drawCurve(

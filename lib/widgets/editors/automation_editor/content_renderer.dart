@@ -189,7 +189,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
         drawArea: Rectangle(
           xOffset,
           yOffset,
-          (pointX - lastPointX),
+          pointX - lastPointX,
           size.height,
         ),
         devicePixelRatio: devicePixelRatio,
@@ -223,7 +223,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
       const radius = 3.5;
       final hoveredPoint = viewModel.hoveredPointAnnotation;
       final pressedPoint = viewModel.pressedPointAnnotation;
-      final radiusMultipler = getRadiusMultiplier(
+      final radiusMultiplier = getRadiusMultiplier(
         tracker: viewModel.pointAnimationTracker,
         pointId: point.id,
         hoveredPoint: hoveredPoint,
@@ -233,12 +233,12 @@ class AutomationEditorPainter extends CustomPainterObserver {
 
       canvas.drawCircle(
         center,
-        radius * radiusMultipler,
+        radius * radiusMultiplier,
         Paint()..color = Theme.grid.backgroundDark,
       );
       canvas.drawCircle(
         center,
-        radius * radiusMultipler,
+        radius * radiusMultiplier,
         Paint()
           ..color = Theme.primary.main
           ..style = PaintingStyle.stroke
@@ -275,7 +275,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
         final y = (1 - normalizedY) * size.height;
         final center = Offset(x, y);
         const radius = 2.5;
-        final radiusMultipler = getRadiusMultiplier(
+        final radiusMultiplier = getRadiusMultiplier(
           tracker: viewModel.pointAnimationTracker,
           pointId: point.id,
           hoveredPoint: hoveredPoint,
@@ -285,12 +285,12 @@ class AutomationEditorPainter extends CustomPainterObserver {
 
         canvas.drawCircle(
           center,
-          radius * radiusMultipler,
+          radius * radiusMultiplier,
           Paint()..color = Theme.grid.backgroundDark,
         );
         canvas.drawCircle(
           center,
-          radius * radiusMultipler,
+          radius * radiusMultiplier,
           Paint()
             ..color = Theme.primary.main
             ..style = PaintingStyle.stroke
