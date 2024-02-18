@@ -19,6 +19,7 @@
 
 import 'package:anthem/commands/command.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/pattern/automation_lane.dart';
 import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/project.dart';
 
@@ -27,26 +28,36 @@ class AddAutomationPointCommand extends Command {
   ID automationGeneratorID;
   AutomationPointModel point;
   int index;
+  bool createAutomationLane;
 
   AddAutomationPointCommand({
     required this.patternID,
     required this.automationGeneratorID,
     required this.point,
     required this.index,
+    this.createAutomationLane = false,
   });
 
   @override
   void execute(ProjectModel project) {
-    project.song.patterns[patternID]!.automationLanes[automationGeneratorID]!
-        .points
-        .insert(index, point);
+    final automationLanes = project.song.patterns[patternID]!.automationLanes;
+
+    if (createAutomationLane) {
+      automationLanes[automationGeneratorID] = AutomationLaneModel();
+    }
+
+    automationLanes[automationGeneratorID]!.points.insert(index, point);
   }
 
   @override
   void rollback(ProjectModel project) {
-    project.song.patterns[patternID]!.automationLanes[automationGeneratorID]!
-        .points
-        .removeAt(index);
+    final automationLanes = project.song.patterns[patternID]!.automationLanes;
+
+    automationLanes[automationGeneratorID]!.points.removeAt(index);
+
+    if (createAutomationLane) {
+      automationLanes.remove(automationGeneratorID);
+    }
   }
 }
 

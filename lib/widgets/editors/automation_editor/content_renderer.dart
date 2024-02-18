@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:anthem/helpers/id.dart';
@@ -26,6 +27,7 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/automation_editor/automation_point_animation_tracker.dart';
+import 'package:anthem/widgets/editors/automation_editor/curves/curve_renderer.dart';
 import 'package:anthem/widgets/editors/automation_editor/curves/smooth.dart';
 import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
 import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
@@ -149,17 +151,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
         pattern?.automationLanes[project.activeAutomationGeneratorID]?.points ??
             <AutomationPointModel>[];
 
-    // This section draws each curve section one at a time to a texture, and
-    // then draws that texture to the canvas.
-
-    final recorder = ui.PictureRecorder();
-    final recorderCanvas = ui.Canvas(recorder);
-    recorderCanvas.clipRect(Rect.fromLTWH(
-      0,
-      0,
-      size.width * devicePixelRatio,
-      size.height * devicePixelRatio,
-    ));
+    // This section draws each curve section one at a time.
 
     AutomationPointModel? lastPoint;
 
@@ -188,59 +180,30 @@ class AutomationEditorPainter extends CustomPainterObserver {
         continue;
       }
 
-      final xOffset = (lastPointX - strokeWidth * 0.5) * devicePixelRatio;
+      final xOffset = (lastPointX - strokeWidth * 0.5);
       const yOffset = 0.0;
 
-      shader.setFloatUniforms((setter) {
-        lastPoint!;
-
-        setter.setFloat((pointX - lastPointX) * devicePixelRatio);
-        setter.setFloat(size.height * devicePixelRatio);
-        setter.setFloat(devicePixelRatio);
-
-        setter.setFloat(xOffset);
-        setter.setFloat(yOffset);
-
-        setter.setFloat(lastPoint.value);
-        setter.setFloat(point.value);
-        setter.setFloat(point.tension);
-
-        setter.setFloat(strokeWidth * 0.5 * devicePixelRatio);
-        setter.setFloat(strokeWidth * 0.5 * devicePixelRatio);
-
-        setter.setFloat(strokeWidth);
-
-        setter.setColor(Theme.primary.main);
-      });
-
-      final paint = Paint()..shader = shader;
-
-      recorderCanvas.drawRect(
-        Rect.fromLTWH(
+      drawCurve(
+        canvas,
+        shader,
+        drawArea: Rectangle(
           xOffset,
           yOffset,
-          (pointX - lastPointX) * devicePixelRatio +
-              0.5 * strokeWidth * 2 * devicePixelRatio,
-          size.height * devicePixelRatio,
+          pointX - lastPointX,
+          size.height,
         ),
-        paint,
+        devicePixelRatio: devicePixelRatio,
+        firstPointValue: lastPoint.value,
+        secondPointValue: point.value,
+        tension: point.tension,
+        strokeWidth: strokeWidth,
+        color: Theme.primary.main,
+        gradientOpacityTop: 0.2,
+        gradientOpacityBottom: 0.03,
       );
 
       lastPoint = point;
     }
-
-    final curvesImage = recorder.endRecording().toImageSync(
-          (size.width * devicePixelRatio).toInt(),
-          (size.height * devicePixelRatio).toInt(),
-        );
-
-    canvas.drawImageRect(
-      curvesImage,
-      Rect.fromLTWH(
-          0, 0, size.width * devicePixelRatio, size.height * devicePixelRatio),
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint()..blendMode = BlendMode.srcOver,
-    );
 
     // This section draws circles for each node, as well as circles for each
     // tension handle.
@@ -260,7 +223,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
       const radius = 3.5;
       final hoveredPoint = viewModel.hoveredPointAnnotation;
       final pressedPoint = viewModel.pressedPointAnnotation;
-      final radiusMultipler = getRadiusMultiplier(
+      final radiusMultiplier = getRadiusMultiplier(
         tracker: viewModel.pointAnimationTracker,
         pointId: point.id,
         hoveredPoint: hoveredPoint,
@@ -270,12 +233,12 @@ class AutomationEditorPainter extends CustomPainterObserver {
 
       canvas.drawCircle(
         center,
-        radius * radiusMultipler,
+        radius * radiusMultiplier,
         Paint()..color = Theme.grid.backgroundDark,
       );
       canvas.drawCircle(
         center,
-        radius * radiusMultipler,
+        radius * radiusMultiplier,
         Paint()
           ..color = Theme.primary.main
           ..style = PaintingStyle.stroke
@@ -312,7 +275,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
         final y = (1 - normalizedY) * size.height;
         final center = Offset(x, y);
         const radius = 2.5;
-        final radiusMultipler = getRadiusMultiplier(
+        final radiusMultiplier = getRadiusMultiplier(
           tracker: viewModel.pointAnimationTracker,
           pointId: point.id,
           hoveredPoint: hoveredPoint,
@@ -322,12 +285,12 @@ class AutomationEditorPainter extends CustomPainterObserver {
 
         canvas.drawCircle(
           center,
-          radius * radiusMultipler,
+          radius * radiusMultiplier,
           Paint()..color = Theme.grid.backgroundDark,
         );
         canvas.drawCircle(
           center,
-          radius * radiusMultipler,
+          radius * radiusMultiplier,
           Paint()
             ..color = Theme.primary.main
             ..style = PaintingStyle.stroke

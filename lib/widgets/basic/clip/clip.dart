@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:ui';
+
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
@@ -25,6 +27,7 @@ import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_shaders/flutter_shaders.dart';
 import 'package:provider/provider.dart';
 
 class Clip extends StatelessWidget {
@@ -68,21 +71,29 @@ class Clip extends StatelessWidget {
     final patternModel =
         projectModel.song.patterns[clipModel?.patternID ?? patternID!]!;
 
-    return CustomPaintObserver(
-      painterBuilder: () => ClipPainter(
-        devicePixelRatio: View.of(context).devicePixelRatio,
-        pattern: patternModel,
-      ),
+    return ShaderBuilder(
+      assetKey: 'assets/shaders/automation_curve.frag',
+      (context, shader, child) {
+        return CustomPaintObserver(
+          painterBuilder: () => ClipPainter(
+            curveShader: shader,
+            devicePixelRatio: View.of(context).devicePixelRatio,
+            pattern: patternModel,
+          ),
+        );
+      },
     );
   }
 }
 
 class ClipPainter extends CustomPainterObserver {
+  final FragmentShader curveShader;
   final double devicePixelRatio;
   final PatternModel pattern;
   final ClipModel? clip;
 
   ClipPainter({
+    required this.curveShader,
     required this.devicePixelRatio,
     required this.pattern,
     this.clip,
@@ -92,6 +103,7 @@ class ClipPainter extends CustomPainterObserver {
   void observablePaint(Canvas canvas, Size size) {
     paintClip(
       canvas: canvas,
+      curveShader: curveShader,
       canvasSize: size,
       pattern: pattern,
       x: 0,

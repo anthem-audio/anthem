@@ -20,8 +20,11 @@
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/automation_editor/controller/automation_editor_controller.dart';
 import 'package:anthem/widgets/editors/automation_editor/events.dart';
+import 'package:anthem/widgets/editors/shared/scroll_manager.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
+
+import 'view_model.dart';
 
 class AutomationEditorEventListener extends StatelessWidget {
   final Widget? child;
@@ -30,6 +33,7 @@ class AutomationEditorEventListener extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final viewModel = Provider.of<AutomationEditorViewModel>(context);
     final controller = Provider.of<AutomationEditorController>(context);
 
     return LayoutBuilder(
@@ -73,7 +77,10 @@ class AutomationEditorEventListener extends StatelessWidget {
             onPointerCancel: (e) {
               controller.pointerUp();
             },
-            child: child,
+            child: EditorScrollManager(
+              timeView: viewModel.timeView,
+              child: child,
+            ),
           ),
         );
       },

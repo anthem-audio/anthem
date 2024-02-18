@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,20 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-// This shader has an issue. We have line thickness working correctly for steep
-// slopes, but not for steep slopes that change quickly.
+// This shader draws the curve beteween two automation points.
 //
-// Currently, we find the y-value of the fucntion at the x-value of the current
-// pixel, and then we get the tangent line. We project the point at the current
-// pixel onto the tangent line, and get the distance between the pixel and that
-// projected point. If that distance is below 0.5 * our line width, we shade in
-// the pixel, otherwise we don't.
-//
-// I'm not ready to implement it, but here's the fix I'd propose. When we
-// project the point onto the tangent line, we could take the resulting x-value
-// of the projected point, and get a new y-value and tangent line for the
-// x-value of that point. I believe if we use this tangent line for our final
-// calculation, the result will be more accurate.
+// This shader is passable, but still has a couple issues:
+// - Adjacent curves do not always appear to connect with each other
+// - The curve sometimes draws incorrectly near the edges, due to how it
+//   prevents math from blowing up
 
 #version 460 core
 
@@ -61,6 +53,8 @@ uniform float endOffset;
 uniform float unAdjustedStrokeWidth;
 
 uniform vec4 color;
+uniform float gradientOpacityTop;
+uniform float gradientOpacityBottom;
 
 out vec4 fragColor;
 
@@ -81,6 +75,13 @@ float getLinearCenterInterpolation(float tension) {
           1.0);
 }
 
+// Gets the raw tension value for the smooth curve type. The tension value
+// provided to this shader must be run through this function before being used
+// in the smoothCurve function.
+//
+// The purpose of this function is to make the tension value feel more natural.
+// Without it, the tension value moves too slowly near the edge and too quickly
+// near the center.
 float getRawTensionForSmooth(float tension) {
   float scaledTension = tension * 15.0;
   float linearCenterInterpolation = getLinearCenterInterpolation(scaledTension);
@@ -105,16 +106,6 @@ float smoothCurve(float normalizedX, float rawTension) {
   }
 }
 
-// This is the derivative of smoothCurve
-float smoothCurveSlope(float normalizedX, float rawTension) {
-  if (rawTension >= 0.0) {
-    return (rawTension + 1.0) * pow(normalizedX, rawTension);
-  } else {
-    // return 1 - pow(1 - normalizedX, -rawTension + 1);
-    return (-rawTension + 1.0) * pow(-normalizedX + 1.0, -rawTension);
-  }
-}
-
 vec2 projectPointOntoLine(vec2 A, vec2 B, vec2 point) {
   // Compute vectors relative to A
   vec2 AP = point - A;
@@ -126,24 +117,76 @@ vec2 projectPointOntoLine(vec2 A, vec2 B, vec2 point) {
   return projection;
 }
 
+vec2 projectPointOntoLineSegment(vec2 point, vec2 a, vec2 b) {
+  vec2 ab = b - a;
+  vec2 ap = point - a;
+
+  float abLength = length(ab);
+  vec2 abNormalized = ab / abLength;
+
+  float apDotAb = dot(ap, abNormalized);
+
+  // Clamp the dot product to the length of the line segment
+  apDotAb = max(0, min(abLength, apDotAb));
+
+  vec2 apProjected = abNormalized * apDotAb + a;
+
+  return apProjected;
+}
+
 float getY(float x, float startY, float endY, float tension) {
   return smoothCurve(x, tension) * (endY - startY) + startY;
 }
 
-float getSlope(float x, float startY, float endY, float tension) {
-  return smoothCurveSlope(x, tension) * (endY - startY);
-}
+// Approximates the closest point on the curve to the given point.
+//
+// This is done by getting two line segments along the curve, and projecting the
+// point onto each of them. The closest projected point is then returned.
+//
+// We could use more lines to get a more accurate result, but two seems to be
+// working for now. More lines may produce better antialiasing with more extreme
+// slope changes.
+vec2 getClosestCurvePoint(vec2 pointUv, float tension) {
+  float strokeWidth = unAdjustedStrokeWidth * devicePixelRatio;
 
-float getDistFromLine(vec2 pixelCoord, float pixelValueAtX, float slope, float startY, float endY, float tension) {
-  float rawTension = getRawTensionForSmooth(tension);
-  float y = pixelValueAtX;
-  
-  vec2 p1 = vec2(pixelCoord.x, y);
-  vec2 p2 = vec2(pixelCoord.x + 1.0, y + slope);
-  vec2 projectedPoint = projectPointOntoLine(p1, p2, pixelCoord);
-  float dist = distance(projectedPoint, pixelCoord);
-  
-  return dist;
+  // Get the size of a pixel in uv coordinates, as a Vec2
+  vec2 uvPixelSize = 1.0 / resolution.xy;
+
+  // Get three points to use for tangent lines
+  float moveDist = (strokeWidth * uvPixelSize.x) * 2;
+
+  vec2 point1 = vec2(
+    (pointUv.x - moveDist),
+    getY(pointUv.x - moveDist, lastPointY, thisPointY, tension)
+  );
+  vec2 point2 = vec2(pointUv.x, getY(pointUv.x, lastPointY, thisPointY, tension));
+  vec2 point3 = vec2(
+    pointUv.x + moveDist,
+    getY(pointUv.x + moveDist, lastPointY, thisPointY, tension)
+  );
+
+  vec2 originalPoint = pointUv * resolution.xy;
+
+  // Project the point onto each tangent line
+  vec2 projectedPoint1 = projectPointOntoLineSegment(originalPoint, point1 * resolution.xy, point2 * resolution.xy);
+  vec2 projectedPoint2 = projectPointOntoLineSegment(originalPoint, point2 * resolution.xy, point3 * resolution.xy);
+
+  // Get the square distance to each projected point
+  float distance1 = distance(originalPoint, projectedPoint1);
+  float distance2 = distance(originalPoint, projectedPoint2);
+
+  // The first two branches here prevent the math from blowing up, but cause the
+  // line to draw incorrectly in some cases. This should be refined, but I've
+  // already spent far too long on this so I'm leaving it as-is for now.
+  if (tension <= 0 && pointUv.x + moveDist >= 1.0) {
+    return projectedPoint1;
+  } else if (tension > 0 && pointUv.x - moveDist < 0) {
+    return projectedPoint2;
+  } else if ((distance1 < distance2)) {
+    return projectedPoint1;
+  } else {
+    return projectedPoint2;
+  }
 }
 
 // From https://stackoverflow.com/a/28095165/8166701
@@ -169,27 +212,21 @@ void main() {
 
   float rawTension = getRawTensionForSmooth(tension);
   float y = getY(uv.x, startY, endY, rawTension);
-  float slope = getSlope(uv.x, startY, endY, rawTension);
 
-  float dist = getDistFromLine(
-    uv * resolution,
-    y * resolution.y,
-    slope * resolution.y / resolution.x,
-    startY * resolution.y,
-    endY * resolution.x,
-    rawTension
-  );
+  vec2 closestCurvePoint = getClosestCurvePoint(uv, rawTension);
+  
+  float dist = distance(uv * resolution, closestCurvePoint);
 
   vec4 backgroundColor = vec4(0.0, 0.0, 0.0, 0.0);
   if (uv.y < y && uv.x >= 0 && uv.x < 1) {
     float rand = goldNoise(uv * resolution, 0.25) * 0.1 + 0.9;
+    float opacity = (uv.y * (gradientOpacityTop - gradientOpacityBottom) + gradientOpacityBottom) * rand;
     // Flutter requires us to supply colors with premultiplied alpha, which is
     // why we multiply the color component with shadedOpacity.
-    float opacity = uv.y * 0.2 + 0.03 * rand;
     backgroundColor = vec4(color.xyz * opacity, opacity);
   }
 
-  float lineStrength = ((strokeWidth + devicePixelRatio) * 0.5) - dist;
+  float lineStrength = ((strokeWidth + devicePixelRatio * 2) * 0.5) - dist * devicePixelRatio;
 
   // Prevent line from painting above the top point or below the bottom.
   //
