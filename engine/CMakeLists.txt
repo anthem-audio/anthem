@@ -28,7 +28,6 @@ include_directories(${CMAKE_SOURCE_DIR}/generated)
 # Add JUCE and Tracktion Engine
 
 add_subdirectory(include/JUCE)
-add_subdirectory(include/tracktion_engine)
 
 # Include the cpp_shared directory
 include_directories(${CMAKE_SOURCE_DIR}/../cpp_shared)
@@ -77,8 +76,8 @@ target_link_libraries(
   AnthemEngine
 
   PRIVATE
-  tracktion::tracktion_engine
-  juce::juce_gui_basics
+  juce::juce_audio_processors
+  juce::juce_audio_basics
 
   PUBLIC
   juce::juce_recommended_config_flags

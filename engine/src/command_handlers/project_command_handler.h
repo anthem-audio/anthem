@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2023 Joshua Wade
+    Copyright (C) 2023 - 2024 Joshua Wade
 
     This file is part of Anthem.
 
@@ -18,8 +18,6 @@
 */
 
 #pragma once
-
-#include <tracktion_engine/tracktion_engine.h>
 
 #include "messages_generated.h"
 #include "../anthem.h"

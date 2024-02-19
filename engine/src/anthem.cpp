@@ -20,20 +20,5 @@
 #include "anthem.h"
 
 Anthem::Anthem() {
-    std::cout << "Initializing Tracktion Engine..." << std::endl;
-    engine = std::unique_ptr<tracktion::Engine>(new tracktion::Engine("anthem"));
-
-    std::cout << "Creating a new Tracktion project..." << std::endl;
-    auto file = engine->getTemporaryFileManager().getTempDirectory().getChildFile ("temp_project").withFileExtension (tracktion::projectFileSuffix);
-    tracktion::ProjectManager::TempProject tempProject (engine->getProjectManager(), file, true);
-    project = tempProject.project;
-
-    std::cout << "Initializing plugin manager..." << std::endl;
-    auto& pluginManager = engine->getPluginManager();
-    pluginManager.initialise();
-
-    std::cout << "We can support " << pluginManager.pluginFormatManager.getNumFormats() << " plugin types:" << std::endl;
-    for (auto format : pluginManager.pluginFormatManager.getFormats()) {
-        std::cout << "   - " << format->getName() << std::endl;
-    }
+    std::cout << "Anthem engine object created" << std::endl;
 }
