@@ -23,8 +23,6 @@
 #include <juce_core/juce_core.h>
 #include <juce_audio_devices/juce_audio_devices.h>
 
-#include <tracktion_engine/tracktion_engine.h>
-
 #include <boost/interprocess/ipc/message_queue.hpp>
 
 #include <iostream>
@@ -54,7 +52,9 @@ volatile bool heartbeatOccurred = true;
 void heartbeat() {
     while (true) {
         if (!heartbeatOccurred) {
-            juce::JUCEApplication::quit();
+            juce::MessageManager::callAsync([]() {
+                juce::JUCEApplication::getInstance()->systemRequestedQuit();
+            });
         }
 
         heartbeatOccurred = false;
@@ -215,7 +215,7 @@ private:
     std::unique_ptr<std::thread> message_loop_thread;
     CommandMessageListener commandMessageListener;
 
-    void changeListenerCallback(juce::ChangeBroadcaster *source) override
+    void changeListenerCallback(juce::ChangeBroadcaster */*source*/) override
     {
         std::cout << "change detected" << std::endl;
     }
@@ -228,7 +228,7 @@ public:
 
     bool moreThanOneInstanceAllowed() override { return true; }
 
-    void anotherInstanceStarted(const juce::String &commandLineParameters) override {}
+    void anotherInstanceStarted(const juce::String &/*commandLineParameters*/) override {}
     void suspended() override {}
     void resumed() override {}
     void shutdown() override {}
@@ -239,13 +239,13 @@ public:
         quit();
     }
 
-    void unhandledException(const std::exception *exception, const juce::String &sourceFilename,
-                            int lineNumber) override
+    void unhandledException(const std::exception */*exception*/, const juce::String &/*sourceFilename*/,
+                            int /*lineNumber*/) override
     {
         // This might not work
     }
 
-    void initialise(const juce::String &commandLineParameters) override
+    void initialise(const juce::String &/*commandLineParameters*/) override
     {
                                     // wow, C++ sure is weird
         const char * anthemSplash = R"V0G0N(

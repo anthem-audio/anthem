@@ -20,12 +20,10 @@
 #pragma once
 
 #include <memory>
-#include <tracktion_engine/tracktion_engine.h>
+#include <iostream>
 
 class Anthem {
 private:
 public:
-    std::unique_ptr<tracktion::Engine> engine;
-    tracktion::engine::Project::Ptr project;
     Anthem();
 };
