@@ -32,18 +32,23 @@ add_subdirectory(include/JUCE)
 # Include the cpp_shared directory
 include_directories(${CMAKE_SOURCE_DIR}/../cpp_shared)
 
+# Include module folders so we don't have to use relative paths
+include_directories(
+  ${CMAKE_SOURCE_DIR}/src/modules/core
+)
+
 # Make this a JUCE console application
 juce_add_console_app(AnthemEngine ANTHEM_ENGINE "Anthem Engine" VERSION "0.0.1")
 
 # Set the sources for the AnthemEngine executable
 set(ANTHEM_ENGINE_SOURCES
     src/main.cpp
-    src/anthem.h
-    src/anthem.cpp
     src/plugin_window.h
     src/plugin_window.cpp
     src/command_handlers/project_command_handler.h
     src/command_handlers/project_command_handler.cpp
+    src/modules/core/anthem.h
+    src/modules/core/anthem.cpp
     generated/messages_generated.h
     generated/project_generated.h
     ../cpp_shared/open_message_queue.h
