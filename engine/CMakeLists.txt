@@ -49,6 +49,8 @@ set(ANTHEM_ENGINE_SOURCES
     src/command_handlers/project_command_handler.cpp
     src/modules/core/anthem.h
     src/modules/core/anthem.cpp
+    src/modules/core/anthem_audio_callback.h
+    src/modules/core/anthem_audio_callback.cpp
     generated/messages_generated.h
     generated/project_generated.h
     ../cpp_shared/open_message_queue.h
@@ -83,6 +85,7 @@ target_link_libraries(
   PRIVATE
   juce::juce_audio_processors
   juce::juce_audio_basics
+  juce::juce_audio_devices
 
   PUBLIC
   juce::juce_recommended_config_flags
