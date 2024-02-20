@@ -20,5 +20,5 @@
 #include "anthem.h"
 
 Anthem::Anthem() {
-    std::cout << "Anthem engine object created" << std::endl;
+  std::cout << "Anthem engine object created" << std::endl;
 }
