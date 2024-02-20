@@ -24,6 +24,8 @@
 
 class Anthem {
 private:
+    // // Initializes the engine
+    // void init();
 public:
-    Anthem();
+  Anthem();
 };
