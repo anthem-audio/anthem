@@ -28,14 +28,13 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
   const juce::AudioIODeviceCallbackContext& context
 ) {
   // Generate a sine wave
-  for (int sample = 0; sample < numSamples; ++sample)
-  {
-    const float value = amplitude * std::sin(2.0 * juce::MathConstants<float>::pi * frequency * currentSample / sampleRate);
+  for (int sample = 0; sample < numSamples; ++sample) {
+    const float value = amplitude * std::sin(
+      2.0 * juce::MathConstants<float>::pi * frequency * currentSample / sampleRate
+    );
 
-    for (int channel = 0; channel < numOutputChannels; ++channel)
-    {
-      if (outputChannelData[channel] != nullptr)
-      {
+    for (int channel = 0; channel < numOutputChannels; ++channel) {
+      if (outputChannelData[channel] != nullptr) {
         outputChannelData[channel][sample] = value;
       }
     }

@@ -35,6 +35,8 @@ include_directories(${CMAKE_SOURCE_DIR}/../cpp_shared)
 # Include module folders so we don't have to use relative paths
 include_directories(
   ${CMAKE_SOURCE_DIR}/src/modules/core
+  ${CMAKE_SOURCE_DIR}/src/modules/processing_graph
+  ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/compiler
 )
 
 # Make this a JUCE console application
@@ -42,19 +44,38 @@ juce_add_console_app(AnthemEngine ANTHEM_ENGINE "Anthem Engine" VERSION "0.0.1")
 
 # Set the sources for the AnthemEngine executable
 set(ANTHEM_ENGINE_SOURCES
-    src/main.cpp
-    src/plugin_window.h
-    src/plugin_window.cpp
-    src/command_handlers/project_command_handler.h
-    src/command_handlers/project_command_handler.cpp
-    src/modules/core/anthem.h
-    src/modules/core/anthem.cpp
-    src/modules/core/anthem_audio_callback.h
-    src/modules/core/anthem_audio_callback.cpp
-    generated/messages_generated.h
-    generated/project_generated.h
-    ../cpp_shared/open_message_queue.h
-    ../cpp_shared/open_message_queue.cpp
+  generated/messages_generated.h
+  generated/project_generated.h
+
+  ../cpp_shared/open_message_queue.cpp
+  ../cpp_shared/open_message_queue.h
+
+  src/command_handlers/project_command_handler.cpp
+  src/command_handlers/project_command_handler.h
+
+  src/modules/core/anthem_audio_callback.cpp
+  src/modules/core/anthem_audio_callback.h
+  src/modules/core/anthem.cpp
+  src/modules/core/anthem.h
+
+  # src/modules/processing_graph/compiler/anthem_graph_compilation_result.cpp
+  src/modules/processing_graph/compiler/anthem_graph_compilation_result.h
+  # src/modules/processing_graph/compiler/anthem_graph_compiler.cpp
+  src/modules/processing_graph/compiler/anthem_graph_compiler.h
+  # src/modules/processing_graph/anthem_graph_node.cpp
+  src/modules/processing_graph/anthem_graph_node.h
+  # src/modules/processing_graph/anthem_graph_processor.cpp
+  src/modules/processing_graph/anthem_graph_processor.h
+  src/modules/processing_graph/anthem_graph_topology.cpp
+  src/modules/processing_graph/anthem_graph_topology.h
+  src/modules/processing_graph/anthem_graph.cpp
+  src/modules/processing_graph/anthem_graph.h
+  # src/modules/processing_graph/anthem_processor.cpp
+  src/modules/processing_graph/anthem_processor.h
+
+  src/main.cpp
+  src/plugin_window.cpp
+  src/plugin_window.h
 )
 
 target_sources(AnthemEngine PRIVATE ${ANTHEM_ENGINE_SOURCES})
@@ -93,9 +114,9 @@ target_link_libraries(
 )
 
 if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    target_link_libraries(
-      AnthemEngine
-      PUBLIC
-      juce::juce_recommended_warning_flags
-    )
+  target_link_libraries(
+    AnthemEngine
+    PUBLIC
+    juce::juce_recommended_warning_flags
+  )
 endif()
