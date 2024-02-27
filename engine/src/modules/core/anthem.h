@@ -25,6 +25,7 @@
 #include <juce_audio_devices/juce_audio_devices.h>
 
 #include "anthem_audio_callback.h"
+#include "anthem_graph.h"
 
 class Anthem {
 private:
@@ -34,5 +35,7 @@ private:
   // Initializes the engine
   void init();
 public:
+  AnthemGraph processingGraph;
+
   Anthem();
 };

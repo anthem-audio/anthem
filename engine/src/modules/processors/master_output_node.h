@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,20 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "anthem.h"
+#pragma once
 
-Anthem::Anthem() {
-  processingGraph = AnthemGraph();
+#include "anthem_processor.h"
 
-  init();
-}
-
-void Anthem::init() {
-  // 
-
-  // Initialize the audio device manager with 2 input and 2 output channels
-  this->deviceManager.initialiseWithDefaultDevices(2, 2);
-
-  // Set up the audio callback
-  this->deviceManager.addAudioCallback(&this->audioCallback);
-}
+class MasterOutputNode : public AnthemProcessor {
+public:
+  void process(AnthemProcessContext& context) override {
+    // TODO: Set up an audio input to this node
+    // TODO: Create a master output buffer and write the input of this node to it
+  }
+};
