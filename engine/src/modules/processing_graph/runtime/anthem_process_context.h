@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,20 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "anthem.h"
+#pragma once
 
-Anthem::Anthem() {
-  processingGraph = AnthemGraph();
-
-  init();
-}
-
-void Anthem::init() {
-  // 
-
-  // Initialize the audio device manager with 2 input and 2 output channels
-  this->deviceManager.initialiseWithDefaultDevices(2, 2);
-
-  // Set up the audio callback
-  this->deviceManager.addAudioCallback(&this->audioCallback);
-}
+// This class acts as a context for node graph processors. It is passed to the
+// `process()` method of each `AnthemProcessor`, and provides a way to query
+// the inputs and outputs of the node associated with that processor.
+class AnthemProcessContext {
+  
+};

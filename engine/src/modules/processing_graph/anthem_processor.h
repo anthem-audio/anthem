@@ -19,11 +19,18 @@
 
 #pragma once
 
+#include "anthem_process_context.h"
+
 // This class is used to process audio, MIDI and control data. It can produce
 // and/or consume any of these data types.
 //
 // This serves as a base class for internal and external plugins, but also for
 // several internal processing modules that interact with the processing graph.
 class AnthemProcessor {
+public:
+  virtual ~AnthemProcessor() = default;
 
+  // This method is called by the processing graph to process audio, MIDI and
+  // control data. It is called once per processing block.
+  virtual void process(AnthemProcessContext& context) = 0;
 };

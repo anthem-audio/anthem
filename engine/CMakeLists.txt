@@ -37,6 +37,7 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/src/modules/core
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/compiler
+  ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/runtime
 )
 
 # Make this a JUCE console application
@@ -68,6 +69,8 @@ set(ANTHEM_ENGINE_SOURCES
   src/modules/processing_graph/runtime/anthem_graph_processor.h
   src/modules/processing_graph/runtime/anthem_graph_topology.cpp
   src/modules/processing_graph/runtime/anthem_graph_topology.h
+  # src/modules/processing_graph/runtime/anthem_process_context.cpp
+  src/modules/processing_graph/runtime/anthem_process_context.h
   src/modules/processing_graph/anthem_graph.cpp
   src/modules/processing_graph/anthem_graph.h
   # src/modules/processing_graph/anthem_processor.cpp
