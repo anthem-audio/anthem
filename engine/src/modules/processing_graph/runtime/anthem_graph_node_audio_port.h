@@ -21,14 +21,16 @@
 
 #include <memory>
 
-class AnthemGraphNode;
+#include <juce_audio_basics/juce_audio_basics.h>
 
-// This class acts as a context for node graph processors. It is passed to the
-// `process()` method of each `AnthemProcessor`, and provides a way to query
-// the inputs and outputs of the node associated with that processor.
-class AnthemProcessContext {
+#include "anthem_graph_node.h"
+
+// This class represents an audio port on a node in the processing graph.
+class AnthemGraphNodeAudioPort {
 public:
-  AnthemProcessContext(std::shared_ptr<AnthemGraphNode> graphNode) : graphNode(graphNode) {}
+  // The node that this port is on.
+  std::weak_ptr<AnthemGraphNode> node;
 
-  std::shared_ptr<AnthemGraphNode> graphNode;
+  // TODO: I have no idea where this should be, and how it should relate to the compiled graph
+  juce::AudioSampleBuffer buffer;
 };

@@ -31,9 +31,9 @@
 // the flow of audio, MIDI and control data between them.
 class AnthemGraph {
 private:
-  std::unique_ptr<AnthemGraphTopology> mutableTopology;
-  std::unique_ptr<AnthemGraphCompiler> compiler;
-  std::unique_ptr<AnthemGraphProcessor> graphProcessor;
+  AnthemGraphTopology topology;
+  AnthemGraphCompiler compiler;
+  AnthemGraphProcessor graphProcessor;
 
   // This method is called when the graph is updated, and it updates the
   // graph processor.

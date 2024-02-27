@@ -26,7 +26,8 @@ Anthem::Anthem() {
 }
 
 void Anthem::init() {
-  // 
+  // auto masterOutputNode = std::make_unique<MasterOutputNode>(processingGraph.addNode(), 2, 512);
+  // processingGraph.addNode(std::move(masterOutputNode));
 
   // Initialize the audio device manager with 2 input and 2 output channels
   this->deviceManager.initialiseWithDefaultDevices(2, 2);

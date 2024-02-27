@@ -17,18 +17,16 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#pragma once
+#include "master_output_node.h"
 
-#include <memory>
+MasterOutputNode::MasterOutputNode(AnthemGraphNode& graphNode, int numChannels, int bufferSize) {
+  buffer = juce::AudioSampleBuffer(numChannels, bufferSize);
 
-class AnthemGraphNode;
+  graphNode.addAudioInput(std::make_unique<AnthemGraphNodeAudioPort>());
+}
 
-// This class acts as a context for node graph processors. It is passed to the
-// `process()` method of each `AnthemProcessor`, and provides a way to query
-// the inputs and outputs of the node associated with that processor.
-class AnthemProcessContext {
-public:
-  AnthemProcessContext(std::shared_ptr<AnthemGraphNode> graphNode) : graphNode(graphNode) {}
+MasterOutputNode::~MasterOutputNode() {}
 
-  std::shared_ptr<AnthemGraphNode> graphNode;
-};
+void MasterOutputNode::process(AnthemProcessContext& context) {
+  auto& buffer = context.graphNode->audioInputs[0]->buffer;
+}

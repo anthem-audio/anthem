@@ -19,12 +19,22 @@
 
 #pragma once
 
+#include <memory>
+
+#include <juce_audio_basics/juce_audio_basics.h>
+
 #include "anthem_processor.h"
+#include "anthem_graph_node.h"
+#include "anthem_graph_node_audio_port.h"
 
 class MasterOutputNode : public AnthemProcessor {
 public:
-  void process(AnthemProcessContext& context) override {
-    // TODO: Set up an audio input to this node
-    // TODO: Create a master output buffer and write the input of this node to it
-  }
+  juce::AudioSampleBuffer buffer;
+
+  MasterOutputNode(AnthemGraphNode& graphNode, int numChannels, int bufferSize);
+  ~MasterOutputNode() override;
+
+  void process(AnthemProcessContext& context) override;
+
+  // TODO: Update buffer size?
 };

@@ -38,6 +38,7 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/compiler
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/runtime
+  ${CMAKE_SOURCE_DIR}/src/modules/processors
 )
 
 # Make this a JUCE console application
@@ -54,16 +55,29 @@ set(ANTHEM_ENGINE_SOURCES
   src/command_handlers/project_command_handler.cpp
   src/command_handlers/project_command_handler.h
 
+  #############################
+  #         Modules           #
+  #############################
+
+  ### Core ###
+
   src/modules/core/anthem_audio_callback.cpp
   src/modules/core/anthem_audio_callback.h
   src/modules/core/anthem.cpp
   src/modules/core/anthem.h
 
+  ### Processing Graph ###
+
   # src/modules/processing_graph/compiler/anthem_graph_compilation_result.cpp
   src/modules/processing_graph/compiler/anthem_graph_compilation_result.h
   # src/modules/processing_graph/compiler/anthem_graph_compiler.cpp
   src/modules/processing_graph/compiler/anthem_graph_compiler.h
-  # src/modules/processing_graph/runtime/anthem_graph_node.cpp
+
+  # src/modules/processing_graph/runtime/anthem_graph_node_audio_port.cpp
+  src/modules/processing_graph/runtime/anthem_graph_node_audio_port.h
+  # src/modules/processing_graph/runtime/anthem_graph_node_connection.cpp
+  src/modules/processing_graph/runtime/anthem_graph_node_connection.h
+  src/modules/processing_graph/runtime/anthem_graph_node.cpp
   src/modules/processing_graph/runtime/anthem_graph_node.h
   # src/modules/processing_graph/runtime/anthem_graph_processor.cpp
   src/modules/processing_graph/runtime/anthem_graph_processor.h
@@ -71,10 +85,18 @@ set(ANTHEM_ENGINE_SOURCES
   src/modules/processing_graph/runtime/anthem_graph_topology.h
   # src/modules/processing_graph/runtime/anthem_process_context.cpp
   src/modules/processing_graph/runtime/anthem_process_context.h
+  
   src/modules/processing_graph/anthem_graph.cpp
   src/modules/processing_graph/anthem_graph.h
   # src/modules/processing_graph/anthem_processor.cpp
   src/modules/processing_graph/anthem_processor.h
+
+  ### Processors ###
+
+  src/modules/processors/master_output_node.cpp
+  src/modules/processors/master_output_node.h
+  src/modules/processors/tone_generator_node.cpp
+  src/modules/processors/tone_generator_node.h
 
   src/main.cpp
   src/plugin_window.cpp
