@@ -16,7 +16,7 @@
 	// 	"description": "Log output to console"
 	// }
 
-	"License Notice (Dart)": {
+	"License Notice": {
 		"prefix": ["license", "copyright"],
 		"scope": "dart,c,cpp",
 		"body": [
