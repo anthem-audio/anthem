@@ -20,13 +20,13 @@
 #include "anthem_graph.h"
 
 AnthemGraph::AnthemGraph() {
-  mutableTopology = std::make_unique<AnthemGraphTopology>();
-  compiler = std::make_unique<AnthemGraphCompiler>();
-  graphProcessor = std::make_unique<AnthemGraphProcessor>();
+  topology = AnthemGraphTopology();
+  compiler = AnthemGraphCompiler();
+  graphProcessor = AnthemGraphProcessor();
 }
 
 std::shared_ptr<AnthemGraphNode> AnthemGraph::addNode(std::unique_ptr<AnthemProcessor> processor) {
   auto node = std::make_shared<AnthemGraphNode>(std::move(processor));
-  mutableTopology->addNode(node);
+  topology.addNode(node);
   return node;
 }

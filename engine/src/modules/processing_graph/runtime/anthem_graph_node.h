@@ -20,16 +20,31 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #include "anthem_processor.h"
+#include "anthem_process_context.h"
+#include "anthem_graph_node_audio_port.h"
 
 // Represents a node in the processing graph.
 class AnthemGraphNode {
 public:
-  std::unique_ptr<AnthemProcessor> processor;
+  std::shared_ptr<AnthemProcessor> processor;
 
-  AnthemGraphNode(std::unique_ptr<AnthemProcessor> processor) : processor(std::move(processor)) {}
+  std::vector<std::shared_ptr<AnthemGraphNodeAudioPort>> audioInputs;
+  std::vector<std::shared_ptr<AnthemGraphNodeAudioPort>> audioOutputs;
+
+  std::unique_ptr<AnthemProcessContext> processContext;
+
+  AnthemGraphNode(std::shared_ptr<AnthemProcessor> processor) : processor(processor) {
+    auto graph_node = std::make_shared<AnthemGraphNode>(*this);
+    processContext = std::make_unique<AnthemProcessContext>(graph_node);
+  }
   
-  // Move constructor
-  AnthemGraphNode(AnthemGraphNode&& other) : processor(std::move(other.processor)) {}
+  // Shallow copy constructor
+  AnthemGraphNode(const AnthemGraphNode& other);
+
+  void addAudioInput(std::shared_ptr<AnthemGraphNodeAudioPort> input);
+
+  void addAudioOutput(std::shared_ptr<AnthemGraphNodeAudioPort> output);
 };

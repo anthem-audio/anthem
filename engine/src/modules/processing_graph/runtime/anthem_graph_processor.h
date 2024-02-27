@@ -31,7 +31,11 @@
 // This class should only be accessed from the audio thread.
 class AnthemGraphProcessor {
 private:
-  std::unique_ptr<AnthemGraphCompilationResult> processingSteps;
+  AnthemGraphCompilationResult processingSteps;
 public:
-  
+  // Processes a single block of audio in the graph. This will also process and
+  // propagate MIDI and control data.
+  //
+  // The output can be read from a node, such as a MasterOutputNode.
+  void process();
 };

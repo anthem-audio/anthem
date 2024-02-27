@@ -43,3 +43,9 @@ public:
 
   std::unique_ptr<AnthemGraphTopology> clone();
 };
+
+// TODO: This will need to be properly freed, even if there are shared pointers
+// everywhere. Shared pointers don't deal with cycles, so we need to unlink
+// everything before releasing the last reference.
+//
+// Maybe we should use weak pointers for the connections between nodes?

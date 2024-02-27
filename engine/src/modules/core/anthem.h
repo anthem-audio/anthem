@@ -26,6 +26,7 @@
 
 #include "anthem_audio_callback.h"
 #include "anthem_graph.h"
+#include "master_output_node.h"
 
 class Anthem {
 private:

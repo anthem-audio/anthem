@@ -17,18 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#pragma once
+#include "tone_generator_node.h"
 
-#include <memory>
+ToneGeneratorNode::ToneGeneratorNode() {}
 
-class AnthemGraphNode;
+ToneGeneratorNode::~ToneGeneratorNode() {}
 
-// This class acts as a context for node graph processors. It is passed to the
-// `process()` method of each `AnthemProcessor`, and provides a way to query
-// the inputs and outputs of the node associated with that processor.
-class AnthemProcessContext {
-public:
-  AnthemProcessContext(std::shared_ptr<AnthemGraphNode> graphNode) : graphNode(graphNode) {}
-
-  std::shared_ptr<AnthemGraphNode> graphNode;
-};
+void ToneGeneratorNode::process(AnthemProcessContext& context) {
+  // context.graphNode.get()->audioInputs[0]->buffer
+}

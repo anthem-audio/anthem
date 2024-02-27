@@ -21,14 +21,9 @@
 
 #include <memory>
 
-class AnthemGraphNode;
-
-// This class acts as a context for node graph processors. It is passed to the
-// `process()` method of each `AnthemProcessor`, and provides a way to query
-// the inputs and outputs of the node associated with that processor.
-class AnthemProcessContext {
+template <class T>
+class AnthemGraphNodeConnection {
 public:
-  AnthemProcessContext(std::shared_ptr<AnthemGraphNode> graphNode) : graphNode(graphNode) {}
-
-  std::shared_ptr<AnthemGraphNode> graphNode;
+  std::weak_ptr<T> source;
+  std::weak_ptr<T> destination;
 };
