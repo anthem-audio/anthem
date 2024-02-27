@@ -62,12 +62,12 @@ set(ANTHEM_ENGINE_SOURCES
   src/modules/processing_graph/compiler/anthem_graph_compilation_result.h
   # src/modules/processing_graph/compiler/anthem_graph_compiler.cpp
   src/modules/processing_graph/compiler/anthem_graph_compiler.h
-  # src/modules/processing_graph/anthem_graph_node.cpp
-  src/modules/processing_graph/anthem_graph_node.h
-  # src/modules/processing_graph/anthem_graph_processor.cpp
-  src/modules/processing_graph/anthem_graph_processor.h
-  src/modules/processing_graph/anthem_graph_topology.cpp
-  src/modules/processing_graph/anthem_graph_topology.h
+  # src/modules/processing_graph/runtime/anthem_graph_node.cpp
+  src/modules/processing_graph/runtime/anthem_graph_node.h
+  # src/modules/processing_graph/runtime/anthem_graph_processor.cpp
+  src/modules/processing_graph/runtime/anthem_graph_processor.h
+  src/modules/processing_graph/runtime/anthem_graph_topology.cpp
+  src/modules/processing_graph/runtime/anthem_graph_topology.h
   src/modules/processing_graph/anthem_graph.cpp
   src/modules/processing_graph/anthem_graph.h
   # src/modules/processing_graph/anthem_processor.cpp
