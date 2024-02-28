@@ -21,16 +21,16 @@
 
 #include <memory>
 
-#include <juce_audio_basics/juce_audio_basics.h>
-
-#include "anthem_graph_node.h"
+class AnthemGraphNode;
 
 // This class represents an audio port on a node in the processing graph.
-class AnthemGraphNodeAudioPort {
+class AnthemGraphNodePort {
 public:
   // The node that this port is on.
-  std::weak_ptr<AnthemGraphNode> node;
+  std::weak_ptr<AnthemGraphNode> node; // TODO
 
-  // TODO: I have no idea where this should be, and how it should relate to the compiled graph
-  juce::AudioSampleBuffer buffer;
+  // The configuration of this port.
+  AnthemProcessorPortConfig config;
+
+  AnthemGraphNodePort(AnthemProcessorPortConfig config) : config(config) {} 
 };

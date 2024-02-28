@@ -73,8 +73,8 @@ set(ANTHEM_ENGINE_SOURCES
   # src/modules/processing_graph/compiler/anthem_graph_compiler.cpp
   src/modules/processing_graph/compiler/anthem_graph_compiler.h
 
-  # src/modules/processing_graph/runtime/anthem_graph_node_audio_port.cpp
-  src/modules/processing_graph/runtime/anthem_graph_node_audio_port.h
+  # src/modules/processing_graph/runtime/anthem_graph_node_port.cpp
+  src/modules/processing_graph/runtime/anthem_graph_node_port.h
   # src/modules/processing_graph/runtime/anthem_graph_node_connection.cpp
   src/modules/processing_graph/runtime/anthem_graph_node_connection.h
   src/modules/processing_graph/runtime/anthem_graph_node.cpp
@@ -88,7 +88,7 @@ set(ANTHEM_ENGINE_SOURCES
   
   src/modules/processing_graph/anthem_graph.cpp
   src/modules/processing_graph/anthem_graph.h
-  # src/modules/processing_graph/anthem_processor_config.cpp
+  src/modules/processing_graph/anthem_processor_config.cpp
   src/modules/processing_graph/anthem_processor_config.h
   # src/modules/processing_graph/anthem_processor_port_config.cpp
   src/modules/processing_graph/anthem_processor_port_config.h
