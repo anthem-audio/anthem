@@ -19,10 +19,10 @@
 
 #include "master_output_node.h"
 
-MasterOutputNode::MasterOutputNode(AnthemGraphNode& graphNode, int numChannels, int bufferSize) {
+MasterOutputNode::MasterOutputNode(int numChannels, int bufferSize) {
   buffer = juce::AudioSampleBuffer(numChannels, bufferSize);
 
-  graphNode.addAudioInput(std::make_unique<AnthemGraphNodeAudioPort>());
+  config.audioInputs.push_back(AnthemProcessorPortConfig("input"));
 }
 
 MasterOutputNode::~MasterOutputNode() {}

@@ -88,6 +88,10 @@ set(ANTHEM_ENGINE_SOURCES
   
   src/modules/processing_graph/anthem_graph.cpp
   src/modules/processing_graph/anthem_graph.h
+  # src/modules/processing_graph/anthem_processor_config.cpp
+  src/modules/processing_graph/anthem_processor_config.h
+  # src/modules/processing_graph/anthem_processor_port_config.cpp
+  src/modules/processing_graph/anthem_processor_port_config.h
   # src/modules/processing_graph/anthem_processor.cpp
   src/modules/processing_graph/anthem_processor.h
 
