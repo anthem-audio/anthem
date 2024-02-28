@@ -25,7 +25,7 @@ ToneGeneratorNode::ToneGeneratorNode() {
   frequency = 440.0;
   sampleRate = 44100.0; // TODO: This should be dynamic - in the context maybe?
 
-  config.audioOutputs.push_back(AnthemProcessorPortConfig("output"));
+  config.addAudioOutput(AnthemProcessorPortConfig("output"));
 }
 
 ToneGeneratorNode::~ToneGeneratorNode() {}

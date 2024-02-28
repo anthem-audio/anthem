@@ -22,7 +22,7 @@
 MasterOutputNode::MasterOutputNode(int numChannels, int bufferSize) {
   buffer = juce::AudioSampleBuffer(numChannels, bufferSize);
 
-  config.audioInputs.push_back(AnthemProcessorPortConfig("input"));
+  config.addAudioInput(AnthemProcessorPortConfig("input"));
 }
 
 MasterOutputNode::~MasterOutputNode() {}

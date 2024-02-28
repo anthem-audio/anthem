@@ -25,7 +25,6 @@
 
 #include "anthem_processor.h"
 #include "anthem_graph_node.h"
-#include "anthem_graph_node_audio_port.h"
 
 class MasterOutputNode : public AnthemProcessor {
 public:

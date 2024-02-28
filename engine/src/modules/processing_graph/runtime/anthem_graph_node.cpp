@@ -22,23 +22,23 @@
 AnthemGraphNode::AnthemGraphNode(const AnthemGraphNode& other) {
   processor = other.processor;
 
-  audioInputs = std::vector<std::shared_ptr<AnthemGraphNodeAudioPort>>();
+  audioInputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
 
   for (auto& input : other.audioInputs) {
     audioInputs.push_back(input);
   }
 
-  audioOutputs = std::vector<std::shared_ptr<AnthemGraphNodeAudioPort>>();
+  audioOutputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
 
   for (auto& output : other.audioOutputs) {
     audioOutputs.push_back(output);
   }
 }
 
-void AnthemGraphNode::addAudioInput(std::shared_ptr<AnthemGraphNodeAudioPort> input) {
+void AnthemGraphNode::addAudioInput(std::shared_ptr<AnthemGraphNodePort> input) {
   audioInputs.push_back(std::move(input));
 }
 
-void AnthemGraphNode::addAudioOutput(std::shared_ptr<AnthemGraphNodeAudioPort> output) {
+void AnthemGraphNode::addAudioOutput(std::shared_ptr<AnthemGraphNodePort> output) {
   audioOutputs.push_back(std::move(output));
 }
