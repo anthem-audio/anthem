@@ -19,10 +19,30 @@
 
 #include "tone_generator_node.h"
 
-ToneGeneratorNode::ToneGeneratorNode() {}
+ToneGeneratorNode::ToneGeneratorNode() {
+  currentSample = 0;
+  amplitude = 0.125;
+  frequency = 440.0;
+  sampleRate = 44100.0; // TODO: This should be dynamic - in the context maybe?
+
+  config.audioOutputs.push_back(AnthemProcessorPortConfig("output"));
+}
 
 ToneGeneratorNode::~ToneGeneratorNode() {}
 
 void ToneGeneratorNode::process(AnthemProcessContext& context) {
-  // context.graphNode.get()->audioInputs[0]->buffer
+  auto& buffer = context.getOutputAudioBuffer(0);
+
+  // Generate a sine wave
+  for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
+    const float value = amplitude * std::sin(
+      2.0 * juce::MathConstants<float>::pi * frequency * currentSample / sampleRate
+    );
+
+    for (int channel = 0; channel < buffer.getNumChannels(); ++channel) {
+      buffer.getWritePointer(channel)[sample] = value;
+    }
+
+    currentSample++;
+  }
 }

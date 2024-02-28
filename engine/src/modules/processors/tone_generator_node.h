@@ -26,7 +26,10 @@
 
 class ToneGeneratorNode : public AnthemProcessor {
 private:
-  std::weak_ptr<AnthemGraphNode> graphNode;
+  int currentSample;
+  float amplitude;
+  float frequency;
+  double sampleRate;
 public:
   ToneGeneratorNode();
   ~ToneGeneratorNode() override;
