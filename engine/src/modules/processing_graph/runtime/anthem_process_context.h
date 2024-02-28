@@ -20,6 +20,9 @@
 #pragma once
 
 #include <memory>
+#include <vector>
+
+#include <juce_audio_basics/juce_audio_basics.h>
 
 class AnthemGraphNode;
 
@@ -27,8 +30,27 @@ class AnthemGraphNode;
 // `process()` method of each `AnthemProcessor`, and provides a way to query
 // the inputs and outputs of the node associated with that processor.
 class AnthemProcessContext {
+private:
+  std::vector<juce::AudioSampleBuffer> inputAudioBuffers;
+  std::vector<juce::AudioSampleBuffer> outputAudioBuffers;
+
+  std::shared_ptr<AnthemGraphNode> graphNode;
 public:
   AnthemProcessContext(std::shared_ptr<AnthemGraphNode> graphNode) : graphNode(graphNode) {}
 
-  std::shared_ptr<AnthemGraphNode> graphNode;
+  void setAllInputAudioBuffers(const std::vector<juce::AudioSampleBuffer>& buffers) {
+    inputAudioBuffers = buffers;
+  }
+
+  void setAllOutputAudioBuffers(const std::vector<juce::AudioSampleBuffer>& buffers) {
+    outputAudioBuffers = buffers;
+  }
+
+  juce::AudioSampleBuffer& getInputAudioBuffer(int index) {
+    return inputAudioBuffers[index];
+  }
+
+  juce::AudioSampleBuffer& getOutputAudioBuffer(int index) {
+    return outputAudioBuffers[index];
+  }
 };
