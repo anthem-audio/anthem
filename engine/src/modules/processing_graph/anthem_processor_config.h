@@ -19,21 +19,20 @@
 
 #pragma once
 
-#include "anthem_process_context.h"
-#include "anthem_processor_config.h"
+#include <vector>
 
-// This class is used to process audio, MIDI and control data. It can produce
-// and/or consume any of these data types.
-//
-// This serves as a base class for internal and external plugins, but also for
-// several internal processing modules that interact with the processing graph.
-class AnthemProcessor {
+#include "anthem_processor_port_config.h"
+
+// This class defines properties for an AnthemProcessor. These properties are
+// used by the graph to define things like inputs and outputs.
+class AnthemProcessorConfig {
 public:
-  AnthemProcessorConfig config;
+  std::vector<AnthemProcessorPortConfig> audioInputs;
+  std::vector<AnthemProcessorPortConfig> audioOutputs;
 
-  virtual ~AnthemProcessor() = default;
+  std::vector<AnthemProcessorPortConfig> midiInputs;
+  std::vector<AnthemProcessorPortConfig> midiOutputs;
 
-  // This method is called by the processing graph to process audio, MIDI and
-  // control data. It is called once per processing block.
-  virtual void process(AnthemProcessContext& context) = 0;
+  std::vector<AnthemProcessorPortConfig> controlInputs;
+  std::vector<AnthemProcessorPortConfig> controlOutputs;
 };

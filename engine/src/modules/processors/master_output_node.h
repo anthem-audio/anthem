@@ -31,7 +31,7 @@ class MasterOutputNode : public AnthemProcessor {
 public:
   juce::AudioSampleBuffer buffer;
 
-  MasterOutputNode(AnthemGraphNode& graphNode, int numChannels, int bufferSize);
+  MasterOutputNode(int numChannels, int bufferSize);
   ~MasterOutputNode() override;
 
   void process(AnthemProcessContext& context) override;
