@@ -28,5 +28,9 @@ MasterOutputNode::MasterOutputNode(int numChannels, int bufferSize) {
 MasterOutputNode::~MasterOutputNode() {}
 
 void MasterOutputNode::process(AnthemProcessContext& context) {
-  auto& buffer = context.graphNode->audioInputs[0]->buffer;
+  auto& inputBuffer = context.getInputAudioBuffer(0);
+
+  for (int channel = 0; channel < buffer.getNumChannels(); channel++) {
+    this->buffer.copyFrom(channel, 0, inputBuffer, channel, 0, inputBuffer.getNumSamples());
+  }
 }
