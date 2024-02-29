@@ -18,6 +18,7 @@
 */
 
 #include "anthem.h"
+#include "tone_generator_node.h"
 
 Anthem::Anthem() {
   processingGraph = AnthemGraph();
@@ -26,8 +27,16 @@ Anthem::Anthem() {
 }
 
 void Anthem::init() {
-  // auto masterOutputNode = std::make_unique<MasterOutputNode>(processingGraph.addNode(), 2, 512);
-  // processingGraph.addNode(std::move(masterOutputNode));
+  auto masterOutputProcessor = std::make_unique<MasterOutputNode>(2, 512);
+  auto masterOutputNode = processingGraph.addNode(std::move(masterOutputProcessor));
+
+  auto toneGeneratorProcessor = std::make_unique<ToneGeneratorNode>();
+  auto toneGeneratorNode = processingGraph.addNode(std::move(toneGeneratorProcessor));
+
+  processingGraph.connectNodes(
+    std::dynamic_pointer_cast<ToneGeneratorNode>(toneGeneratorNode->processor)->getOutput(),
+    std::dynamic_pointer_cast<MasterOutputNode>(masterOutputNode->processor)->getInput()
+  );
 
   // Initialize the audio device manager with 2 input and 2 output channels
   this->deviceManager.initialiseWithDefaultDevices(2, 2);

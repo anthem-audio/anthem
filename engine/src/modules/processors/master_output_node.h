@@ -33,6 +33,8 @@ public:
   MasterOutputNode(int numChannels, int bufferSize);
   ~MasterOutputNode() override;
 
+  std::shared_ptr<AnthemGraphNodePort> getInput();
+
   void process(AnthemProcessContext& context) override;
 
   // TODO: Update buffer size?

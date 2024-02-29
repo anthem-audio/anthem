@@ -46,9 +46,10 @@ public:
 
   // TODO: Add a way to remove nodes
 
-  // void connectNodes(std::shared_ptr<AnthemAudioInput> input, std::shared_ptr<AnthemAudioOutput> output);
-  // void connectNodes(std::shared_ptr<AnthemControlInput> input, std::shared_ptr<AnthemControlOutput> output);
-  // void connectNodes(std::shared_ptr<AnthemMidiInput> input, std::shared_ptr<AnthemMidiOutput> output);
+  void connectNodes(
+    std::shared_ptr<AnthemGraphNodePort> source,
+    std::shared_ptr<AnthemGraphNodePort> destination
+  );
 
   // void disconnectNodes(std::shared_ptr<AnthemAudioInput> input, std::shared_ptr<AnthemAudioOutput> output);
 };

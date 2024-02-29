@@ -27,6 +27,39 @@ void AnthemGraphTopology::addNode(std::shared_ptr<AnthemGraphNode> processor) {
   nodes.push_back(processor);
 }
 
+void AnthemGraphTopology::addConnection(
+  std::shared_ptr<AnthemGraphNodePort> source,
+  std::shared_ptr<AnthemGraphNodePort> destination
+) {
+  // Check that source and destination have the same node type
+  if (source->config.portType != destination->config.portType) {
+    throw std::runtime_error(
+      "AnthemGraphTopology::addConnection(): Source and destination nodes must have the same type"
+    );
+  }
+
+  auto connection = std::make_shared<AnthemGraphNodeConnection>(
+    source,
+    destination
+  );
+
+  auto type = source->config.portType;
+
+  switch(type) {
+    case AnthemGraphNodePortType::Audio:
+      audioPortConnections.push_back(connection);
+      break;
+    case AnthemGraphNodePortType::Midi:
+      throw std::runtime_error("AnthemGraphTopology::addConnection(): MIDI connections are not yet supported");
+      // midiPortConnections.push_back(connection);
+      break;
+    case AnthemGraphNodePortType::Control:
+      throw std::runtime_error("AnthemGraphTopology::addConnection(): Control connections are not yet supported");
+      // controlPortConnections.push_back(connection);
+      break;
+  }
+}
+
 std::unique_ptr<AnthemGraphTopology> AnthemGraphTopology::clone() {
   auto newTopology = std::make_unique<AnthemGraphTopology>();
   for (auto node : nodes) {

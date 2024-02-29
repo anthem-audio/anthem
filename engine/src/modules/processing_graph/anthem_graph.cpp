@@ -30,3 +30,10 @@ std::shared_ptr<AnthemGraphNode> AnthemGraph::addNode(std::unique_ptr<AnthemProc
   topology.addNode(node);
   return node;
 }
+
+void AnthemGraph::connectNodes(
+  std::shared_ptr<AnthemGraphNodePort> source,
+  std::shared_ptr<AnthemGraphNodePort> destination
+) {
+  topology.addConnection(source, destination);
+}

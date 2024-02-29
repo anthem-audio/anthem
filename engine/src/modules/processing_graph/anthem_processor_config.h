@@ -28,17 +28,17 @@
 // used by the graph to define things like inputs and outputs.
 class AnthemProcessorConfig {
 private:
-  std::vector<AnthemGraphNodePort> audioInputs;
-  std::vector<AnthemGraphNodePort> audioOutputs;
+  std::vector<std::shared_ptr<AnthemGraphNodePort>> audioInputs;
+  std::vector<std::shared_ptr<AnthemGraphNodePort>> audioOutputs;
 
-  std::vector<AnthemGraphNodePort> midiInputs;
-  std::vector<AnthemGraphNodePort> midiOutputs;
+  std::vector<std::shared_ptr<AnthemGraphNodePort>> midiInputs;
+  std::vector<std::shared_ptr<AnthemGraphNodePort>> midiOutputs;
 
-  std::vector<AnthemGraphNodePort> controlInputs;
-  std::vector<AnthemGraphNodePort> controlOutputs;
+  std::vector<std::shared_ptr<AnthemGraphNodePort>> controlInputs;
+  std::vector<std::shared_ptr<AnthemGraphNodePort>> controlOutputs;
 public:
   // Get an audio input port by index.
-  const AnthemGraphNodePort& getAudioInput(int index) const;
+  const std::shared_ptr<AnthemGraphNodePort> getAudioInput(int index) const;
 
   // Get the number of audio inputs.
   int getNumAudioInputs() const;
@@ -47,7 +47,7 @@ public:
   void addAudioInput(const AnthemProcessorPortConfig& port);
 
   // Get an audio output port by index.
-  const AnthemGraphNodePort& getAudioOutput(int index) const;
+  const std::shared_ptr<AnthemGraphNodePort> getAudioOutput(int index) const;
 
   // Get the number of audio outputs.
   int getNumAudioOutputs() const;
@@ -56,7 +56,7 @@ public:
   void addAudioOutput(const AnthemProcessorPortConfig& port);
 
   // Get a MIDI input port by index.
-  const AnthemGraphNodePort& getMidiInput(int index) const;
+  const std::shared_ptr<AnthemGraphNodePort> getMidiInput(int index) const;
 
   // Get the number of MIDI inputs.
   int getNumMidiInputs() const;
@@ -65,7 +65,7 @@ public:
   void addMidiInput(const AnthemProcessorPortConfig& port);
 
   // Get a MIDI output port by index.
-  const AnthemGraphNodePort& getMidiOutput(int index) const;
+  const std::shared_ptr<AnthemGraphNodePort> getMidiOutput(int index) const;
 
   // Get the number of MIDI outputs.
   int getNumMidiOutputs() const;
@@ -74,7 +74,7 @@ public:
   void addMidiOutput(const AnthemProcessorPortConfig& port);
 
   // Get a control input port by index.
-  const AnthemGraphNodePort& getControlInput(int index) const;
+  const std::shared_ptr<AnthemGraphNodePort> getControlInput(int index) const;
 
   // Get the number of control inputs.
   int getNumControlInputs() const;
@@ -83,7 +83,7 @@ public:
   void addControlInput(const AnthemProcessorPortConfig& port);
 
   // Get a control output port by index.
-  const AnthemGraphNodePort& getControlOutput(int index) const;
+  const std::shared_ptr<AnthemGraphNodePort> getControlOutput(int index) const;
 
   // Get the number of control outputs.
   int getNumControlOutputs() const;

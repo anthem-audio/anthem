@@ -22,10 +22,18 @@
 MasterOutputNode::MasterOutputNode(int numChannels, int bufferSize) {
   buffer = juce::AudioSampleBuffer(numChannels, bufferSize);
 
-  config.addAudioInput(AnthemProcessorPortConfig("input"));
+  config.addAudioInput(
+    AnthemProcessorPortConfig(AnthemGraphNodePortType::Audio, "input")
+  );
 }
 
 MasterOutputNode::~MasterOutputNode() {}
+
+// std::shared_ptr<AnthemGraphNodePort> getInput();
+
+std::shared_ptr<AnthemGraphNodePort> MasterOutputNode::getInput() {
+  return config.getAudioInput(0);
+}
 
 void MasterOutputNode::process(AnthemProcessContext& context) {
   auto& inputBuffer = context.getInputAudioBuffer(0);
