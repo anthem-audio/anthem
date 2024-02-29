@@ -23,6 +23,7 @@
 #include <memory>
 
 #include "anthem_graph_node.h"
+#include "anthem_graph_node_connection.h"
 
 // This is a container for the processing graph. It holds nodes and their
 // connections, and it can be cloned to create a new graph with the same
@@ -36,10 +37,16 @@
 class AnthemGraphTopology {
 private:
   std::vector<std::shared_ptr<AnthemGraphNode>> nodes;
+  std::vector<std::shared_ptr<AnthemGraphNodeConnection>> audioPortConnections;
 public:
   AnthemGraphTopology();
 
   void addNode(std::shared_ptr<AnthemGraphNode> node);
+
+  void addConnection(
+    std::shared_ptr<AnthemGraphNodePort> source,
+    std::shared_ptr<AnthemGraphNodePort> destination
+  );
 
   std::unique_ptr<AnthemGraphTopology> clone();
 };

@@ -22,12 +22,24 @@
 #include <string>
 #include <optional>
 
+enum AnthemGraphNodePortType {
+  Audio,
+  Midi,
+  Control
+};
+
 // This class defines info about a port on an AnthemProcessor. This info is used
 class AnthemProcessorPortConfig {
 public:
+  // The type of the port.
+  AnthemGraphNodePortType portType;
+
   // The name of the port.
   std::optional<std::string> name;
 
   // Constructor
-  AnthemProcessorPortConfig(std::optional<std::string> name = std::nullopt) : name(name) {}
+  AnthemProcessorPortConfig(
+    AnthemGraphNodePortType portType,
+    std::optional<std::string> name = std::nullopt
+  ) : portType(portType), name(name) {}
 };

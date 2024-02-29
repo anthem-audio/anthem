@@ -34,5 +34,7 @@ public:
   ToneGeneratorNode();
   ~ToneGeneratorNode() override;
 
+  std::shared_ptr<AnthemGraphNodePort> getOutput();
+
   void process(AnthemProcessContext& context) override;
 };

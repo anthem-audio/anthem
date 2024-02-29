@@ -21,9 +21,15 @@
 
 #include <memory>
 
-template <class T>
+class AnthemGraphNode;
+
 class AnthemGraphNodeConnection {
 public:
-  std::weak_ptr<T> source;
-  std::weak_ptr<T> destination;
+  std::weak_ptr<AnthemGraphNodePort> source;
+  std::weak_ptr<AnthemGraphNodePort> destination;
+
+  AnthemGraphNodeConnection(
+    std::weak_ptr<AnthemGraphNodePort> source,
+    std::weak_ptr<AnthemGraphNodePort> destination
+  ) : source(source), destination(destination) {}
 };

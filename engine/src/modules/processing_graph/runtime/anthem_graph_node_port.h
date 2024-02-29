@@ -23,7 +23,7 @@
 
 class AnthemGraphNode;
 
-// This class represents an audio port on a node in the processing graph.
+// This class represents a port on a node in the processing graph.
 class AnthemGraphNodePort {
 public:
   // The node that this port is on.
