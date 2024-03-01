@@ -17,22 +17,16 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#pragma once
+#include "anthem_graph_compiler.h"
 
-#include <memory>
+std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(AnthemGraphTopology& topology) {
+  std::shared_ptr<AnthemGraphCompilationResult> result = std::make_shared<AnthemGraphCompilationResult>();
 
-#include "anthem_processor_port_config.h"
+  // Step 1
+  std::vector<std::shared_ptr<AnthemGraphCompilerNode>> nodes;
+  for (auto& node : topology.getNodes()) {
+    nodes.push_back(std::make_shared<AnthemGraphCompilerNode>(node));
+  }
 
-class AnthemGraphNode;
-
-// This class represents a port on a node in the processing graph.
-class AnthemGraphNodePort {
-public:
-  // The node that this port is on.
-  std::weak_ptr<AnthemGraphNode> node; // TODO
-
-  // The configuration of this port.
-  AnthemProcessorPortConfig config;
-
-  AnthemGraphNodePort(AnthemProcessorPortConfig config) : config(config) {} 
-};
+  return std::make_shared<AnthemGraphCompilationResult>();
+}

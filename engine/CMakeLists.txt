@@ -68,9 +68,13 @@ set(ANTHEM_ENGINE_SOURCES
 
   ### Processing Graph ###
 
+  src/modules/processing_graph/compiler/actions/copy_data_action.cpp
+  src/modules/processing_graph/compiler/actions/copy_data_action.h
+  # src/modules/processing_graph/compiler/actions/process_node_action.cpp
+  src/modules/processing_graph/compiler/actions/process_node_action.h
   # src/modules/processing_graph/compiler/anthem_graph_compilation_result.cpp
   src/modules/processing_graph/compiler/anthem_graph_compilation_result.h
-  # src/modules/processing_graph/compiler/anthem_graph_compiler.cpp
+  src/modules/processing_graph/compiler/anthem_graph_compiler.cpp
   src/modules/processing_graph/compiler/anthem_graph_compiler.h
 
   # src/modules/processing_graph/runtime/anthem_graph_node_port.cpp

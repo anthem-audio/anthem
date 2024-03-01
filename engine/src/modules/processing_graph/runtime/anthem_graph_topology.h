@@ -49,6 +49,8 @@ public:
   );
 
   std::unique_ptr<AnthemGraphTopology> clone();
+
+  std::vector<std::shared_ptr<AnthemGraphNode>>& getNodes();
 };
 
 // TODO: This will need to be properly freed, even if there are shared pointers

@@ -17,8 +17,47 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+/*
+  Steps to compile a processing graph:
+
+  1. Find all nodes that have no incoming connections. These are the "root"
+     nodes of the graph. Mark these as ready to process.
+  2. For each ready node, add it to a processing step it and mark all of its
+     outgoing connections as ready to process.
+  3. For each ready connection, add it to a processing step to copy the data
+     from the source port to the destination port. This must be done in a
+     single thread in series, because if multiple connections are copying to
+     the same port, two threads cannot be copying the data at the same time.
+  4. Find all nodes whose incoming connections are marked as processed. Mark
+     these as ready to process.
+  5. Repeat steps 2-4 until all nodes are marked as processed.
+*/
+
 #pragma once
+
+#include <memory>
+
+#include "anthem_graph_compilation_result.h"
+#include "anthem_graph_topology.h"
+
+class AnthemGraphCompilerNode {
+public:
+  std::shared_ptr<AnthemGraphNode> node;
+  bool isReadyToProcess;
+
+  AnthemGraphCompilerNode(std::shared_ptr<AnthemGraphNode> node) : node(node), isReadyToProcess(false) {}
+};
+
+class AnthemGraphCompilerConnection {
+public:
+  std::shared_ptr<AnthemGraphNodeConnection> connection;
+  bool isReadyToProcess;
+
+  AnthemGraphCompilerConnection(std::shared_ptr<AnthemGraphNodeConnection> connection) : connection(connection), isReadyToProcess(false) {}
+};
 
 // This class is used to compile a processing graph into a set of processing
 // instructions that can be executed in a real-time context.
-class AnthemGraphCompiler {};
+class AnthemGraphCompiler {
+  static std::shared_ptr<AnthemGraphCompilationResult> compile(AnthemGraphTopology& topology);
+};

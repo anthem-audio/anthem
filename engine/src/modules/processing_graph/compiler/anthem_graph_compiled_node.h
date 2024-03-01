@@ -19,20 +19,6 @@
 
 #pragma once
 
-#include <memory>
-
-#include "anthem_processor_port_config.h"
-
-class AnthemGraphNode;
-
-// This class represents a port on a node in the processing graph.
-class AnthemGraphNodePort {
-public:
-  // The node that this port is on.
-  std::weak_ptr<AnthemGraphNode> node; // TODO
-
-  // The configuration of this port.
-  AnthemProcessorPortConfig config;
-
-  AnthemGraphNodePort(AnthemProcessorPortConfig config) : config(config) {} 
-};
+// Represents a compiled node. Compiled nodes are owned by the processing
+// instruction list in the compilation result, and are no longer in tree form.
+class AnthemGraphCompiledNode {};

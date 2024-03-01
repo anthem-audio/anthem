@@ -67,3 +67,7 @@ std::unique_ptr<AnthemGraphTopology> AnthemGraphTopology::clone() {
   }
   return newTopology;
 }
+
+std::vector<std::shared_ptr<AnthemGraphNode>>& AnthemGraphTopology::getNodes() {
+  return nodes;
+}

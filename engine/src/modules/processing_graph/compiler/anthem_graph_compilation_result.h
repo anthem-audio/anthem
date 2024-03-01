@@ -21,4 +21,5 @@
 
 // This class is used to represent the result of compiling a processing graph.
 class AnthemGraphCompilationResult {
+  
 };
