@@ -21,7 +21,7 @@
 
 #include <memory>
 
-class AnthemGraphNode;
+#include "anthem_graph_node_port.h"
 
 class AnthemGraphNodeConnection {
 public:

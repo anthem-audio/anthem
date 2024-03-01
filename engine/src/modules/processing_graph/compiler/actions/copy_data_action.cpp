@@ -17,22 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#pragma once
+#include "copy_data_action.h"
 
-#include <memory>
-
-#include "anthem_processor_port_config.h"
-
-class AnthemGraphNode;
-
-// This class represents a port on a node in the processing graph.
-class AnthemGraphNodePort {
-public:
-  // The node that this port is on.
-  std::weak_ptr<AnthemGraphNode> node; // TODO
-
-  // The configuration of this port.
-  AnthemProcessorPortConfig config;
-
-  AnthemGraphNodePort(AnthemProcessorPortConfig config) : config(config) {} 
-};
+void CopyDataAction::process() {
+  
+}

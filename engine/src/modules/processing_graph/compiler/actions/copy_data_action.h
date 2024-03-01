@@ -21,18 +21,13 @@
 
 #include <memory>
 
-#include "anthem_processor_port_config.h"
+#include "anthem_graph_node_connection.h"
 
-class AnthemGraphNode;
+// Copies data from an output port to an input port
+class CopyDataAction {
+  std::shared_ptr<AnthemGraphNodeConnection> connection;
 
-// This class represents a port on a node in the processing graph.
-class AnthemGraphNodePort {
-public:
-  // The node that this port is on.
-  std::weak_ptr<AnthemGraphNode> node; // TODO
+  CopyDataAction(std::shared_ptr<AnthemGraphNodeConnection> connection) : connection(connection) {}
 
-  // The configuration of this port.
-  AnthemProcessorPortConfig config;
-
-  AnthemGraphNodePort(AnthemProcessorPortConfig config) : config(config) {} 
+  void process();
 };
