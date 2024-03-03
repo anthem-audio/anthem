@@ -22,12 +22,22 @@
 #include <memory>
 
 #include "anthem_graph_node_connection.h"
+#include "anthem_process_context.h"
 
 // Copies data from an output port to an input port
-class CopyDataAction {
-  std::shared_ptr<AnthemGraphNodeConnection> connection;
+class CopyAudioBufferAction {
+  std::shared_ptr<AnthemProcessContext> source;
+  int sourcePort;
 
-  CopyDataAction(std::shared_ptr<AnthemGraphNodeConnection> connection) : connection(connection) {}
+  std::shared_ptr<AnthemProcessContext> destination;
+  int destinationPort;
+
+  CopyAudioBufferAction(
+    std::shared_ptr<AnthemProcessContext> source,
+    int sourcePort,
+    std::shared_ptr<AnthemProcessContext> destination,
+    int destinationPort
+  ) : source(source), sourcePort(sourcePort), destination(destination), destinationPort(destinationPort) {}
 
   void process();
 };

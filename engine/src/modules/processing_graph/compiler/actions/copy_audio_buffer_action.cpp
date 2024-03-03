@@ -17,8 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "copy_data_action.h"
+#include "copy_audio_buffer_action.h"
 
-void CopyDataAction::process() {
+void CopyAudioBufferAction::process() {
   
 }
