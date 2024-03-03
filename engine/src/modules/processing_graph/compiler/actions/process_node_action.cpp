@@ -17,16 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#pragma once
+#include "process_node_action.h"
 
-#include <memory>
-
-#include "anthem_process_context.h"
-#include "anthem_graph_node.h"
-
-class ProcessNodeAction {
-  std::shared_ptr<AnthemProcessContext> context;
-  std::shared_ptr<AnthemGraphNode> node;
-
-  void process();
-};
+void ProcessNodeAction::process() {
+  
+}

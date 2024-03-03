@@ -34,11 +34,8 @@ public:
   std::vector<std::shared_ptr<AnthemGraphNodePort>> audioInputs;
   std::vector<std::shared_ptr<AnthemGraphNodePort>> audioOutputs;
 
-  std::unique_ptr<AnthemProcessContext> processContext;
-
   AnthemGraphNode(std::shared_ptr<AnthemProcessor> processor) : processor(processor) {
     auto graph_node = std::make_shared<AnthemGraphNode>(*this);
-    processContext = std::make_unique<AnthemProcessContext>(graph_node);
   }
   
   // Shallow copy constructor
