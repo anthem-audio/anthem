@@ -17,8 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "process_node_action.h"
+#include "zero_input_buffers_action.h"
 
-void ProcessNodeAction::execute() {
-  this->node->processor->process(*this->context);
+void ZeroInputBuffersAction::execute() {
+  for (int i = 0; i < this->context->getNumInputAudioBuffers(); i++) {
+    auto& buffer = this->context->getInputAudioBuffer(i);
+    buffer.clear();
+  }
 }

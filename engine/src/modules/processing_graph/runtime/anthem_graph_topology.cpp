@@ -46,18 +46,21 @@ void AnthemGraphTopology::addConnection(
   auto type = source->config.portType;
 
   switch(type) {
-    case AnthemGraphNodePortType::Audio:
+    case AnthemGraphDataType::Audio:
       audioPortConnections.push_back(connection);
       break;
-    case AnthemGraphNodePortType::Midi:
+    case AnthemGraphDataType::Midi:
       throw std::runtime_error("AnthemGraphTopology::addConnection(): MIDI connections are not yet supported");
       // midiPortConnections.push_back(connection);
       break;
-    case AnthemGraphNodePortType::Control:
+    case AnthemGraphDataType::Control:
       throw std::runtime_error("AnthemGraphTopology::addConnection(): Control connections are not yet supported");
       // controlPortConnections.push_back(connection);
       break;
   }
+
+  source->connections.push_back(connection);
+  destination->connections.push_back(connection);
 }
 
 std::unique_ptr<AnthemGraphTopology> AnthemGraphTopology::clone() {

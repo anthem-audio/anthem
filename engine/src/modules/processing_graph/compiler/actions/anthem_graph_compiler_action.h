@@ -19,6 +19,7 @@
 
 #pragma once
 
-// Represents a compiled node. Compiled nodes are owned by the processing
-// instruction list in the compilation result, and are no longer in tree form.
-class AnthemGraphCompiledNode {};
+class AnthemGraphCompilerAction {
+public:
+  virtual void execute() = 0;
+};

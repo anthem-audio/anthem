@@ -19,7 +19,23 @@
 
 #pragma once
 
+#include <memory>
+#include <vector>
+
+#include "anthem_graph_compiler_action.h"
+
 // This class is used to represent the result of compiling a processing graph.
 class AnthemGraphCompilationResult {
-  
+public:
+  // All actions in a given group can be executed in parallel.
+  // 
+  // The way these groups are constructed currently is quite naive and no work
+  // has been done to optimize it.
+  std::vector<
+    std::shared_ptr<
+      std::vector<
+        std::shared_ptr<AnthemGraphCompilerAction>
+      >
+    >
+  > actionGroups;
 };

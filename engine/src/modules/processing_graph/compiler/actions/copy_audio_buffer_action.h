@@ -23,9 +23,11 @@
 
 #include "anthem_graph_node_connection.h"
 #include "anthem_process_context.h"
+#include "anthem_graph_compiler_action.h"
 
 // Copies data from an output port to an input port
-class CopyAudioBufferAction {
+class CopyAudioBufferAction : public AnthemGraphCompilerAction {
+public:
   std::shared_ptr<AnthemProcessContext> source;
   int sourcePort;
 
@@ -39,5 +41,5 @@ class CopyAudioBufferAction {
     int destinationPort
   ) : source(source), sourcePort(sourcePort), destination(destination), destinationPort(destinationPort) {}
 
-  void process();
+  void execute() override;
 };

@@ -23,10 +23,14 @@
 
 #include "anthem_process_context.h"
 #include "anthem_graph_node.h"
+#include "anthem_graph_compiler_action.h"
 
-class ProcessNodeAction {
+class ProcessNodeAction : public AnthemGraphCompilerAction {
+public:
   std::shared_ptr<AnthemProcessContext> context;
   std::shared_ptr<AnthemGraphNode> node;
 
-  void process();
+  void execute() override;
+
+  ProcessNodeAction(std::shared_ptr<AnthemProcessContext> context, std::shared_ptr<AnthemGraphNode> node) : context(context), node(node) {}
 };

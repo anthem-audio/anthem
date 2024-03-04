@@ -17,8 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "process_node_action.h"
+#pragma once
 
-void ProcessNodeAction::execute() {
-  this->node->processor->process(*this->context);
-}
+enum AnthemGraphDataType {
+  Audio, Midi, Control
+};

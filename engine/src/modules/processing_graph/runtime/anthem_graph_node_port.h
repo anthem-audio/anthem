@@ -20,8 +20,10 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #include "anthem_processor_port_config.h"
+#include "anthem_graph_node_connection.h"
 
 class AnthemGraphNode;
 
@@ -31,8 +33,14 @@ public:
   // The node that this port is on.
   std::weak_ptr<AnthemGraphNode> node; // TODO
 
+  // The index of this port on the node.
+  int index;
+
+  // The connections to or from this port.
+  std::vector<std::shared_ptr<AnthemGraphNodeConnection>> connections;
+
   // The configuration of this port.
   AnthemProcessorPortConfig config;
 
-  AnthemGraphNodePort(AnthemProcessorPortConfig config) : config(config) {} 
+  AnthemGraphNodePort(AnthemProcessorPortConfig config, int index) : config(config), index(index) {} 
 };

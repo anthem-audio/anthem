@@ -21,8 +21,9 @@
 
 #include <memory>
 
-#include "anthem_graph_node_port.h"
+class AnthemGraphNodePort;
 
+// Represents a connection between two ports in the node graph
 class AnthemGraphNodeConnection {
 public:
   std::weak_ptr<AnthemGraphNodePort> source;
