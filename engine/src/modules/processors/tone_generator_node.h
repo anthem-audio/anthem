@@ -22,7 +22,6 @@
 #include <memory>
 
 #include "anthem_processor.h"
-#include "anthem_graph_node.h"
 
 class ToneGeneratorNode : public AnthemProcessor {
 private:
@@ -36,5 +35,5 @@ public:
 
   std::shared_ptr<AnthemGraphNodePort> getOutput();
 
-  void process(AnthemProcessContext& context) override;
+  void process(AnthemProcessContext& context, int numSamples) override;
 };

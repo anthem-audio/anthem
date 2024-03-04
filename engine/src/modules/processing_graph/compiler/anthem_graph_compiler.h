@@ -48,5 +48,6 @@
 // This class is used to compile a processing graph into a set of processing
 // instructions that can be executed in a real-time context.
 class AnthemGraphCompiler {
+public:
   static std::shared_ptr<AnthemGraphCompilationResult> compile(AnthemGraphTopology& topology);
 };

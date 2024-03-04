@@ -20,14 +20,15 @@
 #include "anthem_graph.h"
 
 AnthemGraph::AnthemGraph() {
-  topology = AnthemGraphTopology();
-  compiler = AnthemGraphCompiler();
-  graphProcessor = AnthemGraphProcessor();
+  topology = std::make_unique<AnthemGraphTopology>();
+  compiler = std::make_unique<AnthemGraphCompiler>();
+  graphProcessor = std::make_unique<AnthemGraphProcessor>();
 }
 
 std::shared_ptr<AnthemGraphNode> AnthemGraph::addNode(std::unique_ptr<AnthemProcessor> processor) {
   auto node = std::make_shared<AnthemGraphNode>(std::move(processor));
-  topology.addNode(node);
+  topology->addNode(node);
+  sendCompiledGraphToProcessor(compiler->compile(*topology));
   return node;
 }
 
@@ -35,5 +36,10 @@ void AnthemGraph::connectNodes(
   std::shared_ptr<AnthemGraphNodePort> source,
   std::shared_ptr<AnthemGraphNodePort> destination
 ) {
-  topology.addConnection(source, destination);
+  topology->addConnection(source, destination);
+  sendCompiledGraphToProcessor(compiler->compile(*topology));
+}
+
+void AnthemGraph::sendCompiledGraphToProcessor(std::shared_ptr<AnthemGraphCompilationResult> compiledGraph) {
+  graphProcessor->setProcessingStepsFromMainThread(compiledGraph);
 }

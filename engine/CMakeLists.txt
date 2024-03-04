@@ -40,6 +40,7 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/compiler/actions
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/runtime
   ${CMAKE_SOURCE_DIR}/src/modules/processors
+  ${CMAKE_SOURCE_DIR}/src/modules/util
 )
 
 # Make this a JUCE console application
@@ -66,6 +67,7 @@ set(ANTHEM_ENGINE_SOURCES
   src/modules/core/anthem_audio_callback.h
   src/modules/core/anthem.cpp
   src/modules/core/anthem.h
+  src/modules/core/constants.h
 
   ### Processing Graph ###
   
@@ -82,7 +84,7 @@ set(ANTHEM_ENGINE_SOURCES
   src/modules/processing_graph/compiler/anthem_graph_compiler_node.h
   src/modules/processing_graph/compiler/anthem_graph_compiler.cpp
   src/modules/processing_graph/compiler/anthem_graph_compiler.h
-  # src/modules/processing_graph/compiler/anthem_process_context.cpp
+  src/modules/processing_graph/compiler/anthem_process_context.cpp
   src/modules/processing_graph/compiler/anthem_process_context.h
 
   # src/modules/processing_graph/runtime/anthem_graph_node_port.cpp
@@ -91,7 +93,7 @@ set(ANTHEM_ENGINE_SOURCES
   src/modules/processing_graph/runtime/anthem_graph_node_connection.h
   src/modules/processing_graph/runtime/anthem_graph_node.cpp
   src/modules/processing_graph/runtime/anthem_graph_node.h
-  # src/modules/processing_graph/runtime/anthem_graph_processor.cpp
+  src/modules/processing_graph/runtime/anthem_graph_processor.cpp
   src/modules/processing_graph/runtime/anthem_graph_processor.h
   src/modules/processing_graph/runtime/anthem_graph_topology.cpp
   src/modules/processing_graph/runtime/anthem_graph_topology.h
@@ -116,6 +118,10 @@ set(ANTHEM_ENGINE_SOURCES
   src/main.cpp
   src/plugin_window.cpp
   src/plugin_window.h
+
+  ### Util ###
+
+  src/modules/util/thread_safe_queue.h
 )
 
 target_sources(AnthemEngine PRIVATE ${ANTHEM_ENGINE_SOURCES})

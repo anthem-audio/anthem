@@ -21,6 +21,7 @@
 
 #include <memory>
 
+#include "anthem_graph_node.h"
 #include "anthem_graph_node_connection.h"
 #include "anthem_process_context.h"
 #include "anthem_graph_compiler_action.h"
@@ -41,5 +42,5 @@ public:
     int destinationPort
   ) : source(source), sourcePort(sourcePort), destination(destination), destinationPort(destinationPort) {}
 
-  void execute() override;
+  void execute(int numSamples) override;
 };

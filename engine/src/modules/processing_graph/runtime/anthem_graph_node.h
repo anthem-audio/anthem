@@ -23,7 +23,6 @@
 #include <vector>
 
 #include "anthem_processor.h"
-#include "anthem_process_context.h"
 #include "anthem_graph_node_port.h"
 
 // Represents a node in the processing graph.
@@ -34,9 +33,7 @@ public:
   std::vector<std::shared_ptr<AnthemGraphNodePort>> audioInputs;
   std::vector<std::shared_ptr<AnthemGraphNodePort>> audioOutputs;
 
-  AnthemGraphNode(std::shared_ptr<AnthemProcessor> processor) : processor(processor) {
-    auto graph_node = std::make_shared<AnthemGraphNode>(*this);
-  }
+  AnthemGraphNode(std::shared_ptr<AnthemProcessor> processor) : processor(processor) {}
   
   // Shallow copy constructor
   AnthemGraphNode(const AnthemGraphNode& other);

@@ -19,7 +19,7 @@
 
 #include "copy_audio_buffer_action.h"
 
-void CopyAudioBufferAction::execute() {
+void CopyAudioBufferAction::execute(int numSamples) {
   auto& sourceBuffer = this->source->getOutputAudioBuffer(this->sourcePort);
   auto& destinationBuffer = this->destination->getInputAudioBuffer(this->destinationPort);
 
@@ -28,7 +28,7 @@ void CopyAudioBufferAction::execute() {
   jassert(sourceBuffer.getNumSamples() == destinationBuffer.getNumSamples());
 
   for (int channel = 0; channel < sourceBuffer.getNumChannels(); ++channel) {
-    for (int sample = 0; sample < sourceBuffer.getNumSamples(); ++sample) {
+    for (int sample = 0; sample < numSamples; ++sample) {
       // Add the sample from the source buffer to the matching sample in the destination buffer
       float sourceSample = sourceBuffer.getSample(channel, sample);
       float destinationSample = destinationBuffer.getSample(channel, sample);

@@ -19,8 +19,10 @@
 
 #pragma once
 
-#include "anthem_process_context.h"
 #include "anthem_processor_config.h"
+
+class AnthemGraphNode;
+class AnthemProcessContext;
 
 // This class is used to process audio, MIDI and control data. It can produce
 // and/or consume any of these data types.
@@ -35,5 +37,5 @@ public:
 
   // This method is called by the processing graph to process audio, MIDI and
   // control data. It is called once per processing block.
-  virtual void process(AnthemProcessContext& context) = 0;
+  virtual void process(AnthemProcessContext& context, int numSamples) = 0;
 };

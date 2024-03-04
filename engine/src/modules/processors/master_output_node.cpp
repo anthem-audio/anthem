@@ -19,6 +19,8 @@
 
 #include "master_output_node.h"
 
+#include "anthem_process_context.h"
+
 MasterOutputNode::MasterOutputNode(int numChannels, int bufferSize) {
   buffer = juce::AudioSampleBuffer(numChannels, bufferSize);
 
@@ -35,10 +37,10 @@ std::shared_ptr<AnthemGraphNodePort> MasterOutputNode::getInput() {
   return config.getAudioInput(0);
 }
 
-void MasterOutputNode::process(AnthemProcessContext& context) {
+void MasterOutputNode::process(AnthemProcessContext& context, int numSamples) {
   auto& inputBuffer = context.getInputAudioBuffer(0);
 
   for (int channel = 0; channel < buffer.getNumChannels(); channel++) {
-    this->buffer.copyFrom(channel, 0, inputBuffer, channel, 0, inputBuffer.getNumSamples());
+    this->buffer.copyFrom(channel, 0, inputBuffer, channel, 0, numSamples);
   }
 }

@@ -21,19 +21,20 @@
 #include "tone_generator_node.h"
 
 Anthem::Anthem() {
-  processingGraph = AnthemGraph();
+  processingGraph = std::make_shared<AnthemGraph>();
 
   init();
 }
 
 void Anthem::init() {
   auto masterOutputProcessor = std::make_unique<MasterOutputNode>(2, 512);
-  auto masterOutputNode = processingGraph.addNode(std::move(masterOutputProcessor));
+  this->masterOutputNode = processingGraph->addNode(std::move(masterOutputProcessor));
+  audioCallback = std::make_unique<AnthemAudioCallback>(processingGraph, this->masterOutputNode);
 
   auto toneGeneratorProcessor = std::make_unique<ToneGeneratorNode>();
-  auto toneGeneratorNode = processingGraph.addNode(std::move(toneGeneratorProcessor));
+  auto toneGeneratorNode = processingGraph->addNode(std::move(toneGeneratorProcessor));
 
-  processingGraph.connectNodes(
+  processingGraph->connectNodes(
     std::dynamic_pointer_cast<ToneGeneratorNode>(toneGeneratorNode->processor)->getOutput(),
     std::dynamic_pointer_cast<MasterOutputNode>(masterOutputNode->processor)->getInput()
   );
@@ -42,5 +43,5 @@ void Anthem::init() {
   this->deviceManager.initialiseWithDefaultDevices(2, 2);
 
   // Set up the audio callback
-  this->deviceManager.addAudioCallback(&this->audioCallback);
+  this->deviceManager.addAudioCallback(this->audioCallback.get());
 }

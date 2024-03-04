@@ -21,6 +21,7 @@
 
 #include <memory>
 
+#include "anthem_graph_node.h"
 #include "anthem_graph_compiler_action.h"
 #include "anthem_process_context.h"
 
@@ -30,5 +31,5 @@ public:
 
   ZeroInputBuffersAction(std::shared_ptr<AnthemProcessContext> context) : context(context) {}
 
-  void execute() override;
+  void execute(int numSamples) override;
 };
