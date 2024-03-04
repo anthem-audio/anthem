@@ -21,8 +21,8 @@
 
 #include <memory>
 
-#include "anthem_processor.h"
 #include "anthem_graph_node.h"
+#include "anthem_processor.h"
 #include "anthem_graph_topology.h"
 #include "anthem_graph_compiler.h"
 #include "anthem_graph_processor.h"
@@ -31,13 +31,13 @@
 // the flow of audio, MIDI and control data between them.
 class AnthemGraph {
 private:
-  AnthemGraphTopology topology;
-  AnthemGraphCompiler compiler;
-  AnthemGraphProcessor graphProcessor;
+  std::unique_ptr<AnthemGraphTopology> topology;
+  std::unique_ptr<AnthemGraphCompiler> compiler;
+  std::unique_ptr<AnthemGraphProcessor> graphProcessor;
 
   // This method is called when the graph is updated, and it updates the
   // graph processor.
-  void sendNewTopologyToProcessor();
+  void sendCompiledGraphToProcessor(std::shared_ptr<AnthemGraphCompilationResult> compiledGraph);
 public:
   AnthemGraph();
 
@@ -52,4 +52,8 @@ public:
   );
 
   // void disconnectNodes(std::shared_ptr<AnthemAudioInput> input, std::shared_ptr<AnthemAudioOutput> output);
+
+  AnthemGraphProcessor& getProcessor() {
+    return *graphProcessor;
+  }
 };

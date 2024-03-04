@@ -19,7 +19,7 @@
 
 #include "zero_input_buffers_action.h"
 
-void ZeroInputBuffersAction::execute() {
+void ZeroInputBuffersAction::execute(int) {
   for (int i = 0; i < this->context->getNumInputAudioBuffers(); i++) {
     auto& buffer = this->context->getInputAudioBuffer(i);
     buffer.clear();

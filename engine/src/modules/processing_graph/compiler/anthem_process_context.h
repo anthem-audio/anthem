@@ -24,7 +24,7 @@
 
 #include <juce_audio_basics/juce_audio_basics.h>
 
-class AnthemGraphNode;
+#include "anthem_graph_node.h"
 
 // This class acts as a context for node graph processors. It is passed to the
 // `process()` method of each `AnthemProcessor`, and provides a way to query
@@ -36,29 +36,14 @@ private:
 
   std::shared_ptr<AnthemGraphNode> graphNode;
 public:
-  AnthemProcessContext(std::shared_ptr<AnthemGraphNode> graphNode) : graphNode(graphNode) {}
+  AnthemProcessContext(std::shared_ptr<AnthemGraphNode> graphNode);
 
-  void setAllInputAudioBuffers(const std::vector<juce::AudioSampleBuffer>& buffers) {
-    inputAudioBuffers = buffers;
-  }
+  void setAllInputAudioBuffers(const std::vector<juce::AudioSampleBuffer>& buffers);
+  void setAllOutputAudioBuffers(const std::vector<juce::AudioSampleBuffer>& buffers);
 
-  void setAllOutputAudioBuffers(const std::vector<juce::AudioSampleBuffer>& buffers) {
-    outputAudioBuffers = buffers;
-  }
+  juce::AudioSampleBuffer& getInputAudioBuffer(int index);
+  juce::AudioSampleBuffer& getOutputAudioBuffer(int index);
 
-  juce::AudioSampleBuffer& getInputAudioBuffer(int index) {
-    return inputAudioBuffers[index];
-  }
-
-  juce::AudioSampleBuffer& getOutputAudioBuffer(int index) {
-    return outputAudioBuffers[index];
-  }
-
-  int getNumInputAudioBuffers() {
-    return inputAudioBuffers.size();
-  }
-
-  int getNumOutputAudioBuffers() {
-    return outputAudioBuffers.size();
-  }
+  int getNumInputAudioBuffers();
+  int getNumOutputAudioBuffers();
 };

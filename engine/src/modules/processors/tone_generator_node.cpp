@@ -19,6 +19,8 @@
 
 #include "tone_generator_node.h"
 
+#include "anthem_process_context.h"
+
 ToneGeneratorNode::ToneGeneratorNode() {
   currentSample = 0;
   amplitude = 0.125;
@@ -32,11 +34,11 @@ ToneGeneratorNode::ToneGeneratorNode() {
 
 ToneGeneratorNode::~ToneGeneratorNode() {}
 
-void ToneGeneratorNode::process(AnthemProcessContext& context) {
+void ToneGeneratorNode::process(AnthemProcessContext& context, int numSamples) {
   auto& buffer = context.getOutputAudioBuffer(0);
 
   // Generate a sine wave
-  for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
+  for (int sample = 0; sample < numSamples; ++sample) {
     const float value = amplitude * std::sin(
       2.0 * juce::MathConstants<float>::pi * frequency * currentSample / sampleRate
     );

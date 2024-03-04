@@ -19,17 +19,25 @@
 
 #pragma once
 
+#include <memory>
+
 #include <juce_audio_devices/juce_audio_devices.h>
+
+#include "anthem_graph.h"
+#include "constants.h"
+#include "master_output_node.h"
 
 class AnthemAudioCallback : public juce::AudioIODeviceCallback
 {
 private:
-  int currentSample;
-  float amplitude;
-  float frequency;
-  double sampleRate;
+  std::shared_ptr<AnthemGraph> processingGraph;
+  std::shared_ptr<AnthemGraphNode> masterOutputNode;
 public:
-  AnthemAudioCallback() : currentSample(0), amplitude(0.125), frequency(440.0), sampleRate(44100.0) {}
+  AnthemAudioCallback(
+    std::shared_ptr<AnthemGraph> graph,
+    std::shared_ptr<AnthemGraphNode> masterOutputNode
+  ) : processingGraph(graph), masterOutputNode(masterOutputNode) {}
+
   void audioDeviceIOCallbackWithContext(const float* const* inputChannelData,
                                                    int numInputChannels,
                                                    float* const* outputChannelData,

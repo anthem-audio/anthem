@@ -23,8 +23,8 @@
 
 #include <juce_audio_basics/juce_audio_basics.h>
 
-#include "anthem_processor.h"
 #include "anthem_graph_node.h"
+#include "anthem_processor.h"
 
 class MasterOutputNode : public AnthemProcessor {
 public:
@@ -35,7 +35,7 @@ public:
 
   std::shared_ptr<AnthemGraphNodePort> getInput();
 
-  void process(AnthemProcessContext& context) override;
+  void process(AnthemProcessContext& context, int numSamples) override;
 
   // TODO: Update buffer size?
 };

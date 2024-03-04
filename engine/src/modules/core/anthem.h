@@ -31,12 +31,13 @@
 class Anthem {
 private:
   juce::AudioDeviceManager deviceManager;
-  AnthemAudioCallback audioCallback;
+  std::unique_ptr<AnthemAudioCallback> audioCallback;
 
   // Initializes the engine
   void init();
 public:
-  AnthemGraph processingGraph;
+  std::shared_ptr<AnthemGraph> processingGraph;
+  std::shared_ptr<AnthemGraphNode> masterOutputNode;
 
   Anthem();
 };

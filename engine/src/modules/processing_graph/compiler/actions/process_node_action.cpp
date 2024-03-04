@@ -19,6 +19,6 @@
 
 #include "process_node_action.h"
 
-void ProcessNodeAction::execute() {
-  this->node->processor->process(*this->context);
+void ProcessNodeAction::execute(int numSamples) {
+  this->node->processor->process(*this->context, numSamples);
 }

@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <stdexcept>
+
 #include "anthem_graph_topology.h"
 
 AnthemGraphTopology::AnthemGraphTopology() {

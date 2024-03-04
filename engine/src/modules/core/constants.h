@@ -19,18 +19,5 @@
 
 #pragma once
 
-#include <memory>
-
-#include "anthem_graph_node.h"
-#include "anthem_process_context.h"
-#include "anthem_graph_compiler_action.h"
-
-class ProcessNodeAction : public AnthemGraphCompilerAction {
-public:
-  std::shared_ptr<AnthemProcessContext> context;
-  std::shared_ptr<AnthemGraphNode> node;
-
-  void execute(int numSamples) override;
-
-  ProcessNodeAction(std::shared_ptr<AnthemProcessContext> context, std::shared_ptr<AnthemGraphNode> node) : context(context), node(node) {}
-};
+// Max audio buffer size
+const int MAX_AUDIO_BUFFER_SIZE = 8192;
