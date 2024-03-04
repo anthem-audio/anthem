@@ -23,7 +23,7 @@ MasterOutputNode::MasterOutputNode(int numChannels, int bufferSize) {
   buffer = juce::AudioSampleBuffer(numChannels, bufferSize);
 
   config.addAudioInput(
-    AnthemProcessorPortConfig(AnthemGraphNodePortType::Audio, "input")
+    AnthemProcessorPortConfig(AnthemGraphDataType::Audio, "input")
   );
 }
 

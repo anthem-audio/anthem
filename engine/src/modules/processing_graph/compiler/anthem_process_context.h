@@ -53,4 +53,12 @@ public:
   juce::AudioSampleBuffer& getOutputAudioBuffer(int index) {
     return outputAudioBuffers[index];
   }
+
+  int getNumInputAudioBuffers() {
+    return inputAudioBuffers.size();
+  }
+
+  int getNumOutputAudioBuffers() {
+    return outputAudioBuffers.size();
+  }
 };

@@ -26,7 +26,7 @@ ToneGeneratorNode::ToneGeneratorNode() {
   sampleRate = 44100.0; // TODO: This should be dynamic - in the context maybe?
 
   config.addAudioOutput(
-    AnthemProcessorPortConfig(AnthemGraphNodePortType::Audio, "input")
+    AnthemProcessorPortConfig(AnthemGraphDataType::Audio, "input")
   );
 }
 

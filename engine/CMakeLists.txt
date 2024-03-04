@@ -37,6 +37,7 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/src/modules/core
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/compiler
+  ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/compiler/actions
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/runtime
   ${CMAKE_SOURCE_DIR}/src/modules/processors
 )
@@ -67,13 +68,18 @@ set(ANTHEM_ENGINE_SOURCES
   src/modules/core/anthem.h
 
   ### Processing Graph ###
-
+  
+  src/modules/processing_graph/compiler/actions/anthem_graph_compiler_action.h
   src/modules/processing_graph/compiler/actions/copy_audio_buffer_action.cpp
   src/modules/processing_graph/compiler/actions/copy_audio_buffer_action.h
   src/modules/processing_graph/compiler/actions/process_node_action.cpp
   src/modules/processing_graph/compiler/actions/process_node_action.h
+  src/modules/processing_graph/compiler/actions/zero_input_buffers_action.cpp
+  src/modules/processing_graph/compiler/actions/zero_input_buffers_action.h
   # src/modules/processing_graph/compiler/anthem_graph_compilation_result.cpp
   src/modules/processing_graph/compiler/anthem_graph_compilation_result.h
+  src/modules/processing_graph/compiler/anthem_graph_compiler_edge.h
+  src/modules/processing_graph/compiler/anthem_graph_compiler_node.h
   src/modules/processing_graph/compiler/anthem_graph_compiler.cpp
   src/modules/processing_graph/compiler/anthem_graph_compiler.h
   # src/modules/processing_graph/compiler/anthem_process_context.cpp
@@ -90,6 +96,7 @@ set(ANTHEM_ENGINE_SOURCES
   src/modules/processing_graph/runtime/anthem_graph_topology.cpp
   src/modules/processing_graph/runtime/anthem_graph_topology.h
   
+  src/modules/processing_graph/anthem_graph_data_type.h
   src/modules/processing_graph/anthem_graph.cpp
   src/modules/processing_graph/anthem_graph.h
   src/modules/processing_graph/anthem_processor_config.cpp

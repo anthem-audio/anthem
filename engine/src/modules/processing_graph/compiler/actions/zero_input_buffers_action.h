@@ -17,8 +17,18 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "process_node_action.h"
+#pragma once
 
-void ProcessNodeAction::execute() {
-  this->node->processor->process(*this->context);
-}
+#include <memory>
+
+#include "anthem_graph_compiler_action.h"
+#include "anthem_process_context.h"
+
+class ZeroInputBuffersAction : public AnthemGraphCompilerAction {
+public:
+  std::shared_ptr<AnthemProcessContext> context;
+
+  ZeroInputBuffersAction(std::shared_ptr<AnthemProcessContext> context) : context(context) {}
+
+  void execute() override;
+};
