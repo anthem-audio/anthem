@@ -38,6 +38,10 @@ private:
 public:
   AnthemProcessContext(std::shared_ptr<AnthemGraphNode> graphNode);
 
+  std::shared_ptr<AnthemGraphNode> getGraphNode() {
+    return graphNode;
+  }
+
   void setAllInputAudioBuffers(const std::vector<juce::AudioSampleBuffer>& buffers);
   void setAllOutputAudioBuffers(const std::vector<juce::AudioSampleBuffer>& buffers);
 

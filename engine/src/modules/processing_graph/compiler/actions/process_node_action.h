@@ -33,4 +33,6 @@ public:
   void execute(int numSamples) override;
 
   ProcessNodeAction(std::shared_ptr<AnthemProcessContext> context, std::shared_ptr<AnthemGraphNode> node) : context(context), node(node) {}
+
+  void debugPrint() override;
 };

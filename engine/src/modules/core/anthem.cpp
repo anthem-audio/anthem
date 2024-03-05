@@ -27,7 +27,7 @@ Anthem::Anthem() {
 }
 
 void Anthem::init() {
-  auto masterOutputProcessor = std::make_unique<MasterOutputNode>(2, 512);
+  auto masterOutputProcessor = std::make_unique<MasterOutputNode>(2, MAX_AUDIO_BUFFER_SIZE);
   this->masterOutputNode = processingGraph->addNode(std::move(masterOutputProcessor));
   audioCallback = std::make_unique<AnthemAudioCallback>(processingGraph, this->masterOutputNode);
 

@@ -22,4 +22,5 @@
 class AnthemGraphCompilerAction {
 public:
   virtual void execute(int numSamples) = 0;
+  virtual void debugPrint() = 0;
 };

@@ -33,6 +33,8 @@ class AnthemProcessor {
 public:
   AnthemProcessorConfig config;
 
+  AnthemProcessor(std::string name) : config(AnthemProcessorConfig(name)) {}
+
   virtual ~AnthemProcessor() = default;
 
   // This method is called by the processing graph to process audio, MIDI and

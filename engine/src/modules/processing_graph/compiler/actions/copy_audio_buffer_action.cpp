@@ -19,6 +19,8 @@
 
 #include "copy_audio_buffer_action.h"
 
+#include <iostream>
+
 void CopyAudioBufferAction::execute(int numSamples) {
   auto& sourceBuffer = this->source->getOutputAudioBuffer(this->sourcePort);
   auto& destinationBuffer = this->destination->getInputAudioBuffer(this->destinationPort);
@@ -35,4 +37,13 @@ void CopyAudioBufferAction::execute(int numSamples) {
       destinationBuffer.setSample(channel, sample, sourceSample + destinationSample);
     }
   }
+}
+
+void CopyAudioBufferAction::debugPrint() {
+  std::cout 
+    << "CopyAudioBufferAction: "
+    << this->source->getGraphNode()->processor->config.getName()
+    << " -> "
+    << this->destination->getGraphNode()->processor->config.getName()
+    << std::endl;
 }

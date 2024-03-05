@@ -21,6 +21,7 @@
 
 #include <memory>
 #include <vector>
+#include <iostream>
 
 #include "anthem_graph_compiler_action.h"
 
@@ -38,4 +39,15 @@ public:
       >
     >
   > actionGroups;
+
+  void debugPrint() {
+    std::cout << "AnthemGraphCompilationResult" << std::endl;
+    std::cout << actionGroups.size() << " action groups" << std::endl;
+    for (auto& group : actionGroups) {
+      std::cout << "  ActionGroup" << std::endl << "  ";
+      for (auto& action : *group) {
+        action->debugPrint();
+      }
+    }
+  }
 };

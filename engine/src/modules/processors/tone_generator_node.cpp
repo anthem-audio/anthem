@@ -19,9 +19,11 @@
 
 #include "tone_generator_node.h"
 
+#include <iostream>
+
 #include "anthem_process_context.h"
 
-ToneGeneratorNode::ToneGeneratorNode() {
+ToneGeneratorNode::ToneGeneratorNode() : AnthemProcessor("ToneGeneratorNode") {
   currentSample = 0;
   amplitude = 0.125;
   frequency = 440.0;
