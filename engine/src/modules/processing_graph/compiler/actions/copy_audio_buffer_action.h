@@ -43,4 +43,6 @@ public:
   ) : source(source), sourcePort(sourcePort), destination(destination), destinationPort(destinationPort) {}
 
   void execute(int numSamples) override;
+
+  void debugPrint() override;
 };

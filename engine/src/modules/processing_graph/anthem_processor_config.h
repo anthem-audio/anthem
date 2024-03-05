@@ -20,6 +20,8 @@
 #pragma once
 
 #include <vector>
+#include <memory>
+#include <string>
 
 #include "anthem_processor_port_config.h"
 #include "anthem_graph_node_port.h"
@@ -36,7 +38,11 @@ private:
 
   std::vector<std::shared_ptr<AnthemGraphNodePort>> controlInputs;
   std::vector<std::shared_ptr<AnthemGraphNodePort>> controlOutputs;
+
+  std::string name;
 public:
+  AnthemProcessorConfig(const std::string& name) : name(name) {}
+
   // Get an audio input port by index.
   const std::shared_ptr<AnthemGraphNodePort> getAudioInput(int index) const;
 
@@ -90,4 +96,8 @@ public:
 
   // Add a control output port.
   void addControlOutput(const AnthemProcessorPortConfig& port);
+
+  std::string getName() {
+    return name;
+  }
 };

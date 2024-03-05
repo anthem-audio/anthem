@@ -19,6 +19,12 @@
 
 #include "process_node_action.h"
 
+#include <iostream>
+
 void ProcessNodeAction::execute(int numSamples) {
   this->node->processor->process(*this->context, numSamples);
+}
+
+void ProcessNodeAction::debugPrint() {
+  std::cout << "ProcessNodeAction: " << this->node->processor->config.getName() << std::endl;
 }

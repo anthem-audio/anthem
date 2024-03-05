@@ -36,6 +36,4 @@ public:
   std::shared_ptr<AnthemGraphNodePort> getInput();
 
   void process(AnthemProcessContext& context, int numSamples) override;
-
-  // TODO: Update buffer size?
 };

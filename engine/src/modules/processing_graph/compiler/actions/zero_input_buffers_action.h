@@ -32,4 +32,6 @@ public:
   ZeroInputBuffersAction(std::shared_ptr<AnthemProcessContext> context) : context(context) {}
 
   void execute(int numSamples) override;
+
+  void debugPrint() override;
 };

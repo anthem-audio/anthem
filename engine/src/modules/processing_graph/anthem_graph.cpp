@@ -37,7 +37,8 @@ void AnthemGraph::connectNodes(
   std::shared_ptr<AnthemGraphNodePort> destination
 ) {
   topology->addConnection(source, destination);
-  sendCompiledGraphToProcessor(compiler->compile(*topology));
+  auto compiledGraph = compiler->compile(*topology);
+  sendCompiledGraphToProcessor(compiledGraph);
 }
 
 void AnthemGraph::sendCompiledGraphToProcessor(std::shared_ptr<AnthemGraphCompilationResult> compiledGraph) {

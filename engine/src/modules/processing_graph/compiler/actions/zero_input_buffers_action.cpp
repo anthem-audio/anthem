@@ -19,9 +19,15 @@
 
 #include "zero_input_buffers_action.h"
 
+#include <iostream>
+
 void ZeroInputBuffersAction::execute(int) {
   for (int i = 0; i < this->context->getNumInputAudioBuffers(); i++) {
     auto& buffer = this->context->getInputAudioBuffer(i);
     buffer.clear();
   }
+}
+
+void ZeroInputBuffersAction::debugPrint() {
+  std::cout << "ZeroInputBuffersAction: " << this->context->getGraphNode()->processor->config.getName() << std::endl;
 }
