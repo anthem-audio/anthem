@@ -45,7 +45,7 @@ std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(Anthe
     node->assignEdges(nodeToCompilerNode);
   }
 
-  std::shared_ptr<std::vector<std::shared_ptr<AnthemGraphCompilerAction>>> actions;
+  std::shared_ptr<std::vector<std::shared_ptr<AnthemGraphCompilerAction>>> actions = std::make_shared<std::vector<std::shared_ptr<AnthemGraphCompilerAction>>>();
 
   // Step 1: Zero input buffers
   for (auto& node : nodesToProcess) {
@@ -86,10 +86,8 @@ std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(Anthe
     actions = std::make_shared<std::vector<std::shared_ptr<AnthemGraphCompilerAction>>>();
 
     // Remove processed nodes from the list of nodes to process
-    for (auto& node : nodesToProcess) {
-      if (node->readyToProcess) {
-        nodesToProcess.erase(node);
-      }
+    for (auto& node : nodesToRemoveFromProcessing) {
+      nodesToProcess.erase(node);
     }
 
     // Step 4: Process connections
