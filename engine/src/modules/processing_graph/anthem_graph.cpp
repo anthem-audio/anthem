@@ -19,14 +19,16 @@
 
 #include "anthem_graph.h"
 
+#include <iostream>
+
 AnthemGraph::AnthemGraph() {
   topology = std::make_unique<AnthemGraphTopology>();
   compiler = std::make_unique<AnthemGraphCompiler>();
   graphProcessor = std::make_unique<AnthemGraphProcessor>();
 }
 
-std::shared_ptr<AnthemGraphNode> AnthemGraph::addNode(std::unique_ptr<AnthemProcessor> processor) {
-  auto node = std::make_shared<AnthemGraphNode>(std::move(processor));
+std::shared_ptr<AnthemGraphNode> AnthemGraph::addNode(std::shared_ptr<AnthemProcessor> processor) {
+  auto node = std::make_shared<AnthemGraphNode>(processor);
   topology->addNode(node);
   sendCompiledGraphToProcessor(compiler->compile(*topology));
   return node;
@@ -37,10 +39,18 @@ void AnthemGraph::connectNodes(
   std::shared_ptr<AnthemGraphNodePort> destination
 ) {
   topology->addConnection(source, destination);
-  auto compiledGraph = compiler->compile(*topology);
-  sendCompiledGraphToProcessor(compiledGraph);
 }
 
 void AnthemGraph::sendCompiledGraphToProcessor(std::shared_ptr<AnthemGraphCompilationResult> compiledGraph) {
   graphProcessor->setProcessingStepsFromMainThread(compiledGraph);
+}
+
+void AnthemGraph::compile() {
+  sendCompiledGraphToProcessor(compiler->compile(*topology));
+}
+
+void AnthemGraph::debugPrint() {
+  std::cout << "AnthemGraph" << std::endl;
+  std::cout << topology->getNodes().size() << " nodes" << std::endl;
+  std::cout << topology->getConnections().size() << " edges" << std::endl;
 }

@@ -19,7 +19,7 @@
 
 #include "anthem_processor_config.h"
 
-const std::shared_ptr<AnthemGraphNodePort> AnthemProcessorConfig::getAudioInput(int index) const {
+const std::shared_ptr<AnthemProcessorPortConfig> AnthemProcessorConfig::getAudioInput(int index) const {
   return audioInputs[index];
 }
 
@@ -27,11 +27,11 @@ int AnthemProcessorConfig::getNumAudioInputs() const {
   return audioInputs.size();
 }
 
-void AnthemProcessorConfig::addAudioInput(const AnthemProcessorPortConfig& port) {
-  audioInputs.push_back(std::make_shared<AnthemGraphNodePort>(port, audioInputs.size()));
+void AnthemProcessorConfig::addAudioInput(const std::shared_ptr<AnthemProcessorPortConfig> port) {
+  audioInputs.push_back(port);
 }
 
-const std::shared_ptr<AnthemGraphNodePort> AnthemProcessorConfig::getAudioOutput(int index) const {
+const std::shared_ptr<AnthemProcessorPortConfig> AnthemProcessorConfig::getAudioOutput(int index) const {
   return audioOutputs[index];
 }
 
@@ -39,11 +39,11 @@ int AnthemProcessorConfig::getNumAudioOutputs() const {
   return audioOutputs.size();
 }
 
-void AnthemProcessorConfig::addAudioOutput(const AnthemProcessorPortConfig& port) {
-  audioOutputs.push_back(std::make_shared<AnthemGraphNodePort>(port, audioOutputs.size()));
+void AnthemProcessorConfig::addAudioOutput(const std::shared_ptr<AnthemProcessorPortConfig> port) {
+  audioOutputs.push_back(port);
 }
 
-const std::shared_ptr<AnthemGraphNodePort> AnthemProcessorConfig::getMidiInput(int index) const {
+const std::shared_ptr<AnthemProcessorPortConfig> AnthemProcessorConfig::getMidiInput(int index) const {
   return midiInputs[index];
 }
 
@@ -51,11 +51,11 @@ int AnthemProcessorConfig::getNumMidiInputs() const {
   return midiInputs.size();
 }
 
-void AnthemProcessorConfig::addMidiInput(const AnthemProcessorPortConfig& port) {
-  midiInputs.push_back(std::make_shared<AnthemGraphNodePort>(port, midiInputs.size()));
+void AnthemProcessorConfig::addMidiInput(const std::shared_ptr<AnthemProcessorPortConfig> port) {
+  midiInputs.push_back(port);
 }
 
-const std::shared_ptr<AnthemGraphNodePort> AnthemProcessorConfig::getMidiOutput(int index) const {
+const std::shared_ptr<AnthemProcessorPortConfig> AnthemProcessorConfig::getMidiOutput(int index) const {
   return midiOutputs[index];
 }
 
@@ -63,11 +63,11 @@ int AnthemProcessorConfig::getNumMidiOutputs() const {
   return midiOutputs.size();
 }
 
-void AnthemProcessorConfig::addMidiOutput(const AnthemProcessorPortConfig& port) {
-  midiOutputs.push_back(std::make_shared<AnthemGraphNodePort>(port, midiOutputs.size()));
+void AnthemProcessorConfig::addMidiOutput(const std::shared_ptr<AnthemProcessorPortConfig> port) {
+  midiOutputs.push_back(port);
 }
 
-const std::shared_ptr<AnthemGraphNodePort> AnthemProcessorConfig::getControlInput(int index) const {
+const std::shared_ptr<AnthemProcessorPortConfig> AnthemProcessorConfig::getControlInput(int index) const {
   return controlInputs[index];
 }
 
@@ -75,11 +75,11 @@ int AnthemProcessorConfig::getNumControlInputs() const {
   return controlInputs.size();
 }
 
-void AnthemProcessorConfig::addControlInput(const AnthemProcessorPortConfig& port) {
-  controlInputs.push_back(std::make_shared<AnthemGraphNodePort>(port, controlInputs.size()));
+void AnthemProcessorConfig::addControlInput(const std::shared_ptr<AnthemProcessorPortConfig> port) {
+  controlInputs.push_back(port);
 }
 
-const std::shared_ptr<AnthemGraphNodePort> AnthemProcessorConfig::getControlOutput(int index) const {
+const std::shared_ptr<AnthemProcessorPortConfig> AnthemProcessorConfig::getControlOutput(int index) const {
   return controlOutputs[index];
 }
 
@@ -87,6 +87,6 @@ int AnthemProcessorConfig::getNumControlOutputs() const {
   return controlOutputs.size();
 }
 
-void AnthemProcessorConfig::addControlOutput(const AnthemProcessorPortConfig& port) {
-  controlOutputs.push_back(std::make_shared<AnthemGraphNodePort>(port, controlOutputs.size()));
+void AnthemProcessorConfig::addControlOutput(const std::shared_ptr<AnthemProcessorPortConfig> port) {
+  controlOutputs.push_back(port);
 }

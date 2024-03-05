@@ -51,12 +51,17 @@ public:
   void assignEdges(std::map<AnthemGraphNode*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode) {
     for (auto& port : node->audioInputs) {
       for (auto connection : port->connections) {
+        auto sourceNodeContext = nodeToCompilerNode[connection->source.lock()->node.lock().get()]->context;
+        auto destinationNodeContext = nodeToCompilerNode[connection->destination.lock()->node.lock().get()]->context;
+        auto portType = connection->source.lock()->config->portType;
+
         auto edge = std::make_shared<AnthemGraphCompilerEdge>(
           connection,
-          nodeToCompilerNode[connection->source.lock()->node.lock().get()]->context,
-          nodeToCompilerNode[connection->destination.lock()->node.lock().get()]->context,
-          connection->source.lock()->config.portType
+          sourceNodeContext,
+          destinationNodeContext,
+          portType
         );
+
         inputEdges.push_back(edge);
       }
     }
@@ -65,12 +70,17 @@ public:
 
     for (auto& port : node->audioOutputs) {
       for (auto connection : port->connections) {
+        auto sourceNodeContext = nodeToCompilerNode[connection->source.lock()->node.lock().get()]->context;
+        auto destinationNodeContext = nodeToCompilerNode[connection->destination.lock()->node.lock().get()]->context;
+        auto portType = connection->source.lock()->config->portType;
+
         auto edge = std::make_shared<AnthemGraphCompilerEdge>(
           connection,
-          nodeToCompilerNode[connection->source.lock()->node.lock().get()]->context,
-          nodeToCompilerNode[connection->destination.lock()->node.lock().get()]->context,
-          connection->source.lock()->config.portType
+          sourceNodeContext,
+          destinationNodeContext,
+          portType
         );
+
         outputEdges.push_back(edge);
       }
     }
