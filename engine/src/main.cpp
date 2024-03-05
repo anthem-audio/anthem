@@ -266,6 +266,10 @@ public:
 
     std::cout << anthemSplash;
 
+    // for (int i = 0; i < 100000; i++) {
+    //   std::cout << i << std::endl;
+    // }
+
     std::cout << "Starting Anthem engine..." << std::endl;
     anthem = new Anthem();
 
