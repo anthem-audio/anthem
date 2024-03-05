@@ -30,7 +30,7 @@ ToneGeneratorNode::ToneGeneratorNode() : AnthemProcessor("ToneGeneratorNode") {
   sampleRate = 44100.0; // TODO: This should be dynamic - in the context maybe?
 
   config.addAudioOutput(
-    AnthemProcessorPortConfig(AnthemGraphDataType::Audio, "input")
+    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Audio, "input")
   );
 }
 
@@ -51,8 +51,4 @@ void ToneGeneratorNode::process(AnthemProcessContext& context, int numSamples) {
 
     currentSample++;
   }
-}
-
-std::shared_ptr<AnthemGraphNodePort> ToneGeneratorNode::getOutput() {
-  return config.getAudioOutput(0);
 }

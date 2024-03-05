@@ -33,7 +33,9 @@ public:
   MasterOutputNode(int numChannels, int bufferSize);
   ~MasterOutputNode() override;
 
-  std::shared_ptr<AnthemGraphNodePort> getInput();
+  int getInputPortIndex() {
+    return 0;
+  }
 
   void process(AnthemProcessContext& context, int numSamples) override;
 };

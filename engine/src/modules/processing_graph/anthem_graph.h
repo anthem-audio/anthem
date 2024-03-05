@@ -42,7 +42,7 @@ public:
   AnthemGraph();
 
   // Allows a node to be added to the graph.
-  std::shared_ptr<AnthemGraphNode> addNode(std::unique_ptr<AnthemProcessor> processor);
+  std::shared_ptr<AnthemGraphNode> addNode(std::shared_ptr<AnthemProcessor> processor);
 
   // TODO: Add a way to remove nodes
 
@@ -56,4 +56,8 @@ public:
   AnthemGraphProcessor& getProcessor() {
     return *graphProcessor;
   }
+
+  void compile();
+
+  void debugPrint();
 };

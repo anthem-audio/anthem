@@ -33,12 +33,8 @@ public:
   std::vector<std::shared_ptr<AnthemGraphNodePort>> audioInputs;
   std::vector<std::shared_ptr<AnthemGraphNodePort>> audioOutputs;
 
-  AnthemGraphNode(std::shared_ptr<AnthemProcessor> processor) : processor(processor) {}
+  AnthemGraphNode(std::shared_ptr<AnthemProcessor> processor);
   
   // Shallow copy constructor
   AnthemGraphNode(const AnthemGraphNode& other);
-
-  void addAudioInput(std::shared_ptr<AnthemGraphNodePort> input);
-
-  void addAudioOutput(std::shared_ptr<AnthemGraphNodePort> output);
 };

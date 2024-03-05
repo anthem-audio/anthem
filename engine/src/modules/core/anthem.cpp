@@ -27,17 +27,21 @@ Anthem::Anthem() {
 }
 
 void Anthem::init() {
-  auto masterOutputProcessor = std::make_unique<MasterOutputNode>(2, MAX_AUDIO_BUFFER_SIZE);
+  auto masterOutputProcessor = std::make_shared<MasterOutputNode>(2, MAX_AUDIO_BUFFER_SIZE);
   this->masterOutputNode = processingGraph->addNode(std::move(masterOutputProcessor));
   audioCallback = std::make_unique<AnthemAudioCallback>(processingGraph, this->masterOutputNode);
 
-  auto toneGeneratorProcessor = std::make_unique<ToneGeneratorNode>();
+  auto toneGeneratorProcessor = std::make_shared<ToneGeneratorNode>();
   auto toneGeneratorNode = processingGraph->addNode(std::move(toneGeneratorProcessor));
 
   processingGraph->connectNodes(
-    std::dynamic_pointer_cast<ToneGeneratorNode>(toneGeneratorNode->processor)->getOutput(),
-    std::dynamic_pointer_cast<MasterOutputNode>(masterOutputNode->processor)->getInput()
+    toneGeneratorNode->audioOutputs[toneGeneratorProcessor->getOutputPortIndex()],
+    masterOutputNode->audioInputs[masterOutputProcessor->getInputPortIndex()]
   );
+
+  processingGraph->compile();
+
+  processingGraph->debugPrint();
 
   // Initialize the audio device manager with 2 input and 2 output channels
   this->deviceManager.initialiseWithDefaultDevices(2, 2);

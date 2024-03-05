@@ -34,7 +34,7 @@ void AnthemGraphTopology::addConnection(
   std::shared_ptr<AnthemGraphNodePort> destination
 ) {
   // Check that source and destination have the same node type
-  if (source->config.portType != destination->config.portType) {
+  if (source->config->portType != destination->config->portType) {
     throw std::runtime_error(
       "AnthemGraphTopology::addConnection(): Source and destination nodes must have the same type"
     );
@@ -45,7 +45,7 @@ void AnthemGraphTopology::addConnection(
     destination
   );
 
-  auto type = source->config.portType;
+  auto type = source->config->portType;
 
   switch(type) {
     case AnthemGraphDataType::Audio:
@@ -75,4 +75,8 @@ std::unique_ptr<AnthemGraphTopology> AnthemGraphTopology::clone() {
 
 std::vector<std::shared_ptr<AnthemGraphNode>>& AnthemGraphTopology::getNodes() {
   return nodes;
+}
+
+std::vector<std::shared_ptr<AnthemGraphNodeConnection>>& AnthemGraphTopology::getConnections() {
+  return audioPortConnections;
 }

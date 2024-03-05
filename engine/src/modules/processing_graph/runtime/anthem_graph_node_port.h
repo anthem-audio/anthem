@@ -40,7 +40,7 @@ public:
   std::vector<std::shared_ptr<AnthemGraphNodeConnection>> connections;
 
   // The configuration of this port.
-  AnthemProcessorPortConfig config;
+  std::shared_ptr<AnthemProcessorPortConfig> config;
 
-  AnthemGraphNodePort(AnthemProcessorPortConfig config, int index) : config(config), index(index) {} 
+  AnthemGraphNodePort(std::shared_ptr<AnthemProcessorPortConfig> config, int index) : config(config), index(index) {} 
 };
