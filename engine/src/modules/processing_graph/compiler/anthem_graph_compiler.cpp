@@ -141,5 +141,5 @@ std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(Anthe
     }
   }
 
-  return std::make_shared<AnthemGraphCompilationResult>();
+  return result;
 }
