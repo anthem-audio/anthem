@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,19 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#pragma once
+#include "process_node_action.h"
 
-#include <juce_gui_basics/juce_gui_basics.h>
-#include <juce_audio_processors/juce_audio_processors.h>
+#include <iostream>
 
-class PluginWindow : public juce::DocumentWindow
-{
-public:
-  PluginWindow(juce::AudioProcessor* processor);
-  ~PluginWindow();
+void ProcessNodeAction::execute(int numSamples) {
+  this->node->processor->process(*this->context, numSamples);
+}
 
-  void closeButtonPressed() override;
-
-private:
-  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginWindow)
-};
+void ProcessNodeAction::debugPrint() {
+  std::cout << "ProcessNodeAction: " << this->node->processor->config.getName() << std::endl;
+}

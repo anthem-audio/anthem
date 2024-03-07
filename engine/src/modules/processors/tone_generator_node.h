@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,17 +19,24 @@
 
 #pragma once
 
-#include <juce_gui_basics/juce_gui_basics.h>
-#include <juce_audio_processors/juce_audio_processors.h>
+#include <memory>
 
-class PluginWindow : public juce::DocumentWindow
-{
-public:
-  PluginWindow(juce::AudioProcessor* processor);
-  ~PluginWindow();
+#include "anthem_processor.h"
+#include "anthem_graph_node_port.h"
 
-  void closeButtonPressed() override;
-
+class ToneGeneratorNode : public AnthemProcessor {
 private:
-  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginWindow)
+  int currentSample;
+  float amplitude;
+  float frequency;
+  double sampleRate;
+public:
+  ToneGeneratorNode();
+  ~ToneGeneratorNode() override;
+
+  int getOutputPortIndex() {
+    return 0;
+  }
+
+  void process(AnthemProcessContext& context, int numSamples) override;
 };
