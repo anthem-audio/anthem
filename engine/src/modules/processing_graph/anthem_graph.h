@@ -41,6 +41,10 @@ private:
 public:
   AnthemGraph();
 
+  AnthemGraphTopology& getTopology() {
+    return *topology;
+  }
+
   // Allows a node to be added to the graph.
   std::shared_ptr<AnthemGraphNode> addNode(std::shared_ptr<AnthemProcessor> processor);
 
