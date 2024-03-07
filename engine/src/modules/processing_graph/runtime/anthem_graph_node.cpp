@@ -24,22 +24,6 @@ AnthemGraphNode::AnthemGraphNode(std::shared_ptr<AnthemProcessor> processor) : p
   audioOutputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
 }
 
-AnthemGraphNode::AnthemGraphNode(const AnthemGraphNode& other) {
-  processor = other.processor;
-
-  audioInputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
-
-  for (auto& input : other.audioInputs) {
-    audioInputs.push_back(input);
-  }
-
-  audioOutputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
-
-  for (auto& output : other.audioOutputs) {
-    audioOutputs.push_back(output);
-  }
-}
-
 std::shared_ptr<AnthemGraphNode> AnthemGraphNode::create(std::shared_ptr<AnthemProcessor> processor) {
   auto node = std::make_shared<AnthemGraphNode>(processor);
   node->initializePorts();
