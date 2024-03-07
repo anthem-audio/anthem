@@ -26,15 +26,19 @@
 #include "anthem_graph_node_port.h"
 
 // Represents a node in the processing graph.
-class AnthemGraphNode {
+class AnthemGraphNode : public std::enable_shared_from_this<AnthemGraphNode> {
 public:
   std::shared_ptr<AnthemProcessor> processor;
 
   std::vector<std::shared_ptr<AnthemGraphNodePort>> audioInputs;
   std::vector<std::shared_ptr<AnthemGraphNodePort>> audioOutputs;
 
-  AnthemGraphNode(std::shared_ptr<AnthemProcessor> processor);
-  
+  static std::shared_ptr<AnthemGraphNode> create(std::shared_ptr<AnthemProcessor> processor);
+
   // Shallow copy constructor
   AnthemGraphNode(const AnthemGraphNode& other);
+
+  AnthemGraphNode(std::shared_ptr<AnthemProcessor> processor);
+
+  void initializePorts();
 };
