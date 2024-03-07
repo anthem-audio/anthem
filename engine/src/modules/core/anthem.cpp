@@ -19,6 +19,7 @@
 
 #include "anthem.h"
 #include "tone_generator_node.h"
+#include "simple_volume_lfo_node.h"
 
 Anthem::Anthem() {
   processingGraph = std::make_shared<AnthemGraph>();
@@ -28,14 +29,22 @@ Anthem::Anthem() {
 
 void Anthem::init() {
   auto masterOutputProcessor = std::make_shared<MasterOutputNode>(2, MAX_AUDIO_BUFFER_SIZE);
-  this->masterOutputNode = processingGraph->addNode(std::move(masterOutputProcessor));
+  this->masterOutputNode = processingGraph->addNode(masterOutputProcessor);
   audioCallback = std::make_unique<AnthemAudioCallback>(processingGraph, this->masterOutputNode);
 
   auto toneGeneratorProcessor = std::make_shared<ToneGeneratorNode>();
-  auto toneGeneratorNode = processingGraph->addNode(std::move(toneGeneratorProcessor));
+  auto toneGeneratorNode = processingGraph->addNode(toneGeneratorProcessor);
+
+  auto simpleVolumeLfoProcessor = std::make_shared<SimpleVolumeLfoNode>();
+  auto simpleVolumeLfoNode = processingGraph->addNode(simpleVolumeLfoProcessor);
 
   processingGraph->connectNodes(
     toneGeneratorNode->audioOutputs[toneGeneratorProcessor->getOutputPortIndex()],
+    simpleVolumeLfoNode->audioInputs[simpleVolumeLfoProcessor->getInputPortIndex()]
+  );
+
+  processingGraph->connectNodes(
+    simpleVolumeLfoNode->audioOutputs[simpleVolumeLfoProcessor->getOutputPortIndex()],
     masterOutputNode->audioInputs[masterOutputProcessor->getInputPortIndex()]
   );
 

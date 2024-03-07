@@ -266,9 +266,8 @@ public:
 
     std::cout << anthemSplash;
 
-    // for (int i = 0; i < 100000; i++) {
-    //   std::cout << i << std::endl;
-    // }
+    std::cout << "If you want to attach a debugger, you can do it now. Press enter to continue." << std::endl;
+    std::cin.get();
 
     std::cout << "Starting Anthem engine..." << std::endl;
     anthem = new Anthem();
