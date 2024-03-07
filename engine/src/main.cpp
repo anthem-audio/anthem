@@ -119,7 +119,7 @@ public:
       case Command_AddArrangement:
       case Command_AddPlugin:
       case Command_DeleteArrangement:
-      case Command_GetPlugins:
+      case Command_GetProcessors:
       case Command_LiveNoteOn:
       case Command_LiveNoteOff:
         response = handleProjectCommand(request, builder, anthem);

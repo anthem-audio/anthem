@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -34,7 +34,7 @@ union Command {
   AddArrangement,
   AddPlugin,
   DeleteArrangement,
-  GetPlugins,
+  GetProcessors,
 
   // ??
   LiveNoteOn,
@@ -49,7 +49,7 @@ union ReturnValue {
   // Project commands
   AddArrangementResponse,
   AddPluginResponse,
-  GetPluginsResponse,
+  GetProcessorsResponse,
 }
 
 table Request {

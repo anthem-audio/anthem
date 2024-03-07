@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -34,9 +34,22 @@ table AddPluginResponse {
   success: bool;
 }
 
-table GetPlugins {}
-table GetPluginsResponse {
-  plugins: [string];
+// Plugin category enum
+enum PluginCategory: short {
+  Effect,
+  Instrument,
+  Unknown
+}
+
+table PluginDescription {
+  id: string;
+  name: string;
+  category: PluginCategory;
+}
+
+table GetProcessors {}
+table GetProcessorsResponse {
+  plugins: [PluginDescription];
 }
 
 // Maybe these should be moved out into another file
