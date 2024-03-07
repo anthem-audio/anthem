@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -62,19 +62,19 @@ class Project {
     _engine._request(id, request);
   }
 
-  Future<List<String>> getPlugins() {
-    final completer = Completer<List<String>>();
+  Future<List<PluginDescription>> getPlugins() {
+    final completer = Completer<List<PluginDescription>>();
 
     final id = _engine._getRequestId();
 
     final request = RequestObjectBuilder(
       id: id,
-      commandType: CommandTypeId.GetPlugins,
-      command: GetPluginsObjectBuilder(),
+      commandType: CommandTypeId.GetProcessors,
+      command: GetProcessorsObjectBuilder(),
     );
 
     _engine._request(id, request, onResponse: (response) {
-      final inner = response.returnValue as GetPluginsResponse;
+      final inner = response.returnValue as GetProcessorsResponse;
       completer.complete(inner.plugins!);
     });
 

@@ -75,34 +75,32 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
         return std::optional(message);
       }
     }
-    case Command_GetPlugins: {
-      // TODO: Handle correctly
-      std::cout << "Received unhandled GetPlugins command" << std::endl;
+    case Command_GetProcessors: {
+      std::vector<flatbuffers::Offset<PluginDescription>> fbPluginList;
 
-      // auto& pluginManager = anthem->engine->getPluginManager();
+      // TODO: This should probably be stored somewhere for real, so we don't
+      // have to manage it here
+      std::vector<std::tuple<std::string, std::string, PluginCategory>> plugins = {
+        {"SimpleVolumeLfo", "Simple Volume LFO", PluginCategory::PluginCategory_Effect},
+        {"ToneGenerator", "Sine Tone Generator", PluginCategory::PluginCategory_Instrument},
+        // {"3", "Plugin3", PluginCategory::PluginCategory_Unknown}
+      };
 
-      // auto plugins = pluginManager.knownPluginList.getTypes();
+      for (const auto& plugin : plugins) {
+        auto id = builder.CreateString(std::get<0>(plugin));
+        auto name = builder.CreateString(std::get<1>(plugin));
+        auto category = std::get<2>(plugin);
 
-      std::vector<flatbuffers::Offset<flatbuffers::String>> fbPluginList;
-
-      // if (plugins.size() == 0) {
-      //   fbPluginList.push_back(builder.CreateString("(:"));
-      // } else {
-      //   for (auto plugin : plugins) {
-      //     fbPluginList.push_back(
-      //       builder.CreateString(
-      //         plugin.name.toStdString() + " - " + plugin.descriptiveName.toStdString()
-      //       )
-      //     );
-      //   }
-      // }
+        auto pluginDescription = CreatePluginDescription(builder, id, name, category);
+        fbPluginList.push_back(pluginDescription);
+      }
 
       auto pluginListOffset = builder.CreateVector(fbPluginList);
 
-      auto response = CreateGetPluginsResponse(builder, pluginListOffset);
+      auto response = CreateGetProcessorsResponse(builder, pluginListOffset);
       auto responseOffset = response.Union();
 
-      auto message = CreateResponse(builder, request->id(), ReturnValue_GetPluginsResponse, responseOffset);
+      auto message = CreateResponse(builder, request->id(), ReturnValue_GetProcessorsResponse, responseOffset);
 
       return std::optional(message);
     }
