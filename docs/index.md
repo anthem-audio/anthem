@@ -2,16 +2,16 @@
 
 Anthem is a modern, multi-workflow digital audio workstation (DAW) designed for creating and editing audio content. It is built to be compatible with Windows, macOS, and Linux.
 
-Anthem is developed and maintained by a group of volunteers, with a focus on maintainability, beautiful UI design, and strong usability. This has influenced several key architectural decisions, including:
+Anthem is developed and maintained by volunteers, with a focus on maintainability, beautiful UI design, and strong usability. This has influenced several key architectural decisions, including:
 
 - **UI with Flutter**: Anthem's UI is built using Flutter, which provides:
   - An effective abstraction for building UIs
   - A time-saving developer experience, with features like hot-reload that improve iteration time
   - A flexible and performant language (Dart) that doesn't get in the way when trying to build complex UIs
-  - A mature platform that allows us to focus on solving the problems we care about, instead of building and/or fixing the tools we're using
+  - A mature platform that allows us to focus on solving the problems we care about, instead of building or fixing the tools we're using
   - A rendering system that is fast-by-default, and tools for further optimizing performance
 
-- **Tracktion Engine**: The Anthem engine uses Tracktion Engine at its core, enabling the Anthem project to focus on UI design and usability without needing to reinvent an audio engine. Anthem is designed with a strong separation between the UI and the engine, and the engine can be replaced in the future if that serves a design goal. However, it doesn't serve the current project goals to reinvent the wheel here, and Tracktion Engine provides a number of advanced features, such as tempo automation and audio time stretching.
+- **Audio engine with JUCE**: The audio engine is based on JUCE, which provides a mature API with platform integration for authoring audio software.
 
 ## Getting Started
 
@@ -29,7 +29,7 @@ Anthem is developed with cross-platform technologies, and is designed to run on 
 
 #### Quick reloading of engine executable
 
-When iterating on the engine, you will need to recompile it and load it into the UI. Ordinarily this would require stopping the UI, compliing the engine, then re-compiling the UI. This is because compiling the UI causes the new engine executable to be bundled with the UI.
+In order to see changes when iterating on the engine, you will need to recompile it and load it into the UI. Ordinarily this would require stopping the UI, compiling the engine, then re-compiling the UI.
 
 However, there's a quicker way. By editing [engine_connector.dart](../lib/engine_api/engine_connector.dart), you can override the location where Anthem looks for the Engine executable. By hard-coding the `enginePathOverride` variable to the full path of the executable from your engine build, you can speed up the process. After overriding this variable locally, you can now simply stop the engine from within the UI (by clicking the button at the top-left of the screen with the Anthem icon), build the engine, then start the engine again by clicking the same button.
 

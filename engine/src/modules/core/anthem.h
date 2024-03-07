@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,17 +19,25 @@
 
 #pragma once
 
-#include <juce_gui_basics/juce_gui_basics.h>
-#include <juce_audio_processors/juce_audio_processors.h>
+#include <memory>
+#include <iostream>
 
-class PluginWindow : public juce::DocumentWindow
-{
-public:
-  PluginWindow(juce::AudioProcessor* processor);
-  ~PluginWindow();
+#include <juce_audio_devices/juce_audio_devices.h>
 
-  void closeButtonPressed() override;
+#include "anthem_audio_callback.h"
+#include "anthem_graph.h"
+#include "master_output_node.h"
 
+class Anthem {
 private:
-  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginWindow)
+  juce::AudioDeviceManager deviceManager;
+  std::unique_ptr<AnthemAudioCallback> audioCallback;
+
+  // Initializes the engine
+  void init();
+public:
+  std::shared_ptr<AnthemGraph> processingGraph;
+  std::shared_ptr<AnthemGraphNode> masterOutputNode;
+
+  Anthem();
 };

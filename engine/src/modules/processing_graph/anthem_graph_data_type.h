@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,17 +19,6 @@
 
 #pragma once
 
-#include <juce_gui_basics/juce_gui_basics.h>
-#include <juce_audio_processors/juce_audio_processors.h>
-
-class PluginWindow : public juce::DocumentWindow
-{
-public:
-  PluginWindow(juce::AudioProcessor* processor);
-  ~PluginWindow();
-
-  void closeButtonPressed() override;
-
-private:
-  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginWindow)
+enum AnthemGraphDataType {
+  Audio, Midi, Control
 };

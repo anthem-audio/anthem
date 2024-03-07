@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,17 +19,18 @@
 
 #pragma once
 
-#include <juce_gui_basics/juce_gui_basics.h>
-#include <juce_audio_processors/juce_audio_processors.h>
+#include <memory>
 
-class PluginWindow : public juce::DocumentWindow
-{
+class AnthemGraphNodePort;
+
+// Represents a connection between two ports in the node graph
+class AnthemGraphNodeConnection {
 public:
-  PluginWindow(juce::AudioProcessor* processor);
-  ~PluginWindow();
+  std::weak_ptr<AnthemGraphNodePort> source;
+  std::weak_ptr<AnthemGraphNodePort> destination;
 
-  void closeButtonPressed() override;
-
-private:
-  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginWindow)
+  AnthemGraphNodeConnection(
+    std::weak_ptr<AnthemGraphNodePort> source,
+    std::weak_ptr<AnthemGraphNodePort> destination
+  ) : source(source), destination(destination) {}
 };

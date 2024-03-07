@@ -37,10 +37,10 @@ struct EngineConnection {
     // ID of the connection
     int64_t id;
 
-    // Message queue for sending mesasges to the engine
+    // Message queue for sending messages to the engine
     std::unique_ptr<boost::interprocess::message_queue> mqToEngine;
 
-    // Message queue for receiving mesasges from the engine
+    // Message queue for receiving messages from the engine
     std::unique_ptr<boost::interprocess::message_queue> mqFromEngine;
 
     // Buffer for receiving messages from the server process
