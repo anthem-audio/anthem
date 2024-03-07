@@ -30,7 +30,6 @@ AnthemGraph::AnthemGraph() {
 std::shared_ptr<AnthemGraphNode> AnthemGraph::addNode(std::shared_ptr<AnthemProcessor> processor) {
   auto node = AnthemGraphNode::create(processor);
   topology->addNode(node);
-  sendCompiledGraphToProcessor(compiler->compile(*topology));
   return node;
 }
 
