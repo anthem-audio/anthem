@@ -31,7 +31,7 @@ class AnthemGraphNode;
 class AnthemGraphNodePort {
 public:
   // The node that this port is on.
-  std::weak_ptr<AnthemGraphNode> node; // TODO
+  std::weak_ptr<AnthemGraphNode> node;
 
   // The index of this port on the node.
   int index;
@@ -42,5 +42,7 @@ public:
   // The configuration of this port.
   std::shared_ptr<AnthemProcessorPortConfig> config;
 
-  AnthemGraphNodePort(std::shared_ptr<AnthemProcessorPortConfig> config, int index) : config(config), index(index) {} 
+  AnthemGraphNodePort(std::shared_ptr<AnthemGraphNode> node, std::shared_ptr<AnthemProcessorPortConfig> config, int index) : config(config), index(index) {
+    this->node = std::weak_ptr<AnthemGraphNode>(node);
+  } 
 };
