@@ -73,20 +73,20 @@ private:
     std::vector<std::shared_ptr<AnthemGraphCompilerEdge>>& edgeContainer,
     std::shared_ptr<AnthemGraphNodeConnection> connection
   ) {
-        auto sourceNodeContext = nodeToCompilerNode[connection->source.lock()->node.lock().get()]->context;
-        auto destinationNodeContext = nodeToCompilerNode[connection->destination.lock()->node.lock().get()]->context;
-        auto portType = connection->source.lock()->config->portType;
+    auto sourceNodeContext = nodeToCompilerNode[connection->source.lock()->node.lock().get()]->context;
+    auto destinationNodeContext = nodeToCompilerNode[connection->destination.lock()->node.lock().get()]->context;
+    auto portType = connection->source.lock()->config->portType;
 
     // If we've already created a compiler edge for this connection, use it
     if (connectionToCompilerEdge.find(connection.get()) != connectionToCompilerEdge.end()) {
       edgeContainer.push_back(connectionToCompilerEdge[connection.get()]);
     } else {
-        auto edge = std::make_shared<AnthemGraphCompilerEdge>(
-          connection,
-          sourceNodeContext,
-          destinationNodeContext,
-          portType
-        );
+      auto edge = std::make_shared<AnthemGraphCompilerEdge>(
+        connection,
+        sourceNodeContext,
+        destinationNodeContext,
+        portType
+      );
 
       connectionToCompilerEdge[connection.get()] = edge;
 
