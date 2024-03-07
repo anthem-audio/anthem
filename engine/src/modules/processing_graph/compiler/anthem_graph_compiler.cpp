@@ -30,6 +30,7 @@ std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(Anthe
   std::set<AnthemGraphCompilerNode*> nodesToProcess;
 
   std::map<AnthemGraphNode*, std::shared_ptr<AnthemGraphCompilerNode>> nodeToCompilerNode;
+  std::map<AnthemGraphNodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>> connectionToCompilerEdge;
 
   for (auto& node : topology.getNodes()) {
     auto context = std::make_shared<AnthemProcessContext>(node);
@@ -42,7 +43,7 @@ std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(Anthe
   }
 
   for (auto& node : vectorOfNodesToProcess) {
-    node->assignEdges(nodeToCompilerNode);
+    node->assignEdges(nodeToCompilerNode, connectionToCompilerEdge);
   }
 
   std::shared_ptr<std::vector<std::shared_ptr<AnthemGraphCompilerAction>>> actions = std::make_shared<std::vector<std::shared_ptr<AnthemGraphCompilerAction>>>();
@@ -68,7 +69,7 @@ std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(Anthe
 
   while (!nodesToProcess.empty()) {
     // This will make it easier to track down infinite loops
-    jassert(lastSize > nodesToProcess.size());
+    jassert(lastSize != nodesToProcess.size());
     lastSize = nodesToProcess.size();
 
     std::vector<AnthemGraphCompilerNode*> nodesToRemoveFromProcessing;
