@@ -26,5 +26,5 @@ void ProcessNodeAction::execute(int numSamples) {
 }
 
 void ProcessNodeAction::debugPrint() {
-  std::cout << "ProcessNodeAction: " << this->node->processor->config.getName() << std::endl;
+  std::cout << "ProcessNodeAction: " << this->node->processor->config.getId() << std::endl;
 }

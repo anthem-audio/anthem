@@ -41,7 +41,7 @@ class Project {
 
     _engine._request(id, request, onResponse: (response) {
       final inner = response.returnValue as AddArrangementResponse;
-      completer.complete(inner.editPointer);
+      completer.complete(inner.editId);
     });
 
     return completer.future;
@@ -50,13 +50,13 @@ class Project {
   /// Removes an arrangement with the given `Edit` pointer.
   ///
   /// See [addArrangement].
-  void deleteArrangement(int editPointer) {
+  void deleteArrangement(int editId) {
     final id = _engine._getRequestId();
 
     final request = RequestObjectBuilder(
       id: id,
       commandType: CommandTypeId.DeleteArrangement,
-      command: DeleteArrangementObjectBuilder(editPointer: editPointer),
+      command: DeleteArrangementObjectBuilder(editId: editId),
     );
 
     _engine._request(id, request);
@@ -82,14 +82,14 @@ class Project {
   }
 
   /// Adds the plugin at the given path.
-  Future<void> addPlugin(String processorPath) {
+  Future<void> addPlugin(String processorId) {
     final id = _engine._getRequestId();
 
     final request = RequestObjectBuilder(
       id: id,
       commandType: CommandTypeId.AddProcessor,
       command: AddProcessorObjectBuilder(
-        processorUri: processorPath,
+        id: processorId,
       ),
     );
 
@@ -111,7 +111,7 @@ class Project {
     int channel = 1,
     required int note,
     double velocity = 0.5,
-    required int editPointer,
+    required int editId,
   }) {
     final id = _engine._getRequestId();
 
@@ -119,7 +119,7 @@ class Project {
       id: id,
       commandType: CommandTypeId.LiveNoteOn,
       command: LiveNoteOnObjectBuilder(
-        editPointer: editPointer,
+        editId: editId,
         channel: channel,
         note: note,
         velocity: velocity,
@@ -132,7 +132,7 @@ class Project {
   void noteOff({
     int channel = 1,
     required int note,
-    required int editPointer,
+    required int editId,
   }) {
     final id = _engine._getRequestId();
 
@@ -140,7 +140,7 @@ class Project {
       id: id,
       commandType: CommandTypeId.LiveNoteOff,
       command: LiveNoteOffObjectBuilder(
-        editPointer: editPointer,
+        editId: editId,
         channel: channel,
         note: note,
       ),

@@ -117,9 +117,11 @@ public:
         break;
       }
       case Command_AddArrangement:
+      case Command_GetMasterOutputNodePointer:
       case Command_AddProcessor:
       case Command_DeleteArrangement:
       case Command_GetProcessors:
+      case Command_CompileProcessingGraph:
       case Command_LiveNoteOn:
       case Command_LiveNoteOff:
         response = handleProjectCommand(request, builder, anthem);

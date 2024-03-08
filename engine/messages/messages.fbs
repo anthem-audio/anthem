@@ -31,10 +31,16 @@ union Command {
   Heartbeat,
 
   // Project commands
+
+  GetMasterOutputNodePointer,
+
   AddArrangement,
-  AddProcessor,
   DeleteArrangement,
+
+  AddProcessor,
   GetProcessors,
+
+  CompileProcessingGraph,
 
   // ??
   LiveNoteOn,
@@ -47,6 +53,7 @@ union ReturnValue {
   HeartbeatReply,
 
   // Project commands
+  GetMasterOutputNodePointerResponse,
   AddArrangementResponse,
   AddProcessorResponse,
   GetProcessorsResponse,
