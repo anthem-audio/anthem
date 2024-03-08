@@ -26,30 +26,29 @@ table DeleteArrangement {
   edit_pointer: ulong;
 }
 
-table AddPlugin {
-  plugin_uri: string;
-  edit_pointer: ulong;
+table AddProcessor {
+  processor_uri: string;
 }
-table AddPluginResponse {
+table AddProcessorResponse {
   success: bool;
 }
 
-// Plugin category enum
-enum PluginCategory: short {
+// Processor category enum
+enum ProcessorCategory: short {
   Effect,
   Instrument,
   Unknown
 }
 
-table PluginDescription {
+table ProcessorDescription {
   id: string;
   name: string;
-  category: PluginCategory;
+  category: ProcessorCategory;
 }
 
 table GetProcessors {}
 table GetProcessorsResponse {
-  plugins: [PluginDescription];
+  processors: [ProcessorDescription];
 }
 
 // Maybe these should be moved out into another file

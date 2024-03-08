@@ -33,4 +33,10 @@ public:
     std::weak_ptr<AnthemGraphNodePort> source,
     std::weak_ptr<AnthemGraphNodePort> destination
   ) : source(source), destination(destination) {}
+
+  // Delete the copy constructor
+  AnthemGraphNodeConnection(const AnthemGraphNodeConnection&) = delete;
+
+  // Delete the copy assignment operator
+  AnthemGraphNodeConnection& operator=(const AnthemGraphNodeConnection&) = delete;
 };

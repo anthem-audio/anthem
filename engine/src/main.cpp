@@ -117,7 +117,7 @@ public:
         break;
       }
       case Command_AddArrangement:
-      case Command_AddPlugin:
+      case Command_AddProcessor:
       case Command_DeleteArrangement:
       case Command_GetProcessors:
       case Command_LiveNoteOn:

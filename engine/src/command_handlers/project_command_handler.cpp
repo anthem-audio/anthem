@@ -53,51 +53,51 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
 
       return std::nullopt;
     }
-    case Command_AddPlugin: {
+    case Command_AddProcessor: {
       // TODO: Handle correctly
-      std::cout << "Received unhandled AddPlugin command" << std::endl;
+      std::cout << "Received unhandled AddProcessor command" << std::endl;
 
       bool success = false;
 
       // Error response
       if (!success) {
-        auto errorResponse = CreateAddPluginResponse(builder, false);
+        auto errorResponse = CreateAddProcessorResponse(builder, false);
         auto errorResponseOffset = errorResponse.Union();
-        auto errorResponseMessage = CreateResponse(builder, request->id(), ReturnValue_AddPluginResponse, errorResponseOffset);
+        auto errorResponseMessage = CreateResponse(builder, request->id(), ReturnValue_AddProcessorResponse, errorResponseOffset);
 
         return std::optional(errorResponseMessage);
       } else {
-        auto response = CreateAddPluginResponse(builder, true);
+        auto response = CreateAddProcessorResponse(builder, true);
         auto responseOffset = response.Union();
 
-        auto message = CreateResponse(builder, request->id(), ReturnValue_AddPluginResponse, responseOffset);
+        auto message = CreateResponse(builder, request->id(), ReturnValue_AddProcessorResponse, responseOffset);
 
         return std::optional(message);
       }
     }
     case Command_GetProcessors: {
-      std::vector<flatbuffers::Offset<PluginDescription>> fbPluginList;
+      std::vector<flatbuffers::Offset<ProcessorDescription>> fbProcessorList;
 
       // TODO: This should probably be stored somewhere for real, so we don't
       // have to manage it here
-      std::vector<std::tuple<std::string, std::string, PluginCategory>> plugins = {
-        {"SimpleVolumeLfo", "Simple Volume LFO", PluginCategory::PluginCategory_Effect},
-        {"ToneGenerator", "Sine Tone Generator", PluginCategory::PluginCategory_Instrument},
-        // {"3", "Plugin3", PluginCategory::PluginCategory_Unknown}
+      std::vector<std::tuple<std::string, std::string, ProcessorCategory>> processors = {
+        {"SimpleVolumeLfo", "Simple Volume LFO", ProcessorCategory::ProcessorCategory_Effect},
+        {"ToneGenerator", "Sine Tone Generator", ProcessorCategory::ProcessorCategory_Instrument},
+        // {"3", "Processor3", ProcessorCategory::ProcessorCategory_Unknown}
       };
 
-      for (const auto& plugin : plugins) {
-        auto id = builder.CreateString(std::get<0>(plugin));
-        auto name = builder.CreateString(std::get<1>(plugin));
-        auto category = std::get<2>(plugin);
+      for (const auto& processor : processors) {
+        auto id = builder.CreateString(std::get<0>(processor));
+        auto name = builder.CreateString(std::get<1>(processor));
+        auto category = std::get<2>(processor);
 
-        auto pluginDescription = CreatePluginDescription(builder, id, name, category);
-        fbPluginList.push_back(pluginDescription);
+        auto processorDescription = CreateProcessorDescription(builder, id, name, category);
+        fbProcessorList.push_back(processorDescription);
       }
 
-      auto pluginListOffset = builder.CreateVector(fbPluginList);
+      auto processorListOffset = builder.CreateVector(fbProcessorList);
 
-      auto response = CreateGetProcessorsResponse(builder, pluginListOffset);
+      auto response = CreateGetProcessorsResponse(builder, processorListOffset);
       auto responseOffset = response.Union();
 
       auto message = CreateResponse(builder, request->id(), ReturnValue_GetProcessorsResponse, responseOffset);
