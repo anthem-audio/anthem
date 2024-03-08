@@ -23,10 +23,10 @@
 
 #include "anthem_process_context.h"
 
-ToneGeneratorNode::ToneGeneratorNode() : AnthemProcessor("ToneGeneratorNode") {
+ToneGeneratorNode::ToneGeneratorNode(float frequency) : AnthemProcessor("ToneGeneratorNode") {
   currentSample = 0;
   amplitude = 0.125;
-  frequency = 440.0;
+  this->frequency = frequency;
   sampleRate = 44100.0; // TODO: This should be dynamic - in the context maybe?
 
   config.addAudioOutput(

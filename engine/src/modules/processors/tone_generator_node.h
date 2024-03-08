@@ -31,7 +31,7 @@ private:
   float frequency;
   double sampleRate;
 public:
-  ToneGeneratorNode();
+  ToneGeneratorNode(float frequency);
   ~ToneGeneratorNode() override;
 
   int getOutputPortIndex() {
