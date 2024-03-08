@@ -35,8 +35,11 @@ public:
 
   static std::shared_ptr<AnthemGraphNode> create(std::shared_ptr<AnthemProcessor> processor);
 
-  // Shallow copy constructor
-  AnthemGraphNode(const AnthemGraphNode& other);
+  // Delete the copy constructor
+  AnthemGraphNode(const AnthemGraphNode&) = delete;
+
+  // Delete the copy assignment operator
+  AnthemGraphNode& operator=(const AnthemGraphNode&) = delete;
 
   AnthemGraphNode(std::shared_ptr<AnthemProcessor> processor);
 

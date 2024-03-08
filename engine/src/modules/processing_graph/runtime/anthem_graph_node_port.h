@@ -44,5 +44,11 @@ public:
 
   AnthemGraphNodePort(std::shared_ptr<AnthemGraphNode> node, std::shared_ptr<AnthemProcessorPortConfig> config, int index) : config(config), index(index) {
     this->node = std::weak_ptr<AnthemGraphNode>(node);
-  } 
+  }
+
+  // Delete the copy constructor
+  AnthemGraphNodePort(const AnthemGraphNodePort&) = delete;
+
+  // Delete the copy assignment operator
+  AnthemGraphNodePort& operator=(const AnthemGraphNodePort&) = delete;
 };

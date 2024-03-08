@@ -62,8 +62,8 @@ class Project {
     _engine._request(id, request);
   }
 
-  Future<List<PluginDescription>> getPlugins() {
-    final completer = Completer<List<PluginDescription>>();
+  Future<List<ProcessorDescription>> getProcessors() {
+    final completer = Completer<List<ProcessorDescription>>();
 
     final id = _engine._getRequestId();
 
@@ -75,29 +75,28 @@ class Project {
 
     _engine._request(id, request, onResponse: (response) {
       final inner = response.returnValue as GetProcessorsResponse;
-      completer.complete(inner.plugins!);
+      completer.complete(inner.processors!);
     });
 
     return completer.future;
   }
 
   /// Adds the plugin at the given path.
-  Future<void> addPlugin(String pluginPath, int editPointer) {
+  Future<void> addPlugin(String processorPath) {
     final id = _engine._getRequestId();
 
     final request = RequestObjectBuilder(
       id: id,
-      commandType: CommandTypeId.AddPlugin,
-      command: AddPluginObjectBuilder(
-        pluginUri: pluginPath,
-        editPointer: editPointer,
+      commandType: CommandTypeId.AddProcessor,
+      command: AddProcessorObjectBuilder(
+        processorUri: processorPath,
       ),
     );
 
     final completer = Completer<void>();
 
     _engine._request(id, request, onResponse: (response) {
-      final inner = response.returnValue as AddPluginResponse;
+      final inner = response.returnValue as AddProcessorResponse;
       if (inner.success) {
         completer.complete();
       } else {

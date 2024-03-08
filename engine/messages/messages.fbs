@@ -32,7 +32,7 @@ union Command {
 
   // Project commands
   AddArrangement,
-  AddPlugin,
+  AddProcessor,
   DeleteArrangement,
   GetProcessors,
 
@@ -48,7 +48,7 @@ union ReturnValue {
 
   // Project commands
   AddArrangementResponse,
-  AddPluginResponse,
+  AddProcessorResponse,
   GetProcessorsResponse,
 }
 
