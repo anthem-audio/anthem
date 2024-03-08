@@ -140,13 +140,13 @@ class ProjectController {
       if (event is KeyDownEvent) {
         project.engine.projectApi.noteOn(
           note: note,
-          editPointer: project
+          editId: project
               .song.arrangements[project.song.activeArrangementID]!.editPointer,
         );
       } else {
         project.engine.projectApi.noteOff(
           note: note,
-          editPointer: project
+          editId: project
               .song.arrangements[project.song.activeArrangementID]!.editPointer,
         );
       }

@@ -30,17 +30,22 @@ Anthem::Anthem() {
 
 void Anthem::init() {
   auto masterOutputProcessor = std::make_shared<MasterOutputNode>(2, MAX_AUDIO_BUFFER_SIZE);
-  this->masterOutputNode = processingGraph->addNode(masterOutputProcessor);
+  this->masterOutputNodeId = this->addNode(masterOutputProcessor);
+  this->masterOutputNode = this->getNode(this->masterOutputNodeId);
+
   audioCallback = std::make_unique<AnthemAudioCallback>(processingGraph, this->masterOutputNode);
 
   auto toneGeneratorProcessor1 = std::make_shared<ToneGeneratorNode>(440.0f);
-  auto toneGeneratorNode1 = processingGraph->addNode(toneGeneratorProcessor1);
+  auto toneGeneratorNode1Id = this->addNode(toneGeneratorProcessor1);
+  auto toneGeneratorNode1 = this->getNode(toneGeneratorNode1Id);
 
   auto toneGeneratorProcessor2 = std::make_shared<ToneGeneratorNode>(660.0f);
-  auto toneGeneratorNode2 = processingGraph->addNode(toneGeneratorProcessor2);
+  auto toneGeneratorNode2Id = this->addNode(toneGeneratorProcessor2);
+  auto toneGeneratorNode2 = this->getNode(toneGeneratorNode2Id);
 
   auto simpleVolumeLfoProcessor = std::make_shared<SimpleVolumeLfoNode>();
-  auto simpleVolumeLfoNode = processingGraph->addNode(simpleVolumeLfoProcessor);
+  auto simpleVolumeLfoNodeId = this->addNode(simpleVolumeLfoProcessor);
+  auto simpleVolumeLfoNode = this->getNode(simpleVolumeLfoNodeId);
 
   processingGraph->connectNodes(
     toneGeneratorNode1->audioOutputs[toneGeneratorProcessor1->getOutputPortIndex()],

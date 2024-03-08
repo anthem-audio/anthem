@@ -17,17 +17,18 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "zero_input_buffers_action.h"
+#pragma once
 
-#include <iostream>
+#include <atomic>
 
-void ZeroInputBuffersAction::execute(int) {
-  for (int i = 0; i < this->context->getNumInputAudioBuffers(); i++) {
-    auto& buffer = this->context->getInputAudioBuffer(i);
-    buffer.clear();
-  }
-}
+class GlobalIDGenerator {
+public:
+    static uint64_t generateID() {
+        return m_counter.fetch_add(1, std::memory_order_relaxed);
+    }
 
-void ZeroInputBuffersAction::debugPrint() {
-  std::cout << "ZeroInputBuffersAction: " << this->context->getGraphNode()->processor->config.getId() << std::endl;
-}
+private:
+    static std::atomic<uint64_t> m_counter;
+};
+
+std::atomic<uint64_t> GlobalIDGenerator::m_counter(0);

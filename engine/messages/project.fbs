@@ -19,18 +19,48 @@
 
 table AddArrangement { }
 table AddArrangementResponse {
-  edit_pointer: ulong;
+  edit_id: ulong;
 }
 
 table DeleteArrangement {
-  edit_pointer: ulong;
+  edit_id: ulong;
 }
 
+table GetMasterOutputNodePointer {}
+table GetMasterOutputNodePointerResponse {
+  node_id: ulong;
+}
+
+// Adds a processor to the processing graph
 table AddProcessor {
-  processor_uri: string;
+  id: string;
 }
 table AddProcessorResponse {
+  // Whether the command succeded
   success: bool;
+
+  // If the command succeeded, this will contain an ID to look up the processor
+  processor_id: ulong;
+
+  // If the command failed, this will contain an error message
+  error: string;
+}
+
+enum ProcessorConnectionType: short {
+  Audio,
+  Midi,
+  Control
+}
+
+// Connects two processors together
+table ConnectProcessors {
+  source_id: ulong;
+  destination_id: ulong;
+
+  connection_type: ProcessorConnectionType;
+
+  source_channel: uint;
+  destination_channel: uint;
 }
 
 // Processor category enum
@@ -42,7 +72,6 @@ enum ProcessorCategory: short {
 
 table ProcessorDescription {
   id: string;
-  name: string;
   category: ProcessorCategory;
 }
 
@@ -51,9 +80,11 @@ table GetProcessorsResponse {
   processors: [ProcessorDescription];
 }
 
+table CompileProcessingGraph {}
+
 // Maybe these should be moved out into another file
 table LiveNoteOn {
-  edit_pointer: ulong;
+  edit_id: ulong;
 
   // how on earth are we linking things
   channel: ubyte;
@@ -61,7 +92,7 @@ table LiveNoteOn {
   velocity: float; // JUCE apparently encodes this in float
 }
 table LiveNoteOff {
-  edit_pointer: ulong;
+  edit_id: ulong;
 
   channel: ubyte;
   note: ubyte;

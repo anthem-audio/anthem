@@ -22,7 +22,7 @@
 std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
   const Request* request,
   flatbuffers::FlatBufferBuilder& builder,
-  Anthem* /*anthem*/
+  Anthem* anthem
 ) {
   auto commandType = request->command_type();
 
@@ -49,25 +49,32 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
       auto command = request->command_as_DeleteArrangement();
       
       std::cout << "Received unhandled DeleteArrangement command" << std::endl;
-      std::cout << "Edit pointer: " << std::hex << command->edit_pointer() << std::dec << std::endl;
+      std::cout << "Edit id: " << std::hex << command->edit_id() << std::dec << std::endl;
 
       return std::nullopt;
+    }
+    case Command_GetMasterOutputNodePointer: {
+      
     }
     case Command_AddProcessor: {
       // TODO: Handle correctly
       std::cout << "Received unhandled AddProcessor command" << std::endl;
 
       bool success = false;
+      std::string error;
 
       // Error response
       if (!success) {
-        auto errorResponse = CreateAddProcessorResponse(builder, false);
+        error = "AddProcessor command failed";
+        auto errorResponse = CreateAddProcessorResponse(builder, false, 0, builder.CreateString(error));
         auto errorResponseOffset = errorResponse.Union();
         auto errorResponseMessage = CreateResponse(builder, request->id(), ReturnValue_AddProcessorResponse, errorResponseOffset);
 
         return std::optional(errorResponseMessage);
       } else {
-        auto response = CreateAddProcessorResponse(builder, true);
+        // anthem->getProcessingGraph()->addNode(std::make_shared<AnthemProcessor>("SimpleVolumeLfo"));
+
+        auto response = CreateAddProcessorResponse(builder, true, 0, 0);
         auto responseOffset = response.Union();
 
         auto message = CreateResponse(builder, request->id(), ReturnValue_AddProcessorResponse, responseOffset);
@@ -80,18 +87,17 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
 
       // TODO: This should probably be stored somewhere for real, so we don't
       // have to manage it here
-      std::vector<std::tuple<std::string, std::string, ProcessorCategory>> processors = {
-        {"SimpleVolumeLfo", "Simple Volume LFO", ProcessorCategory::ProcessorCategory_Effect},
-        {"ToneGenerator", "Sine Tone Generator", ProcessorCategory::ProcessorCategory_Instrument},
+      std::vector<std::tuple<std::string, ProcessorCategory>> processors = {
+        {"SimpleVolumeLfo", ProcessorCategory::ProcessorCategory_Effect},
+        {"ToneGenerator", ProcessorCategory::ProcessorCategory_Instrument},
         // {"3", "Processor3", ProcessorCategory::ProcessorCategory_Unknown}
       };
 
       for (const auto& processor : processors) {
         auto id = builder.CreateString(std::get<0>(processor));
-        auto name = builder.CreateString(std::get<1>(processor));
-        auto category = std::get<2>(processor);
+        auto category = std::get<1>(processor);
 
-        auto processorDescription = CreateProcessorDescription(builder, id, name, category);
+        auto processorDescription = CreateProcessorDescription(builder, id, category);
         fbProcessorList.push_back(processorDescription);
       }
 
@@ -103,6 +109,11 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
       auto message = CreateResponse(builder, request->id(), ReturnValue_GetProcessorsResponse, responseOffset);
 
       return std::optional(message);
+    }
+    case Command_CompileProcessingGraph: {
+      anthem->getProcessingGraph()->compile();
+
+      return std::nullopt;
     }
     case Command_LiveNoteOn: {
       auto command = request->command_as_LiveNoteOn();

@@ -38,9 +38,9 @@ private:
   std::vector<std::shared_ptr<AnthemProcessorPortConfig>> controlInputs;
   std::vector<std::shared_ptr<AnthemProcessorPortConfig>> controlOutputs;
 
-  std::string name;
+  std::string id;
 public:
-  AnthemProcessorConfig(const std::string& name) : name(name) {}
+  AnthemProcessorConfig(const std::string& id) : id(id) {}
 
   // Get an audio input port by index.
   const std::shared_ptr<AnthemProcessorPortConfig> getAudioInput(int index) const;
@@ -96,7 +96,7 @@ public:
   // Add a control output port.
   void addControlOutput(const std::shared_ptr<AnthemProcessorPortConfig> port);
 
-  std::string getName() {
-    return name;
+  std::string getId() {
+    return id;
   }
 };

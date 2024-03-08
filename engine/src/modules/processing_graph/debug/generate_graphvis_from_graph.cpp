@@ -37,7 +37,7 @@ std::string GenerateGraphVisFromGraph::generate(AnthemGraph& graph) {
   // For each node in the graph, write a node to the file
   for (auto node : topology.getNodes()) {
     auto id = GenerateGraphVisFromGraph::getIdFromNode(node);
-    result += "  " + id + " [label=\"" + node->processor->config.getName() + "\"];\n";
+    result += "  " + id + " [label=\"" + node->processor->config.getId() + "\"];\n";
   }
 
   result += "\n";
