@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -16,8 +16,6 @@
   You should have received a copy of the GNU General Public License
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
-
-import 'dart:math';
 
 import 'package:anthem/commands/arrangement_commands.dart';
 import 'package:anthem/commands/pattern_commands.dart';
@@ -166,20 +164,22 @@ class ProjectController {
   }
 
   void addGenerator({
+    required String? processorId,
     required String name,
     required GeneratorType generatorType,
     required Color color,
-    String? pluginPath,
   }) {
     final id = getID();
 
-    project.execute(AddGeneratorCommand(
-      generatorID: id,
-      name: name,
-      generatorType: generatorType,
-      color: color,
-      pluginPath: pluginPath,
-    ));
+    project.execute(
+      AddGeneratorCommand(
+        generatorId: id,
+        processorId: processorId,
+        name: name,
+        generatorType: generatorType,
+        color: color,
+      ),
+    );
 
     if (generatorType == GeneratorType.instrument) {
       project.activeInstrumentID = id;
@@ -199,12 +199,12 @@ class ProjectController {
 
     if (path == null) return;
 
-    addGenerator(
-      name: 'Instrument ${(Random()).nextInt(100).toString()}',
-      generatorType: GeneratorType.instrument,
-      color: getColor(),
-      pluginPath: path,
-    );
+    // addGenerator(
+    //   name: 'Instrument ${(Random()).nextInt(100).toString()}',
+    //   generatorType: GeneratorType.instrument,
+    //   color: getColor(),
+    //   pluginPath: path,
+    // );
   }
 }
 

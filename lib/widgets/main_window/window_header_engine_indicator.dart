@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -49,7 +49,8 @@ class EngineIndicator extends StatelessObserverWidget {
           activeProject?.engine.stop();
         } else {
           await activeProject?.engine.start();
-          activeProject?.createInEngine();
+          await activeProject?.createInEngine();
+          await activeProject?.engine.projectApi.compileProcessingGraph();
         }
       },
       contentBuilder: (context, color) {

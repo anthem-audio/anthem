@@ -59,6 +59,10 @@ public:
     return nodes[nodeId];
   }
 
+  bool hasNode(uint64_t nodeId) {
+    return nodes.find(nodeId) != nodes.end();
+  }
+
   uint64_t getMasterOutputNodeId() {
     return masterOutputNodeId;
   }

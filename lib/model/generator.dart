@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,10 +18,15 @@
 */
 
 import 'dart:ui';
+import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/generated/project_generated.dart';
 import 'package:anthem/helpers/convert.dart';
-import 'package:anthem/model/plugin.dart';
+import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/hydratable.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
+
+import 'processing_graph/processor.dart';
 
 part 'generator.g.dart';
 
@@ -39,20 +44,36 @@ class GeneratorModel extends _GeneratorModel with _$GeneratorModel {
     required String name,
     required GeneratorType generatorType,
     required Color color,
-    required PluginModel plugin,
+    required ProcessorModel processor,
   }) : super(
           id: id,
           name: name,
           generatorType: generatorType,
           color: color,
-          plugin: plugin,
+          processor: processor,
+        );
+
+  GeneratorModel.create({
+    required String id,
+    required String name,
+    required GeneratorType generatorType,
+    required Color color,
+    required ProcessorModel processor,
+    required ProjectModel project,
+  }) : super.create(
+          id: id,
+          name: name,
+          generatorType: generatorType,
+          color: color,
+          processor: processor,
+          project: project,
         );
 
   factory GeneratorModel.fromJson(Map<String, dynamic> json) =>
       _$GeneratorModelFromJson(json);
 }
 
-abstract class _GeneratorModel with Store {
+abstract class _GeneratorModel extends Hydratable with Store {
   String id;
 
   @observable
@@ -66,16 +87,49 @@ abstract class _GeneratorModel with Store {
   Color color;
 
   @observable
-  PluginModel plugin;
+  ProcessorModel processor;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  ProjectModel? _project;
 
   _GeneratorModel({
     required this.id,
     required this.name,
     required this.generatorType,
     required this.color,
-    required this.plugin,
+    required this.processor,
   });
+
+  _GeneratorModel.create({
+    required this.id,
+    required this.name,
+    required this.generatorType,
+    required this.color,
+    required this.processor,
+    required ProjectModel project,
+  }) : super() {
+    hydrate(project: project);
+  }
 
   Map<String, dynamic> toJson() =>
       _$GeneratorModelToJson(this as GeneratorModel);
+
+  void hydrate({
+    required ProjectModel project,
+  }) {
+    _project = project;
+    isHydrated = true;
+  }
+
+  Future<void> createInEngine(Engine engine) async {
+    await processor.createInEngine(engine);
+
+    await engine.projectApi.connectProcessors(
+      connectionType: ProcessorConnectionType.Audio,
+      sourceId: processor.idInEngine!,
+      sourcePortIndex: 0,
+      destinationId: _project!.masterOutputNodeId!,
+      destinationPortIndex: 0,
+    );
+  }
 }

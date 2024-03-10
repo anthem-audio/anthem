@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,32 +21,34 @@ import 'package:anthem/engine_api/engine.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
-part 'plugin.g.dart';
+part 'processor.g.dart';
 
-/// A model representing a plugin.
 @JsonSerializable()
-class PluginModel extends _PluginModel with _$PluginModel {
-  PluginModel({required String? path}) : super(path: path);
+class ProcessorModel extends _ProcessorModel with _$ProcessorModel {
+  ProcessorModel({
+    required String? processorKey,
+  }) : super(
+          processorKey: processorKey,
+        );
 
-  factory PluginModel.fromJson(Map<String, dynamic> json) =>
-      _$PluginModelFromJson(json);
+  factory ProcessorModel.fromJson(Map<String, dynamic> json) =>
+      _$ProcessorModelFromJson(json);
 }
 
-abstract class _PluginModel with Store {
-  String? path;
+abstract class _ProcessorModel with Store {
+  int? idInEngine;
 
-  _PluginModel({required this.path});
+  @observable
+  String? processorKey;
 
-  Map<String, dynamic> toJson() => _$PluginModelToJson(this as PluginModel);
+  _ProcessorModel({required this.processorKey});
 
-  Future<bool> createInEngine(Engine engine) async {
-    if (path == null) return false;
+  Map<String, dynamic> toJson() =>
+      _$ProcessorModelToJson(this as ProcessorModel);
 
-    try {
-      await engine.projectApi.addProcessor(path!);
-      return true;
-    } catch (ex) {
-      return false;
-    }
+  Future<void> createInEngine(Engine engine) async {
+    if (processorKey == null) return;
+
+    idInEngine = await engine.projectApi.addProcessor(processorKey!);
   }
 }

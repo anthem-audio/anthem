@@ -81,8 +81,27 @@ class Project {
     return completer.future;
   }
 
-  /// Adds the plugin at the given path.
-  Future<void> addPlugin(String processorId) {
+  Future<int> getMasterOutputNodeId() {
+    final completer = Completer<int>();
+
+    final id = _engine._getRequestId();
+
+    final request = RequestObjectBuilder(
+      id: id,
+      commandType: CommandTypeId.GetMasterOutputNodeId,
+      command: GetMasterOutputNodeIdObjectBuilder(),
+    );
+
+    _engine._request(id, request, onResponse: (response) {
+      final inner = response.returnValue as GetMasterOutputNodeIdResponse;
+      completer.complete(inner.nodeId);
+    });
+
+    return completer.future;
+  }
+
+  /// Adds the processor with the given ID to the engine's processing graph.
+  Future<int> addProcessor(String processorId) {
     final id = _engine._getRequestId();
 
     final request = RequestObjectBuilder(
@@ -93,14 +112,73 @@ class Project {
       ),
     );
 
-    final completer = Completer<void>();
+    final completer = Completer<int>();
 
     _engine._request(id, request, onResponse: (response) {
       final inner = response.returnValue as AddProcessorResponse;
       if (inner.success) {
+        completer.complete(inner.processorId);
+      } else {
+        completer.completeError(false);
+      }
+    });
+
+    return completer.future;
+  }
+
+  /// Connects two processors in the engine's processing graph.
+  Future<void> connectProcessors({
+    required int sourceId,
+    required int sourcePortIndex,
+    required int destinationId,
+    required int destinationPortIndex,
+    required ProcessorConnectionType connectionType,
+  }) {
+    final completer = Completer<void>();
+
+    final id = _engine._getRequestId();
+
+    final request = RequestObjectBuilder(
+      id: id,
+      commandType: CommandTypeId.ConnectProcessors,
+      command: ConnectProcessorsObjectBuilder(
+        sourceId: sourceId,
+        sourcePortIndex: sourcePortIndex,
+        destinationId: destinationId,
+        destinationPortIndex: destinationPortIndex,
+        connectionType: connectionType,
+      ),
+    );
+
+    _engine._request(id, request, onResponse: (response) {
+      if ((response.returnValue as ConnectProcessorsResponse).success) {
         completer.complete();
       } else {
         completer.completeError(false);
+      }
+    });
+
+    return completer.future;
+  }
+
+  Future<void> compileProcessingGraph() {
+    final completer = Completer<void>();
+
+    final id = _engine._getRequestId();
+
+    final request = RequestObjectBuilder(
+      id: id,
+      commandType: CommandTypeId.CompileProcessingGraph,
+      command: CompileProcessingGraphObjectBuilder(),
+    );
+
+    _engine._request(id, request, onResponse: (response) {
+      if ((response.returnValue as CompileProcessingGraphResponse).success) {
+        completer.complete();
+      } else {
+        completer.completeError(
+            (response.returnValue as CompileProcessingGraphResponse).error ??
+                'Unknown error');
       }
     });
 

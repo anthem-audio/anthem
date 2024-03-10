@@ -32,14 +32,14 @@ union Command {
 
   // Project commands
 
-  GetMasterOutputNodePointer,
+  GetMasterOutputNodeId,
 
   AddArrangement,
   DeleteArrangement,
 
   AddProcessor,
+  ConnectProcessors,
   GetProcessors,
-
   CompileProcessingGraph,
 
   // ??
@@ -53,10 +53,12 @@ union ReturnValue {
   HeartbeatReply,
 
   // Project commands
-  GetMasterOutputNodePointerResponse,
+  GetMasterOutputNodeIdResponse,
   AddArrangementResponse,
   AddProcessorResponse,
   GetProcessorsResponse,
+  ConnectProcessorsResponse,
+  CompileProcessingGraphResponse,
 }
 
 table Request {
