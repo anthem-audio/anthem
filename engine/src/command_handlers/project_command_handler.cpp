@@ -19,6 +19,11 @@
 
 #include "project_command_handler.h"
 
+#include <string>
+
+#include "tone_generator_node.h"
+#include "simple_volume_lfo_node.h"
+
 std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
   const Request* request,
   flatbuffers::FlatBufferBuilder& builder,
@@ -53,15 +58,33 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
 
       return std::nullopt;
     }
-    case Command_GetMasterOutputNodePointer: {
-      
+    case Command_GetMasterOutputNodeId: {
+      auto response = CreateGetMasterOutputNodeIdResponse(builder, anthem->getMasterOutputNodeId());
+      auto responseOffset = response.Union();
+
+      auto message = CreateResponse(builder, request->id(), ReturnValue_GetMasterOutputNodeIdResponse, responseOffset);
+
+      return std::optional(message);
     }
     case Command_AddProcessor: {
-      // TODO: Handle correctly
-      std::cout << "Received unhandled AddProcessor command" << std::endl;
-
       bool success = false;
       std::string error;
+
+      auto command = request->command_as_AddProcessor();
+      auto processorId = command->id()->str();
+
+      std::shared_ptr<AnthemProcessor> processor;
+
+      if (processorId == "SimpleVolumeLfo") {
+        processor = std::make_shared<SimpleVolumeLfoNode>();
+        success = true;
+      } else if (processorId == "ToneGenerator") {
+        processor = std::make_shared<ToneGeneratorNode>(440);
+        success = true;
+      } else {
+        success = false;
+        error = "Unknown processor id: " + processorId;
+      }
 
       // Error response
       if (!success) {
@@ -71,16 +94,72 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
         auto errorResponseMessage = CreateResponse(builder, request->id(), ReturnValue_AddProcessorResponse, errorResponseOffset);
 
         return std::optional(errorResponseMessage);
-      } else {
-        // anthem->getProcessingGraph()->addNode(std::make_shared<AnthemProcessor>("SimpleVolumeLfo"));
-
-        auto response = CreateAddProcessorResponse(builder, true, 0, 0);
-        auto responseOffset = response.Union();
-
-        auto message = CreateResponse(builder, request->id(), ReturnValue_AddProcessorResponse, responseOffset);
-
-        return std::optional(message);
       }
+
+      uint64_t nodeId;
+      if (success) {
+        nodeId = anthem->addNode(processor);
+      }
+
+      auto response = CreateAddProcessorResponse(builder, true, nodeId, 0);
+      auto responseOffset = response.Union();
+
+      auto message = CreateResponse(builder, request->id(), ReturnValue_AddProcessorResponse, responseOffset);
+
+      return std::optional(message);
+    }
+    case Command_ConnectProcessors: {
+      auto command = request->command_as_ConnectProcessors();
+
+      uint64_t sourceId = command->source_id();
+      uint64_t destinationId = command->destination_id();
+      ProcessorConnectionType connectionType = command->connection_type();
+      uint32_t sourcePortIndex = command->source_port_index();
+      uint32_t destinationPortIndex = command->destination_port_index();
+
+      // std::cout << "Connecting processors: source_id=" << sourceId << ", destination_id=" << destinationId << ", connection_type=" << connectionType << ", source_channel=" << sourceChannel << ", destination_channel=" << destinationChannel << std::endl;
+
+      bool success = true;
+      std::string error = "";
+
+      if (!anthem->hasNode(sourceId)) {
+        success = false;
+        error = "Source node not found";
+      }
+
+      if (!anthem->hasNode(destinationId)) {
+        success = false;
+        error = "Destination node not found";
+      }
+
+      if (success) {
+        auto sourceNode = anthem->getNode(sourceId);
+        auto destinationNode = anthem->getNode(destinationId);
+
+        if (sourceNode->audioOutputs.size() <= sourcePortIndex) {
+          success = false;
+          error = "Source port index out of range";
+        }
+
+        if (destinationNode->audioInputs.size() <= destinationPortIndex) {
+          success = false;
+          error = "Destination port index out of range";
+        }
+
+        if (success) {
+          anthem->getProcessingGraph()->connectNodes(
+            sourceNode->audioOutputs[sourcePortIndex],
+            destinationNode->audioInputs[destinationPortIndex]
+          );
+        }
+      }
+
+      auto response = CreateConnectProcessorsResponse(builder, success, builder.CreateString(error));
+      auto responseOffset = response.Union();
+
+      auto message = CreateResponse(builder, request->id(), ReturnValue_ConnectProcessorsResponse, responseOffset);
+
+      return std::optional(message);
     }
     case Command_GetProcessors: {
       std::vector<flatbuffers::Offset<ProcessorDescription>> fbProcessorList;
@@ -113,7 +192,14 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
     case Command_CompileProcessingGraph: {
       anthem->getProcessingGraph()->compile();
 
-      return std::nullopt;
+      anthem->getProcessingGraph()->debugPrint();
+
+      auto response = CreateCompileProcessingGraphResponse(builder, true);
+      auto responseOffset = response.Union();
+
+      auto message = CreateResponse(builder, request->id(), ReturnValue_CompileProcessingGraphResponse, responseOffset);
+
+      return std::optional(message);
     }
     case Command_LiveNoteOn: {
       auto command = request->command_as_LiveNoteOn();

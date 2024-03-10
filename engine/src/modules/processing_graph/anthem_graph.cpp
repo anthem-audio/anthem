@@ -21,6 +21,8 @@
 
 #include <iostream>
 
+#include "generate_graphvis_from_graph.h"
+
 AnthemGraph::AnthemGraph() {
   topology = std::make_unique<AnthemGraphTopology>();
   compiler = std::make_unique<AnthemGraphCompiler>();
@@ -52,4 +54,8 @@ void AnthemGraph::debugPrint() {
   std::cout << "AnthemGraph" << std::endl;
   std::cout << topology->getNodes().size() << " nodes" << std::endl;
   std::cout << topology->getConnections().size() << " edges" << std::endl;
+
+  std::cout << std::endl;
+
+  std::cout << GenerateGraphVisFromGraph::generate(*this) << std::endl;
 }

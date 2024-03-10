@@ -35,38 +35,7 @@ void Anthem::init() {
 
   audioCallback = std::make_unique<AnthemAudioCallback>(processingGraph, this->masterOutputNode);
 
-  auto toneGeneratorProcessor1 = std::make_shared<ToneGeneratorNode>(440.0f);
-  auto toneGeneratorNode1Id = this->addNode(toneGeneratorProcessor1);
-  auto toneGeneratorNode1 = this->getNode(toneGeneratorNode1Id);
-
-  auto toneGeneratorProcessor2 = std::make_shared<ToneGeneratorNode>(660.0f);
-  auto toneGeneratorNode2Id = this->addNode(toneGeneratorProcessor2);
-  auto toneGeneratorNode2 = this->getNode(toneGeneratorNode2Id);
-
-  auto simpleVolumeLfoProcessor = std::make_shared<SimpleVolumeLfoNode>();
-  auto simpleVolumeLfoNodeId = this->addNode(simpleVolumeLfoProcessor);
-  auto simpleVolumeLfoNode = this->getNode(simpleVolumeLfoNodeId);
-
-  processingGraph->connectNodes(
-    toneGeneratorNode1->audioOutputs[toneGeneratorProcessor1->getOutputPortIndex()],
-    masterOutputNode->audioInputs[masterOutputProcessor->getInputPortIndex()]
-  );
-
-  processingGraph->connectNodes(
-    toneGeneratorNode2->audioOutputs[toneGeneratorProcessor1->getOutputPortIndex()],
-    simpleVolumeLfoNode->audioInputs[simpleVolumeLfoProcessor->getInputPortIndex()]
-  );
-
-  processingGraph->connectNodes(
-    simpleVolumeLfoNode->audioOutputs[simpleVolumeLfoProcessor->getOutputPortIndex()],
-    masterOutputNode->audioInputs[masterOutputProcessor->getInputPortIndex()]
-  );
-
   processingGraph->compile();
-
-  std::cout << GenerateGraphVisFromGraph::generate(*processingGraph) << std::endl;
-
-  processingGraph->debugPrint();
 
   // Initialize the audio device manager with 2 input and 2 output channels
   this->deviceManager.initialiseWithDefaultDevices(2, 2);

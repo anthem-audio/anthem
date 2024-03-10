@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -117,17 +117,18 @@ public:
         break;
       }
       case Command_AddArrangement:
-      case Command_GetMasterOutputNodePointer:
+      case Command_GetMasterOutputNodeId:
       case Command_AddProcessor:
       case Command_DeleteArrangement:
       case Command_GetProcessors:
+      case Command_ConnectProcessors:
       case Command_CompileProcessingGraph:
       case Command_LiveNoteOn:
       case Command_LiveNoteOff:
         response = handleProjectCommand(request, builder, anthem);
         break;
       default: {
-        std::cerr << "Received unknown command" << std::endl;
+        std::cerr << "Received unknown command (id: " << static_cast<int>(command_type) << ")" << std::endl;
         break;
       }
     }

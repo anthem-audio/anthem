@@ -26,8 +26,8 @@ table DeleteArrangement {
   edit_id: ulong;
 }
 
-table GetMasterOutputNodePointer {}
-table GetMasterOutputNodePointerResponse {
+table GetMasterOutputNodeId {}
+table GetMasterOutputNodeIdResponse {
   node_id: ulong;
 }
 
@@ -52,15 +52,20 @@ enum ProcessorConnectionType: short {
   Control
 }
 
-// Connects two processors together
+// Connects two processors in the node graph (e.g. an instrument audio output to
+// an effect audio input).
 table ConnectProcessors {
   source_id: ulong;
   destination_id: ulong;
 
   connection_type: ProcessorConnectionType;
 
-  source_channel: uint;
-  destination_channel: uint;
+  source_port_index: uint;
+  destination_port_index: uint;
+}
+table ConnectProcessorsResponse {
+  success: bool;
+  error: string;
 }
 
 // Processor category enum
@@ -80,7 +85,13 @@ table GetProcessorsResponse {
   processors: [ProcessorDescription];
 }
 
+// Compiles the processing graph and sends the result to the audio thread. This
+// must be called after any graph changes.
 table CompileProcessingGraph {}
+table CompileProcessingGraphResponse {
+  success: bool;
+  error: string;
+}
 
 // Maybe these should be moved out into another file
 table LiveNoteOn {

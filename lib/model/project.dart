@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -49,6 +49,12 @@ class ProjectModel extends _ProjectModel with _$ProjectModel {
 
 abstract class _ProjectModel extends Hydratable with Store {
   late SongModel song;
+
+  /// ID of the master output node in the processing graph. Audio that is routed
+  /// to this node is sent to the audio output device.
+  @observable
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  int? masterOutputNodeId;
 
   /// Map of processors available to Anthem.
   @observable
@@ -177,8 +183,6 @@ abstract class _ProjectModel extends Hydratable with Store {
       (this as ProjectModel).engineState = state;
     });
 
-    song.createInEngine(engine);
-
     // We don't need to hydrate here. All `SomeModel.Create()` functions should
     // call hydrate().
     isHydrated = true;
@@ -186,6 +190,10 @@ abstract class _ProjectModel extends Hydratable with Store {
 
   // Initializes this project in the engine
   Future<void> createInEngine() async {
+    masterOutputNodeId = await engine.projectApi.getMasterOutputNodeId();
+
+    processorDefinitions.clear();
+
     final processors = await engine.projectApi.getProcessors();
 
     // Query the engine for the available processors and create ProcessorDefinition
@@ -203,12 +211,10 @@ abstract class _ProjectModel extends Hydratable with Store {
       );
     }
 
-    for (final arrangement in song.arrangements.values) {
-      await arrangement.createInEngine(engine);
-    }
+    await song.createInEngine(engine);
 
     for (final generator in generators.values) {
-      await generator.plugin.createInEngine(engine);
+      await generator.createInEngine(engine);
     }
   }
 

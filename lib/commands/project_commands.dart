@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,7 +21,7 @@ import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/generator.dart';
-import 'package:anthem/model/plugin.dart';
+import 'package:anthem/model/processing_graph/processor.dart';
 import 'package:anthem/model/project.dart';
 
 import 'command.dart';
@@ -34,38 +34,42 @@ void _removeGenerator(ProjectModel project, ID generatorID) {
 }
 
 class AddGeneratorCommand extends Command {
-  ID generatorID;
+  ID generatorId;
+  String? processorId;
   String name;
   GeneratorType generatorType;
   Color color;
-  String? pluginPath;
 
   AddGeneratorCommand({
-    required this.generatorID,
+    required this.generatorId,
+    required this.processorId,
     required this.name,
     required this.generatorType,
     required this.color,
-    required this.pluginPath,
   });
 
   @override
-  void execute(ProjectModel project) {
-    final plugin = PluginModel(path: pluginPath)
-      ..createInEngine(project.engine);
-    final generator = GeneratorModel(
-      id: generatorID,
+  void execute(ProjectModel project) async {
+    final processor = ProcessorModel(processorKey: processorId);
+    final generator = GeneratorModel.create(
+      id: generatorId,
       name: name,
       generatorType: generatorType,
       color: color,
-      plugin: plugin,
+      processor: processor,
+      project: project,
     );
 
-    project.generatorList.add(generatorID);
-    project.generators[generatorID] = generator;
+    await generator.createInEngine(project.engine);
+
+    await project.engine.projectApi.compileProcessingGraph();
+
+    project.generatorList.add(generatorId);
+    project.generators[generatorId] = generator;
   }
 
   @override
   void rollback(ProjectModel project) {
-    _removeGenerator(project, generatorID);
+    _removeGenerator(project, generatorId);
   }
 }
