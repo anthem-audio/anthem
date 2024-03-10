@@ -89,8 +89,8 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
       // have to manage it here
       std::vector<std::tuple<std::string, ProcessorCategory>> processors = {
         {"SimpleVolumeLfo", ProcessorCategory::ProcessorCategory_Effect},
-        {"ToneGenerator", ProcessorCategory::ProcessorCategory_Instrument},
-        // {"3", "Processor3", ProcessorCategory::ProcessorCategory_Unknown}
+        {"ToneGenerator", ProcessorCategory::ProcessorCategory_Generator},
+        // {"3", "Processor3", ProcessorCategory::ProcessorCategory_Utility}
       };
 
       for (const auto& processor : processors) {
