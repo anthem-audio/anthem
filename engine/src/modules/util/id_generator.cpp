@@ -17,18 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#pragma once
+#include "id_generator.h"
 
-#include <atomic>
+std::atomic<uint64_t> counter(0);
 
-// This is a thread-safe ID generator. It is used to generate unique IDs for
-// various objects in the Anthem engine.
-//
-// We don't use UUID here because we won't ever need to generate IDs across
-// multiple machines. If Anthem were to ever support multi-user editing, the
-// synchronization would happen in the UI process and the engine wouldn't need
-// to worry about it.
-class GlobalIDGenerator {
-public:
-    static uint64_t generateID();
-};
+uint64_t GlobalIDGenerator::generateID() {
+  return counter.fetch_add(1, std::memory_order_relaxed);
+}

@@ -127,6 +127,7 @@ set(ANTHEM_ENGINE_SOURCES
 
   ### Util ###
 
+  src/modules/util/id_generator.cpp
   src/modules/util/id_generator.h
   src/modules/util/thread_safe_queue.h
 )
