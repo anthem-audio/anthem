@@ -66,8 +66,8 @@ table ConnectProcessors {
 // Processor category enum
 enum ProcessorCategory: short {
   Effect,
-  Instrument,
-  Unknown
+  Generator,
+  Utility
 }
 
 table ProcessorDescription {
