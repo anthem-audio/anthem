@@ -63,8 +63,8 @@ class ProjectHeader extends StatelessWidget {
                   AnthemMenuItem(
                     text: 'New project',
                     hint: 'Create a new project',
-                    onSelected: () {
-                      final projectID = mainWindowController.newProject();
+                    onSelected: () async {
+                      final projectID = await mainWindowController.newProject();
                       mainWindowController.switchTab(projectID);
                     },
                   ),
