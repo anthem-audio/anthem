@@ -24,7 +24,7 @@ import 'package:anthem/generated/messages_generated.dart';
 import 'package:anthem/generated/project_generated.dart';
 import 'package:anthem/model/project.dart';
 
-part 'api/project.dart';
+part 'api/project_api.dart';
 
 enum EngineState {
   stopped,
@@ -46,14 +46,14 @@ class Engine {
 
   ProjectModel project;
 
-  late Project projectApi;
+  late ProjectApi projectApi;
 
   Map<int, void Function(Response response)> replyFunctions = {};
 
   int Function() get _getRequestId => _engineConnector.getRequestId;
 
   final StreamController<EngineState> _engineStateStreamController =
-      StreamController();
+      StreamController.broadcast();
   late final Stream<EngineState> engineStateStream;
 
   EngineState _engineState = EngineState.stopped;
@@ -61,7 +61,7 @@ class Engine {
   Engine(this.id, this.project) {
     engineStateStream = _engineStateStreamController.stream;
 
-    projectApi = Project(this);
+    projectApi = ProjectApi(this);
   }
 
   void _onReply(Response response) {
