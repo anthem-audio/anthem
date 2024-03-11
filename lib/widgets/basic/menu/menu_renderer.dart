@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -89,8 +89,11 @@ class _MenuRendererState extends State<MenuRenderer> {
               _Constants.submenuArrowWidth +
               (child.submenu != null ? 50 : 0)
           : 0;
-      // The 2px extra here is due to the border from the hover effect
-      return (labelWidth + submenuArrowWidth + 2);
+      // The extra 4 pixels here is due to the border from the hover effect,
+      // plus something else that I'm not sure about. We need 2px for the hover
+      // effect border... I suppose the other 2px are for good luck. Anything
+      // less than 4 extra pixels means it will sometimes overflow.
+      return (labelWidth + submenuArrowWidth + 4);
     }).fold<double>(0, (value, element) => max(value, element));
 
     final height = widget.menu.children.fold<double>(
