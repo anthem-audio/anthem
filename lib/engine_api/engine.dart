@@ -25,6 +25,7 @@ import 'package:anthem/generated/project_generated.dart';
 import 'package:anthem/model/project.dart';
 
 part 'api/project_api.dart';
+part 'api/processing_graph_api.dart';
 
 enum EngineState {
   stopped,
@@ -47,6 +48,7 @@ class Engine {
   ProjectModel project;
 
   late ProjectApi projectApi;
+  late ProcessingGraphApi processingGraphApi;
 
   Map<int, void Function(Response response)> replyFunctions = {};
 
@@ -62,6 +64,7 @@ class Engine {
     engineStateStream = _engineStateStreamController.stream;
 
     projectApi = ProjectApi(this);
+    processingGraphApi = ProcessingGraphApi(this);
   }
 
   void _onReply(Response response) {

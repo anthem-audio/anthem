@@ -43,7 +43,7 @@ abstract class _PluginModel with Store {
     if (path == null) return false;
 
     try {
-      await engine.projectApi.addProcessor(path!);
+      await engine.processingGraphApi.addProcessor(path!);
       return true;
     } catch (ex) {
       return false;

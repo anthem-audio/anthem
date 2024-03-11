@@ -62,7 +62,7 @@ class AddGeneratorCommand extends Command {
 
     await generator.createInEngine(project.engine);
 
-    await project.engine.projectApi.compileProcessingGraph();
+    await project.engine.processingGraphApi.compile();
 
     project.generatorList.add(generatorId);
     project.generators[generatorId] = generator;
