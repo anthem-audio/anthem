@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -24,5 +24,6 @@
 #include "messages_generated.h"
 
 std::optional<flatbuffers::Offset<Response>>
-handleProjectCommand(const Request *request,
-                     flatbuffers::FlatBufferBuilder &builder, Anthem *anthem);
+handleProcessingGraphCommand(const Request *request,
+                             flatbuffers::FlatBufferBuilder &builder,
+                             Anthem *anthem);

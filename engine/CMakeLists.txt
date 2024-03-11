@@ -55,6 +55,8 @@ set(ANTHEM_ENGINE_SOURCES
   ../cpp_shared/open_message_queue.cpp
   ../cpp_shared/open_message_queue.h
 
+  src/command_handlers/processing_graph_command_handler.cpp
+  src/command_handlers/processing_graph_command_handler.h
   src/command_handlers/project_command_handler.cpp
   src/command_handlers/project_command_handler.h
 

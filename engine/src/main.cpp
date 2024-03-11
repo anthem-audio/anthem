@@ -36,6 +36,7 @@
 #include "messages_generated.h"
 #include "open_message_queue.h"
 #include "anthem.h"
+#include "./command_handlers/processing_graph_command_handler.h"
 #include "./command_handlers/project_command_handler.h"
 
 using namespace boost::interprocess;
@@ -117,15 +118,17 @@ public:
         break;
       }
       case Command_AddArrangement:
-      case Command_GetMasterOutputNodeId:
-      case Command_AddProcessor:
       case Command_DeleteArrangement:
-      case Command_GetProcessors:
-      case Command_ConnectProcessors:
-      case Command_CompileProcessingGraph:
       case Command_LiveNoteOn:
       case Command_LiveNoteOff:
         response = handleProjectCommand(request, builder, anthem);
+        break;
+      case Command_GetMasterOutputNodeId:
+      case Command_AddProcessor:
+      case Command_GetProcessors:
+      case Command_ConnectProcessors:
+      case Command_CompileProcessingGraph:
+        response = handleProcessingGraphCommand(request, builder, anthem);
         break;
       default: {
         std::cerr << "Received unknown command (id: " << static_cast<int>(command_type) << ")" << std::endl;
@@ -269,8 +272,8 @@ public:
 
     std::cout << anthemSplash;
 
-    std::cout << "If you want to attach a debugger, you can do it now. Press enter to continue." << std::endl;
-    std::cin.get();
+    // std::cout << "If you want to attach a debugger, you can do it now. Press enter to continue." << std::endl;
+    // std::cin.get();
 
     std::cout << "Starting Anthem engine..." << std::endl;
     anthem = new Anthem();
