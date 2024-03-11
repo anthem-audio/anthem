@@ -22,6 +22,7 @@ import 'dart:async';
 import 'package:anthem/engine_api/engine_connector.dart';
 import 'package:anthem/generated/messages_generated.dart';
 import 'package:anthem/generated/project_generated.dart';
+import 'package:anthem/generated/processing_graph_generated.dart';
 import 'package:anthem/model/project.dart';
 
 part 'api/project_api.dart';

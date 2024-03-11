@@ -23,7 +23,7 @@ part of 'package:anthem/engine_api/engine.dart';
 /// be used to add and remove nodes, and to connect and disconnect existing
 /// nodes.
 class ProcessingGraphApi {
-  Engine _engine;
+  final Engine _engine;
 
   ProcessingGraphApi(this._engine);
 
