@@ -19,7 +19,7 @@
 
 import 'dart:ui';
 import 'package:anthem/engine_api/engine.dart';
-import 'package:anthem/generated/project_generated.dart';
+import 'package:anthem/generated/processing_graph_generated.dart';
 import 'package:anthem/helpers/convert.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/hydratable.dart';

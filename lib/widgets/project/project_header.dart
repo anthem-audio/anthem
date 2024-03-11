@@ -29,6 +29,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
+import '../../generated/processing_graph_generated.dart';
 import '../basic/icon.dart';
 
 class ProjectHeader extends StatelessWidget {
