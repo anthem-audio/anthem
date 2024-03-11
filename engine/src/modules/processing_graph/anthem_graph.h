@@ -55,7 +55,10 @@ public:
     std::shared_ptr<AnthemGraphNodePort> destination
   );
 
-  // void disconnectNodes(std::shared_ptr<AnthemAudioInput> input, std::shared_ptr<AnthemAudioOutput> output);
+  void disconnectNodes(
+    std::shared_ptr<AnthemGraphNodePort> source,
+    std::shared_ptr<AnthemGraphNodePort> destination
+  );
 
   AnthemGraphProcessor& getProcessor() {
     return *graphProcessor;

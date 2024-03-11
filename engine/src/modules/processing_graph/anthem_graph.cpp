@@ -42,6 +42,13 @@ void AnthemGraph::connectNodes(
   topology->addConnection(source, destination);
 }
 
+void AnthemGraph::disconnectNodes(
+  std::shared_ptr<AnthemGraphNodePort> source,
+  std::shared_ptr<AnthemGraphNodePort> destination
+) {
+  topology->removeConnection(source, destination);
+}
+
 void AnthemGraph::sendCompiledGraphToProcessor(std::shared_ptr<AnthemGraphCompilationResult> compiledGraph) {
   graphProcessor->setProcessingStepsFromMainThread(compiledGraph);
 }

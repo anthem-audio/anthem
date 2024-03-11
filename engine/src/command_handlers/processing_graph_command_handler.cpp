@@ -159,6 +159,56 @@ handleProcessingGraphCommand(const Request *request,
 
       return std::optional(message);
     }
+    case Command_DisconnectProcessors: {
+      auto command = request->command_as_DisconnectProcessors();
+
+      uint64_t sourceId = command->source_id();
+      uint64_t destinationId = command->destination_id();
+      uint32_t sourcePortIndex = command->source_port_index();
+      uint32_t destinationPortIndex = command->destination_port_index();
+
+      bool success = true;
+      std::string error = "";
+
+      if (!anthem->hasNode(sourceId)) {
+        success = false;
+        error = "Source node not found";
+      }
+
+      if (!anthem->hasNode(destinationId)) {
+        success = false;
+        error = "Destination node not found";
+      }
+
+      if (success) {
+        auto sourceNode = anthem->getNode(sourceId);
+        auto destinationNode = anthem->getNode(destinationId);
+
+        if (sourceNode->audioOutputs.size() <= sourcePortIndex) {
+          success = false;
+          error = "Source port index out of range";
+        }
+
+        if (destinationNode->audioInputs.size() <= destinationPortIndex) {
+          success = false;
+          error = "Destination port index out of range";
+        }
+
+        if (success) {
+          anthem->getProcessingGraph()->disconnectNodes(
+            sourceNode->audioOutputs[sourcePortIndex],
+            destinationNode->audioInputs[destinationPortIndex]
+          );
+        }
+      }
+
+      auto response = CreateDisconnectProcessorsResponse(builder, success, builder.CreateString(error));
+      auto responseOffset = response.Union();
+
+      auto message = CreateResponse(builder, request->id(), ReturnValue_DisconnectProcessorsResponse, responseOffset);
+
+      return std::optional(message);
+    }
     case Command_CompileProcessingGraph: {
       anthem->getProcessingGraph()->compile();
 
