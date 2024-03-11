@@ -19,10 +19,10 @@
 
 part of 'package:anthem/engine_api/engine.dart';
 
-class Project {
+class ProjectApi {
   final Engine _engine;
 
-  Project(this._engine);
+  ProjectApi(this._engine);
 
   /// Creates a new arrangement, which maps to an `Edit` in Tracktion Engine.
   /// Returns a pointer to the Tracktion edit object within the engine process.
