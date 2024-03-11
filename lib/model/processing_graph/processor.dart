@@ -49,6 +49,6 @@ abstract class _ProcessorModel with Store {
   Future<void> createInEngine(Engine engine) async {
     if (processorKey == null) return;
 
-    idInEngine = await engine.projectApi.addProcessor(processorKey!);
+    idInEngine = await engine.processingGraphApi.addProcessor(processorKey!);
   }
 }

@@ -124,7 +124,7 @@ abstract class _GeneratorModel extends Hydratable with Store {
   Future<void> createInEngine(Engine engine) async {
     await processor.createInEngine(engine);
 
-    await engine.projectApi.connectProcessors(
+    await engine.processingGraphApi.connectProcessors(
       connectionType: ProcessorConnectionType.Audio,
       sourceId: processor.idInEngine!,
       sourcePortIndex: 0,

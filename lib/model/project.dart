@@ -190,11 +190,12 @@ abstract class _ProjectModel extends Hydratable with Store {
 
   // Initializes this project in the engine
   Future<void> createInEngine() async {
-    masterOutputNodeId = await engine.projectApi.getMasterOutputNodeId();
+    masterOutputNodeId =
+        await engine.processingGraphApi.getMasterOutputNodeId();
 
     processorDefinitions.clear();
 
-    final processors = await engine.projectApi.getProcessors();
+    final processors = await engine.processingGraphApi.getAvailableProcessors();
 
     // Query the engine for the available processors and create ProcessorDefinition
     // objects for each one.
