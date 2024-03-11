@@ -48,6 +48,11 @@ public:
     std::shared_ptr<AnthemGraphNodePort> destination
   );
 
+  void removeConnection(
+    std::shared_ptr<AnthemGraphNodePort> source,
+    std::shared_ptr<AnthemGraphNodePort> destination
+  );
+
   std::unique_ptr<AnthemGraphTopology> clone();
 
   std::vector<std::shared_ptr<AnthemGraphNode>>& getNodes();

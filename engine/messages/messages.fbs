@@ -44,6 +44,7 @@ union Command {
 
   AddProcessor,
   ConnectProcessors,
+  DisconnectProcessors,
 
   CompileProcessingGraph,
 
@@ -70,6 +71,7 @@ union ReturnValue {
 
   AddProcessorResponse,
   ConnectProcessorsResponse,
+  DisconnectProcessorsResponse,
 
   CompileProcessingGraphResponse,
 }

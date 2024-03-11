@@ -59,6 +59,21 @@ table ConnectProcessorsResponse {
   error: string;
 }
 
+// Disconnects two processors in the node graph.
+table DisconnectProcessors {
+  source_id: ulong;
+  destination_id: ulong;
+
+  connection_type: ProcessorConnectionType;
+
+  source_port_index: uint;
+  destination_port_index: uint;
+}
+table DisconnectProcessorsResponse {
+  success: bool;
+  error: string;
+}
+
 // Processor category enum
 enum ProcessorCategory: short {
   Effect,

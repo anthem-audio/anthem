@@ -127,6 +127,7 @@ public:
       case Command_AddProcessor:
       case Command_GetProcessors:
       case Command_ConnectProcessors:
+      case Command_DisconnectProcessors:
       case Command_CompileProcessingGraph:
         response = handleProcessingGraphCommand(request, builder, anthem);
         break;

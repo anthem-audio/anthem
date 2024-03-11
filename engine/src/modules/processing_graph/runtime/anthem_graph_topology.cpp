@@ -65,6 +65,83 @@ void AnthemGraphTopology::addConnection(
   destination->connections.push_back(connection);
 }
 
+void AnthemGraphTopology::removeConnection(
+  std::shared_ptr<AnthemGraphNodePort> source,
+  std::shared_ptr<AnthemGraphNodePort> destination
+) {
+  // Check that source and destination have the same node type
+  if (source->config->portType != destination->config->portType) {
+    throw std::runtime_error(
+      "AnthemGraphTopology::removeConnection(): Source and destination nodes must have the same type"
+    );
+  }
+
+  auto type = source->config->portType;
+
+  switch(type) {
+    case AnthemGraphDataType::Audio:
+      audioPortConnections.erase(
+        std::remove_if(
+          audioPortConnections.begin(),
+          audioPortConnections.end(),
+          [source, destination](std::shared_ptr<AnthemGraphNodeConnection> connection) {
+            return connection->source.lock() == source && connection->destination.lock() == destination;
+          }
+        ),
+        audioPortConnections.end()
+      );
+      break;
+    case AnthemGraphDataType::Midi:
+      throw std::runtime_error("AnthemGraphTopology::removeConnection(): MIDI connections are not yet supported");
+      // midiPortConnections.erase(
+      //   std::remove_if(
+      //     midiPortConnections.begin(),
+      //     midiPortConnections.end(),
+      //     [source, destination](std::shared_ptr<AnthemGraphNodeConnection> connection) {
+      //       return connection->source == source && connection->destination == destination;
+      //     }
+      //   ),
+      //   midiPortConnections.end()
+      // );
+      break;
+    case AnthemGraphDataType::Control:
+      throw std::runtime_error("AnthemGraphTopology::removeConnection(): Control connections are not yet supported");
+      // controlPortConnections.erase(
+      //   std::remove_if(
+      //     controlPortConnections.begin(),
+      //     controlPortConnections.end(),
+      //     [source, destination](std::shared_ptr<AnthemGraphNodeConnection> connection) {
+      //       return connection->source == source && connection->destination == destination;
+      //     }
+      //   ),
+      //   controlPortConnections.end()
+      // );
+      break;
+  }
+
+  source->connections.erase(
+    std::remove_if(
+      source->connections.begin(),
+      source->connections.end(),
+      [source, destination](std::shared_ptr<AnthemGraphNodeConnection> connection) {
+        return connection->source.lock() == source && connection->destination.lock() == destination;
+      }
+    ),
+    source->connections.end()
+  );
+
+  destination->connections.erase(
+    std::remove_if(
+      destination->connections.begin(),
+      destination->connections.end(),
+      [source, destination](std::shared_ptr<AnthemGraphNodeConnection> connection) {
+        return connection->source.lock() == source && connection->destination.lock() == destination;
+      }
+    ),
+    destination->connections.end()
+  );
+}
+
 std::unique_ptr<AnthemGraphTopology> AnthemGraphTopology::clone() {
   auto newTopology = std::make_unique<AnthemGraphTopology>();
   for (auto node : nodes) {

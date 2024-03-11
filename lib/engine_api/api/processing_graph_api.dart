@@ -119,7 +119,45 @@ class ProcessingGraphApi {
       if ((response.returnValue as ConnectProcessorsResponse).success) {
         completer.complete();
       } else {
-        completer.completeError(false);
+        completer.completeError(
+            (response.returnValue as ConnectProcessorsResponse).error ??
+                'Unknown error');
+      }
+    });
+
+    return completer.future;
+  }
+
+  Future<void> disconnectProcessors({
+    required int sourceId,
+    required int sourcePortIndex,
+    required int destinationId,
+    required int destinationPortIndex,
+    required ProcessorConnectionType connectionType,
+  }) {
+    final completer = Completer<void>();
+
+    final id = _engine._getRequestId();
+
+    final request = RequestObjectBuilder(
+      id: id,
+      commandType: CommandTypeId.DisconnectProcessors,
+      command: DisconnectProcessorsObjectBuilder(
+        sourceId: sourceId,
+        sourcePortIndex: sourcePortIndex,
+        destinationId: destinationId,
+        destinationPortIndex: destinationPortIndex,
+        connectionType: connectionType,
+      ),
+    );
+
+    _engine._request(id, request, onResponse: (response) {
+      if ((response.returnValue as DisconnectProcessorsResponse).success) {
+        completer.complete();
+      } else {
+        completer.completeError(
+            (response.returnValue as DisconnectProcessorsResponse).error ??
+                'Unknown error');
       }
     });
 
