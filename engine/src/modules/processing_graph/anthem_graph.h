@@ -48,7 +48,8 @@ public:
   // Allows a node to be added to the graph.
   std::shared_ptr<AnthemGraphNode> addNode(std::shared_ptr<AnthemProcessor> processor);
 
-  // TODO: Add a way to remove nodes
+  // Allows a node to be removed from the graph.
+  void removeNode(std::shared_ptr<AnthemGraphNode> node);
 
   void connectNodes(
     std::shared_ptr<AnthemGraphNodePort> source,

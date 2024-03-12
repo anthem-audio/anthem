@@ -37,6 +37,15 @@ table AddProcessorResponse {
   error: string;
 }
 
+// Removes a processor from the processing graph
+table RemoveProcessor {
+  id: ulong;
+}
+table RemoveProcessorResponse {
+  success: bool;
+  error: string;
+}
+
 enum ProcessorConnectionType: short {
   Audio,
   Midi,

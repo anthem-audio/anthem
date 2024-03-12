@@ -125,6 +125,7 @@ public:
         break;
       case Command_GetMasterOutputNodeId:
       case Command_AddProcessor:
+      case Command_RemoveProcessor:
       case Command_GetProcessors:
       case Command_ConnectProcessors:
       case Command_DisconnectProcessors:
@@ -273,8 +274,8 @@ public:
 
     std::cout << anthemSplash;
 
-    // std::cout << "If you want to attach a debugger, you can do it now. Press enter to continue." << std::endl;
-    // std::cin.get();
+    std::cout << "If you want to attach a debugger, you can do it now. Press enter to continue." << std::endl;
+    std::cin.get();
 
     std::cout << "Starting Anthem engine..." << std::endl;
     anthem = new Anthem();
