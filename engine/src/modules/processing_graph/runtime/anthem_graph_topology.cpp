@@ -29,6 +29,34 @@ void AnthemGraphTopology::addNode(std::shared_ptr<AnthemGraphNode> processor) {
   nodes.push_back(processor);
 }
 
+void AnthemGraphTopology::removeNode(std::shared_ptr<AnthemGraphNode> processor) {
+  // For each input port, remove all connections
+  for (auto port : processor->audioInputs) {
+    for (auto connection : port->connections) {
+      removeConnection(connection->source.lock(), connection->destination.lock());
+    }
+  }
+
+  // For each output port, remove all connections
+  for (auto port : processor->audioOutputs) {
+    for (auto connection : port->connections) {
+      removeConnection(connection->source.lock(), connection->destination.lock());
+    }
+  }
+
+  // Remove the processor from the list of nodes
+  nodes.erase(
+    std::remove_if(
+      nodes.begin(),
+      nodes.end(),
+      [processor](std::shared_ptr<AnthemGraphNode> node) {
+        return node == processor;
+      }
+    ),
+    nodes.end()
+  );
+}
+
 void AnthemGraphTopology::addConnection(
   std::shared_ptr<AnthemGraphNodePort> source,
   std::shared_ptr<AnthemGraphNodePort> destination

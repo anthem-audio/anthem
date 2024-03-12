@@ -106,6 +106,29 @@ handleProcessingGraphCommand(const Request *request,
 
       return std::optional(message);
     }
+    case Command_RemoveProcessor: {
+      auto command = request->command_as_RemoveProcessor();
+      uint64_t nodeId = command->id();
+
+      bool success = anthem->removeNode(nodeId);
+
+      // Error response
+      if (!success) {
+        std::string error = "Node not found";
+        auto errorResponse = CreateRemoveProcessorResponse(builder, false, builder.CreateString(error));
+        auto errorResponseOffset = errorResponse.Union();
+        auto errorResponseMessage = CreateResponse(builder, request->id(), ReturnValue_RemoveProcessorResponse, errorResponseOffset);
+
+        return std::optional(errorResponseMessage);
+      }
+
+      auto response = CreateRemoveProcessorResponse(builder, success);
+      auto responseOffset = response.Union();
+
+      auto message = CreateResponse(builder, request->id(), ReturnValue_RemoveProcessorResponse, responseOffset);
+
+      return std::optional(message);
+    }
     case Command_ConnectProcessors: {
       auto command = request->command_as_ConnectProcessors();
 

@@ -43,6 +43,8 @@ public:
 
   void addNode(std::shared_ptr<AnthemGraphNode> node);
 
+  void removeNode(std::shared_ptr<AnthemGraphNode> node);
+
   void addConnection(
     std::shared_ptr<AnthemGraphNodePort> source,
     std::shared_ptr<AnthemGraphNodePort> destination

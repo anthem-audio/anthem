@@ -43,6 +43,7 @@ union Command {
   GetMasterOutputNodeId,
 
   AddProcessor,
+  RemoveProcessor,
   ConnectProcessors,
   DisconnectProcessors,
 
@@ -70,6 +71,7 @@ union ReturnValue {
   GetMasterOutputNodeIdResponse,
 
   AddProcessorResponse,
+  RemoveProcessorResponse,
   ConnectProcessorsResponse,
   DisconnectProcessorsResponse,
 

@@ -35,6 +35,10 @@ std::shared_ptr<AnthemGraphNode> AnthemGraph::addNode(std::shared_ptr<AnthemProc
   return node;
 }
 
+void AnthemGraph::removeNode(std::shared_ptr<AnthemGraphNode> node) {
+  topology->removeNode(node);
+}
+
 void AnthemGraph::connectNodes(
   std::shared_ptr<AnthemGraphNodePort> source,
   std::shared_ptr<AnthemGraphNodePort> destination

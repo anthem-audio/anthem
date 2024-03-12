@@ -73,4 +73,15 @@ public:
     nodes[id] = node;
     return id;
   }
+
+  bool removeNode(uint64_t nodeId) {
+    if (!hasNode(nodeId)) {
+      return false;
+    }
+
+    auto node = getNode(nodeId);
+    this->processingGraph->removeNode(node);
+    nodes.erase(nodeId);
+    return true;
+  }
 };

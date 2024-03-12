@@ -91,6 +91,34 @@ class ProcessingGraphApi {
     return completer.future;
   }
 
+  /// Removes the processor with the given ID from the engine's processing
+  /// graph.
+  Future<void> removeProcessor(int processorId) {
+    final completer = Completer<void>();
+
+    final id = _engine._getRequestId();
+
+    final request = RequestObjectBuilder(
+      id: id,
+      commandType: CommandTypeId.RemoveProcessor,
+      command: RemoveProcessorObjectBuilder(
+        id: processorId,
+      ),
+    );
+
+    _engine._request(id, request, onResponse: (response) {
+      if ((response.returnValue as RemoveProcessorResponse).success) {
+        completer.complete();
+      } else {
+        completer.completeError(
+            (response.returnValue as RemoveProcessorResponse).error ??
+                'Unknown error');
+      }
+    });
+
+    return completer.future;
+  }
+
   /// Connects two processors in the engine's processing graph.
   Future<void> connectProcessors({
     required int sourceId,
