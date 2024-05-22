@@ -44,8 +44,7 @@ part 'pointer_events.dart';
 class PianoRollController extends _PianoRollController
     with _PianoRollShortcutsMixin, _PianoRollPointerEventsMixin {
   @override
-  PianoRollController({required project, required viewModel})
-      : super(project: project, viewModel: viewModel) {
+  PianoRollController({required super.project, required super.viewModel}) {
     // Register shortcuts for this editor
     registerShortcuts();
   }

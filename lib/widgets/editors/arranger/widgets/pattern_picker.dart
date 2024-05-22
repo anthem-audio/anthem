@@ -34,7 +34,7 @@ import 'package:provider/provider.dart';
 enum PatternFilterKind { midi, audio, automation }
 
 class PatternPicker extends StatefulWidget {
-  const PatternPicker({Key? key}) : super(key: key);
+  const PatternPicker({super.key});
 
   @override
   State<PatternPicker> createState() => _PatternPickerState();

@@ -26,7 +26,7 @@ part 'plugin.g.dart';
 /// A model representing a plugin.
 @JsonSerializable()
 class PluginModel extends _PluginModel with _$PluginModel {
-  PluginModel({required String? path}) : super(path: path);
+  PluginModel({required super.path});
 
   factory PluginModel.fromJson(Map<String, dynamic> json) =>
       _$PluginModelFromJson(json);

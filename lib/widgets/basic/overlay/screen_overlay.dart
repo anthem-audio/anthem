@@ -38,7 +38,7 @@ class ScreenOverlay extends StatelessObserverWidget {
   final ScreenOverlayViewModel viewModel = ScreenOverlayViewModel();
   late final ScreenOverlayController controller;
 
-  ScreenOverlay({Key? key, required this.child}) : super(key: key) {
+  ScreenOverlay({super.key, required this.child}) {
     controller = ScreenOverlayController(viewModel: viewModel);
   }
 

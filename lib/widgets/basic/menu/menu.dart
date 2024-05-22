@@ -35,13 +35,13 @@ class Menu extends StatefulWidget {
   final void Function()? onClose;
 
   Menu({
-    Key? key,
+    super.key,
     required this.menuController,
     this.child,
     required this.menuDef,
     MenuAlignment? alignment,
     this.onClose,
-  }) : super(key: key) {
+  }) {
     menuAlignment = alignment ?? MenuAlignment.bottomLeft;
   }
 

@@ -43,11 +43,11 @@ class PianoRollContentRenderer extends StatelessWidget {
   final double keyValueAtTop;
 
   const PianoRollContentRenderer({
-    Key? key,
+    super.key,
     required this.timeViewStart,
     required this.timeViewEnd,
     required this.keyValueAtTop,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

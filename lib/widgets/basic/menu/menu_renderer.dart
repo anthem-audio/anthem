@@ -55,11 +55,11 @@ class MenuRenderer extends StatefulWidget {
   final ProjectController projectController;
 
   const MenuRenderer({
-    Key? key,
+    super.key,
     required this.menu,
     required this.id,
     required this.projectController,
-  }) : super(key: key);
+  });
 
   @override
   State<MenuRenderer> createState() => _MenuRendererState();
@@ -146,11 +146,11 @@ class MenuItemRenderer extends StatefulWidget {
   final ProjectController projectController;
 
   const MenuItemRenderer({
-    Key? key,
+    super.key,
     required this.menuItem,
     required this.isMouseInMenu,
     required this.projectController,
-  }) : super(key: key);
+  });
 
   @override
   State<MenuItemRenderer> createState() => _MenuItemRendererState();

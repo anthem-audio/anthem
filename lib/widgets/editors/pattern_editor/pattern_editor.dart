@@ -36,7 +36,7 @@ import 'package:provider/provider.dart';
 import 'generator_row.dart';
 
 class PatternEditor extends StatefulWidget {
-  const PatternEditor({Key? key}) : super(key: key);
+  const PatternEditor({super.key});
 
   @override
   State<PatternEditor> createState() => _PatternEditorState();

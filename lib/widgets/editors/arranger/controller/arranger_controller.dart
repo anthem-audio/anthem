@@ -44,9 +44,9 @@ part 'shortcuts.dart';
 class ArrangerController extends _ArrangerController
     with _ArrangerPointerEventsMixin, _ArrangerShortcutsMixin {
   ArrangerController({
-    required ArrangerViewModel viewModel,
-    required ProjectModel project,
-  }) : super(viewModel: viewModel, project: project) {
+    required super.viewModel,
+    required super.project,
+  }) {
     // Register shortcuts for this editor
     registerShortcuts();
   }

@@ -30,11 +30,11 @@ class Scrollbar extends StatefulWidget {
   final double crossAxisSize;
 
   const Scrollbar({
-    Key? key,
+    super.key,
     required this.controller,
     required this.direction,
     required this.crossAxisSize,
-  }) : super(key: key);
+  });
 
   @override
   State<Scrollbar> createState() => _ScrollbarState();

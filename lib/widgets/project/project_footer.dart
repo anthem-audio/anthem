@@ -30,7 +30,7 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 class ProjectFooter extends StatelessWidget {
-  const ProjectFooter({Key? key}) : super(key: key);
+  const ProjectFooter({super.key});
 
   @override
   Widget build(BuildContext context) {

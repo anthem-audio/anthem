@@ -29,13 +29,14 @@ class _TreeItem extends StatefulWidget {
   final int filterCutoff;
 
   const _TreeItem({
-    Key? key,
+    // ignore: unused_element
+    super.key,
     required this.model,
     this.hasOpenIndicatorIndent = false,
     required this.filterModel,
     required this.allFilterModels,
     required this.filterCutoff,
-  }) : super(key: key);
+  });
 
   @override
   State<_TreeItem> createState() => _TreeItemState();

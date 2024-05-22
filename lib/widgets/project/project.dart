@@ -41,7 +41,7 @@ import 'project_header.dart';
 class Project extends StatefulWidget {
   final ID id;
 
-  const Project({Key? key, required this.id}) : super(key: key);
+  const Project({super.key, required this.id});
 
   @override
   State<Project> createState() => _ProjectState();

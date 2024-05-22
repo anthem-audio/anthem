@@ -26,10 +26,8 @@ part 'processor.g.dart';
 @JsonSerializable()
 class ProcessorModel extends _ProcessorModel with _$ProcessorModel {
   ProcessorModel({
-    required String? processorKey,
-  }) : super(
-          processorKey: processorKey,
-        );
+    required super.processorKey,
+  });
 
   factory ProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$ProcessorModelFromJson(json);

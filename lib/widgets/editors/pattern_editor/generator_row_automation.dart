@@ -35,13 +35,13 @@ class GeneratorRowAutomation extends StatelessWidget {
   final Color color;
 
   const GeneratorRowAutomation({
-    Key? key,
+    super.key,
     required this.pattern,
     required this.generatorID,
     required this.timeViewStart,
     required this.ticksPerPixel,
     required this.color,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

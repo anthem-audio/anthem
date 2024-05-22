@@ -41,27 +41,25 @@ class Clip extends StatelessWidget {
 
   /// Creates a Clip widget tied to a ClipModel
   const Clip({
-    Key? key,
+    super.key,
     required this.clipID,
     required this.arrangementID,
     required this.ticksPerPixel,
     this.selected = false,
     this.hasResizeHandles = true,
     this.pressed = false,
-  })  : patternID = null,
-        super(key: key);
+  }) : patternID = null;
 
   /// Creates a Clip widget tied to a PatternModel
   const Clip.fromPattern({
-    Key? key,
+    super.key,
     required this.patternID,
     required this.ticksPerPixel,
     this.hasResizeHandles = false,
     this.pressed = false,
   })  : selected = false,
         clipID = null,
-        arrangementID = null,
-        super(key: key);
+        arrangementID = null;
 
   @override
   Widget build(BuildContext context) {

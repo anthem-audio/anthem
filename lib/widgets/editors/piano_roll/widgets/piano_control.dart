@@ -33,11 +33,11 @@ typedef ValueSetter<T> = void Function(T value);
 
 class PianoControl extends StatefulWidget {
   const PianoControl({
-    Key? key,
+    super.key,
     required this.keyValueAtTop,
     required this.keyHeight,
     required this.setKeyValueAtTop,
-  }) : super(key: key);
+  });
 
   final double keyValueAtTop;
   final double keyHeight;
@@ -156,8 +156,7 @@ class KeyLayoutDelegate extends MultiChildLayoutDelegate {
 const notchWidth = 22.0;
 
 class _WhiteKey extends StatelessWidget {
-  const _WhiteKey({Key? key, required this.keyNumber, required this.keyHeight})
-      : super(key: key);
+  const _WhiteKey({required this.keyNumber, required this.keyHeight});
 
   final int keyNumber;
   final double keyHeight;
@@ -204,8 +203,7 @@ class _WhiteKey extends StatelessWidget {
 const blackKeyColor = Color(0xFF3D484F);
 
 class _BlackKey extends StatelessWidget {
-  const _BlackKey({Key? key, required this.keyNumber, required this.keyHeight})
-      : super(key: key);
+  const _BlackKey({required this.keyNumber, required this.keyHeight});
 
   final int keyNumber;
   final double keyHeight;

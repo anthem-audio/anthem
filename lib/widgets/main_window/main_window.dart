@@ -30,7 +30,7 @@ import 'package:anthem/widgets/main_window/tab_content_switcher.dart';
 import 'package:anthem/widgets/main_window/window_header.dart';
 
 class MainWindow extends StatefulWidget {
-  const MainWindow({Key? key}) : super(key: key);
+  const MainWindow({super.key});
 
   @override
   State<MainWindow> createState() => _MainWindowState();

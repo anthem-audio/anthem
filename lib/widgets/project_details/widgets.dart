@@ -23,7 +23,7 @@ import 'package:flutter/widgets.dart';
 class _Header extends StatelessWidget {
   final String text;
 
-  const _Header(this.text, {Key? key}) : super(key: key);
+  const _Header(this.text);
 
   @override
   Widget build(BuildContext context) {
@@ -42,8 +42,7 @@ class Section extends StatelessWidget {
   final List<Widget> children;
   final String title;
 
-  const Section({Key? key, this.children = const [], required this.title})
-      : super(key: key);
+  const Section({super.key, this.children = const [], required this.title});
 
   @override
   Widget build(BuildContext context) {

@@ -63,7 +63,7 @@ class ScrollbarRenderer extends StatefulWidget {
   final bool disableAtFullSize;
 
   const ScrollbarRenderer({
-    Key? key,
+    super.key,
     this.minHandlePixelSize = 24,
     this.minHandleSize = 0,
     required this.scrollRegionStart,
@@ -74,7 +74,7 @@ class ScrollbarRenderer extends StatefulWidget {
     this.canScrollPastStart = false,
     this.canScrollPastEnd = false,
     this.disableAtFullSize = true,
-  }) : super(key: key);
+  });
 
   @override
   State<ScrollbarRenderer> createState() => _ScrollbarRendererState();

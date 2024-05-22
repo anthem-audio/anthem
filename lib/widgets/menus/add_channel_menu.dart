@@ -32,10 +32,10 @@ class AddChannelMenu extends StatelessObserverWidget {
   final Widget? child;
 
   const AddChannelMenu({
-    Key? key,
+    super.key,
     required this.menuController,
     this.child,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

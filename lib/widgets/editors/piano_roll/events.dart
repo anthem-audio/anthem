@@ -33,8 +33,8 @@ abstract class PianoRollPointerEvent extends PianoRollEvent {
     required this.offset,
     required this.pointerEvent,
     required this.keyboardModifiers,
-    required Size pianoRollSize,
-  }) : super(pianoRollSize: pianoRollSize);
+    required super.pianoRollSize,
+  });
 
   /// MIDI note at cursor. Fraction indicates position in note.
   final double key;
@@ -54,59 +54,41 @@ class PianoRollPointerDownEvent extends PianoRollPointerEvent {
   final bool isResize;
 
   PianoRollPointerDownEvent({
-    required double key,
-    required double offset,
-    required PointerDownEvent pointerEvent,
-    required Size pianoRollSize,
-    required KeyboardModifiers keyboardModifiers,
+    required super.key,
+    required super.offset,
+    required PointerDownEvent super.pointerEvent,
+    required super.pianoRollSize,
+    required super.keyboardModifiers,
     required this.noteUnderCursor,
     required this.isResize,
-  }) : super(
-          key: key,
-          offset: offset,
-          pointerEvent: pointerEvent,
-          pianoRollSize: pianoRollSize,
-          keyboardModifiers: keyboardModifiers,
-        );
+  });
 }
 
 class PianoRollPointerMoveEvent extends PianoRollPointerEvent {
   PianoRollPointerMoveEvent({
-    required double key,
-    required double offset,
-    required PointerMoveEvent pointerEvent,
-    required Size pianoRollSize,
-    required KeyboardModifiers keyboardModifiers,
-  }) : super(
-          key: key,
-          offset: offset,
-          pointerEvent: pointerEvent,
-          pianoRollSize: pianoRollSize,
-          keyboardModifiers: keyboardModifiers,
-        );
+    required super.key,
+    required super.offset,
+    required PointerMoveEvent super.pointerEvent,
+    required super.pianoRollSize,
+    required super.keyboardModifiers,
+  });
 }
 
 class PianoRollPointerUpEvent extends PianoRollPointerEvent {
   PianoRollPointerUpEvent({
-    required double key,
-    required double offset,
-    required PointerEvent pointerEvent,
-    required Size pianoRollSize,
-    required KeyboardModifiers keyboardModifiers,
-  }) : super(
-          key: key,
-          offset: offset,
-          pointerEvent: pointerEvent,
-          pianoRollSize: pianoRollSize,
-          keyboardModifiers: keyboardModifiers,
-        );
+    required super.key,
+    required super.offset,
+    required super.pointerEvent,
+    required super.pianoRollSize,
+    required super.keyboardModifiers,
+  });
 }
 
 class PianoRollTimeSignatureChangeAddEvent extends PianoRollEvent {
   double offset;
 
   PianoRollTimeSignatureChangeAddEvent({
-    required Size pianoRollSize,
+    required super.pianoRollSize,
     required this.offset,
-  }) : super(pianoRollSize: pianoRollSize);
+  });
 }

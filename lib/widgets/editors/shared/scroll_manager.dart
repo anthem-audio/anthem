@@ -49,13 +49,13 @@ class EditorScrollManager extends StatefulWidget {
   final void Function(double pointerY)? onVerticalPanMove;
 
   const EditorScrollManager({
-    Key? key,
+    super.key,
     this.child,
     required this.timeView,
     this.onVerticalScrollChange,
     this.onVerticalPanStart,
     this.onVerticalPanMove,
-  }) : super(key: key);
+  });
 
   @override
   State<EditorScrollManager> createState() => _EditorScrollManagerState();

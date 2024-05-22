@@ -69,8 +69,7 @@ class ShortcutProvider extends StatefulWidget {
   /// Determines if this [ShortcutProvider] should process keystrokes.
   final bool active;
 
-  const ShortcutProvider({Key? key, required this.child, this.active = true})
-      : super(key: key);
+  const ShortcutProvider({super.key, required this.child, this.active = true});
 
   @override
   State<ShortcutProvider> createState() => _ShortcutProviderState();

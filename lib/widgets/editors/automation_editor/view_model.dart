@@ -66,5 +66,8 @@ abstract class _AutomationEditorViewModel with Store {
 
   MenuDef pointMenu = MenuDef();
 
+  @observable
+  var selectedPointIndices = ObservableList<int>();
+
   _AutomationEditorViewModel({required this.timeView});
 }

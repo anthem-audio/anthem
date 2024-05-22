@@ -33,12 +33,11 @@ part 'arrangement.g.dart';
 
 @JsonSerializable()
 class ArrangementModel extends _ArrangementModel with _$ArrangementModel {
-  ArrangementModel({required String name, required String id})
-      : super(name: name, id: id);
+  ArrangementModel({required super.name, required super.id});
 
   ArrangementModel.create(
-      {required String name, required String id, required ProjectModel project})
-      : super.create(name: name, id: id, project: project);
+      {required super.name, required super.id, required super.project})
+      : super.create();
 
   factory ArrangementModel.fromJson(Map<String, dynamic> json) =>
       _$ArrangementModelFromJson(json);

@@ -38,9 +38,9 @@ class GeneratorRow extends StatefulWidget {
   final ID generatorID;
 
   const GeneratorRow({
-    Key? key,
+    super.key,
     required this.generatorID,
-  }) : super(key: key);
+  });
 
   @override
   State<GeneratorRow> createState() => _GeneratorRowState();
