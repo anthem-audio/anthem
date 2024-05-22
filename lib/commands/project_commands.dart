@@ -74,3 +74,26 @@ class AddGeneratorCommand extends Command {
     _removeGenerator(project, generatorId);
   }
 }
+
+class RemoveGeneratorCommand extends Command {
+  GeneratorModel generator;
+  late int index;
+
+  RemoveGeneratorCommand({
+    required ProjectModel project,
+    required this.generator,
+  }) {
+    index = project.generatorList.indexOf(generator.id);
+  }
+
+  @override
+  void execute(ProjectModel project) {
+    _removeGenerator(project, generator.id);
+  }
+
+  @override
+  void rollback(ProjectModel project) {
+    project.generators[generator.id] = generator;
+    project.generatorList.insert(index, generator.id);
+  }
+}

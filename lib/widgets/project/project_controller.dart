@@ -206,6 +206,15 @@ class ProjectController {
     //   pluginPath: path,
     // );
   }
+
+  void removeGenerator(ID generatorID) {
+    project.execute(
+      RemoveGeneratorCommand(
+        project: project,
+        generator: project.generators[generatorID]!,
+      ),
+    );
+  }
 }
 
 var nextHue = 0.0;
