@@ -26,7 +26,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 class ArrangementDetailView extends StatefulObserverWidget {
-  const ArrangementDetailView({Key? key}) : super(key: key);
+  const ArrangementDetailView({super.key});
 
   @override
   State<ArrangementDetailView> createState() => _ArrangementDetailViewState();

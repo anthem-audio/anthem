@@ -31,10 +31,10 @@ class TabContentSwitcher extends StatelessWidget {
   final ID selectedTabID;
 
   const TabContentSwitcher({
-    Key? key,
+    super.key,
     required this.tabs,
     required this.selectedTabID,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

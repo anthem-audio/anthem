@@ -51,8 +51,8 @@ class PatternModel extends _PatternModel
     _init();
   }
 
-  PatternModel.create({required String name, required ProjectModel project})
-      : super.create(name: name, project: project) {
+  PatternModel.create({required super.name, required ProjectModel project})
+      : super.create(project: project) {
     _init();
     // TODO: remove
     for (final generator in project.generators.values.where(

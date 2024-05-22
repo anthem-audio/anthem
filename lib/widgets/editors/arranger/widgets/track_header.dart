@@ -30,7 +30,7 @@ import 'package:provider/provider.dart';
 class TrackHeader extends StatelessWidget {
   final ID trackID;
 
-  const TrackHeader({Key? key, required this.trackID}) : super(key: key);
+  const TrackHeader({super.key, required this.trackID});
 
   @override
   Widget build(BuildContext context) {

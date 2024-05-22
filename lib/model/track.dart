@@ -26,7 +26,7 @@ part 'track.g.dart';
 
 @JsonSerializable()
 class TrackModel extends _TrackModel with _$TrackModel {
-  TrackModel({required String name}) : super(name: name);
+  TrackModel({required super.name});
 
   factory TrackModel.fromJson(Map<String, dynamic> json) =>
       _$TrackModelFromJson(json);

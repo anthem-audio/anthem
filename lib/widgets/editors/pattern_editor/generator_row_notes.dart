@@ -30,13 +30,13 @@ class GeneratorRowNotes extends StatelessWidget {
   final Color color;
 
   const GeneratorRowNotes({
-    Key? key,
+    super.key,
     required this.pattern,
     required this.generatorID,
     required this.timeViewStart,
     required this.ticksPerPixel,
     required this.color,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

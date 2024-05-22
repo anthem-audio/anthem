@@ -30,7 +30,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 class TimeSignatureChangeDetailView extends StatelessObserverWidget {
-  const TimeSignatureChangeDetailView({Key? key}) : super(key: key);
+  const TimeSignatureChangeDetailView({super.key});
 
   @override
   Widget build(BuildContext context) {

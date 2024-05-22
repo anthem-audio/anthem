@@ -27,7 +27,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 
 class EngineIndicator extends StatelessObserverWidget {
-  const EngineIndicator({Key? key}) : super(key: key);
+  const EngineIndicator({super.key});
 
   @override
   Widget build(BuildContext context) {

@@ -25,8 +25,7 @@ part 'time_signature.g.dart';
 
 @JsonSerializable()
 class TimeSignatureModel extends _TimeSignatureModel with _$TimeSignatureModel {
-  TimeSignatureModel(int numerator, int denominator)
-      : super(numerator, denominator);
+  TimeSignatureModel(super.numerator, super.denominator);
 
   factory TimeSignatureModel.fromJson(Map<String, dynamic> json) =>
       _$TimeSignatureModelFromJson(json);
@@ -54,14 +53,10 @@ abstract class _TimeSignatureModel with Store {
 class TimeSignatureChangeModel extends _TimeSignatureChangeModel
     with _$TimeSignatureChangeModel {
   TimeSignatureChangeModel({
-    ID? id,
-    required TimeSignatureModel timeSignature,
-    required int offset,
-  }) : super(
-          id: id,
-          timeSignature: timeSignature,
-          offset: offset,
-        );
+    super.id,
+    required super.timeSignature,
+    required super.offset,
+  });
 
   factory TimeSignatureChangeModel.fromJson(Map<String, dynamic> json) =>
       _$TimeSignatureChangeModelFromJson(json);

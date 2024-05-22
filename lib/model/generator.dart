@@ -40,34 +40,21 @@ enum GeneratorType { instrument, automation }
 @JsonSerializable()
 class GeneratorModel extends _GeneratorModel with _$GeneratorModel {
   GeneratorModel({
-    required String id,
-    required String name,
-    required GeneratorType generatorType,
-    required Color color,
-    required ProcessorModel processor,
-  }) : super(
-          id: id,
-          name: name,
-          generatorType: generatorType,
-          color: color,
-          processor: processor,
-        );
+    required super.id,
+    required super.name,
+    required super.generatorType,
+    required super.color,
+    required super.processor,
+  });
 
   GeneratorModel.create({
-    required String id,
-    required String name,
-    required GeneratorType generatorType,
-    required Color color,
-    required ProcessorModel processor,
-    required ProjectModel project,
-  }) : super.create(
-          id: id,
-          name: name,
-          generatorType: generatorType,
-          color: color,
-          processor: processor,
-          project: project,
-        );
+    required super.id,
+    required super.name,
+    required super.generatorType,
+    required super.color,
+    required super.processor,
+    required super.project,
+  }) : super.create();
 
   factory GeneratorModel.fromJson(Map<String, dynamic> json) =>
       _$GeneratorModelFromJson(json);

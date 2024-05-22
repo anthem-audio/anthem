@@ -25,14 +25,10 @@ part 'anthem_color.g.dart';
 @JsonSerializable()
 class AnthemColor extends _AnthemColor with _$AnthemColor {
   AnthemColor({
-    required double hue,
-    double lightnessMultiplier = 1,
-    double saturationMultiplier = 1,
-  }) : super(
-          hue: hue,
-          lightnessMultiplier: lightnessMultiplier,
-          saturationMultiplier: saturationMultiplier,
-        );
+    required super.hue,
+    super.lightnessMultiplier = 1,
+    super.saturationMultiplier = 1,
+  });
 
   factory AnthemColor.fromJson(Map<String, dynamic> json) =>
       _$AnthemColorFromJson(json);

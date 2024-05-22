@@ -34,7 +34,7 @@ import '../basic/icon.dart';
 class ProjectHeader extends StatelessWidget {
   final ID projectID;
 
-  const ProjectHeader({Key? key, required this.projectID}) : super(key: key);
+  const ProjectHeader({super.key, required this.projectID});
 
   @override
   Widget build(BuildContext context) {

@@ -52,7 +52,7 @@ import 'widgets/pattern_picker.dart';
 const _timelineHeight = 44.0;
 
 class Arranger extends StatefulWidget {
-  const Arranger({Key? key}) : super(key: key);
+  const Arranger({super.key});
 
   @override
   State<Arranger> createState() => _ArrangerState();
@@ -337,7 +337,7 @@ class _ArrangerState extends State<Arranger> {
 class ArrangerTimeViewProvider extends StatelessObserverWidget {
   final Widget? child;
 
-  const ArrangerTimeViewProvider({Key? key, this.child}) : super(key: key);
+  const ArrangerTimeViewProvider({super.key, this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -349,7 +349,7 @@ class ArrangerTimeViewProvider extends StatelessObserverWidget {
 
 // Actual content view of the arranger (timeline + clips + etc)
 class _ArrangerContent extends StatefulWidget {
-  const _ArrangerContent({Key? key}) : super(key: key);
+  const _ArrangerContent();
 
   @override
   State<_ArrangerContent> createState() => _ArrangerContentState();
@@ -554,13 +554,12 @@ class _ArrangerCanvas extends StatelessWidget {
   final AnimationController verticalScrollPositionAnimationController;
 
   const _ArrangerCanvas({
-    Key? key,
     required this.timeViewStartAnimation,
     required this.timeViewEndAnimation,
     required this.timeViewAnimationController,
     required this.verticalScrollPositionAnimation,
     required this.verticalScrollPositionAnimationController,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -698,7 +697,7 @@ class _ArrangerCanvas extends StatelessWidget {
 class _ArrangerCanvasCursor extends StatefulWidget {
   final Widget? child;
 
-  const _ArrangerCanvasCursor({Key? key, this.child}) : super(key: key);
+  const _ArrangerCanvasCursor({this.child});
 
   @override
   State<_ArrangerCanvasCursor> createState() => _ArrangerCanvasCursorState();
@@ -738,9 +737,8 @@ class _TrackHeaders extends StatefulWidget {
   final double verticalScrollPosition;
 
   const _TrackHeaders({
-    Key? key,
     required this.verticalScrollPosition,
-  }) : super(key: key);
+  });
 
   @override
   State<_TrackHeaders> createState() => _TrackHeadersState();

@@ -69,7 +69,7 @@ const double maxKeyValue = 128;
 Size _pianoRollCanvasSize = const Size(0, 0);
 
 class PianoRoll extends StatefulWidget {
-  const PianoRoll({Key? key}) : super(key: key);
+  const PianoRoll({super.key});
 
   @override
   State<PianoRoll> createState() => _PianoRollState();
@@ -135,7 +135,7 @@ class _PianoRollState extends State<PianoRoll> {
 class PianoRollTimeViewProvider extends StatelessObserverWidget {
   final Widget? child;
 
-  const PianoRollTimeViewProvider({Key? key, this.child}) : super(key: key);
+  const PianoRollTimeViewProvider({super.key, this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -247,9 +247,7 @@ class _PianoRollHeader extends StatelessWidget {
 }
 
 class _PianoRollContent extends StatefulWidget {
-  const _PianoRollContent({
-    Key? key,
-  }) : super(key: key);
+  const _PianoRollContent();
 
   @override
   State<_PianoRollContent> createState() => _PianoRollContentState();
@@ -632,7 +630,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
 class _PianoRollCanvasCursor extends StatefulWidget {
   final Widget? child;
 
-  const _PianoRollCanvasCursor({Key? key, this.child}) : super(key: key);
+  const _PianoRollCanvasCursor({this.child});
 
   @override
   State<_PianoRollCanvasCursor> createState() => _PianoRollCanvasCursorState();

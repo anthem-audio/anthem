@@ -35,10 +35,8 @@ part 'song.g.dart';
 class SongModel extends _SongModel with _$SongModel {
   SongModel() : super();
   SongModel.create({
-    required ProjectModel project,
-  }) : super.create(
-          project: project,
-        );
+    required super.project,
+  }) : super.create();
 
   factory SongModel.fromJson(Map<String, dynamic> json) =>
       _$SongModelFromJson(json);

@@ -38,12 +38,12 @@ class TreeView extends StatefulWidget {
   final int filterCutoff;
 
   const TreeView({
-    Key? key,
+    super.key,
     required this.items,
     this.scrollController,
     this.filterText,
     this.filterCutoff = 50,
-  }) : super(key: key);
+  });
 
   @override
   State<TreeView> createState() => _TreeViewState();
