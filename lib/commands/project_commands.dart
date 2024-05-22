@@ -26,10 +26,20 @@ import 'package:anthem/model/project.dart';
 
 import 'command.dart';
 
-void _removeGenerator(ProjectModel project, ID generatorID) {
+Future<void> _removeGenerator(ProjectModel project, ID generatorID) async {
+  final generator = project.generators[generatorID];
+
   project.generatorList.removeWhere((element) => element == generatorID);
   if (project.generators.containsKey(generatorID)) {
     project.generators.remove(generatorID);
+  }
+
+  if (generator != null &&
+      generator.generatorType == GeneratorType.instrument &&
+      generator.processor.idInEngine != null) {
+    await project.engine.processingGraphApi
+        .removeProcessor(generator.processor.idInEngine!);
+    await project.engine.processingGraphApi.compile();
   }
 }
 
@@ -92,8 +102,13 @@ class RemoveGeneratorCommand extends Command {
   }
 
   @override
-  void rollback(ProjectModel project) {
+  void rollback(ProjectModel project) async {
     project.generators[generator.id] = generator;
     project.generatorList.insert(index, generator.id);
+
+    if (generator.generatorType == GeneratorType.instrument) {
+      await generator.createInEngine(project.engine);
+      await project.engine.processingGraphApi.compile();
+    }
   }
 }
