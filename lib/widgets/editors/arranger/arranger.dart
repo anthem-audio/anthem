@@ -388,17 +388,17 @@ class _ArrangerContentState extends State<_ArrangerContent>
       vsync: this,
       items: [
         LazyFollowItem(
-          value: 0,
+          initialValue: 0,
           getTarget: () => viewModel.timeView.start,
         ),
         LazyFollowItem(
-          value: 1,
+          initialValue: 1,
           getTarget: () => viewModel.timeView.end,
         ),
       ],
     );
 
-    timeViewAnimationHelper!.updateOnBuild();
+    timeViewAnimationHelper!.update();
 
     final [timeViewStartAnimItem, timeViewEndAnimItem] =
         timeViewAnimationHelper!.items;
@@ -408,13 +408,13 @@ class _ArrangerContentState extends State<_ArrangerContent>
       vsync: this,
       items: [
         LazyFollowItem(
-          value: 0,
+          initialValue: 0,
           getTarget: () => viewModel.verticalScrollPosition,
         ),
       ],
     );
 
-    verticalScrollPositionAnimationHelper!.updateOnBuild();
+    verticalScrollPositionAnimationHelper!.update();
 
     final [verticalScrollPositionAnimItem] =
         verticalScrollPositionAnimationHelper!.items;
