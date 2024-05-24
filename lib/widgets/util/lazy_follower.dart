@@ -48,19 +48,13 @@ class LazyFollowAnimationHelper {
 
   /// Should be called on build before widgets are returned. This updates the
   /// animation in case any values have changed.
-  void updateOnBuild() {
+  void update() {
     final itemsToUpdate = <({LazyFollowItem item, double target})>[];
 
     // Updates the animation if the value has changed
     for (final item in items) {
-      final target = item.getTarget();
-      if (target != item.mostRecentValue) {
-        itemsToUpdate.add((item: item, target: target));
-      }
-    }
-
-    if (itemsToUpdate.isEmpty) {
-      return;
+      final target = item.getTarget?.call() ?? item.target;
+      itemsToUpdate.add((item: item, target: target));
     }
 
     for (final record in itemsToUpdate) {
@@ -92,11 +86,10 @@ class LazyFollowAnimationHelper {
 }
 
 class LazyFollowItem {
-  double value;
-
-  final double Function() getTarget;
+  final double Function()? getTarget;
 
   double mostRecentValue;
+  double target;
 
   late final Tween<double> tween;
 
@@ -106,7 +99,7 @@ class LazyFollowItem {
 
   void _init(AnimationController controller) {
     animationController = controller;
-    tween = Tween<double>(begin: value, end: value);
+    tween = Tween<double>(begin: mostRecentValue, end: mostRecentValue);
     animation = tween.animate(
       CurvedAnimation(
         parent: controller,
@@ -116,9 +109,9 @@ class LazyFollowItem {
   }
 
   LazyFollowItem({
-    required this.value,
-    required this.getTarget,
-  }) : mostRecentValue = value;
+    required double initialValue,
+    this.getTarget,
+  }) : mostRecentValue = initialValue, target = initialValue;
 
   void snapTo(double value) {
     tween.begin = value;
@@ -126,5 +119,9 @@ class LazyFollowItem {
     tween.end = value;
     animationController.forward();
     mostRecentValue = value;
+  }
+
+  void setTarget(double value) {
+    target = value;
   }
 }

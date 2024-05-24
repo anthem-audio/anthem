@@ -19,10 +19,11 @@
 
 import 'dart:math';
 
+import 'package:anthem/widgets/util/lazy_follower.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
-class Knob extends StatelessWidget {
+class Knob extends StatefulWidget {
   final double? width;
   final double? height;
   final KnobType type;
@@ -38,38 +39,143 @@ class Knob extends StatelessWidget {
   });
 
   @override
+  State<Knob> createState() => _KnobState();
+}
+
+class _KnobState extends State<Knob> with TickerProviderStateMixin {
+  LazyFollowAnimationHelper? animationHelper;
+
+  bool isOver = false;
+  bool isPressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      height: height,
-      child: CustomPaint(
-        painter: _KnobPainter(value: value, type: type),
+    animationHelper ??= LazyFollowAnimationHelper(
+      duration: 250,
+      vsync: this,
+      items: [
+        // Size multiplier
+        LazyFollowItem(
+          initialValue: 1,
+        ),
+        // Track size
+        LazyFollowItem(
+          initialValue: 2,
+        ),
+      ],
+    );
+
+    void setHoverAnimationState(bool hover) {
+      final [_, trackSizeHelper] = animationHelper!.items;
+      trackSizeHelper.setTarget(hover ? 3 : 2);
+    }
+
+    void setPressAnimationState(bool pressed) {
+      final [sizeMultiplierHelper, _] = animationHelper!.items;
+      sizeMultiplierHelper.setTarget(pressed ? 0.9 : 1);
+    }
+
+    return MouseRegion(
+      onEnter: (e) {
+        setState(() {
+          isOver = true;
+        });
+
+        setHoverAnimationState(true);
+        animationHelper!.update();
+      },
+      onExit: (e) {
+        setState(() {
+          isOver = false;
+        });
+
+        if (!isPressed) {
+          setHoverAnimationState(false);
+          animationHelper!.update();
+        }
+      },
+      child: Listener(
+        onPointerDown: (e) {
+          setState(() {
+            isPressed = true;
+          });
+
+          setPressAnimationState(true);
+          animationHelper!.update();
+        },
+        onPointerUp: (e) {
+          setState(() {
+            isPressed = false;
+          });
+
+          setPressAnimationState(false);
+          if (!isOver) {
+            setHoverAnimationState(false);
+          }
+          animationHelper!.update();
+        },
+        child: SizedBox(
+          width: widget.width,
+          height: widget.height,
+          child: AnimatedBuilder(
+            animation: animationHelper!.animationController,
+            builder: (context, _) {
+              final [sizeMultiplierHelper, trackSizeHelper] =
+                  animationHelper!.items;
+
+              return CustomPaint(
+                painter: _KnobPainter(
+                  value: widget.value,
+                  type: widget.type,
+                  sizeMultiplier: sizeMultiplierHelper.animation.value,
+                  trackSize: trackSizeHelper.animation.value,
+                ),
+              );
+            },
+          ),
+        ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    animationHelper!.dispose();
+    super.dispose();
   }
 }
 
 class _KnobPainter extends CustomPainter {
   final double value;
   final KnobType type;
+  final double sizeMultiplier;
+  final double trackSize;
 
-  _KnobPainter({required this.value, required this.type});
+  _KnobPainter({
+    required this.value,
+    required this.type,
+    required this.sizeMultiplier,
+    required this.trackSize,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
+    final multipliedSize = size * sizeMultiplier;
+
     final trackBorderPaint = Paint()
       ..color = const Color(0xFF2F2F2F)
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
     final trackFillPaint = Paint()
       ..color = const Color(0xFF28D1AA)
-      ..strokeWidth = 2
+      ..strokeWidth = trackSize
       ..style = PaintingStyle.stroke;
 
     final center = Offset(size.width / 2, size.height / 2);
 
-    final arcRect =
-        Rect.fromCircle(center: center, radius: size.width / 2 - 1.5);
+    final arcRect = Rect.fromCircle(
+        center: center,
+        radius: multipliedSize.width / 2 - (0.5 + trackSize * 0.5));
 
     final startAngle = switch (type) {
       KnobType.normal => pi / 2,
@@ -85,12 +191,18 @@ class _KnobPainter extends CustomPainter {
     canvas.drawArc(arcRect, startAngle, valueAngle, false, trackFillPaint);
 
     // Borders
-    canvas.drawCircle(center, size.width / 2, trackBorderPaint);
-    canvas.drawCircle(center, size.width / 2 - 3, trackBorderPaint);
+    canvas.drawCircle(center, multipliedSize.width / 2, trackBorderPaint);
+    canvas.drawCircle(
+        center, multipliedSize.width / 2 - (trackSize + 1), trackBorderPaint);
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _KnobPainter oldDelegate) {
+    return oldDelegate.value != value ||
+        oldDelegate.type != type ||
+        oldDelegate.sizeMultiplier != sizeMultiplier ||
+        oldDelegate.trackSize != trackSize;
+  }
 }
 
 enum KnobType {

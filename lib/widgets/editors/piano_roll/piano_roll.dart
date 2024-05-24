@@ -281,17 +281,17 @@ class _PianoRollContentState extends State<_PianoRollContent>
       vsync: this,
       items: [
         LazyFollowItem(
-          value: 0,
+          initialValue: 0,
           getTarget: () => viewModel.timeView.start,
         ),
         LazyFollowItem(
-          value: 1,
+          initialValue: 1,
           getTarget: () => viewModel.timeView.end,
         ),
       ],
     );
 
-    timeViewAnimationHelper!.updateOnBuild();
+    timeViewAnimationHelper!.update();
 
     final [timeViewStartAnimItem, timeViewEndAnimItem] =
         timeViewAnimationHelper!.items;
@@ -301,13 +301,13 @@ class _PianoRollContentState extends State<_PianoRollContent>
       vsync: this,
       items: [
         LazyFollowItem(
-          value: 0,
+          initialValue: 0,
           getTarget: () => viewModel.keyValueAtTop,
         ),
       ],
     );
 
-    keyValueAtTopAnimationHelper!.updateOnBuild();
+    keyValueAtTopAnimationHelper!.update();
 
     final [keyValueAtTopAnimItem] = keyValueAtTopAnimationHelper!.items;
 
