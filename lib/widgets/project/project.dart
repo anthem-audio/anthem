@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/basic/background.dart';
+import 'package:anthem/widgets/basic/knob.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/automation_editor/automation_editor.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
@@ -83,7 +85,30 @@ class _ProjectState extends State<Project> {
             Expanded(
               child: Observer(builder: (context) {
                 const automationEditor = AutomationEditor();
-                const channelRack = Text('Channel Rack');
+                const channelRack = Background(
+                  type: BackgroundType.dark,
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Knob(
+                          width: 20,
+                          height: 20,
+                          value: 0.6,
+                        ),
+                        SizedBox(
+                          width: 10,
+                        ),
+                        Knob(
+                          width: 40,
+                          height: 40,
+                          type: KnobType.pan,
+                          value: -0.3,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
                 const pianoRoll = PianoRoll();
                 const mixer = Text('Mixer');
 

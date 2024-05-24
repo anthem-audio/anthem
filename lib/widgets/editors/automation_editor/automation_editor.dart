@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -29,6 +29,7 @@ import 'package:anthem/widgets/editors/automation_editor/event_listener.dart';
 import 'package:anthem/widgets/editors/automation_editor/point_context_menu.dart';
 import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:anthem/widgets/util/lazy_follower.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -110,36 +111,7 @@ class _AutomationEditorContent extends StatefulObserverWidget {
 
 class _AutomationEditorContentState extends State<_AutomationEditorContent>
     with TickerProviderStateMixin {
-  // Fields for time view animation
-
-  late final AnimationController _timeViewAnimationController =
-      AnimationController(
-    duration: const Duration(milliseconds: 250),
-    vsync: this,
-  );
-
-  double _lastTimeViewStart = 0;
-  double _lastTimeViewEnd = 1;
-
-  late final Tween<double> _timeViewStartTween =
-      Tween<double>(begin: _lastTimeViewStart, end: _lastTimeViewStart);
-  late final Tween<double> _timeViewEndTween =
-      Tween<double>(begin: _lastTimeViewEnd, end: _lastTimeViewEnd);
-
-  late final Animation<double> _timeViewStartAnimation =
-      _timeViewStartTween.animate(
-    CurvedAnimation(
-      parent: _timeViewAnimationController,
-      curve: Curves.easeOutExpo,
-    ),
-  );
-  late final Animation<double> _timeViewEndAnimation =
-      _timeViewEndTween.animate(
-    CurvedAnimation(
-      parent: _timeViewAnimationController,
-      curve: Curves.easeOutExpo,
-    ),
-  );
+  LazyFollowAnimationHelper? timeViewAnimationHelper;
 
   mobx.ReactionDisposer? animationTweenUpdaterDisposer;
 
@@ -148,22 +120,25 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
     final viewModel = Provider.of<AutomationEditorViewModel>(context);
     final project = Provider.of<ProjectModel>(context);
 
-    // Updates the time view animation if the time view has changed
-    if (viewModel.timeView.start != _lastTimeViewStart ||
-        viewModel.timeView.end != _lastTimeViewEnd) {
-      _timeViewStartTween.begin = _timeViewStartAnimation.value;
-      _timeViewEndTween.begin = _timeViewEndAnimation.value;
+    timeViewAnimationHelper ??= LazyFollowAnimationHelper(
+      duration: 250,
+      vsync: this,
+      items: [
+        LazyFollowItem(
+          value: 0,
+          getTarget: () => viewModel.timeView.start,
+        ),
+        LazyFollowItem(
+          value: 1,
+          getTarget: () => viewModel.timeView.end,
+        ),
+      ],
+    );
 
-      _timeViewAnimationController.reset();
+    timeViewAnimationHelper!.updateOnBuild();
 
-      _timeViewStartTween.end = viewModel.timeView.start;
-      _timeViewEndTween.end = viewModel.timeView.end;
-
-      _timeViewAnimationController.forward();
-
-      _lastTimeViewStart = viewModel.timeView.start;
-      _lastTimeViewEnd = viewModel.timeView.end;
-    }
+    final [timeViewStartAnimItem, timeViewEndAnimItem] =
+        timeViewAnimationHelper!.items;
 
     // Updates the animations whenever the vertical scroll position changes.
     animationTweenUpdaterDisposer ??= mobx.autorun((p0) {
@@ -216,10 +191,10 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
                       height: 21,
                       child: Timeline.pattern(
                         patternID: activePatternID,
-                        timeViewStartAnimation: _timeViewStartAnimation,
-                        timeViewEndAnimation: _timeViewEndAnimation,
+                        timeViewStartAnimation: timeViewStartAnimItem.animation,
+                        timeViewEndAnimation: timeViewEndAnimItem.animation,
                         timeViewAnimationController:
-                            _timeViewAnimationController,
+                            timeViewAnimationHelper!.animationController,
                       ),
                     ),
                   ),
@@ -227,11 +202,13 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
                     child: AutomationPointContextMenu(
                       child: AutomationEditorEventListener(
                         child: AnimatedBuilder(
-                          animation: _timeViewAnimationController,
+                          animation:
+                              timeViewAnimationHelper!.animationController,
                           builder: (context, child) {
                             return AutomationEditorContentRenderer(
-                              timeViewStart: _timeViewStartAnimation.value,
-                              timeViewEnd: _timeViewEndAnimation.value,
+                              timeViewStart:
+                                  timeViewStartAnimItem.animation.value,
+                              timeViewEnd: timeViewEndAnimItem.animation.value,
                             );
                           },
                         ),
@@ -245,5 +222,12 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
         ),
       ],
     );
+  }
+
+  @override
+  void dispose() {
+    timeViewAnimationHelper?.dispose();
+    animationTweenUpdaterDisposer?.call();
+    super.dispose();
   }
 }

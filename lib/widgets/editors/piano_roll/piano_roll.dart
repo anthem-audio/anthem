@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -32,6 +32,7 @@ import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/piano_roll/content_renderer.dart';
+import 'package:anthem/widgets/util/lazy_follower.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart' as mobx;
@@ -257,64 +258,15 @@ class _PianoRollContentState extends State<_PianoRollContent>
     with TickerProviderStateMixin {
   double footerHeight = 61;
 
-  // Fields for time view animation
-
-  late final AnimationController _timeViewAnimationController =
-      AnimationController(
-    duration: const Duration(milliseconds: 250),
-    vsync: this,
-  );
-
-  double _lastTimeViewStart = 0;
-  double _lastTimeViewEnd = 1;
-
-  late final Tween<double> _timeViewStartTween =
-      Tween<double>(begin: _lastTimeViewStart, end: _lastTimeViewStart);
-  late final Tween<double> _timeViewEndTween =
-      Tween<double>(begin: _lastTimeViewEnd, end: _lastTimeViewEnd);
-
-  late final Animation<double> _timeViewStartAnimation =
-      _timeViewStartTween.animate(
-    CurvedAnimation(
-      parent: _timeViewAnimationController,
-      curve: Curves.easeOutExpo,
-    ),
-  );
-  late final Animation<double> _timeViewEndAnimation =
-      _timeViewEndTween.animate(
-    CurvedAnimation(
-      parent: _timeViewAnimationController,
-      curve: Curves.easeOutExpo,
-    ),
-  );
-
-  // Fields for key value at top animation
-
-  late final AnimationController _keyValueAtTopAnimationController =
-      AnimationController(
-    duration: const Duration(milliseconds: 250),
-    vsync: this,
-  );
-
-  double _lastKeyValueAtTop = 0;
-
-  late final Tween<double> _keyValueAtTopTween =
-      Tween<double>(begin: _lastKeyValueAtTop, end: _lastKeyValueAtTop);
-
-  late final Animation<double> _keyValueAtTopAnimation =
-      _keyValueAtTopTween.animate(
-    CurvedAnimation(
-      parent: _keyValueAtTopAnimationController,
-      curve: Curves.easeOutExpo,
-    ),
-  );
+  LazyFollowAnimationHelper? timeViewAnimationHelper;
+  LazyFollowAnimationHelper? keyValueAtTopAnimationHelper;
 
   mobx.ReactionDisposer? viewModelReactionDisposer;
 
   @override
   void dispose() {
-    _timeViewAnimationController.dispose();
-    _keyValueAtTopAnimationController.dispose();
+    timeViewAnimationHelper?.dispose();
+    keyValueAtTopAnimationHelper?.dispose();
     viewModelReactionDisposer?.call();
     super.dispose();
   }
@@ -323,6 +275,41 @@ class _PianoRollContentState extends State<_PianoRollContent>
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     final viewModel = Provider.of<PianoRollViewModel>(context);
+
+    timeViewAnimationHelper ??= LazyFollowAnimationHelper(
+      duration: 250,
+      vsync: this,
+      items: [
+        LazyFollowItem(
+          value: 0,
+          getTarget: () => viewModel.timeView.start,
+        ),
+        LazyFollowItem(
+          value: 1,
+          getTarget: () => viewModel.timeView.end,
+        ),
+      ],
+    );
+
+    timeViewAnimationHelper!.updateOnBuild();
+
+    final [timeViewStartAnimItem, timeViewEndAnimItem] =
+        timeViewAnimationHelper!.items;
+
+    keyValueAtTopAnimationHelper ??= LazyFollowAnimationHelper(
+      duration: 250,
+      vsync: this,
+      items: [
+        LazyFollowItem(
+          value: 0,
+          getTarget: () => viewModel.keyValueAtTop,
+        ),
+      ],
+    );
+
+    keyValueAtTopAnimationHelper!.updateOnBuild();
+
+    final [keyValueAtTopAnimItem] = keyValueAtTopAnimationHelper!.items;
 
     viewModelReactionDisposer ??= mobx.autorun((p0) {
       // Access fields in viewModel. Changes to these fields will rebuild this
@@ -335,32 +322,6 @@ class _PianoRollContentState extends State<_PianoRollContent>
       // Rebuild the widget
       setState(() {});
     });
-
-    // Updates the time view animation if the time view has changed
-    if (viewModel.timeView.start != _lastTimeViewStart ||
-        viewModel.timeView.end != _lastTimeViewEnd) {
-      _timeViewStartTween.begin = _timeViewStartAnimation.value;
-      _timeViewEndTween.begin = _timeViewEndAnimation.value;
-
-      _timeViewAnimationController.reset();
-
-      _timeViewStartTween.end = viewModel.timeView.start;
-      _timeViewEndTween.end = viewModel.timeView.end;
-
-      _timeViewAnimationController.forward();
-
-      _lastTimeViewStart = viewModel.timeView.start;
-      _lastTimeViewEnd = viewModel.timeView.end;
-    }
-
-    // Updates the key value at top animation if the position has changed
-    if (viewModel.keyValueAtTop != _lastKeyValueAtTop) {
-      _keyValueAtTopTween.begin = _keyValueAtTopAnimation.value;
-      _keyValueAtTopAnimationController.reset();
-      _keyValueAtTopTween.end = viewModel.keyValueAtTop;
-      _keyValueAtTopAnimationController.forward();
-      _lastKeyValueAtTop = viewModel.keyValueAtTop;
-    }
 
     // This is a function because observers need to be able to observe this
     // call into the MobX store
@@ -383,9 +344,10 @@ class _PianoRollContentState extends State<_PianoRollContent>
                 timelineKind: TimelineKind.pattern,
                 patternID: pattern?.id,
                 child: Timeline.pattern(
-                  timeViewAnimationController: _timeViewAnimationController,
-                  timeViewStartAnimation: _timeViewStartAnimation,
-                  timeViewEndAnimation: _timeViewEndAnimation,
+                  timeViewAnimationController:
+                      timeViewAnimationHelper!.animationController,
+                  timeViewStartAnimation: timeViewStartAnimItem.animation,
+                  timeViewEndAnimation: timeViewEndAnimItem.animation,
                   patternID: pattern?.id,
                 ),
               ),
@@ -398,10 +360,10 @@ class _PianoRollContentState extends State<_PianoRollContent>
     final pianoControl = SizedBox(
       width: pianoControlWidth,
       child: AnimatedBuilder(
-        animation: _keyValueAtTopAnimationController,
+        animation: keyValueAtTopAnimationHelper!.animationController,
         builder: (context, child) {
           return PianoControl(
-            keyValueAtTop: _keyValueAtTopAnimation.value,
+            keyValueAtTop: keyValueAtTopAnimItem.animation.value,
             keyHeight: viewModel.keyHeight,
             setKeyValueAtTop: (value) {
               viewModel.keyValueAtTop = value;
@@ -421,23 +383,26 @@ class _PianoRollContentState extends State<_PianoRollContent>
                 fit: StackFit.expand,
                 children: [
                   PianoRollGrid(
-                    timeViewAnimationController: _timeViewAnimationController,
-                    timeViewStartAnimation: _timeViewStartAnimation,
-                    timeViewEndAnimation: _timeViewEndAnimation,
+                    timeViewAnimationController:
+                        timeViewAnimationHelper!.animationController,
+                    timeViewStartAnimation: timeViewStartAnimItem.animation,
+                    timeViewEndAnimation: timeViewEndAnimItem.animation,
                     keyValueAtTopAnimationController:
-                        _keyValueAtTopAnimationController,
-                    keyValueAtTopAnimation: _keyValueAtTopAnimation,
+                        keyValueAtTopAnimationHelper!.animationController,
+                    keyValueAtTopAnimation: keyValueAtTopAnimItem.animation,
                   ),
                   AnimatedBuilder(
-                    animation: _keyValueAtTopAnimationController,
+                    animation: timeViewAnimationHelper!.animationController,
                     builder: (context, child) {
                       return AnimatedBuilder(
-                        animation: _timeViewAnimationController,
+                        animation: timeViewAnimationHelper!.animationController,
                         builder: (context, child) {
                           return PianoRollContentRenderer(
-                            timeViewStart: _timeViewStartAnimation.value,
-                            timeViewEnd: _timeViewEndAnimation.value,
-                            keyValueAtTop: _keyValueAtTopAnimation.value,
+                            timeViewStart:
+                                timeViewStartAnimItem.animation.value,
+                            timeViewEnd: timeViewEndAnimItem.animation.value,
+                            keyValueAtTop:
+                                keyValueAtTopAnimItem.animation.value,
                           );
                         },
                       );
@@ -518,9 +483,10 @@ class _PianoRollContentState extends State<_PianoRollContent>
         contentMinSize: 150,
         separatorSize: 6,
         panelContent: PianoRollAttributeEditor(
-          timeViewAnimationController: _timeViewAnimationController,
-          timeViewStartAnimation: _timeViewStartAnimation,
-          timeViewEndAnimation: _timeViewEndAnimation,
+          timeViewAnimationController:
+              timeViewAnimationHelper!.animationController,
+          timeViewStartAnimation: timeViewStartAnimItem.animation,
+          timeViewEndAnimation: timeViewEndAnimItem.animation,
           viewModel: viewModel,
         ),
         child: Column(
