@@ -111,7 +111,8 @@ class LazyFollowItem {
   LazyFollowItem({
     required double initialValue,
     this.getTarget,
-  }) : mostRecentValue = initialValue, target = initialValue;
+  })  : mostRecentValue = initialValue,
+        target = initialValue;
 
   void snapTo(double value) {
     tween.begin = value;

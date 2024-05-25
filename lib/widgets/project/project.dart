@@ -85,30 +85,7 @@ class _ProjectState extends State<Project> {
             Expanded(
               child: Observer(builder: (context) {
                 const automationEditor = AutomationEditor();
-                const channelRack = Background(
-                  type: BackgroundType.dark,
-                  child: Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Knob(
-                          width: 20,
-                          height: 20,
-                          value: 0.6,
-                        ),
-                        SizedBox(
-                          width: 10,
-                        ),
-                        Knob(
-                          width: 40,
-                          height: 40,
-                          type: KnobType.pan,
-                          value: -0.3,
-                        ),
-                      ],
-                    ),
-                  ),
-                );
+                const channelRack = _KnobTest();
                 const pianoRoll = PianoRoll();
                 const mixer = Text('Mixer');
 
@@ -213,6 +190,56 @@ class _ProjectState extends State<Project> {
               height: 3,
             ),
             const ProjectFooter(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _KnobTest extends StatefulWidget {
+  const _KnobTest({super.key});
+
+  @override
+  State<_KnobTest> createState() => __KnobTestState();
+}
+
+class __KnobTestState extends State<_KnobTest> {
+  double value1 = 0.5;
+  double value2 = 0.5;
+
+  @override
+  Widget build(BuildContext context) {
+    return Background(
+      type: BackgroundType.dark,
+      child: Center(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Knob(
+              width: 20,
+              height: 20,
+              value: value1,
+              onValueChanged: (value) {
+                setState(() {
+                  value1 = value;
+                });
+              },
+            ),
+            const SizedBox(
+              width: 10,
+            ),
+            Knob(
+              width: 40,
+              height: 40,
+              type: KnobType.pan,
+              value: value2,
+              onValueChanged: (value) {
+                setState(() {
+                  value2 = value;
+                });
+              },
+            ),
           ],
         ),
       ),
