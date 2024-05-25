@@ -31,6 +31,8 @@ class Knob extends StatefulWidget {
   final KnobType type;
 
   final double value;
+  final double min;
+  final double max;
 
   final void Function(double)? onValueChanged;
 
@@ -41,7 +43,9 @@ class Knob extends StatefulWidget {
     this.type = KnobType.normal,
     required this.value,
     this.onValueChanged,
-  });
+    this.max = 1,
+    double? min,
+  }) : min = min ?? (type == KnobType.pan ? -1 : 0);
 
   @override
   State<Knob> createState() => _KnobState();
@@ -54,6 +58,9 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
   bool isPressed = false;
 
   double valueOnPress = -1;
+
+  double get rawValue =>
+      (widget.value - widget.min) / (widget.max - widget.min);
 
   @override
   Widget build(BuildContext context) {
@@ -107,7 +114,7 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
             isPressed = true;
           });
 
-          valueOnPress = widget.value;
+          valueOnPress = rawValue;
 
           setPressAnimationState(true);
           animationHelper!.update();
@@ -129,10 +136,12 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
           final rawPixelChange = e.absolute.dy;
           final valueChange = rawPixelChange / 100;
 
-          final newValue = (valueOnPress + valueChange)
-              .clamp(widget.type == KnobType.pan ? -1.0 : 0.0, 1.0);
+          final newValue =
+              (valueOnPress + valueChange).clamp(widget.min, widget.max);
 
-          widget.onValueChanged?.call(newValue);
+          widget.onValueChanged?.call(
+            newValue * (widget.max - widget.min) + widget.min,
+          );
         },
         child: SizedBox(
           width: widget.width,
@@ -145,7 +154,7 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
 
               return CustomPaint(
                 painter: _KnobPainter(
-                  value: widget.value,
+                  value: rawValue,
                   type: widget.type,
                   sizeMultiplier: sizeMultiplierHelper.animation.value,
                   trackSize: trackSizeHelper.animation.value,
