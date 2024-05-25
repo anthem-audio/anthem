@@ -25,6 +25,8 @@ import 'package:flutter/widgets.dart';
 
 import 'control_mouse_handler.dart';
 
+const _stickyTrapSize = 0.08;
+
 class Knob extends StatefulWidget {
   final double? width;
   final double? height;
@@ -36,6 +38,8 @@ class Knob extends StatefulWidget {
 
   final void Function(double)? onValueChanged;
 
+  final List<double> stickyPoints;
+
   const Knob({
     super.key,
     this.width,
@@ -45,6 +49,7 @@ class Knob extends StatefulWidget {
     this.onValueChanged,
     this.max = 1,
     double? min,
+    this.stickyPoints = const [],
   }) : min = min ?? (type == KnobType.pan ? -1 : 0);
 
   @override
@@ -58,9 +63,12 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
   bool isPressed = false;
 
   double valueOnPress = -1;
+  double lastValue = -1;
 
-  double get rawValue =>
-      (widget.value - widget.min) / (widget.max - widget.min);
+  double getRawValue(double value) =>
+      (value - widget.min) / (widget.max - widget.min);
+
+  double? stickyTrapCounter;
 
   @override
   Widget build(BuildContext context) {
@@ -114,7 +122,8 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
             isPressed = true;
           });
 
-          valueOnPress = rawValue;
+          valueOnPress = widget.value;
+          lastValue = widget.value;
 
           setPressAnimationState(true);
           animationHelper!.update();
@@ -133,15 +142,52 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
         onChange: (e) {
           if (widget.onValueChanged == null) return;
 
-          final rawPixelChange = e.absolute.dy;
+          final rawPixelChange = e.delta.dy;
           final valueChange = rawPixelChange / 100;
 
-          final newValue =
-              (valueOnPress + valueChange).clamp(widget.min, widget.max);
+          final newValueRaw =
+              (getRawValue(lastValue) + valueChange).clamp(0.0, 1.0);
 
-          widget.onValueChanged?.call(
-            newValue * (widget.max - widget.min) + widget.min,
-          );
+          final newValue = newValueRaw * (widget.max - widget.min) + widget.min;
+
+          if (stickyTrapCounter == null) {
+            double? stickyValue;
+
+            // Check if this change crosses one of the sticky points
+            for (final stickyPoint in widget.stickyPoints) {
+              if (lastValue < stickyPoint && newValue >= stickyPoint) {
+                stickyTrapCounter = -_stickyTrapSize;
+                stickyValue = stickyPoint;
+                break;
+              } else if (lastValue > stickyPoint && newValue <= stickyPoint) {
+                stickyTrapCounter = _stickyTrapSize;
+                stickyValue = stickyPoint;
+                break;
+              }
+            }
+
+            widget.onValueChanged?.call(stickyValue ?? newValue);
+            lastValue = stickyValue ?? newValue;
+          } else {
+            stickyTrapCounter = (stickyTrapCounter! + valueChange);
+
+            if (stickyTrapCounter!.abs() > _stickyTrapSize) {
+              final overshoot = stickyTrapCounter! > 0
+                  ? stickyTrapCounter! - _stickyTrapSize
+                  : stickyTrapCounter! + _stickyTrapSize;
+
+              final newValueRaw = lastValue + overshoot;
+
+              final newValue = (getRawValue(lastValue) + overshoot) *
+                      (widget.max - widget.min) +
+                  widget.min;
+
+              widget.onValueChanged?.call(newValue);
+
+              stickyTrapCounter = null;
+              lastValue = newValueRaw;
+            }
+          }
         },
         child: SizedBox(
           width: widget.width,
@@ -154,7 +200,7 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
 
               return CustomPaint(
                 painter: _KnobPainter(
-                  value: rawValue,
+                  value: getRawValue(widget.value),
                   type: widget.type,
                   sizeMultiplier: sizeMultiplierHelper.animation.value,
                   trackSize: trackSizeHelper.animation.value,
@@ -213,7 +259,7 @@ class _KnobPainter extends CustomPainter {
 
     final valueAngle = switch (type) {
       KnobType.normal => value * pi * 2,
-      KnobType.pan => value * pi,
+      KnobType.pan => (value - 0.5) * pi * 2,
     };
 
     // Inner arc
