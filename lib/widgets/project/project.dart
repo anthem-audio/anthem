@@ -220,6 +220,9 @@ class __KnobTestState extends State<_KnobTest> {
               width: 20,
               height: 20,
               value: value1,
+              min: 0,
+              max: 100,
+              stickyPoints: const [25, 50, 75],
               onValueChanged: (value) {
                 setState(() {
                   value1 = value;
@@ -233,7 +236,10 @@ class __KnobTestState extends State<_KnobTest> {
               width: 40,
               height: 40,
               type: KnobType.pan,
+              min: -1,
+              max: 1,
               value: value2,
+              stickyPoints: const [0],
               onValueChanged: (value) {
                 setState(() {
                   value2 = value;
