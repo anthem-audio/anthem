@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -41,7 +41,7 @@ enum _JumpDirection { positive, negative }
 
 class ControlMouseHandler extends StatefulWidget {
   final Widget? child;
-  final Function? onStart;
+  final Function()? onStart;
   final Function(ControlMouseEvent event)? onEnd;
   final Function(ControlMouseEvent event)? onChange;
 

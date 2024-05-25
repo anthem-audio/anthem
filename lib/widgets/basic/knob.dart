@@ -23,6 +23,8 @@ import 'package:anthem/widgets/util/lazy_follower.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
+import 'control_mouse_handler.dart';
+
 class Knob extends StatefulWidget {
   final double? width;
   final double? height;
@@ -30,12 +32,15 @@ class Knob extends StatefulWidget {
 
   final double value;
 
+  final void Function(double)? onValueChanged;
+
   const Knob({
     super.key,
     this.width,
     this.height,
     this.type = KnobType.normal,
     required this.value,
+    this.onValueChanged,
   });
 
   @override
@@ -47,6 +52,8 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
 
   bool isOver = false;
   bool isPressed = false;
+
+  double valueOnPress = -1;
 
   @override
   Widget build(BuildContext context) {
@@ -94,16 +101,18 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
           animationHelper!.update();
         }
       },
-      child: Listener(
-        onPointerDown: (e) {
+      child: ControlMouseHandler(
+        onStart: () {
           setState(() {
             isPressed = true;
           });
 
+          valueOnPress = widget.value;
+
           setPressAnimationState(true);
           animationHelper!.update();
         },
-        onPointerUp: (e) {
+        onEnd: (e) {
           setState(() {
             isPressed = false;
           });
@@ -113,6 +122,17 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
             setHoverAnimationState(false);
           }
           animationHelper!.update();
+        },
+        onChange: (e) {
+          if (widget.onValueChanged == null) return;
+
+          final rawPixelChange = e.absolute.dy;
+          final valueChange = rawPixelChange / 100;
+
+          final newValue = (valueOnPress + valueChange)
+              .clamp(widget.type == KnobType.pan ? -1.0 : 0.0, 1.0);
+
+          widget.onValueChanged?.call(newValue);
         },
         child: SizedBox(
           width: widget.width,
