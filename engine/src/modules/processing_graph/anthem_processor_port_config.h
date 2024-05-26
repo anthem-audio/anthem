@@ -25,6 +25,7 @@
 #include "anthem_graph_data_type.h"
 
 // This class defines info about a port on an AnthemProcessor. This info is used
+// to configure instances of the processor in the processing graph.
 class AnthemProcessorPortConfig {
 public:
   // The type of the port.

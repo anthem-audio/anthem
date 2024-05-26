@@ -31,8 +31,14 @@
 // the flow of audio, MIDI and control data between them.
 class AnthemGraph {
 private:
+  // The topology for this graph
   std::unique_ptr<AnthemGraphTopology> topology;
+
+  // The compiler, which turns the topology into processing steps
   std::unique_ptr<AnthemGraphCompiler> compiler;
+
+  // The processor, which takes the compilation result from the compiler and
+  // uses it on the audio thread to process data in the graph
   std::unique_ptr<AnthemGraphProcessor> graphProcessor;
 
   // This method is called when the graph is updated, and it updates the
@@ -45,10 +51,10 @@ public:
     return *topology;
   }
 
-  // Allows a node to be added to the graph.
+  // Wraps a processor with a graph node, and adds the node to the graph.
   std::shared_ptr<AnthemGraphNode> addNode(std::shared_ptr<AnthemProcessor> processor);
 
-  // Allows a node to be removed from the graph.
+  // Removes a node from the graph.
   void removeNode(std::shared_ptr<AnthemGraphNode> node);
 
   void connectNodes(
@@ -65,6 +71,7 @@ public:
     return *graphProcessor;
   }
 
+  // Compiles the topology, and pushes the result to the audio thread
   void compile();
 
   void debugPrint();
