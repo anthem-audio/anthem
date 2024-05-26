@@ -170,14 +170,6 @@ void AnthemGraphTopology::removeConnection(
   );
 }
 
-std::unique_ptr<AnthemGraphTopology> AnthemGraphTopology::clone() {
-  auto newTopology = std::make_unique<AnthemGraphTopology>();
-  for (auto node : nodes) {
-    newTopology->addNode(node);
-  }
-  return newTopology;
-}
-
 std::vector<std::shared_ptr<AnthemGraphNode>>& AnthemGraphTopology::getNodes() {
   return nodes;
 }
