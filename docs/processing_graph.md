@@ -20,6 +20,60 @@ For example, if an audio engineer wants to mix the dry and wet signals of a plug
 
 Anthem's processing graph does not yet support this.
 
+## Audio
+
+Nodes in the processing graph can generate and consume audio streams. Audio outputs can go to multiple inputs, and multiple outputs can go to the same input. When multiple audio streams are routed into the same port, they are summed together additively before being given to the corresponding processor to process.
+
+Consider the following graph:
+
+```
+ ________________       ____________________________
+| GeneratorNode1 |     | Processor1                 |
+|   AudioOutput1----.----AudioInput1   AudioOutput1--- ...
+|________________|  |  |____________________________|
+                    |
+ ________________   |
+| GeneratorNode2 |  |
+|   AudioOutput1----*
+|________________|
+```
+
+Each input port (in this case, just a single input) contains a buffer that is the same length as the block size, plus (in the future) an amount to account for any plugin delay compensation that is needed.
+
+The compiler will produce the following steps for this graph:
+
+1. Write zeros to the `AudioInput1` buffer on `Processor1`
+2. Run the process method on `GeneratorNode1`, which will generate an output on its `AudioOutput1` buffer
+3. Add the result of `GeneratorNode1`'s `AudioOutput1` buffer to the `AudioInput1` buffer on `Processor1`, and write this result back to the `AudioInput1` buffer
+4. Same as step 2, but for `GeneratorNode2`
+5. Same as step 3, but for `GeneratorNode2`
+
+## Control values
+
+Control values function in a very similar way to audio, in that they are represented as audio-rate streams of floating point values. There are, however, a few key differences:
+
+1. Control values are always represented as a floating point between 0 and 1. This should represent the full parameter range, and there should not be any values beyond this range.
+
+2. Control values are not summed additively. If a control input port has multiple connections, the most recent connection takes priority.
+
+3. Control value signals can be "null", represented by NaN. "Null" values will take on the following real values, in descending priority:
+
+   1. Less recently added connections with non-null values
+   2. The most recent non-null value sent to the port
+   3. The parameter's static value
+
+### Parameters
+
+In Anthem, all control inputs on nodes also function as parameters. Parameters augment control input ports by allowing the port to be given a constant numerical value to use instead of control input.
+
+If a control input port has a connection, the control values that come through on that connection will always override the static parameter value. Otherwise, the control input will take on the static value provided through the parameter.
+
+During playback, if the static value on a port is changed, it will override any connection value until playback is stopped and starts again.
+
+## Note commands
+
+Input and output ports for note commands are not yet supported by Anthem's processing graph.
+
 <!-- ## Unique challenges -->
 
 <!-- Open question: can plugins change their delay during processing? -->
