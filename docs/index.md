@@ -61,6 +61,12 @@ The following is an overview of the the folder structure in the Anthem repositor
   - **`include`**: Contains dependencies of the engine, including JUCE, Tracktion Engine, and FlatBuffers.
   - **`messages`**: Contains `*.fbs` files, which define the messages that can be sent between the engine and the UI. These are compiled with the FlatBuffers compiler into generated C++ and Dart files, which are used by the engine and UI to construct messages.
   - **`src`**: Contains the source code for the Anthem engine.
+    - **`command_handlers`**: Contains code for processing commands that come from the UI.
+    - **`modules`**: Contains various engine modules.
+      - **`core`**: Contains the core application code, which sets up the runtime and includes the other modules.
+      - **`processing_graph`**: Contains the code for the graph that drives Anthem's audio processing.
+      - **`processors`**: Contains internal plugins for Anthem.
+      - **`utils`**: Utilities used by other modules.
 - **`engine_connector`**: Contains the source code for a dynamic library which is loaded by the UI. This dynamic library contains code for opening and managing an IPC channel (via `message_queue` from `Boost.Interprocess`) between the UI and engine processes.
 - **`lib`**: Contains the UI for Anthem.
   - **`commands`**: Anthem uses the command pattern for undo/redo. This folder contains code for actions that can be performed in the UI.
