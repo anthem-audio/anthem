@@ -33,6 +33,11 @@ public:
   std::vector<std::shared_ptr<AnthemGraphNodePort>> audioInputs;
   std::vector<std::shared_ptr<AnthemGraphNodePort>> audioOutputs;
 
+  std::vector<std::shared_ptr<AnthemGraphNodePort>> controlInputs;
+  std::vector<std::shared_ptr<AnthemGraphNodePort>> controlOutputs;
+
+  // TODO: parameters
+
   static std::shared_ptr<AnthemGraphNode> create(std::shared_ptr<AnthemProcessor> processor);
 
   // Delete the copy constructor
