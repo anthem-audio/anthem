@@ -35,10 +35,26 @@ void AnthemGraphNode::initializePorts() {
 
   // Add input and output ports
   for (int i = 0; i < processor->config.getNumAudioInputs(); i++) {
-    audioInputs.push_back(std::make_shared<AnthemGraphNodePort>(self, processor->config.getAudioInput(i), i));
+    audioInputs.push_back(
+      std::make_shared<AnthemGraphNodePort>(self, processor->config.getAudioInput(i), i)
+    );
   }
 
   for (int i = 0; i < processor->config.getNumAudioOutputs(); i++) {
-    audioOutputs.push_back(std::make_shared<AnthemGraphNodePort>(self, processor->config.getAudioOutput(i), i));
+    audioOutputs.push_back(
+      std::make_shared<AnthemGraphNodePort>(self, processor->config.getAudioOutput(i), i)
+    );
+  }
+  
+  for (int i = 0; i < processor->config.getNumControlInputs(); i++) {
+    controlInputs.push_back(
+      std::make_shared<AnthemGraphNodePort>(self, processor->config.getControlInput(i), i)
+    );
+  }
+
+  for (int i = 0; i < processor->config.getNumControlOutputs(); i++) {
+    controlOutputs.push_back(
+      std::make_shared<AnthemGraphNodePort>(self, processor->config.getControlOutput(i), i)
+    );
   }
 }

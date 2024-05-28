@@ -75,8 +75,9 @@ int AnthemProcessorConfig::getNumControlInputs() const {
   return controlInputs.size();
 }
 
-void AnthemProcessorConfig::addControlInput(const std::shared_ptr<AnthemProcessorPortConfig> port) {
+void AnthemProcessorConfig::addControlInput(const std::shared_ptr<AnthemProcessorPortConfig> port, const std::shared_ptr<AnthemProcessorParameterConfig> parameter) {
   controlInputs.push_back(port);
+  parameters.push_back(parameter);
 }
 
 const std::shared_ptr<AnthemProcessorPortConfig> AnthemProcessorConfig::getControlOutput(int index) const {

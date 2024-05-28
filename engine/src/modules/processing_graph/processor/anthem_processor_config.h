@@ -23,6 +23,7 @@
 #include <memory>
 #include <string>
 
+#include "anthem_processor_parameter_config.h"
 #include "anthem_processor_port_config.h"
 
 // This class defines properties for an AnthemProcessor. These properties are
@@ -37,6 +38,9 @@ private:
 
   std::vector<std::shared_ptr<AnthemProcessorPortConfig>> controlInputs;
   std::vector<std::shared_ptr<AnthemProcessorPortConfig>> controlOutputs;
+
+  // Should always map 1:1 with controlInputs.
+  std::vector<std::shared_ptr<AnthemProcessorParameterConfig>> parameters;
 
   std::string id;
 public:
@@ -85,7 +89,7 @@ public:
   int getNumControlInputs() const;
 
   // Add a control input port.
-  void addControlInput(const std::shared_ptr<AnthemProcessorPortConfig> port);
+  void addControlInput(const std::shared_ptr<AnthemProcessorPortConfig> port, const std::shared_ptr<AnthemProcessorParameterConfig> parameter);
 
   // Get a control output port by index.
   const std::shared_ptr<AnthemProcessorPortConfig> getControlOutput(int index) const;

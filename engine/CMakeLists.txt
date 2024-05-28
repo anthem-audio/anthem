@@ -97,6 +97,8 @@ set(ANTHEM_ENGINE_SOURCES
 
   src/modules/processing_graph/processor/anthem_processor_config.cpp
   src/modules/processing_graph/processor/anthem_processor_config.h
+  # src/modules/processing_graph/processor/anthem_processor_parameter_config.cpp
+  src/modules/processing_graph/processor/anthem_processor_parameter_config.h
   # src/modules/processing_graph/processor/anthem_processor_port_config.cpp
   src/modules/processing_graph/processor/anthem_processor_port_config.h
   # src/modules/processing_graph/processor/anthem_processor.cpp
