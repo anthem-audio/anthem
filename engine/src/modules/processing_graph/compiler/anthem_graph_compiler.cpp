@@ -45,10 +45,13 @@ std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(Anthe
     << "\033[0m"
     << std::endl;
 
+  // Create contexts for each node
   for (auto& node : topology.getNodes()) {
     auto context = std::make_shared<AnthemProcessContext>(node);
 
     auto compilerNode = std::make_shared<AnthemGraphCompilerNode>(node, context);
+
+    node->runtimeContext = std::make_optional(context);
 
     vectorOfNodesToProcess.push_back(compilerNode);
     nodeToCompilerNode[node.get()] = compilerNode;
@@ -66,17 +69,32 @@ std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(Anthe
 
   std::cout << "Step 1: Zero input buffers" << std::endl;
 
-  // Step 1: Zero input buffers
+  // Step 1 (part 1): Zero input buffers
+
   for (auto& node : nodesToProcess) {
-    actions->push_back(std::make_shared<ZeroInputBuffersAction>(node->context));
+    actions->push_back(
+      std::make_shared<ZeroInputBuffersAction>(node->context)
+    );
   }
 
   result->actionGroups.push_back(actions);
 
-  std::cout << result->actionGroups.size() << " action groups" << std::endl;
-  std::cout << std::endl;
+  actions = std::make_shared<std::vector<std::shared_ptr<AnthemGraphCompilerAction>>>();
+
+  // Step 1 (part 2): Write parameter values to control buffers
+
+  for (auto& node : nodesToProcess) {
+    actions->push_back(
+      std::make_shared<WriteParametersToControlInputsAction>(node->context, 44100.0f)
+    );
+  }
+
+  result->actionGroups.push_back(actions);
 
   actions = std::make_shared<std::vector<std::shared_ptr<AnthemGraphCompilerAction>>>();
+
+  std::cout << result->actionGroups.size() << " action groups" << std::endl;
+  std::cout << std::endl;
 
   // Step 2: Find nodes with no inputs and mark them as ready to process
 
@@ -162,7 +180,14 @@ std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(Anthe
             throw std::runtime_error("AnthemGraphCompiler::compile(): MIDI connections are not yet supported");
             break;
           case AnthemGraphDataType::Control:
-            throw std::runtime_error("AnthemGraphCompiler::compile(): Control connections are not yet supported");
+            actions->push_back(
+              std::make_shared<CopyControlBufferAction>(
+                edge->sourceNodeContext,
+                sourcePort.lock()->index,
+                edge->destinationNodeContext,
+                destinationPort.lock()->index
+              )
+            );
             break;
         }
 

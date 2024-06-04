@@ -23,30 +23,52 @@
 
 #include "anthem_process_context.h"
 
-ToneGeneratorNode::ToneGeneratorNode(float frequency) : AnthemProcessor("ToneGeneratorNode") {
+ToneGeneratorNode::ToneGeneratorNode() : AnthemProcessor("ToneGeneratorNode") {
   currentSample = 0;
-  amplitude = 0.125;
-  this->frequency = frequency;
+  // amplitude = 0.125;
+  // this->frequency = frequency;
   sampleRate = 44100.0; // TODO: This should be dynamic - in the context maybe?
 
+  // Audio port config
+
   config.addAudioOutput(
-    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Audio, "input")
+    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Audio, "output")
+  );
+
+  // Control port config
+
+  // Frequency
+  config.addControlInput(
+    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Control, "frequency"),
+    std::make_shared<AnthemProcessorParameterConfig>(440.0, 0.0, 20000.0)
+  );
+
+  // Amplitude
+  config.addControlInput(
+    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Control, "amplitude"),
+    std::make_shared<AnthemProcessorParameterConfig>(0.125, 0.0, 1.0)
   );
 }
 
 ToneGeneratorNode::~ToneGeneratorNode() {}
 
 void ToneGeneratorNode::process(AnthemProcessContext& context, int numSamples) {
-  auto& buffer = context.getOutputAudioBuffer(0);
+  auto& audioOutBuffer = context.getOutputAudioBuffer(0);
+
+  auto& frequencyControlBuffer = context.getInputControlBuffer(0);
+  auto& amplitudeControlBuffer = context.getInputControlBuffer(1);
 
   // Generate a sine wave
   for (int sample = 0; sample < numSamples; ++sample) {
+    auto frequency = frequencyControlBuffer.getReadPointer(0)[sample];
+    auto amplitude = amplitudeControlBuffer.getReadPointer(0)[sample];
+
     const float value = amplitude * std::sin(
       2.0 * juce::MathConstants<float>::pi * frequency * currentSample / sampleRate
     );
 
-    for (int channel = 0; channel < buffer.getNumChannels(); ++channel) {
-      buffer.getWritePointer(channel)[sample] = value;
+    for (int channel = 0; channel < audioOutBuffer.getNumChannels(); ++channel) {
+      audioOutBuffer.getWritePointer(channel)[sample] = value;
     }
 
     currentSample++;

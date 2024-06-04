@@ -17,24 +17,18 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#pragma once
-
-#include <memory>
-
-#include "anthem_processor.h"
-#include "anthem_graph_node_port.h"
-
-class ToneGeneratorNode : public AnthemProcessor {
+class LinearParameterSmoother {
 private:
-  int currentSample;
-  double sampleRate;
+  float targetValue;
+  float currentValue;
+  float duration;
+  float timeRemaining;
+
 public:
-  ToneGeneratorNode();
-  ~ToneGeneratorNode() override;
+  LinearParameterSmoother(float initialValue, float duration);
 
-  int getOutputPortIndex() {
-    return 0;
-  }
-
-  void process(AnthemProcessContext& context, int numSamples) override;
+  void setTargetValue(float targetValue);
+  float getCurrentValue();
+  float getTargetValue();
+  void process(float deltaTime);
 };

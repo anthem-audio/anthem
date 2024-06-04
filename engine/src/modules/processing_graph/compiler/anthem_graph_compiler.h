@@ -20,7 +20,8 @@
 /*
   Steps to compile a processing graph:
 
-  1. Clear input buffers for all nodes.
+  1. Clear input buffers for all nodes. For control inputs, write the control
+     values to the control input port buffers.
   2. Find all nodes that have no incoming connections. These are the "root"
      nodes of the graph. Mark these as ready to process.
   3. For each ready node, add it to a processing step it and mark all of its
@@ -44,6 +45,8 @@
 #include "anthem_graph_compiler_node.h"
 #include "process_node_action.h"
 #include "copy_audio_buffer_action.h"
+#include "copy_control_buffer_action.h"
+#include "write_parameters_to_control_inputs_action.h"
 
 // This class is used to compile a processing graph into a set of processing
 // instructions that can be executed in a real-time context.
