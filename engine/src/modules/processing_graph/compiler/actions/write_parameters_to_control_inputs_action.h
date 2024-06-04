@@ -17,24 +17,20 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#pragma once
-
 #include <memory>
 
-#include "anthem_processor.h"
-#include "anthem_graph_node_port.h"
+#include "anthem_graph_compiler_action.h"
+#include "anthem_process_context.h"
 
-class ToneGeneratorNode : public AnthemProcessor {
+class WriteParametersToControlInputsAction : public AnthemGraphCompilerAction {
 private:
-  int currentSample;
-  double sampleRate;
+  std::shared_ptr<AnthemProcessContext> processContext;
+  float sampleRate;
 public:
-  ToneGeneratorNode();
-  ~ToneGeneratorNode() override;
+  WriteParametersToControlInputsAction(std::shared_ptr<AnthemProcessContext> processContext, float sampleRate)
+    : processContext(processContext), sampleRate(sampleRate) {}
 
-  int getOutputPortIndex() {
-    return 0;
-  }
+  void execute(int numSamples) override;
 
-  void process(AnthemProcessContext& context, int numSamples) override;
+  void debugPrint() override;
 };

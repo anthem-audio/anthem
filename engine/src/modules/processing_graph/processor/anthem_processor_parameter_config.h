@@ -34,7 +34,6 @@ public:
 
   // Constructor
   AnthemProcessorParameterConfig(
-    std::string name,
     double defaultValue,
     double minValue,
     double maxValue

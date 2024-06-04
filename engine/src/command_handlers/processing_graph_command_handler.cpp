@@ -77,7 +77,7 @@ handleProcessingGraphCommand(const Request *request,
         processor = std::make_shared<SimpleVolumeLfoNode>();
         success = true;
       } else if (processorId == "ToneGenerator") {
-        processor = std::make_shared<ToneGeneratorNode>(440);
+        processor = std::make_shared<ToneGeneratorNode>();
         success = true;
       } else {
         success = false;

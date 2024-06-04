@@ -36,7 +36,9 @@ public:
   std::vector<std::shared_ptr<AnthemGraphNodePort>> controlInputs;
   std::vector<std::shared_ptr<AnthemGraphNodePort>> controlOutputs;
 
-  // TODO: parameters
+  std::vector<float> parameters;
+
+  std::optional<std::shared_ptr<AnthemProcessContext>> runtimeContext;
 
   static std::shared_ptr<AnthemGraphNode> create(std::shared_ptr<AnthemProcessor> processor);
 
@@ -49,4 +51,6 @@ public:
   AnthemGraphNode(std::shared_ptr<AnthemProcessor> processor);
 
   void initializePorts();
+
+  void setParameter(int index, float value);
 };
