@@ -24,18 +24,22 @@
 class AnthemProcessorParameterConfig {
 public:
   // The default value of the parameter.
-  double defaultValue;
+  float defaultValue;
 
   // The minimum value of the parameter.
-  double minValue;
+  float minValue;
 
   // The maximum value of the parameter.
-  double maxValue;
+  float maxValue;
+
+  // The duration of the smoothing applied to the parameter value.
+  float smoothingDurationSeconds;
 
   // Constructor
   AnthemProcessorParameterConfig(
-    double defaultValue,
-    double minValue,
-    double maxValue
-  ) : defaultValue(defaultValue), minValue(minValue), maxValue(maxValue) {}
+    float defaultValue,
+    float minValue,
+    float maxValue,
+    float smoothingDurationSeconds = 0.001f
+  ) : defaultValue(defaultValue), minValue(minValue), maxValue(maxValue), smoothingDurationSeconds(smoothingDurationSeconds) {}
 };
