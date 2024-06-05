@@ -43,7 +43,7 @@ AnthemProcessContext::AnthemProcessContext(std::shared_ptr<AnthemGraphNode> grap
   parameterValues = std::vector<std::atomic<float>>(graphNode->controlInputs.size());
 
   for (int i = 0; i < graphNode->controlInputs.size(); i++) {
-    std::atomic<float> value(0.0f);
+    std::atomic<float> value(graphNode->parameters[i]);
     parameterValues[i] = value.load();
   }
 
@@ -52,7 +52,7 @@ AnthemProcessContext::AnthemProcessContext(std::shared_ptr<AnthemGraphNode> grap
   for (int i = 0; i < graphNode->controlInputs.size(); i++) {
     auto parameterValue = graphNode->parameters[i];
 
-    auto smoother = std::make_unique<LinearParameterSmoother>(parameterValue, 0.001f);
+    auto smoother = std::make_unique<LinearParameterSmoother>(parameterValue, 0.001f); // TODO: Make this configurable
     parameterSmoothers.push_back(std::move(smoother));
   }
 }

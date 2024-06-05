@@ -29,6 +29,10 @@ AnthemGraphNode::AnthemGraphNode(std::shared_ptr<AnthemProcessor> processor) : p
 
   parameters = std::vector<float>(processor->config.getNumControlInputs(), 0.0f);
 
+  for (int i = 0; i < processor->config.getNumControlInputs(); i++) {
+    parameters[i] = processor->config.getParameter(i)->defaultValue;
+  }
+
   runtimeContext = std::nullopt;
 }
 
