@@ -100,6 +100,9 @@ public:
   // Add a control output port.
   void addControlOutput(const std::shared_ptr<AnthemProcessorPortConfig> port);
 
+  // Get a parameter by index.
+  const std::shared_ptr<AnthemProcessorParameterConfig> getParameter(int index) const;
+
   std::string getId() {
     return id;
   }

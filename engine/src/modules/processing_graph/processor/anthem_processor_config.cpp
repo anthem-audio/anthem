@@ -88,6 +88,10 @@ int AnthemProcessorConfig::getNumControlOutputs() const {
   return controlOutputs.size();
 }
 
+const std::shared_ptr<AnthemProcessorParameterConfig> AnthemProcessorConfig::getParameter(int index) const {
+  return parameters[index];
+}
+
 void AnthemProcessorConfig::addControlOutput(const std::shared_ptr<AnthemProcessorPortConfig> port) {
   controlOutputs.push_back(port);
 }
