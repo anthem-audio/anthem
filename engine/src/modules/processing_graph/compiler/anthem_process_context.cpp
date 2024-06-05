@@ -51,8 +51,9 @@ AnthemProcessContext::AnthemProcessContext(std::shared_ptr<AnthemGraphNode> grap
 
   for (int i = 0; i < graphNode->controlInputs.size(); i++) {
     auto parameterValue = graphNode->parameters[i];
+    auto& parameterConfig = graphNode->processor->config.getParameter(i);
 
-    auto smoother = std::make_unique<LinearParameterSmoother>(parameterValue, 0.001f); // TODO: Make this configurable
+    auto smoother = std::make_unique<LinearParameterSmoother>(parameterValue, parameterConfig->smoothingDurationSeconds);
     parameterSmoothers.push_back(std::move(smoother));
   }
 }
