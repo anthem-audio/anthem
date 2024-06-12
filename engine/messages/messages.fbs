@@ -19,6 +19,7 @@
 
 include "project.fbs";
 include "processing_graph.fbs";
+include "processors.fbs";
 
 table Exit {}
 table ExitReply {}
@@ -49,9 +50,13 @@ union Command {
 
   CompileProcessingGraph,
 
+  // Processor commands
+
   // ??
   LiveNoteOn,
   LiveNoteOff,
+
+  SetParameter,
 }
 
 union ReturnValue {
@@ -76,6 +81,10 @@ union ReturnValue {
   DisconnectProcessorsResponse,
 
   CompileProcessingGraphResponse,
+
+  // Processor commands
+
+  SetParameterResponse,
 }
 
 table Request {
