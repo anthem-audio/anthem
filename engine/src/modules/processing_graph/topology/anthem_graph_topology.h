@@ -29,11 +29,11 @@
 // connections, and it can be cloned to create a new graph with the same
 // structure.
 //
-// There are always two instances of this class: one for the main thread,
-// and one for the audio thread. The audio thread instance is treated as
-// read-only. When the main thread instance is modified, it is cloned and
-// sent to the audio thread, and the audio thread replaces its instance
-// with the new one as soon as it finishes its current processing cycle.
+// The graph lives on the main thread, and can be mutated at any time. Updates
+// can be pushed to the audio thread via the graph compiler, which reads in this
+// topology and produces an AnthemGraphCompilationResult. This compilation
+// result contains the set of steps needed to actually process the graph, and is
+// used on the audio thread by AnthemGraphProcessor.
 class AnthemGraphTopology {
 private:
   std::vector<std::shared_ptr<AnthemGraphNode>> nodes;
@@ -43,19 +43,18 @@ public:
 
   void addNode(std::shared_ptr<AnthemGraphNode> node);
 
+  void removeNode(std::shared_ptr<AnthemGraphNode> node);
+
   void addConnection(
     std::shared_ptr<AnthemGraphNodePort> source,
     std::shared_ptr<AnthemGraphNodePort> destination
   );
 
-  std::unique_ptr<AnthemGraphTopology> clone();
+  void removeConnection(
+    std::shared_ptr<AnthemGraphNodePort> source,
+    std::shared_ptr<AnthemGraphNodePort> destination
+  );
 
   std::vector<std::shared_ptr<AnthemGraphNode>>& getNodes();
   std::vector<std::shared_ptr<AnthemGraphNodeConnection>>& getConnections();
 };
-
-// TODO: This will need to be properly freed, even if there are shared pointers
-// everywhere. Shared pointers don't deal with cycles, so we need to unlink
-// everything before releasing the last reference.
-//
-// Maybe we should use weak pointers for the connections between nodes?

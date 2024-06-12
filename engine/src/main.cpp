@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -36,6 +36,8 @@
 #include "messages_generated.h"
 #include "open_message_queue.h"
 #include "anthem.h"
+#include "./command_handlers/processing_graph_command_handler.h"
+#include "./command_handlers/processor_command_handler.h"
 #include "./command_handlers/project_command_handler.h"
 
 using namespace boost::interprocess;
@@ -117,15 +119,25 @@ public:
         break;
       }
       case Command_AddArrangement:
-      case Command_AddPlugin:
       case Command_DeleteArrangement:
-      case Command_GetPlugins:
       case Command_LiveNoteOn:
       case Command_LiveNoteOff:
         response = handleProjectCommand(request, builder, anthem);
         break;
+      case Command_GetMasterOutputNodeId:
+      case Command_AddProcessor:
+      case Command_RemoveProcessor:
+      case Command_GetProcessors:
+      case Command_ConnectProcessors:
+      case Command_DisconnectProcessors:
+      case Command_CompileProcessingGraph:
+        response = handleProcessingGraphCommand(request, builder, anthem);
+        break;
+      case Command_SetParameter:
+        response = handleProcessorCommand(request, builder, anthem);
+        break;
       default: {
-        std::cerr << "Received unknown command" << std::endl;
+        std::cerr << "Received unknown command (id: " << static_cast<int>(command_type) << ")" << std::endl;
         break;
       }
     }

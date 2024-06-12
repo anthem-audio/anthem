@@ -19,10 +19,15 @@
 
 #include "project_command_handler.h"
 
+#include <string>
+
+#include "tone_generator_node.h"
+#include "simple_volume_lfo_node.h"
+
 std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
   const Request* request,
   flatbuffers::FlatBufferBuilder& builder,
-  Anthem* /*anthem*/
+  Anthem* anthem
 ) {
   auto commandType = request->command_type();
 
@@ -49,62 +54,9 @@ std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
       auto command = request->command_as_DeleteArrangement();
       
       std::cout << "Received unhandled DeleteArrangement command" << std::endl;
-      std::cout << "Edit pointer: " << std::hex << command->edit_pointer() << std::dec << std::endl;
+      std::cout << "Edit id: " << std::hex << command->edit_id() << std::dec << std::endl;
 
       return std::nullopt;
-    }
-    case Command_AddPlugin: {
-      // TODO: Handle correctly
-      std::cout << "Received unhandled AddPlugin command" << std::endl;
-
-      bool success = false;
-
-      // Error response
-      if (!success) {
-        auto errorResponse = CreateAddPluginResponse(builder, false);
-        auto errorResponseOffset = errorResponse.Union();
-        auto errorResponseMessage = CreateResponse(builder, request->id(), ReturnValue_AddPluginResponse, errorResponseOffset);
-
-        return std::optional(errorResponseMessage);
-      } else {
-        auto response = CreateAddPluginResponse(builder, true);
-        auto responseOffset = response.Union();
-
-        auto message = CreateResponse(builder, request->id(), ReturnValue_AddPluginResponse, responseOffset);
-
-        return std::optional(message);
-      }
-    }
-    case Command_GetPlugins: {
-      // TODO: Handle correctly
-      std::cout << "Received unhandled GetPlugins command" << std::endl;
-
-      // auto& pluginManager = anthem->engine->getPluginManager();
-
-      // auto plugins = pluginManager.knownPluginList.getTypes();
-
-      std::vector<flatbuffers::Offset<flatbuffers::String>> fbPluginList;
-
-      // if (plugins.size() == 0) {
-      //   fbPluginList.push_back(builder.CreateString("(:"));
-      // } else {
-      //   for (auto plugin : plugins) {
-      //     fbPluginList.push_back(
-      //       builder.CreateString(
-      //         plugin.name.toStdString() + " - " + plugin.descriptiveName.toStdString()
-      //       )
-      //     );
-      //   }
-      // }
-
-      auto pluginListOffset = builder.CreateVector(fbPluginList);
-
-      auto response = CreateGetPluginsResponse(builder, pluginListOffset);
-      auto responseOffset = response.Union();
-
-      auto message = CreateResponse(builder, request->id(), ReturnValue_GetPluginsResponse, responseOffset);
-
-      return std::optional(message);
     }
     case Command_LiveNoteOn: {
       auto command = request->command_as_LiveNoteOn();

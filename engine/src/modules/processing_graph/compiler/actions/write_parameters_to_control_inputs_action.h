@@ -17,28 +17,20 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#pragma once
-
 #include <memory>
-#include <vector>
 
-#include "anthem_processor.h"
-#include "anthem_graph_node_port.h"
+#include "anthem_graph_compiler_action.h"
+#include "anthem_process_context.h"
 
-// Represents a node in the processing graph.
-class AnthemGraphNode : public std::enable_shared_from_this<AnthemGraphNode> {
+class WriteParametersToControlInputsAction : public AnthemGraphCompilerAction {
+private:
+  std::shared_ptr<AnthemProcessContext> processContext;
+  float sampleRate;
 public:
-  std::shared_ptr<AnthemProcessor> processor;
+  WriteParametersToControlInputsAction(std::shared_ptr<AnthemProcessContext> processContext, float sampleRate)
+    : processContext(processContext), sampleRate(sampleRate) {}
 
-  std::vector<std::shared_ptr<AnthemGraphNodePort>> audioInputs;
-  std::vector<std::shared_ptr<AnthemGraphNodePort>> audioOutputs;
+  void execute(int numSamples) override;
 
-  static std::shared_ptr<AnthemGraphNode> create(std::shared_ptr<AnthemProcessor> processor);
-
-  // Shallow copy constructor
-  AnthemGraphNode(const AnthemGraphNode& other);
-
-  AnthemGraphNode(std::shared_ptr<AnthemProcessor> processor);
-
-  void initializePorts();
+  void debugPrint() override;
 };

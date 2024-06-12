@@ -34,7 +34,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 class ProjectExplorer extends StatefulWidget {
-  const ProjectExplorer({Key? key}) : super(key: key);
+  const ProjectExplorer({super.key});
 
   @override
   State<ProjectExplorer> createState() => _ProjectExplorerState();

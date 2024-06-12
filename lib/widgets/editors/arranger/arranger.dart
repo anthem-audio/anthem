@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -38,6 +38,7 @@ import 'package:anthem/widgets/editors/arranger/widgets/track_header.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
+import 'package:anthem/widgets/util/lazy_follower.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart' as mobx;
@@ -52,7 +53,7 @@ import 'widgets/pattern_picker.dart';
 const _timelineHeight = 44.0;
 
 class Arranger extends StatefulWidget {
-  const Arranger({Key? key}) : super(key: key);
+  const Arranger({super.key});
 
   @override
   State<Arranger> createState() => _ArrangerState();
@@ -337,7 +338,7 @@ class _ArrangerState extends State<Arranger> {
 class ArrangerTimeViewProvider extends StatelessObserverWidget {
   final Widget? child;
 
-  const ArrangerTimeViewProvider({Key? key, this.child}) : super(key: key);
+  const ArrangerTimeViewProvider({super.key, this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -349,7 +350,7 @@ class ArrangerTimeViewProvider extends StatelessObserverWidget {
 
 // Actual content view of the arranger (timeline + clips + etc)
 class _ArrangerContent extends StatefulWidget {
-  const _ArrangerContent({Key? key}) : super(key: key);
+  const _ArrangerContent();
 
   @override
   State<_ArrangerContent> createState() => _ArrangerContentState();
@@ -357,56 +358,8 @@ class _ArrangerContent extends StatefulWidget {
 
 class _ArrangerContentState extends State<_ArrangerContent>
     with TickerProviderStateMixin {
-  // Fields for time view animation
-
-  late final AnimationController timeViewAnimationController =
-      AnimationController(
-    duration: const Duration(milliseconds: 250),
-    vsync: this,
-  );
-
-  double lastTimeViewStart = 0;
-  double lastTimeViewEnd = 1;
-
-  late final Tween<double> timeViewStartTween =
-      Tween<double>(begin: lastTimeViewStart, end: lastTimeViewStart);
-  late final Tween<double> timeViewEndTween =
-      Tween<double>(begin: lastTimeViewEnd, end: lastTimeViewEnd);
-
-  late final Animation<double> _timeViewStartAnimation =
-      timeViewStartTween.animate(
-    CurvedAnimation(
-      parent: timeViewAnimationController,
-      curve: Curves.easeOutExpo,
-    ),
-  );
-  late final Animation<double> _timeViewEndAnimation = timeViewEndTween.animate(
-    CurvedAnimation(
-      parent: timeViewAnimationController,
-      curve: Curves.easeOutExpo,
-    ),
-  );
-
-  // Fields for vertical scroll position animation
-
-  late final AnimationController verticalScrollPositionAnimationController =
-      AnimationController(
-    duration: const Duration(milliseconds: 250),
-    vsync: this,
-  );
-
-  double lastVerticalScrollPosition = 0;
-
-  late final Tween<double> verticalScrollPositionTween = Tween<double>(
-      begin: lastVerticalScrollPosition, end: lastVerticalScrollPosition);
-
-  late final Animation<double> verticalScrollPositionAnimation =
-      verticalScrollPositionTween.animate(
-    CurvedAnimation(
-      parent: verticalScrollPositionAnimationController,
-      curve: Curves.easeOutExpo,
-    ),
-  );
+  LazyFollowAnimationHelper? timeViewAnimationHelper;
+  LazyFollowAnimationHelper? verticalScrollPositionAnimationHelper;
 
   mobx.ReactionDisposer? animationTweenUpdaterDisposer;
 
@@ -414,8 +367,8 @@ class _ArrangerContentState extends State<_ArrangerContent>
 
   @override
   void dispose() {
-    timeViewAnimationController.dispose();
-    verticalScrollPositionAnimationController.dispose();
+    timeViewAnimationHelper?.dispose();
+    verticalScrollPositionAnimationHelper?.dispose();
     baseTrackHeightChangedSub?.cancel();
     animationTweenUpdaterDisposer?.call();
     super.dispose();
@@ -430,14 +383,47 @@ class _ArrangerContentState extends State<_ArrangerContent>
 
     final project = Provider.of<ProjectModel>(context);
 
-    // Snap vertical scrol position when base track height is changed
+    timeViewAnimationHelper ??= LazyFollowAnimationHelper(
+      duration: 250,
+      vsync: this,
+      items: [
+        LazyFollowItem(
+          initialValue: 0,
+          getTarget: () => viewModel.timeView.start,
+        ),
+        LazyFollowItem(
+          initialValue: 1,
+          getTarget: () => viewModel.timeView.end,
+        ),
+      ],
+    );
+
+    timeViewAnimationHelper!.update();
+
+    final [timeViewStartAnimItem, timeViewEndAnimItem] =
+        timeViewAnimationHelper!.items;
+
+    verticalScrollPositionAnimationHelper ??= LazyFollowAnimationHelper(
+      duration: 250,
+      vsync: this,
+      items: [
+        LazyFollowItem(
+          initialValue: 0,
+          getTarget: () => viewModel.verticalScrollPosition,
+        ),
+      ],
+    );
+
+    verticalScrollPositionAnimationHelper!.update();
+
+    final [verticalScrollPositionAnimItem] =
+        verticalScrollPositionAnimationHelper!.items;
+
+    // Snap vertical scroll position when base track height is changed
     baseTrackHeightChangedSub ??=
         controller.onBaseTrackHeightChanged.stream.listen((event) {
-      verticalScrollPositionTween.begin = viewModel.verticalScrollPosition;
-      verticalScrollPositionAnimationController.reset();
-      verticalScrollPositionTween.end = viewModel.verticalScrollPosition;
-      verticalScrollPositionAnimationController.forward();
-      lastVerticalScrollPosition = viewModel.verticalScrollPosition;
+      final animHelper = verticalScrollPositionAnimationHelper!;
+      animHelper.items.first.snapTo(viewModel.verticalScrollPosition);
     });
 
     // Updates the animations whenever the vertical scroll position changes.
@@ -448,31 +434,6 @@ class _ArrangerContentState extends State<_ArrangerContent>
 
       setState(() {});
     });
-
-    // Updates the time view animation if the time view has changed.
-    if (viewModel.timeView.start != lastTimeViewStart ||
-        viewModel.timeView.end != lastTimeViewEnd) {
-      timeViewStartTween.begin = _timeViewStartAnimation.value;
-      timeViewEndTween.begin = _timeViewEndAnimation.value;
-
-      timeViewAnimationController.reset();
-
-      timeViewStartTween.end = viewModel.timeView.start;
-      timeViewEndTween.end = viewModel.timeView.end;
-
-      timeViewAnimationController.forward();
-
-      lastTimeViewStart = viewModel.timeView.start;
-      lastTimeViewEnd = viewModel.timeView.end;
-    }
-
-    if (viewModel.verticalScrollPosition != lastVerticalScrollPosition) {
-      verticalScrollPositionTween.begin = verticalScrollPositionAnimation.value;
-      verticalScrollPositionAnimationController.reset();
-      verticalScrollPositionTween.end = viewModel.verticalScrollPosition;
-      verticalScrollPositionAnimationController.forward();
-      lastVerticalScrollPosition = viewModel.verticalScrollPosition;
-    }
 
     return Container(
       decoration: BoxDecoration(
@@ -494,9 +455,9 @@ class _ArrangerContentState extends State<_ArrangerContent>
                     child: Observer(builder: (context) {
                       return Timeline.arrangement(
                         timeViewAnimationController:
-                            timeViewAnimationController,
-                        timeViewStartAnimation: _timeViewStartAnimation,
-                        timeViewEndAnimation: _timeViewEndAnimation,
+                            timeViewEndAnimItem.animationController,
+                        timeViewStartAnimation: timeViewStartAnimItem.animation,
+                        timeViewEndAnimation: timeViewEndAnimItem.animation,
                         arrangementID: project.song.activeArrangementID,
                       );
                     }),
@@ -512,11 +473,12 @@ class _ArrangerContentState extends State<_ArrangerContent>
                   SizedBox(
                     width: trackHeaderWidth,
                     child: AnimatedBuilder(
-                      animation: verticalScrollPositionAnimationController,
+                      animation: verticalScrollPositionAnimationHelper!
+                          .animationController,
                       builder: (context, child) {
                         return _TrackHeaders(
                           verticalScrollPosition:
-                              verticalScrollPositionAnimation.value,
+                              verticalScrollPositionAnimItem.animation.value,
                         );
                       },
                     ),
@@ -524,13 +486,15 @@ class _ArrangerContentState extends State<_ArrangerContent>
                   Container(width: 1, color: Theme.panel.border),
                   Expanded(
                     child: _ArrangerCanvas(
-                      timeViewStartAnimation: _timeViewStartAnimation,
-                      timeViewEndAnimation: _timeViewEndAnimation,
-                      timeViewAnimationController: timeViewAnimationController,
+                      timeViewStartAnimation: timeViewStartAnimItem.animation,
+                      timeViewEndAnimation: timeViewEndAnimItem.animation,
+                      timeViewAnimationController:
+                          timeViewAnimationHelper!.animationController,
                       verticalScrollPositionAnimation:
-                          verticalScrollPositionAnimation,
+                          verticalScrollPositionAnimItem.animation,
                       verticalScrollPositionAnimationController:
-                          verticalScrollPositionAnimationController,
+                          verticalScrollPositionAnimationHelper!
+                              .animationController,
                     ),
                   ),
                 ],
@@ -554,13 +518,12 @@ class _ArrangerCanvas extends StatelessWidget {
   final AnimationController verticalScrollPositionAnimationController;
 
   const _ArrangerCanvas({
-    Key? key,
     required this.timeViewStartAnimation,
     required this.timeViewEndAnimation,
     required this.timeViewAnimationController,
     required this.verticalScrollPositionAnimation,
     required this.verticalScrollPositionAnimationController,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -698,7 +661,7 @@ class _ArrangerCanvas extends StatelessWidget {
 class _ArrangerCanvasCursor extends StatefulWidget {
   final Widget? child;
 
-  const _ArrangerCanvasCursor({Key? key, this.child}) : super(key: key);
+  const _ArrangerCanvasCursor({this.child});
 
   @override
   State<_ArrangerCanvasCursor> createState() => _ArrangerCanvasCursorState();
@@ -738,9 +701,8 @@ class _TrackHeaders extends StatefulWidget {
   final double verticalScrollPosition;
 
   const _TrackHeaders({
-    Key? key,
     required this.verticalScrollPosition,
-  }) : super(key: key);
+  });
 
   @override
   State<_TrackHeaders> createState() => _TrackHeadersState();

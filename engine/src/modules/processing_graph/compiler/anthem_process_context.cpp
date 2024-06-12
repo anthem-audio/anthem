@@ -29,6 +29,46 @@ AnthemProcessContext::AnthemProcessContext(std::shared_ptr<AnthemGraphNode> grap
   for (int i = 0; i < graphNode->audioOutputs.size(); i++) {
     outputAudioBuffers.push_back(juce::AudioSampleBuffer(2, MAX_AUDIO_BUFFER_SIZE));
   }
+
+  for (int i = 0; i < graphNode->controlInputs.size(); i++) {
+    inputControlBuffers.push_back(juce::AudioSampleBuffer(1, MAX_AUDIO_BUFFER_SIZE));
+  }
+
+  for (int i = 0; i < graphNode->controlOutputs.size(); i++) {
+    outputControlBuffers.push_back(juce::AudioSampleBuffer(1, MAX_AUDIO_BUFFER_SIZE));
+  }
+
+  // Because parameter values use std::atomic, we need to initialize them in an odd way
+
+  parameterValues = std::vector<std::atomic<float>>(graphNode->controlInputs.size());
+
+  for (int i = 0; i < graphNode->controlInputs.size(); i++) {
+    std::atomic<float> value(graphNode->parameters[i]);
+    parameterValues[i] = value.load();
+  }
+
+  parameterSmoothers = std::vector<std::unique_ptr<LinearParameterSmoother>>();
+
+  for (int i = 0; i < graphNode->controlInputs.size(); i++) {
+    auto parameterValue = graphNode->parameters[i];
+    auto& parameterConfig = graphNode->processor->config.getParameter(i);
+
+    auto smoother = std::make_unique<LinearParameterSmoother>(parameterValue, parameterConfig->smoothingDurationSeconds);
+    parameterSmoothers.push_back(std::move(smoother));
+  }
+}
+
+void AnthemProcessContext::setParameterValue(int index, float value) {
+  // Throw if not on the JUCE message thread
+  if (!juce::MessageManager::getInstance()->isThisTheMessageThread()) {
+    throw std::runtime_error("AnthemProcessContext::setParameterValue() must be called on the JUCE message thread.");
+  }
+
+  parameterValues[index].store(value);
+}
+
+float AnthemProcessContext::getParameterValue(int index) {
+  return parameterValues[index].load();
 }
 
 void AnthemProcessContext::setAllInputAudioBuffers(const std::vector<juce::AudioSampleBuffer>& buffers) {
@@ -53,4 +93,28 @@ int AnthemProcessContext::getNumInputAudioBuffers() {
 
 int AnthemProcessContext::getNumOutputAudioBuffers() {
   return outputAudioBuffers.size();
+}
+
+void AnthemProcessContext::setAllInputControlBuffers(const std::vector<juce::AudioSampleBuffer>& buffers) {
+  inputControlBuffers = buffers;
+}
+
+void AnthemProcessContext::setAllOutputControlBuffers(const std::vector<juce::AudioSampleBuffer>& buffers) {
+  outputControlBuffers = buffers;
+}
+
+juce::AudioSampleBuffer& AnthemProcessContext::getInputControlBuffer(int index) {
+  return inputControlBuffers[index];
+}
+
+juce::AudioSampleBuffer& AnthemProcessContext::getOutputControlBuffer(int index) {
+  return outputControlBuffers[index];
+}
+
+int AnthemProcessContext::getNumInputControlBuffers() {
+  return inputControlBuffers.size();
+}
+
+int AnthemProcessContext::getNumOutputControlBuffers() {
+  return outputControlBuffers.size();
 }

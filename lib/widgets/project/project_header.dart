@@ -34,7 +34,7 @@ import '../basic/icon.dart';
 class ProjectHeader extends StatelessWidget {
   final ID projectID;
 
-  const ProjectHeader({Key? key, required this.projectID}) : super(key: key);
+  const ProjectHeader({super.key, required this.projectID});
 
   @override
   Widget build(BuildContext context) {
@@ -63,8 +63,8 @@ class ProjectHeader extends StatelessWidget {
                   AnthemMenuItem(
                     text: 'New project',
                     hint: 'Create a new project',
-                    onSelected: () {
-                      final projectID = mainWindowController.newProject();
+                    onSelected: () async {
+                      final projectID = await mainWindowController.newProject();
                       mainWindowController.switchTab(projectID);
                     },
                   ),

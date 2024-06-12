@@ -20,22 +20,26 @@
 #pragma once
 
 #include <string>
-#include <optional>
 
-#include "anthem_graph_data_type.h"
-
-// This class defines info about a port on an AnthemProcessor. This info is used
-class AnthemProcessorPortConfig {
+class AnthemProcessorParameterConfig {
 public:
-  // The type of the port.
-  AnthemGraphDataType portType;
+  // The default value of the parameter.
+  float defaultValue;
 
-  // The name of the port.
-  std::optional<std::string> name;
+  // The minimum value of the parameter.
+  float minValue;
+
+  // The maximum value of the parameter.
+  float maxValue;
+
+  // The duration of the smoothing applied to the parameter value.
+  float smoothingDurationSeconds;
 
   // Constructor
-  AnthemProcessorPortConfig(
-    AnthemGraphDataType portType,
-    std::optional<std::string> name = std::nullopt
-  ) : portType(portType), name(name) {}
+  AnthemProcessorParameterConfig(
+    float defaultValue,
+    float minValue,
+    float maxValue,
+    float smoothingDurationSeconds = 0.001f
+  ) : defaultValue(defaultValue), minValue(minValue), maxValue(maxValue), smoothingDurationSeconds(smoothingDurationSeconds) {}
 };

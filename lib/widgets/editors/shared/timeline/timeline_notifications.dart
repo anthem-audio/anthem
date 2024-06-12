@@ -41,57 +41,39 @@ abstract class TimelineLabelPointerNotification
   final TimelineLabelType labelType;
 
   TimelineLabelPointerNotification({
-    required double time,
+    required super.time,
     required this.labelID,
     required this.labelType,
-    required double viewWidthInPixels,
-  }) : super(
-          time: time,
-          viewWidthInPixels: viewWidthInPixels,
-        );
+    required super.viewWidthInPixels,
+  });
 }
 
 class TimelineLabelPointerDownNotification
     extends TimelineLabelPointerNotification {
   TimelineLabelPointerDownNotification({
-    required double time,
-    required ID labelID,
-    required TimelineLabelType labelType,
-    required double viewWidthInPixels,
-  }) : super(
-          time: time,
-          labelID: labelID,
-          labelType: labelType,
-          viewWidthInPixels: viewWidthInPixels,
-        );
+    required super.time,
+    required super.labelID,
+    required super.labelType,
+    required super.viewWidthInPixels,
+  });
 }
 
 class TimelineLabelPointerMoveNotification
     extends TimelineLabelPointerNotification {
   TimelineLabelPointerMoveNotification({
-    required double time,
-    required ID labelID,
-    required TimelineLabelType labelType,
-    required double viewWidthInPixels,
-  }) : super(
-          time: time,
-          labelID: labelID,
-          labelType: labelType,
-          viewWidthInPixels: viewWidthInPixels,
-        );
+    required super.time,
+    required super.labelID,
+    required super.labelType,
+    required super.viewWidthInPixels,
+  });
 }
 
 class TimelineLabelPointerUpNotification
     extends TimelineLabelPointerNotification {
   TimelineLabelPointerUpNotification({
-    required double time,
-    required ID labelID,
-    required TimelineLabelType labelType,
-    required double viewWidthInPixels,
-  }) : super(
-          time: time,
-          labelID: labelID,
-          labelType: labelType,
-          viewWidthInPixels: viewWidthInPixels,
-        );
+    required super.time,
+    required super.labelID,
+    required super.labelType,
+    required super.viewWidthInPixels,
+  });
 }

@@ -18,10 +18,22 @@
 */
 
 #include "anthem_graph_node.h"
+#include "anthem_process_context.h"
 
 AnthemGraphNode::AnthemGraphNode(std::shared_ptr<AnthemProcessor> processor) : processor(processor) {
   audioInputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
   audioOutputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
+
+  controlInputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
+  controlOutputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
+
+  parameters = std::vector<float>(processor->config.getNumControlInputs(), 0.0f);
+
+  for (int i = 0; i < processor->config.getNumControlInputs(); i++) {
+    parameters[i] = processor->config.getParameter(i)->defaultValue;
+  }
+
+  runtimeContext = std::nullopt;
 }
 
 std::shared_ptr<AnthemGraphNode> AnthemGraphNode::create(std::shared_ptr<AnthemProcessor> processor) {
@@ -35,10 +47,34 @@ void AnthemGraphNode::initializePorts() {
 
   // Add input and output ports
   for (int i = 0; i < processor->config.getNumAudioInputs(); i++) {
-    audioInputs.push_back(std::make_shared<AnthemGraphNodePort>(self, processor->config.getAudioInput(i), i));
+    audioInputs.push_back(
+      std::make_shared<AnthemGraphNodePort>(self, processor->config.getAudioInput(i), i)
+    );
   }
 
   for (int i = 0; i < processor->config.getNumAudioOutputs(); i++) {
-    audioOutputs.push_back(std::make_shared<AnthemGraphNodePort>(self, processor->config.getAudioOutput(i), i));
+    audioOutputs.push_back(
+      std::make_shared<AnthemGraphNodePort>(self, processor->config.getAudioOutput(i), i)
+    );
+  }
+  
+  for (int i = 0; i < processor->config.getNumControlInputs(); i++) {
+    controlInputs.push_back(
+      std::make_shared<AnthemGraphNodePort>(self, processor->config.getControlInput(i), i)
+    );
+  }
+
+  for (int i = 0; i < processor->config.getNumControlOutputs(); i++) {
+    controlOutputs.push_back(
+      std::make_shared<AnthemGraphNodePort>(self, processor->config.getControlOutput(i), i)
+    );
+  }
+}
+
+void AnthemGraphNode::setParameter(int index, float value) {
+  parameters[index] = value;
+
+  if (runtimeContext.has_value()) {
+    runtimeContext.value()->setParameterValue(index, value);
   }
 }

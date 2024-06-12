@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,10 +19,10 @@
 
 part of 'package:anthem/engine_api/engine.dart';
 
-class Project {
+class ProjectApi {
   final Engine _engine;
 
-  Project(this._engine);
+  ProjectApi(this._engine);
 
   /// Creates a new arrangement, which maps to an `Edit` in Tracktion Engine.
   /// Returns a pointer to the Tracktion edit object within the engine process.
@@ -41,7 +41,7 @@ class Project {
 
     _engine._request(id, request, onResponse: (response) {
       final inner = response.returnValue as AddArrangementResponse;
-      completer.complete(inner.editPointer);
+      completer.complete(inner.editId);
     });
 
     return completer.future;
@@ -50,69 +50,23 @@ class Project {
   /// Removes an arrangement with the given `Edit` pointer.
   ///
   /// See [addArrangement].
-  void deleteArrangement(int editPointer) {
+  void deleteArrangement(int editId) {
     final id = _engine._getRequestId();
 
     final request = RequestObjectBuilder(
       id: id,
       commandType: CommandTypeId.DeleteArrangement,
-      command: DeleteArrangementObjectBuilder(editPointer: editPointer),
+      command: DeleteArrangementObjectBuilder(editId: editId),
     );
 
     _engine._request(id, request);
-  }
-
-  Future<List<String>> getPlugins() {
-    final completer = Completer<List<String>>();
-
-    final id = _engine._getRequestId();
-
-    final request = RequestObjectBuilder(
-      id: id,
-      commandType: CommandTypeId.GetPlugins,
-      command: GetPluginsObjectBuilder(),
-    );
-
-    _engine._request(id, request, onResponse: (response) {
-      final inner = response.returnValue as GetPluginsResponse;
-      completer.complete(inner.plugins!);
-    });
-
-    return completer.future;
-  }
-
-  /// Adds the plugin at the given path.
-  Future<void> addPlugin(String pluginPath, int editPointer) {
-    final id = _engine._getRequestId();
-
-    final request = RequestObjectBuilder(
-      id: id,
-      commandType: CommandTypeId.AddPlugin,
-      command: AddPluginObjectBuilder(
-        pluginUri: pluginPath,
-        editPointer: editPointer,
-      ),
-    );
-
-    final completer = Completer<void>();
-
-    _engine._request(id, request, onResponse: (response) {
-      final inner = response.returnValue as AddPluginResponse;
-      if (inner.success) {
-        completer.complete();
-      } else {
-        completer.completeError(false);
-      }
-    });
-
-    return completer.future;
   }
 
   void noteOn({
     int channel = 1,
     required int note,
     double velocity = 0.5,
-    required int editPointer,
+    required int editId,
   }) {
     final id = _engine._getRequestId();
 
@@ -120,7 +74,7 @@ class Project {
       id: id,
       commandType: CommandTypeId.LiveNoteOn,
       command: LiveNoteOnObjectBuilder(
-        editPointer: editPointer,
+        editId: editId,
         channel: channel,
         note: note,
         velocity: velocity,
@@ -133,7 +87,7 @@ class Project {
   void noteOff({
     int channel = 1,
     required int note,
-    required int editPointer,
+    required int editId,
   }) {
     final id = _engine._getRequestId();
 
@@ -141,7 +95,7 @@ class Project {
       id: id,
       commandType: CommandTypeId.LiveNoteOff,
       command: LiveNoteOffObjectBuilder(
-        editPointer: editPointer,
+        editId: editId,
         channel: channel,
         note: note,
       ),

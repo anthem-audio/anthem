@@ -20,6 +20,7 @@
 #include "anthem.h"
 #include "tone_generator_node.h"
 #include "simple_volume_lfo_node.h"
+#include <generate_graphvis_from_graph.h>
 
 Anthem::Anthem() {
   processingGraph = std::make_shared<AnthemGraph>();
@@ -29,24 +30,37 @@ Anthem::Anthem() {
 
 void Anthem::init() {
   auto masterOutputProcessor = std::make_shared<MasterOutputNode>(2, MAX_AUDIO_BUFFER_SIZE);
-  this->masterOutputNode = processingGraph->addNode(masterOutputProcessor);
+  this->masterOutputNodeId = this->addNode(masterOutputProcessor);
+  this->masterOutputNode = this->getNode(this->masterOutputNodeId);
+
   audioCallback = std::make_unique<AnthemAudioCallback>(processingGraph, this->masterOutputNode);
 
-  auto toneGeneratorProcessor = std::make_shared<ToneGeneratorNode>();
-  auto toneGeneratorNode = processingGraph->addNode(toneGeneratorProcessor);
+  // auto toneGeneratorProcessor1 = std::make_shared<ToneGeneratorNode>(440.0f);
+  // auto toneGeneratorNode1Id = this->addNode(toneGeneratorProcessor1);
+  // auto toneGeneratorNode1 = this->getNode(toneGeneratorNode1Id);
 
-  auto simpleVolumeLfoProcessor = std::make_shared<SimpleVolumeLfoNode>();
-  auto simpleVolumeLfoNode = processingGraph->addNode(simpleVolumeLfoProcessor);
+  // auto toneGeneratorProcessor2 = std::make_shared<ToneGeneratorNode>(660.0f);
+  // auto toneGeneratorNode2Id = this->addNode(toneGeneratorProcessor2);
+  // auto toneGeneratorNode2 = this->getNode(toneGeneratorNode2Id);
 
-  processingGraph->connectNodes(
-    toneGeneratorNode->audioOutputs[toneGeneratorProcessor->getOutputPortIndex()],
-    simpleVolumeLfoNode->audioInputs[simpleVolumeLfoProcessor->getInputPortIndex()]
-  );
+  // auto simpleVolumeLfoProcessor = std::make_shared<SimpleVolumeLfoNode>();
+  // auto simpleVolumeLfoNodeId = this->addNode(simpleVolumeLfoProcessor);
+  // auto simpleVolumeLfoNode = this->getNode(simpleVolumeLfoNodeId);
 
-  processingGraph->connectNodes(
-    simpleVolumeLfoNode->audioOutputs[simpleVolumeLfoProcessor->getOutputPortIndex()],
-    masterOutputNode->audioInputs[masterOutputProcessor->getInputPortIndex()]
-  );
+  // processingGraph->connectNodes(
+  //   toneGeneratorNode1->audioOutputs[toneGeneratorProcessor1->getOutputPortIndex()],
+  //   masterOutputNode->audioInputs[masterOutputProcessor->getInputPortIndex()]
+  // );
+
+  // processingGraph->connectNodes(
+  //   toneGeneratorNode2->audioOutputs[toneGeneratorProcessor2->getOutputPortIndex()],
+  //   simpleVolumeLfoNode->audioInputs[simpleVolumeLfoProcessor->getInputPortIndex()]
+  // );
+
+  // processingGraph->connectNodes(
+  //   simpleVolumeLfoNode->audioOutputs[simpleVolumeLfoProcessor->getOutputPortIndex()],
+  //   masterOutputNode->audioInputs[masterOutputProcessor->getInputPortIndex()]
+  // );
 
   processingGraph->compile();
 

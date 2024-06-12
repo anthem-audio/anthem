@@ -25,10 +25,10 @@ class ControlledTextBox extends StatefulWidget {
   final void Function(String newText)? onChange;
 
   const ControlledTextBox({
-    Key? key,
+    super.key,
     required this.text,
     this.onChange,
-  }) : super(key: key);
+  });
 
   @override
   State<ControlledTextBox> createState() => ControlledTextBoxState();

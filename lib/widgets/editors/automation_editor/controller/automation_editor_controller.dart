@@ -40,9 +40,7 @@ part 'pointer_events.dart';
 class AutomationEditorController extends _AutomationEditorController
     with _AutomationEditorPointerEventsMixin {
   AutomationEditorController(
-      {required AutomationEditorViewModel viewModel,
-      required ProjectModel project})
-      : super(viewModel: viewModel, project: project);
+      {required super.viewModel, required super.project});
 }
 
 class _AutomationEditorController {

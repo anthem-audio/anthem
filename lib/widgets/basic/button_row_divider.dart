@@ -22,7 +22,7 @@ import 'package:flutter/widgets.dart';
 import '../../theme.dart';
 
 class ButtonRowDivider extends StatelessWidget {
-  const ButtonRowDivider({Key? key}) : super(key: key);
+  const ButtonRowDivider({super.key});
 
   @override
   Widget build(BuildContext context) {

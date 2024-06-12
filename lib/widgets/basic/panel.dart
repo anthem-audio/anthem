@@ -53,7 +53,7 @@ class Panel extends StatefulWidget {
   final double contentMaxSize;
 
   const Panel({
-    Key? key,
+    super.key,
     required this.panelContent,
     required this.child,
     required this.orientation,
@@ -65,7 +65,7 @@ class Panel extends StatefulWidget {
     this.panelMaxSize = double.infinity,
     this.contentMinSize = 0,
     this.contentMaxSize = double.infinity,
-  }) : super(key: key);
+  });
 
   @override
   State<Panel> createState() => _PanelState();

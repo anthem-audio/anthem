@@ -29,5 +29,5 @@ void ZeroInputBuffersAction::execute(int) {
 }
 
 void ZeroInputBuffersAction::debugPrint() {
-  std::cout << "ZeroInputBuffersAction: " << this->context->getGraphNode()->processor->config.getName() << std::endl;
+  std::cout << "ZeroInputBuffersAction: " << this->context->getGraphNode()->processor->config.getId() << std::endl;
 }

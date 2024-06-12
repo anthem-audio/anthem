@@ -32,11 +32,11 @@ class TimelineNotificationHandler extends StatefulWidget {
   final Widget child;
 
   const TimelineNotificationHandler({
-    Key? key,
+    super.key,
     required this.child,
     required this.timelineKind,
     this.patternID,
-  }) : super(key: key);
+  });
 
   @override
   State<TimelineNotificationHandler> createState() =>

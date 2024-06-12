@@ -32,12 +32,12 @@ class VerticalScaleControl extends StatefulWidget {
   final Function(double newValue) onChange;
 
   const VerticalScaleControl({
-    Key? key,
+    super.key,
     required this.min,
     required this.max,
     required this.value,
     required this.onChange,
-  }) : super(key: key);
+  });
 
   @override
   State<VerticalScaleControl> createState() => _VerticalScaleControlState();

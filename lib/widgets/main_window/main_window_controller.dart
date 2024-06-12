@@ -20,6 +20,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:anthem/engine_api/engine.dart';
 import 'package:file_picker/file_picker.dart';
 
 import 'package:anthem/helpers/id.dart';
@@ -37,8 +38,13 @@ class MainWindowController {
   }
 
   // Returns the ID of the new tab
-  ID newProject() {
+  Future<ID> newProject() async {
     ProjectModel project = ProjectModel.create();
+
+    await project.engine.engineStateStream
+        .firstWhere((element) => element == EngineState.running);
+
+    await project.createInEngine();
 
     _addProject(project);
 

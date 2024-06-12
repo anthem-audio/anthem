@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,12 +21,14 @@ import 'package:anthem/commands/command.dart';
 import 'package:anthem/commands/command_queue.dart';
 import 'package:anthem/commands/journal_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/generated/processing_graph_generated.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/song.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
 import 'generator.dart';
+import 'processing_graph/processor_definition.dart';
 import 'shared/hydratable.dart';
 
 part 'project.g.dart';
@@ -48,29 +50,51 @@ class ProjectModel extends _ProjectModel with _$ProjectModel {
 abstract class _ProjectModel extends Hydratable with Store {
   late SongModel song;
 
+  /// ID of the master output node in the processing graph. Audio that is routed
+  /// to this node is sent to the audio output device.
+  @observable
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  int? masterOutputNodeId;
+
+  /// Map of processors available to Anthem.
+  @observable
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  ObservableMap<String, ProcessorDefinition> processorDefinitions =
+      ObservableMap();
+
+  /// Map of generators in the project.
   @observable
   @JsonKey(fromJson: _generatorsFromJson, toJson: _generatorsToJson)
   ObservableMap<ID, GeneratorModel> generators = ObservableMap();
 
+  /// List of generator IDs in the project (to preserve order).
   @observable
   @JsonKey(fromJson: _generatorListFromJson, toJson: _generatorListToJson)
   ObservableList<ID> generatorList = ObservableList();
 
+  /// ID of the active instrument, used to determine which instrument is shown
+  /// in the channel rack, which is used for piano roll, etc.
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
   ID? activeInstrumentID;
 
+  /// ID of the active automation generator, used to determine which automation
+  /// generator is being written to using the automation editor.
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
   ID? activeAutomationGeneratorID;
 
+  /// The ID of the project.
   @JsonKey(includeFromJson: false, includeToJson: false)
   ID id = getID();
 
+  /// The file path of the project.
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
   String? filePath;
 
+  /// Whether or not the project has been saved. If false, the project has
+  /// either never been saved, or has been modified since the last save.
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
   bool isSaved = false;
@@ -81,6 +105,9 @@ abstract class _ProjectModel extends Hydratable with Store {
   @JsonKey(includeFromJson: false, includeToJson: false)
   DetailViewKind? _selectedDetailView;
 
+  /// `selectedDetailView` controls which detail item (in the left panel) is
+  /// active. Detail views contain attributes about various items in the
+  /// project, such as patterns, arrangements, notes, etc.
   @JsonKey(includeFromJson: false, includeToJson: false)
   DetailViewKind? get selectedDetailView => _selectedDetailView;
   set selectedDetailView(DetailViewKind? detailView) {
@@ -88,6 +115,8 @@ abstract class _ProjectModel extends Hydratable with Store {
     if (detailView != null) isDetailViewSelected = true;
   }
 
+  /// Whether the detail view is active. If false, the project explorer is
+  /// shown instead.
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
   bool isDetailViewSelected = false;
@@ -154,8 +183,6 @@ abstract class _ProjectModel extends Hydratable with Store {
       (this as ProjectModel).engineState = state;
     });
 
-    song.createInEngine(engine);
-
     // We don't need to hydrate here. All `SomeModel.Create()` functions should
     // call hydrate().
     isHydrated = true;
@@ -163,12 +190,32 @@ abstract class _ProjectModel extends Hydratable with Store {
 
   // Initializes this project in the engine
   Future<void> createInEngine() async {
-    for (final arrangement in song.arrangements.values) {
-      await arrangement.createInEngine(engine);
+    masterOutputNodeId =
+        await engine.processingGraphApi.getMasterOutputNodeId();
+
+    processorDefinitions.clear();
+
+    final processors = await engine.processingGraphApi.getAvailableProcessors();
+
+    // Query the engine for the available processors and create ProcessorDefinition
+    // objects for each one.
+    for (final processor in processors) {
+      processorDefinitions[processor.id!] = ProcessorDefinition(
+        id: processor.id!,
+        type: switch (processor.category) {
+          ProcessorCategory.Effect => ProcessorType.effect,
+          ProcessorCategory.Generator => ProcessorType.generator,
+          ProcessorCategory.Utility => ProcessorType.utility,
+          _ => throw AssertionError(
+              'Unknown processor category ${processor.category}'),
+        },
+      );
     }
 
+    await song.createInEngine(engine);
+
     for (final generator in generators.values) {
-      await generator.plugin.createInEngine(engine);
+      await generator.createInEngine(engine);
     }
   }
 
@@ -198,7 +245,7 @@ abstract class _ProjectModel extends Hydratable with Store {
     }
   }
 
-  /// Pushes the given command to the undo/redoo queue without executing it
+  /// Pushes the given command to the undo/redo queue without executing it
   /// (unless [execute] is set to true).
   void push(Command command, {bool execute = false}) {
     if (execute) {
@@ -218,11 +265,13 @@ abstract class _ProjectModel extends Hydratable with Store {
     }
   }
 
+  /// Undoes the last command in the undo/redo queue.
   void undo() {
     _assertJournalInactive();
     _commandQueue.undo();
   }
 
+  /// Redoes the next command in the undo/redo queue.
   void redo() {
     _assertJournalInactive();
     _commandQueue.redo();

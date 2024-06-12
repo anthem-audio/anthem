@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -27,7 +27,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 
 class EngineIndicator extends StatelessObserverWidget {
-  const EngineIndicator({Key? key}) : super(key: key);
+  const EngineIndicator({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +49,8 @@ class EngineIndicator extends StatelessObserverWidget {
           activeProject?.engine.stop();
         } else {
           await activeProject?.engine.start();
-          activeProject?.createInEngine();
+          await activeProject?.createInEngine();
+          await activeProject?.engine.processingGraphApi.compile();
         }
       },
       contentBuilder: (context, color) {
