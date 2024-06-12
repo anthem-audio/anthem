@@ -215,4 +215,34 @@ class ProcessingGraphApi {
 
     return completer.future;
   }
+
+  Future<void> setParameter({
+    required int processorId,
+    required int parameterIndex,
+    required double value,
+  }) {
+    final completer = Completer<void>();
+
+    final id = _engine._getRequestId();
+
+    final request = RequestObjectBuilder(
+      id: id,
+      commandType: CommandTypeId.SetParameter,
+      command: SetParameterObjectBuilder(
+        processorId: processorId,
+        parameterIndex: parameterIndex,
+        value: value,
+      ),
+    );
+
+    _engine._request(id, request, onResponse: (response) {
+      if ((response.returnValue as SetParameterResponse).success) {
+        completer.complete();
+      } else {
+        completer.completeError('error setting parameter');
+      }
+    });
+
+    return completer.future;
+  }
 }

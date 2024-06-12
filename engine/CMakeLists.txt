@@ -59,6 +59,8 @@ set(ANTHEM_ENGINE_SOURCES
 
   src/command_handlers/processing_graph_command_handler.cpp
   src/command_handlers/processing_graph_command_handler.h
+  src/command_handlers/processor_command_handler.cpp
+  src/command_handlers/processor_command_handler.h
   src/command_handlers/project_command_handler.cpp
   src/command_handlers/project_command_handler.h
 
