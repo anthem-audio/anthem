@@ -30,14 +30,14 @@ class CustomPaintObserver extends StatefulWidget {
   final Widget? child;
 
   const CustomPaintObserver({
-    Key? key,
+    super.key,
     this.painterBuilder,
     this.foregroundPainterBuilder,
     this.size = Size.zero,
     this.isComplex = false,
     this.willChange = false,
     this.child,
-  }) : super(key: key);
+  });
 
   @override
   State<CustomPaintObserver> createState() => _CustomPaintObserverState();

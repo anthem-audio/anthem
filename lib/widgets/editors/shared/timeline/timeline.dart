@@ -39,22 +39,20 @@ class Timeline extends StatefulWidget {
   final Animation<double> timeViewEndAnimation;
 
   const Timeline.pattern({
-    Key? key,
+    super.key,
     required this.timeViewAnimationController,
     required this.timeViewStartAnimation,
     required this.timeViewEndAnimation,
     required this.patternID,
-  })  : arrangementID = null,
-        super(key: key);
+  }) : arrangementID = null;
 
   const Timeline.arrangement({
-    Key? key,
+    super.key,
     required this.timeViewAnimationController,
     required this.timeViewStartAnimation,
     required this.timeViewEndAnimation,
     required this.arrangementID,
-  })  : patternID = null,
-        super(key: key);
+  }) : patternID = null;
 
   @override
   State<Timeline> createState() => _TimelineState();
@@ -216,13 +214,13 @@ class TimelineLabel extends StatefulWidget {
   final BuildContext stableBuildContext;
 
   const TimelineLabel({
-    Key? key,
+    super.key,
     required this.text,
     required this.id,
     required this.offset,
     required this.timelineWidth,
     required this.stableBuildContext,
-  }) : super(key: key);
+  });
 
   @override
   State<TimelineLabel> createState() => _TimelineLabelState();

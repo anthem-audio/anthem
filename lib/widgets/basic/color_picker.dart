@@ -28,7 +28,7 @@ const padding = 4.0;
 class ColorPicker extends StatefulWidget {
   final Function(AnthemColor)? onChange;
 
-  const ColorPicker({Key? key, this.onChange}) : super(key: key);
+  const ColorPicker({super.key, this.onChange});
 
   @override
   State<ColorPicker> createState() => _ColorPickerState();

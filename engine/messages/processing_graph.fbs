@@ -1,0 +1,109 @@
+/*
+  Copyright (C) 2024 Joshua Wade
+
+  This file is part of Anthem.
+
+  Anthem is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Anthem is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+*/
+
+table GetMasterOutputNodeId {}
+table GetMasterOutputNodeIdResponse {
+  node_id: ulong;
+}
+
+// Adds a processor to the processing graph
+table AddProcessor {
+  id: string;
+}
+table AddProcessorResponse {
+  // Whether the command succeded
+  success: bool;
+
+  // If the command succeeded, this will contain an ID to look up the processor
+  processor_id: ulong;
+
+  // If the command failed, this will contain an error message
+  error: string;
+}
+
+// Removes a processor from the processing graph
+table RemoveProcessor {
+  id: ulong;
+}
+table RemoveProcessorResponse {
+  success: bool;
+  error: string;
+}
+
+enum ProcessorConnectionType: short {
+  Audio,
+  Midi,
+  Control
+}
+
+// Connects two processors in the node graph (e.g. an instrument audio output to
+// an effect audio input).
+table ConnectProcessors {
+  source_id: ulong;
+  destination_id: ulong;
+
+  connection_type: ProcessorConnectionType;
+
+  source_port_index: uint;
+  destination_port_index: uint;
+}
+table ConnectProcessorsResponse {
+  success: bool;
+  error: string;
+}
+
+// Disconnects two processors in the node graph.
+table DisconnectProcessors {
+  source_id: ulong;
+  destination_id: ulong;
+
+  connection_type: ProcessorConnectionType;
+
+  source_port_index: uint;
+  destination_port_index: uint;
+}
+table DisconnectProcessorsResponse {
+  success: bool;
+  error: string;
+}
+
+// Processor category enum
+enum ProcessorCategory: short {
+  Effect,
+  Generator,
+  Utility
+}
+
+table ProcessorDescription {
+  id: string;
+  category: ProcessorCategory;
+}
+
+table GetProcessors {}
+table GetProcessorsResponse {
+  processors: [ProcessorDescription];
+}
+
+// Compiles the processing graph and sends the result to the audio thread. This
+// must be called after any graph changes.
+table CompileProcessingGraph {}
+table CompileProcessingGraphResponse {
+  success: bool;
+  error: string;
+}

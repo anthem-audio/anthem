@@ -28,9 +28,9 @@ class ProjectDetails extends StatelessWidget {
   final DetailViewKind? selectedProjectDetails;
 
   const ProjectDetails({
-    Key? key,
+    super.key,
     required this.selectedProjectDetails,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

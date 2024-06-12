@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,6 +18,8 @@
 */
 
 include "project.fbs";
+include "processing_graph.fbs";
+include "processors.fbs";
 
 table Exit {}
 table ExitReply {}
@@ -31,25 +33,58 @@ union Command {
   Heartbeat,
 
   // Project commands
+
   AddArrangement,
-  AddPlugin,
   DeleteArrangement,
-  GetPlugins,
+
+  // Processing graph commands
+
+  GetProcessors,
+
+  GetMasterOutputNodeId,
+
+  AddProcessor,
+  RemoveProcessor,
+  ConnectProcessors,
+  DisconnectProcessors,
+
+  CompileProcessingGraph,
+
+  // Processor commands
 
   // ??
   LiveNoteOn,
   LiveNoteOff,
+
+  SetParameter,
 }
 
 union ReturnValue {
   // Application commands
+
   ExitReply,
   HeartbeatReply,
 
   // Project commands
+
   AddArrangementResponse,
-  AddPluginResponse,
-  GetPluginsResponse,
+
+  // Processing graph commands
+
+  GetProcessorsResponse,
+
+  GetMasterOutputNodeIdResponse,
+
+  AddProcessorResponse,
+  RemoveProcessorResponse,
+  ConnectProcessorsResponse,
+  DisconnectProcessorsResponse,
+
+  CompileProcessingGraphResponse,
+
+  // Processor commands
+
+  SetParameterResponse,
 }
 
 table Request {

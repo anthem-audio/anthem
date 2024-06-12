@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/basic/background.dart';
+import 'package:anthem/widgets/basic/knob.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/automation_editor/automation_editor.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
@@ -41,7 +43,7 @@ import 'project_header.dart';
 class Project extends StatefulWidget {
   final ID id;
 
-  const Project({Key? key, required this.id}) : super(key: key);
+  const Project({super.key, required this.id});
 
   @override
   State<Project> createState() => _ProjectState();
@@ -83,7 +85,7 @@ class _ProjectState extends State<Project> {
             Expanded(
               child: Observer(builder: (context) {
                 const automationEditor = AutomationEditor();
-                const channelRack = Text('Channel Rack');
+                const channelRack = _KnobTest();
                 const pianoRoll = PianoRoll();
                 const mixer = Text('Mixer');
 
@@ -188,6 +190,62 @@ class _ProjectState extends State<Project> {
               height: 3,
             ),
             const ProjectFooter(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _KnobTest extends StatefulWidget {
+  const _KnobTest();
+
+  @override
+  State<_KnobTest> createState() => __KnobTestState();
+}
+
+class __KnobTestState extends State<_KnobTest> {
+  double value1 = 0.5;
+  double value2 = 0.5;
+
+  @override
+  Widget build(BuildContext context) {
+    return Background(
+      type: BackgroundType.dark,
+      child: Center(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Knob(
+              width: 20,
+              height: 20,
+              value: value1,
+              min: 0,
+              max: 100,
+              stickyPoints: const [25, 50, 75],
+              onValueChanged: (value) {
+                setState(() {
+                  value1 = value;
+                });
+              },
+            ),
+            const SizedBox(
+              width: 10,
+            ),
+            Knob(
+              width: 40,
+              height: 40,
+              type: KnobType.pan,
+              min: -1,
+              max: 1,
+              value: value2,
+              stickyPoints: const [0],
+              onValueChanged: (value) {
+                setState(() {
+                  value2 = value;
+                });
+              },
+            ),
           ],
         ),
       ),

@@ -41,7 +41,7 @@ class Dropdown extends StatefulWidget {
   final bool allowNoSelection;
 
   const Dropdown({
-    Key? key,
+    super.key,
     this.width,
     this.height,
     this.selectedID,
@@ -50,7 +50,7 @@ class Dropdown extends StatefulWidget {
     this.showNameOnButton = true,
     this.allowNoSelection = true,
     this.hint,
-  }) : super(key: key);
+  });
 
   @override
   State<Dropdown> createState() => _DropdownState();

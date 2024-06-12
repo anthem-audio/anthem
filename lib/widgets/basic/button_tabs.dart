@@ -29,11 +29,11 @@ class ButtonTabs<T> extends StatefulWidget {
   final Function(T id)? onChange;
 
   const ButtonTabs({
-    Key? key,
+    super.key,
     required this.tabs,
     this.selected,
     this.onChange,
-  }) : super(key: key);
+  });
 
   @override
   State<ButtonTabs<T>> createState() => _ButtonTabsState<T>();

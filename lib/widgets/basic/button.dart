@@ -150,7 +150,7 @@ class Button extends StatefulWidget {
   final String? hint;
 
   const Button({
-    Key? key,
+    super.key,
     this.variant,
     this.text,
     this.icon,
@@ -168,7 +168,7 @@ class Button extends StatefulWidget {
     this.onPress,
     this.toggleState,
     this.hint,
-  }) : super(key: key);
+  });
 
   @override
   State<Button> createState() => _ButtonState();

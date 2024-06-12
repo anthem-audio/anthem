@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -26,6 +26,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_window_close/flutter_window_close.dart';
 import 'package:provider/provider.dart';
 
+import 'engine_api/engine.dart';
 import 'model/project.dart';
 import 'model/store.dart';
 import 'widgets/main_window/main_window.dart';
@@ -34,14 +35,7 @@ import 'package:bitsdojo_window/bitsdojo_window.dart';
 
 GlobalKey mainWindowKey = GlobalKey();
 
-void main() {
-  final store = AnthemStore.instance;
-
-  final projectModel = ProjectModel.create();
-  store.projects[projectModel.id] = projectModel;
-  store.projectOrder.add(projectModel.id);
-  store.activeProjectID = projectModel.id;
-
+void main() async {
   runApp(const MyApp());
 
   // Make sure all engines are stopped before the application is closed
@@ -74,10 +68,26 @@ void main() {
     }
     appWindow.show();
   });
+
+  final store = AnthemStore.instance;
+
+  // Note: This code for creating a new project is duplicated in
+  // main_window_controller.dart
+
+  final projectModel = ProjectModel.create();
+
+  store.projects[projectModel.id] = projectModel;
+  store.projectOrder.add(projectModel.id);
+  store.activeProjectID = projectModel.id;
+
+  await projectModel.engine.engineStateStream
+      .firstWhere((element) => element == EngineState.running);
+
+  await projectModel.createInEngine();
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {

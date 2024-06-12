@@ -23,8 +23,10 @@
 #include <vector>
 
 #include <juce_audio_basics/juce_audio_basics.h>
+#include <juce_events/juce_events.h>
 
 #include "anthem_graph_node.h"
+#include "linear_parameter_smoother.h"
 
 // This class acts as a context for node graph processors. It is passed to the
 // `process()` method of each `AnthemProcessor`, and provides a way to query
@@ -34,13 +36,29 @@ private:
   std::vector<juce::AudioSampleBuffer> inputAudioBuffers;
   std::vector<juce::AudioSampleBuffer> outputAudioBuffers;
 
-  std::shared_ptr<AnthemGraphNode> graphNode;
+  std::vector<juce::AudioSampleBuffer> inputControlBuffers;
+  std::vector<juce::AudioSampleBuffer> outputControlBuffers;
+
+  std::vector<std::atomic<float>> parameterValues;
+  std::vector<std::unique_ptr<LinearParameterSmoother>> parameterSmoothers;
+
+  std::weak_ptr<AnthemGraphNode> graphNode;
 public:
   AnthemProcessContext(std::shared_ptr<AnthemGraphNode> graphNode);
 
   std::shared_ptr<AnthemGraphNode> getGraphNode() {
-    return graphNode;
+    // This function is for debugging. The graph node is mutated on the JUCE
+    // message thread without any thread safety, so we throw if we're not on
+    // that thread.
+    if (!juce::MessageManager::getInstance()->isThisTheMessageThread()) {
+      throw std::runtime_error("AnthemProcessContext::getGraphNode() must be called on the JUCE message thread.");
+    }
+
+    return graphNode.lock();
   }
+
+  void setParameterValue(int index, float value);
+  float getParameterValue(int index);
 
   void setAllInputAudioBuffers(const std::vector<juce::AudioSampleBuffer>& buffers);
   void setAllOutputAudioBuffers(const std::vector<juce::AudioSampleBuffer>& buffers);
@@ -50,4 +68,21 @@ public:
 
   int getNumInputAudioBuffers();
   int getNumOutputAudioBuffers();
+
+  void setAllInputControlBuffers(const std::vector<juce::AudioSampleBuffer>& buffers);
+  void setAllOutputControlBuffers(const std::vector<juce::AudioSampleBuffer>& buffers);
+
+  juce::AudioSampleBuffer& getInputControlBuffer(int index);
+  juce::AudioSampleBuffer& getOutputControlBuffer(int index);
+
+  int getNumInputControlBuffers();
+  int getNumOutputControlBuffers();
+
+  std::vector<std::atomic<float>>& getParameterValues() {
+    return parameterValues;
+  }
+
+  std::vector<std::unique_ptr<LinearParameterSmoother>>& getParameterSmoothers() {
+    return parameterSmoothers;
+  }
 };

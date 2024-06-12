@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -35,10 +35,8 @@ part 'song.g.dart';
 class SongModel extends _SongModel with _$SongModel {
   SongModel() : super();
   SongModel.create({
-    required ProjectModel project,
-  }) : super.create(
-          project: project,
-        );
+    required super.project,
+  }) : super.create();
 
   factory SongModel.fromJson(Map<String, dynamic> json) =>
       _$SongModelFromJson(json);
@@ -121,10 +119,10 @@ abstract class _SongModel extends Hydratable with Store {
     );
   }
 
-  void createInEngine(Engine engine) {
-    arrangements.forEach((key, value) {
-      value.createInEngine(engine);
-    });
+  Future<void> createInEngine(Engine engine) async {
+    for (final arrangement in arrangements.values) {
+      await arrangement.createInEngine(engine);
+    }
   }
 
   Map<String, dynamic> toJson() => _$SongModelToJson(this as SongModel);

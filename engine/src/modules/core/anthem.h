@@ -28,16 +28,60 @@
 #include "anthem_graph.h"
 #include "master_output_node.h"
 
+#include "id_generator.h"
+
 class Anthem {
 private:
   juce::AudioDeviceManager deviceManager;
   std::unique_ptr<AnthemAudioCallback> audioCallback;
 
+  std::shared_ptr<AnthemGraph> processingGraph;
+
+  std::shared_ptr<AnthemGraphNode> masterOutputNode;
+  uint64_t masterOutputNodeId;
+
+  std::map<uint64_t, std::shared_ptr<AnthemGraphNode>> nodes;
+
   // Initializes the engine
   void init();
 public:
-  std::shared_ptr<AnthemGraph> processingGraph;
-  std::shared_ptr<AnthemGraphNode> masterOutputNode;
-
   Anthem();
+
+  std::shared_ptr<AnthemGraph> getProcessingGraph() {
+    return processingGraph;
+  }
+
+  std::shared_ptr<AnthemGraphNode> getMasterOutputNode() {
+    return masterOutputNode;
+  }
+
+  std::shared_ptr<AnthemGraphNode> getNode(uint64_t nodeId) {
+    return nodes[nodeId];
+  }
+
+  bool hasNode(uint64_t nodeId) {
+    return nodes.find(nodeId) != nodes.end();
+  }
+
+  uint64_t getMasterOutputNodeId() {
+    return masterOutputNodeId;
+  }
+
+  uint64_t addNode(std::shared_ptr<AnthemProcessor> processor) {
+    auto id = GlobalIDGenerator::generateID();
+    auto node = this->processingGraph->addNode(processor);
+    nodes[id] = node;
+    return id;
+  }
+
+  bool removeNode(uint64_t nodeId) {
+    if (!hasNode(nodeId)) {
+      return false;
+    }
+
+    auto node = getNode(nodeId);
+    this->processingGraph->removeNode(node);
+    nodes.erase(nodeId);
+    return true;
+  }
 };

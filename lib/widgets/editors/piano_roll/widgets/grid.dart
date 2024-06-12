@@ -36,13 +36,13 @@ class PianoRollGrid extends StatelessWidget {
   final Animation<double> keyValueAtTopAnimation;
 
   const PianoRollGrid({
-    Key? key,
+    super.key,
     required this.keyValueAtTopAnimationController,
     required this.timeViewAnimationController,
     required this.timeViewStartAnimation,
     required this.timeViewEndAnimation,
     required this.keyValueAtTopAnimation,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -33,10 +33,10 @@ class WindowHeader extends StatefulWidget {
   final List<TabDef> tabs;
 
   const WindowHeader({
-    Key? key,
+    super.key,
     required this.selectedTabID,
     required this.tabs,
-  }) : super(key: key);
+  });
 
   @override
   State<WindowHeader> createState() => _WindowHeaderState();

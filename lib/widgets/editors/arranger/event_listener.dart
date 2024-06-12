@@ -34,9 +34,9 @@ class ArrangerEventListener extends StatefulWidget {
   final Widget? child;
 
   const ArrangerEventListener({
-    Key? key,
+    super.key,
     this.child,
-  }) : super(key: key);
+  });
 
   @override
   State<ArrangerEventListener> createState() => _ArrangerEventListenerState();

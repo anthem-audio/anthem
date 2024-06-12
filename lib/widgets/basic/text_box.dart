@@ -24,7 +24,7 @@ class TextBox extends StatefulWidget {
   final TextEditingController? controller;
   final FocusNode? focusNode;
 
-  const TextBox({Key? key, this.controller, this.focusNode}) : super(key: key);
+  const TextBox({super.key, this.controller, this.focusNode});
 
   @override
   State<TextBox> createState() => _TextBoxState();

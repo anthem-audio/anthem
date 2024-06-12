@@ -38,7 +38,10 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/compiler
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/compiler/actions
+  ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/debug
+  ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/processor
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/runtime
+  ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/topology
   ${CMAKE_SOURCE_DIR}/src/modules/processors
   ${CMAKE_SOURCE_DIR}/src/modules/util
 )
@@ -54,6 +57,10 @@ set(ANTHEM_ENGINE_SOURCES
   ../cpp_shared/open_message_queue.cpp
   ../cpp_shared/open_message_queue.h
 
+  src/command_handlers/processing_graph_command_handler.cpp
+  src/command_handlers/processing_graph_command_handler.h
+  src/command_handlers/processor_command_handler.cpp
+  src/command_handlers/processor_command_handler.h
   src/command_handlers/project_command_handler.cpp
   src/command_handlers/project_command_handler.h
 
@@ -74,8 +81,12 @@ set(ANTHEM_ENGINE_SOURCES
   src/modules/processing_graph/compiler/actions/anthem_graph_compiler_action.h
   src/modules/processing_graph/compiler/actions/copy_audio_buffer_action.cpp
   src/modules/processing_graph/compiler/actions/copy_audio_buffer_action.h
+  src/modules/processing_graph/compiler/actions/copy_control_buffer_action.cpp
+  src/modules/processing_graph/compiler/actions/copy_control_buffer_action.h
   src/modules/processing_graph/compiler/actions/process_node_action.cpp
   src/modules/processing_graph/compiler/actions/process_node_action.h
+  src/modules/processing_graph/compiler/actions/write_parameters_to_control_inputs_action.cpp
+  src/modules/processing_graph/compiler/actions/write_parameters_to_control_inputs_action.h
   src/modules/processing_graph/compiler/actions/zero_input_buffers_action.cpp
   src/modules/processing_graph/compiler/actions/zero_input_buffers_action.h
   # src/modules/processing_graph/compiler/anthem_graph_compilation_result.cpp
@@ -87,26 +98,33 @@ set(ANTHEM_ENGINE_SOURCES
   src/modules/processing_graph/compiler/anthem_process_context.cpp
   src/modules/processing_graph/compiler/anthem_process_context.h
 
-  # src/modules/processing_graph/runtime/anthem_graph_node_port.cpp
-  src/modules/processing_graph/runtime/anthem_graph_node_port.h
-  # src/modules/processing_graph/runtime/anthem_graph_node_connection.cpp
-  src/modules/processing_graph/runtime/anthem_graph_node_connection.h
-  src/modules/processing_graph/runtime/anthem_graph_node.cpp
-  src/modules/processing_graph/runtime/anthem_graph_node.h
+  src/modules/processing_graph/debug/generate_graphvis_from_graph.cpp
+  src/modules/processing_graph/debug/generate_graphvis_from_graph.h
+
+  src/modules/processing_graph/processor/anthem_processor_config.cpp
+  src/modules/processing_graph/processor/anthem_processor_config.h
+  # src/modules/processing_graph/processor/anthem_processor_parameter_config.cpp
+  src/modules/processing_graph/processor/anthem_processor_parameter_config.h
+  # src/modules/processing_graph/processor/anthem_processor_port_config.cpp
+  src/modules/processing_graph/processor/anthem_processor_port_config.h
+  # src/modules/processing_graph/processor/anthem_processor.cpp
+  src/modules/processing_graph/processor/anthem_processor.h
+
   src/modules/processing_graph/runtime/anthem_graph_processor.cpp
   src/modules/processing_graph/runtime/anthem_graph_processor.h
-  src/modules/processing_graph/runtime/anthem_graph_topology.cpp
-  src/modules/processing_graph/runtime/anthem_graph_topology.h
+
+  src/modules/processing_graph/topology/anthem_graph_data_type.h
+  # src/modules/processing_graph/topology/anthem_graph_node_port.cpp
+  src/modules/processing_graph/topology/anthem_graph_node_port.h
+  # src/modules/processing_graph/topology/anthem_graph_node_connection.cpp
+  src/modules/processing_graph/topology/anthem_graph_node_connection.h
+  src/modules/processing_graph/topology/anthem_graph_node.cpp
+  src/modules/processing_graph/topology/anthem_graph_node.h
+  src/modules/processing_graph/topology/anthem_graph_topology.cpp
+  src/modules/processing_graph/topology/anthem_graph_topology.h
   
-  src/modules/processing_graph/anthem_graph_data_type.h
   src/modules/processing_graph/anthem_graph.cpp
   src/modules/processing_graph/anthem_graph.h
-  src/modules/processing_graph/anthem_processor_config.cpp
-  src/modules/processing_graph/anthem_processor_config.h
-  # src/modules/processing_graph/anthem_processor_port_config.cpp
-  src/modules/processing_graph/anthem_processor_port_config.h
-  # src/modules/processing_graph/anthem_processor.cpp
-  src/modules/processing_graph/anthem_processor.h
 
   ### Processors ###
 
@@ -123,6 +141,10 @@ set(ANTHEM_ENGINE_SOURCES
 
   ### Util ###
 
+  src/modules/util/id_generator.cpp
+  src/modules/util/id_generator.h
+  src/modules/util/linear_parameter_smoother.cpp
+  src/modules/util/linear_parameter_smoother.h
   src/modules/util/thread_safe_queue.h
 )
 

@@ -29,7 +29,7 @@ import 'package:provider/provider.dart';
 import 'widgets.dart';
 
 class PatternDetailView extends StatelessObserverWidget {
-  const PatternDetailView({Key? key}) : super(key: key);
+  const PatternDetailView({super.key});
 
   @override
   Widget build(BuildContext context) {

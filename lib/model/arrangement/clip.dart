@@ -27,31 +27,20 @@ part 'clip.g.dart';
 @JsonSerializable()
 class ClipModel extends _ClipModel with _$ClipModel {
   ClipModel(
-      {required ID id,
-      TimeViewModel? timeView,
-      required ID patternID,
-      required ID trackID,
-      required int offset})
-      : super(
-          id: id,
-          timeView: timeView,
-          patternID: patternID,
-          trackID: trackID,
-          offset: offset,
-        );
+      {required super.id,
+      super.timeView,
+      required super.patternID,
+      required super.trackID,
+      required super.offset});
 
   ClipModel.create({
     ID? id,
-    TimeViewModel? timeView,
-    required ID patternID,
-    required ID trackID,
-    required int offset,
+    super.timeView,
+    required super.patternID,
+    required super.trackID,
+    required super.offset,
   }) : super.create(
           id: id ?? getID(),
-          timeView: timeView,
-          patternID: patternID,
-          trackID: trackID,
-          offset: offset,
         );
 
   factory ClipModel.fromClipModel(ClipModel other) {
@@ -118,8 +107,7 @@ abstract class _ClipModel with Store {
 
 @JsonSerializable()
 class TimeViewModel extends _TimeViewModel with _$TimeViewModel {
-  TimeViewModel({required int start, required int end})
-      : super(start: start, end: end);
+  TimeViewModel({required super.start, required super.end});
 
   factory TimeViewModel.fromJson(Map<String, dynamic> json) =>
       _$TimeViewModelFromJson(json);

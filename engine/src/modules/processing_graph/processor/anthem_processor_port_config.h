@@ -19,18 +19,24 @@
 
 #pragma once
 
-#include <memory>
+#include <string>
+#include <optional>
 
-class AnthemGraphNodePort;
+#include "anthem_graph_data_type.h"
 
-// Represents a connection between two ports in the node graph
-class AnthemGraphNodeConnection {
+// This class defines info about a port on an AnthemProcessor. This info is used
+// to configure instances of the processor in the processing graph.
+class AnthemProcessorPortConfig {
 public:
-  std::weak_ptr<AnthemGraphNodePort> source;
-  std::weak_ptr<AnthemGraphNodePort> destination;
+  // The type of the port.
+  AnthemGraphDataType portType;
 
-  AnthemGraphNodeConnection(
-    std::weak_ptr<AnthemGraphNodePort> source,
-    std::weak_ptr<AnthemGraphNodePort> destination
-  ) : source(source), destination(destination) {}
+  // The name of the port.
+  std::optional<std::string> name;
+
+  // Constructor
+  AnthemProcessorPortConfig(
+    AnthemGraphDataType portType,
+    std::optional<std::string> name = std::nullopt
+  ) : portType(portType), name(name) {}
 };

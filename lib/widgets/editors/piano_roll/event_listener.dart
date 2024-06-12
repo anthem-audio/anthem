@@ -36,9 +36,9 @@ class PianoRollEventListener extends StatefulWidget {
   final Widget child;
 
   const PianoRollEventListener({
-    Key? key,
+    super.key,
     required this.child,
-  }) : super(key: key);
+  });
 
   @override
   State<PianoRollEventListener> createState() => _PianoRollEventListenerState();

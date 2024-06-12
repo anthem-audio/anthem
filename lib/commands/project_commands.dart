@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,51 +21,94 @@ import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/generator.dart';
-import 'package:anthem/model/plugin.dart';
+import 'package:anthem/model/processing_graph/processor.dart';
 import 'package:anthem/model/project.dart';
 
 import 'command.dart';
 
-void _removeGenerator(ProjectModel project, ID generatorID) {
+Future<void> _removeGenerator(ProjectModel project, ID generatorID) async {
+  final generator = project.generators[generatorID];
+
   project.generatorList.removeWhere((element) => element == generatorID);
   if (project.generators.containsKey(generatorID)) {
     project.generators.remove(generatorID);
   }
+
+  if (generator != null &&
+      generator.generatorType == GeneratorType.instrument &&
+      generator.processor.idInEngine != null) {
+    await project.engine.processingGraphApi
+        .removeProcessor(generator.processor.idInEngine!);
+    await project.engine.processingGraphApi.compile();
+  }
 }
 
 class AddGeneratorCommand extends Command {
-  ID generatorID;
+  ID generatorId;
+  String? processorId;
   String name;
   GeneratorType generatorType;
   Color color;
-  String? pluginPath;
 
   AddGeneratorCommand({
-    required this.generatorID,
+    required this.generatorId,
+    required this.processorId,
     required this.name,
     required this.generatorType,
     required this.color,
-    required this.pluginPath,
   });
 
   @override
-  void execute(ProjectModel project) {
-    final plugin = PluginModel(path: pluginPath)
-      ..createInEngine(project.engine);
-    final generator = GeneratorModel(
-      id: generatorID,
+  void execute(ProjectModel project) async {
+    final processor = ProcessorModel(processorKey: processorId);
+    final generator = GeneratorModel.create(
+      id: generatorId,
       name: name,
       generatorType: generatorType,
       color: color,
-      plugin: plugin,
+      processor: processor,
+      project: project,
     );
 
-    project.generatorList.add(generatorID);
-    project.generators[generatorID] = generator;
+    if (generatorType == GeneratorType.instrument) {
+      await generator.createInEngine(project.engine);
+      await project.engine.processingGraphApi.compile();
+    }
+
+    project.generatorList.add(generatorId);
+    project.generators[generatorId] = generator;
   }
 
   @override
   void rollback(ProjectModel project) {
-    _removeGenerator(project, generatorID);
+    _removeGenerator(project, generatorId);
+  }
+}
+
+class RemoveGeneratorCommand extends Command {
+  GeneratorModel generator;
+  late int index;
+
+  RemoveGeneratorCommand({
+    required ProjectModel project,
+    required this.generator,
+  }) {
+    index = project.generatorList.indexOf(generator.id);
+  }
+
+  @override
+  void execute(ProjectModel project) {
+    _removeGenerator(project, generator.id);
+  }
+
+  @override
+  void rollback(ProjectModel project) async {
+    project.generators[generator.id] = generator;
+    project.generatorList.insert(index, generator.id);
+
+    if (generator.generatorType == GeneratorType.instrument) {
+      await generator.createInEngine(project.engine);
+      await project.engine.processingGraphApi.compile();
+    }
   }
 }

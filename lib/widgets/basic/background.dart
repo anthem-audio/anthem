@@ -34,12 +34,12 @@ class Background extends StatelessWidget {
   final BorderRadius? borderRadius;
 
   const Background({
-    Key? key,
+    super.key,
     required this.type,
     this.child,
     this.border,
     this.borderRadius,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
