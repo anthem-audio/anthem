@@ -20,11 +20,12 @@
 #include "tone_generator_node.h"
 
 #include <iostream>
+#include <cmath>
 
 #include "anthem_process_context.h"
 
 ToneGeneratorNode::ToneGeneratorNode() : AnthemProcessor("ToneGeneratorNode") {
-  currentSample = 0;
+  phase = 0;
   // amplitude = 0.125;
   // this->frequency = frequency;
   sampleRate = 44100.0; // TODO: This should be dynamic - in the context maybe?
@@ -64,13 +65,14 @@ void ToneGeneratorNode::process(AnthemProcessContext& context, int numSamples) {
     auto amplitude = amplitudeControlBuffer.getReadPointer(0)[sample];
 
     const float value = amplitude * std::sin(
-      2.0 * juce::MathConstants<float>::pi * frequency * currentSample / sampleRate
+      2.0 * juce::MathConstants<float>::pi * phase
     );
 
     for (int channel = 0; channel < audioOutBuffer.getNumChannels(); ++channel) {
       audioOutBuffer.getWritePointer(channel)[sample] = value;
     }
 
-    currentSample++;
+    // Increment phase based on frequency
+    phase = std::fmod((phase + (frequency / sampleRate)), 1.0);
   }
 }

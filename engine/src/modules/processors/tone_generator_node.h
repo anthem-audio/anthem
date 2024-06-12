@@ -26,7 +26,7 @@
 
 class ToneGeneratorNode : public AnthemProcessor {
 private:
-  int currentSample;
+  double phase;
   double sampleRate;
 public:
   ToneGeneratorNode();
