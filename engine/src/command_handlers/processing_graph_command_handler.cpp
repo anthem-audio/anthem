@@ -56,6 +56,126 @@ handleProcessingGraphCommand(const Request *request,
 
       return std::optional(message);
     }
+    case Command_GetProcessorPorts: {
+      auto command = request->command_as_GetProcessorPorts();
+      uint64_t nodeId = command->id();
+
+      if (!anthem->hasNode(nodeId)) {
+        std::string error = "Node not found";
+        auto errorResponse = CreateGetProcessorPortsResponse(builder, false, builder.CreateString(error));
+        auto errorResponseOffset = errorResponse.Union();
+        auto errorResponseMessage = CreateResponse(builder, request->id(), ReturnValue_GetProcessorPortsResponse, errorResponseOffset);
+
+        return std::optional(errorResponseMessage);
+      }
+
+      auto node = anthem->getNode(nodeId);
+
+      std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbAudioInputPorts;
+
+      for (const auto& port : node->audioInputs) {
+        auto& nameRef = port->config->name;
+        auto name = builder.CreateString(nameRef.has_value() ? nameRef.value() : "");
+
+        auto portDescription = CreateProcessorPortDescription(builder, name);
+        fbAudioInputPorts.push_back(portDescription);
+      }
+
+      std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbControlInputPorts;
+
+      for (const auto& port : node->controlInputs) {
+        auto& nameRef = port->config->name;
+        auto name = builder.CreateString(nameRef.has_value() ? nameRef.value() : "");
+
+        auto portDescription = CreateProcessorPortDescription(builder, name);
+        fbControlInputPorts.push_back(portDescription);
+      }
+
+      std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbMidiInputPorts;
+
+      // for (const auto& port : node->midiInputs) {
+      //   auto& nameRef = port->config->name;
+      //   auto name = builder.CreateString(nameRef.has_value() ? nameRef.value() : "");
+
+      //   auto portDescription = CreateProcessorPortDescription(builder, name);
+      //   fbMidiInputPorts.push_back(portDescription);
+      // }
+
+      std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbAudioOutputPorts;
+
+      for (const auto& port : node->audioOutputs) {
+        auto& nameRef = port->config->name;
+        auto name = builder.CreateString(nameRef.has_value() ? nameRef.value() : "");
+
+        auto portDescription = CreateProcessorPortDescription(builder, name);
+        fbAudioOutputPorts.push_back(portDescription);
+      }
+
+      std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbControlOutputPorts;
+
+      for (const auto& port : node->controlOutputs) {
+        auto& nameRef = port->config->name;
+        auto name = builder.CreateString(nameRef.has_value() ? nameRef.value() : "");
+
+        auto portDescription = CreateProcessorPortDescription(builder, name);
+        fbControlOutputPorts.push_back(portDescription);
+      }
+
+      std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbMidiOutputPorts;
+
+      // for (const auto& port : node->midiOutputs) {
+      //   auto& nameRef = port->config->name;
+      //   auto name = builder.CreateString(nameRef.has_value() ? nameRef.value() : "");
+      
+      //   auto portDescription = CreateProcessorPortDescription(builder, name);
+      //   fbMidiOutputPorts.push_back(portDescription);
+      // }
+
+      std::vector<flatbuffers::Offset<ProcessorParameterDescription>> fbParameters;
+
+      for (int i = 0; i < node->controlInputs.size(); i++) {
+        auto& port = node->controlInputs[i];
+        auto parameter = node->processor->config.getParameter(i);
+
+        auto& nameRef = port->config->name;
+        auto name = builder.CreateString(nameRef.has_value() ? nameRef.value() : "");
+        auto defaultValue = parameter->defaultValue;
+        auto min = parameter->minValue;
+        auto max = parameter->maxValue;
+
+        auto parameterDescription = CreateProcessorParameterDescription(builder, name, defaultValue, min, max);
+        fbParameters.push_back(parameterDescription);
+      }
+
+      auto audioInputPortsOffset = builder.CreateVector(fbAudioInputPorts);
+      auto controlInputPortsOffset = builder.CreateVector(fbControlInputPorts);
+      auto midiInputPortsOffset = builder.CreateVector(fbMidiInputPorts);
+
+      auto audioOutputPortsOffset = builder.CreateVector(fbAudioOutputPorts);
+      auto controlOutputPortsOffset = builder.CreateVector(fbControlOutputPorts);
+      auto midiOutputPortsOffset = builder.CreateVector(fbMidiOutputPorts);
+
+      auto parametersOffset = builder.CreateVector(fbParameters);
+
+      auto response = CreateGetProcessorPortsResponse(
+        builder,
+        true,
+        0,
+        audioInputPortsOffset,
+        controlInputPortsOffset,
+        midiInputPortsOffset,
+        audioOutputPortsOffset,
+        controlOutputPortsOffset,
+        midiOutputPortsOffset,
+        parametersOffset
+      );
+
+      auto responseOffset = response.Union();
+
+      auto message = CreateResponse(builder, request->id(), ReturnValue_GetProcessorPortsResponse, responseOffset);
+
+      return std::optional(message);
+    }
     case Command_GetMasterOutputNodeId: {
       auto response = CreateGetMasterOutputNodeIdResponse(builder, anthem->getMasterOutputNodeId());
       auto responseOffset = response.Union();

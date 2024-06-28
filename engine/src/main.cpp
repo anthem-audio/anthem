@@ -131,6 +131,7 @@ public:
       case Command_ConnectProcessors:
       case Command_DisconnectProcessors:
       case Command_CompileProcessingGraph:
+      case Command_GetProcessorPorts:
         response = handleProcessingGraphCommand(request, builder, anthem);
         break;
       case Command_SetParameter:

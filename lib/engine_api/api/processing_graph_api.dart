@@ -156,6 +156,7 @@ class ProcessingGraphApi {
     return completer.future;
   }
 
+  /// Disconnects two processors in the engine's processing graph.
   Future<void> disconnectProcessors({
     required int sourceId,
     required int sourcePortIndex,
@@ -192,6 +193,12 @@ class ProcessingGraphApi {
     return completer.future;
   }
 
+  /// Compiles the processing graph, and pushes the result to the audio thread.
+  ///
+  /// Updates to the topology of the processing graph, e.g. adding or removing
+  /// nodes or modifying connections, are done first on the main thread in the
+  /// engine. When ready, this method can be called to compile an updated set of
+  /// processing instructions and push them to the audio thread.
   Future<void> compile() {
     final completer = Completer<void>();
 
@@ -216,6 +223,7 @@ class ProcessingGraphApi {
     return completer.future;
   }
 
+  /// Sets the static value of a parameter.
   Future<void> setParameter({
     required int processorId,
     required int parameterIndex,
@@ -245,4 +253,82 @@ class ProcessingGraphApi {
 
     return completer.future;
   }
+
+  /// Gets port info for a given processor in the graph.
+  Future<GetProcessorPortInfoResponse> getProcessorPortInfo(
+      {required int processorId}) {
+    final completer = Completer<GetProcessorPortInfoResponse>();
+
+    final id = _engine._getRequestId();
+
+    final request = RequestObjectBuilder(
+      id: id,
+      commandType: CommandTypeId.GetProcessorPorts,
+      command: GetProcessorPortsObjectBuilder(
+        id: processorId,
+      ),
+    );
+
+    _engine._request(id, request, onResponse: (response) {
+      final inner = response.returnValue as GetProcessorPortsResponse;
+
+      if (!inner.success) {
+        completer
+            .completeError('Error getting processor port info: ${inner.error}');
+        return;
+      }
+
+      final audioInputPorts =
+          inner.inputAudioPorts!.map((port) => (name: port.name!)).toList();
+      final controlInputPorts =
+          inner.inputControlPorts!.map((port) => (name: port.name!)).toList();
+      final midiInputPorts =
+          inner.inputMidiPorts!.map((port) => (name: port.name!)).toList();
+      final audioOutputPorts =
+          inner.outputAudioPorts!.map((port) => (name: port.name!)).toList();
+      final controlOutputPorts =
+          inner.outputControlPorts!.map((port) => (name: port.name!)).toList();
+      final midiOutputPorts =
+          inner.outputMidiPorts!.map((port) => (name: port.name!)).toList();
+      final parameters = inner.parameters!
+          .map((parameter) => (
+                name: parameter.name!,
+                defaultValue: parameter.defaultValue,
+                minValue: parameter.minValue,
+                maxValue: parameter.maxValue,
+              ))
+          .toList();
+
+      completer.complete((
+        audioInputPorts: audioInputPorts,
+        controlInputPorts: controlInputPorts,
+        midiInputPorts: midiInputPorts,
+        audioOutputPorts: audioOutputPorts,
+        controlOutputPorts: controlOutputPorts,
+        midiOutputPorts: midiOutputPorts,
+        parameters: parameters,
+      ));
+    });
+
+    return completer.future;
+  }
 }
+
+typedef PortInfo = ({String name});
+
+typedef ParameterInfo = ({
+  String name,
+  double defaultValue,
+  double minValue,
+  double maxValue,
+});
+
+typedef GetProcessorPortInfoResponse = ({
+  List<PortInfo> audioInputPorts,
+  List<PortInfo> controlInputPorts,
+  List<PortInfo> midiInputPorts,
+  List<PortInfo> audioOutputPorts,
+  List<PortInfo> controlOutputPorts,
+  List<PortInfo> midiOutputPorts,
+  List<ParameterInfo> parameters,
+});
