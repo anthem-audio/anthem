@@ -135,6 +135,10 @@ class Engine {
 
   /// Sends a request to the engine, and asynchronously returns the response.
   Future<Response> _request(int id, RequestObjectBuilder request) {
+    if (engineState != EngineState.running) {
+      throw AssertionError('Engine must be running to send commands.');
+    }
+
     final completer = Completer<Response>();
 
     void onResponse(Response response) {
