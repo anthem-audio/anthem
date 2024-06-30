@@ -62,6 +62,12 @@ class Engine {
   late final Stream<EngineState> engineStateStream;
 
   EngineState _engineState = EngineState.stopped;
+  EngineState get engineState => _engineState;
+
+  void _setEngineState(EngineState state) {
+    _engineState = state;
+    _engineStateStreamController.add(state);
+  }
 
   Engine(this.id, this.project) {
     engineStateStream = _engineStateStreamController.stream;
@@ -140,10 +146,5 @@ class Engine {
     _engineConnector.send(request);
 
     return completer.future;
-  }
-
-  void _setEngineState(EngineState state) {
-    _engineState = state;
-    _engineStateStreamController.add(state);
   }
 }

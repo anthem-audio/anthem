@@ -23,12 +23,54 @@ enum ProcessorType {
   utility,
 }
 
+/// Defines a processor, including ports and parameters. This is used to inform
+/// the UI about what ports exist (and therefore can be connected to things like
+/// automation), what parameters exist and can be set, and so on.
 class ProcessorDefinition {
   final String id;
+  final String name;
   final ProcessorType type;
+
+  final List<ProcessorPort> inputAudioPorts;
+  final List<ProcessorPort> inputControlPorts;
+  final List<ProcessorPort> inputMIDIPorts;
+
+  final List<ProcessorPort> outputAudioPorts;
+  final List<ProcessorPort> outputControlPorts;
+  final List<ProcessorPort> outputMIDIPorts;
+
+  final List<ProcessorParameter> parameters;
 
   const ProcessorDefinition({
     required this.id,
+    required this.name,
     required this.type,
+    required this.inputAudioPorts,
+    required this.inputControlPorts,
+    required this.inputMIDIPorts,
+    required this.outputAudioPorts,
+    required this.outputControlPorts,
+    required this.outputMIDIPorts,
+    required this.parameters,
+  });
+}
+
+class ProcessorPort {
+  final String name;
+
+  const ProcessorPort({required this.name});
+}
+
+class ProcessorParameter {
+  final String name;
+  final double defaultValue;
+  final double minValue;
+  final double maxValue;
+
+  const ProcessorParameter({
+    required this.name,
+    required this.defaultValue,
+    required this.minValue,
+    required this.maxValue,
   });
 }
