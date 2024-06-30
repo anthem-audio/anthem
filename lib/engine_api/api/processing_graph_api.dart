@@ -27,9 +27,7 @@ class ProcessingGraphApi {
 
   ProcessingGraphApi(this._engine);
 
-  Future<List<ProcessorDescription>> getAvailableProcessors() {
-    final completer = Completer<List<ProcessorDescription>>();
-
+  Future<List<ProcessorDescription>> getAvailableProcessors() async {
     final id = _engine._getRequestId();
 
     final request = RequestObjectBuilder(
@@ -38,17 +36,13 @@ class ProcessingGraphApi {
       command: GetProcessorsObjectBuilder(),
     );
 
-    _engine._request(id, request, onResponse: (response) {
-      final inner = response.returnValue as GetProcessorsResponse;
-      completer.complete(inner.processors!);
-    });
+    final response = (await _engine._request(id, request)).returnValue
+        as GetProcessorsResponse;
 
-    return completer.future;
+    return response.processors!;
   }
 
-  Future<int> getMasterOutputNodeId() {
-    final completer = Completer<int>();
-
+  Future<int> getMasterOutputNodeId() async {
     final id = _engine._getRequestId();
 
     final request = RequestObjectBuilder(
@@ -57,16 +51,14 @@ class ProcessingGraphApi {
       command: GetMasterOutputNodeIdObjectBuilder(),
     );
 
-    _engine._request(id, request, onResponse: (response) {
-      final inner = response.returnValue as GetMasterOutputNodeIdResponse;
-      completer.complete(inner.nodeId);
-    });
+    final response = (await _engine._request(id, request)).returnValue
+        as GetMasterOutputNodeIdResponse;
 
-    return completer.future;
+    return response.nodeId;
   }
 
   /// Adds the processor with the given ID to the engine's processing graph.
-  Future<int> addProcessor(String processorId) {
+  Future<int> addProcessor(String processorId) async {
     final id = _engine._getRequestId();
 
     final request = RequestObjectBuilder(
@@ -77,25 +69,20 @@ class ProcessingGraphApi {
       ),
     );
 
-    final completer = Completer<int>();
+    final response = (await _engine._request(id, request)).returnValue
+        as AddProcessorResponse;
 
-    _engine._request(id, request, onResponse: (response) {
-      final inner = response.returnValue as AddProcessorResponse;
-      if (inner.success) {
-        completer.complete(inner.processorId);
-      } else {
-        completer.completeError(false);
-      }
-    });
-
-    return completer.future;
+    if (response.success) {
+      return response.processorId;
+    } else {
+      throw Exception(
+          'addProcessor(): engine returned an error: ${response.error}');
+    }
   }
 
   /// Removes the processor with the given ID from the engine's processing
   /// graph.
-  Future<void> removeProcessor(int processorId) {
-    final completer = Completer<void>();
-
+  Future<void> removeProcessor(int processorId) async {
     final id = _engine._getRequestId();
 
     final request = RequestObjectBuilder(
@@ -106,17 +93,15 @@ class ProcessingGraphApi {
       ),
     );
 
-    _engine._request(id, request, onResponse: (response) {
-      if ((response.returnValue as RemoveProcessorResponse).success) {
-        completer.complete();
-      } else {
-        completer.completeError(
-            (response.returnValue as RemoveProcessorResponse).error ??
-                'Unknown error');
-      }
-    });
+    final response = (await _engine._request(id, request)).returnValue
+        as RemoveProcessorResponse;
 
-    return completer.future;
+    if (response.success) {
+      return;
+    } else {
+      throw Exception(
+          'removeProcessor(): engine returned an error: ${response.error}');
+    }
   }
 
   /// Connects two processors in the engine's processing graph.
@@ -126,9 +111,7 @@ class ProcessingGraphApi {
     required int destinationId,
     required int destinationPortIndex,
     required ProcessorConnectionType connectionType,
-  }) {
-    final completer = Completer<void>();
-
+  }) async {
     final id = _engine._getRequestId();
 
     final request = RequestObjectBuilder(
@@ -143,17 +126,15 @@ class ProcessingGraphApi {
       ),
     );
 
-    _engine._request(id, request, onResponse: (response) {
-      if ((response.returnValue as ConnectProcessorsResponse).success) {
-        completer.complete();
-      } else {
-        completer.completeError(
-            (response.returnValue as ConnectProcessorsResponse).error ??
-                'Unknown error');
-      }
-    });
+    final response = (await _engine._request(id, request)).returnValue
+        as ConnectProcessorsResponse;
 
-    return completer.future;
+    if (response.success) {
+      return;
+    } else {
+      throw Exception(
+          'connectProcessors(): engine returned an error: ${response.error}');
+    }
   }
 
   /// Disconnects two processors in the engine's processing graph.
@@ -163,9 +144,7 @@ class ProcessingGraphApi {
     required int destinationId,
     required int destinationPortIndex,
     required ProcessorConnectionType connectionType,
-  }) {
-    final completer = Completer<void>();
-
+  }) async {
     final id = _engine._getRequestId();
 
     final request = RequestObjectBuilder(
@@ -180,17 +159,15 @@ class ProcessingGraphApi {
       ),
     );
 
-    _engine._request(id, request, onResponse: (response) {
-      if ((response.returnValue as DisconnectProcessorsResponse).success) {
-        completer.complete();
-      } else {
-        completer.completeError(
-            (response.returnValue as DisconnectProcessorsResponse).error ??
-                'Unknown error');
-      }
-    });
+    final response = (await _engine._request(id, request)).returnValue
+        as DisconnectProcessorsResponse;
 
-    return completer.future;
+    if (response.success) {
+      return;
+    } else {
+      throw Exception(
+          'disconnectProcessors(): engine returned an error: ${response.error}');
+    }
   }
 
   /// Compiles the processing graph, and pushes the result to the audio thread.
@@ -199,9 +176,7 @@ class ProcessingGraphApi {
   /// nodes or modifying connections, are done first on the main thread in the
   /// engine. When ready, this method can be called to compile an updated set of
   /// processing instructions and push them to the audio thread.
-  Future<void> compile() {
-    final completer = Completer<void>();
-
+  Future<void> compile() async {
     final id = _engine._getRequestId();
 
     final request = RequestObjectBuilder(
@@ -210,17 +185,14 @@ class ProcessingGraphApi {
       command: CompileProcessingGraphObjectBuilder(),
     );
 
-    _engine._request(id, request, onResponse: (response) {
-      if ((response.returnValue as CompileProcessingGraphResponse).success) {
-        completer.complete();
-      } else {
-        completer.completeError(
-            (response.returnValue as CompileProcessingGraphResponse).error ??
-                'Unknown error');
-      }
-    });
+    final response = (await _engine._request(id, request)).returnValue
+        as DisconnectProcessorsResponse;
 
-    return completer.future;
+    if (response.success) {
+      return;
+    } else {
+      throw Exception('compile(): engine returned an error: ${response.error}');
+    }
   }
 
   /// Sets the static value of a parameter.
@@ -228,9 +200,7 @@ class ProcessingGraphApi {
     required int processorId,
     required int parameterIndex,
     required double value,
-  }) {
-    final completer = Completer<void>();
-
+  }) async {
     final id = _engine._getRequestId();
 
     final request = RequestObjectBuilder(
@@ -243,22 +213,19 @@ class ProcessingGraphApi {
       ),
     );
 
-    _engine._request(id, request, onResponse: (response) {
-      if ((response.returnValue as SetParameterResponse).success) {
-        completer.complete();
-      } else {
-        completer.completeError('error setting parameter');
-      }
-    });
+    final response = (await _engine._request(id, request)).returnValue
+        as SetParameterResponse;
 
-    return completer.future;
+    if (response.success) {
+      return;
+    } else {
+      throw Exception('compile(): engine returned an error');
+    }
   }
 
   /// Gets port info for a given processor in the graph.
   Future<GetProcessorPortInfoResponse> getProcessorPortInfo(
-      {required int processorId}) {
-    final completer = Completer<GetProcessorPortInfoResponse>();
-
+      {required int processorId}) async {
     final id = _engine._getRequestId();
 
     final request = RequestObjectBuilder(
@@ -269,48 +236,44 @@ class ProcessingGraphApi {
       ),
     );
 
-    _engine._request(id, request, onResponse: (response) {
-      final inner = response.returnValue as GetProcessorPortsResponse;
+    final response = (await _engine._request(id, request)).returnValue
+        as GetProcessorPortsResponse;
 
-      if (!inner.success) {
-        completer
-            .completeError('Error getting processor port info: ${inner.error}');
-        return;
-      }
+    if (!response.success) {
+      throw Exception(
+          'getProcessorPortInfo(): error getting processor port info: ${response.error}');
+    }
 
-      final audioInputPorts =
-          inner.inputAudioPorts!.map((port) => (name: port.name!)).toList();
-      final controlInputPorts =
-          inner.inputControlPorts!.map((port) => (name: port.name!)).toList();
-      final midiInputPorts =
-          inner.inputMidiPorts!.map((port) => (name: port.name!)).toList();
-      final audioOutputPorts =
-          inner.outputAudioPorts!.map((port) => (name: port.name!)).toList();
-      final controlOutputPorts =
-          inner.outputControlPorts!.map((port) => (name: port.name!)).toList();
-      final midiOutputPorts =
-          inner.outputMidiPorts!.map((port) => (name: port.name!)).toList();
-      final parameters = inner.parameters!
-          .map((parameter) => (
-                name: parameter.name!,
-                defaultValue: parameter.defaultValue,
-                minValue: parameter.minValue,
-                maxValue: parameter.maxValue,
-              ))
-          .toList();
+    final audioInputPorts =
+        response.inputAudioPorts!.map((port) => (name: port.name!)).toList();
+    final controlInputPorts =
+        response.inputControlPorts!.map((port) => (name: port.name!)).toList();
+    final midiInputPorts =
+        response.inputMidiPorts!.map((port) => (name: port.name!)).toList();
+    final audioOutputPorts =
+        response.outputAudioPorts!.map((port) => (name: port.name!)).toList();
+    final controlOutputPorts =
+        response.outputControlPorts!.map((port) => (name: port.name!)).toList();
+    final midiOutputPorts =
+        response.outputMidiPorts!.map((port) => (name: port.name!)).toList();
+    final parameters = response.parameters!
+        .map((parameter) => (
+              name: parameter.name!,
+              defaultValue: parameter.defaultValue,
+              minValue: parameter.minValue,
+              maxValue: parameter.maxValue,
+            ))
+        .toList();
 
-      completer.complete((
-        audioInputPorts: audioInputPorts,
-        controlInputPorts: controlInputPorts,
-        midiInputPorts: midiInputPorts,
-        audioOutputPorts: audioOutputPorts,
-        controlOutputPorts: controlOutputPorts,
-        midiOutputPorts: midiOutputPorts,
-        parameters: parameters,
-      ));
-    });
-
-    return completer.future;
+    return (
+      audioInputPorts: audioInputPorts,
+      controlInputPorts: controlInputPorts,
+      midiInputPorts: midiInputPorts,
+      audioOutputPorts: audioOutputPorts,
+      controlOutputPorts: controlOutputPorts,
+      midiOutputPorts: midiOutputPorts,
+      parameters: parameters,
+    );
   }
 }
 
