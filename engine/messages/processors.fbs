@@ -18,8 +18,8 @@
 */
 
 table SetParameter {
-  processor_id: ulong;
-  parameter_index: ulong;
+  node_id: ulong;
+  parameter_id: ulong;
   value: float;
 }
 table SetParameterResponse {

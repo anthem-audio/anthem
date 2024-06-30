@@ -24,12 +24,12 @@ const masterOutputDefinition = ProcessorDefinition(
   name: 'Simple Volume LFO',
   type: ProcessorType.effect,
   inputAudioPorts: [
-    ProcessorPort(name: 'input'),
+    ProcessorPort(id: 0, name: 'input'),
   ],
   inputControlPorts: [],
   inputMIDIPorts: [],
   outputAudioPorts: [
-    ProcessorPort(name: 'output'),
+    ProcessorPort(id: 0, name: 'output'),
   ],
   outputControlPorts: [],
   outputMIDIPorts: [],

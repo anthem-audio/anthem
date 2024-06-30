@@ -30,7 +30,7 @@ AnthemGraphNode::AnthemGraphNode(std::shared_ptr<AnthemProcessor> processor) : p
   parameters = std::vector<float>(processor->config.getNumControlInputs(), 0.0f);
 
   for (int i = 0; i < processor->config.getNumControlInputs(); i++) {
-    parameters[i] = processor->config.getParameter(i)->defaultValue;
+    parameters[i] = processor->config.getParameterByIndex(i)->defaultValue;
   }
 
   runtimeContext = std::nullopt;
@@ -48,33 +48,37 @@ void AnthemGraphNode::initializePorts() {
   // Add input and output ports
   for (int i = 0; i < processor->config.getNumAudioInputs(); i++) {
     audioInputs.push_back(
-      std::make_shared<AnthemGraphNodePort>(self, processor->config.getAudioInput(i), i)
+      std::make_shared<AnthemGraphNodePort>(self, processor->config.getAudioInputByIndex(i), i)
     );
   }
 
   for (int i = 0; i < processor->config.getNumAudioOutputs(); i++) {
     audioOutputs.push_back(
-      std::make_shared<AnthemGraphNodePort>(self, processor->config.getAudioOutput(i), i)
+      std::make_shared<AnthemGraphNodePort>(self, processor->config.getAudioOutputByIndex(i), i)
     );
   }
   
   for (int i = 0; i < processor->config.getNumControlInputs(); i++) {
     controlInputs.push_back(
-      std::make_shared<AnthemGraphNodePort>(self, processor->config.getControlInput(i), i)
+      std::make_shared<AnthemGraphNodePort>(self, processor->config.getControlInputByIndex(i), i)
     );
   }
 
   for (int i = 0; i < processor->config.getNumControlOutputs(); i++) {
     controlOutputs.push_back(
-      std::make_shared<AnthemGraphNodePort>(self, processor->config.getControlOutput(i), i)
+      std::make_shared<AnthemGraphNodePort>(self, processor->config.getControlOutputByIndex(i), i)
     );
   }
 }
 
-void AnthemGraphNode::setParameter(int index, float value) {
-  parameters[index] = value;
+void AnthemGraphNode::setParameter(int id, float value) {
+  auto index = processor->config.getIndexOfParameter(id);
+
+  if (!index.has_value()) return;
+
+  parameters[index.value()] = value;
 
   if (runtimeContext.has_value()) {
-    runtimeContext.value()->setParameterValue(index, value);
+    runtimeContext.value()->setParameterValue(index.value(), value);
   }
 }

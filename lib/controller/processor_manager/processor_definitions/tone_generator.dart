@@ -25,24 +25,26 @@ const toneGeneratorDefinition = ProcessorDefinition(
   type: ProcessorType.generator,
   inputAudioPorts: [],
   inputControlPorts: [
-    ProcessorPort(name: 'frequency'),
-    ProcessorPort(name: 'amplitude'),
+    ProcessorPort(id: 0, name: 'Frequency'),
+    ProcessorPort(id: 1, name: 'Amplitude'),
   ],
   inputMIDIPorts: [],
   outputAudioPorts: [
-    ProcessorPort(name: 'output'),
+    ProcessorPort(id: 0, name: 'Output'),
   ],
   outputControlPorts: [],
   outputMIDIPorts: [],
   parameters: [
+    // Frequency
     ProcessorParameter(
-      name: 'frequency',
+      id: 0,
       defaultValue: 440.0,
       minValue: 0.0,
       maxValue: 20000.0,
     ),
+    // Amplitude
     ProcessorParameter(
-      name: 'amplitude',
+      id: 1,
       defaultValue: 0.125,
       minValue: 0.0,
       maxValue: 1.0,

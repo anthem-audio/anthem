@@ -101,11 +101,11 @@ table GetProcessorsResponse {
 }
 
 table ProcessorPortDescription {
-  name: string;
+  id: ulong;
 }
 
 table ProcessorParameterDescription {
-  name: string;
+  id: ulong;
   default_value: float;
   min_value: float;
   max_value: float;

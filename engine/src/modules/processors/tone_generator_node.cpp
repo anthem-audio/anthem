@@ -32,22 +32,23 @@ ToneGeneratorNode::ToneGeneratorNode() : AnthemProcessor("ToneGenerator") {
 
   // Audio port config
 
+  // Audio output port
   config.addAudioOutput(
-    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Audio, "output")
+    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Audio, 0)
   );
 
   // Control port config
 
   // Frequency
   config.addControlInput(
-    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Control, "frequency"),
-    std::make_shared<AnthemProcessorParameterConfig>(440.0, 0.0, 20000.0)
+    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Control, 0),
+    std::make_shared<AnthemProcessorParameterConfig>(0, 440.0, 0.0, 20000.0)
   );
 
   // Amplitude
   config.addControlInput(
-    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Control, "amplitude"),
-    std::make_shared<AnthemProcessorParameterConfig>(0.125, 0.0, 1.0)
+    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Control, 1),
+    std::make_shared<AnthemProcessorParameterConfig>(1, 0.125, 0.0, 1.0)
   );
 }
 

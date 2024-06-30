@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/model/processing_graph/processor_definition.dart';
 import 'package:flutter/foundation.dart';
 
 /// Manages processors that can be created in the engine's processing graph.
@@ -29,7 +30,11 @@ class ProcessorManager {
   /// Validates the given processor against an engine. This should be run every
   /// time a processor is added in the engine to verify that the UI and engine
   /// are in alignment.
-  void validateProcessor(Engine engine, String processorId) {
+  Future<void> validateProcessor({
+    required Engine engine,
+    required ProcessorDefinition processorDefinition,
+    required int nodeInstanceId,
+  }) async {
     if (!kDebugMode) return;
 
     if (engine.engineState != EngineState.running) {

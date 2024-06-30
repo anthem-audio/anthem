@@ -74,60 +74,54 @@ handleProcessingGraphCommand(const Request *request,
       std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbAudioInputPorts;
 
       for (const auto& port : node->audioInputs) {
-        auto& nameRef = port->config->name;
-        auto name = builder.CreateString(nameRef.has_value() ? nameRef.value() : "");
+        auto id = port->config->id;
 
-        auto portDescription = CreateProcessorPortDescription(builder, name);
+        auto portDescription = CreateProcessorPortDescription(builder, id);
         fbAudioInputPorts.push_back(portDescription);
       }
 
       std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbControlInputPorts;
 
       for (const auto& port : node->controlInputs) {
-        auto& nameRef = port->config->name;
-        auto name = builder.CreateString(nameRef.has_value() ? nameRef.value() : "");
+        auto id = port->config->id;
 
-        auto portDescription = CreateProcessorPortDescription(builder, name);
+        auto portDescription = CreateProcessorPortDescription(builder, id);
         fbControlInputPorts.push_back(portDescription);
       }
 
       std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbMidiInputPorts;
 
       // for (const auto& port : node->midiInputs) {
-      //   auto& nameRef = port->config->name;
-      //   auto name = builder.CreateString(nameRef.has_value() ? nameRef.value() : "");
+      //   auto id = port->config->name;
 
-      //   auto portDescription = CreateProcessorPortDescription(builder, name);
+      //   auto portDescription = CreateProcessorPortDescription(builder, id);
       //   fbMidiInputPorts.push_back(portDescription);
       // }
 
       std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbAudioOutputPorts;
 
       for (const auto& port : node->audioOutputs) {
-        auto& nameRef = port->config->name;
-        auto name = builder.CreateString(nameRef.has_value() ? nameRef.value() : "");
+        auto id = port->config->id;
 
-        auto portDescription = CreateProcessorPortDescription(builder, name);
+        auto portDescription = CreateProcessorPortDescription(builder, id);
         fbAudioOutputPorts.push_back(portDescription);
       }
 
       std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbControlOutputPorts;
 
       for (const auto& port : node->controlOutputs) {
-        auto& nameRef = port->config->name;
-        auto name = builder.CreateString(nameRef.has_value() ? nameRef.value() : "");
+        auto id = port->config->id;
 
-        auto portDescription = CreateProcessorPortDescription(builder, name);
+        auto portDescription = CreateProcessorPortDescription(builder, id);
         fbControlOutputPorts.push_back(portDescription);
       }
 
       std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbMidiOutputPorts;
 
       // for (const auto& port : node->midiOutputs) {
-      //   auto& nameRef = port->config->name;
-      //   auto name = builder.CreateString(nameRef.has_value() ? nameRef.value() : "");
+      //   auto id = port->config->id;
       
-      //   auto portDescription = CreateProcessorPortDescription(builder, name);
+      //   auto portDescription = CreateProcessorPortDescription(builder, id);
       //   fbMidiOutputPorts.push_back(portDescription);
       // }
 
@@ -135,15 +129,14 @@ handleProcessingGraphCommand(const Request *request,
 
       for (int i = 0; i < node->controlInputs.size(); i++) {
         auto& port = node->controlInputs[i];
-        auto parameter = node->processor->config.getParameter(i);
+        auto parameter = node->processor->config.getParameterByIndex(i);
 
-        auto& nameRef = port->config->name;
-        auto name = builder.CreateString(nameRef.has_value() ? nameRef.value() : "");
+        auto id = port->config->id;
         auto defaultValue = parameter->defaultValue;
         auto min = parameter->minValue;
         auto max = parameter->maxValue;
 
-        auto parameterDescription = CreateProcessorParameterDescription(builder, name, defaultValue, min, max);
+        auto parameterDescription = CreateProcessorParameterDescription(builder, id, defaultValue, min, max);
         fbParameters.push_back(parameterDescription);
       }
 

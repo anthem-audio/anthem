@@ -26,7 +26,7 @@ const masterOutputDefinition = ProcessorDefinition(
   name: 'Master Output',
   type: ProcessorType.utility,
   inputAudioPorts: [
-    ProcessorPort(name: 'input'),
+    ProcessorPort(id: 0, name: 'input'),
   ],
   inputControlPorts: [],
   inputMIDIPorts: [],
