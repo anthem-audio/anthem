@@ -17,9 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/controller/processor_manager/processor_list.dart';
 import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/processing_graph/processor_definition.dart';
-import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
@@ -40,10 +40,10 @@ class AddChannelMenu extends StatelessObserverWidget {
   @override
   Widget build(BuildContext context) {
     final projectController = Provider.of<ProjectController>(context);
-    final project = Provider.of<ProjectModel>(context);
 
-    final availableGenerators = project.processorDefinitions.entries.where(
-      (entry) => entry.value.type == ProcessorType.generator,
+    final availableGenerators = processorList.where(
+      (processorDefinition) =>
+          processorDefinition.type == ProcessorType.generator,
     );
 
     return Menu(
@@ -67,11 +67,11 @@ class AddChannelMenu extends StatelessObserverWidget {
               children: [
                 ...availableGenerators.map(
                   (entry) => AnthemMenuItem(
-                    text: entry.key,
+                    text: entry.name,
                     onSelected: () {
                       projectController.addGenerator(
-                        processorId: entry.value.id,
-                        name: entry.key,
+                        processorId: entry.id,
+                        name: entry.name,
                         generatorType: GeneratorType.instrument,
                         color: getColor(),
                       );

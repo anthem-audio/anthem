@@ -24,7 +24,7 @@
 
 #include "anthem_process_context.h"
 
-ToneGeneratorNode::ToneGeneratorNode() : AnthemProcessor("ToneGeneratorNode") {
+ToneGeneratorNode::ToneGeneratorNode() : AnthemProcessor("ToneGenerator") {
   phase = 0;
   // amplitude = 0.125;
   // this->frequency = frequency;

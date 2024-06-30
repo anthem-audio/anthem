@@ -21,7 +21,7 @@
 
 #include "anthem_process_context.h"
 
-SimpleVolumeLfoNode::SimpleVolumeLfoNode() : AnthemProcessor("SimpleVolumeLfoNode") {
+SimpleVolumeLfoNode::SimpleVolumeLfoNode() : AnthemProcessor("SimpleVolumeLfo") {
   rate = 0.0001;
   amplitude = 1;
 

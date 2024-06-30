@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/controller/processor_manager/processor_list.dart';
+import 'package:anthem/controller/processor_manager/processor_manager.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
@@ -39,6 +41,9 @@ abstract class _ProcessorModel with Store {
   @observable
   String? processorKey;
 
+  @JsonKey(fromJson: _parameterValuesFromJson, toJson: _parameterValuesToJson)
+  ObservableMap<int, double> parameterValues = ObservableMap();
+
   _ProcessorModel({required this.processorKey});
 
   Map<String, dynamic> toJson() =>
@@ -48,5 +53,21 @@ abstract class _ProcessorModel with Store {
     if (processorKey == null) return;
 
     idInEngine = await engine.processingGraphApi.addProcessor(processorKey!);
+
+    await processorManager.validateProcessor(
+      engine: engine,
+      processorDefinition:
+          processorList.firstWhere((processor) => processor.id == processorKey),
+      nodeInstanceId: idInEngine!,
+    );
   }
+}
+
+ObservableMap<int, double> _parameterValuesFromJson(Map<String, dynamic> json) {
+  return ObservableMap.of(
+      json.map((key, value) => MapEntry(int.parse(key), value)));
+}
+
+Map<String, dynamic> _parameterValuesToJson(ObservableMap<int, double> map) {
+  return map.map((key, value) => MapEntry(key.toString(), value));
 }

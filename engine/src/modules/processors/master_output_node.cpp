@@ -23,7 +23,7 @@
 
 #include "anthem_process_context.h"
 
-MasterOutputNode::MasterOutputNode(int numChannels, int bufferSize) : AnthemProcessor("MasterOutputNode") {
+MasterOutputNode::MasterOutputNode(int numChannels, int bufferSize) : AnthemProcessor("MasterOutput") {
   buffer = juce::AudioSampleBuffer(numChannels, bufferSize);
 
   config.addAudioInput(
