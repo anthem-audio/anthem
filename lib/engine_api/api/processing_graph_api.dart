@@ -186,7 +186,7 @@ class ProcessingGraphApi {
     );
 
     final response = (await _engine._request(id, request)).returnValue
-        as DisconnectProcessorsResponse;
+        as CompileProcessingGraphResponse;
 
     if (response.success) {
       return;
