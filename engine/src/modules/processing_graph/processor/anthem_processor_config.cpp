@@ -19,7 +19,20 @@
 
 #include "anthem_processor_config.h"
 
-const std::shared_ptr<AnthemProcessorPortConfig> AnthemProcessorConfig::getAudioInput(int index) const {
+const std::optional<unsigned int> AnthemProcessorConfig::getIndexOfAudioInput(unsigned long id) const {
+  std::optional<unsigned int> result = std::nullopt;
+
+  for (unsigned int i = 0; i < this->getNumAudioInputs(); i++) {
+    if (this->getAudioInputByIndex(i)->id == id) {
+      result = std::optional{i};
+      break;
+    }
+  }
+
+  return result;
+}
+
+const std::shared_ptr<AnthemProcessorPortConfig> AnthemProcessorConfig::getAudioInputByIndex(int index) const {
   return audioInputs[index];
 }
 
@@ -31,7 +44,20 @@ void AnthemProcessorConfig::addAudioInput(const std::shared_ptr<AnthemProcessorP
   audioInputs.push_back(port);
 }
 
-const std::shared_ptr<AnthemProcessorPortConfig> AnthemProcessorConfig::getAudioOutput(int index) const {
+const std::optional<unsigned int> AnthemProcessorConfig::getIndexOfAudioOutput(unsigned long id) const {
+  std::optional<unsigned int> result = std::nullopt;
+
+  for (unsigned int i = 0; i < this->getNumAudioOutputs(); i++) {
+    if (this->getAudioOutputByIndex(i)->id == id) {
+      result = std::optional{i};
+      break;
+    }
+  }
+
+  return result;
+}
+
+const std::shared_ptr<AnthemProcessorPortConfig> AnthemProcessorConfig::getAudioOutputByIndex(int index) const {
   return audioOutputs[index];
 }
 
@@ -43,7 +69,20 @@ void AnthemProcessorConfig::addAudioOutput(const std::shared_ptr<AnthemProcessor
   audioOutputs.push_back(port);
 }
 
-const std::shared_ptr<AnthemProcessorPortConfig> AnthemProcessorConfig::getMidiInput(int index) const {
+const std::optional<unsigned int> AnthemProcessorConfig::getIndexOfMidiInput(unsigned long id) const {
+  std::optional<unsigned int> result = std::nullopt;
+
+  for (unsigned int i = 0; i < this->getNumMidiInputs(); i++) {
+    if (this->getMidiInputByIndex(i)->id == id) {
+      result = std::optional{i};
+      break;
+    }
+  }
+
+  return result;
+}
+
+const std::shared_ptr<AnthemProcessorPortConfig> AnthemProcessorConfig::getMidiInputByIndex(int index) const {
   return midiInputs[index];
 }
 
@@ -55,7 +94,20 @@ void AnthemProcessorConfig::addMidiInput(const std::shared_ptr<AnthemProcessorPo
   midiInputs.push_back(port);
 }
 
-const std::shared_ptr<AnthemProcessorPortConfig> AnthemProcessorConfig::getMidiOutput(int index) const {
+const std::optional<unsigned int> AnthemProcessorConfig::getIndexOfMidiOutput(unsigned long id) const {
+  std::optional<unsigned int> result = std::nullopt;
+
+  for (unsigned int i = 0; i < this->getNumMidiOutputs(); i++) {
+    if (this->getMidiOutputByIndex(i)->id == id) {
+      result = std::optional{i};
+      break;
+    }
+  }
+
+  return result;
+}
+
+const std::shared_ptr<AnthemProcessorPortConfig> AnthemProcessorConfig::getMidiOutputByIndex(int index) const {
   return midiOutputs[index];
 }
 
@@ -67,7 +119,20 @@ void AnthemProcessorConfig::addMidiOutput(const std::shared_ptr<AnthemProcessorP
   midiOutputs.push_back(port);
 }
 
-const std::shared_ptr<AnthemProcessorPortConfig> AnthemProcessorConfig::getControlInput(int index) const {
+const std::optional<unsigned int> AnthemProcessorConfig::getIndexOfControlInput(unsigned long id) const {
+  std::optional<unsigned int> result = std::nullopt;
+
+  for (unsigned int i = 0; i < this->getNumControlInputs(); i++) {
+    if (this->getControlInputByIndex(i)->id == id) {
+      result = std::optional{i};
+      break;
+    }
+  }
+
+  return result;
+}
+
+const std::shared_ptr<AnthemProcessorPortConfig> AnthemProcessorConfig::getControlInputByIndex(int index) const {
   return controlInputs[index];
 }
 
@@ -80,7 +145,20 @@ void AnthemProcessorConfig::addControlInput(const std::shared_ptr<AnthemProcesso
   parameters.push_back(parameter);
 }
 
-const std::shared_ptr<AnthemProcessorPortConfig> AnthemProcessorConfig::getControlOutput(int index) const {
+const std::optional<unsigned int> AnthemProcessorConfig::getIndexOfControlOutput(unsigned long id) const {
+  std::optional<unsigned int> result = std::nullopt;
+
+  for (unsigned int i = 0; i < this->getNumControlOutputs(); i++) {
+    if (this->getControlOutputByIndex(i)->id == id) {
+      result = std::optional{i};
+      break;
+    }
+  }
+
+  return result;
+}
+
+const std::shared_ptr<AnthemProcessorPortConfig> AnthemProcessorConfig::getControlOutputByIndex(int index) const {
   return controlOutputs[index];
 }
 
@@ -88,7 +166,11 @@ int AnthemProcessorConfig::getNumControlOutputs() const {
   return controlOutputs.size();
 }
 
-const std::shared_ptr<AnthemProcessorParameterConfig> AnthemProcessorConfig::getParameter(int index) const {
+const std::optional<unsigned int> AnthemProcessorConfig::getIndexOfParameter(unsigned long id) const {
+  return this->getIndexOfControlInput(id);
+}
+
+const std::shared_ptr<AnthemProcessorParameterConfig> AnthemProcessorConfig::getParameterByIndex(int index) const {
   return parameters[index];
 }
 

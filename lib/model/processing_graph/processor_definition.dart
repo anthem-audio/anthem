@@ -55,20 +55,36 @@ class ProcessorDefinition {
   });
 }
 
+/// Descries a processor port.
 class ProcessorPort {
+  /// The ID of this port. This mirrors parameter ID as described by VST3, and
+  /// is treated similarly. It allows plugins to modify ports between versions
+  /// without breaking connections in existing project files.
+  final int id;
+
+  /// The human-readable name of this port.
   final String name;
 
-  const ProcessorPort({required this.name});
+  const ProcessorPort({required this.id, required this.name});
 }
 
+/// Describes details about a processor parameter, such as min/max values. Every
+/// processor must have the same number of parameters as it has control inputs.
 class ProcessorParameter {
-  final String name;
+  /// The ID of the control input port associated with this parameter.
+  final int id;
+
+  /// The default value for this parameter.
   final double defaultValue;
+
+  /// The max value for this parameter.
   final double minValue;
+
+  /// The min value for this parameter.
   final double maxValue;
 
   const ProcessorParameter({
-    required this.name,
+    required this.id,
     required this.defaultValue,
     required this.minValue,
     required this.maxValue,

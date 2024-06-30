@@ -197,8 +197,8 @@ class ProcessingGraphApi {
 
   /// Sets the static value of a parameter.
   Future<void> setParameter({
-    required int processorId,
-    required int parameterIndex,
+    required int nodeId,
+    required int parameterId,
     required double value,
   }) async {
     final id = _engine._getRequestId();
@@ -207,8 +207,8 @@ class ProcessingGraphApi {
       id: id,
       commandType: CommandTypeId.SetParameter,
       command: SetParameterObjectBuilder(
-        processorId: processorId,
-        parameterIndex: parameterIndex,
+        nodeId: nodeId,
+        parameterId: parameterId,
         value: value,
       ),
     );
@@ -245,20 +245,20 @@ class ProcessingGraphApi {
     }
 
     final audioInputPorts =
-        response.inputAudioPorts!.map((port) => (name: port.name!)).toList();
+        response.inputAudioPorts!.map((port) => (id: port.id)).toList();
     final controlInputPorts =
-        response.inputControlPorts!.map((port) => (name: port.name!)).toList();
+        response.inputControlPorts!.map((port) => (id: port.id)).toList();
     final midiInputPorts =
-        response.inputMidiPorts!.map((port) => (name: port.name!)).toList();
+        response.inputMidiPorts!.map((port) => (id: port.id)).toList();
     final audioOutputPorts =
-        response.outputAudioPorts!.map((port) => (name: port.name!)).toList();
+        response.outputAudioPorts!.map((port) => (id: port.id)).toList();
     final controlOutputPorts =
-        response.outputControlPorts!.map((port) => (name: port.name!)).toList();
+        response.outputControlPorts!.map((port) => (id: port.id)).toList();
     final midiOutputPorts =
-        response.outputMidiPorts!.map((port) => (name: port.name!)).toList();
+        response.outputMidiPorts!.map((port) => (id: port.id)).toList();
     final parameters = response.parameters!
         .map((parameter) => (
-              name: parameter.name!,
+              id: parameter.id,
               defaultValue: parameter.defaultValue,
               minValue: parameter.minValue,
               maxValue: parameter.maxValue,
@@ -277,10 +277,10 @@ class ProcessingGraphApi {
   }
 }
 
-typedef PortInfo = ({String name});
+typedef PortInfo = ({int id});
 
 typedef ParameterInfo = ({
-  String name,
+  int id,
   double defaultValue,
   double minValue,
   double maxValue,
