@@ -21,6 +21,9 @@
 
 #include <iostream>
 
+// See the header file for an overview of the graph processing algorithm. Each
+// step in the algorithm is annotated here.
+
 std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(AnthemGraphTopology& topology) {
   std::shared_ptr<AnthemGraphCompilationResult> result = std::make_shared<AnthemGraphCompilationResult>();
 
@@ -70,6 +73,17 @@ std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(Anthe
   std::cout << "Step 1: Zero input buffers" << std::endl;
 
   // Step 1 (part 1): Zero input buffers
+  //
+  // Before starting, we add an action that writes zeros to all audio input
+  // buffers. If no inputs are present at an audio input port, then the input
+  // for that port should be silence (e.g. all zeros), as opposed to either
+  // garbage data or the data from the last block.
+  //
+  // Note that this does not do anything to contorl input buffers. In Anthem,
+  // control values are audio-rate sampled data, but unlike audio input ports,
+  // each control input port has a corresponding parameter definition that has a
+  // current value, and the control value is initialized with that current value
+  // instead. See below for more.
 
   for (auto& node : nodesToProcess) {
     actions->push_back(
@@ -81,7 +95,20 @@ std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(Anthe
 
   actions = std::make_shared<std::vector<std::shared_ptr<AnthemGraphCompilerAction>>>();
 
-  // Step 1 (part 2): Write parameter values to control buffers
+  // Step 1 (part 2): Initialize control input buffers with corresponding
+  // parameter values.
+  //
+  // Unlike audio inputs, control inputs always have a corresponding parameter
+  // definition, which provides a default value, and a parameter instance, which
+  // provides the current value. This action writes the current value from each
+  // parameter to the input buffer for each control input. If there is a
+  // connection to a given contorl input, then the value from that connection
+  // will overwrite the parameter value in a future step.
+  //
+  // We don't skip this step for control input ports that have attached inputs,
+  // though we probably could. It's not necessarily trivial to skip though,
+  // because the control value is smoothed in this step, and not processing the
+  // smoother could produce odd behavior when connections are made or destroyed.
 
   for (auto& node : nodesToProcess) {
     actions->push_back(
