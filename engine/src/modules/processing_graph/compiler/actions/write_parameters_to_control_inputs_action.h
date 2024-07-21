@@ -22,6 +22,12 @@
 #include "anthem_graph_compiler_action.h"
 #include "anthem_process_context.h"
 
+// This action writes parameter values to control inputs ports for a given
+// processor (given by that processor's processContext). This initializes the
+// control input buffers for the current block, which may then be overwritten by
+// incoming connections to the port. If there are no incoming connections, then
+// the data written to each buffer by this step will be the data in that buffer
+// when the node is processed.
 class WriteParametersToControlInputsAction : public AnthemGraphCompilerAction {
 private:
   std::shared_ptr<AnthemProcessContext> processContext;
