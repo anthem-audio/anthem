@@ -22,6 +22,11 @@
 #include "anthem_process_context.h"
 #include "anthem_graph_compiler_action.h"
 
+// This action copies the data from a given control output to a given control
+// input.
+//
+// The output value is expected to be normalized from 0 to 1. When copying, the
+// value is scaled to the range defined by the associated parameter value.
 class CopyControlBufferAction : public AnthemGraphCompilerAction {
 public:
   std::shared_ptr<AnthemProcessContext> source;
