@@ -21,6 +21,7 @@
 
 #include "simple_volume_lfo_node.h"
 #include "tone_generator_node.h"
+#include "gain_node.h"
 
 std::optional<flatbuffers::Offset<Response>>
 handleProcessingGraphCommand(const Request *request,
@@ -191,6 +192,9 @@ handleProcessingGraphCommand(const Request *request,
         success = true;
       } else if (processorId == "ToneGenerator") {
         processor = std::make_shared<ToneGeneratorNode>();
+        success = true;
+      } else if (processorId == "Gain") {
+        processor = std::make_shared<GainNode>();
         success = true;
       } else {
         success = false;

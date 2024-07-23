@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,6 +22,7 @@ import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/knob.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/editors/pattern_editor/generator_row_automation.dart';
@@ -86,15 +87,11 @@ class _GeneratorRowState extends State<GeneratorRow> {
 
           switch (generator.generatorType) {
             case GeneratorType.instrument:
-              {
-                project.activeInstrumentID = widget.generatorID;
-                break;
-              }
+              project.activeInstrumentID = widget.generatorID;
+              break;
             case GeneratorType.automation:
-              {
-                project.activeAutomationGeneratorID = widget.generatorID;
-                break;
-              }
+              project.activeAutomationGeneratorID = widget.generatorID;
+              break;
           }
 
           projectViewModel.selectedEditor = switch (generator.generatorType) {
@@ -109,7 +106,29 @@ class _GeneratorRowState extends State<GeneratorRow> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(width: 127),
+                const SizedBox(width: 80),
+                Observer(builder: (context) {
+                  return Knob(
+                    value: generator.gainNode.parameterValues[0] ?? 0.0,
+                    min: 0,
+                    max: 10,
+                    width: 20,
+                    height: 20,
+                    onValueChanged: (value) {
+                      generator.gainNode.parameterValues[0] = value;
+                    },
+                  );
+                }),
+                const SizedBox(width: 8),
+                const Knob(
+                  value: 0,
+                  min: -100,
+                  max: 100,
+                  width: 20,
+                  height: 20,
+                  type: KnobType.pan,
+                ),
+                const SizedBox(width: 8),
                 // Generator name
                 Observer(
                   builder: (context) {
