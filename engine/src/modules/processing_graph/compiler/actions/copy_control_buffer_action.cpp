@@ -34,6 +34,8 @@ void CopyControlBufferAction::execute(int numSamples) {
 
       // Overwrite the destination, unless the source is NaN
       if (!std::isnan(sourceSample)) {
+        // Scale the incoming value based on the min/max values defined by the
+        // parameter definition
         auto max = destinationParameter->maxValue;
         auto min = destinationParameter->minValue;
         auto scaledSample = sourceSample * (max - min) + min;

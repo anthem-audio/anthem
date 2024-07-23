@@ -128,6 +128,8 @@ set(ANTHEM_ENGINE_SOURCES
 
   ### Processors ###
 
+  src/modules/processors/gain_node.cpp
+  src/modules/processors/gain_node.h
   src/modules/processors/master_output_node.cpp
   src/modules/processors/master_output_node.h
   src/modules/processors/simple_volume_lfo_node.cpp
