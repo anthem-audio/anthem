@@ -12,25 +12,12 @@ if (LINUX)
   pkg_check_modules(WEBKIT2GTK REQUIRED webkit2gtk-4.0)
 endif()
 
-# Set up Boost
-
-find_package(Boost
-  1.72.0
-  REQUIRED
-)
-
-include_directories( ${Boost_INCLUDE_DIR} )
-link_directories( ${Boost_LIBRARY_DIRS} )
-
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/generated)
 
 # Add JUCE and Tracktion Engine
 
 add_subdirectory(include/JUCE)
-
-# Include the cpp_shared directory
-include_directories(${CMAKE_SOURCE_DIR}/../cpp_shared)
 
 # Include module folders so we don't have to use relative paths
 include_directories(
@@ -53,9 +40,6 @@ juce_add_console_app(AnthemEngine ANTHEM_ENGINE "Anthem Engine" VERSION "0.0.1")
 set(ANTHEM_ENGINE_SOURCES
   generated/messages_generated.h
   generated/project_generated.h
-
-  ../cpp_shared/open_message_queue.cpp
-  ../cpp_shared/open_message_queue.h
 
   src/command_handlers/processing_graph_command_handler.cpp
   src/command_handlers/processing_graph_command_handler.h
@@ -154,8 +138,6 @@ target_sources(AnthemEngine PRIVATE ${ANTHEM_ENGINE_SOURCES})
 
 # Create the AnthemEngine executable
 # add_executable(AnthemEngine ${ANTHEM_ENGINE_SOURCES})
-
-target_link_libraries(AnthemEngine ${Boost_LIBRARIES})
 
 target_compile_definitions(AnthemEngine PRIVATE JUCE_PLUGINHOST_VST3=1)
 

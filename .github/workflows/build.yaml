@@ -15,14 +15,6 @@ jobs:
           7z e flatc.zip -o"flatc"
           echo "flatc;" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Install Boost
-        uses: MarkusJx/install-boost@v2.4.4
-        id: install-boost
-        with:
-          boost_version: 1.81.0
-          platform_version: 2022
-          toolset: msvc
-
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -37,8 +29,6 @@ jobs:
       # Build engine
       - name: Build engine
         run: .\scripts\build.ps1
-        env:
-          BOOST_ROOT: ${{ steps.install-boost.outputs.BOOST_ROOT }}
 
       # Get dependencies for Flutter
       - name: Get dependencies
@@ -86,7 +76,7 @@ jobs:
       - name: Install dependencies from apt
         run: |
           sudo apt update
-          sudo apt install -y libboost-dev ninja-build llvm clang libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libfreetype-dev mesa-common-dev libasound2-dev freeglut3-dev libxcomposite-dev libgtk-3-dev libasound2-dev libwebkit2gtk-4.0-dev libcurl4-openssl-dev
+          sudo apt install -y ninja-build llvm clang libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libfreetype-dev mesa-common-dev libasound2-dev freeglut3-dev libxcomposite-dev libgtk-3-dev libasound2-dev libwebkit2gtk-4.0-dev libcurl4-openssl-dev
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2

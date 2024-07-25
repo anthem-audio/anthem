@@ -17,8 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/controller/processor_manager/processor_list.dart';
-import 'package:anthem/controller/processor_manager/processor_manager.dart';
+// import 'package:anthem/controller/processor_manager/processor_list.dart';
+// import 'package:anthem/controller/processor_manager/processor_manager.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
@@ -79,12 +79,12 @@ class ProcessorModel extends _ProcessorModel with _$ProcessorModel {
       }
     });
 
-    await processorManager.validateProcessor(
-      engine: engine,
-      processorDefinition:
-          processorList.firstWhere((processor) => processor.id == processorKey),
-      nodeInstanceId: idInEngine!,
-    );
+    // await processorManager.validateProcessor(
+    //   engine: engine,
+    //   processorDefinition:
+    //       processorList.firstWhere((processor) => processor.id == processorKey),
+    //   nodeInstanceId: idInEngine!,
+    // );
   }
 }
 

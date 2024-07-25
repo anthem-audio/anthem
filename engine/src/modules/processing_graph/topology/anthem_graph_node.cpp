@@ -71,7 +71,7 @@ void AnthemGraphNode::initializePorts() {
   }
 }
 
-void AnthemGraphNode::setParameter(int id, float value) {
+void AnthemGraphNode::setParameter(uint64_t id, float value) {
   auto index = processor->config.getIndexOfParameter(id);
 
   if (!index.has_value()) return;

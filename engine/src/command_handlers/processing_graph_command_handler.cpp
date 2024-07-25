@@ -214,6 +214,8 @@ handleProcessingGraphCommand(const Request *request,
       uint64_t nodeId;
       if (success) {
         nodeId = anthem->addNode(processor);
+      } else {
+        return std::nullopt;
       }
 
       auto response = CreateAddProcessorResponse(builder, true, nodeId, 0);
@@ -251,7 +253,7 @@ handleProcessingGraphCommand(const Request *request,
 
       uint64_t sourceId = command->source_id();
       uint64_t destinationId = command->destination_id();
-      ProcessorConnectionType connectionType = command->connection_type();
+      // ProcessorConnectionType connectionType = command->connection_type();
       uint32_t sourcePortIndex = command->source_port_index();
       uint32_t destinationPortIndex = command->destination_port_index();
 

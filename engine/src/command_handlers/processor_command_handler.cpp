@@ -41,5 +41,7 @@ handleProcessorCommand(const Request *request,
 
       return std::optional(message);
     }
+    default:
+      return std::nullopt;
   }
 }
