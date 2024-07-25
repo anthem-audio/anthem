@@ -8,6 +8,9 @@ Push-Location $scriptPath\..
 # Build engine executable
 .\engine\build.ps1
 
+# Ensure that the assets directory exists
+New-Item -ItemType Directory -Path ".\assets\engine" -Force | Out-Null
+
 # Set engine executable source and destination paths
 $platform = [System.Environment]::OSVersion.Platform
 if ($platform -eq [System.PlatformID]::Win32NT) {
