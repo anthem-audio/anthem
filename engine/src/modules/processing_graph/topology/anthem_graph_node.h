@@ -52,5 +52,5 @@ public:
 
   void initializePorts();
 
-  void setParameter(int index, float value);
+  void setParameter(uint64_t index, float value);
 };

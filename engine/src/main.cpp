@@ -23,8 +23,6 @@
 #include <juce_core/juce_core.h>
 #include <juce_audio_devices/juce_audio_devices.h>
 
-#include <boost/interprocess/ipc/message_queue.hpp>
-
 #include <iostream>
 #include <string>
 #include <thread>
@@ -34,18 +32,16 @@
 #include <condition_variable>
 
 #include "messages_generated.h"
-#include "open_message_queue.h"
 #include "anthem.h"
 #include "./command_handlers/processing_graph_command_handler.h"
 #include "./command_handlers/processor_command_handler.h"
 #include "./command_handlers/project_command_handler.h"
 
-using namespace boost::interprocess;
-
 Anthem* anthem;
 
-std::unique_ptr<message_queue> mqToUi;
-std::unique_ptr<message_queue> mqFromUi;
+juce::StreamingSocket socketToUi;
+
+std::mutex socketInUseMutex;
 
 volatile bool heartbeatOccurred = true;
 
@@ -146,11 +142,26 @@ public:
     if (response.has_value()) {
       builder.Finish(response.value());
 
-      auto receive_buffer_ptr = builder.GetBufferPointer();
-      auto buffer_size = builder.GetSize();
+      auto receiveBufferPtr = builder.GetBufferPointer();
+      auto bufferSize = builder.GetSize();
 
-      // Send the response to the UI
-      mqToUi->send(receive_buffer_ptr, buffer_size, 0);
+      // Write the message length to the socket
+      auto bufferSize64 = static_cast<uint64_t>(bufferSize);
+
+      // Create an array to hold the bytes of the id
+      unsigned char bufferSizeBytes[sizeof(bufferSize64)];
+
+      // Copy the bytes of bufferSize64 into bufferSizeBytes
+      std::memcpy(bufferSizeBytes, &bufferSize64, sizeof(bufferSize64));
+
+      std::unique_lock<std::mutex> socketLock(socketInUseMutex);
+
+      socketToUi.write(bufferSizeBytes, sizeof(uint64_t));
+
+      // Write the message to the socket
+      socketToUi.write(receiveBufferPtr, bufferSize);
+
+      socketLock.unlock();
     }
 
     if (isExit) {
@@ -167,58 +178,115 @@ std::thread messageLoopThread;
 
 // Main loop that listens for messages from the UI and responds to them
 void messageLoop(CommandMessageListener& messageListener) {
-  auto idStr = juce::JUCEApplication::getCommandLineParameters();
+  auto parameters = juce::JUCEApplication::getCommandLineParameters();
 
-  if (idStr.length() == 0) {
-    std::cerr << "Engine ID was not provided. Exiting..." << std::endl;
+  auto spaceIndex = parameters.indexOfChar(' ');
+
+  if (spaceIndex == -1) {
+    std::cerr << "Invalid command line args: " << parameters << " - Exiting..." << std::endl;
     juce::JUCEApplication::quit();
     return;
   }
 
-  auto mqToUiName = "engine-to-ui-" + idStr;
-  auto mqFromUiName = "ui-to-engine-" + idStr;
+  auto portStr = parameters.substring(0, spaceIndex);
+  auto idStr = parameters.substring(spaceIndex + 1);
 
-  std::cout << "Creating engine-to-ui message queue..." << std::endl;
+  if (portStr.length() == 0) {
+    std::cerr << "Port was not provided. Args: " << parameters << " - Exiting..." << std::endl;
+    juce::JUCEApplication::quit();
+    return;
+  }
 
-  // Create a message_queue.
-  mqToUi = std::unique_ptr<message_queue>(
-    new message_queue(
-      create_only,
-      mqToUiName.toStdString().c_str(),
+  if (idStr.length() == 0) {
+    std::cerr << "Engine ID was not provided. Args: " << parameters << " - Exiting..." << std::endl;
+    juce::JUCEApplication::quit();
+    return;
+  }
 
-      // 100 messages can be in the queue at once
-      100,
-
-      // Each message can be a maximum of 65536 bytes (?) long
-      65536));
-
-  std::cout << "Opening ui-to-engine message queue..." << std::endl;
-  mqFromUi = openMessageQueue(mqFromUiName.toStdString().c_str());
+  std::cout << "Opening socket connection to UI at port " << portStr << "..." << std::endl;
+  auto success = socketToUi.connect("::1", std::stoi(portStr.toStdString()));
+  if (!success) {
+    std::cerr << "Socket failed to start. Exiting..." << std::endl;
+    juce::JUCEApplication::quit();
+    return;
+  }
   std::cout << "Opened successfully." << std::endl;
+
+  std::cout << "Sending ID back to UI as first message..." << std::endl;
+
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+
+  auto id = std::stoull(idStr.toStdString());
+
+  // Create an array to hold the bytes of the id
+  unsigned char idBytes[sizeof(id)];
+
+  // Copy the bytes of id into idBytes
+  std::memcpy(idBytes, &id, sizeof(id));
+
+  auto socketWriteResult = socketToUi.write(idBytes, sizeof(unsigned long long));
+  if (socketWriteResult <= 0) {
+    std::cerr << "Socket failed to write. Result is: " << socketWriteResult << ". Exiting..." << std::endl;
+    juce::JUCEApplication::quit();
+    return;
+  }
+
+  std::cout << "Done." << std::endl;
 
   std::cout << "Starting heartbeat thread..." << std::endl;
   std::thread heartbeat_thread(heartbeat);
 
-  uint8_t buffer[65536];
+  uint8_t tempBuffer[4096];
+  juce::MemoryBlock messageBuffer;
 
   std::cout << "Anthem engine started successfully. Listening for messages from UI..." << std::endl;
   while (true) {
-    std::unique_lock<std::mutex> lock(messageHandledMutex);
-    messageHandledCv.wait(lock, []() { return canWriteToBuffer; });
-    canWriteToBuffer = false;
+    std::unique_lock<std::mutex> socketLock(socketInUseMutex);
 
-    std::size_t received_size;
-    unsigned int priority;
+    // Get any available data from the socket
+    auto bytesRead = socketToUi.read(tempBuffer, sizeof(tempBuffer), false);
 
-    mqFromUi->receive(buffer, sizeof(buffer), received_size, priority);
+    socketLock.unlock();
 
-    // Create a const pointer to the start of the buffer
-    const void* send_buffer_ptr = static_cast<const void*>(buffer);
+    // Append the data to our memory block
+    messageBuffer.append(tempBuffer, static_cast<size_t>(bytesRead));
 
-    // Get the root of the buffer
-    auto request = flatbuffers::GetRoot<Request>(send_buffer_ptr);
+    // Process messages in buffer
+    while (messageBuffer.getSize() >= sizeof(uint64_t)) {
+      const uint64_t* messageLengthPtr = static_cast<const uint64_t*>(messageBuffer.getData());
+      uint64_t messageLength = *messageLengthPtr;
 
-    messageListener.postMessage(new CommandMessage(request));
+      if (messageBuffer.getSize() >= sizeof(uint64_t) + messageLength)
+      {
+        // Extract and print the message
+        const uint8_t* messagePtr = static_cast<const uint8_t*>(messageBuffer.getData()) + sizeof(uint64_t);
+
+        if (reinterpret_cast<uintptr_t>(messagePtr) % 4 != 0) {
+          std::cerr << "Buffer is not properly aligned!" << std::endl;
+          return;
+        }
+
+        // Convert to a flatbuffers object
+        auto request = flatbuffers::GetRoot<Request>(messagePtr);
+
+        // Set the "can write" flag to false. The message handler will set this
+        // to true after it's done reading the message buffer.
+        canWriteToBuffer = false;
+
+        // Send to the main thread
+        messageListener.postMessage(new CommandMessage(request));
+
+        // Wait for the message to be handled before cleaning up the memory
+        std::unique_lock<std::mutex> lock(messageHandledMutex);
+        messageHandledCv.wait(lock, []() { return canWriteToBuffer; });
+
+        // Remove the processed message from the buffer
+        messageBuffer.removeSection(0, sizeof(uint64_t) + messageLength);
+      } else {
+        // Not enough data for a complete message yet
+        break;
+      }
+    }
   }
 }
 
