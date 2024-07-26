@@ -22,6 +22,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:anthem/engine_api/engine_socket_server.dart';
+import 'package:anthem/engine_api/memory_block.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:anthem/generated/messages_generated.dart';
@@ -237,25 +238,26 @@ class EngineConnector {
     EngineSocketServer.instance.send(_id, bytes);
   }
 
-  final List<int> _messageBuffer = [];
+  final _messageBuffer = MemoryBlock();
 
   void _onReceive(Uint8List message) {
     if (_onReply == null) return;
 
     // Append incoming data to the buffer
-    _messageBuffer.addAll(message);
+    _messageBuffer.append(message);
 
     // Process the buffer to extract complete messages
-    while (_messageBuffer.length >= 8) {
+    while (_messageBuffer.buffer.length >= 8) {
       // Extract the message length (8 bytes, 64-bit integer)
-      final byteData = ByteData.sublistView(Uint8List.fromList(_messageBuffer));
+      final byteData =
+          ByteData.sublistView(Uint8List.fromList(_messageBuffer.buffer));
       final messageLength = byteData.getUint64(0, Endian.host);
 
       // Check if the buffer contains the full message
-      if (_messageBuffer.length >= 8 + messageLength) {
+      if (_messageBuffer.buffer.length >= 8 + messageLength) {
         // Extract the full message
-        final fullMessage =
-            Uint8List.fromList(_messageBuffer.sublist(8, 8 + messageLength));
+        final fullMessage = _messageBuffer.buffer.sublist(8, 8 + messageLength);
+
         final response = Response(fullMessage);
 
         // Handle heartbeat reply
