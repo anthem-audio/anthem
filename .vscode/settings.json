@@ -15,6 +15,7 @@
     "flatc",
     "interprocess",
     "juce",
+    "LTRB",
     "LTWH",
     "mobx",
     "msvc",
