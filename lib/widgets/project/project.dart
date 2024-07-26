@@ -17,26 +17,25 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/widgets/basic/background.dart';
-import 'package:anthem/widgets/basic/knob.dart';
-import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
-import 'package:anthem/widgets/editors/automation_editor/automation_editor.dart';
-import 'package:anthem/widgets/project/project_view_model.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/panel.dart';
+import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/arranger/arranger.dart';
+import 'package:anthem/widgets/editors/automation_editor/automation_editor.dart';
+import 'package:anthem/widgets/editors/channel_rack/channel_rack.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
-import 'package:anthem/widgets/project/project_controller.dart';
-import 'package:anthem/widgets/project_explorer/project_explorer.dart';
 import 'package:anthem/widgets/project_details/project_details.dart';
+import 'package:anthem/widgets/project_explorer/project_explorer.dart';
+import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:anthem/widgets/project/project_footer.dart';
+import 'package:anthem/widgets/project/project_view_model.dart';
 
 import 'project_header.dart';
 
@@ -85,7 +84,7 @@ class _ProjectState extends State<Project> {
             Expanded(
               child: Observer(builder: (context) {
                 const automationEditor = AutomationEditor();
-                const channelRack = _KnobTest();
+                const channelRack = ChannelRack();
                 const pianoRoll = PianoRoll();
                 const mixer = Text('Mixer');
 
@@ -190,62 +189,6 @@ class _ProjectState extends State<Project> {
               height: 3,
             ),
             const ProjectFooter(),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _KnobTest extends StatefulWidget {
-  const _KnobTest();
-
-  @override
-  State<_KnobTest> createState() => __KnobTestState();
-}
-
-class __KnobTestState extends State<_KnobTest> {
-  double value1 = 0.5;
-  double value2 = 0.5;
-
-  @override
-  Widget build(BuildContext context) {
-    return Background(
-      type: BackgroundType.dark,
-      child: Center(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Knob(
-              width: 20,
-              height: 20,
-              value: value1,
-              min: 0,
-              max: 100,
-              stickyPoints: const [25, 50, 75],
-              onValueChanged: (value) {
-                setState(() {
-                  value1 = value;
-                });
-              },
-            ),
-            const SizedBox(
-              width: 10,
-            ),
-            Knob(
-              width: 40,
-              height: 40,
-              type: KnobType.pan,
-              min: -1,
-              max: 1,
-              value: value2,
-              stickyPoints: const [0],
-              onValueChanged: (value) {
-                setState(() {
-                  value2 = value;
-                });
-              },
-            ),
           ],
         ),
       ),

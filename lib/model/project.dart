@@ -273,14 +273,6 @@ abstract class _ProjectModel extends Hydratable with Store {
     final command = JournalPageCommand(accumulator);
     _commandQueue.push(command);
   }
-
-  void setActiveInstrument(ID? generatorID) {
-    activeInstrumentID = generatorID;
-  }
-
-  void setActiveAutomationGenerator(ID? generatorID) {
-    activeAutomationGeneratorID = generatorID;
-  }
 }
 
 /// Used to describe which detail view is active in the project sidebar, if any
