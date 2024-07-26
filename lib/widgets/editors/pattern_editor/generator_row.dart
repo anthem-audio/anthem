@@ -81,56 +81,56 @@ class _GeneratorRowState extends State<GeneratorRow> {
           ),
         ],
       ),
-      child: GestureDetector(
-        onTap: () {
-          final generator = project.generators[widget.generatorID]!;
-
-          switch (generator.generatorType) {
-            case GeneratorType.instrument:
-              project.activeInstrumentID = widget.generatorID;
-              break;
-            case GeneratorType.automation:
-              project.activeAutomationGeneratorID = widget.generatorID;
-              break;
-          }
-
-          projectViewModel.selectedEditor = switch (generator.generatorType) {
-            GeneratorType.instrument => EditorKind.detail,
-            GeneratorType.automation => EditorKind.automation,
-          };
-        },
-        child: SizedBox(
-          height: 34,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(width: 80),
-                Observer(builder: (context) {
-                  return Knob(
-                    value: generator.gainNode.parameterValues[0] ?? 0.0,
-                    min: 0,
-                    max: 10,
-                    width: 20,
-                    height: 20,
-                    onValueChanged: (value) {
-                      generator.gainNode.parameterValues[0] = value;
-                    },
-                  );
-                }),
-                const SizedBox(width: 8),
-                const Knob(
-                  value: 0,
-                  min: -100,
-                  max: 100,
+      child: SizedBox(
+        height: 34,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(width: 80),
+              Observer(builder: (context) {
+                return Knob(
+                  value: generator.gainNode.parameterValues[0] ?? 0.0,
+                  min: 0,
+                  max: 10,
                   width: 20,
                   height: 20,
-                  type: KnobType.pan,
-                ),
-                const SizedBox(width: 8),
-                // Generator name
-                Observer(
+                  stickyPoints: const [1],
+                  onValueChanged: (value) {
+                    generator.gainNode.parameterValues[0] = value;
+                  },
+                );
+              }),
+              const SizedBox(width: 8),
+              const Knob(
+                value: 0,
+                min: -100,
+                max: 100,
+                width: 20,
+                height: 20,
+                type: KnobType.pan,
+              ),
+              const SizedBox(width: 8),
+              // Generator name
+              GestureDetector(
+                onTap: () {
+                  final generator = project.generators[widget.generatorID]!;
+
+                  switch (generator.generatorType) {
+                    case GeneratorType.instrument:
+                      project.activeInstrumentID = widget.generatorID;
+                      project.activeAutomationGeneratorID = null;
+                      break;
+                    case GeneratorType.automation:
+                      project.activeAutomationGeneratorID = widget.generatorID;
+                      project.activeInstrumentID = null;
+                      break;
+                  }
+
+                  projectViewModel.selectedEditor = EditorKind.channelRack;
+                },
+                child: Observer(
                   builder: (context) {
                     final backgroundHoverColor =
                         HSLColor.fromColor(generator.color)
@@ -159,19 +159,30 @@ class _GeneratorRowState extends State<GeneratorRow> {
                     );
                   },
                 ),
-                const SizedBox(width: 8),
-                // Activity indicator
-                Container(
-                  width: 8,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    color: generator.color,
-                    border: Border.all(color: Theme.panel.border),
-                  ),
+              ),
+              const SizedBox(width: 8),
+              // Activity indicator
+              Container(
+                width: 8,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: generator.color,
+                  border: Border.all(color: Theme.panel.border),
                 ),
-                const SizedBox(width: 8),
-                // Content
-                Expanded(
+              ),
+              const SizedBox(width: 8),
+              // Content
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    final generator = project.generators[widget.generatorID]!;
+
+                    projectViewModel.selectedEditor =
+                        switch (generator.generatorType) {
+                      GeneratorType.instrument => EditorKind.detail,
+                      GeneratorType.automation => EditorKind.automation,
+                    };
+                  },
                   child: Container(
                     height: 30,
                     decoration: BoxDecoration(
@@ -219,8 +230,8 @@ class _GeneratorRowState extends State<GeneratorRow> {
                     }),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
