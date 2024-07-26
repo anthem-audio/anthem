@@ -57,6 +57,7 @@ abstract class _SongModel extends Hydratable with Store {
   ObservableList<ID> patternOrder = ObservableList();
 
   @observable
+  @JsonKey(includeFromJson: false, includeToJson: false)
   ID? activePatternID;
 
   @observable
@@ -68,6 +69,7 @@ abstract class _SongModel extends Hydratable with Store {
   ObservableList<ID> arrangementOrder = ObservableList();
 
   @observable
+  @JsonKey(includeFromJson: false, includeToJson: false)
   ID? activeArrangementID;
 
   @observable
