@@ -37,11 +37,11 @@ final mainExecutablePath = File(Platform.resolvedExecutable);
 
 /// Provides a way to communicate with the engine process.
 ///
-/// The [EngineConnector] class manages an engine process. It uses a dynamic
-/// library written in C++ to communicate with the process.
+/// The [EngineConnector] class manages an engine process. It uses a socket to
+/// communicate with the process.
 ///
-/// The [send] method can be used to send a byte array to the engine. This
-/// should be a serialized FlatBuffers message. A message can be sent like so:
+/// The [send] method can be used to send a Flatbuffers message to the engine. A
+/// message can be sent like so:
 ///
 /// ```dart
 /// final engineConnectorID = getID();
@@ -74,10 +74,10 @@ class EngineConnector {
     return requestIdGen++;
   }
 
-  /// Message queues need an agreed-upon ID to be set up, since they're
-  /// brokered by the operating system. This ID is used so we can have multiple
-  /// engines running at once, since otherwise the message queues for the
-  /// different engines would clash with each other.
+  /// This ID is sent to the engine as an argument on launch. The engine will
+  /// send this ID back as the first message to the socket when it connects,
+  /// which allows us to figure out which engine is associated with a given
+  /// socket connection.
   final int _id;
 
   Process? _engineProcess;
@@ -140,9 +140,6 @@ class EngineConnector {
       () => engineConnectCompleter.complete(),
     );
 
-    // We start the engine process before trying to connect. The connect
-    // function blocks when trying to open the engine's message queue, so the
-    // engine's message queue must already exist before we try to connect.
     final anthemPathStr = enginePathOverride ??
         (Platform.isWindows
             ? '${mainExecutablePath.parent.path}/data/flutter_assets/assets/engine/AnthemEngine.exe'
@@ -293,7 +290,7 @@ class EngineConnector {
     _heartbeatReceived = false;
   }
 
-  /// Stops the engine process, and cleans up the message queues.
+  /// Stops the engine process, and cleans up the messaging infrastructure.
   void dispose() {
     _shutdown();
   }
