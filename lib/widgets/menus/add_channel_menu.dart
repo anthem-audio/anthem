@@ -24,10 +24,9 @@ import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
-class AddChannelMenu extends StatelessObserverWidget {
+class AddChannelMenu extends StatelessWidget {
   final MenuController menuController;
   final Widget? child;
 
@@ -46,61 +45,63 @@ class AddChannelMenu extends StatelessObserverWidget {
           processorDefinition.type == ProcessorType.generator,
     );
 
-    return Menu(
-      menuController: menuController,
-      menuDef: MenuDef(
-        children: [
-          AnthemMenuItem(
-            text: 'Add automation channel',
-            onSelected: () {
-              projectController.addGenerator(
-                processorId: null,
-                name: 'Blank Automation Channel',
-                generatorType: GeneratorType.automation,
-                color: getColor(),
-              );
-            },
-          ),
-          AnthemMenuItem(
-            text: 'Add instrument channel',
-            submenu: MenuDef(
-              children: [
-                ...availableGenerators.map(
-                  (entry) => AnthemMenuItem(
-                    text: entry.name,
-                    onSelected: () {
-                      projectController.addGenerator(
-                        processorId: entry.id,
-                        name: entry.name,
-                        generatorType: GeneratorType.instrument,
-                        color: getColor(),
-                      );
-                    },
-                  ),
-                ),
-                if (availableGenerators.isNotEmpty) Separator(),
-                AnthemMenuItem(
-                  text: 'VST3...',
-                  onSelected: () {
-                    projectController.addVst3Generator();
-                  },
-                ),
-                AnthemMenuItem(
-                  text: 'Blank',
+    final menuDef = MenuDef(
+      children: [
+        AnthemMenuItem(
+          text: 'Add automation channel',
+          onSelected: () {
+            projectController.addGenerator(
+              processorId: null,
+              name: 'Blank Automation Channel',
+              generatorType: GeneratorType.automation,
+              color: getColor(),
+            );
+          },
+        ),
+        AnthemMenuItem(
+          text: 'Add instrument channel',
+          submenu: MenuDef(
+            children: [
+              ...availableGenerators.map(
+                (entry) => AnthemMenuItem(
+                  text: entry.name,
                   onSelected: () {
                     projectController.addGenerator(
-                      processorId: null,
-                      name: 'Blank Instrument',
+                      processorId: entry.id,
+                      name: entry.name,
                       generatorType: GeneratorType.instrument,
                       color: getColor(),
                     );
                   },
                 ),
-              ],
-            ),
+              ),
+              if (availableGenerators.isNotEmpty) Separator(),
+              AnthemMenuItem(
+                text: 'VST3...',
+                onSelected: () {
+                  projectController.addVst3Generator();
+                },
+              ),
+              AnthemMenuItem(
+                text: 'Blank',
+                onSelected: () {
+                  projectController.addGenerator(
+                    processorId: null,
+                    name: 'Blank Instrument',
+                    generatorType: GeneratorType.instrument,
+                    color: getColor(),
+                  );
+                },
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
+    );
+
+    return Menu(
+      menuController: menuController,
+      menuDef: menuDef,
       child: child,
     );
   }
