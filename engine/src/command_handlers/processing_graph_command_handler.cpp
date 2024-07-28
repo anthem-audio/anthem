@@ -185,16 +185,16 @@ handleProcessingGraphCommand(const Request *request,
       auto command = request->command_as_AddProcessor();
       auto processorId = command->id()->str();
 
-      std::shared_ptr<AnthemProcessor> processor;
+      std::unique_ptr<AnthemProcessor> processor;
 
       if (processorId == "SimpleVolumeLfo") {
-        processor = std::make_shared<SimpleVolumeLfoNode>();
+        processor = std::make_unique<SimpleVolumeLfoNode>();
         success = true;
       } else if (processorId == "ToneGenerator") {
-        processor = std::make_shared<ToneGeneratorNode>();
+        processor = std::make_unique<ToneGeneratorNode>();
         success = true;
       } else if (processorId == "Gain") {
-        processor = std::make_shared<GainNode>();
+        processor = std::make_unique<GainNode>();
         success = true;
       } else {
         success = false;
@@ -213,7 +213,7 @@ handleProcessingGraphCommand(const Request *request,
 
       uint64_t nodeId;
       if (success) {
-        nodeId = anthem->addNode(processor);
+        nodeId = anthem->addNode(std::move(processor));
       } else {
         return std::nullopt;
       }
