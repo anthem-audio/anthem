@@ -28,7 +28,7 @@
 // Represents a node in the processing graph.
 class AnthemGraphNode : public std::enable_shared_from_this<AnthemGraphNode> {
 public:
-  std::shared_ptr<AnthemProcessor> processor;
+  std::unique_ptr<AnthemProcessor> processor;
 
   std::vector<std::shared_ptr<AnthemGraphNodePort>> audioInputs;
   std::vector<std::shared_ptr<AnthemGraphNodePort>> audioOutputs;
@@ -40,7 +40,7 @@ public:
 
   std::optional<std::shared_ptr<AnthemProcessContext>> runtimeContext;
 
-  static std::shared_ptr<AnthemGraphNode> create(std::shared_ptr<AnthemProcessor> processor);
+  static std::shared_ptr<AnthemGraphNode> create(std::unique_ptr<AnthemProcessor> processor);
 
   // Delete the copy constructor
   AnthemGraphNode(const AnthemGraphNode&) = delete;
@@ -48,7 +48,7 @@ public:
   // Delete the copy assignment operator
   AnthemGraphNode& operator=(const AnthemGraphNode&) = delete;
 
-  AnthemGraphNode(std::shared_ptr<AnthemProcessor> processor);
+  AnthemGraphNode(std::unique_ptr<AnthemProcessor> processor);
 
   void initializePorts();
 

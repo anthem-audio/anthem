@@ -20,7 +20,9 @@
 #include "anthem_graph_node.h"
 #include "anthem_process_context.h"
 
-AnthemGraphNode::AnthemGraphNode(std::shared_ptr<AnthemProcessor> processor) : processor(processor) {
+AnthemGraphNode::AnthemGraphNode(std::unique_ptr<AnthemProcessor> processor) {
+  this->processor = std::move(processor);
+
   audioInputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
   audioOutputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
 
@@ -36,8 +38,8 @@ AnthemGraphNode::AnthemGraphNode(std::shared_ptr<AnthemProcessor> processor) : p
   runtimeContext = std::nullopt;
 }
 
-std::shared_ptr<AnthemGraphNode> AnthemGraphNode::create(std::shared_ptr<AnthemProcessor> processor) {
-  auto node = std::make_shared<AnthemGraphNode>(processor);
+std::shared_ptr<AnthemGraphNode> AnthemGraphNode::create(std::unique_ptr<AnthemProcessor> processor) {
+  auto node = std::make_shared<AnthemGraphNode>(std::move(processor));
   node->initializePorts();
   return node;
 }
