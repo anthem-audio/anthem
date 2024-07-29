@@ -19,39 +19,44 @@
 
 #include "anthem_graph_processor.h"
 
-AnthemGraphProcessor::AnthemGraphProcessor() {
-  this->processingStepsQueue = std::make_unique<ThreadSafeQueue<std::shared_ptr<AnthemGraphCompilationResult>>>(512);
-  this->processingStepsDeletionQueue = std::make_unique<ThreadSafeQueue<std::shared_ptr<AnthemGraphCompilationResult>>>(512);
-
+AnthemGraphProcessor::AnthemGraphProcessor() : clearDeletionQueueTimedCallback(juce::TimedCallback([this]() {
+        this->clearDeletionQueueFromMainThread();
+      })),
+      processingStepsQueue(ThreadSafeQueue<AnthemGraphCompilationResult*>(512)),
+      processingStepsDeletionQueue(ThreadSafeQueue<AnthemGraphCompilationResult*>(512)) {
   // Set up a JUCE timer to clear the deletion queue every 1s
-  this->clearDeletionQueueTimedCallback = std::make_unique<juce::TimedCallback>([this]() {
-    this->clearDeletionQueueFromMainThread();
-  });
-  this->clearDeletionQueueTimedCallback->startTimer(1000);
+  // this->clearDeletionQueueTimedCallback = std::move();
+  this->clearDeletionQueueTimedCallback.startTimer(1000);
+  this->processingSteps = nullptr;
 }
 
-void AnthemGraphProcessor::setProcessingStepsFromMainThread(std::shared_ptr<AnthemGraphCompilationResult> compilationResult) {
-  this->processingStepsQueue->add(compilationResult);
+void AnthemGraphProcessor::setProcessingStepsFromMainThread(AnthemGraphCompilationResult* compilationResult) {
+  this->processingStepsQueue.add(compilationResult);
 }
 
 void AnthemGraphProcessor::clearDeletionQueueFromMainThread() {
-  auto nextCompilationResult = this->processingStepsDeletionQueue->read();
+  auto nextCompilationResult = this->processingStepsDeletionQueue.read();
 
   while (nextCompilationResult) {
-    nextCompilationResult = this->processingStepsDeletionQueue->read();
+    auto* ptr = nextCompilationResult.value();
+    delete ptr;
+    nextCompilationResult = this->processingStepsDeletionQueue.read();
   }
 }
 
 void AnthemGraphProcessor::process(int numSamples) {
-  auto nextCompilationResult = this->processingStepsQueue->read();
+  auto nextCompilationResult = std::move(this->processingStepsQueue.read());
 
   while (nextCompilationResult) {
-    this->processingStepsDeletionQueue->add(this->processingSteps);
+    if (this->processingSteps != nullptr) {
+      this->processingStepsDeletionQueue.add(this->processingSteps);
+    }
+
     this->processingSteps = nextCompilationResult.value();
-    nextCompilationResult = this->processingStepsQueue->read();
+    nextCompilationResult = this->processingStepsQueue.read();
   }
 
-  auto actionGroups = this->processingSteps->actionGroups;
+  auto& actionGroups = this->processingSteps->actionGroups;
 
   for (auto& group : actionGroups) {
     // Actions within groups can be executed in parallel, but we're not doing

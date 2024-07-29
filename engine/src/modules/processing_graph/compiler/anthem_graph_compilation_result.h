@@ -33,9 +33,9 @@ public:
   // The way these groups are constructed currently is quite naive and no work
   // has been done to optimize it.
   std::vector<
-    std::shared_ptr<
+    std::unique_ptr<
       std::vector<
-        std::shared_ptr<AnthemGraphCompilerAction>
+        std::unique_ptr<AnthemGraphCompilerAction>
       >
     >
   > actionGroups;

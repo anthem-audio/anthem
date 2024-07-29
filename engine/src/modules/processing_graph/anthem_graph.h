@@ -43,7 +43,7 @@ private:
 
   // This method is called when the graph is updated, and it updates the
   // graph processor.
-  void sendCompiledGraphToProcessor(std::shared_ptr<AnthemGraphCompilationResult> compiledGraph);
+  void sendCompiledGraphToProcessor(AnthemGraphCompilationResult* compiledGraph);
 public:
   AnthemGraph();
 

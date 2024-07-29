@@ -52,5 +52,5 @@
 // instructions that can be executed in a real-time context.
 class AnthemGraphCompiler {
 public:
-  static std::shared_ptr<AnthemGraphCompilationResult> compile(AnthemGraphTopology& topology);
+  static AnthemGraphCompilationResult* compile(AnthemGraphTopology& topology);
 };

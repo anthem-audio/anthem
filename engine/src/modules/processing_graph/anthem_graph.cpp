@@ -53,7 +53,7 @@ void AnthemGraph::disconnectNodes(
   topology->removeConnection(source, destination);
 }
 
-void AnthemGraph::sendCompiledGraphToProcessor(std::shared_ptr<AnthemGraphCompilationResult> compiledGraph) {
+void AnthemGraph::sendCompiledGraphToProcessor(AnthemGraphCompilationResult* compiledGraph) {
   graphProcessor->setProcessingStepsFromMainThread(compiledGraph);
 }
 
