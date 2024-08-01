@@ -39,14 +39,15 @@ var _engineIdGenerator = 0;
 
 int getEngineID() => _engineIdGenerator++;
 
-/// Engine class, used for communicating with Tracktion Engine.
+/// Engine class, used for communicating with the Anthem engine process.
 ///
-/// This class manages the IPC connection between the UI and engine processes
-/// and provides a higher-level async API to the rest of the UI.
+/// This class manages the low-level IPC connection between the UI and engine
+/// processes and presents a higher-level async API to the rest of the UI.
 class Engine {
   int id;
   late EngineConnector _engineConnector;
 
+  /// The project that this engine is attached to
   ProjectModel project;
 
   late ProjectApi projectApi;
@@ -61,6 +62,12 @@ class Engine {
   late final Stream<EngineState> engineStateStream;
 
   EngineState _engineState = EngineState.stopped;
+  EngineState get engineState => _engineState;
+
+  void _setEngineState(EngineState state) {
+    _engineState = state;
+    _engineStateStreamController.add(state);
+  }
 
   Engine(this.id, this.project) {
     engineStateStream = _engineStateStreamController.stream;
@@ -89,13 +96,7 @@ class Engine {
       command: ExitObjectBuilder(),
     );
 
-    final completer = Completer<void>();
-
-    _request(id, request, onResponse: (response) {
-      completer.complete();
-    });
-
-    await completer.future;
+    await _request(id, request);
 
     // This force-kills the engine... Maybe we should give it some time to
     // shut down? Not sure how to tell when the process stops.
@@ -109,12 +110,14 @@ class Engine {
     _engineStateStreamController.close();
   }
 
+  /// Stops the engine process, if it is running.
   Future<void> stop() async {
     if (_engineState != EngineState.stopped) {
       await _exit();
     }
   }
 
+  /// Starts the engine process, and attaches to it.
   Future<void> start() async {
     if (_engineState != EngineState.stopped) {
       return;
@@ -130,20 +133,22 @@ class Engine {
     _setEngineState(success ? EngineState.running : EngineState.stopped);
   }
 
-  /// Sends a request to the engine.
-  ///
-  /// If a [onResponse] function is provided, the function will be called with the
-  /// engine's response.
-  void _request(int id, RequestObjectBuilder request,
-      {void Function(Response response)? onResponse}) {
-    if (onResponse != null) {
-      replyFunctions[id] = onResponse;
+  /// Sends a request to the engine, and asynchronously returns the response.
+  Future<Response> _request(int id, RequestObjectBuilder request) {
+    if (engineState != EngineState.running) {
+      throw AssertionError('Engine must be running to send commands.');
     }
-    _engineConnector.send(request);
-  }
 
-  void _setEngineState(EngineState state) {
-    _engineState = state;
-    _engineStateStreamController.add(state);
+    final completer = Completer<Response>();
+
+    void onResponse(Response response) {
+      completer.complete(response);
+    }
+
+    replyFunctions[id] = onResponse;
+
+    _engineConnector.send(request);
+
+    return completer.future;
   }
 }

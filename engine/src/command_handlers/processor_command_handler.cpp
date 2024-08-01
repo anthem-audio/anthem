@@ -28,11 +28,11 @@ handleProcessorCommand(const Request *request,
   switch (commandType) {
     case Command_SetParameter: {
       auto command = request->command_as_SetParameter();
-      auto processorId = command->processor_id();
-      auto parameterIndex = command->parameter_index();
+      auto nodeId = command->node_id();
+      auto parameterId = command->parameter_id();
       auto value = command->value();
 
-      anthem->getNode(processorId)->setParameter(parameterIndex, value);
+      anthem->getNode(nodeId)->setParameter(parameterId, value);
 
       auto response = CreateSetParameterResponse(builder, true);
       auto responseOffset = response.Union();
@@ -41,5 +41,7 @@ handleProcessorCommand(const Request *request,
 
       return std::optional(message);
     }
+    default:
+      return std::nullopt;
   }
 }

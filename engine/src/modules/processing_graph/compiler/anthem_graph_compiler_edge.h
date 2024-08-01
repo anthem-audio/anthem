@@ -31,9 +31,9 @@ public:
   // The edge in the node graph
   std::shared_ptr<AnthemGraphNodeConnection> edgeSource;
 
-  std::shared_ptr<AnthemProcessContext> sourceNodeContext;
+  AnthemProcessContext* sourceNodeContext;
 
-  std::shared_ptr<AnthemProcessContext> destinationNodeContext;
+  AnthemProcessContext* destinationNodeContext;
 
   // The type of this edge
   AnthemGraphDataType type;
@@ -43,8 +43,8 @@ public:
 
   AnthemGraphCompilerEdge(
     std::shared_ptr<AnthemGraphNodeConnection> edge,
-    std::shared_ptr<AnthemProcessContext> sourceNodeContext,
-    std::shared_ptr<AnthemProcessContext> destinationNodeContext,
+    AnthemProcessContext* sourceNodeContext,
+    AnthemProcessContext* destinationNodeContext,
     AnthemGraphDataType type
   ) : edgeSource(edge), sourceNodeContext(sourceNodeContext), destinationNodeContext(destinationNodeContext), type(type) {}
 };

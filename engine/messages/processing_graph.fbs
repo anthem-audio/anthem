@@ -100,6 +100,39 @@ table GetProcessorsResponse {
   processors: [ProcessorDescription];
 }
 
+table ProcessorPortDescription {
+  id: ulong;
+}
+
+table ProcessorParameterDescription {
+  id: ulong;
+  default_value: float;
+  min_value: float;
+  max_value: float;
+}
+
+// Gets the ports of a node instance with the given ID
+table GetProcessorPorts {
+  id: ulong;
+}
+table GetProcessorPortsResponse {
+  // Whether the command succeded
+  success: bool;
+
+  // If the command failed, this will contain an error message
+  error: string;
+
+  input_audio_ports: [ProcessorPortDescription];
+  input_control_ports: [ProcessorPortDescription];
+  input_midi_ports: [ProcessorPortDescription];
+
+  output_audio_ports: [ProcessorPortDescription];
+  output_control_ports: [ProcessorPortDescription];
+  output_midi_ports: [ProcessorPortDescription];
+
+  parameters: [ProcessorParameterDescription];
+}
+
 // Compiles the processing graph and sends the result to the audio thread. This
 // must be called after any graph changes.
 table CompileProcessingGraph {}

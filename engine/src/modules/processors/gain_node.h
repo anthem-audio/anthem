@@ -19,19 +19,27 @@
 
 #pragma once
 
-#include <memory>
+#include "anthem_processor.h"
 
-#include "anthem_graph_node.h"
-#include "anthem_graph_compiler_action.h"
-#include "anthem_process_context.h"
-
-class ZeroInputBuffersAction : public AnthemGraphCompilerAction {
+// The gain node takes an audio input and multiplies each sample by a control
+// input.
+//
+// Note that this control input is a raw gain value, not decibels. Decibels can
+// be converted to raw gain using the following formula:
+//
+// `rawGain = 10 ^ (decibels / 20)`
+//
+// As an example, -3 db converts to a raw gain of roughly 0.7:
+//
+// `10 ^ (-0.3 / 20) ~= 0.7`
+//
+// So, for a decibel change of -3 db, the control value must be roughly 0.7.
+//
+// The input can be anything from from 0 (-inf db) to 10 (+20 db).
+class GainNode : public AnthemProcessor {
 public:
-  AnthemProcessContext* context;
+  GainNode();
+  ~GainNode() override;
 
-  ZeroInputBuffersAction(AnthemProcessContext* context) : context(context) {}
-
-  void execute(int numSamples) override;
-
-  void debugPrint() override;
+  void process(AnthemProcessContext& context, int numSamples) override;
 };

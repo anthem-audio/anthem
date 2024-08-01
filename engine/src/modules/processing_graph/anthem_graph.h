@@ -43,7 +43,7 @@ private:
 
   // This method is called when the graph is updated, and it updates the
   // graph processor.
-  void sendCompiledGraphToProcessor(std::shared_ptr<AnthemGraphCompilationResult> compiledGraph);
+  void sendCompiledGraphToProcessor(AnthemGraphCompilationResult* compiledGraph);
 public:
   AnthemGraph();
 
@@ -52,7 +52,7 @@ public:
   }
 
   // Wraps a processor with a graph node, and adds the node to the graph.
-  std::shared_ptr<AnthemGraphNode> addNode(std::shared_ptr<AnthemProcessor> processor);
+  std::shared_ptr<AnthemGraphNode> addNode(std::unique_ptr<AnthemProcessor> processor);
 
   // Removes a node from the graph.
   void removeNode(std::shared_ptr<AnthemGraphNode> node);

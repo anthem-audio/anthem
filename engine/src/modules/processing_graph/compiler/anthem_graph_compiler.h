@@ -27,10 +27,10 @@
   3. For each ready node, add it to a processing step it and mark all of its
      outgoing connections as ready to process.
   4. For each ready connection, add it to a processing step to copy the data
-     from the source port to the destination port. This must be done in a
-     single thread in series, because if multiple connections are copying to
-     the same port, two threads cannot be copying the data at the same time.
-  5. Find all nodes whose incoming connections are marked as processed. Mark
+     from the source port to the destination port. This must be done in a single
+     thread in series, because if multiple connections are copying to the same
+     port, two threads cannot be copying the data at the same time.
+  5. Find all nodes whose incoming connections are all marked as processed. Mark
      these as ready to process.
   6. Repeat steps 3-5 until all nodes are marked as processed.
 */
@@ -52,5 +52,5 @@
 // instructions that can be executed in a real-time context.
 class AnthemGraphCompiler {
 public:
-  static std::shared_ptr<AnthemGraphCompilationResult> compile(AnthemGraphTopology& topology);
+  static AnthemGraphCompilationResult* compile(AnthemGraphTopology& topology);
 };

@@ -76,6 +76,9 @@ abstract class _GeneratorModel extends Hydratable with Store {
   @observable
   ProcessorModel processor;
 
+  @observable
+  ProcessorModel gainNode;
+
   @JsonKey(includeFromJson: false, includeToJson: false)
   ProjectModel? _project;
 
@@ -85,7 +88,7 @@ abstract class _GeneratorModel extends Hydratable with Store {
     required this.generatorType,
     required this.color,
     required this.processor,
-  });
+  }) : gainNode = ProcessorModel(processorKey: 'Gain');
 
   _GeneratorModel.create({
     required this.id,
@@ -94,7 +97,8 @@ abstract class _GeneratorModel extends Hydratable with Store {
     required this.color,
     required this.processor,
     required ProjectModel project,
-  }) : super() {
+  })  : gainNode = ProcessorModel(processorKey: 'Gain'),
+        super() {
     hydrate(project: project);
   }
 
@@ -111,9 +115,19 @@ abstract class _GeneratorModel extends Hydratable with Store {
   Future<void> createInEngine(Engine engine) async {
     await processor.createInEngine(engine);
 
+    await gainNode.createInEngine(engine);
+
     await engine.processingGraphApi.connectProcessors(
       connectionType: ProcessorConnectionType.Audio,
       sourceId: processor.idInEngine!,
+      sourcePortIndex: 0,
+      destinationId: gainNode.idInEngine!,
+      destinationPortIndex: 0,
+    );
+
+    await engine.processingGraphApi.connectProcessors(
+      connectionType: ProcessorConnectionType.Audio,
+      sourceId: gainNode.idInEngine!,
       sourcePortIndex: 0,
       destinationId: _project!.masterOutputNodeId!,
       destinationPortIndex: 0,

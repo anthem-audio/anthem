@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,11 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-table SetParameter {
-  node_id: ulong;
-  parameter_id: ulong;
-  value: float;
-}
-table SetParameterResponse {
-  success: bool;
-}
+import './processor_definitions/tone_generator.dart';
+
+const processorList = [
+  toneGeneratorDefinition,
+];

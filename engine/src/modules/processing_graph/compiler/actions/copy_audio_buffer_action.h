@@ -29,16 +29,16 @@
 // Copies data from an output port to an input port
 class CopyAudioBufferAction : public AnthemGraphCompilerAction {
 public:
-  std::shared_ptr<AnthemProcessContext> source;
+  AnthemProcessContext* source;
   int sourcePort;
 
-  std::shared_ptr<AnthemProcessContext> destination;
+  AnthemProcessContext* destination;
   int destinationPort;
 
   CopyAudioBufferAction(
-    std::shared_ptr<AnthemProcessContext> source,
+    AnthemProcessContext* source,
     int sourcePort,
-    std::shared_ptr<AnthemProcessContext> destination,
+    AnthemProcessContext* destination,
     int destinationPort
   ) : source(source), sourcePort(sourcePort), destination(destination), destinationPort(destinationPort) {}
 

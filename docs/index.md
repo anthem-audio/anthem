@@ -70,6 +70,7 @@ The following is an overview of the the folder structure in the Anthem repositor
 - **`engine_connector`**: Contains the source code for a dynamic library which is loaded by the UI. This dynamic library contains code for opening and managing an IPC channel (via `message_queue` from `Boost.Interprocess`) between the UI and engine processes.
 - **`lib`**: Contains the UI for Anthem.
   - **`commands`**: Anthem uses the command pattern for undo/redo. This folder contains code for actions that can be performed in the UI.
+  - **`controller`**: Meant as "controller" in the MVC sense. Contains classes for logic that are used by commands.
   - **`engine_api`**: Contains an API for interacting with the engine. This API abstracts the low-level communication details and provides a set of `async` functions to the rest of the UI.
   - **`generated`**: Contains generated FlatBuffers files.
   - **`helpers`**: Contains miscellaneous helper functions used by multiple other places in the UI, such as an ID generator.

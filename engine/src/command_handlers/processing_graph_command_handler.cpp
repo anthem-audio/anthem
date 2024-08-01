@@ -21,6 +21,7 @@
 
 #include "simple_volume_lfo_node.h"
 #include "tone_generator_node.h"
+#include "gain_node.h"
 
 std::optional<flatbuffers::Offset<Response>>
 handleProcessingGraphCommand(const Request *request,
@@ -56,6 +57,119 @@ handleProcessingGraphCommand(const Request *request,
 
       return std::optional(message);
     }
+    case Command_GetProcessorPorts: {
+      auto command = request->command_as_GetProcessorPorts();
+      uint64_t nodeId = command->id();
+
+      if (!anthem->hasNode(nodeId)) {
+        std::string error = "Node not found";
+        auto errorResponse = CreateGetProcessorPortsResponse(builder, false, builder.CreateString(error));
+        auto errorResponseOffset = errorResponse.Union();
+        auto errorResponseMessage = CreateResponse(builder, request->id(), ReturnValue_GetProcessorPortsResponse, errorResponseOffset);
+
+        return std::optional(errorResponseMessage);
+      }
+
+      auto node = anthem->getNode(nodeId);
+
+      std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbAudioInputPorts;
+
+      for (const auto& port : node->audioInputs) {
+        auto id = port->config->id;
+
+        auto portDescription = CreateProcessorPortDescription(builder, id);
+        fbAudioInputPorts.push_back(portDescription);
+      }
+
+      std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbControlInputPorts;
+
+      for (const auto& port : node->controlInputs) {
+        auto id = port->config->id;
+
+        auto portDescription = CreateProcessorPortDescription(builder, id);
+        fbControlInputPorts.push_back(portDescription);
+      }
+
+      std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbMidiInputPorts;
+
+      // for (const auto& port : node->midiInputs) {
+      //   auto id = port->config->name;
+
+      //   auto portDescription = CreateProcessorPortDescription(builder, id);
+      //   fbMidiInputPorts.push_back(portDescription);
+      // }
+
+      std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbAudioOutputPorts;
+
+      for (const auto& port : node->audioOutputs) {
+        auto id = port->config->id;
+
+        auto portDescription = CreateProcessorPortDescription(builder, id);
+        fbAudioOutputPorts.push_back(portDescription);
+      }
+
+      std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbControlOutputPorts;
+
+      for (const auto& port : node->controlOutputs) {
+        auto id = port->config->id;
+
+        auto portDescription = CreateProcessorPortDescription(builder, id);
+        fbControlOutputPorts.push_back(portDescription);
+      }
+
+      std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbMidiOutputPorts;
+
+      // for (const auto& port : node->midiOutputs) {
+      //   auto id = port->config->id;
+      
+      //   auto portDescription = CreateProcessorPortDescription(builder, id);
+      //   fbMidiOutputPorts.push_back(portDescription);
+      // }
+
+      std::vector<flatbuffers::Offset<ProcessorParameterDescription>> fbParameters;
+
+      for (int i = 0; i < node->controlInputs.size(); i++) {
+        auto& port = node->controlInputs[i];
+        auto parameter = node->processor->config.getParameterByIndex(i);
+
+        auto id = port->config->id;
+        auto defaultValue = parameter->defaultValue;
+        auto min = parameter->minValue;
+        auto max = parameter->maxValue;
+
+        auto parameterDescription = CreateProcessorParameterDescription(builder, id, defaultValue, min, max);
+        fbParameters.push_back(parameterDescription);
+      }
+
+      auto audioInputPortsOffset = builder.CreateVector(fbAudioInputPorts);
+      auto controlInputPortsOffset = builder.CreateVector(fbControlInputPorts);
+      auto midiInputPortsOffset = builder.CreateVector(fbMidiInputPorts);
+
+      auto audioOutputPortsOffset = builder.CreateVector(fbAudioOutputPorts);
+      auto controlOutputPortsOffset = builder.CreateVector(fbControlOutputPorts);
+      auto midiOutputPortsOffset = builder.CreateVector(fbMidiOutputPorts);
+
+      auto parametersOffset = builder.CreateVector(fbParameters);
+
+      auto response = CreateGetProcessorPortsResponse(
+        builder,
+        true,
+        0,
+        audioInputPortsOffset,
+        controlInputPortsOffset,
+        midiInputPortsOffset,
+        audioOutputPortsOffset,
+        controlOutputPortsOffset,
+        midiOutputPortsOffset,
+        parametersOffset
+      );
+
+      auto responseOffset = response.Union();
+
+      auto message = CreateResponse(builder, request->id(), ReturnValue_GetProcessorPortsResponse, responseOffset);
+
+      return std::optional(message);
+    }
     case Command_GetMasterOutputNodeId: {
       auto response = CreateGetMasterOutputNodeIdResponse(builder, anthem->getMasterOutputNodeId());
       auto responseOffset = response.Union();
@@ -71,13 +185,16 @@ handleProcessingGraphCommand(const Request *request,
       auto command = request->command_as_AddProcessor();
       auto processorId = command->id()->str();
 
-      std::shared_ptr<AnthemProcessor> processor;
+      std::unique_ptr<AnthemProcessor> processor;
 
       if (processorId == "SimpleVolumeLfo") {
-        processor = std::make_shared<SimpleVolumeLfoNode>();
+        processor = std::make_unique<SimpleVolumeLfoNode>();
         success = true;
       } else if (processorId == "ToneGenerator") {
-        processor = std::make_shared<ToneGeneratorNode>();
+        processor = std::make_unique<ToneGeneratorNode>();
+        success = true;
+      } else if (processorId == "Gain") {
+        processor = std::make_unique<GainNode>();
         success = true;
       } else {
         success = false;
@@ -96,7 +213,9 @@ handleProcessingGraphCommand(const Request *request,
 
       uint64_t nodeId;
       if (success) {
-        nodeId = anthem->addNode(processor);
+        nodeId = anthem->addNode(std::move(processor));
+      } else {
+        return std::nullopt;
       }
 
       auto response = CreateAddProcessorResponse(builder, true, nodeId, 0);
@@ -134,7 +253,7 @@ handleProcessingGraphCommand(const Request *request,
 
       uint64_t sourceId = command->source_id();
       uint64_t destinationId = command->destination_id();
-      ProcessorConnectionType connectionType = command->connection_type();
+      // ProcessorConnectionType connectionType = command->connection_type();
       uint32_t sourcePortIndex = command->source_port_index();
       uint32_t destinationPortIndex = command->destination_port_index();
 

@@ -21,14 +21,12 @@ import 'package:anthem/commands/command.dart';
 import 'package:anthem/commands/command_queue.dart';
 import 'package:anthem/commands/journal_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
-import 'package:anthem/generated/processing_graph_generated.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/song.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
 import 'generator.dart';
-import 'processing_graph/processor_definition.dart';
 import 'shared/hydratable.dart';
 
 part 'project.g.dart';
@@ -55,12 +53,6 @@ abstract class _ProjectModel extends Hydratable with Store {
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
   int? masterOutputNodeId;
-
-  /// Map of processors available to Anthem.
-  @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  ObservableMap<String, ProcessorDefinition> processorDefinitions =
-      ObservableMap();
 
   /// Map of generators in the project.
   @observable
@@ -193,25 +185,6 @@ abstract class _ProjectModel extends Hydratable with Store {
     masterOutputNodeId =
         await engine.processingGraphApi.getMasterOutputNodeId();
 
-    processorDefinitions.clear();
-
-    final processors = await engine.processingGraphApi.getAvailableProcessors();
-
-    // Query the engine for the available processors and create ProcessorDefinition
-    // objects for each one.
-    for (final processor in processors) {
-      processorDefinitions[processor.id!] = ProcessorDefinition(
-        id: processor.id!,
-        type: switch (processor.category) {
-          ProcessorCategory.Effect => ProcessorType.effect,
-          ProcessorCategory.Generator => ProcessorType.generator,
-          ProcessorCategory.Utility => ProcessorType.utility,
-          _ => throw AssertionError(
-              'Unknown processor category ${processor.category}'),
-        },
-      );
-    }
-
     await song.createInEngine(engine);
 
     for (final generator in generators.values) {
@@ -299,14 +272,6 @@ abstract class _ProjectModel extends Hydratable with Store {
 
     final command = JournalPageCommand(accumulator);
     _commandQueue.push(command);
-  }
-
-  void setActiveInstrument(ID? generatorID) {
-    activeInstrumentID = generatorID;
-  }
-
-  void setActiveAutomationGenerator(ID? generatorID) {
-    activeAutomationGeneratorID = generatorID;
   }
 }
 
