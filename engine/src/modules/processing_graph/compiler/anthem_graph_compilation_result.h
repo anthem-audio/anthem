@@ -24,6 +24,7 @@
 #include <iostream>
 
 #include "anthem_graph_compiler_action.h"
+#include "anthem_process_context.h"
 
 // This class is used to represent the result of compiling a processing graph.
 class AnthemGraphCompilationResult {
@@ -39,6 +40,21 @@ public:
       >
     >
   > actionGroups;
+
+  // This contains all process contexts. These are used in a number of different
+  // actions, and are (among other things) provided to processors when process()
+  // is called. Since there is no obvious owner, these are owned by the root
+  // compilation result, because they become invalid and must be deallocated
+  // when the compilation result is deallocated.
+  //
+  // This would be a great use-case for std::shared_ptr, but std::shared_ptr
+  // uses standard thread synchronization mechanisms and so isn't real-time
+  // safe.
+  std::vector<
+    std::unique_ptr<
+      AnthemProcessContext
+    >
+  > processContexts;
 
   void debugPrint() {
     std::cout << "AnthemGraphCompilationResult" << std::endl;

@@ -38,7 +38,7 @@ public:
 
   std::vector<float> parameters;
 
-  std::optional<std::shared_ptr<AnthemProcessContext>> runtimeContext;
+  std::optional<AnthemProcessContext*> runtimeContext;
 
   static std::shared_ptr<AnthemGraphNode> create(std::unique_ptr<AnthemProcessor> processor);
 

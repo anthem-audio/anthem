@@ -27,9 +27,9 @@
 
 class ZeroInputBuffersAction : public AnthemGraphCompilerAction {
 public:
-  std::shared_ptr<AnthemProcessContext> context;
+  AnthemProcessContext* context;
 
-  ZeroInputBuffersAction(std::shared_ptr<AnthemProcessContext> context) : context(context) {}
+  ZeroInputBuffersAction(AnthemProcessContext* context) : context(context) {}
 
   void execute(int numSamples) override;
 

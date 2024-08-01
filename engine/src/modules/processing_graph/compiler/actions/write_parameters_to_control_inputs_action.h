@@ -30,10 +30,10 @@
 // when the node is processed.
 class WriteParametersToControlInputsAction : public AnthemGraphCompilerAction {
 private:
-  std::shared_ptr<AnthemProcessContext> processContext;
+  AnthemProcessContext* processContext;
   float sampleRate;
 public:
-  WriteParametersToControlInputsAction(std::shared_ptr<AnthemProcessContext> processContext, float sampleRate)
+  WriteParametersToControlInputsAction(AnthemProcessContext* processContext, float sampleRate)
     : processContext(processContext), sampleRate(sampleRate) {}
 
   void execute(int numSamples) override;
