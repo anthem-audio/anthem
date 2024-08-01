@@ -23,6 +23,9 @@
 
 class AnthemProcessorParameterConfig {
 public:
+  // The ID of the port associated with this parameter.
+  unsigned long id;
+
   // The default value of the parameter.
   float defaultValue;
 
@@ -37,9 +40,10 @@ public:
 
   // Constructor
   AnthemProcessorParameterConfig(
+    unsigned long id,
     float defaultValue,
     float minValue,
     float maxValue,
-    float smoothingDurationSeconds = 0.001f
-  ) : defaultValue(defaultValue), minValue(minValue), maxValue(maxValue), smoothingDurationSeconds(smoothingDurationSeconds) {}
+    float smoothingDurationSeconds = 0.1f
+  ) : id(id), defaultValue(defaultValue), minValue(minValue), maxValue(maxValue), smoothingDurationSeconds(smoothingDurationSeconds) {}
 };

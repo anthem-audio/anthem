@@ -28,9 +28,7 @@ class ProjectApi {
   /// Returns a pointer to the Tracktion edit object within the engine process.
   ///
   /// The UI is responsible for cleaning up this memory.
-  Future<int> addArrangement() {
-    final completer = Completer<int>();
-
+  Future<int> addArrangement() async {
     final id = _engine._getRequestId();
 
     final request = RequestObjectBuilder(
@@ -39,18 +37,16 @@ class ProjectApi {
       command: AddArrangementObjectBuilder(),
     );
 
-    _engine._request(id, request, onResponse: (response) {
-      final inner = response.returnValue as AddArrangementResponse;
-      completer.complete(inner.editId);
-    });
+    final response = (await _engine._request(id, request)).returnValue
+        as AddArrangementResponse;
 
-    return completer.future;
+    return response.editId;
   }
 
   /// Removes an arrangement with the given `Edit` pointer.
   ///
   /// See [addArrangement].
-  void deleteArrangement(int editId) {
+  Future<void> deleteArrangement(int editId) {
     final id = _engine._getRequestId();
 
     final request = RequestObjectBuilder(
@@ -59,10 +55,10 @@ class ProjectApi {
       command: DeleteArrangementObjectBuilder(editId: editId),
     );
 
-    _engine._request(id, request);
+    return _engine._request(id, request);
   }
 
-  void noteOn({
+  Future<void> noteOn({
     int channel = 1,
     required int note,
     double velocity = 0.5,
@@ -81,10 +77,10 @@ class ProjectApi {
       ),
     );
 
-    _engine._request(id, request);
+    return _engine._request(id, request);
   }
 
-  void noteOff({
+  Future<void> noteOff({
     int channel = 1,
     required int note,
     required int editId,
@@ -101,6 +97,6 @@ class ProjectApi {
       ),
     );
 
-    _engine._request(id, request);
+    return _engine._request(id, request);
   }
 }

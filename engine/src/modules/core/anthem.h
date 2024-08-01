@@ -67,9 +67,9 @@ public:
     return masterOutputNodeId;
   }
 
-  uint64_t addNode(std::shared_ptr<AnthemProcessor> processor) {
+  uint64_t addNode(std::unique_ptr<AnthemProcessor> processor) {
     auto id = GlobalIDGenerator::generateID();
-    auto node = this->processingGraph->addNode(processor);
+    auto node = this->processingGraph->addNode(std::move(processor));
     nodes[id] = node;
     return id;
   }

@@ -17,14 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "simple_volume_lfo_node.h"
+#include "gain_node.h"
 
 #include "anthem_process_context.h"
 
-SimpleVolumeLfoNode::SimpleVolumeLfoNode() : AnthemProcessor("SimpleVolumeLfo") {
-  rate = 0.0001;
-  amplitude = 1;
-
+GainNode::GainNode() : AnthemProcessor("Gain") {
   // Audio input port
   config.addAudioInput(
     std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Audio, 0)
@@ -34,32 +31,30 @@ SimpleVolumeLfoNode::SimpleVolumeLfoNode() : AnthemProcessor("SimpleVolumeLfo") 
   config.addAudioOutput(
     std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Audio, 0)
   );
+
+  // Control ports
+  
+  // Amplitude
+  config.addControlInput(
+    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Control, 0),
+    std::make_shared<AnthemProcessorParameterConfig>(0, 1.0, 0.0, 10.0)
+  );
 }
 
-SimpleVolumeLfoNode::~SimpleVolumeLfoNode() {}
+GainNode::~GainNode() {}
 
-void SimpleVolumeLfoNode::process(AnthemProcessContext& context, int numSamples) {
-  auto& inputBuffer = context.getInputAudioBuffer(0);
-  auto& outputBuffer = context.getOutputAudioBuffer(0);
+void GainNode::process(AnthemProcessContext& context, int numSamples) {
+  auto& audioInBuffer = context.getInputAudioBuffer(0);
+  auto& audioOutBuffer = context.getOutputAudioBuffer(0);
 
-  // Generate a sine wave
-  for (int sample = 0; sample < numSamples; ++sample) {
-    for (int channel = 0; channel < outputBuffer.getNumChannels(); ++channel) {
-      const float inputValue = inputBuffer.getSample(channel, sample);
-      outputBuffer.getWritePointer(channel)[sample] = inputValue * amplitude;
-    }
+  auto& amplitudeControlBuffer = context.getInputControlBuffer(0);
 
-    if (increasing) {
-      amplitude += rate;
-    } else {
-      amplitude -= rate;
-    }
+  for (int sample = 0; sample < numSamples; sample++) {
+    for (int channel = 0; channel < audioOutBuffer.getNumChannels(); ++channel) {
+      auto inputSample = audioInBuffer.getReadPointer(channel)[sample];
+      auto amplitudeSample = amplitudeControlBuffer.getReadPointer(0)[sample];
 
-    if (amplitude >= 1) {
-      increasing = false;
-    } else if (amplitude <= 0) {
-      increasing = true;
+      audioOutBuffer.getWritePointer(channel)[sample] = inputSample * amplitudeSample;
     }
   }
 }
-

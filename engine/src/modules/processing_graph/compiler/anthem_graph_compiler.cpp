@@ -21,8 +21,11 @@
 
 #include <iostream>
 
-std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(AnthemGraphTopology& topology) {
-  std::shared_ptr<AnthemGraphCompilationResult> result = std::make_shared<AnthemGraphCompilationResult>();
+// See the header file for an overview of the graph processing algorithm. Each
+// step in the algorithm is annotated here.
+
+AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& topology) {
+  AnthemGraphCompilationResult* result = new AnthemGraphCompilationResult();
 
   // We store these in a vector so that when it goes out of scope, the nodes
   // are destroyed. We will store the actual pointers in a set, which improves
@@ -47,7 +50,10 @@ std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(Anthe
 
   // Create contexts for each node
   for (auto& node : topology.getNodes()) {
-    auto context = std::make_shared<AnthemProcessContext>(node);
+    auto context = new AnthemProcessContext(node);
+    result->processContexts.push_back(std::unique_ptr<AnthemProcessContext>(context));
+
+    result->graphNodes.push_back(node);
 
     auto compilerNode = std::make_shared<AnthemGraphCompilerNode>(node, context);
 
@@ -65,33 +71,57 @@ std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(Anthe
     node->assignEdges(nodeToCompilerNode, connectionToCompilerEdge);
   }
 
-  std::shared_ptr<std::vector<std::shared_ptr<AnthemGraphCompilerAction>>> actions = std::make_shared<std::vector<std::shared_ptr<AnthemGraphCompilerAction>>>();
+  std::unique_ptr<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>> actions = std::make_unique<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>();
 
   std::cout << "Step 1: Zero input buffers" << std::endl;
 
   // Step 1 (part 1): Zero input buffers
+  //
+  // Before starting, we add an action that writes zeros to all audio input
+  // buffers. If no inputs are present at an audio input port, then the input
+  // for that port should be silence (e.g. all zeros), as opposed to either
+  // garbage data or the data from the last block.
+  //
+  // Note that this does not do anything to contorl input buffers. In Anthem,
+  // control values are audio-rate sampled data, but unlike audio input ports,
+  // each control input port has a corresponding parameter definition that has a
+  // current value, and the control value is initialized with that current value
+  // instead. See below for more.
 
   for (auto& node : nodesToProcess) {
     actions->push_back(
-      std::make_shared<ZeroInputBuffersAction>(node->context)
+      std::move(std::make_unique<ZeroInputBuffersAction>(node->context))
     );
   }
 
-  result->actionGroups.push_back(actions);
+  result->actionGroups.push_back(std::move(actions));
 
-  actions = std::make_shared<std::vector<std::shared_ptr<AnthemGraphCompilerAction>>>();
+  actions = std::make_unique<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>();
 
-  // Step 1 (part 2): Write parameter values to control buffers
+  // Step 1 (part 2): Initialize control input buffers with corresponding
+  // parameter values.
+  //
+  // Unlike audio inputs, control inputs always have a corresponding parameter
+  // definition, which provides a default value, and a parameter instance, which
+  // provides the current value. This action writes the current value from each
+  // parameter to the input buffer for each control input. If there is a
+  // connection to a given contorl input, then the value from that connection
+  // will overwrite the parameter value in a future step.
+  //
+  // We don't skip this step for control input ports that have attached inputs,
+  // though we probably could. It's not necessarily trivial to skip though,
+  // because the control value is smoothed in this step, and not processing the
+  // smoother could produce odd behavior when connections are made or destroyed.
 
   for (auto& node : nodesToProcess) {
     actions->push_back(
-      std::make_shared<WriteParametersToControlInputsAction>(node->context, 44100.0f)
+      std::make_unique<WriteParametersToControlInputsAction>(node->context, 44100.0f)
     );
   }
 
-  result->actionGroups.push_back(actions);
+  result->actionGroups.push_back(std::move(actions));
 
-  actions = std::make_shared<std::vector<std::shared_ptr<AnthemGraphCompilerAction>>>();
+  actions = std::make_unique<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>();
 
   std::cout << result->actionGroups.size() << " action groups" << std::endl;
   std::cout << std::endl;
@@ -132,7 +162,7 @@ std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(Anthe
     for (auto& node : nodesToProcess) {
       if (node->readyToProcess) {
         std::cout << "Processing node " << node->node->processor->config.getId() << std::endl;
-        actions->push_back(std::make_shared<ProcessNodeAction>(node->context, node->node));
+        actions->push_back(std::make_unique<ProcessNodeAction>(node->context, node->node.get()));
         nodesToRemoveFromProcessing.push_back(node);
         i++;
       }
@@ -140,9 +170,9 @@ std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(Anthe
 
     std::cout << "Step 3: Added process actions for " << i << " nodes" << std::endl;
 
-    result->actionGroups.push_back(actions);
+    result->actionGroups.push_back(std::move(actions));
 
-    actions = std::make_shared<std::vector<std::shared_ptr<AnthemGraphCompilerAction>>>();
+    actions = std::make_unique<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>();
 
     std::cout << result->actionGroups.size() << " action groups" << std::endl;
 
@@ -168,7 +198,7 @@ std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(Anthe
         switch (edge->type) {
           case AnthemGraphDataType::Audio:
             actions->push_back(
-              std::make_shared<CopyAudioBufferAction>(
+              std::make_unique<CopyAudioBufferAction>(
                 edge->sourceNodeContext,
                 sourcePort.lock()->index,
                 edge->destinationNodeContext,
@@ -181,7 +211,7 @@ std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(Anthe
             break;
           case AnthemGraphDataType::Control:
             actions->push_back(
-              std::make_shared<CopyControlBufferAction>(
+              std::make_unique<CopyControlBufferAction>(
                 edge->sourceNodeContext,
                 sourcePort.lock()->index,
                 edge->destinationNodeContext,
@@ -201,9 +231,9 @@ std::shared_ptr<AnthemGraphCompilationResult> AnthemGraphCompiler::compile(Anthe
     std::cout << "Step 4: Added " << i << " connection actions" << std::endl;
     std::cout << std::endl;
 
-    result->actionGroups.push_back(actions);
+    result->actionGroups.push_back(std::move(actions));
 
-    actions = std::make_shared<std::vector<std::shared_ptr<AnthemGraphCompilerAction>>>();
+    actions = std::make_unique<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>();
 
     // Step 5: Mark nodes with no unprocessed input connections as ready to process
 

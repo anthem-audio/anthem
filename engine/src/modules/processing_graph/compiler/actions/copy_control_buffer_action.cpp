@@ -22,6 +22,7 @@
 void CopyControlBufferAction::execute(int numSamples) {
   auto& sourceBuffer = source->getOutputControlBuffer(sourcePort);
   auto& destinationBuffer = destination->getInputControlBuffer(destinationPort);
+  auto& destinationParameter = destination->getGraphNode()->processor->config.getParameterByIndex(destinationPort);
 
   // Ensure the buffers have the same number of channels and the same size
   jassert(sourceBuffer.getNumChannels() == destinationBuffer.getNumChannels());
@@ -33,7 +34,13 @@ void CopyControlBufferAction::execute(int numSamples) {
 
       // Overwrite the destination, unless the source is NaN
       if (!std::isnan(sourceSample)) {
-        destinationBuffer.setSample(channel, sample, sourceSample);
+        // Scale the incoming value based on the min/max values defined by the
+        // parameter definition
+        auto max = destinationParameter->maxValue;
+        auto min = destinationParameter->minValue;
+        auto scaledSample = sourceSample * (max - min) + min;
+
+        destinationBuffer.setSample(channel, sample, scaledSample);
       }
     }
   }

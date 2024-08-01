@@ -36,10 +36,10 @@
 // from the main thread.
 class AnthemGraphProcessor {
 private:
-  std::shared_ptr<AnthemGraphCompilationResult> processingSteps;
-  std::unique_ptr<ThreadSafeQueue<std::shared_ptr<AnthemGraphCompilationResult>>> processingStepsQueue;
-  std::unique_ptr<ThreadSafeQueue<std::shared_ptr<AnthemGraphCompilationResult>>> processingStepsDeletionQueue;
-  std::unique_ptr<juce::TimedCallback> clearDeletionQueueTimedCallback;
+  AnthemGraphCompilationResult* processingSteps;
+  ThreadSafeQueue<AnthemGraphCompilationResult*> processingStepsQueue;
+  ThreadSafeQueue<AnthemGraphCompilationResult*> processingStepsDeletionQueue;
+  juce::TimedCallback clearDeletionQueueTimedCallback;
 public:
   // Processes a single block of audio in the graph. This will also process and
   // propagate MIDI and control data.
@@ -50,7 +50,7 @@ public:
   // This function adds a new set of processing steps to the queue. This is
   // intended to be called from the main thread, and the processing steps will
   // be picked up by the audio thread.
-  void setProcessingStepsFromMainThread(std::shared_ptr<AnthemGraphCompilationResult> compilationResult);
+  void setProcessingStepsFromMainThread(AnthemGraphCompilationResult* compilationResult);
 
   // This function clears the deletion queue. This is intended to be called from
   // the main thread. The audio thread should not deallocate memory, so old compilation

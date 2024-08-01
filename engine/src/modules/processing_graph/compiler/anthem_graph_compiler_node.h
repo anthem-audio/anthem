@@ -40,12 +40,12 @@ public:
   std::vector<std::shared_ptr<AnthemGraphCompilerEdge>> outputEdges;
 
   // The runtime context for this node
-  std::shared_ptr<AnthemProcessContext> context;
+  AnthemProcessContext* context;
 
   // Whether this node is ready to process
   bool readyToProcess = false;
 
-  AnthemGraphCompilerNode(std::shared_ptr<AnthemGraphNode> node, std::shared_ptr<AnthemProcessContext> context) : node(node), context(context) {}
+  AnthemGraphCompilerNode(std::shared_ptr<AnthemGraphNode> node, AnthemProcessContext* context) : node(node), context(context) {}
 
   // Populate the input and output edges for this node
   void assignEdges(

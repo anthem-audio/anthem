@@ -29,8 +29,8 @@ AnthemGraph::AnthemGraph() {
   graphProcessor = std::make_unique<AnthemGraphProcessor>();
 }
 
-std::shared_ptr<AnthemGraphNode> AnthemGraph::addNode(std::shared_ptr<AnthemProcessor> processor) {
-  auto node = AnthemGraphNode::create(processor);
+std::shared_ptr<AnthemGraphNode> AnthemGraph::addNode(std::unique_ptr<AnthemProcessor> processor) {
+  auto node = AnthemGraphNode::create(std::move(processor));
   topology->addNode(node);
   return node;
 }
@@ -53,7 +53,7 @@ void AnthemGraph::disconnectNodes(
   topology->removeConnection(source, destination);
 }
 
-void AnthemGraph::sendCompiledGraphToProcessor(std::shared_ptr<AnthemGraphCompilationResult> compiledGraph) {
+void AnthemGraph::sendCompiledGraphToProcessor(AnthemGraphCompilationResult* compiledGraph) {
   graphProcessor->setProcessingStepsFromMainThread(compiledGraph);
 }
 

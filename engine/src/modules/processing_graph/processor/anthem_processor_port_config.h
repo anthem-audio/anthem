@@ -31,12 +31,12 @@ public:
   // The type of the port.
   AnthemGraphDataType portType;
 
-  // The name of the port.
-  std::optional<std::string> name;
+  // The ID of the port.
+  unsigned long id;
 
   // Constructor
   AnthemProcessorPortConfig(
     AnthemGraphDataType portType,
-    std::optional<std::string> name = std::nullopt
-  ) : portType(portType), name(name) {}
+    unsigned long id
+  ) : portType(portType), id(id) {}
 };

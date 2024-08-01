@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,11 +17,21 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-table SetParameter {
-  node_id: ulong;
-  parameter_id: ulong;
-  value: float;
-}
-table SetParameterResponse {
-  success: bool;
-}
+import 'package:anthem/model/processing_graph/processor_definition.dart';
+
+/// This node has a single input. Audio routed to this input will be sent to the
+/// active output device.
+const masterOutputDefinition = ProcessorDefinition(
+  id: 'MasterOutput',
+  name: 'Master Output',
+  type: ProcessorType.utility,
+  inputAudioPorts: [
+    ProcessorPort(id: 0, name: 'input'),
+  ],
+  inputControlPorts: [],
+  inputMIDIPorts: [],
+  outputAudioPorts: [],
+  outputControlPorts: [],
+  outputMIDIPorts: [],
+  parameters: [],
+);

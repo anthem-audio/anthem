@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+// import 'package:anthem/controller/processor_manager/processor_list.dart';
+// import 'package:anthem/controller/processor_manager/processor_manager.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
@@ -31,6 +33,59 @@ class ProcessorModel extends _ProcessorModel with _$ProcessorModel {
 
   factory ProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$ProcessorModelFromJson(json);
+
+  Future<void> createInEngine(Engine engine) async {
+    if (processorKey == null) return;
+
+    idInEngine = await engine.processingGraphApi.addProcessor(processorKey!);
+
+    final processorInfo = await engine.processingGraphApi
+        .getProcessorPortInfo(processorId: idInEngine!);
+
+    final newParams = <int, double>{};
+
+    for (final parameter in processorInfo.parameters) {
+      newParams[parameter.id] = parameter
+          .defaultValue; // TODO - This is incorrect. We should get the current parameter value, but we can't yet.
+    }
+
+    parameterValues = ObservableMap.of(newParams);
+
+    // Report changes back to the engine
+    parameterValues.observe((change) async {
+      if (engine.engineState != EngineState.running || idInEngine == null) {
+        return;
+      }
+
+      if (change.newValue == null || change.oldValue == null) {
+        throw AssertionError(
+            'Parameters cannot be added or removed from the map.');
+      }
+
+      engine.processingGraphApi.setParameter(
+        nodeId: idInEngine!,
+        parameterId: change.key!,
+        value: change.newValue!,
+      );
+    });
+
+    // We use a weak ref here so that the callback below won't hold on to this object
+    final weakRef = WeakReference(this);
+    engine.engineStateStream.first.then((state) {
+      if (state != EngineState.running) {
+        // Set the id in engine to null. This is so the null check above still
+        // works if the engine is stopped and started again.
+        weakRef.target?.idInEngine = null;
+      }
+    });
+
+    // await processorManager.validateProcessor(
+    //   engine: engine,
+    //   processorDefinition:
+    //       processorList.firstWhere((processor) => processor.id == processorKey),
+    //   nodeInstanceId: idInEngine!,
+    // );
+  }
 }
 
 abstract class _ProcessorModel with Store {
@@ -39,14 +94,20 @@ abstract class _ProcessorModel with Store {
   @observable
   String? processorKey;
 
+  @JsonKey(fromJson: _parameterValuesFromJson, toJson: _parameterValuesToJson)
+  ObservableMap<int, double> parameterValues = ObservableMap();
+
   _ProcessorModel({required this.processorKey});
 
   Map<String, dynamic> toJson() =>
       _$ProcessorModelToJson(this as ProcessorModel);
+}
 
-  Future<void> createInEngine(Engine engine) async {
-    if (processorKey == null) return;
+ObservableMap<int, double> _parameterValuesFromJson(Map<String, dynamic> json) {
+  return ObservableMap.of(
+      json.map((key, value) => MapEntry(int.parse(key), value)));
+}
 
-    idInEngine = await engine.processingGraphApi.addProcessor(processorKey!);
-  }
+Map<String, dynamic> _parameterValuesToJson(ObservableMap<int, double> map) {
+  return map.map((key, value) => MapEntry(key.toString(), value));
 }

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,11 +17,31 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-table SetParameter {
-  node_id: ulong;
-  parameter_id: ulong;
-  value: float;
-}
-table SetParameterResponse {
-  success: bool;
-}
+import 'package:anthem/model/processing_graph/processor_definition.dart';
+
+const gainDefinition = ProcessorDefinition(
+  id: 'Gain',
+  name: 'Gain',
+  type: ProcessorType.generator,
+  inputAudioPorts: [
+    ProcessorPort(id: 0, name: 'Input'),
+  ],
+  inputControlPorts: [
+    ProcessorPort(id: 0, name: 'Raw Gain'),
+  ],
+  inputMIDIPorts: [],
+  outputAudioPorts: [
+    ProcessorPort(id: 0, name: 'Output'),
+  ],
+  outputControlPorts: [],
+  outputMIDIPorts: [],
+  parameters: [
+    // Raw Gain
+    ProcessorParameter(
+      id: 0,
+      defaultValue: 1,
+      minValue: 0.0,
+      maxValue: 10.0,
+    ),
+  ],
+);
