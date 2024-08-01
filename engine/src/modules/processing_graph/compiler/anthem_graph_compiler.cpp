@@ -50,7 +50,8 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
 
   // Create contexts for each node
   for (auto& node : topology.getNodes()) {
-    auto context = std::make_shared<AnthemProcessContext>(node);
+    auto context = new AnthemProcessContext(node);
+    result->processContexts.push_back(std::unique_ptr<AnthemProcessContext>(context));
 
     auto compilerNode = std::make_shared<AnthemGraphCompilerNode>(node, context);
 
