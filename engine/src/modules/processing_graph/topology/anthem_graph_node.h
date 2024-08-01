@@ -28,6 +28,8 @@
 // Represents a node in the processing graph.
 class AnthemGraphNode : public std::enable_shared_from_this<AnthemGraphNode> {
 public:
+  // The processor associated with this node. Note that this is accessed from
+  // the audio thread, and so must not be a shared_ptr.
   std::unique_ptr<AnthemProcessor> processor;
 
   std::vector<std::shared_ptr<AnthemGraphNodePort>> audioInputs;

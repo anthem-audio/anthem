@@ -53,6 +53,8 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
     auto context = new AnthemProcessContext(node);
     result->processContexts.push_back(std::unique_ptr<AnthemProcessContext>(context));
 
+    result->graphNodes.push_back(node);
+
     auto compilerNode = std::make_shared<AnthemGraphCompilerNode>(node, context);
 
     node->runtimeContext = std::make_optional(context);
@@ -160,7 +162,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
     for (auto& node : nodesToProcess) {
       if (node->readyToProcess) {
         std::cout << "Processing node " << node->node->processor->config.getId() << std::endl;
-        actions->push_back(std::make_unique<ProcessNodeAction>(node->context, node->node));
+        actions->push_back(std::make_unique<ProcessNodeAction>(node->context, node->node.get()));
         nodesToRemoveFromProcessing.push_back(node);
         i++;
       }

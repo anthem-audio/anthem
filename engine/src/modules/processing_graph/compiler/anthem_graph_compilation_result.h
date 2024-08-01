@@ -25,6 +25,7 @@
 
 #include "anthem_graph_compiler_action.h"
 #include "anthem_process_context.h"
+#include "anthem_graph_node.h"
 
 // This class is used to represent the result of compiling a processing graph.
 class AnthemGraphCompilationResult {
@@ -55,6 +56,32 @@ public:
       AnthemProcessContext
     >
   > processContexts;
+
+  // This contains a shared_ptr reference to each graph node that was present
+  // when this context was created.
+  //
+  // This exists to ensure that graph nodes are not freed until the audio thread
+  // is done with them. The audio thread itself can't interact with these since
+  // they aren't thread-safe; instead, the deallocation of the compilation
+  // result on the main thread triggers deallocation for any nodes that need it.
+  //
+  // Note that the audio thread only has access to these nodes so that it can
+  // call node->processor->process(&context, numSamples).
+  //
+  // If this list didn't exist, then we'd risk the following use-after-free:
+  //    1. A node is created and connected to the rest of the graph.
+  //    2. The graph is compiled, and the result is sent to the audio thread.
+  //    3. The node is removed from the audio graph, with a compiled update
+  //       expected to be sent next.
+  //    4. Before the compiled update can be sent, this node is deallocated
+  //       because it has no more shared_ptr references.
+  //    5. The audio thread continues to use its raw pointer to try to access
+  //       the node, which results in a use-after-free.
+  std::vector<
+    std::shared_ptr<
+      AnthemGraphNode
+    >
+  > graphNodes;
 
   void debugPrint() {
     std::cout << "AnthemGraphCompilationResult" << std::endl;

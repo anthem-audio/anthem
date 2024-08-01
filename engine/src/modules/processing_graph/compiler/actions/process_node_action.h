@@ -28,11 +28,11 @@
 class ProcessNodeAction : public AnthemGraphCompilerAction {
 public:
   AnthemProcessContext* context;
-  std::shared_ptr<AnthemGraphNode> node;
+  AnthemGraphNode* node;
 
   void execute(int numSamples) override;
 
-  ProcessNodeAction(AnthemProcessContext* context, std::shared_ptr<AnthemGraphNode> node) : context(context), node(node) {}
+  ProcessNodeAction(AnthemProcessContext* context, AnthemGraphNode* node) : context(context), node(node) {}
 
   void debugPrint() override;
 };
