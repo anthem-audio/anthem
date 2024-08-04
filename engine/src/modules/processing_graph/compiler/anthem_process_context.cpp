@@ -58,7 +58,7 @@ AnthemProcessContext::AnthemProcessContext(std::shared_ptr<AnthemGraphNode> grap
   }
 }
 
-void AnthemProcessContext::setParameterValue(int index, float value) {
+void AnthemProcessContext::setParameterValue(size_t index, float value) {
   // Throw if not on the JUCE message thread
   if (!juce::MessageManager::getInstance()->isThisTheMessageThread()) {
     throw std::runtime_error("AnthemProcessContext::setParameterValue() must be called on the JUCE message thread.");
@@ -67,7 +67,7 @@ void AnthemProcessContext::setParameterValue(int index, float value) {
   parameterValues[index].store(value);
 }
 
-float AnthemProcessContext::getParameterValue(int index) {
+float AnthemProcessContext::getParameterValue(size_t index) {
   return parameterValues[index].load();
 }
 
@@ -79,19 +79,19 @@ void AnthemProcessContext::setAllOutputAudioBuffers(const std::vector<juce::Audi
   outputAudioBuffers = buffers;
 }
 
-juce::AudioSampleBuffer& AnthemProcessContext::getInputAudioBuffer(int index) {
+juce::AudioSampleBuffer& AnthemProcessContext::getInputAudioBuffer(size_t index) {
   return inputAudioBuffers[index];
 }
 
-juce::AudioSampleBuffer& AnthemProcessContext::getOutputAudioBuffer(int index) {
+juce::AudioSampleBuffer& AnthemProcessContext::getOutputAudioBuffer(size_t index) {
   return outputAudioBuffers[index];
 }
 
-int AnthemProcessContext::getNumInputAudioBuffers() {
+size_t AnthemProcessContext::getNumInputAudioBuffers() {
   return inputAudioBuffers.size();
 }
 
-int AnthemProcessContext::getNumOutputAudioBuffers() {
+size_t AnthemProcessContext::getNumOutputAudioBuffers() {
   return outputAudioBuffers.size();
 }
 
@@ -103,18 +103,18 @@ void AnthemProcessContext::setAllOutputControlBuffers(const std::vector<juce::Au
   outputControlBuffers = buffers;
 }
 
-juce::AudioSampleBuffer& AnthemProcessContext::getInputControlBuffer(int index) {
+juce::AudioSampleBuffer& AnthemProcessContext::getInputControlBuffer(size_t index) {
   return inputControlBuffers[index];
 }
 
-juce::AudioSampleBuffer& AnthemProcessContext::getOutputControlBuffer(int index) {
+juce::AudioSampleBuffer& AnthemProcessContext::getOutputControlBuffer(size_t index) {
   return outputControlBuffers[index];
 }
 
-int AnthemProcessContext::getNumInputControlBuffers() {
+size_t AnthemProcessContext::getNumInputControlBuffers() {
   return inputControlBuffers.size();
 }
 
-int AnthemProcessContext::getNumOutputControlBuffers() {
+size_t AnthemProcessContext::getNumOutputControlBuffers() {
   return outputControlBuffers.size();
 }

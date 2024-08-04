@@ -42,13 +42,13 @@ ToneGeneratorNode::ToneGeneratorNode() : AnthemProcessor("ToneGenerator") {
   // Frequency
   config.addControlInput(
     std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Control, 0),
-    std::make_shared<AnthemProcessorParameterConfig>(0, 440.0, 0.0, 20000.0)
+    std::make_shared<AnthemProcessorParameterConfig>(0ul, 440.0f, 0.0f, 20000.0f)
   );
 
   // Amplitude
   config.addControlInput(
     std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Control, 1),
-    std::make_shared<AnthemProcessorParameterConfig>(1, 0.125, 0.0, 1.0)
+    std::make_shared<AnthemProcessorParameterConfig>(1ul, 0.125f, 0.0f, 1.0f)
   );
 }
 
@@ -65,7 +65,7 @@ void ToneGeneratorNode::process(AnthemProcessContext& context, int numSamples) {
     auto frequency = frequencyControlBuffer.getReadPointer(0)[sample];
     auto amplitude = amplitudeControlBuffer.getReadPointer(0)[sample];
 
-    const float value = amplitude * std::sin(
+    const float value = amplitude * (float) std::sin(
       2.0 * juce::MathConstants<float>::pi * phase
     );
 

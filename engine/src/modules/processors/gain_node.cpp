@@ -37,7 +37,7 @@ GainNode::GainNode() : AnthemProcessor("Gain") {
   // Amplitude
   config.addControlInput(
     std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Control, 0),
-    std::make_shared<AnthemProcessorParameterConfig>(0, 1.0, 0.0, 10.0)
+    std::make_shared<AnthemProcessorParameterConfig>(0ul, 1.0f, 0.0f, 10.0f)
   );
 }
 
