@@ -47,82 +47,82 @@ public:
   AnthemProcessorConfig(const std::string& id) : id(id) {}
 
   // Gets the index of an audio input port with the given ID.
-  const std::optional<unsigned int> getIndexOfAudioInput(unsigned long id) const;
+  const std::optional<size_t> getIndexOfAudioInput(uint64_t portId) const;
 
   // Get an audio input port by index.
-  const std::shared_ptr<AnthemProcessorPortConfig> getAudioInputByIndex(int index) const;
+  const std::shared_ptr<AnthemProcessorPortConfig> getAudioInputByIndex(size_t index) const;
 
   // Get the number of audio inputs.
-  int getNumAudioInputs() const;
+  size_t getNumAudioInputs() const;
 
   // Add an audio input port.
   void addAudioInput(const std::shared_ptr<AnthemProcessorPortConfig> port);
 
   // Gets the index of an audio output port with the given ID.
-  const std::optional<unsigned int> getIndexOfAudioOutput(unsigned long id) const;
+  const std::optional<size_t> getIndexOfAudioOutput(uint64_t portId) const;
 
   // Get an audio output port by index.
-  const std::shared_ptr<AnthemProcessorPortConfig> getAudioOutputByIndex(int index) const;
+  const std::shared_ptr<AnthemProcessorPortConfig> getAudioOutputByIndex(size_t index) const;
 
   // Get the number of audio outputs.
-  int getNumAudioOutputs() const;
+  size_t getNumAudioOutputs() const;
 
   // Add an audio output port.
   void addAudioOutput(const std::shared_ptr<AnthemProcessorPortConfig> port);
 
   // Gets the index of a MIDI input port with the given ID.
-  const std::optional<unsigned int> getIndexOfMidiInput(unsigned long id) const;
+  const std::optional<size_t> getIndexOfMidiInput(uint64_t portId) const;
 
   // Get a MIDI input port by index.
-  const std::shared_ptr<AnthemProcessorPortConfig> getMidiInputByIndex(int index) const;
+  const std::shared_ptr<AnthemProcessorPortConfig> getMidiInputByIndex(size_t index) const;
 
   // Get the number of MIDI inputs.
-  int getNumMidiInputs() const;
+  size_t getNumMidiInputs() const;
 
   // Add a MIDI input port.
   void addMidiInput(const std::shared_ptr<AnthemProcessorPortConfig> port);
 
   // Gets the index of a MIDI output port with the given ID.
-  const std::optional<unsigned int> getIndexOfMidiOutput(unsigned long id) const;
+  const std::optional<size_t> getIndexOfMidiOutput(uint64_t portId) const;
 
   // Get a MIDI output port by index.
-  const std::shared_ptr<AnthemProcessorPortConfig> getMidiOutputByIndex(int index) const;
+  const std::shared_ptr<AnthemProcessorPortConfig> getMidiOutputByIndex(size_t index) const;
 
   // Get the number of MIDI outputs.
-  int getNumMidiOutputs() const;
+  size_t getNumMidiOutputs() const;
 
   // Add a MIDI output port.
   void addMidiOutput(const std::shared_ptr<AnthemProcessorPortConfig> port);
 
   // Gets the index of a control input port with the given ID.
-  const std::optional<unsigned int> getIndexOfControlInput(unsigned long id) const;
+  const std::optional<size_t> getIndexOfControlInput(uint64_t portId) const;
 
   // Get a control input port by index.
-  const std::shared_ptr<AnthemProcessorPortConfig> getControlInputByIndex(int index) const;
+  const std::shared_ptr<AnthemProcessorPortConfig> getControlInputByIndex(size_t index) const;
 
   // Get the number of control inputs.
-  int getNumControlInputs() const;
+  size_t getNumControlInputs() const;
 
   // Add a control input port.
   void addControlInput(const std::shared_ptr<AnthemProcessorPortConfig> port, const std::shared_ptr<AnthemProcessorParameterConfig> parameter);
 
   // Gets the index of a control output port with the given ID.
-  const std::optional<unsigned int> getIndexOfControlOutput(unsigned long id) const;
+  const std::optional<size_t> getIndexOfControlOutput(uint64_t portId) const;
 
   // Get a control output port by index.
-  const std::shared_ptr<AnthemProcessorPortConfig> getControlOutputByIndex(int index) const;
+  const std::shared_ptr<AnthemProcessorPortConfig> getControlOutputByIndex(size_t index) const;
 
   // Get the number of control outputs.
-  int getNumControlOutputs() const;
+  size_t getNumControlOutputs() const;
 
   // Add a control output port.
   void addControlOutput(const std::shared_ptr<AnthemProcessorPortConfig> port);
 
   // Gets the index of a parameter with the given ID.
-  const std::optional<unsigned int> getIndexOfParameter(unsigned long id) const;
+  const std::optional<size_t> getIndexOfParameter(uint64_t portId) const;
 
   // Get a parameter by index.
-  const std::shared_ptr<AnthemProcessorParameterConfig> getParameterByIndex(int index) const;
+  const std::shared_ptr<AnthemProcessorParameterConfig> getParameterByIndex(size_t index) const;
 
   std::string getId() {
     return id;
