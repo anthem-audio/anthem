@@ -253,7 +253,7 @@ handleProcessingGraphCommand(const Request *request,
 
       uint64_t sourceId = command->source_id();
       uint64_t destinationId = command->destination_id();
-      // ProcessorConnectionType connectionType = command->connection_type();
+      ProcessorConnectionType connectionType = command->connection_type();
       uint32_t sourcePortIndex = command->source_port_index();
       uint32_t destinationPortIndex = command->destination_port_index();
 
@@ -276,21 +276,57 @@ handleProcessingGraphCommand(const Request *request,
         auto sourceNode = anthem->getNode(sourceId);
         auto destinationNode = anthem->getNode(destinationId);
 
-        if (sourceNode->audioOutputs.size() <= sourcePortIndex) {
-          success = false;
-          error = "Source port index out of range";
-        }
+        if (connectionType == ProcessorConnectionType_Audio) {
+          if (sourceNode->audioOutputs.size() <= sourcePortIndex) {
+            success = false;
+            error = "Source port index out of range";
+          }
 
-        if (destinationNode->audioInputs.size() <= destinationPortIndex) {
-          success = false;
-          error = "Destination port index out of range";
-        }
+          if (destinationNode->audioInputs.size() <= destinationPortIndex) {
+            success = false;
+            error = "Destination port index out of range";
+          }
 
-        if (success) {
-          anthem->getProcessingGraph()->connectNodes(
-            sourceNode->audioOutputs[sourcePortIndex],
-            destinationNode->audioInputs[destinationPortIndex]
-          );
+          if (success) {
+            anthem->getProcessingGraph()->connectNodes(
+              sourceNode->audioOutputs[sourcePortIndex],
+              destinationNode->audioInputs[destinationPortIndex]
+            );
+          }
+        } else if (connectionType == ProcessorConnectionType_Control) {
+          if (sourceNode->controlOutputs.size() <= sourcePortIndex) {
+            success = false;
+            error = "Source port index out of range";
+          }
+
+          if (destinationNode->controlInputs.size() <= destinationPortIndex) {
+            success = false;
+            error = "Destination port index out of range";
+          }
+
+          if (success) {
+            anthem->getProcessingGraph()->connectNodes(
+              sourceNode->controlOutputs[sourcePortIndex],
+              destinationNode->controlInputs[destinationPortIndex]
+            );
+          }
+        } else if (connectionType == ProcessorConnectionType_NoteEvent) {
+          if (sourceNode->noteEventOutputs.size() <= sourcePortIndex) {
+            success = false;
+            error = "Source port index out of range";
+          }
+
+          if (destinationNode->noteEventInputs.size() <= destinationPortIndex) {
+            success = false;
+            error = "Destination port index out of range";
+          }
+
+          if (success) {
+            anthem->getProcessingGraph()->connectNodes(
+              sourceNode->noteEventOutputs[sourcePortIndex],
+              destinationNode->noteEventInputs[destinationPortIndex]
+            );
+          }
         }
       }
 
