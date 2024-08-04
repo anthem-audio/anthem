@@ -248,14 +248,14 @@ class ProcessingGraphApi {
         response.inputAudioPorts!.map((port) => (id: port.id)).toList();
     final controlInputPorts =
         response.inputControlPorts!.map((port) => (id: port.id)).toList();
-    final midiInputPorts =
-        response.inputMidiPorts!.map((port) => (id: port.id)).toList();
+    final noteEventInputPorts =
+        response.inputNoteEventPorts!.map((port) => (id: port.id)).toList();
     final audioOutputPorts =
         response.outputAudioPorts!.map((port) => (id: port.id)).toList();
     final controlOutputPorts =
         response.outputControlPorts!.map((port) => (id: port.id)).toList();
-    final midiOutputPorts =
-        response.outputMidiPorts!.map((port) => (id: port.id)).toList();
+    final noteEventOutputPorts =
+        response.outputNoteEventPorts!.map((port) => (id: port.id)).toList();
     final parameters = response.parameters!
         .map((parameter) => (
               id: parameter.id,
@@ -268,10 +268,10 @@ class ProcessingGraphApi {
     return (
       audioInputPorts: audioInputPorts,
       controlInputPorts: controlInputPorts,
-      midiInputPorts: midiInputPorts,
+      noteEventInputPorts: noteEventInputPorts,
       audioOutputPorts: audioOutputPorts,
       controlOutputPorts: controlOutputPorts,
-      midiOutputPorts: midiOutputPorts,
+      noteEventOutputPorts: noteEventOutputPorts,
       parameters: parameters,
     );
   }
@@ -289,9 +289,9 @@ typedef ParameterInfo = ({
 typedef GetProcessorPortInfoResponse = ({
   List<PortInfo> audioInputPorts,
   List<PortInfo> controlInputPorts,
-  List<PortInfo> midiInputPorts,
+  List<PortInfo> noteEventInputPorts,
   List<PortInfo> audioOutputPorts,
   List<PortInfo> controlOutputPorts,
-  List<PortInfo> midiOutputPorts,
+  List<PortInfo> noteEventOutputPorts,
   List<ParameterInfo> parameters,
 });
