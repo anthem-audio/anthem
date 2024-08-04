@@ -57,26 +57,26 @@ public:
     return graphNode.lock();
   }
 
-  void setParameterValue(int index, float value);
-  float getParameterValue(int index);
+  void setParameterValue(size_t index, float value);
+  float getParameterValue(size_t index);
 
   void setAllInputAudioBuffers(const std::vector<juce::AudioSampleBuffer>& buffers);
   void setAllOutputAudioBuffers(const std::vector<juce::AudioSampleBuffer>& buffers);
 
-  juce::AudioSampleBuffer& getInputAudioBuffer(int index);
-  juce::AudioSampleBuffer& getOutputAudioBuffer(int index);
+  juce::AudioSampleBuffer& getInputAudioBuffer(size_t index);
+  juce::AudioSampleBuffer& getOutputAudioBuffer(size_t index);
 
-  int getNumInputAudioBuffers();
-  int getNumOutputAudioBuffers();
+  size_t getNumInputAudioBuffers();
+  size_t getNumOutputAudioBuffers();
 
   void setAllInputControlBuffers(const std::vector<juce::AudioSampleBuffer>& buffers);
   void setAllOutputControlBuffers(const std::vector<juce::AudioSampleBuffer>& buffers);
 
-  juce::AudioSampleBuffer& getInputControlBuffer(int index);
-  juce::AudioSampleBuffer& getOutputControlBuffer(int index);
+  juce::AudioSampleBuffer& getInputControlBuffer(size_t index);
+  juce::AudioSampleBuffer& getOutputControlBuffer(size_t index);
 
-  int getNumInputControlBuffers();
-  int getNumOutputControlBuffers();
+  size_t getNumInputControlBuffers();
+  size_t getNumOutputControlBuffers();
 
   std::vector<std::atomic<float>>& getParameterValues() {
     return parameterValues;

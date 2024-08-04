@@ -20,12 +20,12 @@
 #include "anthem_audio_callback.h"
 
 void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
-  const float* const* inputChannelData,
-  int numInputChannels,
+  [[maybe_unused]] const float* const* inputChannelData,
+  [[maybe_unused]] int numInputChannels,
   float* const* outputChannelData,
   int numOutputChannels,
   int numSamples,
-  const juce::AudioIODeviceCallbackContext& context
+  [[maybe_unused]] const juce::AudioIODeviceCallbackContext& context
 ) {
   jassert(numSamples <= MAX_AUDIO_BUFFER_SIZE);
 
@@ -44,7 +44,7 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
   }
 }
 
-void AnthemAudioCallback::audioDeviceAboutToStart(juce::AudioIODevice* device) {
+void AnthemAudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIODevice* device) {
   // this->sampleRate = device->getCurrentSampleRate();
   // TODO
 }
