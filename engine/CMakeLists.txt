@@ -15,7 +15,7 @@ endif()
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/generated)
 
-# Add JUCE and Tracktion Engine
+# Add JUCE
 
 add_subdirectory(include/JUCE)
 
@@ -127,6 +127,7 @@ set(ANTHEM_ENGINE_SOURCES
 
   ### Util ###
 
+  src/modules/util/arena_allocator.h
   src/modules/util/id_generator.cpp
   src/modules/util/id_generator.h
   src/modules/util/linear_parameter_smoother.cpp
