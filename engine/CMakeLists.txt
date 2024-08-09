@@ -26,6 +26,7 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/compiler
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/compiler/actions
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/debug
+  ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/events
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/processor
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/runtime
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/topology
@@ -84,6 +85,9 @@ set(ANTHEM_ENGINE_SOURCES
 
   src/modules/processing_graph/debug/generate_graphvis_from_graph.cpp
   src/modules/processing_graph/debug/generate_graphvis_from_graph.h
+
+  src/modules/processing_graph/events/anthem_processor_event.h
+  src/modules/processing_graph/events/anthem_processor_note_events.h
 
   src/modules/processing_graph/processor/anthem_processor_config.cpp
   src/modules/processing_graph/processor/anthem_processor_config.h
