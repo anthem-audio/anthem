@@ -89,6 +89,7 @@ set(ANTHEM_ENGINE_SOURCES
   src/modules/processing_graph/events/anthem_processor_event.h
   src/modules/processing_graph/events/anthem_processor_note_events.h
 
+  src/modules/processing_graph/processor/anthem_event_buffer.h
   src/modules/processing_graph/processor/anthem_processor_config.cpp
   src/modules/processing_graph/processor/anthem_processor_config.h
   # src/modules/processing_graph/processor/anthem_processor_parameter_config.cpp
