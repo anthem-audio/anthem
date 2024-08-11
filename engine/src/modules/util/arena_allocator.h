@@ -24,9 +24,10 @@
 //
 // If you ever want to deallocate the memory, pass deallocatePtr to
 // `ArenaBufferAllocator::free()`.
+template <typename T>
 struct ArenaBufferAllocateResult {
   bool success;
-  void* memoryStart;
+  T* memoryStart;
   void* deallocatePtr;
 };
 
@@ -55,7 +56,7 @@ public:
   ~ArenaBufferAllocator();
 
   // Allocates memory in the arena.
-  ArenaBufferAllocateResult allocate(size_t numItems);
+  ArenaBufferAllocateResult<T> allocate(size_t numItems);
 
   // Frees the memory chunk at the given address. This is expected to be a
   // deallocatePtr returned from allocate().
@@ -92,7 +93,7 @@ ArenaBufferAllocator<T>::~ArenaBufferAllocator() {
 }
 
 template<typename T>
-ArenaBufferAllocateResult ArenaBufferAllocator<T>::allocate(size_t numItems) {
+ArenaBufferAllocateResult<T> ArenaBufferAllocator<T>::allocate(size_t numItems) {
   void* regionStart = this->arena;
   while (regionStart < static_cast<uint8_t*>(this->arena) + this->arenaSizeInBytes) {
     size_t sectionSizeInBytes = *reinterpret_cast<size_t*>(regionStart);
@@ -112,7 +113,7 @@ ArenaBufferAllocateResult ArenaBufferAllocator<T>::allocate(size_t numItems) {
       size_t requiredSize = sizeof(T) * numItems;
       if (adjustedSize >= requiredSize) {
         *reinterpret_cast<bool*>(static_cast<uint8_t*>(regionStart) + sizeof(size_t)) = true;
-        return { true, sectionStart, regionStart };
+        return { true, reinterpret_cast<T*>(sectionStart), regionStart };
       }
     }
 
