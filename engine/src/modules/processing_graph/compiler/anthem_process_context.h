@@ -27,6 +27,7 @@
 
 #include "anthem_graph_node.h"
 #include "linear_parameter_smoother.h"
+#include "anthem_event_buffer.h"
 
 // This class acts as a context for node graph processors. It is passed to the
 // `process()` method of each `AnthemProcessor`, and provides a way to query
@@ -39,17 +40,20 @@ private:
   std::vector<juce::AudioSampleBuffer> inputControlBuffers;
   std::vector<juce::AudioSampleBuffer> outputControlBuffers;
 
+  std::vector<AnthemEventBuffer> inputNoteEventBuffers;
+  std::vector<AnthemEventBuffer> outputNoteEventBuffers;
+
   std::vector<std::atomic<float>> parameterValues;
   std::vector<std::unique_ptr<LinearParameterSmoother>> parameterSmoothers;
 
   std::weak_ptr<AnthemGraphNode> graphNode;
 public:
-  AnthemProcessContext(std::shared_ptr<AnthemGraphNode> graphNode);
+  AnthemProcessContext(std::shared_ptr<AnthemGraphNode> graphNode, ArenaBufferAllocator<AnthemProcessorEvent>* eventAllocator);
 
   std::shared_ptr<AnthemGraphNode> getGraphNode() {
     // This function is for debugging. The graph node is mutated on the JUCE
-    // message thread without any thread safety, so we throw if we're not on
-    // that thread.
+    // message thread without any concern for thread safety, so we throw if
+    // we're not on that thread.
     if (!juce::MessageManager::getInstance()->isThisTheMessageThread()) {
       throw std::runtime_error("AnthemProcessContext::getGraphNode() must be called on the JUCE message thread.");
     }
@@ -77,6 +81,15 @@ public:
 
   size_t getNumInputControlBuffers();
   size_t getNumOutputControlBuffers();
+
+  void setAllInputNoteEventBuffers(const std::vector<AnthemEventBuffer>& buffers);
+  void setAllOutputNoteEventBuffers(const std::vector<AnthemEventBuffer>& buffers);
+
+  AnthemEventBuffer& getInputNoteEventBuffer(size_t index);
+  AnthemEventBuffer& getOutputNoteEventBuffer(size_t index);
+
+  size_t getNumInputNoteEventBuffers();
+  size_t getNumOutputNoteEventBuffers();
 
   std::vector<std::atomic<float>>& getParameterValues() {
     return parameterValues;

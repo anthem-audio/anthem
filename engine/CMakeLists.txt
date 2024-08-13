@@ -64,16 +64,18 @@ set(ANTHEM_ENGINE_SOURCES
   ### Processing Graph ###
   
   src/modules/processing_graph/compiler/actions/anthem_graph_compiler_action.h
+  src/modules/processing_graph/compiler/actions/clear_buffers_action.cpp
+  src/modules/processing_graph/compiler/actions/clear_buffers_action.h
   src/modules/processing_graph/compiler/actions/copy_audio_buffer_action.cpp
   src/modules/processing_graph/compiler/actions/copy_audio_buffer_action.h
   src/modules/processing_graph/compiler/actions/copy_control_buffer_action.cpp
   src/modules/processing_graph/compiler/actions/copy_control_buffer_action.h
+  src/modules/processing_graph/compiler/actions/copy_note_events_action.cpp
+  src/modules/processing_graph/compiler/actions/copy_note_events_action.h
   src/modules/processing_graph/compiler/actions/process_node_action.cpp
   src/modules/processing_graph/compiler/actions/process_node_action.h
   src/modules/processing_graph/compiler/actions/write_parameters_to_control_inputs_action.cpp
   src/modules/processing_graph/compiler/actions/write_parameters_to_control_inputs_action.h
-  src/modules/processing_graph/compiler/actions/zero_input_buffers_action.cpp
-  src/modules/processing_graph/compiler/actions/zero_input_buffers_action.h
   # src/modules/processing_graph/compiler/anthem_graph_compilation_result.cpp
   src/modules/processing_graph/compiler/anthem_graph_compilation_result.h
   src/modules/processing_graph/compiler/anthem_graph_compiler_edge.h
