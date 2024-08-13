@@ -21,7 +21,7 @@
 #include "anthem_process_context.h"
 #include "constants.h"
 
-AnthemProcessContext::AnthemProcessContext(std::shared_ptr<AnthemGraphNode> graphNode) : graphNode(graphNode) {
+AnthemProcessContext::AnthemProcessContext(std::shared_ptr<AnthemGraphNode> graphNode, ArenaBufferAllocator<AnthemProcessorEvent>* eventAllocator) : graphNode(graphNode) {
   for (int i = 0; i < graphNode->audioInputs.size(); i++) {
     inputAudioBuffers.push_back(juce::AudioSampleBuffer(2, MAX_AUDIO_BUFFER_SIZE));
   }
@@ -36,6 +36,10 @@ AnthemProcessContext::AnthemProcessContext(std::shared_ptr<AnthemGraphNode> grap
 
   for (int i = 0; i < graphNode->controlOutputs.size(); i++) {
     outputControlBuffers.push_back(juce::AudioSampleBuffer(1, MAX_AUDIO_BUFFER_SIZE));
+  }
+
+  for (int i = 0; i < graphNode->noteEventInputs.size(); i++) {
+    inputNoteEventBuffers.push_back(AnthemEventBuffer(eventAllocator, 1024));
   }
 
   // Because parameter values use std::atomic, we need to initialize them in an odd way
@@ -117,4 +121,28 @@ size_t AnthemProcessContext::getNumInputControlBuffers() {
 
 size_t AnthemProcessContext::getNumOutputControlBuffers() {
   return outputControlBuffers.size();
+}
+
+void AnthemProcessContext::setAllInputNoteEventBuffers(const std::vector<AnthemEventBuffer>& buffers) {
+  inputNoteEventBuffers = buffers;
+}
+
+void AnthemProcessContext::setAllOutputNoteEventBuffers(const std::vector<AnthemEventBuffer>& buffers) {
+  outputNoteEventBuffers = buffers;
+}
+
+AnthemEventBuffer& AnthemProcessContext::getInputNoteEventBuffer(size_t index) {
+  return inputNoteEventBuffers[index];
+}
+
+AnthemEventBuffer& AnthemProcessContext::getOutputNoteEventBuffer(size_t index) {
+  return outputNoteEventBuffers[index];
+}
+
+size_t AnthemProcessContext::getNumInputNoteEventBuffers() {
+  return inputNoteEventBuffers.size();
+}
+
+size_t AnthemProcessContext::getNumOutputNoteEventBuffers() {
+  return outputNoteEventBuffers.size();
 }

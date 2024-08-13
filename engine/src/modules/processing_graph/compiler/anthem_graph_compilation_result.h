@@ -83,6 +83,20 @@ public:
     >
   > graphNodes;
 
+  // This is the allocator for the event buffer. This allocator maintains a huge
+  // buffer of memory that can be used to reallocate node event buffers if they
+  // become saturated, without having to allocate from the OS. This allows the
+  // audio processing code to support effectively unlimited numbers of events
+  // without any real-time safety concerns, except in extreme edge cases.
+  //
+  // This buffer is owned here, and is handed out to the event buffers that need
+  // it. When this class is deallocated, the buffer is deallocated.
+  std::unique_ptr<
+    ArenaBufferAllocator<
+      AnthemProcessorEvent
+    >
+  > eventAllocator;
+
   void debugPrint() {
     std::cout << "AnthemGraphCompilationResult" << std::endl;
     std::cout << actionGroups.size() << " action groups" << std::endl;

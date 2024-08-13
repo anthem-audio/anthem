@@ -17,19 +17,23 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#pragma once
-
-#include <memory>
-
-#include "anthem_graph_node.h"
-#include "anthem_graph_compiler_action.h"
 #include "anthem_process_context.h"
+#include "anthem_graph_compiler_action.h"
 
-class ZeroInputBuffersAction : public AnthemGraphCompilerAction {
+class CopyNoteEventsAction : public AnthemGraphCompilerAction {
 public:
-  AnthemProcessContext* context;
+  AnthemProcessContext* source;
+  int sourcePort;
 
-  ZeroInputBuffersAction(AnthemProcessContext* context) : context(context) {}
+  AnthemProcessContext* destination;
+  int destinationPort;
+
+  CopyNoteEventsAction(
+    AnthemProcessContext* source,
+    int sourcePort,
+    AnthemProcessContext* destination,
+    int destinationPort
+  ) : source(source), sourcePort(sourcePort), destination(destination), destinationPort(destinationPort) {}
 
   void execute(int numSamples) override;
 

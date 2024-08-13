@@ -17,17 +17,21 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "zero_input_buffers_action.h"
+#pragma once
 
-#include <iostream>
+#include <memory>
 
-void ZeroInputBuffersAction::execute(int) {
-  for (int i = 0; i < this->context->getNumInputAudioBuffers(); i++) {
-    auto& buffer = this->context->getInputAudioBuffer(i);
-    buffer.clear();
-  }
-}
+#include "anthem_graph_node.h"
+#include "anthem_graph_compiler_action.h"
+#include "anthem_process_context.h"
 
-void ZeroInputBuffersAction::debugPrint() {
-  std::cout << "ZeroInputBuffersAction: " << this->context->getGraphNode()->processor->config.getId() << std::endl;
-}
+class ClearBuffersAction : public AnthemGraphCompilerAction {
+public:
+  AnthemProcessContext* context;
+
+  ClearBuffersAction(AnthemProcessContext* context) : context(context) {}
+
+  void execute(int numSamples) override;
+
+  void debugPrint() override;
+};
