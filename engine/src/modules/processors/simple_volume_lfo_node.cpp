@@ -22,7 +22,7 @@
 #include "anthem_process_context.h"
 
 SimpleVolumeLfoNode::SimpleVolumeLfoNode() : AnthemProcessor("SimpleVolumeLfo") {
-  rate = 0.0001;
+  rate = 0.0001f;
   amplitude = 1;
 
   // Audio input port
