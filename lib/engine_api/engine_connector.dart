@@ -32,7 +32,8 @@ import 'package:anthem/generated/messages_generated.dart';
 /// This will allow you to stop the engine from Anthem, compile a new engine,
 /// and start the new engine, all without re-building the Anthem UI.
 // ignore: unnecessary_nullable_for_final_variable_declarations
-const String? enginePathOverride = null;
+const String? enginePathOverride =
+    'C:/Users/qbgee/Documents/Code/anthem/engine/build/AnthemEngine_artefacts/Debug/AnthemEngine.exe';
 
 final mainExecutablePath = File(Platform.resolvedExecutable);
 
@@ -264,7 +265,7 @@ class EngineConnector {
         if (response.returnValueType == ReturnValueTypeId.HeartbeatReply) {
           _heartbeatReceived = true;
         } else {
-          _onReply!(response);
+          _onReply(response);
         }
 
         // Remove the processed message from the buffer
