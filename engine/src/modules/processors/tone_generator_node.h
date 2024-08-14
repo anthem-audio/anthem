@@ -28,6 +28,9 @@ class ToneGeneratorNode : public AnthemProcessor {
 private:
   double phase;
   double sampleRate;
+
+  bool hasNoteOverride;
+  int noteOverride;
 public:
   ToneGeneratorNode();
   ~ToneGeneratorNode() override;
