@@ -41,6 +41,9 @@ struct NoteOnEvent {
 
   // Constructor
   NoteOnEvent(int16_t pitch, int16_t channel, float velocity, float detune, int32_t id) : pitch(pitch), channel(channel), velocity(velocity), detune(detune), id(id) {}
+
+  // Default constructor
+  NoteOnEvent() : pitch(0), channel(0), velocity(0.0f), detune(0.0f), id(0) {}
 };
 
 // Event type for note off events.
@@ -60,4 +63,7 @@ struct NoteOffEvent {
 
   // Constructor
   NoteOffEvent(int16_t pitch, int16_t channel, float velocity, int32_t id) : pitch(pitch), channel(channel), velocity(velocity), id(id) {}
+
+  // Default constructor
+  NoteOffEvent() : pitch(0), channel(0), velocity(0.0f), id(0) {}
 };
