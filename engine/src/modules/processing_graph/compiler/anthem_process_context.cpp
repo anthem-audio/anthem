@@ -42,6 +42,10 @@ AnthemProcessContext::AnthemProcessContext(std::shared_ptr<AnthemGraphNode> grap
     inputNoteEventBuffers.push_back(AnthemEventBuffer(eventAllocator, 1024));
   }
 
+  for (int i = 0; i < graphNode->noteEventOutputs.size(); i++) {
+    outputNoteEventBuffers.push_back(AnthemEventBuffer(eventAllocator, 1024));
+  }
+
   // Because parameter values use std::atomic, we need to initialize them in an odd way
 
   parameterValues = std::vector<std::atomic<float>>(graphNode->controlInputs.size());
