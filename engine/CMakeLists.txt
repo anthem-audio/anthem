@@ -123,6 +123,8 @@ set(ANTHEM_ENGINE_SOURCES
   src/modules/processors/gain_node.h
   src/modules/processors/master_output_node.cpp
   src/modules/processors/master_output_node.h
+  src/modules/processors/simple_midi_generator_node.cpp
+  src/modules/processors/simple_midi_generator_node.h
   src/modules/processors/simple_volume_lfo_node.cpp
   src/modules/processors/simple_volume_lfo_node.h
   src/modules/processors/tone_generator_node.cpp
