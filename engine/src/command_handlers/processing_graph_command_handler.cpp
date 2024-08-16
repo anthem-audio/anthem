@@ -20,6 +20,7 @@
 #include "processing_graph_command_handler.h"
 
 #include "simple_volume_lfo_node.h"
+#include "simple_midi_generator_node.h"
 #include "tone_generator_node.h"
 #include "gain_node.h"
 
@@ -192,6 +193,9 @@ handleProcessingGraphCommand(const Request *request,
         success = true;
       } else if (processorId == "ToneGenerator") {
         processor = std::make_unique<ToneGeneratorNode>();
+        success = true;
+      } else if (processorId == "SimpleMidiGenerator") {
+        processor = std::make_unique<SimpleMidiGeneratorNode>();
         success = true;
       } else if (processorId == "Gain") {
         processor = std::make_unique<GainNode>();
