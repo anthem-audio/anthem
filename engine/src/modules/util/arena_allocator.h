@@ -19,6 +19,14 @@
 
 #pragma once
 
+#include <cstdlib>
+#include <new>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <juce_core/juce_core.h>
+#include <vector>
+
 // Result of an allocation. `success` will be true if the allocation succeeded,
 // and memoryStart will be the start of the allocated array.
 //
@@ -45,11 +53,28 @@ struct ArenaBufferAllocateResult {
 template<typename T>
 class ArenaBufferAllocator {
 private:
+  // The size of each arena buffer in bytes.
   size_t arenaSizeInBytes;
-  void* arena;
+
+  // A list of void* pointers to arenas that have been allocated, each with a
+  // size of arenaSizeInBytes.
+  //
+  // We have a list in case the first buffer overflows. Since this is used on
+  // the audio thread, the first buffer should only overflow in extreme
+  // circumstances, since overflowing will result in additional memory
+  // allocation, which is not real-time safe.
+  std::vector<void*> arenas;
+
+  // The minimum size of each arena buffer in bytes.
   const size_t minArenaSize = 1024;
 
   void markFree(void* position, size_t sizeInBytes);
+
+  // Allocates memory in an arena.
+  ArenaBufferAllocateResult<T> allocateInArena(void* arena, size_t numItems);
+
+  // Coalesces the arena, merging adjacent free sections.
+  void coalesceInArena(void* arena);
 public:
   // Creates an ArenaBufferAllocator. arenaSizeInBytes is the size of the arena
   // in bytes.
@@ -67,13 +92,6 @@ public:
   void coalesce();
 };
 
-#include <cstdlib>
-#include <new>
-#include <cstddef>
-#include <cstdint>
-#include <memory>
-#include <juce_core/juce_core.h>
-
 template<typename T>
 void ArenaBufferAllocator<T>::markFree(void* position, size_t sizeInBytes) {
   *reinterpret_cast<size_t*>(position) = sizeInBytes;
@@ -86,24 +104,28 @@ ArenaBufferAllocator<T>::ArenaBufferAllocator(size_t arenaSizeInBytes) {
 
   this->arenaSizeInBytes = arenaSize;
 
-  this->arena = malloc(arenaSize);
+  auto ptr = malloc(arenaSize);
 
-  if (this->arena == nullptr) {
+  if (ptr == nullptr) {
     throw std::bad_alloc();
   }
 
-  this->markFree(this->arena, arenaSize);
+  this->arenas.push_back(ptr);
+
+  this->markFree(ptr, arenaSize);
 }
 
 template<typename T>
 ArenaBufferAllocator<T>::~ArenaBufferAllocator() {
-  free(this->arena);
+  for (auto arena : this->arenas) {
+    free(arena);
+  }
 }
 
 template<typename T>
-ArenaBufferAllocateResult<T> ArenaBufferAllocator<T>::allocate(size_t numItems) {
-  void* regionStart = this->arena;
-  while (regionStart < static_cast<uint8_t*>(this->arena) + this->arenaSizeInBytes) {
+ArenaBufferAllocateResult<T> ArenaBufferAllocator<T>::allocateInArena(void* arena, size_t numItems) {
+  void* regionStart = arena;
+  while (regionStart < static_cast<uint8_t*>(arena) + this->arenaSizeInBytes) {
     size_t sectionSizeInBytes = *reinterpret_cast<size_t*>(regionStart);
 
     // Check if the section is in use
@@ -168,15 +190,39 @@ ArenaBufferAllocateResult<T> ArenaBufferAllocator<T>::allocate(size_t numItems) 
 }
 
 template<typename T>
+ArenaBufferAllocateResult<T> ArenaBufferAllocator<T>::allocate(size_t numItems) {
+  for (auto arena : this->arenas) {
+    auto result = this->allocateInArena(arena, numItems);
+    if (result.success) {
+      return result;
+    }
+  }
+
+  // If no arena had enough space, allocate a new one
+  auto arenaSize = std::max(this->arenaSizeInBytes, this->minArenaSize);
+  auto ptr = malloc(arenaSize);
+
+  if (ptr == nullptr) {
+    throw std::bad_alloc();
+  }
+
+  this->arenas.push_back(ptr);
+
+  this->markFree(ptr, arenaSize);
+
+  return this->allocateInArena(ptr, numItems);
+}
+
+template<typename T>
 void ArenaBufferAllocator<T>::deallocate(void* deallocatePtr) {
   void* regionStart = deallocatePtr;
   *reinterpret_cast<bool*>(static_cast<uint8_t*>(regionStart) + sizeof(size_t)) = false;
 }
 
 template<typename T>
-void ArenaBufferAllocator<T>::coalesce() {
-  void* regionStart = this->arena;
-  while (regionStart < static_cast<uint8_t*>(this->arena) + this->arenaSizeInBytes) {
+void ArenaBufferAllocator<T>::coalesceInArena(void* arena) {
+  void* regionStart = arena;
+  while (regionStart < static_cast<uint8_t*>(arena) + this->arenaSizeInBytes) {
     size_t sectionSizeInBytes = *reinterpret_cast<size_t*>(regionStart);
     bool isInUse = *reinterpret_cast<bool*>(static_cast<uint8_t*>(regionStart) + sizeof(size_t));
     if (isInUse) {
@@ -185,7 +231,7 @@ void ArenaBufferAllocator<T>::coalesce() {
     }
 
     void* nextRegionStart = static_cast<uint8_t*>(regionStart) + sectionSizeInBytes;
-    if (nextRegionStart >= static_cast<uint8_t*>(this->arena) + this->arenaSizeInBytes) {
+    if (nextRegionStart >= static_cast<uint8_t*>(arena) + this->arenaSizeInBytes) {
       break;
     }
 
@@ -201,5 +247,12 @@ void ArenaBufferAllocator<T>::coalesce() {
     jassert(nextRegionStart != regionStart);
 
     regionStart = nextRegionStart;
+  }
+}
+
+template<typename T>
+void ArenaBufferAllocator<T>::coalesce() {
+  for (auto arena : this->arenas) {
+    this->coalesceInArena(arena);
   }
 }
