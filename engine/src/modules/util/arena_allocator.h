@@ -56,6 +56,9 @@ private:
   // The size of each arena buffer in bytes.
   size_t arenaSizeInBytes;
 
+  // The amount of memory that has been freed since the last coalesce.
+  size_t freedAmountSinceLastCoalesce = 0;
+
   // A list of void* pointers to arenas that have been allocated, each with a
   // size of arenaSizeInBytes.
   //
@@ -216,7 +219,19 @@ ArenaBufferAllocateResult<T> ArenaBufferAllocator<T>::allocate(size_t numItems) 
 template<typename T>
 void ArenaBufferAllocator<T>::deallocate(void* deallocatePtr) {
   void* regionStart = deallocatePtr;
-  *reinterpret_cast<bool*>(static_cast<uint8_t*>(regionStart) + sizeof(size_t)) = false;
+
+  uint8_t* sizePtr = static_cast<uint8_t*>(regionStart);
+  size_t sectionSizeInBytes = *reinterpret_cast<size_t*>(sizePtr);
+
+  *reinterpret_cast<bool*>(sizePtr + sizeof(size_t)) = false;
+
+  this->freedAmountSinceLastCoalesce += sectionSizeInBytes;
+
+  // If we've freed a lot of memory, coalesce the arenas
+  if (this->freedAmountSinceLastCoalesce > this->arenaSizeInBytes / 2) {
+    this->coalesce();
+    this->freedAmountSinceLastCoalesce = 0;
+  }
 }
 
 template<typename T>
