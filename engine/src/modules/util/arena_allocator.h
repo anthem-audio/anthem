@@ -47,6 +47,7 @@ class ArenaBufferAllocator {
 private:
   size_t arenaSizeInBytes;
   void* arena;
+  const size_t minArenaSize = 1024;
 
   void markFree(void* position, size_t sizeInBytes);
 public:
@@ -71,6 +72,7 @@ public:
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <juce_core/juce_core.h>
 
 template<typename T>
 void ArenaBufferAllocator<T>::markFree(void* position, size_t sizeInBytes) {
@@ -80,11 +82,17 @@ void ArenaBufferAllocator<T>::markFree(void* position, size_t sizeInBytes) {
 
 template<typename T>
 ArenaBufferAllocator<T>::ArenaBufferAllocator(size_t arenaSizeInBytes) {
-  this->arenaSizeInBytes = arenaSizeInBytes;
-  this->arena = malloc(arenaSizeInBytes);
+  auto arenaSize = std::max(arenaSizeInBytes, this->minArenaSize);
+
+  this->arenaSizeInBytes = arenaSize;
+
+  this->arena = malloc(arenaSize);
+
   if (this->arena == nullptr) {
     throw std::bad_alloc();
   }
+
+  this->markFree(this->arena, arenaSize);
 }
 
 template<typename T>
@@ -97,29 +105,65 @@ ArenaBufferAllocateResult<T> ArenaBufferAllocator<T>::allocate(size_t numItems) 
   void* regionStart = this->arena;
   while (regionStart < static_cast<uint8_t*>(this->arena) + this->arenaSizeInBytes) {
     size_t sectionSizeInBytes = *reinterpret_cast<size_t*>(regionStart);
-    bool isFree = *reinterpret_cast<bool*>(static_cast<uint8_t*>(regionStart) + sizeof(size_t));
-    if (!isFree) {
+
+    // Check if the section is in use
+    bool isInUse = *reinterpret_cast<bool*>(static_cast<uint8_t*>(regionStart) + sizeof(size_t));
+    if (isInUse) {
       regionStart = static_cast<uint8_t*>(regionStart) + sectionSizeInBytes;
       continue;
     }
 
+    // Calculate the start of the section, accounting for metadata
     void* sectionStart = static_cast<uint8_t*>(regionStart) + sizeof(size_t) + sizeof(bool);
     size_t alignment = alignof(T);
     
     // Adjust the available size for alignment, subtracting metadata
     size_t adjustedSize = sectionSizeInBytes - sizeof(size_t) - sizeof(bool);
+    size_t adjustedSizeOriginal = adjustedSize;
 
+    // Check if the section can be aligned and has enough space
     if (std::align(alignment, sizeof(T) * numItems, sectionStart, adjustedSize)) {
+      auto sizeAdjustmentAmount = adjustedSizeOriginal - adjustedSize;
+
       size_t requiredSize = sizeof(T) * numItems;
       if (adjustedSize >= requiredSize) {
+        auto newSectionSize = sizeof(size_t) + sizeof(bool) + sizeAdjustmentAmount + requiredSize;
+
+        // Calculate the start of the free section after the allocated memory
+        auto nextSectionStart = static_cast<uint8_t*>(regionStart) + newSectionSize;
+        auto nextSectionSize = sectionSizeInBytes - newSectionSize;
+
+        // Write a new size for the section
+        *reinterpret_cast<size_t*>(regionStart) = newSectionSize;
+
+        // Mark the section as in use
         *reinterpret_cast<bool*>(static_cast<uint8_t*>(regionStart) + sizeof(size_t)) = true;
+
+        // If there is enough space for a new section, mark it as free
+        if (nextSectionSize >= sizeof(size_t) + sizeof(bool)) {
+          // Mark the next section as free
+          this->markFree(
+            nextSectionStart,
+            nextSectionSize
+          );
+        } else if (nextSectionSize > 0) {
+          // If there is not enough space for a new section, make sure that the
+          // current section's size includes the remaining space
+          *reinterpret_cast<size_t*>(regionStart) = sectionSizeInBytes;
+        }
+
+        // Return the memory
         return { true, reinterpret_cast<T*>(sectionStart), regionStart };
       }
     }
 
+    jassert(sectionSizeInBytes > 0);
+
+    // If this section didn't work, move to the next one
     regionStart = static_cast<uint8_t*>(regionStart) + sectionSizeInBytes;
   }
 
+  // If no section was found, return a failure
   return { false, nullptr, nullptr };
 }
 
@@ -134,8 +178,8 @@ void ArenaBufferAllocator<T>::coalesce() {
   void* regionStart = this->arena;
   while (regionStart < static_cast<uint8_t*>(this->arena) + this->arenaSizeInBytes) {
     size_t sectionSizeInBytes = *reinterpret_cast<size_t*>(regionStart);
-    bool isFree = *reinterpret_cast<bool*>(static_cast<uint8_t*>(regionStart) + sizeof(size_t));
-    if (!isFree) {
+    bool isInUse = *reinterpret_cast<bool*>(static_cast<uint8_t*>(regionStart) + sizeof(size_t));
+    if (isInUse) {
       regionStart = static_cast<uint8_t*>(regionStart) + sectionSizeInBytes;
       continue;
     }
@@ -146,13 +190,15 @@ void ArenaBufferAllocator<T>::coalesce() {
     }
 
     size_t nextSectionSizeInBytes = *reinterpret_cast<size_t*>(nextRegionStart);
-    bool isNextFree = *reinterpret_cast<bool*>(static_cast<uint8_t*>(nextRegionStart) + sizeof(size_t));
+    bool isNextInUse = *reinterpret_cast<bool*>(static_cast<uint8_t*>(nextRegionStart) + sizeof(size_t));
 
-    if (isNextFree) {
+    if (!isNextInUse) {
       size_t newSize = sectionSizeInBytes + nextSectionSizeInBytes;
       *reinterpret_cast<size_t*>(regionStart) = newSize;
       continue;  // Stay at the current regionStart to check for further coalescing
     }
+
+    jassert(nextRegionStart != regionStart);
 
     regionStart = nextRegionStart;
   }
