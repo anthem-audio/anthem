@@ -170,6 +170,10 @@ std::vector<std::shared_ptr<AnthemGraphNode>>& AnthemGraphTopology::getNodes() {
   return nodes;
 }
 
-std::vector<std::shared_ptr<AnthemGraphNodeConnection>>& AnthemGraphTopology::getConnections() {
-  return audioPortConnections;
+std::vector<std::shared_ptr<AnthemGraphNodeConnection>> AnthemGraphTopology::getConnections() {
+  std::vector<std::shared_ptr<AnthemGraphNodeConnection>> connections;
+  connections.insert(connections.end(), audioPortConnections.begin(), audioPortConnections.end());
+  connections.insert(connections.end(), controlPortConnections.begin(), controlPortConnections.end());
+  connections.insert(connections.end(), noteEventPortConnections.begin(), noteEventPortConnections.end());
+  return connections;
 }
