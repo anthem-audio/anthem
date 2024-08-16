@@ -58,9 +58,31 @@ public:
       }
     }
 
-    // TODO: other port types
+    for (auto& port : node->controlInputs) {
+      for (auto connection : port->connections) {
+        assignEdge(nodeToCompilerNode, connectionToCompilerEdge, inputEdges, connection);
+      }
+    }
+
+    for (auto& port : node->noteEventInputs) {
+      for (auto connection : port->connections) {
+        assignEdge(nodeToCompilerNode, connectionToCompilerEdge, inputEdges, connection);
+      }
+    }
 
     for (auto& port : node->audioOutputs) {
+      for (auto connection : port->connections) {
+        assignEdge(nodeToCompilerNode, connectionToCompilerEdge, outputEdges, connection);
+      }
+    }
+
+    for (auto& port : node->controlOutputs) {
+      for (auto connection : port->connections) {
+        assignEdge(nodeToCompilerNode, connectionToCompilerEdge, outputEdges, connection);
+      }
+    }
+
+    for (auto& port : node->noteEventOutputs) {
       for (auto connection : port->connections) {
         assignEdge(nodeToCompilerNode, connectionToCompilerEdge, outputEdges, connection);
       }

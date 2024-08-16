@@ -58,5 +58,5 @@ public:
   );
 
   std::vector<std::shared_ptr<AnthemGraphNode>>& getNodes();
-  std::vector<std::shared_ptr<AnthemGraphNodeConnection>>& getConnections();
+  std::vector<std::shared_ptr<AnthemGraphNodeConnection>> getConnections();
 };
