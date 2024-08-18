@@ -19,21 +19,22 @@
 
 #pragma once
 
-#include <memory>
-
 #include "anthem_processor.h"
 #include "anthem_graph_node_port.h"
 
-class ToneGeneratorNode : public AnthemProcessor {
+class SimpleMidiGeneratorNode : public AnthemProcessor {
 private:
-  double phase;
   double sampleRate;
+  size_t durationSamples;
+  int velocity;
+  bool noteOn;
 
-  bool hasNoteOverride;
-  int noteOverride;
+  int16_t currentNote;
+  int32_t currentNoteId;
+  size_t currentNoteDuration;
 public:
-  ToneGeneratorNode();
-  ~ToneGeneratorNode() override;
+  SimpleMidiGeneratorNode();
+  ~SimpleMidiGeneratorNode() override;
 
   int getOutputPortIndex() {
     return 0;

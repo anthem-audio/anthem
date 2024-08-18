@@ -38,6 +38,9 @@ public:
   std::vector<std::shared_ptr<AnthemGraphNodePort>> controlInputs;
   std::vector<std::shared_ptr<AnthemGraphNodePort>> controlOutputs;
 
+  std::vector<std::shared_ptr<AnthemGraphNodePort>> noteEventInputs;
+  std::vector<std::shared_ptr<AnthemGraphNodePort>> noteEventOutputs;
+
   std::vector<float> parameters;
 
   // This holds a pointer to the associated runtime context for this node, if

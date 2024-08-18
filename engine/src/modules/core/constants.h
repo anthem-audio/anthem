@@ -21,3 +21,16 @@
 
 // Max audio buffer size
 const int MAX_AUDIO_BUFFER_SIZE = 8192;
+
+// The default size for an event buffer, in number of events.
+//
+// This is the size of each event buffer when it is first allocated. If the
+// buffer is filled during processing, it will be reallocated to a larger size.
+// This is done via an arena allocator. The space in the arena is allocated
+// ahead of time, which allows for dynamic reallocation on the audio thread
+// without real-time safety issues.
+//
+// For context, event buffers are used whenever a node in the processing graph
+// needs to send events to another node, or when a node needs to receive events
+// from either the sequencer or another node.
+const int DEFAULT_EVENT_BUFFER_SIZE = 1024;

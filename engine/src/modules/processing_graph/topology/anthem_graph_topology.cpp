@@ -80,12 +80,10 @@ void AnthemGraphTopology::addConnection(
       audioPortConnections.push_back(connection);
       break;
     case AnthemGraphDataType::Midi:
-      throw std::runtime_error("AnthemGraphTopology::addConnection(): MIDI connections are not yet supported");
-      // midiPortConnections.push_back(connection);
+      noteEventPortConnections.push_back(connection);
       break;
     case AnthemGraphDataType::Control:
-      throw std::runtime_error("AnthemGraphTopology::addConnection(): Control connections are not yet supported");
-      // controlPortConnections.push_back(connection);
+      controlPortConnections.push_back(connection);
       break;
   }
 
@@ -120,30 +118,28 @@ void AnthemGraphTopology::removeConnection(
       );
       break;
     case AnthemGraphDataType::Midi:
-      throw std::runtime_error("AnthemGraphTopology::removeConnection(): MIDI connections are not yet supported");
-      // midiPortConnections.erase(
-      //   std::remove_if(
-      //     midiPortConnections.begin(),
-      //     midiPortConnections.end(),
-      //     [source, destination](std::shared_ptr<AnthemGraphNodeConnection> connection) {
-      //       return connection->source == source && connection->destination == destination;
-      //     }
-      //   ),
-      //   midiPortConnections.end()
-      // );
+      noteEventPortConnections.erase(
+        std::remove_if(
+          noteEventPortConnections.begin(),
+          noteEventPortConnections.end(),
+          [source, destination](std::shared_ptr<AnthemGraphNodeConnection> connection) {
+            return connection->source.lock() == source && connection->destination.lock() == destination;
+          }
+        ),
+        noteEventPortConnections.end()
+      );
       break;
     case AnthemGraphDataType::Control:
-      throw std::runtime_error("AnthemGraphTopology::removeConnection(): Control connections are not yet supported");
-      // controlPortConnections.erase(
-      //   std::remove_if(
-      //     controlPortConnections.begin(),
-      //     controlPortConnections.end(),
-      //     [source, destination](std::shared_ptr<AnthemGraphNodeConnection> connection) {
-      //       return connection->source == source && connection->destination == destination;
-      //     }
-      //   ),
-      //   controlPortConnections.end()
-      // );
+      controlPortConnections.erase(
+        std::remove_if(
+          controlPortConnections.begin(),
+          controlPortConnections.end(),
+          [source, destination](std::shared_ptr<AnthemGraphNodeConnection> connection) {
+            return connection->source.lock() == source && connection->destination.lock() == destination;
+          }
+        ),
+        controlPortConnections.end()
+      );
       break;
   }
 
@@ -174,6 +170,10 @@ std::vector<std::shared_ptr<AnthemGraphNode>>& AnthemGraphTopology::getNodes() {
   return nodes;
 }
 
-std::vector<std::shared_ptr<AnthemGraphNodeConnection>>& AnthemGraphTopology::getConnections() {
-  return audioPortConnections;
+std::vector<std::shared_ptr<AnthemGraphNodeConnection>> AnthemGraphTopology::getConnections() {
+  std::vector<std::shared_ptr<AnthemGraphNodeConnection>> connections;
+  connections.insert(connections.end(), audioPortConnections.begin(), audioPortConnections.end());
+  connections.insert(connections.end(), controlPortConnections.begin(), controlPortConnections.end());
+  connections.insert(connections.end(), noteEventPortConnections.begin(), noteEventPortConnections.end());
+  return connections;
 }

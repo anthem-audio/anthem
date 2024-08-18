@@ -15,7 +15,7 @@ endif()
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/generated)
 
-# Add JUCE and Tracktion Engine
+# Add JUCE
 
 add_subdirectory(include/JUCE)
 
@@ -26,6 +26,7 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/compiler
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/compiler/actions
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/debug
+  ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/events
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/processor
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/runtime
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/topology
@@ -63,16 +64,18 @@ set(ANTHEM_ENGINE_SOURCES
   ### Processing Graph ###
   
   src/modules/processing_graph/compiler/actions/anthem_graph_compiler_action.h
+  src/modules/processing_graph/compiler/actions/clear_buffers_action.cpp
+  src/modules/processing_graph/compiler/actions/clear_buffers_action.h
   src/modules/processing_graph/compiler/actions/copy_audio_buffer_action.cpp
   src/modules/processing_graph/compiler/actions/copy_audio_buffer_action.h
   src/modules/processing_graph/compiler/actions/copy_control_buffer_action.cpp
   src/modules/processing_graph/compiler/actions/copy_control_buffer_action.h
+  src/modules/processing_graph/compiler/actions/copy_note_events_action.cpp
+  src/modules/processing_graph/compiler/actions/copy_note_events_action.h
   src/modules/processing_graph/compiler/actions/process_node_action.cpp
   src/modules/processing_graph/compiler/actions/process_node_action.h
   src/modules/processing_graph/compiler/actions/write_parameters_to_control_inputs_action.cpp
   src/modules/processing_graph/compiler/actions/write_parameters_to_control_inputs_action.h
-  src/modules/processing_graph/compiler/actions/zero_input_buffers_action.cpp
-  src/modules/processing_graph/compiler/actions/zero_input_buffers_action.h
   # src/modules/processing_graph/compiler/anthem_graph_compilation_result.cpp
   src/modules/processing_graph/compiler/anthem_graph_compilation_result.h
   src/modules/processing_graph/compiler/anthem_graph_compiler_edge.h
@@ -85,6 +88,10 @@ set(ANTHEM_ENGINE_SOURCES
   src/modules/processing_graph/debug/generate_graphvis_from_graph.cpp
   src/modules/processing_graph/debug/generate_graphvis_from_graph.h
 
+  src/modules/processing_graph/events/anthem_processor_event.h
+  src/modules/processing_graph/events/anthem_processor_note_events.h
+
+  src/modules/processing_graph/processor/anthem_event_buffer.h
   src/modules/processing_graph/processor/anthem_processor_config.cpp
   src/modules/processing_graph/processor/anthem_processor_config.h
   # src/modules/processing_graph/processor/anthem_processor_parameter_config.cpp
@@ -116,6 +123,8 @@ set(ANTHEM_ENGINE_SOURCES
   src/modules/processors/gain_node.h
   src/modules/processors/master_output_node.cpp
   src/modules/processors/master_output_node.h
+  src/modules/processors/simple_midi_generator_node.cpp
+  src/modules/processors/simple_midi_generator_node.h
   src/modules/processors/simple_volume_lfo_node.cpp
   src/modules/processors/simple_volume_lfo_node.h
   src/modules/processors/tone_generator_node.cpp
@@ -127,6 +136,7 @@ set(ANTHEM_ENGINE_SOURCES
 
   ### Util ###
 
+  src/modules/util/arena_allocator.h
   src/modules/util/id_generator.cpp
   src/modules/util/id_generator.h
   src/modules/util/linear_parameter_smoother.cpp

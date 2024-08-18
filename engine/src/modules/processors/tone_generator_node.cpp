@@ -30,6 +30,9 @@ ToneGeneratorNode::ToneGeneratorNode() : AnthemProcessor("ToneGenerator") {
   // this->frequency = frequency;
   sampleRate = 44100.0; // TODO: This should be dynamic - in the context maybe?
 
+  hasNoteOverride = false;
+  noteOverride = 0;
+
   // Audio port config
 
   // Audio output port
@@ -42,13 +45,20 @@ ToneGeneratorNode::ToneGeneratorNode() : AnthemProcessor("ToneGenerator") {
   // Frequency
   config.addControlInput(
     std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Control, 0),
-    std::make_shared<AnthemProcessorParameterConfig>(0, 440.0, 0.0, 20000.0)
+    std::make_shared<AnthemProcessorParameterConfig>(0ul, 440.0f, 0.0f, 20000.0f)
   );
 
   // Amplitude
   config.addControlInput(
     std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Control, 1),
-    std::make_shared<AnthemProcessorParameterConfig>(1, 0.125, 0.0, 1.0)
+    std::make_shared<AnthemProcessorParameterConfig>(1ul, 0.125f, 0.0f, 1.0f)
+  );
+
+  // MIDI port config
+
+  // Input
+  config.addMidiInput(
+    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Midi, 0)
   );
 }
 
@@ -60,12 +70,30 @@ void ToneGeneratorNode::process(AnthemProcessContext& context, int numSamples) {
   auto& frequencyControlBuffer = context.getInputControlBuffer(0);
   auto& amplitudeControlBuffer = context.getInputControlBuffer(1);
 
+  // Process incoming MIDI events
+  auto& midiInBuffer = context.getInputNoteEventBuffer(0);
+
+  for (size_t i = 0; i < midiInBuffer.getNumEvents(); ++i) {
+    auto& event = midiInBuffer.getEvent(i);
+
+    if (event.type == AnthemProcessorEventType::NoteOn) {
+      hasNoteOverride = true;
+      noteOverride = event.noteOn.pitch;
+    } else if (event.type == AnthemProcessorEventType::NoteOff) {
+      hasNoteOverride = false;
+    }
+  }
+
   // Generate a sine wave
   for (int sample = 0; sample < numSamples; ++sample) {
     auto frequency = frequencyControlBuffer.getReadPointer(0)[sample];
     auto amplitude = amplitudeControlBuffer.getReadPointer(0)[sample];
 
-    const float value = amplitude * std::sin(
+    if (hasNoteOverride) {
+      frequency = 440.0f * std::pow(2.0f, (noteOverride - 69) / 12.0f);
+    }
+
+    const float value = amplitude * (float) std::sin(
       2.0 * juce::MathConstants<float>::pi * phase
     );
 
