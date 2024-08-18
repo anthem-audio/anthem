@@ -1,0 +1,11 @@
+name: anthem_codegen
+description: Code generation for Anthem
+publish_to: 'none'
+version: 0.0.1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+dependencies:
+  build: ^2.4.1
+  source_gen: ^1.5.0
