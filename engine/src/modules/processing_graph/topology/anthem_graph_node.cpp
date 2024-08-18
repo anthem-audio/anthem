@@ -27,6 +27,9 @@ AnthemGraphNode::AnthemGraphNode(std::unique_ptr<AnthemProcessor> processor) {
   controlInputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
   controlOutputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
 
+  noteEventInputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
+  noteEventOutputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
+
   parameters = std::vector<float>(processor->config.getNumControlInputs(), 0.0f);
 
   for (int i = 0; i < processor->config.getNumControlInputs(); i++) {
@@ -69,6 +72,18 @@ void AnthemGraphNode::initializePorts() {
   for (int i = 0; i < processor->config.getNumControlOutputs(); i++) {
     controlOutputs.push_back(
       std::make_shared<AnthemGraphNodePort>(self, processor->config.getControlOutputByIndex(i), i)
+    );
+  }
+
+  for (int i = 0; i < processor->config.getNumMidiInputs(); i++) {
+    noteEventInputs.push_back(
+      std::make_shared<AnthemGraphNodePort>(self, processor->config.getMidiInputByIndex(i), i)
+    );
+  }
+
+  for (int i = 0; i < processor->config.getNumMidiOutputs(); i++) {
+    noteEventOutputs.push_back(
+      std::make_shared<AnthemGraphNodePort>(self, processor->config.getMidiOutputByIndex(i), i)
     );
   }
 }

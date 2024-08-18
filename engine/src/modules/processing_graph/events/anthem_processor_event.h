@@ -19,25 +19,18 @@
 
 #pragma once
 
-#include <memory>
+#include "anthem_processor_note_events.h"
 
-#include "anthem_processor.h"
-#include "anthem_graph_node_port.h"
+enum AnthemProcessorEventType {
+  NoteOn,
+  NoteOff
+};
 
-class ToneGeneratorNode : public AnthemProcessor {
-private:
-  double phase;
-  double sampleRate;
-
-  bool hasNoteOverride;
-  int noteOverride;
-public:
-  ToneGeneratorNode();
-  ~ToneGeneratorNode() override;
-
-  int getOutputPortIndex() {
-    return 0;
-  }
-
-  void process(AnthemProcessContext& context, int numSamples) override;
+struct AnthemProcessorEvent {
+  AnthemProcessorEventType type;
+  
+  union {
+    NoteOnEvent noteOn;
+    NoteOffEvent noteOff;
+  };
 };

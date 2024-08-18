@@ -48,9 +48,28 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
     << "\033[0m"
     << std::endl;
 
+  size_t totalEventPorts = 0;
+
+  // Get the total number of event ports in the graph.
+  for (auto& node : topology.getNodes()) {
+    totalEventPorts += node->noteEventInputs.size();
+    totalEventPorts += node->noteEventOutputs.size();
+  }
+
+  // Create a buffer allocator for events, and allocate double the size of the
+  // buffer for each port. This is because, if any port buffer overflows, it
+  // will reallocate, so we need some free space.
+  //
+  // This is probably way too much free space, but I won't try to tweak it
+  // unless it becomes a problem.
+  result->eventAllocator = 
+    std::make_unique<ArenaBufferAllocator<AnthemProcessorEvent>>(
+      totalEventPorts * DEFAULT_EVENT_BUFFER_SIZE * sizeof(AnthemProcessorEvent) * 2
+    );
+
   // Create contexts for each node
   for (auto& node : topology.getNodes()) {
-    auto context = new AnthemProcessContext(node);
+    auto context = new AnthemProcessContext(node, result->eventAllocator.get());
     result->processContexts.push_back(std::unique_ptr<AnthemProcessContext>(context));
 
     result->graphNodes.push_back(node);
@@ -75,12 +94,17 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
 
   std::cout << "Step 1: Zero input buffers" << std::endl;
 
-  // Step 1 (part 1): Zero input buffers
+  // Step 1 (part 1): Clear buffers
   //
   // Before starting, we add an action that writes zeros to all audio input
   // buffers. If no inputs are present at an audio input port, then the input
   // for that port should be silence (e.g. all zeros), as opposed to either
   // garbage data or the data from the last block.
+  //
+  // This will also clear all event buffers, which are used for MIDI and other
+  // event data. This is important because if an event buffer is not cleared,
+  // then the event data from the last block will be processed again, which
+  // could cause duplicate notes to be played, or other odd behavior.
   //
   // Note that this does not do anything to contorl input buffers. In Anthem,
   // control values are audio-rate sampled data, but unlike audio input ports,
@@ -90,7 +114,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
 
   for (auto& node : nodesToProcess) {
     actions->push_back(
-      std::move(std::make_unique<ZeroInputBuffersAction>(node->context))
+      std::move(std::make_unique<ClearBuffersAction>(node->context))
     );
   }
 
@@ -207,7 +231,14 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
             );
             break;
           case AnthemGraphDataType::Midi:
-            throw std::runtime_error("AnthemGraphCompiler::compile(): MIDI connections are not yet supported");
+            actions->push_back(
+              std::make_unique<CopyNoteEventsAction>(
+                edge->sourceNodeContext,
+                sourcePort.lock()->index,
+                edge->destinationNodeContext,
+                destinationPort.lock()->index
+              )
+            );
             break;
           case AnthemGraphDataType::Control:
             actions->push_back(
@@ -245,7 +276,6 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
       std::cout << "Checking node " << node->node->processor->config.getId() << std::endl;
 
       for (auto& edge : node->inputEdges) {
-        std::cout << "This is an edge..." << std::endl;
         if (!edge->processed) {
           std::cout << "\033[34m";
           std::cout << "Found unprocessed edge with pointer " << std::hex << edge.get() << std::dec << std::endl;

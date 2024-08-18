@@ -17,27 +17,25 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#pragma once
+#include "anthem_process_context.h"
+#include "anthem_graph_compiler_action.h"
 
-#include <memory>
-
-#include "anthem_processor.h"
-#include "anthem_graph_node_port.h"
-
-class ToneGeneratorNode : public AnthemProcessor {
-private:
-  double phase;
-  double sampleRate;
-
-  bool hasNoteOverride;
-  int noteOverride;
+class CopyNoteEventsAction : public AnthemGraphCompilerAction {
 public:
-  ToneGeneratorNode();
-  ~ToneGeneratorNode() override;
+  AnthemProcessContext* source;
+  int sourcePort;
 
-  int getOutputPortIndex() {
-    return 0;
-  }
+  AnthemProcessContext* destination;
+  int destinationPort;
 
-  void process(AnthemProcessContext& context, int numSamples) override;
+  CopyNoteEventsAction(
+    AnthemProcessContext* source,
+    int sourcePort,
+    AnthemProcessContext* destination,
+    int destinationPort
+  ) : source(source), sourcePort(sourcePort), destination(destination), destinationPort(destinationPort) {}
+
+  void execute(int numSamples) override;
+
+  void debugPrint() override;
 };

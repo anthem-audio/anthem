@@ -17,21 +17,19 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#pragma once
+import 'package:anthem/model/processing_graph/processor_definition.dart';
 
-#include <memory>
-
-#include "anthem_graph_node.h"
-#include "anthem_graph_compiler_action.h"
-#include "anthem_process_context.h"
-
-class ZeroInputBuffersAction : public AnthemGraphCompilerAction {
-public:
-  AnthemProcessContext* context;
-
-  ZeroInputBuffersAction(AnthemProcessContext* context) : context(context) {}
-
-  void execute(int numSamples) override;
-
-  void debugPrint() override;
-};
+const simpleMidiGeneratorDefinition = ProcessorDefinition(
+  id: 'SimpleMidiGenerator',
+  name: 'MIDI Generator for Testing',
+  type: ProcessorType.utility,
+  inputAudioPorts: [],
+  inputControlPorts: [],
+  inputMIDIPorts: [],
+  outputAudioPorts: [
+    ProcessorPort(id: 0, name: 'Output'),
+  ],
+  outputControlPorts: [],
+  outputMIDIPorts: [],
+  parameters: [],
+);

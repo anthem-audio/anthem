@@ -48,7 +48,7 @@ table RemoveProcessorResponse {
 
 enum ProcessorConnectionType: short {
   Audio,
-  Midi,
+  NoteEvent,
   Control
 }
 
@@ -124,11 +124,11 @@ table GetProcessorPortsResponse {
 
   input_audio_ports: [ProcessorPortDescription];
   input_control_ports: [ProcessorPortDescription];
-  input_midi_ports: [ProcessorPortDescription];
+  input_note_event_ports: [ProcessorPortDescription];
 
   output_audio_ports: [ProcessorPortDescription];
   output_control_ports: [ProcessorPortDescription];
-  output_midi_ports: [ProcessorPortDescription];
+  output_note_event_ports: [ProcessorPortDescription];
 
   parameters: [ProcessorParameterDescription];
 }

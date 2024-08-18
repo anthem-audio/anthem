@@ -27,7 +27,7 @@
 std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
   const Request* request,
   flatbuffers::FlatBufferBuilder& builder,
-  Anthem* anthem
+  [[maybe_unused]] Anthem* anthem
 ) {
   auto commandType = request->command_type();
 

@@ -38,6 +38,8 @@ class AnthemGraphTopology {
 private:
   std::vector<std::shared_ptr<AnthemGraphNode>> nodes;
   std::vector<std::shared_ptr<AnthemGraphNodeConnection>> audioPortConnections;
+  std::vector<std::shared_ptr<AnthemGraphNodeConnection>> controlPortConnections;
+  std::vector<std::shared_ptr<AnthemGraphNodeConnection>> noteEventPortConnections;
 public:
   AnthemGraphTopology();
 
@@ -56,5 +58,5 @@ public:
   );
 
   std::vector<std::shared_ptr<AnthemGraphNode>>& getNodes();
-  std::vector<std::shared_ptr<AnthemGraphNodeConnection>>& getConnections();
+  std::vector<std::shared_ptr<AnthemGraphNodeConnection>> getConnections();
 };
