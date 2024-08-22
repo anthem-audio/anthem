@@ -19,7 +19,8 @@
 
 part of 'messages.dart';
 
-class AddArrangementRequest extends Request { }
+class AddArrangementRequest extends Request {}
+
 class AddArrangementResponse extends Response {
   late int editId;
 }
@@ -37,6 +38,7 @@ class LiveNoteOnRequest extends Request {
   late int note;
   late double velocity; // JUCE apparently encodes this in float
 }
+
 class LiveNoteOffRequest extends Request {
   late int editId;
 
