@@ -22,6 +22,24 @@ import 'dart:async';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
+import 'json_generator.dart';
+
+/// Provides code generation for Anthem models.
+///
+/// Anthem models must be defined like this:
+///
+/// ```dart
+/// // ...
+///
+/// part 'my_model.g.dart'
+///
+/// @AnthemModel.all()
+/// class MyModel extends _MyModel with _$MyModelAnthemModelMixin;
+///
+/// class _MyModel {
+///   // ...
+/// }
+/// ```
 class AnthemModelGenerator extends Generator {
   final BuilderOptions options;
 
@@ -31,20 +49,82 @@ class AnthemModelGenerator extends Generator {
   Future<String> generate(LibraryReader library, BuildStep buildStep) async {
     var result = '';
 
+    // Looks for @AnthemModel on each class in the file, and generates the
+    // appropriate code
     for (final libraryClass in library.classes) {
       final annotation = libraryClass.metadata
           .where(
-            (annotation) => annotation.element?.displayName == 'AnthemModel',
+            (annotation) =>
+                annotation.element?.enclosingElement?.name == 'AnthemModel',
           )
           .firstOrNull;
 
-      if (annotation != null) {
-        result += '// annotation found\n';
+      // If there is no annotation on this class, don't do anything
+      if (annotation == null) continue;
+
+      // Using ConstantReader to read annotation properties
+      final reader = ConstantReader(annotation.computeConstantValue());
+
+      // Read properties from @AnthemModel() annotation
+
+      bool serializable;
+
+      if (reader.isNull) {
+        log.severe(
+            '[Anthem codegen] Annotation reader is null for class ${libraryClass.name}. This is either a bug, or we need better error messages here.');
+        continue;
+      } else {
+        // Reading properties of the annotation
+        serializable = reader.read('serializable').literalValue as bool;
       }
 
-      for (final metadata in libraryClass.metadata) {
-        result += '// found: ${metadata.element?.displayName ?? ''}\n';
+      // Find matching base class for the library class
+
+      final baseClass = library.classes
+          .where((e) => e.name == '_${libraryClass.name}')
+          .firstOrNull;
+
+      const String invalidSetupHelp =
+          '''Model items in Anthem must have a super class with a mixin, and a matching base class:
+
+class MyModel extends _MyModel with _\$MyModelAnthemModelMixin;
+
+class _MyModel {
+  // ...
+};''';
+
+      if (baseClass == null) {
+        log.severe(
+            'Base class not found for ${libraryClass.name}.\n\n$invalidSetupHelp');
+        continue;
       }
+
+      // The code below just doesn't work, and I have no idea why.
+
+      // final hasClassMixin = libraryClass.mixins
+      //     .any((m) => m.getDisplayString() == '_\$AnthemModelMixin');
+
+      // if (!hasClassMixin) {
+      //   log.severe('Mixin length: ${libraryClass.mixins.length}');
+      //   log.severe(
+      //       'Mixins are: ${libraryClass.mixins.map((type) => type.getDisplayString()).join(', ')}');
+      //   log.severe(
+      //       'Mixin not found for ${libraryClass.name}.\n\n$invalidSetupHelp');
+      //   continue;
+      // }
+
+      result += '// Annotation found on class: ${libraryClass.name}\n';
+
+      result += 'mixin _\$${libraryClass.name}AnthemModelMixin {\n';
+
+      if (serializable) {
+        result += generateJsonSerializationCode(
+          publicClass: libraryClass,
+          privateBaseClass: baseClass,
+        );
+      }
+
+      result += '}\n';
     }
 
     return result;

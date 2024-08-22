@@ -8,6 +8,7 @@
     "calloc",
     "codegen",
     "curn",
+    "deserializers",
     "Diagnosticable",
     "dylib",
     "flatbuffers",

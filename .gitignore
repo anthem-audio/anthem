@@ -31,6 +31,7 @@
 .pub/
 /build/
 *.g.dart
+*.g.part
 
 # Web related
 lib/generated_plugin_registrant.dart
