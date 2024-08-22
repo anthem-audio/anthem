@@ -23,4 +23,5 @@ import 'package:source_gen/source_gen.dart';
 import 'anthem_model_generator.dart';
 
 Builder anthemModelGeneratorBuilder(BuilderOptions options) =>
-    SharedPartBuilder([AnthemModelGenerator(options)], 'anthem_model_generator');
+    SharedPartBuilder(
+        [AnthemModelGenerator(options)], 'anthem_model_generator');
