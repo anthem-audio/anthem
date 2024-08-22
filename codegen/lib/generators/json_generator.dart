@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:analyzer/dart/element/element.dart';
+import 'util/model_class_info.dart';
 
 /// Generates JSON serialization and deserialization for an Anthem model class.
 ///
@@ -26,8 +26,7 @@ import 'package:analyzer/dart/element/element.dart';
 /// needed to have bespoke serializers and deserializers defined, which were
 /// difficult to write and to read.
 String generateJsonSerializationCode({
-  required ClassElement publicClass,
-  required ClassElement privateBaseClass,
+  required ModelClassInfo context,
 }) {
   var result = '';
 
@@ -38,7 +37,7 @@ String generateJsonSerializationCode({
   final map = <String, dynamic>{};
 ''';
 
-  for (final field in privateBaseClass.fields) {
+  for (final field in context.baseClass.fields) {
     result += '  // ${field.name}\n';
   }
 

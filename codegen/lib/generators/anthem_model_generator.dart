@@ -19,6 +19,7 @@
 
 import 'dart:async';
 
+import 'package:anthem_codegen/generators/util/model_class_info.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
@@ -78,50 +79,14 @@ class AnthemModelGenerator extends Generator {
         serializable = reader.read('serializable').literalValue as bool;
       }
 
-      // Find matching base class for the library class
-
-      final baseClass = library.classes
-          .where((e) => e.name == '_${libraryClass.name}')
-          .firstOrNull;
-
-      const String invalidSetupHelp =
-          '''Model items in Anthem must have a super class with a mixin, and a matching base class:
-
-class MyModel extends _MyModel with _\$MyModelAnthemModelMixin;
-
-class _MyModel {
-  // ...
-};''';
-
-      if (baseClass == null) {
-        log.severe(
-            'Base class not found for ${libraryClass.name}.\n\n$invalidSetupHelp');
-        continue;
-      }
-
-      // The code below just doesn't work, and I have no idea why.
-
-      // final hasClassMixin = libraryClass.mixins
-      //     .any((m) => m.getDisplayString() == '_\$AnthemModelMixin');
-
-      // if (!hasClassMixin) {
-      //   log.severe('Mixin length: ${libraryClass.mixins.length}');
-      //   log.severe(
-      //       'Mixins are: ${libraryClass.mixins.map((type) => type.getDisplayString()).join(', ')}');
-      //   log.severe(
-      //       'Mixin not found for ${libraryClass.name}.\n\n$invalidSetupHelp');
-      //   continue;
-      // }
+      final context = ModelClassInfo(library, libraryClass);
 
       result += '// Annotation found on class: ${libraryClass.name}\n';
 
       result += 'mixin _\$${libraryClass.name}AnthemModelMixin {\n';
 
       if (serializable) {
-        result += generateJsonSerializationCode(
-          publicClass: libraryClass,
-          privateBaseClass: baseClass,
-        );
+        result += generateJsonSerializationCode(context: context);
       }
 
       result += '}\n';
