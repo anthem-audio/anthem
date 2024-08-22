@@ -24,6 +24,7 @@ class SetParameterRequest extends Request {
   late int parameterId;
   late double value;
 }
+
 class SetParameterResponse {
   late bool success;
 }

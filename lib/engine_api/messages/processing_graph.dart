@@ -20,14 +20,16 @@
 part of 'messages.dart';
 
 class GetMasterOutputNodeIdRequest extends Request {}
+
 class GetMasterOutputNodeIdResponse extends Response {
   late int nodeId;
 }
 
 // Adds a processor to the processing graph
-class AddProcessorRequest extends Request{
+class AddProcessorRequest extends Request {
   late String processorId;
 }
+
 class AddProcessorResponse extends Response {
   // Whether the command succeeded
   late bool success;
@@ -43,16 +45,13 @@ class AddProcessorResponse extends Response {
 class RemoveProcessorRequest extends Request {
   late int nodeId;
 }
+
 class RemoveProcessorResponse extends Response {
   late bool success;
   late String error;
 }
 
-enum ProcessorConnectionType {
-  audio,
-  noteEvent,
-  control
-}
+enum ProcessorConnectionType { audio, noteEvent, control }
 
 // Connects two processors in the node graph (e.g. an instrument audio output to
 // an effect audio input).
@@ -65,6 +64,7 @@ class ConnectProcessorsRequest extends Request {
   late int sourcePortIndex;
   late int destinationPortIndex;
 }
+
 class ConnectProcessorsResponse extends Response {
   late bool success;
   late String error;
@@ -80,17 +80,14 @@ class DisconnectProcessorsRequest extends Request {
   late int sourcePortIndex;
   late int destinationPortIndex;
 }
+
 class DisconnectProcessorsResponse extends Response {
   late bool success;
   late String error;
 }
 
 // Processor category enum
-enum ProcessorCategory {
-  effect,
-  generator,
-  utility
-}
+enum ProcessorCategory { effect, generator, utility }
 
 class ProcessorDescription {
   late String processorId;
@@ -98,6 +95,7 @@ class ProcessorDescription {
 }
 
 class GetProcessorsRequest extends Request {}
+
 class GetProcessorsResponse extends Response {
   late List<ProcessorDescription> processors;
 }
@@ -117,6 +115,7 @@ class ProcessorParameterDescription {
 class GetProcessorPortsRequest extends Request {
   late int nodeId;
 }
+
 class GetProcessorPortsResponse extends Response {
   // Whether the command succeeded
   late bool success;
@@ -138,6 +137,7 @@ class GetProcessorPortsResponse extends Response {
 // Compiles the processing graph and sends the result to the audio thread. This
 // must be called after any graph changes.
 class CompileProcessingGraphRequest extends Request {}
+
 class CompileProcessingGraphResponse extends Response {
   late bool success;
   late String error;
