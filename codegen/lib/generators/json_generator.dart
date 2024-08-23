@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem_codegen/generators/util/model_types.dart';
+
 import 'util/model_class_info.dart';
 
 /// Generates JSON serialization and deserialization for an Anthem model class.
@@ -28,17 +30,50 @@ import 'util/model_class_info.dart';
 String generateJsonSerializationCode({
   required ModelClassInfo context,
 }) {
-  var result = '';
+  var result = '\n';
 
   // Generate serialization
 
   // TODO: Remove the ANTHEM tag
-  result += '''Map<String, dynamic> toJson_ANTHEM() {
+  result += '''// ignore: duplicate_ignore
+// ignore: non_constant_identifier_names
+Map<String, dynamic> toJson_ANTHEM() {
   final map = <String, dynamic>{};
 ''';
 
-  for (final field in context.baseClass.fields) {
-    result += '  // ${field.name}\n';
+  for (final entry in context.fields.entries) {
+    final name = entry.key;
+    final field = entry.value;
+
+    switch (field) {
+      case StringModelType():
+        result += '  // $name: string\n';
+        break;
+      case IntModelType():
+        result += '  // $name: int\n';
+        break;
+      case DoubleModelType():
+        result += '  // $name: double\n';
+        break;
+      case NumModelType():
+        result += '  // $name: num\n';
+        break;
+      case BoolModelType():
+        result += '  // $name: bool\n';
+        break;
+      case ListModelType():
+        result += '  // $name: list\n';
+        break;
+      case MapModelType():
+        result += '  // $name: map\n';
+        break;
+      case CustomModelType():
+        result += '  // $name: custom\n';
+        break;
+      case UnknownModelType():
+        result += '  // $name: unknown\n';
+        break;
+    }
   }
 
   result += '''

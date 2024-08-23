@@ -25,6 +25,6 @@ class SetParameterRequest extends Request {
   late double value;
 }
 
-class SetParameterResponse {
+class SetParameterResponse extends Response {
   late bool success;
 }
