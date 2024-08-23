@@ -89,7 +89,19 @@ class DisconnectProcessorsResponse extends Response {
 // Processor category enum
 enum ProcessorCategory { effect, generator, utility }
 
-class ProcessorDescription {
+@AnthemModel(serializable: true)
+class ProcessorDescription extends _ProcessorDescription
+    with _$ProcessorDescriptionAnthemModelMixin {
+  ProcessorDescription.create({
+    required String processorId,
+    required ProcessorCategory category,
+  }) {
+    this.processorId = processorId;
+    this.category = category;
+  }
+}
+
+class _ProcessorDescription {
   late String processorId;
   late ProcessorCategory category;
 }
@@ -100,11 +112,35 @@ class GetProcessorsResponse extends Response {
   late List<ProcessorDescription> processors;
 }
 
-class ProcessorPortDescription {
+@AnthemModel(serializable: true)
+class ProcessorPortDescription extends _ProcessorPortDescription
+    with _$ProcessorPortDescriptionAnthemModelMixin {
+  ProcessorPortDescription.create({required int id}) {
+    this.id = id;
+  }
+}
+
+class _ProcessorPortDescription {
   late int id;
 }
 
-class ProcessorParameterDescription {
+@AnthemModel(serializable: true)
+class ProcessorParameterDescription extends _ProcessorParameterDescription
+    with _$ProcessorParameterDescriptionAnthemModelMixin {
+  ProcessorParameterDescription.create({
+    required int id,
+    required double defaultValue,
+    required double minValue,
+    required double maxValue,
+  }) {
+    this.id = id;
+    this.defaultValue = defaultValue;
+    this.minValue = minValue;
+    this.maxValue = maxValue;
+  }
+}
+
+class _ProcessorParameterDescription {
   late int id;
   late double defaultValue;
   late double minValue;

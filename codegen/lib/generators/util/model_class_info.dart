@@ -18,8 +18,13 @@
 */
 
 import 'package:analyzer/dart/element/element.dart';
+import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
+
+/// Cache of ModelClassInfo instances. Allows us to look up types when generating the type
+/// graph.
+Map<(LibraryElement, ClassElement), ModelClassInfo> _modelClassInfoCache = {};
 
 /// This class contains info about a given Dart model class. It is used during
 /// code generation to pre-process info about a model class that will be used
@@ -29,10 +34,26 @@ class ModelClassInfo {
   ClassElement annotatedClass;
   late ClassElement baseClass;
 
-  ModelClassInfo(this.libraryReader, this.annotatedClass) {
+  Map<String, ModelType> fields = {};
+
+  factory ModelClassInfo(
+      LibraryReader libraryReader, ClassElement annotatedClass) {
+    final cacheItem =
+        _modelClassInfoCache[(annotatedClass.library, annotatedClass)];
+
+    // if (cacheItem == null) {
+    //   print('cache miss');
+    // } else {
+    //   print('cache hit');
+    // }
+
+    return cacheItem ?? ModelClassInfo._create(libraryReader, annotatedClass);
+  }
+
+  ModelClassInfo._create(this.libraryReader, this.annotatedClass) {
     // Find matching base class for the library class
 
-    final baseClass = libraryReader.classes
+    final baseClassOrNull = libraryReader.classes
         .where((e) => e.name == '_${annotatedClass.name}')
         .firstOrNull;
 
@@ -45,7 +66,7 @@ class _MyModel {
   // ...
 };''';
 
-    if (baseClass == null) {
+    if (baseClassOrNull == null) {
       final err =
           'Base class not found for ${annotatedClass.name}.\n\n$invalidSetupHelp';
 
@@ -53,7 +74,11 @@ class _MyModel {
       throw Exception();
     }
 
-    // The code below just doesn't work, and I have no idea why.
+    baseClass = baseClassOrNull;
+
+    // The code below just doesn't work. I think it's because the mixin doesn't
+    // exist, so while it exists from a lexing standpoint, the analyzer doesn't
+    // find a matching mixin declaration and so it doesn't put it the list.
 
     // final hasClassMixin = annotatedClass.mixins
     //     .any((m) => m.getDisplayString() == '_\$AnthemModelMixin');
@@ -66,5 +91,11 @@ class _MyModel {
     //       'Mixin not found for ${annotatedClass.name}.\n\n$invalidSetupHelp');
     //   continue;
     // }
+
+    for (final field in baseClass.fields) {
+      fields[field.name] = getModelType(field.type);
+    }
+
+    _modelClassInfoCache[(annotatedClass.library, annotatedClass)] = this;
   }
 }
