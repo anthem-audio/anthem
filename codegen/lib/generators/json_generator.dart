@@ -30,7 +30,7 @@ import 'util/model_class_info.dart';
 String generateJsonSerializationCode({
   required ModelClassInfo context,
 }) {
-  var result = '\n';
+  var result = '';
 
   // Generate serialization
 
@@ -47,19 +47,11 @@ Map<String, dynamic> toJson_ANTHEM() {
 
     switch (field) {
       case StringModelType():
-        result += '  // $name: string\n';
-        break;
       case IntModelType():
-        result += '  // $name: int\n';
-        break;
       case DoubleModelType():
-        result += '  // $name: double\n';
-        break;
       case NumModelType():
-        result += '  // $name: num\n';
-        break;
       case BoolModelType():
-        result += '  // $name: bool\n';
+        result += "map['$name'] = $name;\n";
         break;
       case ListModelType():
         result += '  // $name: list\n';
