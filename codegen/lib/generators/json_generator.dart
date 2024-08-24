@@ -120,7 +120,7 @@ Map.fromEntries(
   $fieldName.entries.map(
     (entry) {
       return MapEntry(
-        ${_createConverterForField(type: type.keyType, fieldName: 'entry.key')}.toString(),
+        ${_createConverterForField(type: type.keyType, fieldName: 'entry.key')}${type.keyType is StringModelType ? '' : '.toString()'},
         ${_createConverterForField(type: type.valueType, fieldName: 'entry.value')},
       );
     },
