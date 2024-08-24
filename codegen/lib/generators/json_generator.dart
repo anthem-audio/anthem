@@ -86,6 +86,7 @@ String _createConverterForField({
     NumModelType() ||
     BoolModelType() =>
       _createConverterForPrimitive(fieldName: fieldName),
+    EnumModelType() => _createConverterForEnum(fieldName: fieldName),
     ListModelType() =>
       _createConverterForList(type: type, fieldName: fieldName),
     MapModelType() => _createConverterForMap(type: type, fieldName: fieldName),
@@ -99,6 +100,12 @@ String _createConverterForPrimitive({
   required String fieldName,
 }) {
   return fieldName;
+}
+
+String _createConverterForEnum({
+  required String fieldName,
+}) {
+  return '$fieldName.name';
 }
 
 String _createConverterForList({
