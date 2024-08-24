@@ -20,6 +20,7 @@
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:build/build.dart';
+import 'package:source_gen/source_gen.dart';
 
 import 'model_class_info.dart';
 
@@ -98,7 +99,8 @@ class UnknownModelType extends ModelType {
 }
 
 /// Parses a Dart type into a [ModelType].
-ModelType getModelType(DartType type) {
+ModelType getModelType(
+    DartType type, LibraryReader libraryReader, ClassElement annotatedClass) {
   final element = type.element;
   if (element == null) return UnknownModelType();
 
@@ -117,7 +119,8 @@ ModelType getModelType(DartType type) {
           final typeParam = type.typeArguments.first;
           if (typeParam.element == null) return UnknownModelType();
 
-          final itemType = getModelType(typeParam);
+          final itemType =
+              getModelType(typeParam, libraryReader, annotatedClass);
           return ListModelType(itemType);
         }
 
@@ -129,16 +132,34 @@ ModelType getModelType(DartType type) {
           final typeParams = type.typeArguments;
           if (typeParams.length != 2) return UnknownModelType();
 
-          final keyType = getModelType(typeParams[0]);
+          final keyType =
+              getModelType(typeParams[0], libraryReader, annotatedClass);
           if (!keyType.canBeMapKey) {
             log.warning(
                 'Map key type cannot be used as a map key: ${typeParams[0].element?.name}');
             return UnknownModelType();
           }
 
-          final valueType = getModelType(typeParams[1]);
+          final valueType =
+              getModelType(typeParams[1], libraryReader, annotatedClass);
           return MapModelType(keyType, valueType);
         }
+
+        // Check for custom type
+        else if (element is ClassElement) {
+          try {
+            final type = ModelClassInfo(libraryReader, element);
+            return CustomModelType(type);
+          } catch (e) {
+            log.warning('Error parsing custom type: ${element.name}');
+            log.warning(
+                'This may be because the type is not annotated as an Anthem model, or is not formed correctly.');
+            return UnknownModelType();
+          }
+        }
+
+        log.warning(
+            'Unknown type: ${element.name}. This is not expected, and may be a bug.');
 
         return UnknownModelType();
       })(),
