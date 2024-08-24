@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+// ignore_for_file: non_constant_identifier_names
+
 part of 'messages.dart';
 
 class GetMasterOutputNodeIdRequest extends Request {}
@@ -92,6 +94,11 @@ enum ProcessorCategory { effect, generator, utility }
 @AnthemModel(serializable: true)
 class ProcessorDescription extends _ProcessorDescription
     with _$ProcessorDescriptionAnthemModelMixin {
+  ProcessorDescription();
+
+  factory ProcessorDescription.fromJson_ANTHEM(Map<String, dynamic> json) =>
+      _$ProcessorDescriptionAnthemModelMixin.fromJson_ANTHEM(json);
+
   ProcessorDescription.create({
     required String processorId,
     required ProcessorCategory category,
@@ -115,6 +122,11 @@ class GetProcessorsResponse extends Response {
 @AnthemModel(serializable: true)
 class ProcessorPortDescription extends _ProcessorPortDescription
     with _$ProcessorPortDescriptionAnthemModelMixin {
+  ProcessorPortDescription();
+
+  factory ProcessorPortDescription.fromJson_ANTHEM(Map<String, dynamic> json) =>
+      _$ProcessorPortDescriptionAnthemModelMixin.fromJson_ANTHEM(json);
+
   ProcessorPortDescription.create({required int id}) {
     this.id = id;
   }
@@ -127,6 +139,12 @@ class _ProcessorPortDescription {
 @AnthemModel(serializable: true)
 class ProcessorParameterDescription extends _ProcessorParameterDescription
     with _$ProcessorParameterDescriptionAnthemModelMixin {
+  ProcessorParameterDescription();
+
+  factory ProcessorParameterDescription.fromJson_ANTHEM(
+          Map<String, dynamic> json) =>
+      _$ProcessorParameterDescriptionAnthemModelMixin.fromJson_ANTHEM(json);
+
   ProcessorParameterDescription.create({
     required int id,
     required double defaultValue,

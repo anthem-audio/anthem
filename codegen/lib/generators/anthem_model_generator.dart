@@ -19,6 +19,7 @@
 
 import 'dart:async';
 
+import 'package:anthem_codegen/generators/json_deserialize_generator.dart';
 import 'package:anthem_codegen/generators/util/model_class_info.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
@@ -88,6 +89,8 @@ class AnthemModelGenerator extends Generator {
 
       if (serializable) {
         result += generateJsonSerializationCode(context: context);
+        result += '\n';
+        result += generateJsonDeserializationCode(context: context);
       }
 
       result += '}\n';
