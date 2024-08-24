@@ -23,7 +23,7 @@ import 'package:anthem_codegen/generators/util/model_class_info.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
-import 'json_generator.dart';
+import 'json_serialize_generator.dart';
 
 /// Provides code generation for Anthem models.
 ///
