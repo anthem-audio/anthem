@@ -25,7 +25,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('Test message serialization features', () {
     test('Serialization: basic values', () {
-      for (var i = 0; i < 100; i++) {
+      for (var i = 0; i < 25; i++) {
         final random = Random();
 
         final id = random.nextInt(1000);

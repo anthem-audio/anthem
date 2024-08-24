@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 
 import 'model_class_info.dart';
@@ -105,6 +106,21 @@ ModelType getModelType(DartType type) {
     'int' => IntModelType(),
     'double' => DoubleModelType(),
     'num' => NumModelType(),
-    _ => UnknownModelType(),
+    'String' => StringModelType(),
+    _ => (() {
+        // Check if this is a list
+        if (element is ClassElement &&
+            (element.name == 'List' || element.name == 'ObservableList')) {
+          if (type is! ParameterizedType) return UnknownModelType();
+
+          final typeParam = type.typeArguments.first;
+          if (typeParam.element == null) return UnknownModelType();
+
+          final itemType = getModelType(typeParam);
+          return ListModelType(itemType);
+        }
+
+        return UnknownModelType();
+      })(),
   };
 }
