@@ -6,6 +6,7 @@ targets:
 
 builders:
   anthemModelGeneratorBuilder:
+    target: ':anthem_model_generator'
     import: 'package:anthem_codegen/codegen.dart'
     builder_factories: ['anthemModelGeneratorBuilder']
     build_extensions: {'.dart': ['.anthem_model_generator.g.part']}

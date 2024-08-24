@@ -88,9 +88,8 @@ String _createConverterForField({
       _createConverterForPrimitive(fieldName: fieldName),
     ListModelType() =>
       _createConverterForList(type: type, fieldName: fieldName),
-    MapModelType() => 'null',
-    CustomModelType() => 'null',
-    UnknownModelType() => 'null',
+    MapModelType() => _createConverterForMap(type: type, fieldName: fieldName),
+    CustomModelType() || UnknownModelType() => 'null',
   };
 }
 
@@ -109,5 +108,23 @@ $fieldName.map(
     return ${_createConverterForField(type: type.itemType, fieldName: 'item')};
   },
 ).toList()
+''';
+}
+
+String _createConverterForMap({
+  required MapModelType type,
+  required String fieldName,
+}) {
+  return '''
+Map.fromEntries(
+  $fieldName.entries.map(
+    (entry) {
+      return MapEntry(
+        ${_createConverterForField(type: type.keyType, fieldName: 'entry.key')}.toString(),
+        ${_createConverterForField(type: type.valueType, fieldName: 'entry.value')},
+      );
+    },
+  ),
+)
 ''';
 }
