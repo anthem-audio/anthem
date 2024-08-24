@@ -27,31 +27,47 @@ import 'model_class_info.dart';
 /// Represents a type in the model.
 sealed class ModelType {
   abstract final bool canBeMapKey;
+  abstract final String name;
 }
 
 class StringModelType extends ModelType {
   @override
   final bool canBeMapKey = true;
+
+  @override
+  String get name => 'String';
 }
 
 class IntModelType extends ModelType {
   @override
   final bool canBeMapKey = true;
+
+  @override
+  String get name => 'int';
 }
 
 class DoubleModelType extends ModelType {
   @override
   final bool canBeMapKey = true;
+
+  @override
+  String get name => 'double';
 }
 
 class NumModelType extends ModelType {
   @override
   final bool canBeMapKey = true;
+
+  @override
+  String get name => 'num';
 }
 
 class BoolModelType extends ModelType {
   @override
   final bool canBeMapKey = true;
+
+  @override
+  String get name => 'bool';
 }
 
 class EnumModelType extends ModelType {
@@ -61,6 +77,9 @@ class EnumModelType extends ModelType {
   final String enumName;
 
   EnumModelType(this.enumName);
+
+  @override
+  String get name => enumName;
 }
 
 class ListModelType extends ModelType {
@@ -74,6 +93,9 @@ class ListModelType extends ModelType {
   final ModelType itemType;
 
   ListModelType(this.itemType, {this.isObservable = false});
+
+  @override
+  String get name => 'List<${itemType.name}>';
 }
 
 class MapModelType extends ModelType {
@@ -88,6 +110,9 @@ class MapModelType extends ModelType {
   final ModelType valueType;
 
   MapModelType(this.keyType, this.valueType, {this.isObservable = false});
+
+  @override
+  String get name => 'Map<${keyType.name}, ${valueType.name}>';
 }
 
 /// Represents a custom type that is defined as an Anthem model
@@ -98,6 +123,9 @@ class CustomModelType extends ModelType {
   final ModelClassInfo type;
 
   CustomModelType(this.type);
+
+  @override
+  String get name => type.annotatedClass.name;
 }
 
 /// Represents a type that may or may not be valid, but cannot be parsed for
@@ -105,6 +133,9 @@ class CustomModelType extends ModelType {
 class UnknownModelType extends ModelType {
   @override
   final bool canBeMapKey = false;
+
+  @override
+  String get name => 'void';
 }
 
 /// Parses a Dart type into a [ModelType].
