@@ -21,7 +21,7 @@ import 'package:anthem_codegen/generators/util/model_types.dart';
 
 import 'util/model_class_info.dart';
 
-/// Generates JSON serialization and deserialization for an Anthem model class.
+/// Generates JSON serialization for an Anthem model class.
 ///
 /// We use this over built-in serialization techniques because it allows us to
 /// handle special cases more elegantly. Before, MobX observable collections
@@ -31,8 +31,6 @@ String generateJsonSerializationCode({
   required ModelClassInfo context,
 }) {
   var result = '';
-
-  // Generate serialization
 
   // TODO: Remove the ANTHEM tag
   result += '''// ignore: duplicate_ignore
