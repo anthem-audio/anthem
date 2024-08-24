@@ -9,7 +9,8 @@ class Empty extends _Empty with _$EmptyAnthemModelMixin {}
 class _Empty {}
 
 @AnthemModel(serializable: true)
-class WithPrimitives extends _WithPrimitives with _$WithPrimitivesAnthemModelMixin {}
+class WithPrimitives extends _WithPrimitives
+    with _$WithPrimitivesAnthemModelMixin {}
 
 class _WithPrimitives {
   late int intField;
@@ -30,6 +31,13 @@ class WithMap extends _WithMap with _$WithMapAnthemModelMixin {}
 
 class _WithMap {
   late Map<String, Map<int, int>> stringIntMap;
+}
+
+@AnthemModel(serializable: true)
+class NestedModel extends _NestedModel with _$NestedModelAnthemModelMixin {}
+
+class _NestedModel {
+  late WithPrimitives withPrimitives;
 }
 
 void main() {
@@ -77,6 +85,23 @@ void main() {
     expect(json['stringIntMap'], {
       'a': {'1': 2},
       'b': {'3': 4},
+    });
+  });
+
+  test('Nested model', () {
+    final model = NestedModel()
+      ..withPrimitives = WithPrimitives()
+      ..withPrimitives.intField = 1
+      ..withPrimitives.doubleField = 2.0
+      ..withPrimitives.stringField = '3'
+      ..withPrimitives.boolField = true;
+
+    final json = model.toJson_ANTHEM();
+    expect(json['withPrimitives'], {
+      'intField': 1,
+      'doubleField': 2.0,
+      'stringField': '3',
+      'boolField': true,
     });
   });
 }
