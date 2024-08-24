@@ -40,6 +40,16 @@ class _NestedModel {
   late WithPrimitives withPrimitives;
 }
 
+enum TestEnum { a, b }
+
+@AnthemModel(serializable: true)
+class WithEnum extends _WithEnum with _$WithEnumAnthemModelMixin {}
+
+class _WithEnum {
+  late TestEnum testEnum1;
+  late TestEnum testEnum2;
+}
+
 void main() {
   test('Empty model', () {
     final json = Empty().toJson_ANTHEM();
@@ -103,5 +113,15 @@ void main() {
       'stringField': '3',
       'boolField': true,
     });
+  });
+
+  test('WithEnum model', () {
+    final model = WithEnum()
+      ..testEnum1 = TestEnum.a
+      ..testEnum2 = TestEnum.b;
+
+    final json = model.toJson_ANTHEM();
+    expect(json['testEnum1'], 'a');
+    expect(json['testEnum2'], 'b');
   });
 }

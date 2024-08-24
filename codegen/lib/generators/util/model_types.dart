@@ -54,6 +54,15 @@ class BoolModelType extends ModelType {
   final bool canBeMapKey = true;
 }
 
+class EnumModelType extends ModelType {
+  @override
+  final bool canBeMapKey = true;
+
+  final String enumName;
+
+  EnumModelType(this.enumName);
+}
+
 class ListModelType extends ModelType {
   @override
   final bool canBeMapKey = false;
@@ -156,6 +165,11 @@ ModelType getModelType(
                 'This may be because the type is not annotated as an Anthem model, or is not formed correctly.');
             return UnknownModelType();
           }
+        }
+
+        // Check for enum
+        else if (element is EnumElement) {
+          return EnumModelType(element.name);
         }
 
         log.warning(
