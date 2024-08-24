@@ -70,7 +70,7 @@ class _MyModel {
       final err =
           'Base class not found for ${annotatedClass.name}.\n\n$invalidSetupHelp';
 
-      log.severe(err);
+      log.warning(err);
       throw Exception();
     }
 
@@ -84,16 +84,17 @@ class _MyModel {
     //     .any((m) => m.getDisplayString() == '_\$AnthemModelMixin');
 
     // if (!hasClassMixin) {
-    //   log.severe('Mixin length: ${annotatedClass.mixins.length}');
-    //   log.severe(
+    //   log.warning('Mixin length: ${annotatedClass.mixins.length}');
+    //   log.warning(
     //       'Mixins are: ${annotatedClass.mixins.map((type) => type.getDisplayString()).join(', ')}');
-    //   log.severe(
+    //   log.warning(
     //       'Mixin not found for ${annotatedClass.name}.\n\n$invalidSetupHelp');
     //   continue;
     // }
 
     for (final field in baseClass.fields) {
-      fields[field.name] = getModelType(field.type);
+      fields[field.name] =
+          getModelType(field.type, libraryReader, annotatedClass);
     }
 
     _modelClassInfoCache[(annotatedClass.library, annotatedClass)] = this;

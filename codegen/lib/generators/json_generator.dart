@@ -89,14 +89,17 @@ String _createConverterForField({
     ListModelType() =>
       _createConverterForList(type: type, fieldName: fieldName),
     MapModelType() => _createConverterForMap(type: type, fieldName: fieldName),
-    CustomModelType() || UnknownModelType() => 'null',
+    CustomModelType() =>
+      _createConverterForCustomType(type: type, fieldName: fieldName),
+    UnknownModelType() => 'null',
   };
 }
 
 String _createConverterForPrimitive({
   required String fieldName,
-}) =>
-    fieldName;
+}) {
+  return fieldName;
+}
 
 String _createConverterForList({
   required ListModelType type,
@@ -127,4 +130,11 @@ Map.fromEntries(
   ),
 )
 ''';
+}
+
+String _createConverterForCustomType({
+  required CustomModelType type,
+  required String fieldName,
+}) {
+  return '$fieldName.toJson_ANTHEM()';
 }
