@@ -45,27 +45,11 @@ Map<String, dynamic> toJson_ANTHEM() {
     final name = entry.key;
     final field = entry.value;
 
-    switch (field) {
-      case StringModelType():
-      case IntModelType():
-      case DoubleModelType():
-      case NumModelType():
-      case BoolModelType():
-        result += "map['$name'] = $name;\n";
-        break;
-      case ListModelType():
-        result += '  // $name: list\n';
-        break;
-      case MapModelType():
-        result += '  // $name: map\n';
-        break;
-      case CustomModelType():
-        result += '  // $name: custom\n';
-        break;
-      case UnknownModelType():
-        result += '  // $name: unknown\n';
-        break;
-    }
+    result += _createSetterForField(
+      type: field,
+      fieldName: name,
+      mapName: 'map',
+    );
   }
 
   result += '''
@@ -76,4 +60,54 @@ Map<String, dynamic> toJson_ANTHEM() {
   // Generate deserialization
 
   return result;
+}
+
+String _createSetterForField({
+  required ModelType type,
+  required String fieldName,
+  required String mapName,
+}) {
+  final converter = _createConverterForField(
+    type: type,
+    fieldName: fieldName,
+  );
+
+  return "$mapName['$fieldName'] = $converter;\n";
+}
+
+String _createConverterForField({
+  required ModelType type,
+  required String fieldName,
+}) {
+  return switch (type) {
+    StringModelType() ||
+    IntModelType() ||
+    DoubleModelType() ||
+    NumModelType() ||
+    BoolModelType() =>
+      _createConverterForPrimitive(fieldName: fieldName),
+    ListModelType() =>
+      _createConverterForList(type: type, fieldName: fieldName),
+    MapModelType() => 'null',
+    CustomModelType() => 'null',
+    UnknownModelType() => 'null',
+  };
+}
+
+String _createConverterForPrimitive({
+  required String fieldName,
+}) =>
+    fieldName;
+
+String _createConverterForList({
+  required ListModelType type,
+  required String fieldName,
+}) {
+  return '''
+$fieldName.map(
+  (item) {
+    return ${_createConverterForField(type: type.itemType, fieldName: 'item')};
+  },
+).toList()
+''';
 }
