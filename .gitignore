@@ -30,6 +30,7 @@
 .pub-cache/
 .pub/
 /build/
+/codegen/build/
 *.g.dart
 *.g.part
 
