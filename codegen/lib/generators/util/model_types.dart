@@ -120,6 +120,19 @@ ModelType getModelType(DartType type) {
           return ListModelType(itemType);
         }
 
+        // Check if this is a map
+        if (element is ClassElement &&
+            (element.name == 'Map' || element.name == 'ObservableMap')) {
+          if (type is! ParameterizedType) return UnknownModelType();
+
+          final typeParams = type.typeArguments;
+          if (typeParams.length != 2) return UnknownModelType();
+
+          final keyType = getModelType(typeParams[0]);
+          final valueType = getModelType(typeParams[1]);
+          return MapModelType(keyType, valueType);
+        }
+
         return UnknownModelType();
       })(),
   };
