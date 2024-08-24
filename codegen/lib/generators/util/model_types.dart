@@ -19,6 +19,7 @@
 
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
+import 'package:build/build.dart';
 
 import 'model_class_info.dart';
 
@@ -129,6 +130,12 @@ ModelType getModelType(DartType type) {
           if (typeParams.length != 2) return UnknownModelType();
 
           final keyType = getModelType(typeParams[0]);
+          if (!keyType.canBeMapKey) {
+            log.warning(
+                'Map key type cannot be used as a map key: ${typeParams[0].element?.name}');
+            return UnknownModelType();
+          }
+
           final valueType = getModelType(typeParams[1]);
           return MapModelType(keyType, valueType);
         }
