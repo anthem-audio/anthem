@@ -18,6 +18,7 @@
 */
 
 import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
@@ -28,6 +29,9 @@ import 'model_class_info.dart';
 sealed class ModelType {
   abstract final bool canBeMapKey;
   abstract final String name;
+  final bool isNullable;
+
+  ModelType({required this.isNullable});
 }
 
 class StringModelType extends ModelType {
@@ -36,6 +40,8 @@ class StringModelType extends ModelType {
 
   @override
   String get name => 'String';
+
+  StringModelType({required super.isNullable});
 }
 
 class IntModelType extends ModelType {
@@ -44,6 +50,8 @@ class IntModelType extends ModelType {
 
   @override
   String get name => 'int';
+
+  IntModelType({required super.isNullable});
 }
 
 class DoubleModelType extends ModelType {
@@ -52,6 +60,8 @@ class DoubleModelType extends ModelType {
 
   @override
   String get name => 'double';
+
+  DoubleModelType({required super.isNullable});
 }
 
 class NumModelType extends ModelType {
@@ -60,6 +70,8 @@ class NumModelType extends ModelType {
 
   @override
   String get name => 'num';
+
+  NumModelType({required super.isNullable});
 }
 
 class BoolModelType extends ModelType {
@@ -68,6 +80,8 @@ class BoolModelType extends ModelType {
 
   @override
   String get name => 'bool';
+
+  BoolModelType({required super.isNullable});
 }
 
 class EnumModelType extends ModelType {
@@ -76,7 +90,7 @@ class EnumModelType extends ModelType {
 
   final String enumName;
 
-  EnumModelType(this.enumName);
+  EnumModelType(this.enumName, {required super.isNullable});
 
   @override
   String get name => enumName;
@@ -92,10 +106,11 @@ class ListModelType extends ModelType {
 
   final ModelType itemType;
 
-  ListModelType(this.itemType, {this.isObservable = false});
+  ListModelType(this.itemType,
+      {this.isObservable = false, required super.isNullable});
 
   @override
-  String get name => 'List<${itemType.name}>';
+  String get name => 'List<${itemType.name}${itemType.isNullable ? '?' : ''}>';
 }
 
 class MapModelType extends ModelType {
@@ -109,10 +124,12 @@ class MapModelType extends ModelType {
   final ModelType keyType;
   final ModelType valueType;
 
-  MapModelType(this.keyType, this.valueType, {this.isObservable = false});
+  MapModelType(this.keyType, this.valueType,
+      {this.isObservable = false, required super.isNullable});
 
   @override
-  String get name => 'Map<${keyType.name}, ${valueType.name}>';
+  String get name =>
+      'Map<${keyType.name}${keyType.isNullable ? '?' : ''}, ${valueType.name}${valueType.isNullable ? '?' : ''}>';
 }
 
 /// Represents a custom type that is defined as an Anthem model
@@ -122,7 +139,7 @@ class CustomModelType extends ModelType {
 
   final ModelClassInfo type;
 
-  CustomModelType(this.type);
+  CustomModelType(this.type, {required super.isNullable});
 
   @override
   String get name => type.annotatedClass.name;
@@ -136,6 +153,8 @@ class UnknownModelType extends ModelType {
 
   @override
   String get name => 'void';
+
+  UnknownModelType() : super(isNullable: false);
 }
 
 /// Parses a Dart type into a [ModelType].
@@ -144,12 +163,14 @@ ModelType getModelType(
   final element = type.element;
   if (element == null) return UnknownModelType();
 
+  final isNullable = type.nullabilitySuffix == NullabilitySuffix.question;
+
   return switch (element.name) {
-    'bool' => BoolModelType(),
-    'int' => IntModelType(),
-    'double' => DoubleModelType(),
-    'num' => NumModelType(),
-    'String' => StringModelType(),
+    'bool' => BoolModelType(isNullable: isNullable),
+    'int' => IntModelType(isNullable: isNullable),
+    'double' => DoubleModelType(isNullable: isNullable),
+    'num' => NumModelType(isNullable: isNullable),
+    'String' => StringModelType(isNullable: isNullable),
     _ => (() {
         // Check if this is a list
         if (element is ClassElement &&
@@ -161,7 +182,11 @@ ModelType getModelType(
 
           final itemType =
               getModelType(typeParam, libraryReader, annotatedClass);
-          return ListModelType(itemType);
+          return ListModelType(
+            itemType,
+            isObservable: element.name == 'ObservableList',
+            isNullable: isNullable,
+          );
         }
 
         // Check if this is a map
@@ -182,14 +207,19 @@ ModelType getModelType(
 
           final valueType =
               getModelType(typeParams[1], libraryReader, annotatedClass);
-          return MapModelType(keyType, valueType);
+          return MapModelType(
+            keyType,
+            valueType,
+            isObservable: element.name == 'ObservableMap',
+            isNullable: isNullable,
+          );
         }
 
         // Check for custom type
         else if (element is ClassElement) {
           try {
             final type = ModelClassInfo(libraryReader, element);
-            return CustomModelType(type);
+            return CustomModelType(type, isNullable: isNullable);
           } catch (e) {
             log.warning('Error parsing custom type: ${element.name}');
             log.warning(
@@ -200,7 +230,7 @@ ModelType getModelType(
 
         // Check for enum
         else if (element is EnumElement) {
-          return EnumModelType(element.name);
+          return EnumModelType(element.name, isNullable: isNullable);
         }
 
         log.warning(

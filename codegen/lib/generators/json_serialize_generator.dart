@@ -70,6 +70,18 @@ String _createSetterForField({
     fieldName: fieldName,
   );
 
+  // If the field is nullable, we need to check if the value we're adding to the
+  // JSON map is null before adding it
+  if (type.isNullable) {
+    return '''{
+    final value = $converter;
+    if (value != null) {
+      $mapName['$fieldName'] = value;
+    }
+  }
+''';
+  }
+
   return "$mapName['$fieldName'] = $converter;\n";
 }
 
@@ -84,12 +96,15 @@ String _createConverterForField({
     NumModelType() ||
     BoolModelType() =>
       _createConverterForPrimitive(fieldName: fieldName),
-    EnumModelType() => _createConverterForEnum(fieldName: fieldName),
-    ListModelType() =>
-      _createConverterForList(type: type, fieldName: fieldName),
-    MapModelType() => _createConverterForMap(type: type, fieldName: fieldName),
-    CustomModelType() =>
-      _createConverterForCustomType(type: type, fieldName: fieldName),
+    EnumModelType(isNullable: var isNullable) =>
+      _createConverterForEnum(fieldName: fieldName, isNullable: isNullable),
+    ListModelType(isNullable: var isNullable) => _createConverterForList(
+        type: type, fieldName: fieldName, isNullable: isNullable),
+    MapModelType(isNullable: var isNullable) => _createConverterForMap(
+        type: type, fieldName: fieldName, isNullable: isNullable),
+    CustomModelType(isNullable: var isNullable) =>
+      _createConverterForCustomType(
+          type: type, fieldName: fieldName, isNullable: isNullable),
     UnknownModelType() => 'null',
   };
 }
@@ -102,16 +117,20 @@ String _createConverterForPrimitive({
 
 String _createConverterForEnum({
   required String fieldName,
+  required bool isNullable,
 }) {
-  return '$fieldName.name';
+  return isNullable ? '$fieldName?.name' : '$fieldName.name';
 }
 
 String _createConverterForList({
   required ListModelType type,
   required String fieldName,
+  required bool isNullable,
 }) {
+  final q = isNullable ? '?' : '';
+
   return '''
-$fieldName.map(
+$fieldName$q.map(
   (item) {
     return ${_createConverterForField(type: type.itemType, fieldName: 'item')};
   },
@@ -122,10 +141,14 @@ $fieldName.map(
 String _createConverterForMap({
   required MapModelType type,
   required String fieldName,
+  required bool isNullable,
 }) {
+  final nullablePrefix = isNullable ? '$fieldName == null ? null : ' : '';
+  final excl = isNullable ? '!' : '';
+
   return '''
-Map.fromEntries(
-  $fieldName.entries.map(
+${nullablePrefix}Map.fromEntries(
+  $fieldName$excl.entries.map(
     (entry) {
       return MapEntry(
         ${_createConverterForField(type: type.keyType, fieldName: 'entry.key')}${type.keyType is StringModelType ? '' : '.toString()'},
@@ -140,6 +163,7 @@ Map.fromEntries(
 String _createConverterForCustomType({
   required CustomModelType type,
   required String fieldName,
+  required bool isNullable,
 }) {
-  return '$fieldName.toJson_ANTHEM()';
+  return '$fieldName${isNullable ? '?' : ''}.toJson_ANTHEM()';
 }

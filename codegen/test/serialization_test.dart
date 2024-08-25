@@ -29,6 +29,7 @@ class _WithPrimitives {
   late double doubleField;
   late String stringField;
   late bool boolField;
+  num? nullableNumField;
 }
 
 @AnthemModel(serializable: true)
@@ -40,7 +41,7 @@ class WithList extends _WithList with _$WithListAnthemModelMixin {
 }
 
 class _WithList {
-  late List<List<int>> intList;
+  late List<List<int?>> intList;
 }
 
 @AnthemModel(serializable: true)
@@ -80,6 +81,21 @@ class WithEnum extends _WithEnum with _$WithEnumAnthemModelMixin {
 class _WithEnum {
   late TestEnum testEnum1;
   late TestEnum testEnum2;
+}
+
+@AnthemModel(serializable: true)
+class WithNullable extends _WithNullable with _$WithNullableAnthemModelMixin {
+  WithNullable();
+
+  factory WithNullable.fromJson_ANTHEM(Map<String, dynamic> json) =>
+      _$WithNullableAnthemModelMixin.fromJson_ANTHEM(json);
+}
+
+class _WithNullable {
+  int? nullableInt;
+  List<int>? nullableList;
+  Map<String, List<int?>?>? nullableMap;
+  WithPrimitives? nullableModel;
 }
 
 void main() {
@@ -180,5 +196,64 @@ void main() {
     final deserializedModel = WithEnum.fromJson_ANTHEM(json);
     expect(deserializedModel.testEnum1, TestEnum.a);
     expect(deserializedModel.testEnum2, TestEnum.b);
+  });
+
+  test('Nullable types', () {
+    final model = WithNullable()
+      ..nullableInt = 1
+      ..nullableList = [1, 2, 3]
+      ..nullableMap = {
+        'a': [1, 2, 3],
+        'b': [4, 5, null],
+        'c': null,
+      }
+      ..nullableModel = (WithPrimitives()
+        ..intField = 1
+        ..doubleField = 2.0
+        ..stringField = '3'
+        ..boolField = true);
+
+    final json = model.toJson_ANTHEM();
+    expect(json['nullableInt'], 1);
+    expect(json['nullableList'], [1, 2, 3]);
+    expect(json['nullableMap'], {
+      'a': [1, 2, 3],
+      'b': [4, 5, null],
+      'c': null,
+    });
+    expect(json['nullableModel'], {
+      'intField': 1,
+      'doubleField': 2.0,
+      'stringField': '3',
+      'boolField': true,
+    });
+
+    final deserializedModel = WithNullable.fromJson_ANTHEM(json);
+    expect(deserializedModel.nullableInt, 1);
+    expect(deserializedModel.nullableMap, {
+      'a': [1, 2, 3],
+      'b': [4, 5, null],
+      'c': null,
+    });
+    expect(deserializedModel.nullableModel?.intField, 1);
+    expect(deserializedModel.nullableModel?.doubleField, 2.0);
+    expect(deserializedModel.nullableModel?.stringField, '3');
+    expect(deserializedModel.nullableModel?.boolField, true);
+
+    // Same as above, but with null values
+
+    final emptyModel = WithNullable();
+    final emptyJson = emptyModel.toJson_ANTHEM();
+
+    expect(emptyJson['nullableInt'], null);
+    expect(emptyJson['nullableList'], null);
+    expect(emptyJson['nullableMap'], null);
+    expect(emptyJson['nullableModel'], null);
+
+    final emptyDeserializedModel = WithNullable.fromJson_ANTHEM(emptyJson);
+    expect(emptyDeserializedModel.nullableInt, null);
+    expect(emptyDeserializedModel.nullableList, null);
+    expect(emptyDeserializedModel.nullableMap, null);
+    expect(emptyDeserializedModel.nullableModel, null);
   });
 }
