@@ -75,18 +75,21 @@ String _createGetterForField({
   required String fieldName,
   required String getter,
 }) {
+  final q = type.isNullable ? '?' : '';
+
   return switch (type) {
-    StringModelType() => '$getter as String',
-    IntModelType() => '$getter as int',
-    DoubleModelType() => '$getter as double',
-    NumModelType() => '$getter as num',
-    BoolModelType() => '$getter as bool',
+    StringModelType() => '$getter as String$q',
+    IntModelType() => '$getter as int$q',
+    DoubleModelType() => '$getter as double$q',
+    NumModelType() => '$getter as num$q',
+    BoolModelType() => '$getter as bool$q',
     EnumModelType(enumName: var enumName) =>
-      '$enumName.values.firstWhere((e) => e.name == $getter)',
+      '${type.isNullable ? '$getter == null ? null : ' : ''}$enumName.values.firstWhere((e) => e.name == $getter)',
     ListModelType(itemType: var itemType) => _generateListGetter(
         listParameterType: itemType,
         fieldName: fieldName,
         getter: getter,
+        isNullable: type.isNullable,
       ),
     MapModelType(keyType: var keyType, valueType: var valueType) =>
       _generateMapGetter(
@@ -94,9 +97,10 @@ String _createGetterForField({
         valueType: valueType,
         fieldName: fieldName,
         getter: getter,
+        isNullable: type.isNullable,
       ),
     CustomModelType() =>
-      '${type.type.annotatedClass.name}.fromJson_ANTHEM($getter)',
+      '${type.isNullable ? '$getter == null ? null : ' : ''}${type.type.annotatedClass.name}.fromJson_ANTHEM($getter)',
     UnknownModelType() => 'null',
   };
 }
@@ -105,10 +109,14 @@ String _generateListGetter({
   required ModelType listParameterType,
   required String fieldName,
   required String getter,
+  required bool isNullable,
 }) {
-  return '''($getter as List).map((e) {
+  final q = isNullable ? '?' : '';
+  final listParameterTypeQ = listParameterType.isNullable ? '?' : '';
+
+  return '''($getter as List$q)$q.map((e) {
   return ${_createGetterForField(type: listParameterType, fieldName: fieldName, getter: 'e')};
-}).cast<${listParameterType.name}>().toList()''';
+}).cast<${listParameterType.name}$listParameterTypeQ>().toList()''';
 }
 
 String _generateMapGetter({
@@ -116,13 +124,25 @@ String _generateMapGetter({
   required ModelType valueType,
   required String fieldName,
   required String getter,
+  required bool isNullable,
 }) {
-  return '''$getter.map((k, v) {
-  return MapEntry(
-    ${_createGetterForKeyField(type: keyType, fieldName: fieldName, getter: 'k')},
-    ${_createGetterForField(type: valueType, fieldName: fieldName, getter: 'v')},
-  );
-}).cast<${keyType.name}, ${valueType.name}>()''';
+  final q = isNullable ? '?' : '';
+  final keyTypeQ = keyType.isNullable ? '?' : '';
+  final valueTypeQ = valueType.isNullable ? '?' : '';
+
+  return '''(() {
+  final valueFromJson = $getter as Map<String, dynamic>$q;
+  ${isNullable ? 'if (valueFromJson == null) return null;' : ''}
+
+  final map = <${keyType.name}$keyTypeQ, ${valueType.name}$valueTypeQ>{};
+
+  for (final entry in valueFromJson.entries) {
+    map[${_createGetterForKeyField(type: keyType, fieldName: fieldName, getter: 'entry.key')}]
+        = ${_createGetterForField(type: valueType, fieldName: fieldName, getter: 'entry.value')};
+  }
+
+  return map;
+})()''';
 }
 
 String _createGetterForKeyField({
@@ -130,6 +150,18 @@ String _createGetterForKeyField({
   required String fieldName,
   required String getter,
 }) {
+  if (type.isNullable) {
+    return switch (type) {
+      StringModelType() =>
+        throw Exception('String keys in maps cannot be nullable'),
+      IntModelType() => "$getter == 'null' ? null : int.parse($getter)",
+      DoubleModelType() => "$getter == 'null' ? null : double.parse($getter)",
+      NumModelType() => "$getter == 'null' ? null : num.parse($getter)",
+      BoolModelType() => "$getter == 'null' ? null : bool.parse($getter)",
+      _ => 'null',
+    };
+  }
+
   return switch (type) {
     StringModelType() => getter,
     IntModelType() => 'int.parse($getter)',
