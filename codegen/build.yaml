@@ -3,6 +3,7 @@ targets:
     builders:
       anthem_codegen|anthemModelGeneratorBuilder:
         generate_for:
+          - test/*
           - test/**/*
 
 builders:
