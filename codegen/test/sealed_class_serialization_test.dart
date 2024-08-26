@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+// ignore_for_file: non_constant_identifier_names
+
 import 'package:anthem_codegen/annotations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
