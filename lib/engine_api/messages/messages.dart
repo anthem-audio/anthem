@@ -35,22 +35,24 @@ class Heartbeat extends Request {}
 
 class HeartbeatReply extends Response {}
 
-// @AnthemModel(serializable: true)
-sealed class Request extends _Request /*with _$RequestAnthemModelMixin*/ {
+@AnthemModel(serializable: true)
+sealed class Request extends _Request with _$RequestAnthemModelMixin {
   Request();
 
-  // factory Request.fromJson_ANTHEM(Map<String, dynamic> json) => _$RequestAnthemModelMixin.fromJson_ANTHEM(json);
+  factory Request.fromJson_ANTHEM(Map<String, dynamic> json) =>
+      _$RequestAnthemModelMixin.fromJson_ANTHEM(json);
 }
 
 class _Request {
   late int id;
 }
 
-// @AnthemModel(serializable: true)
-sealed class Response extends _Response /*with _$ResponseAnthemModelMixin*/ {
+@AnthemModel(serializable: true)
+sealed class Response extends _Response with _$ResponseAnthemModelMixin {
   Response();
 
-  // factory Response.fromJson_ANTHEM(Map<String, dynamic> json) => _$ResponseAnthemModelMixin.fromJson_ANTHEM(json);
+  factory Response.fromJson_ANTHEM(Map<String, dynamic> json) =>
+      _$ResponseAnthemModelMixin.fromJson_ANTHEM(json);
 }
 
 class _Response {
