@@ -3,4 +3,5 @@ targets:
     builders:
       anthem_codegen|anthemModelGeneratorBuilder:
         generate_for:
+          - lib/*
           - lib/**/*
