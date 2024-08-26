@@ -34,7 +34,11 @@ class ModelClassInfo {
   ClassElement annotatedClass;
   late ClassElement baseClass;
 
+  /// Map of field names to their types.
   Map<String, ModelType> fields = {};
+
+  late bool isSealed;
+  List<SealedSubclassInfo> sealedSubclasses = [];
 
   factory ModelClassInfo(
       LibraryReader libraryReader, ClassElement annotatedClass) {
@@ -97,6 +101,33 @@ class _MyModel {
           getModelType(field.type, libraryReader, annotatedClass);
     }
 
+    isSealed = annotatedClass.isSealed;
+
+    final List<ClassElement> subclasses = [];
+
+    for (var element in libraryReader.classes) {
+      if (element.supertype?.element == annotatedClass) {
+        subclasses.add(element);
+      }
+    }
+
+    for (final subclass in subclasses) {
+      sealedSubclasses.add(SealedSubclassInfo(subclass, this));
+    }
+
     _modelClassInfoCache[(annotatedClass.library, annotatedClass)] = this;
+  }
+}
+
+class SealedSubclassInfo {
+  ClassElement subclass;
+  Map<String, ModelType> fields = {};
+  String get name => subclass.name;
+
+  SealedSubclassInfo(this.subclass, ModelClassInfo baseClassInfo) {
+    for (final field in subclass.fields) {
+      fields[field.name] =
+          getModelType(field.type, baseClassInfo.libraryReader, subclass);
+    }
   }
 }

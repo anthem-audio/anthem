@@ -30,8 +30,37 @@ String generateJsonDeserializationCode({
   result += '''// ignore: duplicate_ignore
 // ignore: non_constant_identifier_names
 static ${context.annotatedClass.name} fromJson_ANTHEM(Map<String, dynamic> json) {
-  final result = ${context.annotatedClass.name}();
 ''';
+
+  if (!context.isSealed) {
+    result += 'final result = ${context.annotatedClass.name}();\n';
+  } else {
+    result += 'late final ${context.annotatedClass.name} result;';
+
+    bool isFirst = true;
+    for (final subclass in context.sealedSubclasses) {
+      result +=
+          '${isFirst ? '' : 'else '}if (json[\'__type\'] == \'${subclass.name}\') {\n';
+      isFirst = false;
+
+      result += 'final subclassResult = ${subclass.name}();\n';
+
+      for (final entry in subclass.fields.entries) {
+        final name = entry.key;
+        final field = entry.value;
+
+        result += _createSetterForField(
+          type: field,
+          fieldName: name,
+          jsonName: 'json',
+          resultName: 'subclassResult',
+        );
+      }
+
+      result += 'result = subclassResult;\n';
+      result += '}\n';
+    }
+  }
 
   for (final entry in context.fields.entries) {
     final name = entry.key;
