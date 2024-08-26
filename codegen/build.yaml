@@ -2,7 +2,8 @@ targets:
   $default:
     builders:
       anthem_codegen|anthemModelGeneratorBuilder:
-        enabled: true
+        generate_for:
+          - test/**/*
 
 builders:
   anthemModelGeneratorBuilder:
@@ -11,5 +12,5 @@ builders:
     builder_factories: ['anthemModelGeneratorBuilder']
     build_extensions: {'.dart': ['.anthem_model_generator.g.part']}
     auto_apply: dependents
-    build_to: cache
+    build_to: source
     applies_builders: ['source_gen|combining_builder']
