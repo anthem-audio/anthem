@@ -12,7 +12,6 @@ In addition to Flutter, Anthem needs the following:
 - **The Clang compiler**: Used to compile multiple components within Anthem.
 - **CMake**: Build tool used for multiple components within Anthem.
 - **Make**: Used for assembling Anthem components.
-- **Boost 1.72.0 or later**: Required for inter-process communication between the UI and engine.
 - **FlatBuffers v23.3.3 compiler**: Required for message serialization between the UI and the engine. Download the compiled Linux binary for 23.3.3 from [the releases page](https://github.com/google/flatbuffers/releases/tag/v23.3.3) and copy the `flatc` binary to `/usr/bin`.
 - **Apt packages**: The following packages are required by either JUCE or Flutter, and can be installed with `apt` or a similar package manager:
     ```

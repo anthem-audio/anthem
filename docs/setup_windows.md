@@ -8,11 +8,6 @@ In addition to Flutter, Anthem needs the following:
 
 - **The MSVC C++ compiler**: Already required by Flutter for Windows development.
 - **CMake**: Required to build the C++ components of Anthem. Download and install CMake from [here](https://cmake.org/).
-- **Boost 1.81.0 or later**: Required for inter-process communication between the UI and engine. Download and install Boost from [here](https://www.boost.org/), and follow the instructions below to set it up:
-    1. Download the Boost distribution.
-    2. Unzip the distribution somewhere.
-    3. Set an environment variable called `BOOST_ROOT` to the path of the folder you extracted Boost into (e.g., "C:/.../Code/boost_1_81_0").
-    4. If you're using Visual Studio Code, you will also need to add the Boost folder to your include path. Open settings (`ctrl + ,`), type `C_Cpp.default.includePath` in the search bar, click 'Add Item`, and paste in your Boost folder path.
 - **FlatBuffers v23.3.3 compiler**: Required for message serialization between the UI and the engine. Download the compiler from [here](https://github.com/google/flatbuffers/releases/tag/v23.3.3), and ensure that the FlatBuffers compiler (`flatc.exe`) is in your PATH. You should be able to run `flatc -h` from a terminal in any folder.
 
 ### Instructions
