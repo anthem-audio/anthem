@@ -12,6 +12,8 @@ if (LINUX)
   pkg_check_modules(WEBKIT2GTK REQUIRED webkit2gtk-4.0)
 endif()
 
+add_subdirectory(include)
+
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/generated)
 
@@ -171,6 +173,8 @@ target_link_libraries(
   juce::juce_audio_processors
   juce::juce_audio_basics
   juce::juce_audio_devices
+
+  reflectcpp
 
   PUBLIC
   juce::juce_recommended_config_flags
