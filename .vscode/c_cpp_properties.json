@@ -3,10 +3,13 @@
         {
             "name": "Win32",
             "includePath": [
-                "${workspaceFolder}/engine/**",
-                "${workspaceFolder}/cpp_shared/**",
-                "${workspaceFolder}/engine_connector/**",
+                "${workspaceFolder}/engine/generated/**",
+                "${workspaceFolder}/engine/src/**",
+
+                "${workspaceFolder}/engine/include/JUCE/**",
                 "${workspaceFolder}/engine/include",
+                "${workspaceFolder}/engine/include/reflect-cpp/**",
+
                 "${default}"
             ],
             "defines": [
