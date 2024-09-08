@@ -35,7 +35,7 @@ class Heartbeat extends Request {}
 
 class HeartbeatReply extends Response {}
 
-@AnthemModel(serializable: true)
+@AnthemModel(serializable: true, generateCpp: true)
 sealed class Request extends _Request with _$RequestAnthemModelMixin {
   Request();
 
@@ -47,7 +47,7 @@ class _Request {
   late int id;
 }
 
-@AnthemModel(serializable: true)
+@AnthemModel(serializable: true, generateCpp: true)
 sealed class Response extends _Response with _$ResponseAnthemModelMixin {
   Response();
 

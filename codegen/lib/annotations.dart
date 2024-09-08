@@ -48,8 +48,9 @@
 /// See above for an example of using the decorator in both cases.
 class AnthemModel {
   final bool serializable;
+  final bool generateCpp;
 
-  const AnthemModel({this.serializable = false});
+  const AnthemModel({this.serializable = false, this.generateCpp = false});
 
-  const AnthemModel.all() : this(serializable: true);
+  const AnthemModel.all() : this(serializable: true, generateCpp: true);
 }

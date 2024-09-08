@@ -1,7 +1,11 @@
 targets:
   $default:
     builders:
-      anthem_codegen|anthemModelGeneratorBuilder:
+      anthem_codegen|anthemDartModelGeneratorBuilder:
+        generate_for:
+          - lib/*
+          - lib/**/*
+      anthem_codegen|cppModelBuilder:
         generate_for:
           - lib/*
           - lib/**/*

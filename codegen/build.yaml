@@ -1,17 +1,25 @@
 targets:
   $default:
     builders:
-      anthem_codegen|anthemModelGeneratorBuilder:
+      anthem_codegen|anthemDartModelGeneratorBuilder:
         generate_for:
           - test/*
           - test/**/*
 
 builders:
-  anthemModelGeneratorBuilder:
+  anthemDartModelGeneratorBuilder:
     target: ':anthem_model_generator'
     import: 'package:anthem_codegen/codegen.dart'
-    builder_factories: ['anthemModelGeneratorBuilder']
+    builder_factories: ['anthemDartModelGeneratorBuilder']
     build_extensions: {'.dart': ['.anthem_model_generator.g.part']}
     auto_apply: dependents
     build_to: source
     applies_builders: ['source_gen|combining_builder']
+  cppModelBuilder: 
+    import: 'package:anthem_codegen/codegen.dart'
+    builder_factories: ['cppModelBuilder']
+    build_extensions: {
+      ".dart": [".h"],
+    }
+    build_to: source
+    auto_apply: dependents
