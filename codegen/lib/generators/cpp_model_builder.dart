@@ -268,6 +268,11 @@ class _Writer {
   }
 
   void writeLine([String? line]) {
+    if (line == '') {
+      result += '\n';
+      return;
+    }
+
     result += '$whitespace${line ?? ''}\n';
   }
 
