@@ -39,19 +39,29 @@ class _SealedClass {
 
 class SealedClassA extends SealedClass {
   late int a;
+
+  SealedClassA(this.a);
+  SealedClassA.uninitialized();
 }
 
 class SealedClassB extends SealedClass {
   late int b;
+
+  SealedClassB();
+  // The uninitialized constructor is not required, so long as there is a
+  // default constructor with no arguments.
 }
 
 class SealedClassC extends SealedClass {
   late int c;
+
+  SealedClassC();
+  SealedClassC.uninitialized();
 }
 
 void main() {
   test('Test sealed classes', () {
-    final sealedClassA = SealedClassA()
+    final sealedClassA = SealedClassA(-1)
       ..baseField = 1
       ..a = 2;
     final sealedClassB = SealedClassB()

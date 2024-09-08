@@ -23,8 +23,28 @@ class SetParameterRequest extends Request {
   late int nodeId;
   late int parameterId;
   late double value;
+
+  SetParameterRequest.uninitialized();
+
+  SetParameterRequest({
+    required int id,
+    required this.nodeId,
+    required this.parameterId,
+    required this.value,
+  }) {
+    super.id = id;
+  }
 }
 
 class SetParameterResponse extends Response {
   late bool success;
+
+  SetParameterResponse.uninitialized();
+
+  SetParameterResponse({
+    required int id,
+    required this.success,
+  }) {
+    super.id = id;
+  }
 }

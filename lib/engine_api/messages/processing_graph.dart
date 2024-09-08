@@ -21,15 +21,39 @@
 
 part of 'messages.dart';
 
-class GetMasterOutputNodeIdRequest extends Request {}
+class GetMasterOutputNodeIdRequest extends Request {
+  GetMasterOutputNodeIdRequest.uninitialized();
+
+  GetMasterOutputNodeIdRequest({required int id}) {
+    super.id = id;
+  }
+}
 
 class GetMasterOutputNodeIdResponse extends Response {
   late int nodeId;
+
+  GetMasterOutputNodeIdResponse.uninitialized();
+
+  GetMasterOutputNodeIdResponse({
+    required int id,
+    required this.nodeId,
+  }) {
+    super.id = id;
+  }
 }
 
 // Adds a processor to the processing graph
 class AddProcessorRequest extends Request {
   late String processorId;
+
+  AddProcessorRequest.uninitialized();
+
+  AddProcessorRequest({
+    required int id,
+    required this.processorId,
+  }) {
+    super.id = id;
+  }
 }
 
 class AddProcessorResponse extends Response {
@@ -41,16 +65,46 @@ class AddProcessorResponse extends Response {
 
   // If the command failed, this will contain an error message
   late String error;
+
+  AddProcessorResponse.uninitialized();
+
+  AddProcessorResponse({
+    required int id,
+    required this.success,
+    required this.processorId,
+    required this.error,
+  }) {
+    super.id = id;
+  }
 }
 
 // Removes a processor from the processing graph
 class RemoveProcessorRequest extends Request {
   late int nodeId;
+
+  RemoveProcessorRequest.uninitialized();
+
+  RemoveProcessorRequest({
+    required int id,
+    required this.nodeId,
+  }) {
+    super.id = id;
+  }
 }
 
 class RemoveProcessorResponse extends Response {
   late bool success;
   late String error;
+
+  RemoveProcessorResponse.uninitialized();
+
+  RemoveProcessorResponse({
+    required int id,
+    required this.success,
+    required this.error,
+  }) {
+    super.id = id;
+  }
 }
 
 enum ProcessorConnectionType { audio, noteEvent, control }
@@ -65,11 +119,34 @@ class ConnectProcessorsRequest extends Request {
 
   late int sourcePortIndex;
   late int destinationPortIndex;
+
+  ConnectProcessorsRequest.uninitialized();
+
+  ConnectProcessorsRequest({
+    required int id,
+    required this.sourceId,
+    required this.destinationId,
+    required this.connectionType,
+    required this.sourcePortIndex,
+    required this.destinationPortIndex,
+  }) {
+    super.id = id;
+  }
 }
 
 class ConnectProcessorsResponse extends Response {
   late bool success;
   late String error;
+
+  ConnectProcessorsResponse.uninitialized();
+
+  ConnectProcessorsResponse({
+    required int id,
+    required this.success,
+    required this.error,
+  }) {
+    super.id = id;
+  }
 }
 
 // Disconnects two processors in the node graph.
@@ -81,11 +158,34 @@ class DisconnectProcessorsRequest extends Request {
 
   late int sourcePortIndex;
   late int destinationPortIndex;
+
+  DisconnectProcessorsRequest.uninitialized();
+
+  DisconnectProcessorsRequest({
+    required int id,
+    required this.sourceId,
+    required this.destinationId,
+    required this.connectionType,
+    required this.sourcePortIndex,
+    required this.destinationPortIndex,
+  }) {
+    super.id = id;
+  }
 }
 
 class DisconnectProcessorsResponse extends Response {
   late bool success;
   late String error;
+
+  DisconnectProcessorsResponse.uninitialized();
+
+  DisconnectProcessorsResponse({
+    required int id,
+    required this.success,
+    required this.error,
+  }) {
+    super.id = id;
+  }
 }
 
 // Processor category enum
@@ -94,12 +194,12 @@ enum ProcessorCategory { effect, generator, utility }
 @AnthemModel(serializable: true)
 class ProcessorDescription extends _ProcessorDescription
     with _$ProcessorDescriptionAnthemModelMixin {
-  ProcessorDescription();
+  ProcessorDescription.uninitialized();
 
   factory ProcessorDescription.fromJson_ANTHEM(Map<String, dynamic> json) =>
       _$ProcessorDescriptionAnthemModelMixin.fromJson_ANTHEM(json);
 
-  ProcessorDescription.create({
+  ProcessorDescription({
     required String processorId,
     required ProcessorCategory category,
   }) {
@@ -113,21 +213,36 @@ class _ProcessorDescription {
   late ProcessorCategory category;
 }
 
-class GetProcessorsRequest extends Request {}
+class GetProcessorsRequest extends Request {
+  GetProcessorsRequest.uninitialized();
+
+  GetProcessorsRequest({required int id}) {
+    super.id = id;
+  }
+}
 
 class GetProcessorsResponse extends Response {
   late List<ProcessorDescription> processors;
+
+  GetProcessorsResponse.uninitialized();
+
+  GetProcessorsResponse({
+    required int id,
+    required this.processors,
+  }) {
+    super.id = id;
+  }
 }
 
 @AnthemModel(serializable: true)
 class ProcessorPortDescription extends _ProcessorPortDescription
     with _$ProcessorPortDescriptionAnthemModelMixin {
-  ProcessorPortDescription();
+  ProcessorPortDescription.uninitialized();
 
   factory ProcessorPortDescription.fromJson_ANTHEM(Map<String, dynamic> json) =>
       _$ProcessorPortDescriptionAnthemModelMixin.fromJson_ANTHEM(json);
 
-  ProcessorPortDescription.create({required int id}) {
+  ProcessorPortDescription({required int id}) {
     this.id = id;
   }
 }
@@ -139,13 +254,13 @@ class _ProcessorPortDescription {
 @AnthemModel(serializable: true)
 class ProcessorParameterDescription extends _ProcessorParameterDescription
     with _$ProcessorParameterDescriptionAnthemModelMixin {
-  ProcessorParameterDescription();
+  ProcessorParameterDescription.uninitialized();
 
   factory ProcessorParameterDescription.fromJson_ANTHEM(
           Map<String, dynamic> json) =>
       _$ProcessorParameterDescriptionAnthemModelMixin.fromJson_ANTHEM(json);
 
-  ProcessorParameterDescription.create({
+  ProcessorParameterDescription({
     required int id,
     required double defaultValue,
     required double minValue,
@@ -168,6 +283,15 @@ class _ProcessorParameterDescription {
 // Gets the ports of a node instance with the given ID
 class GetProcessorPortsRequest extends Request {
   late int nodeId;
+
+  GetProcessorPortsRequest.uninitialized();
+
+  GetProcessorPortsRequest({
+    required int id,
+    required this.nodeId,
+  }) {
+    super.id = id;
+  }
 }
 
 class GetProcessorPortsResponse extends Response {
@@ -186,13 +310,46 @@ class GetProcessorPortsResponse extends Response {
   late List<ProcessorPortDescription> outputNoteEventPorts;
 
   late ProcessorParameterDescription parameters;
+
+  GetProcessorPortsResponse.uninitialized();
+
+  GetProcessorPortsResponse({
+    required int id,
+    required this.success,
+    required this.error,
+    required this.inputAudioPorts,
+    required this.inputControlPorts,
+    required this.inputNoteEventPorts,
+    required this.outputAudioPorts,
+    required this.outputControlPorts,
+    required this.outputNoteEventPorts,
+    required this.parameters,
+  }) {
+    super.id = id;
+  }
 }
 
 // Compiles the processing graph and sends the result to the audio thread. This
 // must be called after any graph changes.
-class CompileProcessingGraphRequest extends Request {}
+class CompileProcessingGraphRequest extends Request {
+  CompileProcessingGraphRequest.uninitialized();
+
+  CompileProcessingGraphRequest({required int id}) {
+    super.id = id;
+  }
+}
 
 class CompileProcessingGraphResponse extends Response {
   late bool success;
   late String error;
+
+  CompileProcessingGraphResponse.uninitialized();
+
+  CompileProcessingGraphResponse({
+    required int id,
+    required this.success,
+    required this.error,
+  }) {
+    super.id = id;
+  }
 }
