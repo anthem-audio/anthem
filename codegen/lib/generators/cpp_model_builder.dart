@@ -20,10 +20,12 @@
 import 'dart:async';
 
 import 'package:analyzer/dart/element/element.dart';
-import 'package:anthem_codegen/generators/util/model_class_info.dart';
-import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
+
+import 'util/model_class_info.dart';
+import 'util/model_types.dart';
+import 'util/writer.dart';
 
 /// This builder generates models in C++ to match the `@AnthemModel` classes in
 /// the Dart code.
@@ -125,7 +127,7 @@ class CppModelBuilder implements Builder {
 }
 
 String _generateEnum(EnumModelType enumType) {
-  final writer = _Writer();
+  final writer = Writer();
 
   writer.writeLine('enum class ${enumType.name} {');
   writer.incrementWhitespace();
@@ -144,7 +146,7 @@ String _generateEnum(EnumModelType enumType) {
 
 String _generateEnumsForModel(
     ModelClassInfo modelClassInfo, Set<String> generatedEnums) {
-  final writer = _Writer();
+  final writer = Writer();
 
   final classEnums = modelClassInfo.fields.values.whereType<EnumModelType>();
 
@@ -163,7 +165,7 @@ String _generateEnumsForModel(
 }
 
 String _generateStructsForModel(ModelClassInfo modelClassInfo) {
-  final writer = _Writer();
+  final writer = Writer();
 
   var baseText = '';
 
@@ -253,33 +255,4 @@ String _getCppType(ModelType type) {
     CustomModelType(name: var name) => name,
     UnknownModelType() => 'TYPE_ERROR_UNKNOWN_TYPE',
   };
-}
-
-class _Writer {
-  var result = '';
-  var whitespace = '';
-
-  void incrementWhitespace() {
-    whitespace += '  ';
-  }
-
-  void decrementWhitespace() {
-    whitespace = whitespace.substring(2);
-  }
-
-  void writeLine([String? line]) {
-    if (line == '') {
-      result += '\n';
-      return;
-    }
-
-    result += '$whitespace${line ?? ''}\n';
-  }
-
-  void write(String line) {
-    if (result.isEmpty || result.substring(result.length - 1) == '\n') {
-      result += whitespace;
-    }
-    result += line;
-  }
 }
