@@ -27,13 +27,37 @@ part 'processors.dart';
 
 part 'messages.g.dart';
 
-class Exit extends Request {}
+class Exit extends Request {
+  Exit.uninitialized();
 
-class ExitReply extends Response {}
+  Exit({required int id}) {
+    super.id = id;
+  }
+}
 
-class Heartbeat extends Request {}
+class ExitReply extends Response {
+  ExitReply.uninitialized();
 
-class HeartbeatReply extends Response {}
+  ExitReply({required int id}) {
+    super.id = id;
+  }
+}
+
+class Heartbeat extends Request {
+  Heartbeat.uninitialized();
+
+  Heartbeat({required int id}) {
+    super.id = id;
+  }
+}
+
+class HeartbeatReply extends Response {
+  HeartbeatReply.uninitialized();
+
+  HeartbeatReply({required int id}) {
+    super.id = id;
+  }
+}
 
 @AnthemModel(serializable: true, generateCpp: true)
 sealed class Request extends _Request with _$RequestAnthemModelMixin {

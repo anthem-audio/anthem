@@ -19,7 +19,7 @@
 
 import 'dart:ui';
 import 'package:anthem/engine_api/engine.dart';
-import 'package:anthem/generated/processing_graph_generated.dart';
+import 'package:anthem/engine_api/messages/messages.dart' show ProcessorConnectionType;
 import 'package:anthem/helpers/convert.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/hydratable.dart';
@@ -118,7 +118,7 @@ abstract class _GeneratorModel extends Hydratable with Store {
     await gainNode.createInEngine(engine);
 
     await engine.processingGraphApi.connectProcessors(
-      connectionType: ProcessorConnectionType.Audio,
+      connectionType: ProcessorConnectionType.audio,
       sourceId: processor.idInEngine!,
       sourcePortIndex: 0,
       destinationId: gainNode.idInEngine!,
@@ -126,7 +126,7 @@ abstract class _GeneratorModel extends Hydratable with Store {
     );
 
     await engine.processingGraphApi.connectProcessors(
-      connectionType: ProcessorConnectionType.Audio,
+      connectionType: ProcessorConnectionType.audio,
       sourceId: gainNode.idInEngine!,
       sourcePortIndex: 0,
       destinationId: _project!.masterOutputNodeId!,

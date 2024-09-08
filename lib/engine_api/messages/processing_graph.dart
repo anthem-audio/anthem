@@ -309,7 +309,7 @@ class GetProcessorPortsResponse extends Response {
   late List<ProcessorPortDescription> outputControlPorts;
   late List<ProcessorPortDescription> outputNoteEventPorts;
 
-  late ProcessorParameterDescription parameters;
+  late List<ProcessorParameterDescription> parameters;
 
   GetProcessorPortsResponse.uninitialized();
 
