@@ -90,7 +90,10 @@ class EnumModelType extends ModelType {
 
   final String enumName;
 
-  EnumModelType(this.enumName, {required super.isNullable});
+  final EnumElement enumElement;
+
+  EnumModelType(this.enumName,
+      {required super.isNullable, required this.enumElement});
 
   @override
   String get name => enumName;
@@ -230,7 +233,8 @@ ModelType getModelType(
 
         // Check for enum
         else if (element is EnumElement) {
-          return EnumModelType(element.name, isNullable: isNullable);
+          return EnumModelType(element.name,
+              isNullable: isNullable, enumElement: element);
         }
 
         log.warning(
