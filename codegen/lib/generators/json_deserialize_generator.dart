@@ -32,8 +32,17 @@ String generateJsonDeserializationCode({
 static ${context.annotatedClass.name} fromJson_ANTHEM(Map<String, dynamic> json) {
 ''';
 
+  // If the class is not sealed, we can just create an instance of the class
   if (!context.isSealed) {
-    result += 'final result = ${context.annotatedClass.name}();\n';
+    // If the class has a special uninitialized constructor, we use that. If
+    // this constructor does not exist, then there must be a default constructor
+    // with no arguments.
+    if (context.annotatedClass.getNamedConstructor('uninitialized') != null) {
+      result +=
+          'final result = ${context.annotatedClass.name}.uninitialized();\n';
+    } else {
+      result += 'final result = ${context.annotatedClass.name}();\n';
+    }
   } else {
     result += 'late final ${context.annotatedClass.name} result;';
 
@@ -43,7 +52,14 @@ static ${context.annotatedClass.name} fromJson_ANTHEM(Map<String, dynamic> json)
           '${isFirst ? '' : 'else '}if (json[\'__type\'] == \'${subclass.name}\') {\n';
       isFirst = false;
 
-      result += 'final subclassResult = ${subclass.name}();\n';
+      // If the class has a special uninitialized constructor, we use that. If
+      // this constructor does not exist, then there must be a default
+      // constructor with no arguments.
+      if (subclass.subclass.getNamedConstructor('uninitialized') != null) {
+        result += 'final subclassResult = ${subclass.name}.uninitialized();\n';
+      } else {
+        result += 'final subclassResult = ${subclass.name}();\n';
+      }
 
       for (final entry in subclass.fields.entries) {
         final name = entry.key;
