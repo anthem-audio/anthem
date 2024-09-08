@@ -31,14 +31,10 @@ class ProjectApi {
   Future<int> addArrangement() async {
     final id = _engine._getRequestId();
 
-    final request = RequestObjectBuilder(
-      id: id,
-      commandType: CommandTypeId.AddArrangement,
-      command: AddArrangementObjectBuilder(),
-    );
+    final request = AddArrangementRequest(id: id);
 
-    final response = (await _engine._request(id, request)).returnValue
-        as AddArrangementResponse;
+    final response =
+        (await _engine._request(id, request)) as AddArrangementResponse;
 
     return response.editId;
   }
@@ -49,11 +45,7 @@ class ProjectApi {
   Future<void> deleteArrangement(int editId) {
     final id = _engine._getRequestId();
 
-    final request = RequestObjectBuilder(
-      id: id,
-      commandType: CommandTypeId.DeleteArrangement,
-      command: DeleteArrangementObjectBuilder(editId: editId),
-    );
+    final request = DeleteArrangementRequest(id: id, editId: editId);
 
     return _engine._request(id, request);
   }
@@ -66,15 +58,12 @@ class ProjectApi {
   }) {
     final id = _engine._getRequestId();
 
-    final request = RequestObjectBuilder(
+    final request = LiveNoteOnRequest(
       id: id,
-      commandType: CommandTypeId.LiveNoteOn,
-      command: LiveNoteOnObjectBuilder(
-        editId: editId,
-        channel: channel,
-        note: note,
-        velocity: velocity,
-      ),
+      editId: editId,
+      channel: channel,
+      note: note,
+      velocity: velocity,
     );
 
     return _engine._request(id, request);
@@ -87,14 +76,11 @@ class ProjectApi {
   }) {
     final id = _engine._getRequestId();
 
-    final request = RequestObjectBuilder(
+    final request = LiveNoteOffRequest(
       id: id,
-      commandType: CommandTypeId.LiveNoteOff,
-      command: LiveNoteOffObjectBuilder(
-        editId: editId,
-        channel: channel,
-        note: note,
-      ),
+      editId: editId,
+      channel: channel,
+      note: note,
     );
 
     return _engine._request(id, request);

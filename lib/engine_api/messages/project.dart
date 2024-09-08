@@ -19,14 +19,38 @@
 
 part of 'messages.dart';
 
-class AddArrangementRequest extends Request {}
+class AddArrangementRequest extends Request {
+  AddArrangementRequest.uninitialized();
+
+  AddArrangementRequest({required int id}) {
+    super.id = id;
+  }
+}
 
 class AddArrangementResponse extends Response {
   late int editId;
+
+  AddArrangementResponse.uninitialized();
+
+  AddArrangementResponse({
+    required int id,
+    required this.editId,
+  }) {
+    super.id = id;
+  }
 }
 
 class DeleteArrangementRequest extends Request {
   late int editId;
+
+  DeleteArrangementRequest.uninitialized();
+
+  DeleteArrangementRequest({
+    required int id,
+    required this.editId,
+  }) {
+    super.id = id;
+  }
 }
 
 // Maybe these should be moved out into another file
@@ -37,6 +61,18 @@ class LiveNoteOnRequest extends Request {
   late int channel;
   late int note;
   late double velocity; // JUCE apparently encodes this in float
+
+  LiveNoteOnRequest.uninitialized();
+
+  LiveNoteOnRequest({
+    required int id,
+    required this.editId,
+    required this.channel,
+    required this.note,
+    required this.velocity,
+  }) {
+    super.id = id;
+  }
 }
 
 class LiveNoteOffRequest extends Request {
@@ -44,4 +80,15 @@ class LiveNoteOffRequest extends Request {
 
   late int channel;
   late int note;
+
+  LiveNoteOffRequest.uninitialized();
+
+  LiveNoteOffRequest({
+    required int id,
+    required this.editId,
+    required this.channel,
+    required this.note,
+  }) {
+    super.id = id;
+  }
 }
