@@ -191,7 +191,7 @@ class DisconnectProcessorsResponse extends Response {
 // Processor category enum
 enum ProcessorCategory { effect, generator, utility }
 
-@AnthemModel(serializable: true)
+@AnthemModel(serializable: true, generateCpp: true)
 class ProcessorDescription extends _ProcessorDescription
     with _$ProcessorDescriptionAnthemModelMixin {
   ProcessorDescription.uninitialized();
@@ -234,7 +234,7 @@ class GetProcessorsResponse extends Response {
   }
 }
 
-@AnthemModel(serializable: true)
+@AnthemModel(serializable: true, generateCpp: true)
 class ProcessorPortDescription extends _ProcessorPortDescription
     with _$ProcessorPortDescriptionAnthemModelMixin {
   ProcessorPortDescription.uninitialized();
@@ -251,7 +251,7 @@ class _ProcessorPortDescription {
   late int id;
 }
 
-@AnthemModel(serializable: true)
+@AnthemModel(serializable: true, generateCpp: true)
 class ProcessorParameterDescription extends _ProcessorParameterDescription
     with _$ProcessorParameterDescriptionAnthemModelMixin {
   ProcessorParameterDescription.uninitialized();
