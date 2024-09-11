@@ -19,7 +19,8 @@
 
 import 'dart:ui';
 import 'package:anthem/engine_api/engine.dart';
-import 'package:anthem/engine_api/messages/messages.dart' show ProcessorConnectionType;
+import 'package:anthem/engine_api/messages/messages.dart'
+    show ProcessorConnectionType;
 import 'package:anthem/helpers/convert.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/hydratable.dart';
