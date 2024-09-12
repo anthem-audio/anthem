@@ -30,12 +30,17 @@
 #include <cstdlib>
 #include <mutex>
 #include <condition_variable>
+#include <optional>
 
-#include "messages_generated.h"
+#include <rfl/json.hpp>
+#include <rfl.hpp>
+
 #include "anthem.h"
 #include "./command_handlers/processing_graph_command_handler.h"
 #include "./command_handlers/processor_command_handler.h"
 #include "./command_handlers/project_command_handler.h"
+
+#include "../generated/lib/engine_api/messages/messages.h"
 
 Anthem* anthem;
 
@@ -71,11 +76,9 @@ volatile bool canWriteToBuffer = true;
 class CommandMessage : public juce::Message
 {
 public:
-  CommandMessage(const Request* request) {
-    this->request = request;
-  }
+  Request request;
 
-  const Request* request;
+  CommandMessage(Request request) : request(request) {}
 };
 
 class CommandMessageListener : public juce::MessageListener
@@ -86,64 +89,83 @@ public:
 
     auto request = command.request;
 
-    // Create flatbuffers builder
-    auto builder = flatbuffers::FlatBufferBuilder();
-
-    flatbuffers::Offset<void> return_value_offset;
-
-    // Access the data in the buffer
-    auto command_type = request->command_type();
     bool isExit = false;
-    std::optional<flatbuffers::Offset<Response>> response;
-    switch (command_type) {
-      case Command_Exit: {
-        auto exitReply = CreateExitReply(builder);
-        auto exitReplyOffset = exitReply.Union();
-        response = std::optional(
-          CreateResponse(builder, request->id(), ReturnValue_ExitReply, exitReplyOffset)
-        );
-        isExit = true;
-        break;
+
+    std::optional<Response> response = std::nullopt;
+
+    if (rfl::holds_alternative<Exit>(request.variant())) {
+      auto& requestAsExit = rfl::get<Exit>(request.variant());
+
+      auto exitReply = ExitReply{
+        .responseBase = ResponseBase{
+          .id = requestAsExit.requestBase.get().id
+        }
+      };
+
+      response = std::optional(
+        Response::TaggedUnion(std::move(exitReply))
+      );
+
+      isExit = true;
+    }
+
+    else if (rfl::holds_alternative<Heartbeat>(request.variant())) {
+      auto& requestAsHeartbeat = rfl::get<Heartbeat>(request.variant());
+
+      auto heartbeatReply = HeartbeatReply{
+        .responseBase = ResponseBase {
+          .id = requestAsHeartbeat.requestBase.get().id
+        }
+      };
+
+      response = std::optional(
+        Response::TaggedUnion(std::move(heartbeatReply))
+      );
+
+      heartbeatOccurred = true;
+    }
+
+    // Forward request to handlers
+
+    bool didOverwriteResponse = false;
+    
+    auto handleProjectCommandResponse = handleProjectCommand(request, anthem);
+    if (handleProjectCommandResponse.has_value()) {
+      if (response.has_value()) {
+        didOverwriteResponse = true;
       }
-      case Command_Heartbeat: {
-        heartbeatOccurred = true;
-        auto heartbeatReply = CreateHeartbeatReply(builder);
-        auto heartbeatReplyOffset = heartbeatReply.Union();
-        response = std::optional(
-          CreateResponse(builder, request->id(), ReturnValue_HeartbeatReply, heartbeatReplyOffset)
-        );
-        break;
+      response = std::move(handleProjectCommandResponse);
+    }
+
+    auto handleProcessingGraphCommandResponse = handleProcessingGraphCommand(request, anthem);
+    if (handleProcessingGraphCommandResponse.has_value()) {
+      if (response.has_value()) {
+        didOverwriteResponse = true;
       }
-      case Command_AddArrangement:
-      case Command_DeleteArrangement:
-      case Command_LiveNoteOn:
-      case Command_LiveNoteOff:
-        response = handleProjectCommand(request, builder, anthem);
-        break;
-      case Command_GetMasterOutputNodeId:
-      case Command_AddProcessor:
-      case Command_RemoveProcessor:
-      case Command_GetProcessors:
-      case Command_ConnectProcessors:
-      case Command_DisconnectProcessors:
-      case Command_CompileProcessingGraph:
-      case Command_GetProcessorPorts:
-        response = handleProcessingGraphCommand(request, builder, anthem);
-        break;
-      case Command_SetParameter:
-        response = handleProcessorCommand(request, builder, anthem);
-        break;
-      default: {
-        std::cerr << "Received unknown command (id: " << static_cast<int>(command_type) << ")" << std::endl;
-        break;
+      response = std::move(handleProcessingGraphCommandResponse);
+    }
+
+    auto handleProcessorCommandResponse = handleProcessorCommand(request, anthem);
+    if (handleProcessorCommandResponse.has_value()) {
+      if (response.has_value()) {
+        didOverwriteResponse = true;
       }
+      response = std::move(handleProcessorCommandResponse);
+    }
+
+    // Warn if multiple handlers gave back a reply. This would indicate that a
+    // command is being handled multiple times, which is probably a bug.
+
+    if (didOverwriteResponse) {
+      std::cout << "Warning: Multiple command handlers tried to reply to a single command. Only the last reply will be sent back. This is probably a bug." << std::endl;
     }
 
     if (response.has_value()) {
-      builder.Finish(response.value());
+      // Serialize the response to a string
+      auto responseStr = rfl::json::write(response.value());
 
-      auto receiveBufferPtr = builder.GetBufferPointer();
-      auto bufferSize = builder.GetSize();
+      auto receiveBufferPtr = responseStr.c_str();
+      auto bufferSize = responseStr.size();
 
       // Write the message length to the socket
       auto bufferSize64 = static_cast<uint64_t>(bufferSize);
@@ -266,15 +288,24 @@ void messageLoop(CommandMessageListener& messageListener) {
           return;
         }
 
-        // Convert to a flatbuffers object
-        auto request = flatbuffers::GetRoot<Request>(messagePtr);
+        // Convert message to a string
+        std::string messageStr(reinterpret_cast<const char*>(messagePtr), messageLength);
+
+        // Convert to a Request object
+        auto requestWrapped = rfl::json::read<Request>(messageStr);
+
+        // Try to unwrap the request
+        if (requestWrapped.error()) {
+          std::cerr << "Failed to parse request: " << messageStr << std::endl;
+          return;
+        }
 
         // Set the "can write" flag to false. The message handler will set this
         // to true after it's done reading the message buffer.
         canWriteToBuffer = false;
 
         // Send to the main thread
-        messageListener.postMessage(new CommandMessage(request));
+        messageListener.postMessage(new CommandMessage(std::move(requestWrapped.value())));
 
         // Wait for the message to be handled before cleaning up the memory
         std::unique_lock<std::mutex> lock(messageHandledMutex);

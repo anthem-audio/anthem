@@ -21,8 +21,9 @@
 
 #include "../plugin_window.h"
 #include "anthem.h"
-#include "messages_generated.h"
+#include <rfl.hpp>
 
-std::optional<flatbuffers::Offset<Response>>
-handleProjectCommand(const Request *request,
-                     flatbuffers::FlatBufferBuilder &builder, Anthem *anthem);
+// TODO: Fix CMake so this isn't necessary
+#include "../../../../generated/lib/engine_api/messages/messages.h"
+
+std::optional<Response> handleProjectCommand(Request& request, Anthem* anthem);

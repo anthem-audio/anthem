@@ -9,12 +9,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install flatbuffers compiler
-        run: |
-          Invoke-WebRequest -Uri "https://github.com/google/flatbuffers/releases/download/v23.3.3/Windows.flatc.binary.zip" -OutFile "flatc.zip"
-          7z e flatc.zip -o"flatc"
-          echo "flatc;" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -70,12 +64,6 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: recursive
-
-      - name: Install flatbuffers compiler
-        run: |
-          wget "https://github.com/google/flatbuffers/releases/download/v23.3.3/Linux.flatc.binary.clang++-12.zip" -O flatc.zip
-          7z e flatc.zip -oflatc
-          sudo cp flatc/flatc /usr/local/bin/
 
       - name: Install dependencies from apt
         run: |

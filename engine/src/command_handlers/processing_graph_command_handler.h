@@ -21,9 +21,9 @@
 
 #include "../plugin_window.h"
 #include "anthem.h"
-#include "messages_generated.h"
 
-std::optional<flatbuffers::Offset<Response>>
-handleProcessingGraphCommand(const Request *request,
-                             flatbuffers::FlatBufferBuilder &builder,
-                             Anthem *anthem);
+// TODO: Fix CMake so this isn't necessary
+#include "../../../../generated/lib/engine_api/messages/messages.h"
+
+std::optional<Response>
+handleProcessingGraphCommand(Request& request, Anthem* anthem);

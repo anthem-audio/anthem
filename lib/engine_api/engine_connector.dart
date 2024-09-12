@@ -41,8 +41,8 @@ final mainExecutablePath = File(Platform.resolvedExecutable);
 /// The [EngineConnector] class manages an engine process. It uses a socket to
 /// communicate with the process.
 ///
-/// The [send] method can be used to send a Flatbuffers message to the engine. A
-/// message can be sent like so:
+/// The [send] method can be used to send messages to the engine. A message can
+/// be sent like so:
 ///
 /// ```dart
 /// final engineConnectorID = getID();
@@ -57,13 +57,12 @@ final mainExecutablePath = File(Platform.resolvedExecutable);
 ///
 /// final id = engineConnector.getRequestId();
 ///
-/// final request = RequestObjectBuilder(
-///   id: id,
-///   commandType: CommandTypeId.AddArrangement,
-///   command: AddArrangementObjectBuilder(),
-/// );
+/// final request = Heartbeat(id: id);
 ///
-/// engineConnector.send(request);
+/// final encoder = JsonUtf8Encoder();
+/// final requestBytes = encoder.convert(request.toJson()) as Uint8List;
+///
+/// engineConnector.send(requestBytes);
 /// ```
 class EngineConnector {
   var requestIdGen = 0;
@@ -220,7 +219,7 @@ class EngineConnector {
     return true;
   }
 
-  /// Sends the given [Request] to the engine.
+  /// Sends the given bytes to the engine.
   Future<void> send(Uint8List bytes) async {
     if (!_initialized) {
       _bufferedRequests.add(bytes);

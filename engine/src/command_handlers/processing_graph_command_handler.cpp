@@ -24,348 +24,278 @@
 #include "tone_generator_node.h"
 #include "gain_node.h"
 
-std::optional<flatbuffers::Offset<Response>>
-handleProcessingGraphCommand(const Request *request,
-                     flatbuffers::FlatBufferBuilder &builder, Anthem *anthem) {
-  auto commandType = request->command_type();
+std::optional<Response>
+handleProcessingGraphCommand(Request& request, Anthem* anthem) {
+  if (rfl::holds_alternative<GetProcessorsRequest>(request.variant())) {
+    auto& getProcessorsRequest = rfl::get<GetProcessorsRequest>(request.variant());
 
-  switch (commandType) {
-    case Command_GetProcessors: {
-      std::vector<flatbuffers::Offset<ProcessorDescription>> fbProcessorList;
+    std::vector<ProcessorDescription> processorList;
 
-      // TODO: This should probably be stored somewhere for real, so we don't
-      // have to manage it here
-      std::vector<std::tuple<std::string, ProcessorCategory>> processors = {
-        {"SimpleVolumeLfo", ProcessorCategory::ProcessorCategory_Effect},
-        {"ToneGenerator", ProcessorCategory::ProcessorCategory_Generator},
-        // {"3", "Processor3", ProcessorCategory::ProcessorCategory_Utility}
+    // TODO: This should probably be stored somewhere for real, so we don't
+    // have to manage it here
+    std::vector<std::tuple<std::string, ProcessorCategory>> processors = {
+      {"SimpleVolumeLfo", ProcessorCategory::effect},
+      {"ToneGenerator", ProcessorCategory::generator},
+      // {"3", "Processor3", ProcessorCategory::ProcessorCategory_Utility}
+    };
+
+    for (const auto& processor : processors) {
+      auto id = std::get<0>(processor);
+      auto category = std::get<1>(processor);
+
+      auto processorDescription = ProcessorDescription{
+        .processorId = id,
+        .category = category
+      };
+      processorList.push_back(processorDescription);
+    }
+
+    auto response = GetProcessorsResponse {
+      .processors = std::move(processorList),
+      .responseBase = ResponseBase {
+        .id = getProcessorsRequest.requestBase.get().id
+      }
+    };
+
+    return std::optional(std::move(response));
+  }
+
+  else if (rfl::holds_alternative<GetProcessorPortsRequest>(request.variant())) {
+    auto& getProcessorPortsRequest = rfl::get<GetProcessorPortsRequest>(request.variant());
+
+    int64_t nodeId = getProcessorPortsRequest.nodeId;
+
+    if (!anthem->hasNode(nodeId)) {
+      std::string error = "Node not found";
+      auto errorResponse = GetProcessorPortsResponse {
+        .success = false,
+        .error = error,
+        .responseBase = ResponseBase {
+          .id = getProcessorPortsRequest.requestBase.get().id
+        }
       };
 
-      for (const auto& processor : processors) {
-        auto id = builder.CreateString(std::get<0>(processor));
-        auto category = std::get<1>(processor);
-
-        auto processorDescription = CreateProcessorDescription(builder, id, category);
-        fbProcessorList.push_back(processorDescription);
-      }
-
-      auto processorListOffset = builder.CreateVector(fbProcessorList);
-
-      auto response = CreateGetProcessorsResponse(builder, processorListOffset);
-      auto responseOffset = response.Union();
-
-      auto message = CreateResponse(builder, request->id(), ReturnValue_GetProcessorsResponse, responseOffset);
-
-      return std::optional(message);
+      return std::optional(errorResponse);
     }
-    case Command_GetProcessorPorts: {
-      auto command = request->command_as_GetProcessorPorts();
-      uint64_t nodeId = command->id();
 
-      if (!anthem->hasNode(nodeId)) {
-        std::string error = "Node not found";
-        auto errorResponse = CreateGetProcessorPortsResponse(builder, false, builder.CreateString(error));
-        auto errorResponseOffset = errorResponse.Union();
-        auto errorResponseMessage = CreateResponse(builder, request->id(), ReturnValue_GetProcessorPortsResponse, errorResponseOffset);
+    auto node = anthem->getNode(nodeId);
 
-        return std::optional(errorResponseMessage);
-      }
+    std::vector<ProcessorPortDescription> audioInputPorts;
 
-      auto node = anthem->getNode(nodeId);
+    for (const auto& port : node->audioInputs) {
+      auto id = port->config->id;
 
-      std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbAudioInputPorts;
-
-      for (const auto& port : node->audioInputs) {
-        auto id = port->config->id;
-
-        auto portDescription = CreateProcessorPortDescription(builder, id);
-        fbAudioInputPorts.push_back(portDescription);
-      }
-
-      std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbControlInputPorts;
-
-      for (const auto& port : node->controlInputs) {
-        auto id = port->config->id;
-
-        auto portDescription = CreateProcessorPortDescription(builder, id);
-        fbControlInputPorts.push_back(portDescription);
-      }
-
-      std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbMidiInputPorts;
-
-      // for (const auto& port : node->midiInputs) {
-      //   auto id = port->config->name;
-
-      //   auto portDescription = CreateProcessorPortDescription(builder, id);
-      //   fbMidiInputPorts.push_back(portDescription);
-      // }
-
-      std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbAudioOutputPorts;
-
-      for (const auto& port : node->audioOutputs) {
-        auto id = port->config->id;
-
-        auto portDescription = CreateProcessorPortDescription(builder, id);
-        fbAudioOutputPorts.push_back(portDescription);
-      }
-
-      std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbControlOutputPorts;
-
-      for (const auto& port : node->controlOutputs) {
-        auto id = port->config->id;
-
-        auto portDescription = CreateProcessorPortDescription(builder, id);
-        fbControlOutputPorts.push_back(portDescription);
-      }
-
-      std::vector<flatbuffers::Offset<ProcessorPortDescription>> fbMidiOutputPorts;
-
-      // for (const auto& port : node->midiOutputs) {
-      //   auto id = port->config->id;
-      
-      //   auto portDescription = CreateProcessorPortDescription(builder, id);
-      //   fbMidiOutputPorts.push_back(portDescription);
-      // }
-
-      std::vector<flatbuffers::Offset<ProcessorParameterDescription>> fbParameters;
-
-      for (int i = 0; i < node->controlInputs.size(); i++) {
-        auto& port = node->controlInputs[i];
-        auto parameter = node->processor->config.getParameterByIndex(i);
-
-        auto id = port->config->id;
-        auto defaultValue = parameter->defaultValue;
-        auto min = parameter->minValue;
-        auto max = parameter->maxValue;
-
-        auto parameterDescription = CreateProcessorParameterDescription(builder, id, defaultValue, min, max);
-        fbParameters.push_back(parameterDescription);
-      }
-
-      auto audioInputPortsOffset = builder.CreateVector(fbAudioInputPorts);
-      auto controlInputPortsOffset = builder.CreateVector(fbControlInputPorts);
-      auto midiInputPortsOffset = builder.CreateVector(fbMidiInputPorts);
-
-      auto audioOutputPortsOffset = builder.CreateVector(fbAudioOutputPorts);
-      auto controlOutputPortsOffset = builder.CreateVector(fbControlOutputPorts);
-      auto midiOutputPortsOffset = builder.CreateVector(fbMidiOutputPorts);
-
-      auto parametersOffset = builder.CreateVector(fbParameters);
-
-      auto response = CreateGetProcessorPortsResponse(
-        builder,
-        true,
-        0,
-        audioInputPortsOffset,
-        controlInputPortsOffset,
-        midiInputPortsOffset,
-        audioOutputPortsOffset,
-        controlOutputPortsOffset,
-        midiOutputPortsOffset,
-        parametersOffset
-      );
-
-      auto responseOffset = response.Union();
-
-      auto message = CreateResponse(builder, request->id(), ReturnValue_GetProcessorPortsResponse, responseOffset);
-
-      return std::optional(message);
+      auto portDescription = ProcessorPortDescription {
+        .id = id
+      };
+      audioInputPorts.push_back(std::move(portDescription));
     }
-    case Command_GetMasterOutputNodeId: {
-      auto response = CreateGetMasterOutputNodeIdResponse(builder, anthem->getMasterOutputNodeId());
-      auto responseOffset = response.Union();
 
-      auto message = CreateResponse(builder, request->id(), ReturnValue_GetMasterOutputNodeIdResponse, responseOffset);
+    std::vector<ProcessorPortDescription> controlInputPorts;
 
-      return std::optional(message);
+    for (const auto& port : node->controlInputs) {
+      auto id = port->config->id;
+
+      auto portDescription = ProcessorPortDescription {
+        .id = id
+      };
+      controlInputPorts.push_back(std::move(portDescription));
     }
-    case Command_AddProcessor: {
-      bool success = false;
-      std::string error;
 
-      auto command = request->command_as_AddProcessor();
-      auto processorId = command->id()->str();
+    std::vector<ProcessorPortDescription> noteEventInputPorts;
 
-      std::unique_ptr<AnthemProcessor> processor;
+    for (const auto& port : node->noteEventInputs) {
+      auto id = port->config->id;
 
-      if (processorId == "SimpleVolumeLfo") {
-        processor = std::make_unique<SimpleVolumeLfoNode>();
-        success = true;
-      } else if (processorId == "ToneGenerator") {
-        processor = std::make_unique<ToneGeneratorNode>();
-        success = true;
-      } else if (processorId == "SimpleMidiGenerator") {
-        processor = std::make_unique<SimpleMidiGeneratorNode>();
-        success = true;
-      } else if (processorId == "Gain") {
-        processor = std::make_unique<GainNode>();
-        success = true;
-      } else {
-        success = false;
-        error = "Unknown processor id: " + processorId;
-      }
-
-      // Error response
-      if (!success) {
-        error = "AddProcessor command failed";
-        auto errorResponse = CreateAddProcessorResponse(builder, false, 0, builder.CreateString(error));
-        auto errorResponseOffset = errorResponse.Union();
-        auto errorResponseMessage = CreateResponse(builder, request->id(), ReturnValue_AddProcessorResponse, errorResponseOffset);
-
-        return std::optional(errorResponseMessage);
-      }
-
-      uint64_t nodeId;
-      if (success) {
-        nodeId = anthem->addNode(std::move(processor));
-      } else {
-        return std::nullopt;
-      }
-
-      auto response = CreateAddProcessorResponse(builder, true, nodeId, 0);
-      auto responseOffset = response.Union();
-
-      auto message = CreateResponse(builder, request->id(), ReturnValue_AddProcessorResponse, responseOffset);
-
-      return std::optional(message);
+      auto portDescription = ProcessorPortDescription {
+        .id = id
+      };
+      noteEventInputPorts.push_back(std::move(portDescription));
     }
-    case Command_RemoveProcessor: {
-      auto command = request->command_as_RemoveProcessor();
-      uint64_t nodeId = command->id();
 
-      bool success = anthem->removeNode(nodeId);
+    std::vector<ProcessorPortDescription> audioOutputPorts;
 
-      // Error response
-      if (!success) {
-        std::string error = "Node not found";
-        auto errorResponse = CreateRemoveProcessorResponse(builder, false, builder.CreateString(error));
-        auto errorResponseOffset = errorResponse.Union();
-        auto errorResponseMessage = CreateResponse(builder, request->id(), ReturnValue_RemoveProcessorResponse, errorResponseOffset);
+    for (const auto& port : node->audioOutputs) {
+      auto id = port->config->id;
 
-        return std::optional(errorResponseMessage);
-      }
-
-      auto response = CreateRemoveProcessorResponse(builder, success);
-      auto responseOffset = response.Union();
-
-      auto message = CreateResponse(builder, request->id(), ReturnValue_RemoveProcessorResponse, responseOffset);
-
-      return std::optional(message);
+      auto portDescription = ProcessorPortDescription {
+        .id = id
+      };
+      audioOutputPorts.push_back(std::move(portDescription));
     }
-    case Command_ConnectProcessors: {
-      auto command = request->command_as_ConnectProcessors();
 
-      uint64_t sourceId = command->source_id();
-      uint64_t destinationId = command->destination_id();
-      ProcessorConnectionType connectionType = command->connection_type();
-      uint32_t sourcePortIndex = command->source_port_index();
-      uint32_t destinationPortIndex = command->destination_port_index();
+    std::vector<ProcessorPortDescription> controlOutputPorts;
 
-      // std::cout << "Connecting processors: source_id=" << sourceId << ", destination_id=" << destinationId << ", connection_type=" << connectionType << ", source_channel=" << sourceChannel << ", destination_channel=" << destinationChannel << std::endl;
+    for (const auto& port : node->controlOutputs) {
+      auto id = port->config->id;
 
-      bool success = true;
-      std::string error = "";
+      auto portDescription = ProcessorPortDescription {
+        .id = id
+      };
+      controlOutputPorts.push_back(std::move(portDescription));
+    }
 
-      if (!anthem->hasNode(sourceId)) {
-        success = false;
-        error = "Source node not found";
+    std::vector<ProcessorPortDescription> noteEventOutputPorts;
+
+    for (const auto& port : node->noteEventOutputs) {
+      auto id = port->config->id;
+    
+      auto portDescription = ProcessorPortDescription {
+        .id = id
+      };
+      noteEventOutputPorts.push_back(std::move(portDescription));
+    }
+
+    std::vector<ProcessorParameterDescription> parameters;
+
+    for (int i = 0; i < node->controlInputs.size(); i++) {
+      auto& port = node->controlInputs[i];
+      auto parameter = node->processor->config.getParameterByIndex(i);
+
+      auto id = port->config->id;
+      auto defaultValue = parameter->defaultValue;
+      auto min = parameter->minValue;
+      auto max = parameter->maxValue;
+
+      auto parameterDescription = ProcessorParameterDescription {
+        id = id,
+        defaultValue = defaultValue,
+        min = min,
+        max = max
+      };
+      parameters.push_back(parameterDescription);
+    }
+
+    auto response = GetProcessorPortsResponse {
+      .success = true,
+      .error = std::nullopt,
+      .inputAudioPorts = std::move(audioInputPorts),
+      .inputControlPorts = std::move(controlInputPorts),
+      .inputNoteEventPorts = std::move(noteEventInputPorts),
+      .outputAudioPorts = std::move(audioOutputPorts),
+      .outputControlPorts = std::move(controlOutputPorts),
+      .outputNoteEventPorts = std::move(noteEventOutputPorts),
+      .parameters = std::move(parameters),
+      .responseBase = ResponseBase {
+        .id = getProcessorPortsRequest.requestBase.get().id
       }
+    };
 
-      if (!anthem->hasNode(destinationId)) {
-        success = false;
-        error = "Destination node not found";
+    return std::optional(std::move(response));
+  }
+
+  else if (rfl::holds_alternative<GetMasterOutputNodeIdRequest>(request.variant())) {
+    auto& getMasterOutputNodeIdRequest = rfl::get<GetMasterOutputNodeIdRequest>(request.variant());
+
+    return std::optional(GetMasterOutputNodeIdResponse {
+      .nodeId = static_cast<int64_t>(anthem->getMasterOutputNodeId()),
+      .responseBase = ResponseBase {
+        .id = getMasterOutputNodeIdRequest.requestBase.get().id
       }
+    });
+  }
 
-      if (success) {
-        auto sourceNode = anthem->getNode(sourceId);
-        auto destinationNode = anthem->getNode(destinationId);
+  else if (rfl::holds_alternative<AddProcessorRequest>(request.variant())) {
+    bool success = false;
+    std::string error;
 
-        if (connectionType == ProcessorConnectionType_Audio) {
-          if (sourceNode->audioOutputs.size() <= sourcePortIndex) {
-            success = false;
-            error = "Source port index out of range";
-          }
+    auto& addProcessorRequest = rfl::get<AddProcessorRequest>(request.variant());
+    auto processorId = addProcessorRequest.processorId;
 
-          if (destinationNode->audioInputs.size() <= destinationPortIndex) {
-            success = false;
-            error = "Destination port index out of range";
-          }
+    std::unique_ptr<AnthemProcessor> processor;
 
-          if (success) {
-            anthem->getProcessingGraph()->connectNodes(
-              sourceNode->audioOutputs[sourcePortIndex],
-              destinationNode->audioInputs[destinationPortIndex]
-            );
-          }
-        } else if (connectionType == ProcessorConnectionType_Control) {
-          if (sourceNode->controlOutputs.size() <= sourcePortIndex) {
-            success = false;
-            error = "Source port index out of range";
-          }
+    if (processorId == "SimpleVolumeLfo") {
+      processor = std::make_unique<SimpleVolumeLfoNode>();
+      success = true;
+    } else if (processorId == "ToneGenerator") {
+      processor = std::make_unique<ToneGeneratorNode>();
+      success = true;
+    } else if (processorId == "SimpleMidiGenerator") {
+      processor = std::make_unique<SimpleMidiGeneratorNode>();
+      success = true;
+    } else if (processorId == "Gain") {
+      processor = std::make_unique<GainNode>();
+      success = true;
+    } else {
+      success = false;
+      error = "Unknown processor id: " + processorId;
+    }
 
-          if (destinationNode->controlInputs.size() <= destinationPortIndex) {
-            success = false;
-            error = "Destination port index out of range";
-          }
+    // Error response
+    if (!success) {
+      error = "AddProcessor command failed";
 
-          if (success) {
-            anthem->getProcessingGraph()->connectNodes(
-              sourceNode->controlOutputs[sourcePortIndex],
-              destinationNode->controlInputs[destinationPortIndex]
-            );
-          }
-        } else if (connectionType == ProcessorConnectionType_NoteEvent) {
-          if (sourceNode->noteEventOutputs.size() <= sourcePortIndex) {
-            success = false;
-            error = "Source port index out of range";
-          }
-
-          if (destinationNode->noteEventInputs.size() <= destinationPortIndex) {
-            success = false;
-            error = "Destination port index out of range";
-          }
-
-          if (success) {
-            anthem->getProcessingGraph()->connectNodes(
-              sourceNode->noteEventOutputs[sourcePortIndex],
-              destinationNode->noteEventInputs[destinationPortIndex]
-            );
+      return std::optional(
+        AddProcessorResponse {
+          .success = false,
+          .processorId = 0,
+          .error = std::optional(error),
+          .responseBase = ResponseBase {
+            .id = addProcessorRequest.requestBase.get().id
           }
         }
-      }
-
-      auto response = CreateConnectProcessorsResponse(builder, success, builder.CreateString(error));
-      auto responseOffset = response.Union();
-
-      auto message = CreateResponse(builder, request->id(), ReturnValue_ConnectProcessorsResponse, responseOffset);
-
-      return std::optional(message);
+      );
     }
-    case Command_DisconnectProcessors: {
-      auto command = request->command_as_DisconnectProcessors();
 
-      uint64_t sourceId = command->source_id();
-      uint64_t destinationId = command->destination_id();
-      uint32_t sourcePortIndex = command->source_port_index();
-      uint32_t destinationPortIndex = command->destination_port_index();
+    uint64_t nodeId;
+    if (success) {
+      nodeId = anthem->addNode(std::move(processor));
+    } else {
+      return std::nullopt;
+    }
 
-      bool success = true;
-      std::string error = "";
-
-      if (!anthem->hasNode(sourceId)) {
-        success = false;
-        error = "Source node not found";
+    return std::optional(AddProcessorResponse {
+      .success = true,
+      .processorId = static_cast<int64_t>(nodeId),
+      .error = std::nullopt,
+      .responseBase = ResponseBase {
+        .id = addProcessorRequest.requestBase.get().id
       }
+    });
+  } else if (rfl::holds_alternative<RemoveProcessorRequest>(request.variant())) {
+    auto& removeProcessorRequest = rfl::get<RemoveProcessorRequest>(request.variant());
+    auto nodeId = removeProcessorRequest.nodeId;
 
-      if (!anthem->hasNode(destinationId)) {
-        success = false;
-        error = "Destination node not found";
+    bool success = anthem->removeNode(nodeId);
+
+    return std::optional(RemoveProcessorResponse {
+      .success = success,
+      .error = success ? std::nullopt : std::optional("Node not found"),
+      .responseBase = ResponseBase {
+        .id = removeProcessorRequest.requestBase.get().id
       }
+    });
+  }
 
-      if (success) {
-        auto sourceNode = anthem->getNode(sourceId);
-        auto destinationNode = anthem->getNode(destinationId);
+  else if (rfl::holds_alternative<ConnectProcessorsRequest>(request.variant())) {
+    auto& connectProcessorsRequest = rfl::get<ConnectProcessorsRequest>(request.variant());
 
+    auto sourceId = connectProcessorsRequest.sourceId;
+    auto destinationId = connectProcessorsRequest.destinationId;
+    auto& connectionType = connectProcessorsRequest.connectionType;
+    auto sourcePortIndex = connectProcessorsRequest.sourcePortIndex;
+    auto destinationPortIndex = connectProcessorsRequest.destinationPortIndex;
+
+    // std::cout << "Connecting processors: source_id=" << sourceId << ", destination_id=" << destinationId << ", connection_type=" << connectionType << ", source_channel=" << sourceChannel << ", destination_channel=" << destinationChannel << std::endl;
+
+    bool success = true;
+    std::string error = "";
+
+    if (!anthem->hasNode(sourceId)) {
+      success = false;
+      error = "Source node not found";
+    }
+
+    if (!anthem->hasNode(destinationId)) {
+      success = false;
+      error = "Destination node not found";
+    }
+
+    if (success) {
+      auto sourceNode = anthem->getNode(sourceId);
+      auto destinationNode = anthem->getNode(destinationId);
+
+      if (connectionType == ProcessorConnectionType::audio) {
         if (sourceNode->audioOutputs.size() <= sourcePortIndex) {
           success = false;
           error = "Source port index out of range";
@@ -377,35 +307,124 @@ handleProcessingGraphCommand(const Request *request,
         }
 
         if (success) {
-          anthem->getProcessingGraph()->disconnectNodes(
+          anthem->getProcessingGraph()->connectNodes(
             sourceNode->audioOutputs[sourcePortIndex],
             destinationNode->audioInputs[destinationPortIndex]
           );
         }
+      } else if (connectionType == ProcessorConnectionType::control) {
+        if (sourceNode->controlOutputs.size() <= sourcePortIndex) {
+          success = false;
+          error = "Source port index out of range";
+        }
+
+        if (destinationNode->controlInputs.size() <= destinationPortIndex) {
+          success = false;
+          error = "Destination port index out of range";
+        }
+
+        if (success) {
+          anthem->getProcessingGraph()->connectNodes(
+            sourceNode->controlOutputs[sourcePortIndex],
+            destinationNode->controlInputs[destinationPortIndex]
+          );
+        }
+      } else if (connectionType == ProcessorConnectionType::noteEvent) {
+        if (sourceNode->noteEventOutputs.size() <= sourcePortIndex) {
+          success = false;
+          error = "Source port index out of range";
+        }
+
+        if (destinationNode->noteEventInputs.size() <= destinationPortIndex) {
+          success = false;
+          error = "Destination port index out of range";
+        }
+
+        if (success) {
+          anthem->getProcessingGraph()->connectNodes(
+            sourceNode->noteEventOutputs[sourcePortIndex],
+            destinationNode->noteEventInputs[destinationPortIndex]
+          );
+        }
+      }
+    }
+
+    return std::optional(ConnectProcessorsResponse {
+      .success = success,
+      .error = error,
+      .responseBase = ResponseBase {
+        .id = connectProcessorsRequest.requestBase.get().id
+      }
+    });
+  }
+
+  else if (rfl::holds_alternative<DisconnectProcessorsRequest>(request.variant())) {
+    auto& disconnectProcessorsRequest = rfl::get<DisconnectProcessorsRequest>(request.variant());
+
+    auto sourceId = disconnectProcessorsRequest.sourceId;
+    auto destinationId = disconnectProcessorsRequest.destinationId;
+    auto sourcePortIndex = disconnectProcessorsRequest.sourcePortIndex;
+    auto destinationPortIndex = disconnectProcessorsRequest.destinationPortIndex;
+
+    bool success = true;
+    std::string error = "";
+
+    if (!anthem->hasNode(sourceId)) {
+      success = false;
+      error = "Source node not found";
+    }
+
+    if (!anthem->hasNode(destinationId)) {
+      success = false;
+      error = "Destination node not found";
+    }
+
+    if (success) {
+      auto sourceNode = anthem->getNode(sourceId);
+      auto destinationNode = anthem->getNode(destinationId);
+
+      if (sourceNode->audioOutputs.size() <= sourcePortIndex) {
+        success = false;
+        error = "Source port index out of range";
       }
 
-      auto response = CreateDisconnectProcessorsResponse(builder, success, builder.CreateString(error));
-      auto responseOffset = response.Union();
+      if (destinationNode->audioInputs.size() <= destinationPortIndex) {
+        success = false;
+        error = "Destination port index out of range";
+      }
 
-      auto message = CreateResponse(builder, request->id(), ReturnValue_DisconnectProcessorsResponse, responseOffset);
-
-      return std::optional(message);
+      if (success) {
+        anthem->getProcessingGraph()->disconnectNodes(
+          sourceNode->audioOutputs[sourcePortIndex],
+          destinationNode->audioInputs[destinationPortIndex]
+        );
+      }
     }
-    case Command_CompileProcessingGraph: {
-      anthem->getProcessingGraph()->compile();
 
-      anthem->getProcessingGraph()->debugPrint();
-
-      auto response = CreateCompileProcessingGraphResponse(builder, true);
-      auto responseOffset = response.Union();
-
-      auto message = CreateResponse(builder, request->id(), ReturnValue_CompileProcessingGraphResponse, responseOffset);
-
-      return std::optional(message);
-    }
-    default: {
-      std::cerr << "Unknown command received by handleProcessingGraphCommand()" << std::endl;
-      return std::nullopt;
-    }
+    return std::optional(DisconnectProcessorsResponse {
+      .success = success,
+      .error = error,
+      .responseBase = ResponseBase {
+        .id = disconnectProcessorsRequest.requestBase.get().id
+      }
+    });
   }
+
+  else if (rfl::holds_alternative<CompileProcessingGraphRequest>(request.variant())) {
+    auto& compileProcessingGraphRequest = rfl::get<CompileProcessingGraphRequest>(request.variant());
+
+    anthem->getProcessingGraph()->compile();
+
+    anthem->getProcessingGraph()->debugPrint();
+
+    return std::optional(CompileProcessingGraphResponse {
+      .success = true,
+      .error = std::nullopt,
+      .responseBase = ResponseBase {
+        .id = compileProcessingGraphRequest.requestBase.get().id
+      }
+    });
+  }
+
+  return std::nullopt;
 }
