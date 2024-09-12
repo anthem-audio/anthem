@@ -20,10 +20,6 @@ jobs:
       - name: Set up environment
         run: .\scripts\setup.ps1
 
-      # Build engine
-      - name: Build engine
-        run: .\scripts\build.ps1
-
       # Get dependencies for Flutter
       - name: Get dependencies
         run: flutter pub get
@@ -46,6 +42,10 @@ jobs:
       
       - name: Test Flutter code
         run: flutter test .
+
+      # Build engine
+      - name: Build engine
+        run: .\scripts\build.ps1
 
       # Build Flutter project
       - name: Build Flutter project
@@ -77,11 +77,6 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # Build engine
-      - name: Build engine
-        run: ./scripts/build.ps1
-        shell: pwsh
-
       # Get dependencies for Flutter
       - name: Get dependencies
         run: flutter pub get
@@ -104,6 +99,11 @@ jobs:
       
       - name: Test Flutter code
         run: flutter test .
+
+      # Build engine
+      - name: Build engine
+        run: ./scripts/build.ps1
+        shell: pwsh
 
       # Build Flutter project
       - name: Build Flutter project
