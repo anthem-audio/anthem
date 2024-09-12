@@ -38,7 +38,9 @@ jobs:
 
       # Lint Flutter project
       - name: Lint Flutter code
-        run: dart analyze --fatal-infos
+        run: |
+          mkdir assets\engine
+          dart analyze --fatal-infos
       
       - name: Test Flutter code
         run: flutter test .
@@ -95,7 +97,9 @@ jobs:
 
       # Lint Flutter project
       - name: Lint Flutter code
-        run: dart analyze --fatal-infos
+        run: |
+          mkdir -p assets/engine
+          dart analyze --fatal-infos
       
       - name: Test Flutter code
         run: flutter test .
