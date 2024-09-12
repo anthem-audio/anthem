@@ -24,74 +24,72 @@
 #include "tone_generator_node.h"
 #include "simple_volume_lfo_node.h"
 
-std::optional<flatbuffers::Offset<Response>> handleProjectCommand(
-  const Request* request,
-  flatbuffers::FlatBufferBuilder& builder,
+std::optional<Response> handleProjectCommand(
+  Request& request,
   [[maybe_unused]] Anthem* anthem
 ) {
-  auto commandType = request->command_type();
+  if (rfl::holds_alternative<AddArrangementRequest>(request.variant())) {
+    // TODO: Handle correctly
+    std::cout << "Received unhandled AddArrangement command" << std::endl;
 
-  switch (commandType) {
-    // TODO: Delete arrangement
+    auto& addArrangementRequest = rfl::get<AddArrangementRequest>(request.variant());
 
-    case Command_AddArrangement: {
-      // TODO: Handle correctly
-      std::cout << "Received unhandled AddArrangement command" << std::endl;
+    int64_t editPtrAsUint = 0;
 
-      uint64_t editPtrAsUint = 0;
+    auto response = AddArrangementResponse {
+      .editId = editPtrAsUint,
+      .responseBase = ResponseBase {
+        .id = addArrangementRequest.requestBase.get().id
+      }
+    };
 
-      auto response = CreateAddArrangementResponse(builder, editPtrAsUint);
-      auto responseOffset = response.Union();
-
-      auto message = CreateResponse(builder, request->id(), ReturnValue_AddArrangementResponse, responseOffset);
-
-      return std::optional(message);
-    }
-    case Command_DeleteArrangement: {
-      // TODO: Handle correctly
-      std::cout << "Received unhandled DeleteArrangement command" << std::endl;
-
-      auto command = request->command_as_DeleteArrangement();
-      
-      std::cout << "Received unhandled DeleteArrangement command" << std::endl;
-      std::cout << "Edit id: " << std::hex << command->edit_id() << std::dec << std::endl;
-
-      return std::nullopt;
-    }
-    case Command_LiveNoteOn: {
-      auto command = request->command_as_LiveNoteOn();
-
-      // auto edit_ptr = static_cast<uintptr_t>(command->edit_pointer());
-
-      auto midiChannel = command->channel();
-      auto midiNoteNumber = command->note();
-      auto velocity = command->velocity();
-
-      juce::MidiMessage message = juce::MidiMessage::noteOn(midiChannel, midiNoteNumber, velocity);
-
-      // TODO: Handle correctly
-      std::cout << "Received unhandled LiveNoteOn command" << std::endl;
-
-      return std::nullopt;
-    }
-    case Command_LiveNoteOff: {
-      auto command = request->command_as_LiveNoteOff();
-
-      // auto edit_ptr = static_cast<uintptr_t>(command->edit_pointer());
-
-      auto midiChannel = command->channel();
-      auto midiNoteNumber = command->note();
-
-      juce::MidiMessage message = juce::MidiMessage::noteOff(midiChannel, midiNoteNumber);
-
-      // TODO: Handle correctly
-      std::cout << "Received unhandled LiveNoteOff command" << std::endl;
-
-      return std::nullopt;
-    }
-    default: {
-      std::cerr << "Unknown command received by handleProjectCommand()" << std::endl;
-      return std::nullopt;
-    }
+    return std::optional(std::move(response));
   }
+
+  else if (rfl::holds_alternative<DeleteArrangementRequest>(request.variant())) {
+    // TODO: Handle correctly
+    std::cout << "Received unhandled DeleteArrangement command" << std::endl;
+
+    auto& deleteArrangementRequest = rfl::get<DeleteArrangementRequest>(request.variant());
+    
+    std::cout << "Received unhandled DeleteArrangement command" << std::endl;
+    std::cout << "Edit id: " << std::hex << deleteArrangementRequest.editId << std::dec << std::endl;
+
+    return std::nullopt;
+  }
+
+  else if (rfl::holds_alternative<LiveNoteOnRequest>(request.variant())) {
+    auto& liveNoteOnRequest = rfl::get<LiveNoteOnRequest>(request.variant());
+
+    // auto edit_ptr = static_cast<uintptr_t>(command->edit_pointer());
+
+    auto midiChannel = static_cast<int>(liveNoteOnRequest.channel);
+    auto midiNoteNumber = static_cast<int>(liveNoteOnRequest.note);
+    auto velocity = static_cast<float>(liveNoteOnRequest.velocity);
+
+    juce::MidiMessage message = juce::MidiMessage::noteOn(midiChannel, midiNoteNumber, velocity);
+
+    // TODO: Handle correctly
+    std::cout << "Received unhandled LiveNoteOn command" << std::endl;
+
+    return std::nullopt;
+  }
+
+  else if (rfl::holds_alternative<LiveNoteOffRequest>(request.variant())) {
+    auto& liveNoteOffRequest = rfl::get<LiveNoteOffRequest>(request.variant());
+
+    // auto edit_ptr = static_cast<uintptr_t>(command->edit_pointer());
+
+    auto midiChannel = liveNoteOffRequest.channel;
+    auto midiNoteNumber = liveNoteOffRequest.note;
+
+    juce::MidiMessage message = juce::MidiMessage::noteOff(midiChannel, midiNoteNumber);
+
+    // TODO: Handle correctly
+    std::cout << "Received unhandled LiveNoteOff command" << std::endl;
+
+    return std::nullopt;
+  }
+
+  return std::nullopt;
 }

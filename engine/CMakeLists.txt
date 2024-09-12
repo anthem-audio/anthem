@@ -23,6 +23,7 @@ add_subdirectory(include/JUCE)
 
 # Include module folders so we don't have to use relative paths
 include_directories(
+  ${CMAKE_SOURCE_DIR}/generated
   ${CMAKE_SOURCE_DIR}/src/modules/core
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/compiler
@@ -41,9 +42,6 @@ juce_add_console_app(AnthemEngine ANTHEM_ENGINE "Anthem Engine" VERSION "0.0.1")
 
 # Set the sources for the AnthemEngine executable
 set(ANTHEM_ENGINE_SOURCES
-  generated/messages_generated.h
-  generated/project_generated.h
-
   src/command_handlers/processing_graph_command_handler.cpp
   src/command_handlers/processing_graph_command_handler.h
   src/command_handlers/processor_command_handler.cpp

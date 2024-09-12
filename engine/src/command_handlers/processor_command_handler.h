@@ -19,10 +19,10 @@
 
 #pragma once
 
-#include "messages_generated.h"
 #include "anthem.h"
+#include <rfl.hpp>
 
-std::optional<flatbuffers::Offset<Response>>
-handleProcessorCommand(const Request *request,
-                       flatbuffers::FlatBufferBuilder &builder,
-                       Anthem *anthem);
+// TODO: Fix CMake so this isn't necessary
+#include "../../../../generated/lib/engine_api/messages/messages.h"
+
+std::optional<Response> handleProcessorCommand(Request& request, Anthem* anthem);

@@ -11,8 +11,6 @@
     "deserializers",
     "Diagnosticable",
     "dylib",
-    "flatbuffers",
-    "flatc",
     "fuzzywuzzy",
     "interprocess",
     "juce",

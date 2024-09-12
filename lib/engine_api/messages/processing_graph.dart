@@ -64,7 +64,7 @@ class AddProcessorResponse extends Response {
   late int processorId;
 
   // If the command failed, this will contain an error message
-  late String error;
+  String? error;
 
   AddProcessorResponse.uninitialized();
 
@@ -72,7 +72,7 @@ class AddProcessorResponse extends Response {
     required int id,
     required this.success,
     required this.processorId,
-    required this.error,
+    this.error,
   }) {
     super.id = id;
   }
@@ -94,14 +94,14 @@ class RemoveProcessorRequest extends Request {
 
 class RemoveProcessorResponse extends Response {
   late bool success;
-  late String error;
+  String? error;
 
   RemoveProcessorResponse.uninitialized();
 
   RemoveProcessorResponse({
     required int id,
     required this.success,
-    required this.error,
+    this.error,
   }) {
     super.id = id;
   }
@@ -136,14 +136,14 @@ class ConnectProcessorsRequest extends Request {
 
 class ConnectProcessorsResponse extends Response {
   late bool success;
-  late String error;
+  String? error;
 
   ConnectProcessorsResponse.uninitialized();
 
   ConnectProcessorsResponse({
     required int id,
     required this.success,
-    required this.error,
+    this.error,
   }) {
     super.id = id;
   }
@@ -175,14 +175,14 @@ class DisconnectProcessorsRequest extends Request {
 
 class DisconnectProcessorsResponse extends Response {
   late bool success;
-  late String error;
+  String? error;
 
   DisconnectProcessorsResponse.uninitialized();
 
   DisconnectProcessorsResponse({
     required int id,
     required this.success,
-    required this.error,
+    this.error,
   }) {
     super.id = id;
   }
@@ -299,31 +299,31 @@ class GetProcessorPortsResponse extends Response {
   late bool success;
 
   // If the command failed, this will contain an error message
-  late String error;
+  String? error;
 
-  late List<ProcessorPortDescription> inputAudioPorts;
-  late List<ProcessorPortDescription> inputControlPorts;
-  late List<ProcessorPortDescription> inputNoteEventPorts;
+  List<ProcessorPortDescription> inputAudioPorts = [];
+  List<ProcessorPortDescription> inputControlPorts = [];
+  List<ProcessorPortDescription> inputNoteEventPorts = [];
 
-  late List<ProcessorPortDescription> outputAudioPorts;
-  late List<ProcessorPortDescription> outputControlPorts;
-  late List<ProcessorPortDescription> outputNoteEventPorts;
+  List<ProcessorPortDescription> outputAudioPorts = [];
+  List<ProcessorPortDescription> outputControlPorts = [];
+  List<ProcessorPortDescription> outputNoteEventPorts = [];
 
-  late List<ProcessorParameterDescription> parameters;
+  List<ProcessorParameterDescription> parameters = [];
 
   GetProcessorPortsResponse.uninitialized();
 
   GetProcessorPortsResponse({
     required int id,
     required this.success,
-    required this.error,
-    required this.inputAudioPorts,
-    required this.inputControlPorts,
-    required this.inputNoteEventPorts,
-    required this.outputAudioPorts,
-    required this.outputControlPorts,
-    required this.outputNoteEventPorts,
-    required this.parameters,
+    this.error,
+    this.inputAudioPorts = const [],
+    this.inputControlPorts = const [],
+    this.inputNoteEventPorts = const [],
+    this.outputAudioPorts = const [],
+    this.outputControlPorts = const [],
+    this.outputNoteEventPorts = const [],
+    this.parameters = const [],
   }) {
     super.id = id;
   }
@@ -341,14 +341,14 @@ class CompileProcessingGraphRequest extends Request {
 
 class CompileProcessingGraphResponse extends Response {
   late bool success;
-  late String error;
+  String? error;
 
   CompileProcessingGraphResponse.uninitialized();
 
   CompileProcessingGraphResponse({
     required int id,
     required this.success,
-    required this.error,
+    this.error,
   }) {
     super.id = id;
   }
