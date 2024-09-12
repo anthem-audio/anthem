@@ -305,7 +305,7 @@ String _generateEnum(EnumModelType enumType) {
 }
 
 String _getCppType(ModelType type) {
-  return switch (type) {
+  final typeStr = switch (type) {
     StringModelType() => 'std::string',
     IntModelType() => 'int64_t',
     DoubleModelType() || NumModelType() => 'double',
@@ -317,4 +317,10 @@ String _getCppType(ModelType type) {
     CustomModelType(name: var name) => name,
     UnknownModelType() => 'TYPE_ERROR_UNKNOWN_TYPE',
   };
+
+  if (type.isNullable) {
+    return 'std::optional<$typeStr>';
+  }
+
+  return typeStr;
 }
