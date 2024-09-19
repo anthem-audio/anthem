@@ -20,6 +20,7 @@
 import 'dart:async';
 
 import 'package:analyzer/dart/element/element.dart';
+import 'package:anthem_codegen/annotations.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
@@ -54,7 +55,26 @@ class CppModelBuilder implements Builder {
 
     final forwardDeclarations = <String>[];
     final usingDirectives = <String>[];
+    final imports = <String>[]; // See note below
     final codeBlocks = <String>[];
+
+    // Note that imports are only used for module files. There is a detailed
+    // description in the doc comment on the @GenerateCppModuleFile annotation.
+
+    // Looks for @GenerateCppModuleFile on this library.
+    final libraryAnnotation = library.metadata
+        .where(
+          (annotation) =>
+              annotation.element?.enclosingElement?.name ==
+              'GenerateCppModuleFile',
+        )
+        .firstOrNull;
+
+    // If we should generate a C++ module file from this file, we kick off the
+    // function to do it here.
+    if (libraryAnnotation != null) {
+      _generateCppModuleFile(libraryReader, imports);
+    }
 
     // Looks for @AnthemModel on each class in the file, and generates the
     // appropriate code
@@ -117,7 +137,12 @@ class CppModelBuilder implements Builder {
       codeBlocks.add('\n\n\n');
     }
 
-    if (codeBlocks.isEmpty) {
+    // If we didn't generate any items for this file, don't try to write
+    // anything.
+    if (forwardDeclarations.isEmpty &&
+        usingDirectives.isEmpty &&
+        imports.isEmpty &&
+        codeBlocks.isEmpty) {
       return;
     }
 
@@ -150,6 +175,13 @@ class CppModelBuilder implements Builder {
       codeToWrite += usingDirective;
       codeToWrite += '\n';
     }
+
+    for (final import in imports) {
+      codeToWrite += import;
+      codeToWrite += '\n';
+    }
+
+    codeToWrite += '\n';
 
     // The rest of the code blocks are the structs and enums themselves.
     for (final codeBlock in codeBlocks) {
@@ -323,4 +355,63 @@ String _getCppType(ModelType type) {
   }
 
   return typeStr;
+}
+
+/// Used to generate a C++ module file.
+///
+/// See documentation on [GenerateCppModuleFile] for when this function will be
+/// used.
+void _generateCppModuleFile(LibraryReader libraryReader, List<String> imports) {
+  final library = libraryReader.element;
+
+  for (final export in library.libraryExports
+      .where((export) => export.uri is DirectiveUriWithRelativeUriString)) {
+    final uri = export.uri as DirectiveUriWithRelativeUriString;
+
+    // If this export isn't a dart file for some reason, don't try to parse it
+    if (!uri.relativeUriString.endsWith('.dart')) {
+      continue;
+    }
+
+    // Don't try to parse this if the exported library can't be resolved
+    if (export.exportedLibrary == null) {
+      continue;
+    }
+
+    final exportLibraryReader = LibraryReader(export.exportedLibrary!);
+
+    // If the exported library doesn't have any Anthem model classes, then we
+    // don't generate an import for it
+    final hasAnyAnthemModel = exportLibraryReader.classes.any((item) {
+      return item.metadata.any((metadata) {
+        if (metadata.element?.enclosingElement?.name != 'AnthemModel') {
+          return false;
+        }
+
+        // Using ConstantReader to read annotation properties
+        final reader = ConstantReader(metadata.computeConstantValue());
+
+        // Read properties from @AnthemModel() annotation
+
+        bool generateCpp;
+
+        if (reader.isNull) {
+          return false;
+        } else {
+          // Reading properties of the annotation
+          generateCpp = reader.read('generateCpp').literalValue as bool;
+        }
+
+        return generateCpp;
+      });
+    });
+    if (!hasAnyAnthemModel) {
+      continue;
+    }
+
+    var cppFile =
+        uri.relativeUriString.substring(0, uri.relativeUriString.length - 5);
+
+    imports.add('#include "$cppFile.h"');
+  }
 }

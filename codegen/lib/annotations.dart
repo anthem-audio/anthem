@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-/// This is an annotation that triggers code generation for Anthem models.
+/// An annotation that triggers code generation for Anthem models.
 ///
 /// Usage:
 ///
@@ -50,7 +50,82 @@ class AnthemModel {
   final bool serializable;
   final bool generateCpp;
 
+  /// Constructor for [AnthemModel].
+  ///
+  /// See the documentation above for more info.
   const AnthemModel({this.serializable = false, this.generateCpp = false});
 
+  /// Constructor for [AnthemModel], which enables all options.
+  ///
+  /// See the documentation above for more info.
   const AnthemModel.all() : this(serializable: true, generateCpp: true);
+}
+
+/// An annotation that triggers the Anthem code generator to create a module
+/// file in C++.
+///
+/// When a library is tagged with this annotation, a matching `.h` file will be
+/// generated in the engine's `generated` folder. This generated header will
+/// `#include` any generated `.h` files that match the `.dart` files exported by
+/// this library.
+///
+/// **If there are model files that import other model files, a module file is
+/// required for the C++ model to be generated correctly.** This is because we
+/// need to put forward declarations in the generated C++ file to prevent issues
+/// with include order and allows circular references between model files.
+///
+/// Note that this only works if the exported files have classes tagged with
+/// `AnthemModel(generateCpp: true)`.
+///
+/// ### Example
+///
+/// `my_module.dart`:
+/// ```dart
+/// @GenerateCppModuleFile()
+/// library models;
+///
+/// export 'first_model.dart';
+/// export 'subfolder/second_model.dart';
+/// export 'non_model_file.dart';
+/// ```
+///
+/// `first_model.dart`:
+/// ```dart
+/// @AnthemModel(serializable: true, generateCpp: true)
+/// class MyFirstModel {
+///   // ...
+/// }
+///
+/// class UntaggedClass {}
+/// ```
+///
+/// `subfolder/second_model.dart`:
+/// ```dart
+/// import '../first_model.dart';
+///
+/// @AnthemModel(serializable: true, generateCpp: true)
+/// class MySecondModel {
+///   MyFirstModel firstModel;
+///   // ...
+/// }
+/// ```
+///
+/// Given this setup, the following C++ module file will be generated:
+///
+/// ```cpp
+/// #pragma once
+///
+/// enum class MyFirstModel;
+/// enum class MySecondModel;
+///
+/// // If there are any sealed classes, using statements will show up here.
+///
+/// #include 'first_model.h'
+/// #include 'subfolder/second_model.h'
+/// ```
+class GenerateCppModuleFile {
+  /// Constructor for [GenerateCppModuleFile].
+  ///
+  /// See the documentation above for more info.
+  const GenerateCppModuleFile();
 }
