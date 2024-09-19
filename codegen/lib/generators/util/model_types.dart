@@ -113,7 +113,8 @@ class ListModelType extends ModelType {
       {this.isObservable = false, required super.isNullable});
 
   @override
-  String get name => 'List<${itemType.name}${itemType.isNullable ? '?' : ''}>';
+  String get name =>
+      '${isObservable ? 'Observable' : ''}List<${itemType.name}${itemType.isNullable ? '?' : ''}>';
 }
 
 class MapModelType extends ModelType {
@@ -132,7 +133,7 @@ class MapModelType extends ModelType {
 
   @override
   String get name =>
-      'Map<${keyType.name}${keyType.isNullable ? '?' : ''}, ${valueType.name}${valueType.isNullable ? '?' : ''}>';
+      '${isObservable ? 'Observable' : ''}Map<${keyType.name}${keyType.isNullable ? '?' : ''}, ${valueType.name}${valueType.isNullable ? '?' : ''}>';
 }
 
 /// Represents a custom type that is defined as an Anthem model
