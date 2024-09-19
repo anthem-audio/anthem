@@ -105,6 +105,11 @@ class _MyModel {
     // }
 
     for (final field in baseClass.fields) {
+      // If the field doesn't have a setter, it's not something we can
+      // deserialize, so we won't include it. This can happen if the field is
+      // final, or if the field is a getter.
+      if (field.setter == null) continue;
+
       fields[field.name] =
           getModelType(field.type, libraryReader, annotatedClass);
     }
@@ -134,6 +139,11 @@ class SealedSubclassInfo {
 
   SealedSubclassInfo(this.subclass, ModelClassInfo baseClassInfo) {
     for (final field in subclass.fields) {
+      // If the field doesn't have a setter, it's not something we can
+      // deserialize, so we won't include it. This can happen if the field is
+      // final, or if the field is a getter.
+      if (field.setter == null) continue;
+
       fields[field.name] =
           getModelType(field.type, baseClassInfo.libraryReader, subclass);
     }
