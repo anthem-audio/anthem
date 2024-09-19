@@ -158,9 +158,10 @@ String _createConverterForList({
   required String accessor,
 }) {
   final q = type.isNullable ? '?' : '';
+  final nonObservableInner = type.isObservable ? '.nonObservableInner' : '';
 
   return '''
-$accessor$q.map(
+$accessor$q$nonObservableInner.map(
   (item) {
     return ${_createConverterForField(type: type.itemType, accessor: 'item')};
   },
@@ -174,10 +175,11 @@ String _createConverterForMap({
 }) {
   final nullablePrefix = type.isNullable ? '$accessor == null ? null : ' : '';
   final excl = type.isNullable ? '!' : '';
+  final nonObservableInner = type.isObservable ? '.nonObservableInner' : '';
 
   return '''
 ${nullablePrefix}Map.fromEntries(
-  $accessor$excl.entries.map(
+  $accessor$excl$nonObservableInner.entries.map(
     (entry) {
       return MapEntry(
         ${_createConverterForField(type: type.keyType, accessor: 'entry.key')}${type.keyType is StringModelType ? '' : '.toString()'},

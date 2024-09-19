@@ -130,19 +130,15 @@ String _createGetterForField({
     BoolModelType() => '$getter as bool$q',
     EnumModelType(enumName: var enumName) =>
       '${type.isNullable ? '$getter == null ? null : ' : ''}$enumName.values.firstWhere((e) => e.name == $getter)',
-    ListModelType(itemType: var itemType) => _generateListGetter(
-        listParameterType: itemType,
+    ListModelType() => _generateListGetter(
+        type: type,
         fieldName: fieldName,
         getter: getter,
-        isNullable: type.isNullable,
       ),
-    MapModelType(keyType: var keyType, valueType: var valueType) =>
-      _generateMapGetter(
-        keyType: keyType,
-        valueType: valueType,
+    MapModelType() => _generateMapGetter(
+        type: type,
         fieldName: fieldName,
         getter: getter,
-        isNullable: type.isNullable,
       ),
     CustomModelType() =>
       '${type.isNullable ? '$getter == null ? null : ' : ''}${type.type.annotatedClass.name}.fromJson_ANTHEM($getter)',
@@ -151,43 +147,52 @@ String _createGetterForField({
 }
 
 String _generateListGetter({
-  required ModelType listParameterType,
+  required ListModelType type,
   required String fieldName,
   required String getter,
-  required bool isNullable,
 }) {
-  final q = isNullable ? '?' : '';
-  final listParameterTypeQ = listParameterType.isNullable ? '?' : '';
+  final q = type.isNullable ? '?' : '';
+  final listParameterTypeQ = type.itemType.isNullable ? '?' : '';
 
-  return '''($getter as List$q)$q.map((e) {
-  return ${_createGetterForField(type: listParameterType, fieldName: fieldName, getter: 'e')};
-}).cast<${listParameterType.name}$listParameterTypeQ>().toList()''';
+  final result = '''($getter as List$q)$q.map((e) {
+  return ${_createGetterForField(type: type.itemType, fieldName: fieldName, getter: 'e')};
+}).cast<${type.itemType.name}$listParameterTypeQ>().toList()''';
+
+  if (type.isObservable) {
+    return 'ObservableList.of($result)';
+  } else {
+    return result;
+  }
 }
 
 String _generateMapGetter({
-  required ModelType keyType,
-  required ModelType valueType,
+  required MapModelType type,
   required String fieldName,
   required String getter,
-  required bool isNullable,
 }) {
-  final q = isNullable ? '?' : '';
-  final keyTypeQ = keyType.isNullable ? '?' : '';
-  final valueTypeQ = valueType.isNullable ? '?' : '';
+  final q = type.isNullable ? '?' : '';
+  final keyTypeQ = type.keyType.isNullable ? '?' : '';
+  final valueTypeQ = type.valueType.isNullable ? '?' : '';
 
-  return '''(() {
+  final result = '''(() {
   final valueFromJson = $getter as Map<String, dynamic>$q;
-  ${isNullable ? 'if (valueFromJson == null) return null;' : ''}
+  ${type.isNullable ? 'if (valueFromJson == null) return null;' : ''}
 
-  final map = <${keyType.name}$keyTypeQ, ${valueType.name}$valueTypeQ>{};
+  final map = <${type.keyType.name}$keyTypeQ, ${type.valueType.name}$valueTypeQ>{};
 
   for (final entry in valueFromJson.entries) {
-    map[${_createGetterForKeyField(type: keyType, fieldName: fieldName, getter: 'entry.key')}]
-        = ${_createGetterForField(type: valueType, fieldName: fieldName, getter: 'entry.value')};
+    map[${_createGetterForKeyField(type: type.keyType, fieldName: fieldName, getter: 'entry.key')}]
+        = ${_createGetterForField(type: type.valueType, fieldName: fieldName, getter: 'entry.value')};
   }
 
   return map;
 })()''';
+
+  if (type.isObservable) {
+    return 'ObservableMap.of($result)';
+  } else {
+    return result;
+  }
 }
 
 String _createGetterForKeyField({
