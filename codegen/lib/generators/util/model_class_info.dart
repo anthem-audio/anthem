@@ -57,7 +57,14 @@ class ModelClassInfo {
   ModelClassInfo._create(this.libraryReader, this.annotatedClass) {
     // Find matching base class for the library class
 
-    final baseClassOrNull = libraryReader.classes
+    final libraryAndImportedClasses = [
+      libraryReader.classes,
+      libraryReader.element.importedLibraries
+          .map((lib) => LibraryReader(lib).classes)
+          .expand((e) => e)
+    ].expand((e) => e);
+
+    final baseClassOrNull = libraryAndImportedClasses
         .where((e) => e.name == '_${annotatedClass.name}')
         .firstOrNull;
 
@@ -80,9 +87,10 @@ class _MyModel {
 
     baseClass = baseClassOrNull;
 
-    // The code below just doesn't work. I think it's because the mixin doesn't
-    // exist, so while it exists from a lexing standpoint, the analyzer doesn't
-    // find a matching mixin declaration and so it doesn't put it the list.
+    // The code below just doesn't work. I think it's because the mixin isn't
+    // defined, so while it exists from a lexing standpoint, the analyzer
+    // doesn't find a matching mixin declaration and so it doesn't put it the
+    // list.
 
     // final hasClassMixin = annotatedClass.mixins
     //     .any((m) => m.getDisplayString() == '_\$AnthemModelMixin');
