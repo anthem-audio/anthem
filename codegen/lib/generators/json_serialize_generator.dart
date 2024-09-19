@@ -121,10 +121,8 @@ String _createSetterForField({
   return "$mapName['$fieldName'] = $converter;\n";
 }
 
-String _createConverterForField({
-  required ModelType type,
-  required String accessor,
-}) {
+String _createConverterForField(
+    {required ModelType type, required String accessor}) {
   return switch (type) {
     StringModelType() ||
     IntModelType() ||
@@ -134,13 +132,10 @@ String _createConverterForField({
       _createConverterForPrimitive(accessor: accessor),
     EnumModelType(isNullable: var isNullable) =>
       _createConverterForEnum(accessor: accessor, isNullable: isNullable),
-    ListModelType(isNullable: var isNullable) => _createConverterForList(
-        type: type, accessor: accessor, isNullable: isNullable),
-    MapModelType(isNullable: var isNullable) => _createConverterForMap(
-        type: type, accessor: accessor, isNullable: isNullable),
-    CustomModelType(isNullable: var isNullable) =>
-      _createConverterForCustomType(
-          type: type, accessor: accessor, isNullable: isNullable),
+    ListModelType() => _createConverterForList(type: type, accessor: accessor),
+    MapModelType() => _createConverterForMap(type: type, accessor: accessor),
+    CustomModelType() =>
+      _createConverterForCustomType(type: type, accessor: accessor),
     UnknownModelType() => 'null',
   };
 }
@@ -161,9 +156,8 @@ String _createConverterForEnum({
 String _createConverterForList({
   required ListModelType type,
   required String accessor,
-  required bool isNullable,
 }) {
-  final q = isNullable ? '?' : '';
+  final q = type.isNullable ? '?' : '';
 
   return '''
 $accessor$q.map(
@@ -177,10 +171,9 @@ $accessor$q.map(
 String _createConverterForMap({
   required MapModelType type,
   required String accessor,
-  required bool isNullable,
 }) {
-  final nullablePrefix = isNullable ? '$accessor == null ? null : ' : '';
-  final excl = isNullable ? '!' : '';
+  final nullablePrefix = type.isNullable ? '$accessor == null ? null : ' : '';
+  final excl = type.isNullable ? '!' : '';
 
   return '''
 ${nullablePrefix}Map.fromEntries(
@@ -199,7 +192,6 @@ ${nullablePrefix}Map.fromEntries(
 String _createConverterForCustomType({
   required CustomModelType type,
   required String accessor,
-  required bool isNullable,
 }) {
-  return '$accessor${isNullable ? '?' : ''}.toJson_ANTHEM()';
+  return '$accessor${type.isNullable ? '?' : ''}.toJson_ANTHEM()';
 }
