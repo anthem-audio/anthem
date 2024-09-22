@@ -136,6 +136,16 @@ class MapModelType extends ModelType {
       '${isObservable ? 'Observable' : ''}Map<${keyType.name}${keyType.isNullable ? '?' : ''}, ${valueType.name}${valueType.isNullable ? '?' : ''}>';
 }
 
+class ColorModelType extends ModelType {
+  @override
+  final bool canBeMapKey = false;
+
+  @override
+  String get name => 'Color';
+
+  ColorModelType({required super.isNullable});
+}
+
 /// Represents a custom type that is defined as an Anthem model
 class CustomModelType extends ModelType {
   @override
@@ -175,6 +185,7 @@ ModelType getModelType(
     'double' => DoubleModelType(isNullable: isNullable),
     'num' => NumModelType(isNullable: isNullable),
     'String' => StringModelType(isNullable: isNullable),
+    'Color' => ColorModelType(isNullable: isNullable),
     _ => (() {
         // Check if this is a list
         if (element is ClassElement &&
