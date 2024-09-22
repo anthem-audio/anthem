@@ -128,6 +128,13 @@ String _createGetterForField({
     DoubleModelType() => '$getter as double$q',
     NumModelType() => '$getter as num$q',
     BoolModelType() => '$getter as bool$q',
+    ColorModelType() =>
+      '''${type.isNullable ? '$getter == null ? null : ' : ''}Color.fromARGB(
+  $getter['a'] as int$q,
+  $getter['r'] as int$q,
+  $getter['g'] as int$q,
+  $getter['b'] as int$q,
+)''',
     EnumModelType(enumName: var enumName) =>
       '${type.isNullable ? '$getter == null ? null : ' : ''}$enumName.values.firstWhere((e) => e.name == $getter)',
     ListModelType() => _generateListGetter(

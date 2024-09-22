@@ -130,6 +130,7 @@ String _createConverterForField(
     NumModelType() ||
     BoolModelType() =>
       _createConverterForPrimitive(accessor: accessor),
+    ColorModelType() => _createConverterForColor(accessor: accessor),
     EnumModelType(isNullable: var isNullable) =>
       _createConverterForEnum(accessor: accessor, isNullable: isNullable),
     ListModelType() => _createConverterForList(type: type, accessor: accessor),
@@ -144,6 +145,14 @@ String _createConverterForPrimitive({
   required String accessor,
 }) {
   return accessor;
+}
+
+String _createConverterForColor({
+  required String accessor,
+}) {
+  return '''
+{'a': $accessor.alpha, 'r': $accessor.red, 'g': $accessor.green, 'b': $accessor.blue}
+''';
 }
 
 String _createConverterForEnum({
