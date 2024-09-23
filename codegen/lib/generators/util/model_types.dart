@@ -20,6 +20,7 @@
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
+import 'package:anthem_codegen/annotations.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
@@ -217,6 +218,8 @@ ModelType getModelType(
           if (!keyType.canBeMapKey) {
             log.warning(
                 'Map key type cannot be used as a map key: ${typeParams[0].element?.name}');
+            log.warning(
+                '${typeParams[0].element?.name} is a field on ${annotatedClass.name}.');
             return UnknownModelType();
           }
 
@@ -232,13 +235,25 @@ ModelType getModelType(
 
         // Check for custom type
         else if (element is ClassElement) {
+          // If this is a custom type, it should be annotated as an Anthem model
+          final anthemModelAnnotation =
+              const TypeChecker.fromRuntime(AnthemModel)
+                  .firstAnnotationOf(element);
+          if (anthemModelAnnotation == null) {
+            log.warning(
+                'Custom type ${element.name} is not annotated with @AnthemModel. ${element.name} is a field on ${annotatedClass.name}.');
+            return UnknownModelType();
+          }
+
           try {
             final type = ModelClassInfo(libraryReader, element);
             return CustomModelType(type, isNullable: isNullable);
           } catch (e) {
             log.warning('Error parsing custom type: ${element.name}');
             log.warning(
-                'This may be because the type is not annotated as an Anthem model, or is not formed correctly.');
+                'This may be because the type is not formed correctly.');
+            log.warning(
+                '${element.name} is a field on ${annotatedClass.name}.');
             return UnknownModelType();
           }
         }
@@ -250,7 +265,7 @@ ModelType getModelType(
         }
 
         log.warning(
-            'Unknown type: ${element.name}. This is not expected, and may be a bug.');
+            'Unknown type: ${element.name}. This is not expected, and may be a bug. ${element.name} is a field on ${annotatedClass.name}.');
 
         return UnknownModelType();
       })(),
