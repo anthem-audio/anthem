@@ -264,8 +264,12 @@ String _generateEnum(EnumModelType enumType) {
   writer.writeLine('struct ${modelClassInfo.annotatedClass.name}$baseText {');
   writer.incrementWhitespace();
 
-  for (final MapEntry(key: fieldName, value: modelType)
+  for (final MapEntry(key: fieldName, value: (fieldElement, modelType))
       in modelClassInfo.fields.entries) {
+    if (_shouldSkip(fieldElement)) {
+      continue;
+    }
+
     final type = _getCppType(modelType);
     writer.writeLine('$type $fieldName;');
   }
@@ -284,8 +288,12 @@ String _generateEnum(EnumModelType enumType) {
     writer.writeLine('using Tag = rfl::Literal<"${subtype.name}">;');
     writer.writeLine();
 
-    for (final MapEntry(key: fieldName, value: modelType)
+    for (final MapEntry(key: fieldName, value: (fieldElement, modelType))
         in subtype.fields.entries) {
+      if (_shouldSkip(fieldElement)) {
+        continue;
+      }
+
       final type = _getCppType(modelType);
       writer.writeLine('$type $fieldName;');
     }
@@ -416,4 +424,17 @@ void _generateCppModuleFile(LibraryReader libraryReader, List<String> imports) {
 
     imports.add('#include "$cppFile.h"');
   }
+}
+
+/// Checks if a field should be skipped when generating C++ code, based on the
+/// @Hide annotation.
+bool _shouldSkip(FieldElement field) {
+  final hideAnnotation =
+      const TypeChecker.fromRuntime(Hide).firstAnnotationOf(field);
+
+  final hide = Hide(
+    cpp: hideAnnotation?.getField('cpp')?.toBoolValue() ?? false,
+  );
+
+  return hide.cpp;
 }
