@@ -18,6 +18,7 @@
 */
 
 import 'package:analyzer/dart/element/element.dart';
+import 'package:anthem_codegen/annotations.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
@@ -34,8 +35,8 @@ class ModelClassInfo {
   ClassElement annotatedClass;
   late ClassElement baseClass;
 
-  /// Map of field names to their types.
-  Map<String, ModelType> fields = {};
+  /// Map of field names to their field definitions and types.
+  Map<String, (FieldElement, ModelType)> fields = {};
 
   late bool isSealed;
   List<SealedSubclassInfo> sealedSubclasses = [];
@@ -110,8 +111,10 @@ class _MyModel {
       // final, or if the field is a getter.
       if (field.setter == null) continue;
 
+      if (_skipAll(field)) continue;
+
       fields[field.name] =
-          getModelType(field.type, libraryReader, annotatedClass);
+          (field, getModelType(field.type, libraryReader, annotatedClass));
     }
 
     isSealed = annotatedClass.isSealed;
@@ -134,7 +137,7 @@ class _MyModel {
 
 class SealedSubclassInfo {
   ClassElement subclass;
-  Map<String, ModelType> fields = {};
+  Map<String, (FieldElement, ModelType)> fields = {};
   String get name => subclass.name;
 
   SealedSubclassInfo(this.subclass, ModelClassInfo baseClassInfo) {
@@ -144,8 +147,29 @@ class SealedSubclassInfo {
       // final, or if the field is a getter.
       if (field.setter == null) continue;
 
-      fields[field.name] =
-          getModelType(field.type, baseClassInfo.libraryReader, subclass);
+      if (_skipAll(field)) continue;
+
+      fields[field.name] = (
+        field,
+        getModelType(field.type, baseClassInfo.libraryReader, subclass)
+      );
     }
   }
+}
+
+/// Returns true if the field should be skipped during code generation, based on
+/// the @Hide annotation.
+bool _skipAll(FieldElement field) {
+  final hideAnnotation =
+      const TypeChecker.fromRuntime(Hide).firstAnnotationOf(field);
+
+  if (hideAnnotation == null) return false;
+
+  final hide = Hide(
+    serialization:
+        hideAnnotation.getField('serialization')?.toBoolValue() ?? false,
+    cpp: hideAnnotation.getField('cpp')?.toBoolValue() ?? false,
+  );
+
+  return hide.serialization && hide.cpp;
 }

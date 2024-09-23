@@ -17,8 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:analyzer/dart/element/element.dart';
+import 'package:anthem_codegen/annotations.dart';
 import 'package:anthem_codegen/generators/util/model_class_info.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
+import 'package:source_gen/source_gen.dart';
 
 /// Generates code to deserialize JSON objects into model objects.
 String generateJsonDeserializationCode({
@@ -63,10 +66,14 @@ static ${context.annotatedClass.name} fromJson_ANTHEM(Map<String, dynamic> json)
 
       for (final entry in subclass.fields.entries) {
         final name = entry.key;
-        final field = entry.value;
+        final (fieldElement, modelType) = entry.value;
+
+        if (_shouldSkip(fieldElement)) {
+          continue;
+        }
 
         result += _createSetterForField(
-          type: field,
+          type: modelType,
           fieldName: name,
           jsonName: 'json',
           resultName: 'subclassResult',
@@ -80,10 +87,14 @@ static ${context.annotatedClass.name} fromJson_ANTHEM(Map<String, dynamic> json)
 
   for (final entry in context.fields.entries) {
     final name = entry.key;
-    final field = entry.value;
+    final (fieldElement, modelType) = entry.value;
+
+    if (_shouldSkip(fieldElement)) {
+      continue;
+    }
 
     result += _createSetterForField(
-      type: field,
+      type: modelType,
       fieldName: name,
       jsonName: 'json',
       resultName: 'result',
@@ -96,6 +107,22 @@ static ${context.annotatedClass.name} fromJson_ANTHEM(Map<String, dynamic> json)
 ''';
 
   return result;
+}
+
+/// Checks if a field should be skipped when generating JSON serialization code,
+/// based on the @Hide annotation.
+bool _shouldSkip(FieldElement field) {
+  final hideAnnotation =
+      const TypeChecker.fromRuntime(Hide).firstAnnotationOf(field);
+
+  if (hideAnnotation == null) return false;
+
+  final hide = Hide(
+    serialization:
+        hideAnnotation.getField('serialization')?.toBoolValue() ?? false,
+  );
+
+  return hide.serialization;
 }
 
 String _createSetterForField({

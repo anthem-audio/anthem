@@ -129,3 +129,13 @@ class GenerateCppModuleFile {
   /// See the documentation above for more info.
   const GenerateCppModuleFile();
 }
+
+/// An annotation that marks a class to be hidden from serialization or C++
+/// generation.
+class Hide {
+  final bool serialization;
+  final bool cpp;
+
+  const Hide({this.serialization = false, this.cpp = false});
+  const Hide.all() : this(serialization: true, cpp: true);
+}

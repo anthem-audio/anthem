@@ -17,7 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:analyzer/dart/element/element.dart';
+import 'package:anthem_codegen/annotations.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
+import 'package:source_gen/source_gen.dart';
 
 import 'util/model_class_info.dart';
 
@@ -41,10 +44,14 @@ Map<String, dynamic> toJson_ANTHEM() {
 
   for (final entry in context.fields.entries) {
     final name = entry.key;
-    final field = entry.value;
+    final (fieldElement, modelType) = entry.value;
+
+    if (_shouldSkip(fieldElement)) {
+      continue;
+    }
 
     result += _createSetterForField(
-      type: field,
+      type: modelType,
       fieldName: name,
       mapName: 'map',
     );
@@ -69,10 +76,14 @@ Map<String, dynamic> toJson_ANTHEM() {
 
       for (final field in subclass.fields.entries) {
         final name = field.key;
-        final type = field.value;
+        final (fieldElement, modelType) = field.value;
+
+        if (_shouldSkip(fieldElement)) {
+          continue;
+        }
 
         result += _createSetterForField(
-          type: type,
+          type: modelType,
           fieldName: name,
           accessor: '(this as ${subclass.name}).$name',
           mapName: 'map',
@@ -91,6 +102,22 @@ Map<String, dynamic> toJson_ANTHEM() {
   // Generate deserialization
 
   return result;
+}
+
+/// Checks if a field should be skipped when generating JSON serialization code,
+/// based on the @Hide annotation.
+bool _shouldSkip(FieldElement field) {
+  final hideAnnotation =
+      const TypeChecker.fromRuntime(Hide).firstAnnotationOf(field);
+
+  if (hideAnnotation == null) return false;
+
+  final hide = Hide(
+    serialization:
+        hideAnnotation.getField('serialization')?.toBoolValue() ?? false,
+  );
+
+  return hide.serialization;
 }
 
 String _createSetterForField({
