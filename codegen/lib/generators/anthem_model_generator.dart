@@ -82,8 +82,6 @@ class AnthemModelGenerator extends Generator {
 
       final context = ModelClassInfo(library, libraryClass);
 
-      result += '// Annotation found on class: ${libraryClass.name}\n';
-
       result +=
           'mixin _\$${libraryClass.name}AnthemModelMixin on ${context.baseClass.name} {\n';
 
