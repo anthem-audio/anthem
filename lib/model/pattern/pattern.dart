@@ -31,7 +31,6 @@ import 'package:anthem/widgets/basic/clip/clip_notes_render_cache.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
 import 'package:anthem_codegen/annotations.dart';
 import 'package:flutter/widgets.dart' as widgets;
-import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
 import '../shared/time_signature.dart';
@@ -42,7 +41,6 @@ part 'pattern.g.dart';
 part 'package:anthem/widgets/basic/clip/clip_title_render_cache_mixin.dart';
 part 'package:anthem/widgets/basic/clip/clip_notes_render_cache_mixin.dart';
 
-@JsonSerializable()
 @AnthemModel(serializable: true)
 class PatternModel extends _PatternModel
     with
@@ -62,12 +60,6 @@ class PatternModel extends _PatternModel
         (generator) => generator.generatorType == GeneratorType.automation)) {
       automationLanes[generator.id] = AutomationLaneModel();
     }
-  }
-
-  factory PatternModel.fromJson(Map<String, dynamic> json) {
-    final result = _$PatternModelFromJson(json);
-    result._init();
-    return result;
   }
 
   factory PatternModel.fromJson_ANTHEM(Map<String, dynamic> json) {
@@ -104,22 +96,16 @@ abstract class _PatternModel extends Hydratable with Store {
 
   /// The ID here is channel ID `Map<ChannelID, List<NoteModel>>`
   @observable
-  @JsonKey(fromJson: _notesFromJson, toJson: _notesToJson)
   ObservableMap<ID, ObservableList<NoteModel>> notes = ObservableMap();
 
   /// The ID here is channel ID
   @observable
-  @JsonKey(fromJson: _automationLanesFromJson, toJson: _automationLanesToJson)
   ObservableMap<ID, AutomationLaneModel> automationLanes = ObservableMap();
 
   @observable
-  @JsonKey(
-      fromJson: _timeSignatureChangesFromJson,
-      toJson: _timeSignatureChangesToJson)
   ObservableList<TimeSignatureChangeModel> timeSignatureChanges =
       ObservableList();
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide.all()
   ProjectModel? _project;
 
@@ -141,8 +127,6 @@ abstract class _PatternModel extends Hydratable with Store {
     timeSignatureChanges = ObservableList();
     hydrate(project: project);
   }
-
-  Map<String, dynamic> toJson() => _$PatternModelToJson(this as PatternModel);
 
   void hydrate({required ProjectModel project}) {
     _project = project;
@@ -191,63 +175,4 @@ abstract class _PatternModel extends Hydratable with Store {
   bool get hasTimeMarkers {
     return timeSignatureChanges.isNotEmpty;
   }
-}
-
-// JSON serialization and deserialization functions
-
-typedef NotesJsonType = Map<String, List<Map<String, dynamic>>>;
-typedef NotesModelType = ObservableMap<ID, ObservableList<NoteModel>>;
-
-NotesModelType _notesFromJson(Map<String, dynamic> json) {
-  return ObservableMap.of(
-    json.cast<String, List<dynamic>>().map(
-          (key, value) => MapEntry(
-            key,
-            ObservableList.of(
-              value
-                  .cast<Map<String, dynamic>>()
-                  .map((e) => NoteModel.fromJson(e)),
-            ),
-          ),
-        ),
-  );
-}
-
-NotesJsonType _notesToJson(NotesModelType model) {
-  return model.map(
-    (key, value) =>
-        MapEntry(key, value.map((element) => element.toJson()).toList()),
-  );
-}
-
-ObservableList<TimeSignatureChangeModel> _timeSignatureChangesFromJson(
-    List<dynamic> json) {
-  return ObservableList.of(
-    json.map((e) => TimeSignatureChangeModel.fromJson(e)),
-  );
-}
-
-List<dynamic> _timeSignatureChangesToJson(
-    ObservableList<TimeSignatureChangeModel> model) {
-  return model.map((value) => value.toJson()).toList();
-}
-
-typedef AutomationLanesJsonType = Map<String, Map<String, dynamic>>;
-typedef AutomationLanesModelType = ObservableMap<ID, AutomationLaneModel>;
-
-AutomationLanesModelType _automationLanesFromJson(Map<String, dynamic> json) {
-  return ObservableMap.of(
-    json.cast<String, Map<String, dynamic>>().map(
-          (key, value) => MapEntry(
-            key,
-            AutomationLaneModel.fromJson(value),
-          ),
-        ),
-  );
-}
-
-AutomationLanesJsonType _automationLanesToJson(AutomationLanesModelType model) {
-  return model.map(
-    (key, value) => MapEntry(key, value.toJson()),
-  );
 }

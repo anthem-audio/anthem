@@ -18,7 +18,6 @@
 */
 
 import 'package:anthem_codegen/annotations.dart';
-import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
 import 'automation_point.dart';
@@ -26,17 +25,13 @@ import 'automation_point.dart';
 part 'automation_lane.g.dart';
 
 /// Represents a set of automation points for a particular channel.
-@JsonSerializable()
 @AnthemModel(serializable: true)
 class AutomationLaneModel extends _AutomationLaneModel
     with _$AutomationLaneModel, _$AutomationLaneModelAnthemModelMixin {
   AutomationLaneModel() : super();
 
-  factory AutomationLaneModel.fromJson(Map<String, dynamic> json) =>
-      _$AutomationLaneModelFromJson(json);
-
   factory AutomationLaneModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$AutomationLaneModelFromJson(json);
+      _$AutomationLaneModelAnthemModelMixin.fromJson_ANTHEM(json);
 }
 
 abstract class _AutomationLaneModel with Store {
@@ -45,20 +40,5 @@ abstract class _AutomationLaneModel with Store {
   /// The automation points for this lane. The first point should always have a
   /// time of 0.
   @observable
-  @JsonKey(fromJson: _pointsFromJson, toJson: _pointsToJson)
   ObservableList<AutomationPointModel> points = ObservableList();
-
-  Map<String, dynamic> toJson() =>
-      _$AutomationLaneModelToJson(this as AutomationLaneModel);
-}
-
-ObservableList<AutomationPointModel> _pointsFromJson(List<dynamic> json) {
-  return ObservableList.of(
-    json.map(
-        (e) => AutomationPointModel.fromJson(e.cast<Map<String, dynamic>>())),
-  );
-}
-
-List<dynamic> _pointsToJson(ObservableList<AutomationPointModel> model) {
-  return model.map((value) => value.toJson()).toList();
 }

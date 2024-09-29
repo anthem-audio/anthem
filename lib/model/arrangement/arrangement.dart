@@ -25,14 +25,12 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/hydratable.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem_codegen/annotations.dart';
-import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
 import 'clip.dart';
 
 part 'arrangement.g.dart';
 
-@JsonSerializable()
 @AnthemModel(serializable: true)
 class ArrangementModel extends _ArrangementModel
     with _$ArrangementModel, _$ArrangementModelAnthemModelMixin {
@@ -43,9 +41,6 @@ class ArrangementModel extends _ArrangementModel
   ArrangementModel.create(
       {required super.name, required super.id, required super.project})
       : super.create();
-
-  factory ArrangementModel.fromJson(Map<String, dynamic> json) =>
-      _$ArrangementModelFromJson(json);
 
   factory ArrangementModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
       _$ArrangementModelAnthemModelMixin.fromJson_ANTHEM(json);
@@ -58,17 +53,14 @@ abstract class _ArrangementModel extends Hydratable with Store {
   String name;
 
   @observable
-  @JsonKey(fromJson: _clipsFromJson, toJson: _clipsToJson)
   ObservableMap<ID, ClipModel> clips = ObservableMap();
 
   @observable
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide.all()
   ProjectModel? _project;
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide(serialization: true)
   late int editPointer;
 
@@ -88,9 +80,6 @@ abstract class _ArrangementModel extends Hydratable with Store {
   }) : super() {
     hydrate(project: project);
   }
-
-  Map<String, dynamic> toJson() =>
-      _$ArrangementModelToJson(this as ArrangementModel);
 
   void hydrate({
     required ProjectModel project,
@@ -131,18 +120,4 @@ abstract class _ArrangementModel extends Hydratable with Store {
 
   @computed
   int get width => getWidth();
-}
-
-// JSON serialization and deserialization functions
-
-ObservableMap<ID, ClipModel> _clipsFromJson(Map<String, dynamic> clips) {
-  return ObservableMap.of(clips.map(
-    (key, value) => MapEntry(key, ClipModel.fromJson(value)),
-  ));
-}
-
-Map<String, dynamic> _clipsToJson(ObservableMap<ID, ClipModel> clips) {
-  return clips.map(
-    (key, value) => MapEntry(key, value.toJson()),
-  );
 }

@@ -17,16 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:ui';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart'
     show ProcessorConnectionType;
-import 'package:anthem/helpers/convert.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/hydratable.dart';
 import 'package:anthem_codegen/annotations.dart';
 import 'package:flutter/material.dart';
-import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
 import 'processing_graph/processor.dart';
@@ -40,7 +37,6 @@ part 'generator.g.dart';
 
 enum GeneratorType { instrument, automation }
 
-@JsonSerializable()
 @AnthemModel(serializable: true)
 class GeneratorModel extends _GeneratorModel
     with _$GeneratorModel, _$GeneratorModelAnthemModelMixin {
@@ -69,9 +65,6 @@ class GeneratorModel extends _GeneratorModel
     required super.project,
   }) : super.create();
 
-  factory GeneratorModel.fromJson(Map<String, dynamic> json) =>
-      _$GeneratorModelFromJson(json);
-
   factory GeneratorModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
       _$GeneratorModelAnthemModelMixin.fromJson_ANTHEM(json);
 }
@@ -85,7 +78,6 @@ abstract class _GeneratorModel extends Hydratable with Store {
   @observable
   GeneratorType generatorType;
 
-  @JsonKey(toJson: ColorConvert.colorToInt, fromJson: ColorConvert.intToColor)
   @observable
   Color color;
 
@@ -98,7 +90,6 @@ abstract class _GeneratorModel extends Hydratable with Store {
   @observable
   ProcessorModel midiGeneratorNode;
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide.all()
   ProjectModel? _project;
 
@@ -123,9 +114,6 @@ abstract class _GeneratorModel extends Hydratable with Store {
         super() {
     hydrate(project: project);
   }
-
-  Map<String, dynamic> toJson() =>
-      _$GeneratorModelToJson(this as GeneratorModel);
 
   void hydrate({
     required ProjectModel project,
