@@ -19,6 +19,7 @@
 
 import 'dart:async';
 
+import 'package:anthem_codegen/annotations.dart';
 import 'package:anthem_codegen/generators/dart/json_deserialize_generator.dart';
 import 'package:anthem_codegen/generators/util/model_class_info.dart';
 import 'package:build/build.dart';
@@ -54,38 +55,29 @@ class AnthemModelGenerator extends Generator {
     // Looks for @AnthemModel on each class in the file, and generates the
     // appropriate code
     for (final libraryClass in library.classes) {
-      final annotation = libraryClass.metadata
-          .where(
-            (annotation) =>
-                annotation.element?.enclosingElement?.name == 'AnthemModel',
-          )
-          .firstOrNull;
+      final annotationFromAnalyzer = const TypeChecker.fromRuntime(AnthemModel)
+          .firstAnnotationOf(libraryClass);
 
       // If there is no annotation on this class, don't do anything
-      if (annotation == null) continue;
-
-      // Using ConstantReader to read annotation properties
-      final reader = ConstantReader(annotation.computeConstantValue());
+      if (annotationFromAnalyzer == null) continue;
 
       // Read properties from @AnthemModel() annotation
 
-      bool serializable;
-
-      if (reader.isNull) {
-        log.severe(
-            '[Anthem codegen] Annotation reader is null for class ${libraryClass.name}. This is either a bug, or we need better error messages here.');
-        continue;
-      } else {
-        // Reading properties of the annotation
-        serializable = reader.read('serializable').literalValue as bool;
-      }
+      final anthemModelAnnotation = AnthemModel(
+        serializable:
+            annotationFromAnalyzer.getField('serializable')?.toBoolValue() ??
+                false,
+        generateCpp:
+            annotationFromAnalyzer.getField('generateCpp')?.toBoolValue() ??
+                false,
+      );
 
       final context = ModelClassInfo(library, libraryClass);
 
       result +=
           'mixin _\$${libraryClass.name}AnthemModelMixin on ${context.baseClass.name} {\n';
 
-      if (serializable) {
+      if (anthemModelAnnotation.serializable) {
         result += generateJsonSerializationCode(context: context);
         result += '\n';
         result += generateJsonDeserializationCode(context: context);
