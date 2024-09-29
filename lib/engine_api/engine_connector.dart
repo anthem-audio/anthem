@@ -204,7 +204,7 @@ class EngineConnector {
 
         final encoder = JsonUtf8Encoder();
 
-        send(encoder.convert(heartbeat.toJson_ANTHEM()) as Uint8List);
+        send(encoder.convert(heartbeat.toJson()) as Uint8List);
       },
     );
 
@@ -255,7 +255,7 @@ class EngineConnector {
         // Extract the full message
         final fullMessage = _messageBuffer.buffer.sublist(8, 8 + messageLength);
 
-        final response = Response.fromJson_ANTHEM(
+        final response = Response.fromJson(
           jsonDecode(
             utf8.decode(fullMessage),
           ),

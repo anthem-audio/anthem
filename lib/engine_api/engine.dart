@@ -144,8 +144,7 @@ class Engine {
 
     final encoder = JsonUtf8Encoder();
 
-    _engineConnector
-        .send(encoder.convert(request.toJson_ANTHEM()) as Uint8List);
+    _engineConnector.send(encoder.convert(request.toJson()) as Uint8List);
 
     return completer.future;
   }

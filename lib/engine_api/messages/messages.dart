@@ -63,8 +63,8 @@ class HeartbeatReply extends Response {
 sealed class Request extends _Request with _$RequestAnthemModelMixin {
   Request();
 
-  factory Request.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$RequestAnthemModelMixin.fromJson_ANTHEM(json);
+  factory Request.fromJson(Map<String, dynamic> json) =>
+      _$RequestAnthemModelMixin.fromJson(json);
 }
 
 class _Request {
@@ -75,8 +75,8 @@ class _Request {
 sealed class Response extends _Response with _$ResponseAnthemModelMixin {
   Response();
 
-  factory Response.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$ResponseAnthemModelMixin.fromJson_ANTHEM(json);
+  factory Response.fromJson(Map<String, dynamic> json) =>
+      _$ResponseAnthemModelMixin.fromJson(json);
 }
 
 class _Response {

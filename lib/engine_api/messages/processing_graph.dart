@@ -196,8 +196,8 @@ class ProcessorDescription extends _ProcessorDescription
     with _$ProcessorDescriptionAnthemModelMixin {
   ProcessorDescription.uninitialized();
 
-  factory ProcessorDescription.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$ProcessorDescriptionAnthemModelMixin.fromJson_ANTHEM(json);
+  factory ProcessorDescription.fromJson(Map<String, dynamic> json) =>
+      _$ProcessorDescriptionAnthemModelMixin.fromJson(json);
 
   ProcessorDescription({
     required String processorId,
@@ -239,8 +239,8 @@ class ProcessorPortDescription extends _ProcessorPortDescription
     with _$ProcessorPortDescriptionAnthemModelMixin {
   ProcessorPortDescription.uninitialized();
 
-  factory ProcessorPortDescription.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$ProcessorPortDescriptionAnthemModelMixin.fromJson_ANTHEM(json);
+  factory ProcessorPortDescription.fromJson(Map<String, dynamic> json) =>
+      _$ProcessorPortDescriptionAnthemModelMixin.fromJson(json);
 
   ProcessorPortDescription({required int id}) {
     this.id = id;
@@ -256,9 +256,8 @@ class ProcessorParameterDescription extends _ProcessorParameterDescription
     with _$ProcessorParameterDescriptionAnthemModelMixin {
   ProcessorParameterDescription.uninitialized();
 
-  factory ProcessorParameterDescription.fromJson_ANTHEM(
-          Map<String, dynamic> json) =>
-      _$ProcessorParameterDescriptionAnthemModelMixin.fromJson_ANTHEM(json);
+  factory ProcessorParameterDescription.fromJson(Map<String, dynamic> json) =>
+      _$ProcessorParameterDescriptionAnthemModelMixin.fromJson(json);
 
   ProcessorParameterDescription({
     required int id,
