@@ -30,8 +30,8 @@ class AutomationLaneModel extends _AutomationLaneModel
     with _$AutomationLaneModel, _$AutomationLaneModelAnthemModelMixin {
   AutomationLaneModel() : super();
 
-  factory AutomationLaneModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$AutomationLaneModelAnthemModelMixin.fromJson_ANTHEM(json);
+  factory AutomationLaneModel.fromJson(Map<String, dynamic> json) =>
+      _$AutomationLaneModelAnthemModelMixin.fromJson(json);
 }
 
 abstract class _AutomationLaneModel with Store {

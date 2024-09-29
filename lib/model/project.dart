@@ -39,8 +39,8 @@ class ProjectModel extends _ProjectModel
   ProjectModel() : super();
   ProjectModel.create() : super.create();
 
-  factory ProjectModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$ProjectModelAnthemModelMixin.fromJson_ANTHEM(json)..isSaved = true;
+  factory ProjectModel.fromJson(Map<String, dynamic> json) =>
+      _$ProjectModelAnthemModelMixin.fromJson(json)..isSaved = true;
 }
 
 abstract class _ProjectModel extends Hydratable with Store {

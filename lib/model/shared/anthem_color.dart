@@ -38,8 +38,8 @@ class AnthemColor extends _AnthemColor
           saturationMultiplier: 1,
         );
 
-  factory AnthemColor.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$AnthemColorAnthemModelMixin.fromJson_ANTHEM(json);
+  factory AnthemColor.fromJson(Map<String, dynamic> json) =>
+      _$AnthemColorAnthemModelMixin.fromJson(json);
 }
 
 abstract class _AnthemColor with Store {

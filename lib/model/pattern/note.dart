@@ -46,8 +46,8 @@ class NoteModel extends _NoteModel
           pan: model.pan,
         );
 
-  factory NoteModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$NoteModelAnthemModelMixin.fromJson_ANTHEM(json);
+  factory NoteModel.fromJson(Map<String, dynamic> json) =>
+      _$NoteModelAnthemModelMixin.fromJson(json);
 }
 
 abstract class _NoteModel with Store {

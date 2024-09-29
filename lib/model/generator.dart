@@ -65,8 +65,8 @@ class GeneratorModel extends _GeneratorModel
     required super.project,
   }) : super.create();
 
-  factory GeneratorModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$GeneratorModelAnthemModelMixin.fromJson_ANTHEM(json);
+  factory GeneratorModel.fromJson(Map<String, dynamic> json) =>
+      _$GeneratorModelAnthemModelMixin.fromJson(json);
 }
 
 abstract class _GeneratorModel extends Hydratable with Store {

@@ -30,8 +30,8 @@ class TimeSignatureModel extends _TimeSignatureModel
 
   TimeSignatureModel.uninitialized() : super(4, 4);
 
-  factory TimeSignatureModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$TimeSignatureModelAnthemModelMixin.fromJson_ANTHEM(json);
+  factory TimeSignatureModel.fromJson(Map<String, dynamic> json) =>
+      _$TimeSignatureModelAnthemModelMixin.fromJson(json);
 }
 
 abstract class _TimeSignatureModel with Store {
@@ -67,8 +67,8 @@ class TimeSignatureChangeModel extends _TimeSignatureChangeModel
           offset: 0,
         );
 
-  factory TimeSignatureChangeModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$TimeSignatureChangeModelAnthemModelMixin.fromJson_ANTHEM(json);
+  factory TimeSignatureChangeModel.fromJson(Map<String, dynamic> json) =>
+      _$TimeSignatureChangeModelAnthemModelMixin.fromJson(json);
 }
 
 abstract class _TimeSignatureChangeModel with Store {

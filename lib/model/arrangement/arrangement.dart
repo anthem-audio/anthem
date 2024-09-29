@@ -42,8 +42,8 @@ class ArrangementModel extends _ArrangementModel
       {required super.name, required super.id, required super.project})
       : super.create();
 
-  factory ArrangementModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$ArrangementModelAnthemModelMixin.fromJson_ANTHEM(json);
+  factory ArrangementModel.fromJson(Map<String, dynamic> json) =>
+      _$ArrangementModelAnthemModelMixin.fromJson(json);
 }
 
 abstract class _ArrangementModel extends Hydratable with Store {

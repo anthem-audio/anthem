@@ -34,8 +34,8 @@ class ProcessorModel extends _ProcessorModel
 
   ProcessorModel.uninitialized() : super(processorKey: '');
 
-  factory ProcessorModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$ProcessorModelAnthemModelMixin.fromJson_ANTHEM(json);
+  factory ProcessorModel.fromJson(Map<String, dynamic> json) =>
+      _$ProcessorModelAnthemModelMixin.fromJson(json);
 
   Future<void> createInEngine(Engine engine) async {
     if (processorKey == null) return;

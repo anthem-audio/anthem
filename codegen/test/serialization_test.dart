@@ -28,8 +28,8 @@ part 'serialization_test.g.dart';
 class Empty extends _Empty with _$EmptyAnthemModelMixin {
   Empty();
 
-  factory Empty.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$EmptyAnthemModelMixin.fromJson_ANTHEM(json);
+  factory Empty.fromJson(Map<String, dynamic> json) =>
+      _$EmptyAnthemModelMixin.fromJson(json);
 }
 
 class _Empty {}
@@ -39,8 +39,8 @@ class WithPrimitives extends _WithPrimitives
     with _$WithPrimitivesAnthemModelMixin {
   WithPrimitives();
 
-  factory WithPrimitives.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$WithPrimitivesAnthemModelMixin.fromJson_ANTHEM(json);
+  factory WithPrimitives.fromJson(Map<String, dynamic> json) =>
+      _$WithPrimitivesAnthemModelMixin.fromJson(json);
 }
 
 class _WithPrimitives {
@@ -55,8 +55,8 @@ class _WithPrimitives {
 class WithList extends _WithList with _$WithListAnthemModelMixin {
   WithList();
 
-  factory WithList.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$WithListAnthemModelMixin.fromJson_ANTHEM(json);
+  factory WithList.fromJson(Map<String, dynamic> json) =>
+      _$WithListAnthemModelMixin.fromJson(json);
 }
 
 class _WithList {
@@ -67,8 +67,8 @@ class _WithList {
 class WithMap extends _WithMap with _$WithMapAnthemModelMixin {
   WithMap();
 
-  factory WithMap.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$WithMapAnthemModelMixin.fromJson_ANTHEM(json);
+  factory WithMap.fromJson(Map<String, dynamic> json) =>
+      _$WithMapAnthemModelMixin.fromJson(json);
 }
 
 class _WithMap {
@@ -79,8 +79,8 @@ class _WithMap {
 class NestedModel extends _NestedModel with _$NestedModelAnthemModelMixin {
   NestedModel();
 
-  factory NestedModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$NestedModelAnthemModelMixin.fromJson_ANTHEM(json);
+  factory NestedModel.fromJson(Map<String, dynamic> json) =>
+      _$NestedModelAnthemModelMixin.fromJson(json);
 }
 
 class _NestedModel {
@@ -93,8 +93,8 @@ enum TestEnum { a, b }
 class WithEnum extends _WithEnum with _$WithEnumAnthemModelMixin {
   WithEnum();
 
-  factory WithEnum.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$WithEnumAnthemModelMixin.fromJson_ANTHEM(json);
+  factory WithEnum.fromJson(Map<String, dynamic> json) =>
+      _$WithEnumAnthemModelMixin.fromJson(json);
 }
 
 class _WithEnum {
@@ -106,8 +106,8 @@ class _WithEnum {
 class WithNullable extends _WithNullable with _$WithNullableAnthemModelMixin {
   WithNullable();
 
-  factory WithNullable.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$WithNullableAnthemModelMixin.fromJson_ANTHEM(json);
+  factory WithNullable.fromJson(Map<String, dynamic> json) =>
+      _$WithNullableAnthemModelMixin.fromJson(json);
 }
 
 class _WithNullable {
@@ -119,7 +119,7 @@ class _WithNullable {
 
 void main() {
   test('Empty model', () {
-    final json = Empty().toJson_ANTHEM();
+    final json = Empty().toJson();
     expect(json.isEmpty, isTrue);
   });
 
@@ -130,13 +130,13 @@ void main() {
       ..stringField = '3'
       ..boolField = true;
 
-    final json = model.toJson_ANTHEM();
+    final json = model.toJson();
     expect(json['intField'], 1);
     expect(json['doubleField'], 2.0);
     expect(json['stringField'], '3');
     expect(json['boolField'], true);
 
-    final deserializedModel = WithPrimitives.fromJson_ANTHEM(json);
+    final deserializedModel = WithPrimitives.fromJson(json);
     expect(deserializedModel.intField, 1);
     expect(deserializedModel.doubleField, 2.0);
     expect(deserializedModel.stringField, '3');
@@ -150,13 +150,13 @@ void main() {
         [4, 5, 6],
       ];
 
-    final json = model.toJson_ANTHEM();
+    final json = model.toJson();
     expect(json['intList'], [
       [1, 2, 3],
       [4, 5, 6],
     ]);
 
-    final deserializedModel = WithList.fromJson_ANTHEM(json);
+    final deserializedModel = WithList.fromJson(json);
     expect(deserializedModel.intList, [
       [1, 2, 3],
       [4, 5, 6],
@@ -170,13 +170,13 @@ void main() {
         'b': {3: 4},
       };
 
-    final json = model.toJson_ANTHEM();
+    final json = model.toJson();
     expect(json['stringIntMap'], {
       'a': {'1': 2},
       'b': {'3': 4},
     });
 
-    final deserializedModel = WithMap.fromJson_ANTHEM(json);
+    final deserializedModel = WithMap.fromJson(json);
     expect(deserializedModel.stringIntMap, {
       'a': {1: 2},
       'b': {3: 4},
@@ -191,7 +191,7 @@ void main() {
       ..withPrimitives.stringField = '3'
       ..withPrimitives.boolField = true;
 
-    final json = model.toJson_ANTHEM();
+    final json = model.toJson();
     expect(json['withPrimitives'], {
       'intField': 1,
       'doubleField': 2.0,
@@ -199,7 +199,7 @@ void main() {
       'boolField': true,
     });
 
-    final deserializedModel = NestedModel.fromJson_ANTHEM(json);
+    final deserializedModel = NestedModel.fromJson(json);
     expect(deserializedModel.withPrimitives.intField, 1);
   });
 
@@ -208,11 +208,11 @@ void main() {
       ..testEnum1 = TestEnum.a
       ..testEnum2 = TestEnum.b;
 
-    final json = model.toJson_ANTHEM();
+    final json = model.toJson();
     expect(json['testEnum1'], 'a');
     expect(json['testEnum2'], 'b');
 
-    final deserializedModel = WithEnum.fromJson_ANTHEM(json);
+    final deserializedModel = WithEnum.fromJson(json);
     expect(deserializedModel.testEnum1, TestEnum.a);
     expect(deserializedModel.testEnum2, TestEnum.b);
   });
@@ -232,7 +232,7 @@ void main() {
         ..stringField = '3'
         ..boolField = true);
 
-    final json = model.toJson_ANTHEM();
+    final json = model.toJson();
     expect(json['nullableInt'], 1);
     expect(json['nullableList'], [1, 2, 3]);
     expect(json['nullableMap'], {
@@ -247,7 +247,7 @@ void main() {
       'boolField': true,
     });
 
-    final deserializedModel = WithNullable.fromJson_ANTHEM(json);
+    final deserializedModel = WithNullable.fromJson(json);
     expect(deserializedModel.nullableInt, 1);
     expect(deserializedModel.nullableMap, {
       'a': [1, 2, 3],
@@ -262,14 +262,14 @@ void main() {
     // Same as above, but with null values
 
     final emptyModel = WithNullable();
-    final emptyJson = emptyModel.toJson_ANTHEM();
+    final emptyJson = emptyModel.toJson();
 
     expect(emptyJson['nullableInt'], null);
     expect(emptyJson['nullableList'], null);
     expect(emptyJson['nullableMap'], null);
     expect(emptyJson['nullableModel'], null);
 
-    final emptyDeserializedModel = WithNullable.fromJson_ANTHEM(emptyJson);
+    final emptyDeserializedModel = WithNullable.fromJson(emptyJson);
     expect(emptyDeserializedModel.nullableInt, null);
     expect(emptyDeserializedModel.nullableList, null);
     expect(emptyDeserializedModel.nullableMap, null);

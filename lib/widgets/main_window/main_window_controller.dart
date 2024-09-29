@@ -83,7 +83,7 @@ class MainWindowController {
     if (path == null) return null;
     final file = await File(path).readAsString();
 
-    final project = ProjectModel.fromJson_ANTHEM(json.decode(file))..hydrate();
+    final project = ProjectModel.fromJson(json.decode(file))..hydrate();
     _addProject(project);
 
     return project.id;
@@ -109,7 +109,7 @@ class MainWindowController {
         path += '.anthem';
       }
 
-      await File(path).writeAsString(json.encode(project.toJson_ANTHEM()));
+      await File(path).writeAsString(json.encode(project.toJson()));
 
       project.isSaved = true;
       project.filePath = path;

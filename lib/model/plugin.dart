@@ -31,8 +31,8 @@ class PluginModel extends _PluginModel
 
   PluginModel.uninitialized() : super(path: '');
 
-  factory PluginModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$PluginModelAnthemModelMixin.fromJson_ANTHEM(json);
+  factory PluginModel.fromJson(Map<String, dynamic> json) =>
+      _$PluginModelAnthemModelMixin.fromJson(json);
 }
 
 abstract class _PluginModel with Store {

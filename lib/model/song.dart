@@ -40,8 +40,8 @@ class SongModel extends _SongModel
     required super.project,
   }) : super.create();
 
-  factory SongModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$SongModelAnthemModelMixin.fromJson_ANTHEM(json);
+  factory SongModel.fromJson(Map<String, dynamic> json) =>
+      _$SongModelAnthemModelMixin.fromJson(json);
 }
 
 abstract class _SongModel extends Hydratable with Store {
