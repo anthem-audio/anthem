@@ -13,7 +13,6 @@ dependencies:
   provider: ^6.0.2
   flutter_svg: ^2.0.4
   file_picker: ^5.2.0+1
-  json_annotation: ^4.8.0
   bitsdojo_window: ^0.1.5
   nanoid: ^1.0.0
   fuzzywuzzy: ^0.2.0
@@ -35,7 +34,6 @@ dependencies:
     sdk: flutter
 
 dev_dependencies:
-  json_serializable: ^6.6.1
   build_runner: ^2.3.3
   mobx_codegen: ^2.1.1
   flutter_lints: ^4.0.0
