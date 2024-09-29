@@ -19,7 +19,7 @@
 
 import 'dart:async';
 
-import 'package:anthem_codegen/generators/json_deserialize_generator.dart';
+import 'package:anthem_codegen/generators/dart/json_deserialize_generator.dart';
 import 'package:anthem_codegen/generators/util/model_class_info.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
