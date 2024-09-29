@@ -20,8 +20,8 @@
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
-import 'anthem_model_generator.dart';
-import 'cpp_model_builder.dart';
+import 'dart/anthem_model_generator.dart';
+import 'cpp/cpp_model_builder.dart';
 
 Builder anthemDartModelGeneratorBuilder(BuilderOptions options) =>
     SharedPartBuilder(

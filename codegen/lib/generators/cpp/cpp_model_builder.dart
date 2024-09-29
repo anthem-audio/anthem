@@ -24,9 +24,9 @@ import 'package:anthem_codegen/annotations.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
-import 'util/model_class_info.dart';
-import 'util/model_types.dart';
-import 'util/writer.dart';
+import '../util/model_class_info.dart';
+import '../util/model_types.dart';
+import '../util/writer.dart';
 
 /// This builder generates models in C++ to match the `@AnthemModel` classes in
 /// the Dart code.
