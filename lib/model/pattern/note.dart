@@ -23,7 +23,7 @@ import 'package:mobx/mobx.dart';
 
 part 'note.g.dart';
 
-@AnthemModel(serializable: true)
+@AnthemModel.all()
 class NoteModel extends _NoteModel
     with _$NoteModel, _$NoteModelAnthemModelMixin {
   NoteModel({

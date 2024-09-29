@@ -37,7 +37,7 @@ part 'generator.g.dart';
 
 enum GeneratorType { instrument, automation }
 
-@AnthemModel(serializable: true)
+@AnthemModel.all()
 class GeneratorModel extends _GeneratorModel
     with _$GeneratorModel, _$GeneratorModelAnthemModelMixin {
   GeneratorModel.uninitialized()

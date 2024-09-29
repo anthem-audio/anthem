@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -25,7 +25,7 @@ part 'automation_point.g.dart';
 
 enum AutomationCurveType { smooth, stairs, wave, hold }
 
-@AnthemModel(serializable: true)
+@AnthemModel.all()
 class AutomationPointModel extends _AutomationPointModel
     with _$AutomationPointModel, _$AutomationPointModelAnthemModelMixin {
   AutomationPointModel.uninitialized()

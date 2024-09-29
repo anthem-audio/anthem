@@ -24,7 +24,7 @@ import 'package:anthem/helpers/id.dart';
 
 part 'track.g.dart';
 
-@AnthemModel(serializable: true)
+@AnthemModel.all()
 class TrackModel extends _TrackModel
     with _$TrackModel, _$TrackModelAnthemModelMixin {
   TrackModel({required super.name});

@@ -23,7 +23,7 @@ import 'package:mobx/mobx.dart';
 
 part 'time_signature.g.dart';
 
-@AnthemModel(serializable: true)
+@AnthemModel.all()
 class TimeSignatureModel extends _TimeSignatureModel
     with _$TimeSignatureModel, _$TimeSignatureModelAnthemModelMixin {
   TimeSignatureModel(super.numerator, super.denominator);
@@ -49,7 +49,7 @@ abstract class _TimeSignatureModel with Store {
   String toDisplayString() => '$numerator/$denominator';
 }
 
-@AnthemModel(serializable: true)
+@AnthemModel.all()
 class TimeSignatureChangeModel extends _TimeSignatureChangeModel
     with
         _$TimeSignatureChangeModel,

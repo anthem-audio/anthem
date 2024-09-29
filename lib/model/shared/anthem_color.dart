@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,7 +22,7 @@ import 'package:mobx/mobx.dart';
 
 part 'anthem_color.g.dart';
 
-@AnthemModel(serializable: true)
+@AnthemModel.all()
 class AnthemColor extends _AnthemColor
     with _$AnthemColor, _$AnthemColorAnthemModelMixin {
   AnthemColor({
