@@ -23,9 +23,23 @@ import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
-/// Cache of ModelClassInfo instances. Allows us to look up types when generating the type
-/// graph.
-Map<(LibraryElement, ClassElement), ModelClassInfo> _modelClassInfoCache = {};
+/// Cache of ModelClassInfo instances.
+///
+/// This map is used to cache class parsing. If we have a reference loop, e.g.
+/// class A has a field of type B, and class B has a field of type A, then this
+/// prevents an infinite loop in the parser.
+Map<ClassElement, ModelClassInfo> _modelClassInfoCache = {};
+
+/// Clears the cache for model items.
+///
+/// Because classes outside of the current library are sometimes parsed
+/// incorrectly, we cannot keep the cache between runs. The build runner creates
+/// a single continuous build script that will reuse global variables like this,
+/// so we need a way to clear out the cache to make sure that it is fresh for
+/// each file.
+void cleanModelClassInfoCache() {
+  _modelClassInfoCache = {};
+}
 
 /// This class contains info about a given Dart model class. It is used during
 /// code generation to pre-process info about a model class that will be used
@@ -33,7 +47,80 @@ Map<(LibraryElement, ClassElement), ModelClassInfo> _modelClassInfoCache = {};
 class ModelClassInfo {
   LibraryReader libraryReader;
   ClassElement annotatedClass;
-  late ClassElement baseClass;
+
+  ClassElement? _baseClass;
+
+  /// Represents the base class for this model class, e.g. `_MyClass` in the
+  /// following case:
+  ///
+  /// ```dart
+  /// class MyClass extends _MyClass with _$MyClassAnthemModelMixin {
+  ///   ...
+  /// }
+  ///
+  /// class _MyClass {
+  ///   ...
+  /// }
+  /// ```
+  ///
+  /// This is nullable because sometimes the Dart analyzer can't find the base
+  /// class for model classes that are not in the library of the file currently
+  /// being parsed.
+  ///
+  /// This is not an issue because we don't need the base class in this case:
+  ///
+  /// File being parsed:
+  ///
+  /// ```dart
+  /// @AnthemModel.all()
+  /// class SomeClass extends _SomeClass with _$SomeClassAnthemModelMixin {
+  ///   ...
+  /// }
+  ///
+  /// // We can *always* find this, because it's in the file currently being
+  /// // processed by the builder
+  /// class _SomeClass {
+  ///   // We will try to parse this into a ModelClassInfo as well
+  ///   SomeOtherClass otherClass;
+  ///   ...
+  /// }
+  /// ```
+  ///
+  /// Some file that is imported by the file being parsed:
+  ///
+  /// ```dart
+  /// @AnthemModel.all()
+  /// class SomeOtherClass extends _SomeOtherClass with _$SomeOtherClassAnthemModelMixin {
+  ///   ...
+  /// }
+  ///
+  /// // Randomly, the analyzer will fail to find this class. This is fine,
+  /// // because when the build package is processing this file, it will always
+  /// // find this class.
+  /// class _SomeOtherClass {
+  ///   ...
+  /// }
+  /// ```
+  ClassElement get baseClass {
+    if (_baseClass == null) {
+      final String invalidSetupHelp =
+          '''Base class not found for ${annotatedClass.name}.
+
+Model items in Anthem must have a super class with a mixin, and a matching base class:
+
+class MyModel extends _MyModel with _\$MyModelAnthemModelMixin;
+
+class _MyModel {
+  // ...
+};''';
+
+      log.warning(invalidSetupHelp);
+
+      throw Exception();
+    }
+
+    return _baseClass!;
+  }
 
   /// Map of field names to their field definitions and types.
   Map<String, (FieldElement, ModelType)> fields = {};
@@ -43,16 +130,8 @@ class ModelClassInfo {
 
   factory ModelClassInfo(
       LibraryReader libraryReader, ClassElement annotatedClass) {
-    final cacheItem =
-        _modelClassInfoCache[(annotatedClass.library, annotatedClass)];
-
-    // if (cacheItem == null) {
-    //   print('cache miss');
-    // } else {
-    //   print('cache hit');
-    // }
-
-    return cacheItem ?? ModelClassInfo._create(libraryReader, annotatedClass);
+    return _modelClassInfoCache[annotatedClass] ??
+        ModelClassInfo._create(libraryReader, annotatedClass);
   }
 
   ModelClassInfo._create(this.libraryReader, this.annotatedClass) {
@@ -65,28 +144,9 @@ class ModelClassInfo {
           .expand((e) => e)
     ].expand((e) => e);
 
-    final baseClassOrNull = libraryAndImportedClasses
+    _baseClass = libraryAndImportedClasses
         .where((e) => e.name == '_${annotatedClass.name}')
         .firstOrNull;
-
-    const String invalidSetupHelp =
-        '''Model items in Anthem must have a super class with a mixin, and a matching base class:
-
-class MyModel extends _MyModel with _\$MyModelAnthemModelMixin;
-
-class _MyModel {
-  // ...
-};''';
-
-    if (baseClassOrNull == null) {
-      final err =
-          'Base class not found for ${annotatedClass.name}.\n\n$invalidSetupHelp';
-
-      log.warning(err);
-      throw Exception();
-    }
-
-    baseClass = baseClassOrNull;
 
     // The code below just doesn't work. I think it's because the mixin isn't
     // defined, so while it exists from a lexing standpoint, the analyzer
@@ -97,15 +157,12 @@ class _MyModel {
     //     .any((m) => m.getDisplayString() == '_\$AnthemModelMixin');
 
     // if (!hasClassMixin) {
-    //   log.warning('Mixin length: ${annotatedClass.mixins.length}');
-    //   log.warning(
-    //       'Mixins are: ${annotatedClass.mixins.map((type) => type.getDisplayString()).join(', ')}');
     //   log.warning(
     //       'Mixin not found for ${annotatedClass.name}.\n\n$invalidSetupHelp');
     //   continue;
     // }
 
-    for (final field in baseClass.fields) {
+    for (final field in _baseClass?.fields ?? []) {
       // If the field doesn't have a setter, it's not something we can
       // deserialize, so we won't include it. This can happen if the field is
       // final, or if the field is a getter.
@@ -131,7 +188,7 @@ class _MyModel {
       sealedSubclasses.add(SealedSubclassInfo(subclass, this));
     }
 
-    _modelClassInfoCache[(annotatedClass.library, annotatedClass)] = this;
+    _modelClassInfoCache[annotatedClass] = this;
   }
 }
 
