@@ -24,7 +24,6 @@ import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/song.dart';
 import 'package:anthem_codegen/annotations.dart';
-import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
 import 'generator.dart';
@@ -34,18 +33,11 @@ part 'project.g.dart';
 
 enum ProjectLayoutKind { arrange, edit, mix }
 
-@JsonSerializable()
 @AnthemModel(serializable: true)
 class ProjectModel extends _ProjectModel
     with _$ProjectModel, _$ProjectModelAnthemModelMixin {
   ProjectModel() : super();
   ProjectModel.create() : super.create();
-
-  factory ProjectModel.fromJson(Map<String, dynamic> json) {
-    final model = _$ProjectModelFromJson(json);
-    model.isSaved = true;
-    return model;
-  }
 
   factory ProjectModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
       _$ProjectModelAnthemModelMixin.fromJson_ANTHEM(json)..isSaved = true;
@@ -57,56 +49,47 @@ abstract class _ProjectModel extends Hydratable with Store {
   /// ID of the master output node in the processing graph. Audio that is routed
   /// to this node is sent to the audio output device.
   @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide(serialization: true)
   int? masterOutputNodeId;
 
   /// Map of generators in the project.
   @observable
-  @JsonKey(fromJson: _generatorsFromJson, toJson: _generatorsToJson)
   ObservableMap<ID, GeneratorModel> generators = ObservableMap();
 
   /// List of generator IDs in the project (to preserve order).
   @observable
-  @JsonKey(fromJson: _generatorListFromJson, toJson: _generatorListToJson)
   ObservableList<ID> generatorList = ObservableList();
 
   /// ID of the active instrument, used to determine which instrument is shown
   /// in the channel rack, which is used for piano roll, etc.
   @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide(serialization: true)
   ID? activeInstrumentID;
 
   /// ID of the active automation generator, used to determine which automation
   /// generator is being written to using the automation editor.
   @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide(serialization: true)
   ID? activeAutomationGeneratorID;
 
   /// The ID of the project.
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide(serialization: true)
   ID id = getID();
 
   /// The file path of the project.
   @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide(serialization: true)
   String? filePath;
 
   /// Whether or not the project has been saved. If false, the project has
   /// either never been saved, or has been modified since the last save.
   @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide(serialization: true)
   bool isSaved = false;
 
   // Detail view state
 
   @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide.all()
   DetailViewKind? _selectedDetailView;
 
@@ -124,58 +107,47 @@ abstract class _ProjectModel extends Hydratable with Store {
   /// Whether the detail view is active. If false, the project explorer is
   /// shown instead.
   @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide.all()
   bool isDetailViewSelected = false;
 
   // Visual layout flags
 
   @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide.all()
   bool isProjectExplorerVisible = true;
 
   @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide.all()
   bool isPatternEditorVisible = true;
 
   @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide.all()
   bool isAutomationMatrixVisible = true;
 
   @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide.all()
   ProjectLayoutKind layout = ProjectLayoutKind.arrange;
 
   // Undo / redo & etc
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide.all()
   late final CommandQueue _commandQueue;
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide.all()
   List<Command> _journalPageAccumulator = [];
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide.all()
   bool _journalPageActive = false;
 
   // Engine
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide.all()
   final engineID = getEngineID();
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide.all()
   late Engine engine;
 
   @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @Hide.all()
   var engineState = EngineState.stopped;
 
@@ -214,8 +186,6 @@ abstract class _ProjectModel extends Hydratable with Store {
       await generator.createInEngine(engine);
     }
   }
-
-  Map<String, dynamic> toJson() => _$ProjectModelToJson(this as ProjectModel);
 
   /// This function is run after deserialization. It allows us to do some setup
   /// that the deserialization step can't do for us.
@@ -320,30 +290,4 @@ class TimeSignatureChangeDetailViewKind extends DetailViewKind {
     this.patternID,
     required this.changeID,
   });
-}
-
-// JSON serialization and deserialization functions
-
-ObservableMap<ID, GeneratorModel> _generatorsFromJson(
-    Map<String, dynamic> json) {
-  return ObservableMap.of(
-    json.map(
-      (key, value) => MapEntry(key, GeneratorModel.fromJson(value)),
-    ),
-  );
-}
-
-Map<String, dynamic> _generatorsToJson(
-    ObservableMap<ID, GeneratorModel> generators) {
-  return generators.map(
-    (key, value) => MapEntry(key, value.toJson()),
-  );
-}
-
-ObservableList<ID> _generatorListFromJson(List<dynamic> json) {
-  return ObservableList.of(json.cast<String>());
-}
-
-List<String> _generatorListToJson(ObservableList<ID> generatorList) {
-  return generatorList.toList();
 }

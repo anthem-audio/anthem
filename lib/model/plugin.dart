@@ -19,13 +19,11 @@
 
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem_codegen/annotations.dart';
-import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
 part 'plugin.g.dart';
 
 /// A model representing a plugin.
-@JsonSerializable()
 @AnthemModel(serializable: true)
 class PluginModel extends _PluginModel
     with _$PluginModel, _$PluginModelAnthemModelMixin {
@@ -33,16 +31,14 @@ class PluginModel extends _PluginModel
 
   PluginModel.uninitialized() : super(path: '');
 
-  factory PluginModel.fromJson(Map<String, dynamic> json) =>
-      _$PluginModelFromJson(json);
+  factory PluginModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
+      _$PluginModelAnthemModelMixin.fromJson_ANTHEM(json);
 }
 
 abstract class _PluginModel with Store {
   String? path;
 
   _PluginModel({required this.path});
-
-  Map<String, dynamic> toJson() => _$PluginModelToJson(this as PluginModel);
 
   Future<bool> createInEngine(Engine engine) async {
     if (path == null) return false;

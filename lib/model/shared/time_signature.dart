@@ -19,21 +19,16 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem_codegen/annotations.dart';
-import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
 part 'time_signature.g.dart';
 
-@JsonSerializable()
 @AnthemModel(serializable: true)
 class TimeSignatureModel extends _TimeSignatureModel
     with _$TimeSignatureModel, _$TimeSignatureModelAnthemModelMixin {
   TimeSignatureModel(super.numerator, super.denominator);
 
   TimeSignatureModel.uninitialized() : super(4, 4);
-
-  factory TimeSignatureModel.fromJson(Map<String, dynamic> json) =>
-      _$TimeSignatureModelFromJson(json);
 
   factory TimeSignatureModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
       _$TimeSignatureModelAnthemModelMixin.fromJson_ANTHEM(json);
@@ -51,13 +46,9 @@ abstract class _TimeSignatureModel with Store {
     this.denominator,
   );
 
-  Map<String, dynamic> toJson() =>
-      _$TimeSignatureModelToJson(this as TimeSignatureModel);
-
   String toDisplayString() => '$numerator/$denominator';
 }
 
-@JsonSerializable()
 @AnthemModel(serializable: true)
 class TimeSignatureChangeModel extends _TimeSignatureChangeModel
     with
@@ -75,9 +66,6 @@ class TimeSignatureChangeModel extends _TimeSignatureChangeModel
           timeSignature: TimeSignatureModel(4, 4),
           offset: 0,
         );
-
-  factory TimeSignatureChangeModel.fromJson(Map<String, dynamic> json) =>
-      _$TimeSignatureChangeModelFromJson(json);
 
   factory TimeSignatureChangeModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
       _$TimeSignatureChangeModelAnthemModelMixin.fromJson_ANTHEM(json);
@@ -99,7 +87,4 @@ abstract class _TimeSignatureChangeModel with Store {
   }) {
     this.id = id ?? getID();
   }
-
-  Map<String, dynamic> toJson() =>
-      _$TimeSignatureChangeModelToJson(this as TimeSignatureChangeModel);
 }

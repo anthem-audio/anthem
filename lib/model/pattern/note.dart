@@ -19,12 +19,10 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem_codegen/annotations.dart';
-import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
 part 'note.g.dart';
 
-@JsonSerializable()
 @AnthemModel(serializable: true)
 class NoteModel extends _NoteModel
     with _$NoteModel, _$NoteModelAnthemModelMixin {
@@ -47,9 +45,6 @@ class NoteModel extends _NoteModel
           velocity: model.velocity,
           pan: model.pan,
         );
-
-  factory NoteModel.fromJson(Map<String, dynamic> json) =>
-      _$NoteModelFromJson(json);
 
   factory NoteModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
       _$NoteModelAnthemModelMixin.fromJson_ANTHEM(json);
@@ -80,6 +75,4 @@ abstract class _NoteModel with Store {
     required this.offset,
     required this.pan,
   }) : id = getID();
-
-  Map<String, dynamic> toJson() => _$NoteModelToJson(this as NoteModel);
 }

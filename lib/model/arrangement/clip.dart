@@ -20,12 +20,10 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem_codegen/annotations.dart';
-import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
 part 'clip.g.dart';
 
-@JsonSerializable()
 @AnthemModel(serializable: true)
 class ClipModel extends _ClipModel
     with _$ClipModel, _$ClipModelAnthemModelMixin {
@@ -69,9 +67,6 @@ class ClipModel extends _ClipModel
     );
   }
 
-  factory ClipModel.fromJson(Map<String, dynamic> json) =>
-      _$ClipModelFromJson(json);
-
   factory ClipModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
       _$ClipModelAnthemModelMixin.fromJson_ANTHEM(json);
 }
@@ -108,8 +103,6 @@ abstract class _ClipModel with Store {
     required this.offset,
   });
 
-  Map<String, dynamic> toJson() => _$ClipModelToJson(this as ClipModel);
-
   int getWidth(ProjectModel project) {
     if (timeView != null) {
       return timeView!.width;
@@ -119,16 +112,12 @@ abstract class _ClipModel with Store {
   }
 }
 
-@JsonSerializable()
 @AnthemModel(serializable: true)
 class TimeViewModel extends _TimeViewModel
     with _$TimeViewModel, _$TimeViewModelAnthemModelMixin {
   TimeViewModel({required super.start, required super.end});
 
   TimeViewModel.uninitialized() : super(start: 0, end: 0);
-
-  factory TimeViewModel.fromJson(Map<String, dynamic> json) =>
-      _$TimeViewModelFromJson(json);
 
   factory TimeViewModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
       _$TimeViewModelAnthemModelMixin.fromJson_ANTHEM(json);
@@ -142,8 +131,6 @@ abstract class _TimeViewModel with Store {
   int end;
 
   _TimeViewModel({required this.start, required this.end});
-
-  Map<String, dynamic> toJson() => _$TimeViewModelToJson(this as TimeViewModel);
 
   int get width {
     return end - start;

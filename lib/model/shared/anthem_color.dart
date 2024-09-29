@@ -18,12 +18,10 @@
 */
 
 import 'package:anthem_codegen/annotations.dart';
-import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
 part 'anthem_color.g.dart';
 
-@JsonSerializable()
 @AnthemModel(serializable: true)
 class AnthemColor extends _AnthemColor
     with _$AnthemColor, _$AnthemColorAnthemModelMixin {
@@ -39,9 +37,6 @@ class AnthemColor extends _AnthemColor
           lightnessMultiplier: 1,
           saturationMultiplier: 1,
         );
-
-  factory AnthemColor.fromJson(Map<String, dynamic> json) =>
-      _$AnthemColorFromJson(json);
 
   factory AnthemColor.fromJson_ANTHEM(Map<String, dynamic> json) =>
       _$AnthemColorAnthemModelMixin.fromJson_ANTHEM(json);
@@ -62,6 +57,4 @@ abstract class _AnthemColor with Store {
     required this.lightnessMultiplier,
     required this.saturationMultiplier,
   });
-
-  Map<String, dynamic> toJson() => _$AnthemColorToJson(this as AnthemColor);
 }

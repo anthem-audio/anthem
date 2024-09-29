@@ -21,12 +21,10 @@
 // import 'package:anthem/controller/processor_manager/processor_manager.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem_codegen/annotations.dart';
-import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
 part 'processor.g.dart';
 
-@JsonSerializable()
 @AnthemModel(serializable: true)
 class ProcessorModel extends _ProcessorModel
     with _$ProcessorModel, _$ProcessorModelAnthemModelMixin {
@@ -35,9 +33,6 @@ class ProcessorModel extends _ProcessorModel
   });
 
   ProcessorModel.uninitialized() : super(processorKey: '');
-
-  factory ProcessorModel.fromJson(Map<String, dynamic> json) =>
-      _$ProcessorModelFromJson(json);
 
   factory ProcessorModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
       _$ProcessorModelAnthemModelMixin.fromJson_ANTHEM(json);
@@ -102,20 +97,7 @@ abstract class _ProcessorModel with Store {
   @observable
   String? processorKey;
 
-  @JsonKey(fromJson: _parameterValuesFromJson, toJson: _parameterValuesToJson)
   ObservableMap<int, double> parameterValues = ObservableMap();
 
   _ProcessorModel({required this.processorKey});
-
-  Map<String, dynamic> toJson() =>
-      _$ProcessorModelToJson(this as ProcessorModel);
-}
-
-ObservableMap<int, double> _parameterValuesFromJson(Map<String, dynamic> json) {
-  return ObservableMap.of(
-      json.map((key, value) => MapEntry(int.parse(key), value)));
-}
-
-Map<String, dynamic> _parameterValuesToJson(ObservableMap<int, double> map) {
-  return map.map((key, value) => MapEntry(key.toString(), value));
 }
