@@ -96,6 +96,10 @@ class AnthemModelGenerator extends Generator {
       result += '}\n';
     }
 
+    // The cache for parsed classes persists across files, so we need to clear
+    // it for each file.
+    cleanModelClassInfoCache();
+
     return result;
   }
 }
