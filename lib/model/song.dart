@@ -31,7 +31,7 @@ import 'shared/hydratable.dart';
 
 part 'song.g.dart';
 
-@AnthemModel(serializable: true)
+@AnthemModel.all()
 class SongModel extends _SongModel
     with _$SongModel, _$SongModelAnthemModelMixin {
   SongModel() : super();

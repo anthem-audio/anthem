@@ -41,7 +41,7 @@ part 'pattern.g.dart';
 part 'package:anthem/widgets/basic/clip/clip_title_render_cache_mixin.dart';
 part 'package:anthem/widgets/basic/clip/clip_notes_render_cache_mixin.dart';
 
-@AnthemModel(serializable: true)
+@AnthemModel.all()
 class PatternModel extends _PatternModel
     with
         _$PatternModel,

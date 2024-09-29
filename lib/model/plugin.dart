@@ -24,7 +24,7 @@ import 'package:mobx/mobx.dart';
 part 'plugin.g.dart';
 
 /// A model representing a plugin.
-@AnthemModel(serializable: true)
+@AnthemModel.all()
 class PluginModel extends _PluginModel
     with _$PluginModel, _$PluginModelAnthemModelMixin {
   PluginModel({required super.path});

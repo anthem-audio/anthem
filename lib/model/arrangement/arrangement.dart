@@ -31,7 +31,7 @@ import 'clip.dart';
 
 part 'arrangement.g.dart';
 
-@AnthemModel(serializable: true)
+@AnthemModel.all()
 class ArrangementModel extends _ArrangementModel
     with _$ArrangementModel, _$ArrangementModelAnthemModelMixin {
   ArrangementModel({required super.name, required super.id});

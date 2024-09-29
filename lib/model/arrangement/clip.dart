@@ -24,7 +24,7 @@ import 'package:mobx/mobx.dart';
 
 part 'clip.g.dart';
 
-@AnthemModel(serializable: true)
+@AnthemModel.all()
 class ClipModel extends _ClipModel
     with _$ClipModel, _$ClipModelAnthemModelMixin {
   ClipModel.uninitialized()
@@ -112,7 +112,7 @@ abstract class _ClipModel with Store {
   }
 }
 
-@AnthemModel(serializable: true)
+@AnthemModel.all()
 class TimeViewModel extends _TimeViewModel
     with _$TimeViewModel, _$TimeViewModelAnthemModelMixin {
   TimeViewModel({required super.start, required super.end});

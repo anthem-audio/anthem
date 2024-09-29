@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -25,7 +25,7 @@ import 'automation_point.dart';
 part 'automation_lane.g.dart';
 
 /// Represents a set of automation points for a particular channel.
-@AnthemModel(serializable: true)
+@AnthemModel.all()
 class AutomationLaneModel extends _AutomationLaneModel
     with _$AutomationLaneModel, _$AutomationLaneModelAnthemModelMixin {
   AutomationLaneModel() : super();

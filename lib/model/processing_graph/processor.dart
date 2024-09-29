@@ -25,7 +25,7 @@ import 'package:mobx/mobx.dart';
 
 part 'processor.g.dart';
 
-@AnthemModel(serializable: true)
+@AnthemModel.all()
 class ProcessorModel extends _ProcessorModel
     with _$ProcessorModel, _$ProcessorModelAnthemModelMixin {
   ProcessorModel({
