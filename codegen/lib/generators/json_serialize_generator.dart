@@ -38,7 +38,7 @@ String generateJsonSerializationCode({
   // TODO: Remove the ANTHEM tag
   result += '''// ignore: duplicate_ignore
 // ignore: non_constant_identifier_names
-Map<String, dynamic> toJson_ANTHEM() {
+Map<String, dynamic> toJson() {
   final map = <String, dynamic>{};
 ''';
 
@@ -231,5 +231,5 @@ String _createConverterForCustomType({
   required CustomModelType type,
   required String accessor,
 }) {
-  return '$accessor${type.isNullable ? '?' : ''}.toJson_ANTHEM()';
+  return '$accessor${type.isNullable ? '?' : ''}.toJson()';
 }

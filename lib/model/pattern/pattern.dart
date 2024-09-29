@@ -62,8 +62,8 @@ class PatternModel extends _PatternModel
     }
   }
 
-  factory PatternModel.fromJson_ANTHEM(Map<String, dynamic> json) {
-    final result = _$PatternModelAnthemModelMixin.fromJson_ANTHEM(json);
+  factory PatternModel.fromJson(Map<String, dynamic> json) {
+    final result = _$PatternModelAnthemModelMixin.fromJson(json);
     result._init();
     return result;
   }

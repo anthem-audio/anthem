@@ -31,8 +31,8 @@ class TrackModel extends _TrackModel
 
   TrackModel.uninitialized() : super(name: '');
 
-  factory TrackModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$TrackModelAnthemModelMixin.fromJson_ANTHEM(json);
+  factory TrackModel.fromJson(Map<String, dynamic> json) =>
+      _$TrackModelAnthemModelMixin.fromJson(json);
 }
 
 abstract class _TrackModel with Store {

@@ -67,8 +67,8 @@ class ClipModel extends _ClipModel
     );
   }
 
-  factory ClipModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$ClipModelAnthemModelMixin.fromJson_ANTHEM(json);
+  factory ClipModel.fromJson(Map<String, dynamic> json) =>
+      _$ClipModelAnthemModelMixin.fromJson(json);
 }
 
 abstract class _ClipModel with Store {
@@ -119,8 +119,8 @@ class TimeViewModel extends _TimeViewModel
 
   TimeViewModel.uninitialized() : super(start: 0, end: 0);
 
-  factory TimeViewModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$TimeViewModelAnthemModelMixin.fromJson_ANTHEM(json);
+  factory TimeViewModel.fromJson(Map<String, dynamic> json) =>
+      _$TimeViewModelAnthemModelMixin.fromJson(json);
 }
 
 abstract class _TimeViewModel with Store {

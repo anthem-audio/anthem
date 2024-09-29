@@ -29,8 +29,8 @@ sealed class SealedClass extends _SealedClass
     with _$SealedClassAnthemModelMixin {
   SealedClass();
 
-  factory SealedClass.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$SealedClassAnthemModelMixin.fromJson_ANTHEM(json);
+  factory SealedClass.fromJson(Map<String, dynamic> json) =>
+      _$SealedClassAnthemModelMixin.fromJson(json);
 }
 
 class _SealedClass {
@@ -78,9 +78,9 @@ void main() {
     expect(sealedClassC.baseField, 5);
     expect(sealedClassC.c, 6);
 
-    final sealedClassAJson = sealedClassA.toJson_ANTHEM();
-    final sealedClassBJson = sealedClassB.toJson_ANTHEM();
-    final sealedClassCJson = sealedClassC.toJson_ANTHEM();
+    final sealedClassAJson = sealedClassA.toJson();
+    final sealedClassBJson = sealedClassB.toJson();
+    final sealedClassCJson = sealedClassC.toJson();
 
     expect(sealedClassAJson['baseField'], 1);
     expect(sealedClassAJson['a'], 2);
@@ -93,12 +93,9 @@ void main() {
     expect(sealedClassBJson['__type'], 'SealedClassB');
     expect(sealedClassCJson['__type'], 'SealedClassC');
 
-    final deserializedSealedClassA =
-        SealedClass.fromJson_ANTHEM(sealedClassAJson);
-    final deserializedSealedClassB =
-        SealedClass.fromJson_ANTHEM(sealedClassBJson);
-    final deserializedSealedClassC =
-        SealedClass.fromJson_ANTHEM(sealedClassCJson);
+    final deserializedSealedClassA = SealedClass.fromJson(sealedClassAJson);
+    final deserializedSealedClassB = SealedClass.fromJson(sealedClassBJson);
+    final deserializedSealedClassC = SealedClass.fromJson(sealedClassCJson);
 
     expect(deserializedSealedClassA.baseField, 1);
     expect(deserializedSealedClassA is SealedClassA, true);

@@ -39,8 +39,8 @@ class AutomationPointModel extends _AutomationPointModel
     super.curve = AutomationCurveType.smooth,
   });
 
-  factory AutomationPointModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
-      _$AutomationPointModelAnthemModelMixin.fromJson_ANTHEM(json);
+  factory AutomationPointModel.fromJson(Map<String, dynamic> json) =>
+      _$AutomationPointModelAnthemModelMixin.fromJson(json);
 }
 
 abstract class _AutomationPointModel with Store {

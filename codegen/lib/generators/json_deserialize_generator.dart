@@ -32,7 +32,7 @@ String generateJsonDeserializationCode({
   // TODO: Remove the ANTHEM tag
   result += '''// ignore: duplicate_ignore
 // ignore: non_constant_identifier_names
-static ${context.annotatedClass.name} fromJson_ANTHEM(Map<String, dynamic> json) {
+static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
 ''';
 
   // If the class is not sealed, we can just create an instance of the class
@@ -175,7 +175,7 @@ String _createGetterForField({
         getter: getter,
       ),
     CustomModelType() =>
-      '${type.isNullable ? '$getter == null ? null : ' : ''}${type.type.annotatedClass.name}.fromJson_ANTHEM($getter)',
+      '${type.isNullable ? '$getter == null ? null : ' : ''}${type.type.annotatedClass.name}.fromJson($getter)',
     UnknownModelType() => 'null',
   };
 }
