@@ -17,21 +17,34 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem_codegen/annotations.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
 part 'anthem_color.g.dart';
 
 @JsonSerializable()
-class AnthemColor extends _AnthemColor with _$AnthemColor {
+@AnthemModel(serializable: true)
+class AnthemColor extends _AnthemColor
+    with _$AnthemColor, _$AnthemColorAnthemModelMixin {
   AnthemColor({
     required super.hue,
     super.lightnessMultiplier = 1,
     super.saturationMultiplier = 1,
   });
 
+  AnthemColor.uninitialized()
+      : super(
+          hue: 0,
+          lightnessMultiplier: 1,
+          saturationMultiplier: 1,
+        );
+
   factory AnthemColor.fromJson(Map<String, dynamic> json) =>
       _$AnthemColorFromJson(json);
+
+  factory AnthemColor.fromJson_ANTHEM(Map<String, dynamic> json) =>
+      _$AnthemColorAnthemModelMixin.fromJson_ANTHEM(json);
 }
 
 abstract class _AnthemColor with Store {

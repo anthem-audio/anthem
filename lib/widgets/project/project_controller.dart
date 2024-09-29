@@ -54,7 +54,7 @@ class ProjectController {
   }
 
   void setActiveDetailView(bool isVisible, [DetailViewKind? detailView]) {
-    project.selectedDetailView = detailView;
+    project.setSelectedDetailView(detailView);
     project.isDetailViewSelected = isVisible;
   }
 

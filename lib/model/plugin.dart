@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem_codegen/annotations.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
@@ -25,8 +26,12 @@ part 'plugin.g.dart';
 
 /// A model representing a plugin.
 @JsonSerializable()
-class PluginModel extends _PluginModel with _$PluginModel {
+@AnthemModel(serializable: true)
+class PluginModel extends _PluginModel
+    with _$PluginModel, _$PluginModelAnthemModelMixin {
   PluginModel({required super.path});
+
+  PluginModel.uninitialized() : super(path: '');
 
   factory PluginModel.fromJson(Map<String, dynamic> json) =>
       _$PluginModelFromJson(json);

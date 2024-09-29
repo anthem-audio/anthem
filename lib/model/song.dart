@@ -23,6 +23,7 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/model/track.dart';
+import 'package:anthem_codegen/annotations.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
@@ -32,14 +33,20 @@ import 'shared/hydratable.dart';
 part 'song.g.dart';
 
 @JsonSerializable()
-class SongModel extends _SongModel with _$SongModel {
+@AnthemModel(serializable: true)
+class SongModel extends _SongModel
+    with _$SongModel, _$SongModelAnthemModelMixin {
   SongModel() : super();
+  SongModel.uninitialized() : super();
   SongModel.create({
     required super.project,
   }) : super.create();
 
   factory SongModel.fromJson(Map<String, dynamic> json) =>
       _$SongModelFromJson(json);
+
+  factory SongModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
+      _$SongModelAnthemModelMixin.fromJson_ANTHEM(json);
 }
 
 abstract class _SongModel extends Hydratable with Store {
@@ -58,6 +65,7 @@ abstract class _SongModel extends Hydratable with Store {
 
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide(serialization: true)
   ID? activePatternID;
 
   @observable
@@ -70,10 +78,12 @@ abstract class _SongModel extends Hydratable with Store {
 
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide(serialization: true)
   ID? activeArrangementID;
 
   @observable
   @JsonKey(fromJson: _tracksFromJson, toJson: _tracksToJson)
+  // @Hide.all()
   ObservableMap<ID, TrackModel> tracks = ObservableMap();
 
   @observable
@@ -84,6 +94,7 @@ abstract class _SongModel extends Hydratable with Store {
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
 
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide.all()
   ProjectModel? _project;
 
   ProjectModel get project {
@@ -149,7 +160,7 @@ abstract class _SongModel extends Hydratable with Store {
     activePatternID = patternID;
 
     if (patternID != null) {
-      project.selectedDetailView = PatternDetailViewKind(patternID);
+      project.setSelectedDetailView(PatternDetailViewKind(patternID));
     }
   }
 
@@ -157,7 +168,7 @@ abstract class _SongModel extends Hydratable with Store {
     activeArrangementID = arrangementID;
 
     if (arrangementID != null) {
-      project.selectedDetailView = ArrangementDetailViewKind(arrangementID);
+      project.setSelectedDetailView(ArrangementDetailViewKind(arrangementID));
     }
   }
 }

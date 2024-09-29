@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem_codegen/annotations.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
@@ -26,8 +27,13 @@ part 'automation_point.g.dart';
 enum AutomationCurveType { smooth, stairs, wave, hold }
 
 @JsonSerializable()
+@AnthemModel(serializable: true)
 class AutomationPointModel extends _AutomationPointModel
-    with _$AutomationPointModel {
+    with _$AutomationPointModel, _$AutomationPointModelAnthemModelMixin {
+  AutomationPointModel.uninitialized()
+      : super(
+            offset: 0, value: 0, tension: 0, curve: AutomationCurveType.smooth);
+
   AutomationPointModel({
     required super.offset,
     required super.value,
@@ -37,6 +43,9 @@ class AutomationPointModel extends _AutomationPointModel
 
   factory AutomationPointModel.fromJson(Map<String, dynamic> json) =>
       _$AutomationPointModelFromJson(json);
+
+  factory AutomationPointModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
+      _$AutomationPointModelAnthemModelMixin.fromJson_ANTHEM(json);
 }
 
 abstract class _AutomationPointModel with Store {

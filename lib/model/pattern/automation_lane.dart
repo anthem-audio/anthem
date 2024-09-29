@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem_codegen/annotations.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
@@ -26,11 +27,15 @@ part 'automation_lane.g.dart';
 
 /// Represents a set of automation points for a particular channel.
 @JsonSerializable()
+@AnthemModel(serializable: true)
 class AutomationLaneModel extends _AutomationLaneModel
-    with _$AutomationLaneModel {
+    with _$AutomationLaneModel, _$AutomationLaneModelAnthemModelMixin {
   AutomationLaneModel() : super();
 
   factory AutomationLaneModel.fromJson(Map<String, dynamic> json) =>
+      _$AutomationLaneModelFromJson(json);
+
+  factory AutomationLaneModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
       _$AutomationLaneModelFromJson(json);
 }
 

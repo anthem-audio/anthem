@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,17 +18,25 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem_codegen/annotations.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
 part 'time_signature.g.dart';
 
 @JsonSerializable()
-class TimeSignatureModel extends _TimeSignatureModel with _$TimeSignatureModel {
+@AnthemModel(serializable: true)
+class TimeSignatureModel extends _TimeSignatureModel
+    with _$TimeSignatureModel, _$TimeSignatureModelAnthemModelMixin {
   TimeSignatureModel(super.numerator, super.denominator);
+
+  TimeSignatureModel.uninitialized() : super(4, 4);
 
   factory TimeSignatureModel.fromJson(Map<String, dynamic> json) =>
       _$TimeSignatureModelFromJson(json);
+
+  factory TimeSignatureModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
+      _$TimeSignatureModelAnthemModelMixin.fromJson_ANTHEM(json);
 }
 
 abstract class _TimeSignatureModel with Store {
@@ -50,16 +58,29 @@ abstract class _TimeSignatureModel with Store {
 }
 
 @JsonSerializable()
+@AnthemModel(serializable: true)
 class TimeSignatureChangeModel extends _TimeSignatureChangeModel
-    with _$TimeSignatureChangeModel {
+    with
+        _$TimeSignatureChangeModel,
+        _$TimeSignatureChangeModelAnthemModelMixin {
   TimeSignatureChangeModel({
     super.id,
     required super.timeSignature,
     required super.offset,
   });
 
+  TimeSignatureChangeModel.uninitialized()
+      : super(
+          id: '',
+          timeSignature: TimeSignatureModel(4, 4),
+          offset: 0,
+        );
+
   factory TimeSignatureChangeModel.fromJson(Map<String, dynamic> json) =>
       _$TimeSignatureChangeModelFromJson(json);
+
+  factory TimeSignatureChangeModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
+      _$TimeSignatureChangeModelAnthemModelMixin.fromJson_ANTHEM(json);
 }
 
 abstract class _TimeSignatureChangeModel with Store {

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,13 +19,24 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem_codegen/annotations.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
 part 'clip.g.dart';
 
 @JsonSerializable()
-class ClipModel extends _ClipModel with _$ClipModel {
+@AnthemModel(serializable: true)
+class ClipModel extends _ClipModel
+    with _$ClipModel, _$ClipModelAnthemModelMixin {
+  ClipModel.uninitialized()
+      : super.create(
+          id: getID(),
+          patternID: getID(),
+          trackID: getID(),
+          offset: 0,
+        );
+
   ClipModel(
       {required super.id,
       super.timeView,
@@ -60,6 +71,9 @@ class ClipModel extends _ClipModel with _$ClipModel {
 
   factory ClipModel.fromJson(Map<String, dynamic> json) =>
       _$ClipModelFromJson(json);
+
+  factory ClipModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
+      _$ClipModelAnthemModelMixin.fromJson_ANTHEM(json);
 }
 
 abstract class _ClipModel with Store {
@@ -106,11 +120,18 @@ abstract class _ClipModel with Store {
 }
 
 @JsonSerializable()
-class TimeViewModel extends _TimeViewModel with _$TimeViewModel {
+@AnthemModel(serializable: true)
+class TimeViewModel extends _TimeViewModel
+    with _$TimeViewModel, _$TimeViewModelAnthemModelMixin {
   TimeViewModel({required super.start, required super.end});
+
+  TimeViewModel.uninitialized() : super(start: 0, end: 0);
 
   factory TimeViewModel.fromJson(Map<String, dynamic> json) =>
       _$TimeViewModelFromJson(json);
+
+  factory TimeViewModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
+      _$TimeViewModelAnthemModelMixin.fromJson_ANTHEM(json);
 }
 
 abstract class _TimeViewModel with Store {
