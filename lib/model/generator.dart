@@ -24,6 +24,8 @@ import 'package:anthem/engine_api/messages/messages.dart'
 import 'package:anthem/helpers/convert.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/hydratable.dart';
+import 'package:anthem_codegen/annotations.dart';
+import 'package:flutter/material.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
@@ -39,7 +41,17 @@ part 'generator.g.dart';
 enum GeneratorType { instrument, automation }
 
 @JsonSerializable()
-class GeneratorModel extends _GeneratorModel with _$GeneratorModel {
+@AnthemModel(serializable: true)
+class GeneratorModel extends _GeneratorModel
+    with _$GeneratorModel, _$GeneratorModelAnthemModelMixin {
+  GeneratorModel.uninitialized()
+      : super(
+            color: Colors.black,
+            id: '',
+            name: '',
+            generatorType: GeneratorType.instrument,
+            processor: ProcessorModel.uninitialized());
+
   GeneratorModel({
     required super.id,
     required super.name,
@@ -59,6 +71,9 @@ class GeneratorModel extends _GeneratorModel with _$GeneratorModel {
 
   factory GeneratorModel.fromJson(Map<String, dynamic> json) =>
       _$GeneratorModelFromJson(json);
+
+  factory GeneratorModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
+      _$GeneratorModelAnthemModelMixin.fromJson_ANTHEM(json);
 }
 
 abstract class _GeneratorModel extends Hydratable with Store {
@@ -80,7 +95,11 @@ abstract class _GeneratorModel extends Hydratable with Store {
   @observable
   ProcessorModel gainNode;
 
+  @observable
+  ProcessorModel midiGeneratorNode;
+
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide.all()
   ProjectModel? _project;
 
   _GeneratorModel({
@@ -89,7 +108,8 @@ abstract class _GeneratorModel extends Hydratable with Store {
     required this.generatorType,
     required this.color,
     required this.processor,
-  }) : gainNode = ProcessorModel(processorKey: 'Gain');
+  })  : gainNode = ProcessorModel(processorKey: 'Gain'),
+        midiGeneratorNode = ProcessorModel(processorKey: 'SimpleMidiGenerator');
 
   _GeneratorModel.create({
     required this.id,
@@ -99,6 +119,7 @@ abstract class _GeneratorModel extends Hydratable with Store {
     required this.processor,
     required ProjectModel project,
   })  : gainNode = ProcessorModel(processorKey: 'Gain'),
+        midiGeneratorNode = ProcessorModel(processorKey: 'SimpleMidiGenerator'),
         super() {
     hydrate(project: project);
   }
@@ -117,6 +138,15 @@ abstract class _GeneratorModel extends Hydratable with Store {
     await processor.createInEngine(engine);
 
     await gainNode.createInEngine(engine);
+    // await midiGeneratorNode.createInEngine(engine);
+
+    // await engine.processingGraphApi.connectProcessors(
+    //   connectionType: ProcessorConnectionType.NoteEvent,
+    //   sourceId: midiGeneratorNode.idInEngine!,
+    //   sourcePortIndex: 0,
+    //   destinationId: processor.idInEngine!,
+    //   destinationPortIndex: 0,
+    // );
 
     await engine.processingGraphApi.connectProcessors(
       connectionType: ProcessorConnectionType.audio,

@@ -20,19 +20,27 @@
 // import 'package:anthem/controller/processor_manager/processor_list.dart';
 // import 'package:anthem/controller/processor_manager/processor_manager.dart';
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem_codegen/annotations.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
 part 'processor.g.dart';
 
 @JsonSerializable()
-class ProcessorModel extends _ProcessorModel with _$ProcessorModel {
+@AnthemModel(serializable: true)
+class ProcessorModel extends _ProcessorModel
+    with _$ProcessorModel, _$ProcessorModelAnthemModelMixin {
   ProcessorModel({
     required super.processorKey,
   });
 
+  ProcessorModel.uninitialized() : super(processorKey: '');
+
   factory ProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$ProcessorModelFromJson(json);
+
+  factory ProcessorModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
+      _$ProcessorModelAnthemModelMixin.fromJson_ANTHEM(json);
 
   Future<void> createInEngine(Engine engine) async {
     if (processorKey == null) return;

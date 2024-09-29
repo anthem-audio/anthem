@@ -23,6 +23,7 @@ import 'package:anthem/commands/journal_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/song.dart';
+import 'package:anthem_codegen/annotations.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
@@ -34,7 +35,9 @@ part 'project.g.dart';
 enum ProjectLayoutKind { arrange, edit, mix }
 
 @JsonSerializable()
-class ProjectModel extends _ProjectModel with _$ProjectModel {
+@AnthemModel(serializable: true)
+class ProjectModel extends _ProjectModel
+    with _$ProjectModel, _$ProjectModelAnthemModelMixin {
   ProjectModel() : super();
   ProjectModel.create() : super.create();
 
@@ -43,6 +46,9 @@ class ProjectModel extends _ProjectModel with _$ProjectModel {
     model.isSaved = true;
     return model;
   }
+
+  factory ProjectModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
+      _$ProjectModelAnthemModelMixin.fromJson_ANTHEM(json)..isSaved = true;
 }
 
 abstract class _ProjectModel extends Hydratable with Store {
@@ -52,6 +58,7 @@ abstract class _ProjectModel extends Hydratable with Store {
   /// to this node is sent to the audio output device.
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide(serialization: true)
   int? masterOutputNodeId;
 
   /// Map of generators in the project.
@@ -68,41 +75,48 @@ abstract class _ProjectModel extends Hydratable with Store {
   /// in the channel rack, which is used for piano roll, etc.
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide(serialization: true)
   ID? activeInstrumentID;
 
   /// ID of the active automation generator, used to determine which automation
   /// generator is being written to using the automation editor.
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide(serialization: true)
   ID? activeAutomationGeneratorID;
 
   /// The ID of the project.
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide(serialization: true)
   ID id = getID();
 
   /// The file path of the project.
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide(serialization: true)
   String? filePath;
 
   /// Whether or not the project has been saved. If false, the project has
   /// either never been saved, or has been modified since the last save.
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide(serialization: true)
   bool isSaved = false;
 
   // Detail view state
 
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide.all()
   DetailViewKind? _selectedDetailView;
 
   /// `selectedDetailView` controls which detail item (in the left panel) is
   /// active. Detail views contain attributes about various items in the
   /// project, such as patterns, arrangements, notes, etc.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  DetailViewKind? get selectedDetailView => _selectedDetailView;
-  set selectedDetailView(DetailViewKind? detailView) {
+  DetailViewKind? getSelectedDetailView() => _selectedDetailView;
+
+  /// Sets the selected detail view. See getSelectedDetailView() for more info.
+  void setSelectedDetailView(DetailViewKind? detailView) {
     _selectedDetailView = detailView;
     if (detailView != null) isDetailViewSelected = true;
   }
@@ -111,49 +125,58 @@ abstract class _ProjectModel extends Hydratable with Store {
   /// shown instead.
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide.all()
   bool isDetailViewSelected = false;
 
   // Visual layout flags
 
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide.all()
   bool isProjectExplorerVisible = true;
 
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide.all()
   bool isPatternEditorVisible = true;
 
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide.all()
   bool isAutomationMatrixVisible = true;
 
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
-  @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide.all()
   ProjectLayoutKind layout = ProjectLayoutKind.arrange;
 
   // Undo / redo & etc
 
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide.all()
   late final CommandQueue _commandQueue;
 
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide.all()
   List<Command> _journalPageAccumulator = [];
 
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide.all()
   bool _journalPageActive = false;
 
   // Engine
 
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide.all()
   final engineID = getEngineID();
 
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide.all()
   late Engine engine;
 
   @observable
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide.all()
   var engineState = EngineState.stopped;
 
   // This method is used for deserialization and so doesn't create new child

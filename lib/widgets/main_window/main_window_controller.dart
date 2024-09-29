@@ -72,7 +72,7 @@ class MainWindowController {
   }
 
   /// Returns the ID of the loaded project, or null if the project load failed
-  /// or was cancelled
+  /// or was cancelled.
   Future<ID?> loadProject() async {
     final path = (await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -83,7 +83,7 @@ class MainWindowController {
     if (path == null) return null;
     final file = await File(path).readAsString();
 
-    final project = ProjectModel.fromJson(json.decode(file))..hydrate();
+    final project = ProjectModel.fromJson_ANTHEM(json.decode(file))..hydrate();
     _addProject(project);
 
     return project.id;
@@ -109,7 +109,7 @@ class MainWindowController {
         path += '.anthem';
       }
 
-      await File(path).writeAsString(json.encode(project.toJson()));
+      await File(path).writeAsString(json.encode(project.toJson_ANTHEM()));
 
       project.isSaved = true;
       project.filePath = path;

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,13 +18,16 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem_codegen/annotations.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
 part 'note.g.dart';
 
 @JsonSerializable()
-class NoteModel extends _NoteModel with _$NoteModel {
+@AnthemModel(serializable: true)
+class NoteModel extends _NoteModel
+    with _$NoteModel, _$NoteModelAnthemModelMixin {
   NoteModel({
     required super.key,
     required super.velocity,
@@ -32,6 +35,9 @@ class NoteModel extends _NoteModel with _$NoteModel {
     required super.offset,
     required super.pan,
   });
+
+  NoteModel.uninitialized()
+      : super(key: 0, velocity: 0, length: 0, offset: 0, pan: 0);
 
   NoteModel.fromNoteModel(NoteModel model)
       : super(
@@ -44,6 +50,9 @@ class NoteModel extends _NoteModel with _$NoteModel {
 
   factory NoteModel.fromJson(Map<String, dynamic> json) =>
       _$NoteModelFromJson(json);
+
+  factory NoteModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
+      _$NoteModelAnthemModelMixin.fromJson_ANTHEM(json);
 }
 
 abstract class _NoteModel with Store {

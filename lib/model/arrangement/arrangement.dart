@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -24,6 +24,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/hydratable.dart';
 import 'package:anthem/model/shared/time_signature.dart';
+import 'package:anthem_codegen/annotations.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
@@ -32,8 +33,12 @@ import 'clip.dart';
 part 'arrangement.g.dart';
 
 @JsonSerializable()
-class ArrangementModel extends _ArrangementModel with _$ArrangementModel {
+@AnthemModel(serializable: true)
+class ArrangementModel extends _ArrangementModel
+    with _$ArrangementModel, _$ArrangementModelAnthemModelMixin {
   ArrangementModel({required super.name, required super.id});
+
+  ArrangementModel.uninitialized() : super(name: '', id: '');
 
   ArrangementModel.create(
       {required super.name, required super.id, required super.project})
@@ -41,6 +46,9 @@ class ArrangementModel extends _ArrangementModel with _$ArrangementModel {
 
   factory ArrangementModel.fromJson(Map<String, dynamic> json) =>
       _$ArrangementModelFromJson(json);
+
+  factory ArrangementModel.fromJson_ANTHEM(Map<String, dynamic> json) =>
+      _$ArrangementModelAnthemModelMixin.fromJson_ANTHEM(json);
 }
 
 abstract class _ArrangementModel extends Hydratable with Store {
@@ -57,9 +65,11 @@ abstract class _ArrangementModel extends Hydratable with Store {
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
 
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide.all()
   ProjectModel? _project;
 
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide(serialization: true)
   late int editPointer;
 
   ProjectModel get project {

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -29,6 +29,7 @@ import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/shared/hydratable.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes_render_cache.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
+import 'package:anthem_codegen/annotations.dart';
 import 'package:flutter/widgets.dart' as widgets;
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
@@ -42,9 +43,11 @@ part 'package:anthem/widgets/basic/clip/clip_title_render_cache_mixin.dart';
 part 'package:anthem/widgets/basic/clip/clip_notes_render_cache_mixin.dart';
 
 @JsonSerializable()
+@AnthemModel(serializable: true)
 class PatternModel extends _PatternModel
     with
         _$PatternModel,
+        _$PatternModelAnthemModelMixin,
         _ClipTitleRenderCacheMixin,
         _ClipNotesRenderCacheMixin {
   PatternModel() : super() {
@@ -67,17 +70,30 @@ class PatternModel extends _PatternModel
     return result;
   }
 
+  factory PatternModel.fromJson_ANTHEM(Map<String, dynamic> json) {
+    final result = _$PatternModelAnthemModelMixin.fromJson_ANTHEM(json);
+    result._init();
+    return result;
+  }
+
   void _init() {
-    incrementClipUpdateSignal = Action(() {
-      clipNotesUpdateSignal.value =
-          (clipNotesUpdateSignal.value + 1) % 0xFFFFFFFF;
-    });
-    updateClipTitleCache();
-    updateClipNotesRenderCache();
+    if (isHydrated) throw Exception('Should always init before hydrate');
+
+    super._onHydrateAction = () {
+      incrementClipUpdateSignal = Action(() {
+        clipNotesUpdateSignal.value =
+            (clipNotesUpdateSignal.value + 1) % 0xFFFFFFFF;
+      });
+      updateClipTitleCache();
+      updateClipNotesRenderCache();
+    };
   }
 }
 
 abstract class _PatternModel extends Hydratable with Store {
+  @Hide.all()
+  void Function()? _onHydrateAction;
+
   ID id = getID();
 
   @observable
@@ -104,6 +120,7 @@ abstract class _PatternModel extends Hydratable with Store {
       ObservableList();
 
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @Hide.all()
   ProjectModel? _project;
 
   ProjectModel get project {
@@ -129,6 +146,10 @@ abstract class _PatternModel extends Hydratable with Store {
 
   void hydrate({required ProjectModel project}) {
     _project = project;
+
+    _onHydrateAction?.call();
+    _onHydrateAction = null;
+
     isHydrated = true;
   }
 
