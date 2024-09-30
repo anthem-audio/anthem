@@ -72,25 +72,25 @@ class GeneratorModel extends _GeneratorModel
 abstract class _GeneratorModel extends Hydratable with Store {
   String id;
 
-  @observable
+  @anthemObservable
   String name;
 
-  @observable
+  @anthemObservable
   GeneratorType generatorType;
 
-  @observable
+  @anthemObservable
   Color color;
 
-  @observable
+  @anthemObservable
   ProcessorModel processor;
 
-  @observable
+  @anthemObservable
   ProcessorModel gainNode;
 
-  @observable
+  @anthemObservable
   ProcessorModel midiGeneratorNode;
 
-  @Hide.all()
+  @hide
   ProjectModel? _project;
 
   _GeneratorModel({

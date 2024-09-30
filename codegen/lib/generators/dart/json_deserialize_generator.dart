@@ -29,7 +29,6 @@ String generateJsonDeserializationCode({
 }) {
   var result = '';
 
-  // TODO: Remove the ANTHEM tag
   result += '''// ignore: duplicate_ignore
 // ignore: non_constant_identifier_names
 static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
@@ -66,14 +65,14 @@ static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
 
       for (final entry in subclass.fields.entries) {
         final name = entry.key;
-        final (fieldElement, modelType) = entry.value;
+        final fieldInfo = entry.value;
 
-        if (_shouldSkip(fieldElement)) {
+        if (_shouldSkip(fieldInfo.fieldElement)) {
           continue;
         }
 
         result += _createSetterForField(
-          type: modelType,
+          type: fieldInfo.typeInfo,
           fieldName: name,
           jsonName: 'json',
           resultName: 'subclassResult',
@@ -87,14 +86,14 @@ static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
 
   for (final entry in context.fields.entries) {
     final name = entry.key;
-    final (fieldElement, modelType) = entry.value;
+    final fieldInfo = entry.value;
 
-    if (_shouldSkip(fieldElement)) {
+    if (_shouldSkip(fieldInfo.fieldElement)) {
       continue;
     }
 
     result += _createSetterForField(
-      type: modelType,
+      type: fieldInfo.typeInfo,
       fieldName: name,
       jsonName: 'json',
       resultName: 'result',

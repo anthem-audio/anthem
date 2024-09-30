@@ -123,7 +123,7 @@ class _MyModel {
   }
 
   /// Map of field names to their field definitions and types.
-  Map<String, (FieldElement, ModelType)> fields = {};
+  Map<String, ModelFieldInfo> fields = {};
 
   late bool isSealed;
   List<SealedSubclassInfo> sealedSubclasses = [];
@@ -170,8 +170,11 @@ class _MyModel {
 
       if (_skipAll(field)) continue;
 
-      fields[field.name] =
-          (field, getModelType(field.type, libraryReader, annotatedClass));
+      fields[field.name] = ModelFieldInfo(
+        fieldElement: field,
+        libraryReader: libraryReader,
+        annotatedClass: annotatedClass,
+      );
     }
 
     isSealed = annotatedClass.isSealed;
@@ -194,7 +197,7 @@ class _MyModel {
 
 class SealedSubclassInfo {
   ClassElement subclass;
-  Map<String, (FieldElement, ModelType)> fields = {};
+  Map<String, ModelFieldInfo> fields = {};
   String get name => subclass.name;
 
   SealedSubclassInfo(this.subclass, ModelClassInfo baseClassInfo) {
@@ -206,12 +209,35 @@ class SealedSubclassInfo {
 
       if (_skipAll(field)) continue;
 
-      fields[field.name] = (
-        field,
-        getModelType(field.type, baseClassInfo.libraryReader, subclass)
+      fields[field.name] = ModelFieldInfo(
+        fieldElement: field,
+        libraryReader: baseClassInfo.libraryReader,
+        annotatedClass: subclass,
       );
     }
   }
+}
+
+/// Represents a parsed field in an Anthem model.
+class ModelFieldInfo {
+  final FieldElement fieldElement;
+  final ModelType typeInfo;
+  final bool isObservable;
+
+  ModelFieldInfo({
+    required this.fieldElement,
+    required LibraryReader libraryReader,
+    required ClassElement annotatedClass,
+  })  : typeInfo =
+            getModelType(fieldElement.type, libraryReader, annotatedClass),
+        isObservable = (() {
+          final hideAnnotation = const TypeChecker.fromRuntime(AnthemObservable)
+              .firstAnnotationOf(fieldElement);
+
+          if (hideAnnotation == null) return false;
+
+          return true;
+        })();
 }
 
 /// Returns true if the field should be skipped during code generation, based on
@@ -228,5 +254,8 @@ bool _skipAll(FieldElement field) {
     cpp: hideAnnotation.getField('cpp')?.toBoolValue() ?? false,
   );
 
-  return hide.serialization && hide.cpp;
+  final observableAnnotation =
+      const TypeChecker.fromRuntime(AnthemObservable).firstAnnotationOf(field);
+
+  return observableAnnotation == null && hide.serialization && hide.cpp;
 }

@@ -53,19 +53,19 @@ class NoteModel extends _NoteModel
 abstract class _NoteModel with Store {
   String id;
 
-  @observable
+  @anthemObservable
   int key;
 
-  @observable
+  @anthemObservable
   int velocity;
 
-  @observable
+  @anthemObservable
   int length;
 
-  @observable
+  @anthemObservable
   int offset;
 
-  @observable
+  @anthemObservable
   int pan;
 
   _NoteModel({

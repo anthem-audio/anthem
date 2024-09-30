@@ -39,6 +39,6 @@ abstract class _AutomationLaneModel with Store {
 
   /// The automation points for this lane. The first point should always have a
   /// time of 0.
-  @observable
+  @anthemObservable
   ObservableList<AutomationPointModel> points = ObservableList();
 }

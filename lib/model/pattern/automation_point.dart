@@ -46,16 +46,16 @@ class AutomationPointModel extends _AutomationPointModel
 abstract class _AutomationPointModel with Store {
   late final ID id;
 
-  @observable
+  @anthemObservable
   int offset;
 
-  @observable
+  @anthemObservable
   double value;
 
-  @observable
+  @anthemObservable
   double tension;
 
-  @observable
+  @anthemObservable
   AutomationCurveType curve;
 
   _AutomationPointModel({

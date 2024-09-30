@@ -38,7 +38,7 @@ class TrackModel extends _TrackModel
 abstract class _TrackModel with Store {
   ID id;
 
-  @observable
+  @anthemObservable
   String name;
 
   _TrackModel({required this.name}) : id = getID();

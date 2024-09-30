@@ -48,49 +48,49 @@ abstract class _ProjectModel extends Hydratable with Store {
 
   /// ID of the master output node in the processing graph. Audio that is routed
   /// to this node is sent to the audio output device.
-  @observable
-  @Hide(serialization: true)
+  @anthemObservable
+  @hideFromSerialization
   int? masterOutputNodeId;
 
   /// Map of generators in the project.
-  @observable
+  @anthemObservable
   ObservableMap<ID, GeneratorModel> generators = ObservableMap();
 
   /// List of generator IDs in the project (to preserve order).
-  @observable
+  @anthemObservable
   ObservableList<ID> generatorList = ObservableList();
 
   /// ID of the active instrument, used to determine which instrument is shown
   /// in the channel rack, which is used for piano roll, etc.
-  @observable
-  @Hide(serialization: true)
+  @anthemObservable
+  @hideFromSerialization
   ID? activeInstrumentID;
 
   /// ID of the active automation generator, used to determine which automation
   /// generator is being written to using the automation editor.
-  @observable
-  @Hide(serialization: true)
+  @anthemObservable
+  @hideFromSerialization
   ID? activeAutomationGeneratorID;
 
   /// The ID of the project.
-  @Hide(serialization: true)
+  @hideFromSerialization
   ID id = getID();
 
   /// The file path of the project.
-  @observable
-  @Hide(serialization: true)
+  @anthemObservable
+  @hideFromSerialization
   String? filePath;
 
   /// Whether or not the project has been saved. If false, the project has
   /// either never been saved, or has been modified since the last save.
-  @observable
-  @Hide(serialization: true)
+  @anthemObservable
+  @hideFromSerialization
   bool isSaved = false;
 
   // Detail view state
 
-  @observable
-  @Hide.all()
+  @anthemObservable
+  @hide
   DetailViewKind? _selectedDetailView;
 
   /// `selectedDetailView` controls which detail item (in the left panel) is
@@ -106,49 +106,49 @@ abstract class _ProjectModel extends Hydratable with Store {
 
   /// Whether the detail view is active. If false, the project explorer is
   /// shown instead.
-  @observable
-  @Hide.all()
+  @anthemObservable
+  @hide
   bool isDetailViewSelected = false;
 
   // Visual layout flags
 
-  @observable
-  @Hide.all()
+  @anthemObservable
+  @hide
   bool isProjectExplorerVisible = true;
 
-  @observable
-  @Hide.all()
+  @anthemObservable
+  @hide
   bool isPatternEditorVisible = true;
 
-  @observable
-  @Hide.all()
+  @anthemObservable
+  @hide
   bool isAutomationMatrixVisible = true;
 
-  @observable
-  @Hide.all()
+  @anthemObservable
+  @hide
   ProjectLayoutKind layout = ProjectLayoutKind.arrange;
 
   // Undo / redo & etc
 
-  @Hide.all()
+  @hide
   late final CommandQueue _commandQueue;
 
-  @Hide.all()
+  @hide
   List<Command> _journalPageAccumulator = [];
 
-  @Hide.all()
+  @hide
   bool _journalPageActive = false;
 
   // Engine
 
-  @Hide.all()
+  @hide
   final engineID = getEngineID();
 
-  @Hide.all()
+  @hide
   late Engine engine;
 
-  @observable
-  @Hide.all()
+  @anthemObservable
+  @hide
   var engineState = EngineState.stopped;
 
   // This method is used for deserialization and so doesn't create new child

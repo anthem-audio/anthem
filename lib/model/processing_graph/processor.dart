@@ -94,7 +94,7 @@ class ProcessorModel extends _ProcessorModel
 abstract class _ProcessorModel with Store {
   int? idInEngine;
 
-  @observable
+  @anthemObservable
   String? processorKey;
 
   ObservableMap<int, double> parameterValues = ObservableMap();

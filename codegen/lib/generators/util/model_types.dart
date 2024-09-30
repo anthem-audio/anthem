@@ -167,16 +167,17 @@ class UnknownModelType extends ModelType {
   final bool canBeMapKey = false;
 
   @override
-  String get name => 'void';
+  final String name;
 
-  UnknownModelType() : super(isNullable: false);
+  UnknownModelType({required this.name, required super.isNullable});
+  UnknownModelType.error({this.name = 'ErrorType', super.isNullable = false});
 }
 
 /// Parses a Dart type into a [ModelType].
 ModelType getModelType(
     DartType type, LibraryReader libraryReader, ClassElement annotatedClass) {
   final element = type.element;
-  if (element == null) return UnknownModelType();
+  if (element == null) return UnknownModelType.error();
 
   final isNullable = type.nullabilitySuffix == NullabilitySuffix.question;
 
@@ -191,10 +192,10 @@ ModelType getModelType(
         // Check if this is a list
         if (element is ClassElement &&
             (element.name == 'List' || element.name == 'ObservableList')) {
-          if (type is! ParameterizedType) return UnknownModelType();
+          if (type is! ParameterizedType) return UnknownModelType.error();
 
           final typeParam = type.typeArguments.first;
-          if (typeParam.element == null) return UnknownModelType();
+          if (typeParam.element == null) return UnknownModelType.error();
 
           final itemType =
               getModelType(typeParam, libraryReader, annotatedClass);
@@ -208,10 +209,10 @@ ModelType getModelType(
         // Check if this is a map
         if (element is ClassElement &&
             (element.name == 'Map' || element.name == 'ObservableMap')) {
-          if (type is! ParameterizedType) return UnknownModelType();
+          if (type is! ParameterizedType) return UnknownModelType.error();
 
           final typeParams = type.typeArguments;
-          if (typeParams.length != 2) return UnknownModelType();
+          if (typeParams.length != 2) return UnknownModelType.error();
 
           final keyType =
               getModelType(typeParams[0], libraryReader, annotatedClass);
@@ -220,7 +221,7 @@ ModelType getModelType(
                 'Map key type cannot be used as a map key: ${typeParams[0].element?.name}');
             log.warning(
                 '${typeParams[0].element?.name} is a field on ${annotatedClass.name}.');
-            return UnknownModelType();
+            return UnknownModelType.error();
           }
 
           final valueType =
@@ -240,9 +241,7 @@ ModelType getModelType(
               const TypeChecker.fromRuntime(AnthemModel)
                   .firstAnnotationOf(element);
           if (anthemModelAnnotation == null) {
-            log.warning(
-                'Custom type ${element.name} is not annotated with @AnthemModel. ${element.name} is a field on ${annotatedClass.name}.');
-            return UnknownModelType();
+            return UnknownModelType(name: element.name, isNullable: isNullable);
           }
 
           try {
@@ -254,7 +253,7 @@ ModelType getModelType(
                 'This may be because the type is not formed correctly.');
             log.warning(
                 '${element.name} is a field on ${annotatedClass.name}.');
-            return UnknownModelType();
+            return UnknownModelType(name: element.name, isNullable: isNullable);
           }
         }
 
@@ -267,7 +266,7 @@ ModelType getModelType(
         log.warning(
             'Unknown type: ${element.name}. This is not expected, and may be a bug. ${element.name} is a field on ${annotatedClass.name}.');
 
-        return UnknownModelType();
+        return UnknownModelType.error();
       })(),
   };
 }

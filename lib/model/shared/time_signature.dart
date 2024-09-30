@@ -35,10 +35,10 @@ class TimeSignatureModel extends _TimeSignatureModel
 }
 
 abstract class _TimeSignatureModel with Store {
-  @observable
+  @anthemObservable
   int numerator;
 
-  @observable
+  @anthemObservable
   int denominator;
 
   _TimeSignatureModel(
@@ -74,10 +74,10 @@ class TimeSignatureChangeModel extends _TimeSignatureChangeModel
 abstract class _TimeSignatureChangeModel with Store {
   ID id = '';
 
-  @observable
+  @anthemObservable
   TimeSignatureModel timeSignature;
 
-  @observable
+  @anthemObservable
   int offset;
 
   _TimeSignatureChangeModel({
