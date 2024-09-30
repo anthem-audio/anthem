@@ -49,19 +49,19 @@ class ArrangementModel extends _ArrangementModel
 abstract class _ArrangementModel extends Hydratable with Store {
   ID id;
 
-  @observable
+  @anthemObservable
   String name;
 
-  @observable
+  @anthemObservable
   ObservableMap<ID, ClipModel> clips = ObservableMap();
 
-  @observable
+  @anthemObservable
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
 
-  @Hide.all()
+  @hide
   ProjectModel? _project;
 
-  @Hide(serialization: true)
+  @hideFromSerialization
   late int editPointer;
 
   ProjectModel get project {

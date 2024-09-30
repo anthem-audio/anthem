@@ -47,40 +47,40 @@ class SongModel extends _SongModel
 abstract class _SongModel extends Hydratable with Store {
   ID id = getID();
 
-  @observable
+  @anthemObservable
   int ticksPerQuarter = 96;
 
-  @observable
+  @anthemObservable
   ObservableMap<ID, PatternModel> patterns = ObservableMap();
 
-  @observable
+  @anthemObservable
   ObservableList<ID> patternOrder = ObservableList();
 
-  @observable
-  @Hide(serialization: true)
+  @anthemObservable
+  @hideFromSerialization
   ID? activePatternID;
 
-  @observable
+  @anthemObservable
   ObservableMap<ID, ArrangementModel> arrangements = ObservableMap();
 
-  @observable
+  @anthemObservable
   ObservableList<ID> arrangementOrder = ObservableList();
 
-  @observable
-  @Hide(serialization: true)
+  @anthemObservable
+  @hideFromSerialization
   ID? activeArrangementID;
 
-  @observable
-  // @Hide.all()
+  @anthemObservable
+  // @hide
   ObservableMap<ID, TrackModel> tracks = ObservableMap();
 
-  @observable
+  @anthemObservable
   ObservableList<ID> trackOrder = ObservableList();
 
-  @observable
+  @anthemObservable
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
 
-  @Hide.all()
+  @hide
   ProjectModel? _project;
 
   ProjectModel get project {

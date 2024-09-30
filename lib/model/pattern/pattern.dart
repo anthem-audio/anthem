@@ -60,6 +60,7 @@ class PatternModel extends _PatternModel
         (generator) => generator.generatorType == GeneratorType.automation)) {
       automationLanes[generator.id] = AutomationLaneModel();
     }
+    super.hydrate(project: project);
   }
 
   factory PatternModel.fromJson(Map<String, dynamic> json) {
@@ -83,30 +84,30 @@ class PatternModel extends _PatternModel
 }
 
 abstract class _PatternModel extends Hydratable with Store {
-  @Hide.all()
+  @hide
   void Function()? _onHydrateAction;
 
   ID id = getID();
 
-  @observable
+  @anthemObservable
   String name = '';
 
-  @observable
+  @anthemObservable
   AnthemColor color = AnthemColor(hue: 0);
 
   /// The ID here is channel ID `Map<ChannelID, List<NoteModel>>`
-  @observable
+  @anthemObservable
   ObservableMap<ID, ObservableList<NoteModel>> notes = ObservableMap();
 
   /// The ID here is channel ID
-  @observable
+  @anthemObservable
   ObservableMap<ID, AutomationLaneModel> automationLanes = ObservableMap();
 
-  @observable
+  @anthemObservable
   ObservableList<TimeSignatureChangeModel> timeSignatureChanges =
       ObservableList();
 
-  @Hide.all()
+  @hide
   ProjectModel? _project;
 
   ProjectModel get project {
@@ -125,7 +126,6 @@ abstract class _PatternModel extends Hydratable with Store {
       saturationMultiplier: 0,
     );
     timeSignatureChanges = ObservableList();
-    hydrate(project: project);
   }
 
   void hydrate({required ProjectModel project}) {

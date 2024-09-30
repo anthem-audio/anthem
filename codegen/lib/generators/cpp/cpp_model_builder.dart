@@ -264,13 +264,13 @@ String _generateEnum(EnumModelType enumType) {
   writer.writeLine('struct ${modelClassInfo.annotatedClass.name}$baseText {');
   writer.incrementWhitespace();
 
-  for (final MapEntry(key: fieldName, value: (fieldElement, modelType))
+  for (final MapEntry(key: fieldName, value: fieldInfo)
       in modelClassInfo.fields.entries) {
-    if (_shouldSkip(fieldElement)) {
+    if (_shouldSkip(fieldInfo.fieldElement)) {
       continue;
     }
 
-    final type = _getCppType(modelType);
+    final type = _getCppType(fieldInfo.typeInfo);
     writer.writeLine('$type $fieldName;');
   }
 
@@ -288,13 +288,13 @@ String _generateEnum(EnumModelType enumType) {
     writer.writeLine('using Tag = rfl::Literal<"${subtype.name}">;');
     writer.writeLine();
 
-    for (final MapEntry(key: fieldName, value: (fieldElement, modelType))
+    for (final MapEntry(key: fieldName, value: fieldInfo)
         in subtype.fields.entries) {
-      if (_shouldSkip(fieldElement)) {
+      if (_shouldSkip(fieldInfo.fieldElement)) {
         continue;
       }
 
-      final type = _getCppType(modelType);
+      final type = _getCppType(fieldInfo.typeInfo);
       writer.writeLine('$type $fieldName;');
     }
 

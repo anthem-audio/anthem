@@ -43,13 +43,13 @@ class AnthemColor extends _AnthemColor
 }
 
 abstract class _AnthemColor with Store {
-  @observable
+  @anthemObservable
   double hue;
 
-  @observable
+  @anthemObservable
   double lightnessMultiplier; // 1 is normal, + is brighter, - is dimmer
 
-  @observable
+  @anthemObservable
   double saturationMultiplier; // 1 is normal, 0 is unsaturated
 
   _AnthemColor({

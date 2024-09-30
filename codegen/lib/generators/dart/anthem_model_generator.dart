@@ -21,6 +21,7 @@ import 'dart:async';
 
 import 'package:anthem_codegen/annotations.dart';
 import 'package:anthem_codegen/generators/dart/json_deserialize_generator.dart';
+import 'package:anthem_codegen/generators/dart/mobx_generator.dart';
 import 'package:anthem_codegen/generators/util/model_class_info.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
@@ -78,9 +79,18 @@ class AnthemModelGenerator extends Generator {
           'mixin _\$${libraryClass.name}AnthemModelMixin on ${context.baseClass.name} {\n';
 
       if (anthemModelAnnotation.serializable) {
+        result += '\n  // JSON serialization\n';
+        result += '\n';
         result += generateJsonSerializationCode(context: context);
+        result += '\n  // JSON deserialization\n';
         result += '\n';
         result += generateJsonDeserializationCode(context: context);
+        result += '\n  // MobX atoms\n';
+        result += '\n';
+        result += generateMobXAtoms(context: context);
+        result += '\n  // Getters and setters\n';
+        result += '\n';
+        result += _generateGettersAndSetters(context: context);
       }
 
       result += '}\n';
@@ -92,4 +102,48 @@ class AnthemModelGenerator extends Generator {
 
     return result;
   }
+}
+
+/// Generates getters and setters for model items.
+///
+/// Note that this will not generate anything for fields in sealed classes.
+String _generateGettersAndSetters({required ModelClassInfo context}) {
+  var result = '';
+
+  for (final MapEntry(key: fieldName, value: fieldInfo)
+      in context.fields.entries) {
+    // TODO: Allow getter/setter if generating model sync code
+    if (!fieldInfo.isObservable) continue;
+
+    // Getter
+
+    final typeQ = fieldInfo.typeInfo.isNullable ? '?' : '';
+
+    result += '@override\n';
+    result += '${fieldInfo.typeInfo.name}$typeQ get $fieldName {\n';
+    if (fieldInfo.isObservable) {
+      result += generateMobXGetter(fieldName, fieldInfo);
+    }
+    result += 'return super.$fieldName;\n';
+    result += '}\n\n';
+
+    // Setter
+
+    String generateSetter() {
+      var result = '';
+
+      result += 'super.$fieldName = value;\n';
+
+      return result;
+    }
+
+    result += '@override\n';
+    result += 'set $fieldName(${fieldInfo.typeInfo.name}$typeQ value) {\n';
+    if (fieldInfo.isObservable) {
+      result += wrapCodeWithMobXSetter(fieldName, fieldInfo, generateSetter());
+    }
+    result += '}\n\n';
+  }
+
+  return result;
 }

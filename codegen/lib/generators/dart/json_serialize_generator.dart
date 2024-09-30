@@ -35,7 +35,6 @@ String generateJsonSerializationCode({
 }) {
   var result = '';
 
-  // TODO: Remove the ANTHEM tag
   result += '''// ignore: duplicate_ignore
 // ignore: non_constant_identifier_names
 Map<String, dynamic> toJson() {
@@ -44,14 +43,14 @@ Map<String, dynamic> toJson() {
 
   for (final entry in context.fields.entries) {
     final name = entry.key;
-    final (fieldElement, modelType) = entry.value;
+    final fieldInfo = entry.value;
 
-    if (_shouldSkip(fieldElement)) {
+    if (_shouldSkip(fieldInfo.fieldElement)) {
       continue;
     }
 
     result += _createSetterForField(
-      type: modelType,
+      type: fieldInfo.typeInfo,
       fieldName: name,
       mapName: 'map',
     );
@@ -76,14 +75,14 @@ Map<String, dynamic> toJson() {
 
       for (final field in subclass.fields.entries) {
         final name = field.key;
-        final (fieldElement, modelType) = field.value;
+        final fieldInfo = field.value;
 
-        if (_shouldSkip(fieldElement)) {
+        if (_shouldSkip(fieldInfo.fieldElement)) {
           continue;
         }
 
         result += _createSetterForField(
-          type: modelType,
+          type: fieldInfo.typeInfo,
           fieldName: name,
           accessor: '(this as ${subclass.name}).$name',
           mapName: 'map',

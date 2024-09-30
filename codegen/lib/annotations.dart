@@ -139,3 +139,26 @@ class Hide {
   const Hide({this.serialization = false, this.cpp = false});
   const Hide.all() : this(serialization: true, cpp: true);
 }
+
+/// Shorthand for @Hide.all()
+const hide = Hide.all();
+
+/// Shorthand for @hideFromSerialization - hides the field from
+/// serialization, but still generates C++ code for it.
+const hideFromSerialization = Hide(serialization: true);
+
+/// An annotation that marks a field as a MobX observable.
+///
+/// This must be used instead of `@observable` if Anthem is also generating
+/// model synchronization code for the given model. This should provide
+/// identical behavior to MobX's `@observable`.
+class AnthemObservable {
+  const AnthemObservable();
+}
+
+/// An annotation that marks a field as a MobX observable.
+///
+/// This must be used instead of `@observable` if Anthem is also generating
+/// model synchronization code for the given model. This should provide
+/// identical behavior to MobX's `@observable`.
+const anthemObservable = AnthemObservable();

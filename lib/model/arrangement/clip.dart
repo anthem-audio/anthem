@@ -74,16 +74,16 @@ class ClipModel extends _ClipModel
 abstract class _ClipModel with Store {
   ID id;
 
-  @observable
+  @anthemObservable
   TimeViewModel? timeView; // If null, we snap to content
 
-  @observable
+  @anthemObservable
   ID patternID;
 
-  @observable
+  @anthemObservable
   ID trackID;
 
-  @observable
+  @anthemObservable
   int offset;
 
   /// Used for deserialization. Use ClipModel.create() instead.
@@ -124,10 +124,10 @@ class TimeViewModel extends _TimeViewModel
 }
 
 abstract class _TimeViewModel with Store {
-  @observable
+  @anthemObservable
   int start;
 
-  @observable
+  @anthemObservable
   int end;
 
   _TimeViewModel({required this.start, required this.end});
