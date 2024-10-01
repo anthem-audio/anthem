@@ -73,7 +73,9 @@ class CppModelBuilder implements Builder {
     // If we should generate a C++ module file from this file, we kick off the
     // function to do it here.
     if (libraryAnnotation != null) {
-      _generateCppModuleFile(libraryReader, imports);
+      final result = _generateCppModuleFile(libraryReader);
+      imports.addAll(result.imports);
+      forwardDeclarations.addAll(result.forwardDeclarations);
     }
 
     // Looks for @AnthemModel on each class in the file, and generates the
@@ -367,11 +369,14 @@ String _getCppType(ModelType type) {
   return typeStr;
 }
 
-/// Used to generate a C++ module file.
+/// Used to generate the imports for a C++ module file.
 ///
-/// See documentation on [GenerateCppModuleFile] for when this function will be
-/// used.
-void _generateCppModuleFile(LibraryReader libraryReader, List<String> imports) {
+/// See documentation on [GenerateCppModuleFile] for context.
+({List<String> forwardDeclarations, List<String> imports})
+    _generateCppModuleFile(LibraryReader libraryReader) {
+  final forwardDeclarations = <String>[];
+  final imports = <String>[];
+
   final library = libraryReader.element;
 
   for (final export in library.libraryExports
@@ -392,29 +397,26 @@ void _generateCppModuleFile(LibraryReader libraryReader, List<String> imports) {
 
     // If the exported library doesn't have any Anthem model classes, then we
     // don't generate an import for it
-    final hasAnyAnthemModel = exportLibraryReader.classes.any((item) {
-      return item.metadata.any((metadata) {
-        if (metadata.element?.enclosingElement?.name != 'AnthemModel') {
-          return false;
-        }
+    bool hasAnyAnthemModel = false;
+    for (final classElement in exportLibraryReader.classes) {
+      final annotation = const TypeChecker.fromRuntime(AnthemModel)
+          .firstAnnotationOf(classElement);
 
-        // Using ConstantReader to read annotation properties
-        final reader = ConstantReader(metadata.computeConstantValue());
+      if (annotation == null) {
+        continue;
+      }
 
-        // Read properties from @AnthemModel() annotation
+      final generateCpp =
+          annotation.getField('generateCpp')?.toBoolValue() ?? false;
 
-        bool generateCpp;
+      if (generateCpp) {
+        hasAnyAnthemModel = true;
 
-        if (reader.isNull) {
-          return false;
-        } else {
-          // Reading properties of the annotation
-          generateCpp = reader.read('generateCpp').literalValue as bool;
-        }
+        // Add forward declaration
+        forwardDeclarations.add('struct ${classElement.name};');
+      }
+    }
 
-        return generateCpp;
-      });
-    });
     if (!hasAnyAnthemModel) {
       continue;
     }
@@ -424,6 +426,8 @@ void _generateCppModuleFile(LibraryReader libraryReader, List<String> imports) {
 
     imports.add('#include "$cppFile.h"');
   }
+
+  return (forwardDeclarations: forwardDeclarations, imports: imports);
 }
 
 /// Checks if a field should be skipped when generating C++ code, based on the
