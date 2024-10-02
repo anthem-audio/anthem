@@ -26,6 +26,6 @@
 /// In addition to these more straightforward uses, code generation is also used
 /// to generate C++ models that match the Dart models, and is used to generate
 /// Dart code and C++ code to automatically synchronize the two model instances.
-library codegen;
+library;
 
 export 'generators/generators.dart';
