@@ -18,7 +18,7 @@
 */
 
 import 'package:analyzer/dart/element/element.dart';
-import 'package:anthem_codegen/annotations.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
