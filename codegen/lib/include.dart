@@ -17,30 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-@GenerateCppModuleFile()
+/// This library contains mixins and annotations that are used when defining
+/// Anthem models.
 library;
 
-import 'package:anthem_codegen/include.dart';
-
-export 'arrangement/arrangement.dart';
-export 'arrangement/clip.dart';
-
-export 'pattern/automation_lane.dart';
-export 'pattern/automation_point.dart';
-export 'pattern/note.dart';
-export 'pattern/pattern.dart';
-
-export 'processing_graph/processor.dart';
-export 'processing_graph/processor_definition.dart';
-
-export 'shared/anthem_color.dart';
-export 'shared/hydratable.dart';
-export 'shared/time_signature.dart';
-
-export 'app.dart';
-export 'generator.dart';
-export 'plugin.dart';
-export 'project.dart';
-export 'song.dart';
-export 'store.dart';
-export 'track.dart';
+export 'include/annotations.dart';
+export 'include/anthem_model_base_mixin.dart';

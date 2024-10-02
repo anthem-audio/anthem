@@ -17,30 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-@GenerateCppModuleFile()
-library;
-
-import 'package:anthem_codegen/include.dart';
-
-export 'arrangement/arrangement.dart';
-export 'arrangement/clip.dart';
-
-export 'pattern/automation_lane.dart';
-export 'pattern/automation_point.dart';
-export 'pattern/note.dart';
-export 'pattern/pattern.dart';
-
-export 'processing_graph/processor.dart';
-export 'processing_graph/processor_definition.dart';
-
-export 'shared/anthem_color.dart';
-export 'shared/hydratable.dart';
-export 'shared/time_signature.dart';
-
-export 'app.dart';
-export 'generator.dart';
-export 'plugin.dart';
-export 'project.dart';
-export 'song.dart';
-export 'store.dart';
-export 'track.dart';
+/// This mixin defines functionality that Anthem models use.
+///
+/// This mixin is used to provide functionality for models to communicate up and
+/// down the tree. When changes are made in a model, the change can propagate to
+/// the engine. This mixin provides functionality that enables the changes from
+/// leaf nodes to propagate up the tree to the root node, at which point they
+/// can be forwarded to the engine.
+mixin AnthemModelBase {}
