@@ -162,3 +162,9 @@ class AnthemObservable {
 /// model synchronization code for the given model. This should provide
 /// identical behavior to MobX's `@observable`.
 const anthemObservable = AnthemObservable();
+
+/// This annotation is used to mark an enum as an Anthem enum. This will allow
+/// it to generate an equivalent `enum class` in C++.
+class AnthemEnum {
+  const AnthemEnum();
+}
