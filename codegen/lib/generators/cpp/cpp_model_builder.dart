@@ -429,6 +429,7 @@ String _getCppType(ModelType type) {
     // If the exported library doesn't have any Anthem model classes, then we
     // don't generate an import for it
     bool hasAnyAnthemModel = false;
+
     for (final classElement in exportLibraryReader.classes) {
       final annotation = const TypeChecker.fromRuntime(AnthemModel)
           .firstAnnotationOf(classElement);
@@ -446,6 +447,20 @@ String _getCppType(ModelType type) {
         // Add forward declaration
         forwardDeclarations.add('struct ${classElement.name};');
       }
+    }
+
+    for (final enumElement in exportLibraryReader.enums) {
+      final annotation = const TypeChecker.fromRuntime(AnthemEnum)
+          .firstAnnotationOf(enumElement);
+
+      if (annotation == null) {
+        continue;
+      }
+
+      hasAnyAnthemModel = true;
+
+      // Add forward declaration
+      forwardDeclarations.add('enum class ${enumElement.name};');
     }
 
     if (!hasAnyAnthemModel) {
