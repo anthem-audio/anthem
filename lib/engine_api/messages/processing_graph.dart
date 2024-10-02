@@ -107,6 +107,7 @@ class RemoveProcessorResponse extends Response {
   }
 }
 
+@AnthemEnum()
 enum ProcessorConnectionType { audio, noteEvent, control }
 
 // Connects two processors in the node graph (e.g. an instrument audio output to
@@ -189,6 +190,7 @@ class DisconnectProcessorsResponse extends Response {
 }
 
 // Processor category enum
+@AnthemEnum()
 enum ProcessorCategory { effect, generator, utility }
 
 @AnthemModel(serializable: true, generateCpp: true)
