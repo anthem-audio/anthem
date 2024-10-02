@@ -24,6 +24,7 @@ import 'package:anthem_codegen/annotations.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
+import '../util/enum_info.dart';
 import '../util/model_class_info.dart';
 import '../util/model_types.dart';
 import '../util/writer.dart';
@@ -36,10 +37,6 @@ class CppModelBuilder implements Builder {
     // This will be written to the output file at the end of the function, if it
     // is not empty.
     var codeToWrite = '';
-
-    // This set contains enums as they are generated. If multiple classes in the
-    // same file use the same enum, we only want to generate it once.
-    final generatedEnums = <String>{};
 
     final inputId = buildStep.inputId;
     if (inputId.extension != '.dart') return;
@@ -77,6 +74,56 @@ class CppModelBuilder implements Builder {
       imports.addAll(result.imports);
       forwardDeclarations.addAll(result.forwardDeclarations);
     }
+
+    // Warn for enums that are not annotated with @AnthemEnum
+    for (final classElement in libraryReader.classes) {
+      final annotation = const TypeChecker.fromRuntime(AnthemModel)
+          .firstAnnotationOf(classElement);
+
+      if (annotation == null) continue;
+
+      final classInfo = ModelClassInfo(libraryReader, classElement);
+
+      for (final fieldInfo in classInfo.fields.values) {
+        if (fieldInfo.typeInfo is! EnumModelType) continue;
+
+        // Check for enum annotation
+        final enumAnnotation = const TypeChecker.fromRuntime(AnthemEnum)
+            .firstAnnotationOf(fieldInfo.fieldElement.type.element!);
+
+        final hideAnnotation = const TypeChecker.fromRuntime(Hide)
+            .firstAnnotationOf(fieldInfo.fieldElement);
+
+        // If the enum is not annotated with @anthemEnum, then some necessary
+        // codegen may not happen.
+        if (enumAnnotation == null) {
+          // Double-check that this field is not hidden from codegen before
+          // logging a warning.
+          if (hideAnnotation == null ||
+              hideAnnotation.getField('cpp')?.toBoolValue() == false) {
+            log.warning(
+                'Enum ${fieldInfo.fieldElement.type.element?.name} is not annotated with @anthemEnum. This is required for enums that are used by Anthem models.');
+            log.warning(
+                'The enum ${fieldInfo.fieldElement.type.element?.name} is used in a field called ${fieldInfo.fieldElement.name} on ${classElement.name}.');
+          }
+        }
+      }
+    }
+
+    final (code: enumsCode, forwardDeclarations: enumsForwardDeclarations) =
+        _generateEnumsForLibrary(
+      libraryReader.enums
+          .where((e) {
+            final annotation =
+                const TypeChecker.fromRuntime(AnthemEnum).firstAnnotationOf(e);
+            return annotation != null;
+          })
+          .map((e) => EnumInfo(e))
+          .toList(),
+    );
+
+    codeBlocks.add(enumsCode);
+    forwardDeclarations.addAll(enumsForwardDeclarations);
 
     // Looks for @AnthemModel on each class in the file, and generates the
     // appropriate code
@@ -118,12 +165,6 @@ class CppModelBuilder implements Builder {
       final modelClassInfo = ModelClassInfo(libraryReader, libraryClass);
 
       codeBlocks.add('// ${modelClassInfo.annotatedClass.name}\n\n');
-
-      final (code: enumsCode, forwardDeclarations: enumsForwardDeclarations) =
-          _generateEnumsForModel(modelClassInfo, generatedEnums);
-
-      codeBlocks.add(enumsCode);
-      forwardDeclarations.addAll(enumsForwardDeclarations);
 
       // Generate the code for this class
       final (
@@ -205,15 +246,14 @@ class CppModelBuilder implements Builder {
       };
 }
 
-String _generateEnum(EnumModelType enumType) {
+String _generateEnum(EnumInfo enumInfo) {
   final writer = Writer();
 
-  writer.writeLine('enum class ${enumType.name} {');
+  writer.writeLine('enum class ${enumInfo.name} {');
   writer.incrementWhitespace();
 
-  for (final field
-      in enumType.enumElement.fields.where((f) => f.name != 'values')) {
-    writer.writeLine('${field.name},');
+  for (final value in enumInfo.values.where((value) => value != 'values')) {
+    writer.writeLine('$value,');
   }
 
   writer.decrementWhitespace();
@@ -223,23 +263,14 @@ String _generateEnum(EnumModelType enumType) {
   return writer.result;
 }
 
-({String code, List<String> forwardDeclarations}) _generateEnumsForModel(
-    ModelClassInfo modelClassInfo, Set<String> generatedEnums) {
+({String code, List<String> forwardDeclarations}) _generateEnumsForLibrary(
+    List<EnumInfo> enums) {
   final forwardDeclarations = <String>[];
   final writer = Writer();
 
-  final classEnums = modelClassInfo.fields.values.whereType<EnumModelType>();
-
-  final subclassEnums = modelClassInfo.sealedSubclasses
-      .map((subclass) => subclass.fields.values.whereType<EnumModelType>())
-      .expand((e) => e); // Flattens the list of lists
-
-  for (final modelType in [classEnums, subclassEnums].expand((e) => e)) {
-    if (!generatedEnums.contains(modelType.name)) {
-      writer.write(_generateEnum(modelType));
-      generatedEnums.add(modelType.name);
-      forwardDeclarations.add('enum class ${modelType.name};');
-    }
+  for (final enumInfo in enums) {
+    writer.write(_generateEnum(enumInfo));
+    forwardDeclarations.add('enum class ${enumInfo.name};');
   }
 
   return (code: writer.result, forwardDeclarations: forwardDeclarations);

@@ -23,6 +23,7 @@ import 'package:mobx/mobx.dart';
 
 part 'automation_point.g.dart';
 
+@AnthemEnum()
 enum AutomationCurveType { smooth, stairs, wave, hold }
 
 @AnthemModel.all()

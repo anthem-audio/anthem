@@ -35,6 +35,7 @@ part 'generator.g.dart';
 // For now, we're just marking each generator with an enum saying what kind it
 // is, and we can rethink later.
 
+@AnthemEnum()
 enum GeneratorType { instrument, automation }
 
 @AnthemModel.all()

@@ -264,7 +264,7 @@ ModelType getModelType(
         }
 
         log.warning(
-            'Unknown type: ${element.name}. This is not expected, and may be a bug. ${element.name} is a field on ${annotatedClass.name}.');
+            'Unknown type: ${element.name}. This is not expected, and may be a bug. The type ${element.name} is used in a field on ${annotatedClass.name}.');
 
         return UnknownModelType.error();
       })(),
