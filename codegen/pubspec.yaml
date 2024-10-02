@@ -14,3 +14,4 @@ dependencies:
     sdk: flutter
 dev_dependencies:
   build_runner: ^2.4.12
+  flutter_lints: ^5.0.0
