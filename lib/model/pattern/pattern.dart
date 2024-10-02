@@ -29,7 +29,7 @@ import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/shared/hydratable.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes_render_cache.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
-import 'package:anthem_codegen/annotations.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:flutter/widgets.dart' as widgets;
 import 'package:mobx/mobx.dart';
 

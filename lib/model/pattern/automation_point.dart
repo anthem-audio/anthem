@@ -18,7 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem_codegen/annotations.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 part 'automation_point.g.dart';

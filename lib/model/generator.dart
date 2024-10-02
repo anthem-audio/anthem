@@ -22,7 +22,7 @@ import 'package:anthem/engine_api/messages/messages.dart'
     show ProcessorConnectionType;
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/hydratable.dart';
-import 'package:anthem_codegen/annotations.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:flutter/material.dart';
 import 'package:mobx/mobx.dart';
 

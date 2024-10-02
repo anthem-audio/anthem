@@ -20,7 +20,7 @@
 // import 'package:anthem/controller/processor_manager/processor_list.dart';
 // import 'package:anthem/controller/processor_manager/processor_manager.dart';
 import 'package:anthem/engine_api/engine.dart';
-import 'package:anthem_codegen/annotations.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 part 'processor.g.dart';
