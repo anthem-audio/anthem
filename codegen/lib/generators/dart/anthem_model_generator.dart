@@ -19,7 +19,7 @@
 
 import 'dart:async';
 
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:anthem_codegen/generators/dart/json_deserialize_generator.dart';
 import 'package:anthem_codegen/generators/dart/mobx_generator.dart';
 import 'package:anthem_codegen/generators/util/model_class_info.dart';

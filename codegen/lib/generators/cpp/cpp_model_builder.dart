@@ -20,7 +20,7 @@
 import 'dart:async';
 
 import 'package:analyzer/dart/element/element.dart';
-import 'package:anthem_codegen/annotations.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
