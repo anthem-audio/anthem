@@ -34,7 +34,7 @@ class AutomationLaneModel extends _AutomationLaneModel
       _$AutomationLaneModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _AutomationLaneModel with Store {
+abstract class _AutomationLaneModel with Store, AnthemModelBase {
   _AutomationLaneModel();
 
   /// The automation points for this lane. The first point should always have a

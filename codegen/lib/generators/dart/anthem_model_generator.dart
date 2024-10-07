@@ -19,6 +19,7 @@
 
 import 'dart:async';
 
+import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:anthem_codegen/generators/dart/json_deserialize_generator.dart';
 import 'package:anthem_codegen/generators/dart/mobx_generator.dart';
@@ -71,12 +72,16 @@ class AnthemModelGenerator extends Generator {
         generateCpp:
             annotationFromAnalyzer.getField('generateCpp')?.toBoolValue() ??
                 false,
+        generateModelSync: annotationFromAnalyzer
+                .getField('generateModelSync')
+                ?.toBoolValue() ??
+            false,
       );
 
       final context = ModelClassInfo(library, libraryClass);
 
       result +=
-          'mixin _\$${libraryClass.name}AnthemModelMixin on ${context.baseClass.name} {\n';
+          'mixin _\$${libraryClass.name}AnthemModelMixin on ${context.baseClass.name}${anthemModelAnnotation.generateModelSync ? ', AnthemModelBase' : ''} {\n';
 
       if (anthemModelAnnotation.serializable) {
         result += '\n  // JSON serialization\n';
@@ -85,13 +90,16 @@ class AnthemModelGenerator extends Generator {
         result += '\n  // JSON deserialization\n';
         result += '\n';
         result += generateJsonDeserializationCode(context: context);
-        result += '\n  // MobX atoms\n';
-        result += '\n';
-        result += generateMobXAtoms(context: context);
-        result += '\n  // Getters and setters\n';
-        result += '\n';
-        result += _generateGettersAndSetters(context: context);
       }
+      result += '\n  // MobX atoms\n';
+      result += '\n';
+      result += generateMobXAtoms(context: context);
+      result += '\n  // Getters and setters\n';
+      result += '\n';
+      result += _generateGettersAndSetters(
+        context: context,
+        generateModelSyncCode: anthemModelAnnotation.generateModelSync,
+      );
 
       result += '}\n';
     }
@@ -107,19 +115,25 @@ class AnthemModelGenerator extends Generator {
 /// Generates getters and setters for model items.
 ///
 /// Note that this will not generate anything for fields in sealed classes.
-String _generateGettersAndSetters({required ModelClassInfo context}) {
+String _generateGettersAndSetters(
+    {required ModelClassInfo context, required bool generateModelSyncCode}) {
   var result = '';
 
   for (final MapEntry(key: fieldName, value: fieldInfo)
       in context.fields.entries) {
-    // TODO: Allow getter/setter if generating model sync code
-    if (!fieldInfo.isObservable) continue;
+    // Skip if this field doesn't need a getter/setter
+    if (!fieldInfo.isObservable &&
+        (!generateModelSyncCode || fieldInfo.hideAnnotation?.cpp == true)) {
+      continue;
+    }
 
     // Getter
 
     final typeQ = fieldInfo.typeInfo.isNullable ? '?' : '';
 
     result += '@override\n';
+    result += '// ignore: duplicate_ignore\n';
+    result += '// ignore: unnecessary_overrides\n';
     result += '${fieldInfo.typeInfo.name}$typeQ get $fieldName {\n';
     if (fieldInfo.isObservable) {
       result += generateMobXGetter(fieldName, fieldInfo);
@@ -129,19 +143,65 @@ String _generateGettersAndSetters({required ModelClassInfo context}) {
 
     // Setter
 
-    String generateSetter() {
-      var result = '';
+    var setter = 'super.$fieldName = value;\n';
 
-      result += 'super.$fieldName = value;\n';
+    if (generateModelSyncCode) {
+      switch (fieldInfo.typeInfo) {
+        case ListModelType():
+          setter += '''
+$fieldName$typeQ.observe(
+  (change) {
+    handleListUpdate(
+      fieldName: '$fieldName',
+      list: super.$fieldName,
+      change: change,
+    );
+  },
+  fireImmediately: true,
+);
+''';
+          break;
+        case MapModelType():
+          setter += '''
+$fieldName$typeQ.observe(
+  (change) {
+    handleMapUpdate(
+      fieldName: '$fieldName',
+      map: super.$fieldName,
+      change: change,
+    );
+  },
+  fireImmediately: true,
+);
+''';
+          break;
+        case CustomModelType():
+          setter += 'super.$fieldName$typeQ.setParentProperties(\n';
+          setter += '  parent: this,\n';
+          setter += '  parentFieldName: \'$fieldName\',\n';
+          setter += '  fieldType: FieldType.raw,\n';
+          setter += ');\n';
+          break;
+        case _:
+          break;
+      }
 
-      return result;
+      setter += 'notifyFieldChanged(\n';
+      setter += '  accessors: [],\n';
+      setter += '  fieldName: \'$fieldName\',\n';
+
+      setter += '  fieldType: FieldType.raw,\n';
+      setter += ');\n';
     }
 
     result += '@override\n';
     result += 'set $fieldName(${fieldInfo.typeInfo.name}$typeQ value) {\n';
     if (fieldInfo.isObservable) {
-      result += wrapCodeWithMobXSetter(fieldName, fieldInfo, generateSetter());
+      result += wrapCodeWithMobXSetter(fieldName, fieldInfo, setter);
+    } else {
+      result += setter;
     }
+
     result += '}\n\n';
   }
 

@@ -35,7 +35,7 @@ class TrackModel extends _TrackModel
       _$TrackModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _TrackModel with Store {
+abstract class _TrackModel with Store, AnthemModelBase {
   ID id;
 
   @anthemObservable

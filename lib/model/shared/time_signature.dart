@@ -34,7 +34,7 @@ class TimeSignatureModel extends _TimeSignatureModel
       _$TimeSignatureModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _TimeSignatureModel with Store {
+abstract class _TimeSignatureModel with Store, AnthemModelBase {
   @anthemObservable
   int numerator;
 
@@ -71,7 +71,7 @@ class TimeSignatureChangeModel extends _TimeSignatureChangeModel
       _$TimeSignatureChangeModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _TimeSignatureChangeModel with Store {
+abstract class _TimeSignatureChangeModel with Store, AnthemModelBase {
   ID id = '';
 
   @anthemObservable

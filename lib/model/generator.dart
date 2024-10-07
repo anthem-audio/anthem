@@ -70,7 +70,7 @@ class GeneratorModel extends _GeneratorModel
       _$GeneratorModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _GeneratorModel extends Hydratable with Store {
+abstract class _GeneratorModel extends Hydratable with Store, AnthemModelBase {
   String id;
 
   @anthemObservable

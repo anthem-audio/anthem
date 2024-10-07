@@ -91,7 +91,7 @@ class ProcessorModel extends _ProcessorModel
   }
 }
 
-abstract class _ProcessorModel with Store {
+abstract class _ProcessorModel with Store, AnthemModelBase {
   int? idInEngine;
 
   @anthemObservable

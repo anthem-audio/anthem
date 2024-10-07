@@ -35,7 +35,7 @@ class PluginModel extends _PluginModel
       _$PluginModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _PluginModel with Store {
+abstract class _PluginModel with Store, AnthemModelBase {
   String? path;
 
   _PluginModel({required this.path});

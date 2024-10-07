@@ -46,7 +46,8 @@ class ArrangementModel extends _ArrangementModel
       _$ArrangementModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _ArrangementModel extends Hydratable with Store {
+abstract class _ArrangementModel extends Hydratable
+    with Store, AnthemModelBase {
   ID id;
 
   @anthemObservable

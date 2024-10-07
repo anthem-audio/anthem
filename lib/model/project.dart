@@ -43,7 +43,7 @@ class ProjectModel extends _ProjectModel
       _$ProjectModelAnthemModelMixin.fromJson(json)..isSaved = true;
 }
 
-abstract class _ProjectModel extends Hydratable with Store {
+abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   late SongModel song;
 
   /// ID of the master output node in the processing graph. Audio that is routed
@@ -155,6 +155,8 @@ abstract class _ProjectModel extends Hydratable with Store {
   // models.
   _ProjectModel() : super() {
     _commandQueue = CommandQueue(this as ProjectModel);
+
+    _init();
   }
 
   _ProjectModel.create() : super() {
@@ -173,6 +175,26 @@ abstract class _ProjectModel extends Hydratable with Store {
     // We don't need to hydrate here. All `SomeModel.Create()` functions should
     // call hydrate().
     isHydrated = true;
+
+    _init();
+  }
+
+  void _init() {
+    addFieldChangedListener((accessors) {
+      final accessString = accessors.map((accessor) {
+        final type = accessor.fieldType;
+
+        if (type == FieldType.raw) {
+          return accessor.fieldName;
+        } else if (type == FieldType.list) {
+          return '${accessor.fieldName}[${accessor.index}]';
+        } else if (type == FieldType.map) {
+          return '${accessor.fieldName}[${accessor.key}]';
+        }
+      }).join('.');
+
+      print('ProjectModel changed: project.$accessString');
+    });
   }
 
   // Initializes this project in the engine

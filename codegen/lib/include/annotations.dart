@@ -49,16 +49,21 @@
 class AnthemModel {
   final bool serializable;
   final bool generateCpp;
+  final bool generateModelSync;
 
   /// Constructor for [AnthemModel].
   ///
   /// See the documentation above for more info.
-  const AnthemModel({this.serializable = false, this.generateCpp = false});
+  const AnthemModel(
+      {this.serializable = false,
+      this.generateCpp = false,
+      this.generateModelSync = false});
 
   /// Constructor for [AnthemModel], which enables all options.
   ///
   /// See the documentation above for more info.
-  const AnthemModel.all() : this(serializable: true, generateCpp: true);
+  const AnthemModel.all()
+      : this(serializable: true, generateCpp: true, generateModelSync: true);
 }
 
 /// An annotation that triggers the Anthem code generator to create a module
