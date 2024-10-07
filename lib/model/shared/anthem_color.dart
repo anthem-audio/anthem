@@ -42,7 +42,7 @@ class AnthemColor extends _AnthemColor
       _$AnthemColorAnthemModelMixin.fromJson(json);
 }
 
-abstract class _AnthemColor with Store {
+abstract class _AnthemColor with Store, AnthemModelBase {
   @anthemObservable
   double hue;
 

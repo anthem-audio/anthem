@@ -71,7 +71,7 @@ class ClipModel extends _ClipModel
       _$ClipModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _ClipModel with Store {
+abstract class _ClipModel with Store, AnthemModelBase {
   ID id;
 
   @anthemObservable
@@ -123,7 +123,7 @@ class TimeViewModel extends _TimeViewModel
       _$TimeViewModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _TimeViewModel with Store {
+abstract class _TimeViewModel with Store, AnthemModelBase {
   @anthemObservable
   int start;
 

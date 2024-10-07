@@ -44,7 +44,7 @@ class AutomationPointModel extends _AutomationPointModel
       _$AutomationPointModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _AutomationPointModel with Store {
+abstract class _AutomationPointModel with Store, AnthemModelBase {
   late final ID id;
 
   @anthemObservable

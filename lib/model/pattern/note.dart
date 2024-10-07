@@ -50,7 +50,7 @@ class NoteModel extends _NoteModel
       _$NoteModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _NoteModel with Store {
+abstract class _NoteModel with Store, AnthemModelBase {
   String id;
 
   @anthemObservable

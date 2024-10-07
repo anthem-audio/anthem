@@ -224,6 +224,8 @@ class ModelFieldInfo {
   final ModelType typeInfo;
   final bool isObservable;
 
+  final Hide? hideAnnotation;
+
   ModelFieldInfo({
     required this.fieldElement,
     required LibraryReader libraryReader,
@@ -237,6 +239,19 @@ class ModelFieldInfo {
           if (hideAnnotation == null) return false;
 
           return true;
+        })(),
+        hideAnnotation = (() {
+          final hideAnnotation = const TypeChecker.fromRuntime(Hide)
+              .firstAnnotationOf(fieldElement);
+
+          if (hideAnnotation == null) return null;
+
+          return Hide(
+            serialization:
+                hideAnnotation.getField('serialization')?.toBoolValue() ??
+                    false,
+            cpp: hideAnnotation.getField('cpp')?.toBoolValue() ?? false,
+          );
         })();
 }
 

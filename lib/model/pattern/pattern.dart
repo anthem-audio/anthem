@@ -83,7 +83,7 @@ class PatternModel extends _PatternModel
   }
 }
 
-abstract class _PatternModel extends Hydratable with Store {
+abstract class _PatternModel extends Hydratable with Store, AnthemModelBase {
   @hide
   void Function()? _onHydrateAction;
 
