@@ -65,6 +65,11 @@ mixin AnthemModelBase {
   /// Listeners that are notified when a field is changed.
   final List<void Function(Iterable<FieldAccessor> accessors)> _listeners = [];
 
+  /// Tracks the initialization status of the model. This works in conjunction
+  /// with [Hydratable] to ensure that the model is initialized when it is
+  /// constructed.
+  bool isInitialized = false;
+
   void notifyFieldChanged({
     required List<FieldAccessor> accessors,
     required String fieldName,

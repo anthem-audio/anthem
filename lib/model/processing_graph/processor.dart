@@ -23,6 +23,8 @@ import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
+import '../shared/hydratable.dart';
+
 part 'processor.g.dart';
 
 @AnthemModel.all()
@@ -91,7 +93,7 @@ class ProcessorModel extends _ProcessorModel
   }
 }
 
-abstract class _ProcessorModel with Store, AnthemModelBase {
+abstract class _ProcessorModel extends Hydratable with Store, AnthemModelBase {
   int? idInEngine;
 
   @anthemObservable
@@ -99,5 +101,8 @@ abstract class _ProcessorModel with Store, AnthemModelBase {
 
   ObservableMap<int, double> parameterValues = ObservableMap();
 
-  _ProcessorModel({required this.processorKey});
+  _ProcessorModel({required this.processorKey}) : super() {
+    (this as _$ProcessorModelAnthemModelMixin).init();
+    isHydrated = true;
+  }
 }

@@ -100,6 +100,11 @@ class AnthemModelGenerator extends Generator {
         context: context,
         generateModelSyncCode: anthemModelAnnotation.generateModelSync,
       );
+      if (anthemModelAnnotation.generateModelSync) {
+        result += '\n  // Init function\n';
+        result += '\n';
+        result += _generateInitFunction(context: context);
+      }
 
       result += '}\n';
     }
@@ -149,7 +154,7 @@ String _generateGettersAndSetters(
       switch (fieldInfo.typeInfo) {
         case ListModelType():
           setter += '''
-$fieldName$typeQ.observe(
+super.$fieldName$typeQ.observe(
   (change) {
     handleListUpdate(
       fieldName: '$fieldName',
@@ -163,7 +168,7 @@ $fieldName$typeQ.observe(
           break;
         case MapModelType():
           setter += '''
-$fieldName$typeQ.observe(
+super.$fieldName$typeQ.observe(
   (change) {
     handleMapUpdate(
       fieldName: '$fieldName',
@@ -204,6 +209,66 @@ $fieldName$typeQ.observe(
 
     result += '}\n\n';
   }
+
+  return result;
+}
+
+/// Generates the init function for the model.
+String _generateInitFunction({required ModelClassInfo context}) {
+  var result = '';
+
+  result += 'void init() {\n';
+
+  for (final MapEntry(key: fieldName, value: fieldInfo)
+      in context.fields.entries) {
+    final typeQ = fieldInfo.typeInfo.isNullable ? '?' : '';
+
+    switch (fieldInfo.typeInfo) {
+      case ListModelType():
+        result += '''
+super.$fieldName$typeQ.observe(
+  (change) {
+    handleListUpdate(
+      fieldName: '$fieldName',
+      list: super.$fieldName,
+      change: change,
+    );
+  },
+  fireImmediately: true,
+);
+''';
+        break;
+      case MapModelType():
+        result += '''
+super.$fieldName$typeQ.observe(
+  (change) {
+    handleMapUpdate(
+      fieldName: '$fieldName',
+      map: super.$fieldName,
+      change: change,
+    );
+  },
+  fireImmediately: true,
+);
+''';
+        break;
+      case CustomModelType():
+        result += '''
+super.$fieldName$typeQ.setParentProperties(
+  parent: this,
+  parentFieldName: \'$fieldName\',
+  fieldType: FieldType.raw,
+);
+''';
+        break;
+      case _:
+        break;
+    }
+  }
+
+  result += 'isInitialized = true;';
+
+  result += '}\n';
 
   return result;
 }

@@ -21,6 +21,8 @@ import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
+import 'shared/hydratable.dart';
+
 part 'plugin.g.dart';
 
 /// A model representing a plugin.
@@ -35,10 +37,13 @@ class PluginModel extends _PluginModel
       _$PluginModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _PluginModel with Store, AnthemModelBase {
+abstract class _PluginModel extends Hydratable with Store, AnthemModelBase {
   String? path;
 
-  _PluginModel({required this.path});
+  _PluginModel({required this.path}) : super() {
+    (this as _$PluginModelAnthemModelMixin).init();
+    isHydrated = true;
+  }
 
   Future<bool> createInEngine(Engine engine) async {
     if (path == null) return false;

@@ -138,6 +138,7 @@ abstract class _SongModel extends Hydratable with Store, AnthemModelBase {
     }
 
     isHydrated = true;
+    (this as _$SongModelAnthemModelMixin).init();
   }
 
   void setActivePattern(ID? patternID) {
