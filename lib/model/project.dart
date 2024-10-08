@@ -180,6 +180,8 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   }
 
   void _init() {
+    (this as _$ProjectModelAnthemModelMixin).init();
+
     addFieldChangedListener((accessors) {
       final accessString = accessors.map((accessor) {
         final type = accessor.fieldType;
@@ -189,7 +191,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
         } else if (type == FieldType.list) {
           return '${accessor.fieldName}[${accessor.index}]';
         } else if (type == FieldType.map) {
-          return '${accessor.fieldName}[${accessor.key}]';
+          return "${accessor.fieldName}['${accessor.key}']";
         }
       }).join('.');
 

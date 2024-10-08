@@ -85,6 +85,7 @@ abstract class _ArrangementModel extends Hydratable
   void hydrate({
     required ProjectModel project,
   }) {
+    (this as _$ArrangementModelAnthemModelMixin).init();
     _project = project;
     isHydrated = true;
   }

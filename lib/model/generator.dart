@@ -101,7 +101,8 @@ abstract class _GeneratorModel extends Hydratable with Store, AnthemModelBase {
     required this.color,
     required this.processor,
   })  : gainNode = ProcessorModel(processorKey: 'Gain'),
-        midiGeneratorNode = ProcessorModel(processorKey: 'SimpleMidiGenerator');
+        midiGeneratorNode = ProcessorModel(processorKey: 'SimpleMidiGenerator'),
+        super();
 
   _GeneratorModel.create({
     required this.id,
@@ -119,6 +120,7 @@ abstract class _GeneratorModel extends Hydratable with Store, AnthemModelBase {
   void hydrate({
     required ProjectModel project,
   }) {
+    (this as _$GeneratorModelAnthemModelMixin).init();
     _project = project;
     isHydrated = true;
   }
