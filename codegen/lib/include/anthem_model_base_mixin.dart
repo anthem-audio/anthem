@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:convert';
+
 import 'package:mobx/mobx.dart';
 
 /// Represents a type of field in the model.
@@ -26,6 +28,148 @@ enum FieldType {
   map,
 }
 
+String _stringifyValue(dynamic value) {
+  if (value is Map<String, dynamic>) {
+    return jsonEncode(value);
+  }
+
+  return value?.toString() ?? 'null';
+}
+
+/// Represents an operation to a field, map, or list.
+sealed class FieldOperation {
+  final String fieldName;
+  final FieldType fieldType;
+
+  FieldOperation(this.fieldName, this.fieldType);
+}
+
+class RawFieldUpdate extends FieldOperation {
+  /// This is the new value of the field. It is a serialized representation. It
+  /// can be any of the following:
+  /// - null
+  /// - bool
+  /// - int
+  /// - double
+  /// - String, representing either string or enum
+  /// - List
+  /// - Map
+  ///
+  /// It can also be a serialized representation of another Anthem model. This
+  /// will also be a map, but instead of representing an actual map collection,
+  /// it will be the result of calling `toJson()` on the model.
+  final dynamic newValue;
+
+  RawFieldUpdate(
+      {required this.newValue,
+      required String fieldName,
+      required FieldType fieldType})
+      : super(fieldName, fieldType);
+
+  @override
+  String toString() {
+    return 'RawFieldUpdate(fieldName: $fieldName, fieldType: $fieldType, newValue: ${_stringifyValue(newValue)})';
+  }
+}
+
+/// Represents inserting an item in a list
+class ListInsert extends FieldOperation {
+  final int index;
+
+  /// This is the new value of the field. It is a serialized representation.
+  ///
+  /// See above for the types that this can be.
+  final dynamic value;
+
+  ListInsert(
+      {required this.index,
+      required this.value,
+      required String fieldName,
+      required FieldType fieldType})
+      : super(fieldName, fieldType);
+
+  @override
+  String toString() {
+    return 'ListInsert(fieldName: $fieldName, fieldType: $fieldType, index: $index, value: ${_stringifyValue(value)})';
+  }
+}
+
+/// Represents removing an item from a list
+class ListRemove extends FieldOperation {
+  final int index;
+
+  ListRemove(
+      {required this.index,
+      required String fieldName,
+      required FieldType fieldType})
+      : super(fieldName, fieldType);
+
+  @override
+  String toString() {
+    return 'ListRemove(fieldName: $fieldName, fieldType: $fieldType, index: $index)';
+  }
+}
+
+/// Represents updating an item in a list
+class ListUpdate extends FieldOperation {
+  final int index;
+
+  /// This is the new value of the field. It is a serialized representation.
+  ///
+  /// See above for the types that this can be.
+  final dynamic value;
+
+  ListUpdate(
+      {required this.index,
+      required this.value,
+      required String fieldName,
+      required FieldType fieldType})
+      : super(fieldName, fieldType);
+
+  @override
+  String toString() {
+    return 'ListUpdate(fieldName: $fieldName, fieldType: $fieldType, index: $index, value: ${_stringifyValue(value)})';
+  }
+}
+
+/// Represents inserting or replacing an item in a map.
+class MapInsert extends FieldOperation {
+  final dynamic key;
+
+  /// This is the new value of the field. It is a serialized representation.
+  ///
+  /// See above for the types that this can be.
+  final dynamic value;
+
+  MapInsert(
+      {required this.key,
+      required this.value,
+      required String fieldName,
+      required FieldType fieldType})
+      : super(fieldName, fieldType);
+
+  @override
+  String toString() {
+    return 'MapInsert(fieldName: $fieldName, fieldType: $fieldType, key: $key, value (${value.runtimeType}): ${_stringifyValue(value)})';
+  }
+}
+
+/// Represents removing an item from a map.
+class MapRemove extends FieldOperation {
+  final dynamic key;
+
+  MapRemove(
+      {required this.key,
+      required String fieldName,
+      required FieldType fieldType})
+      : super(fieldName, fieldType);
+
+  @override
+  String toString() {
+    return 'MapRemove(fieldName: $fieldName, fieldType: $fieldType, key: $key)';
+  }
+}
+
 /// Represents a field in a model.
 class FieldAccessor {
   final String fieldName;
@@ -33,7 +177,43 @@ class FieldAccessor {
   final int? index;
   final dynamic key;
 
-  FieldAccessor(this.fieldName, this.fieldType, {this.index, this.key});
+  FieldAccessor({
+    required this.fieldName,
+    required this.fieldType,
+    this.index,
+    this.key,
+  });
+}
+
+/// A subset of [ListChange] from MobX. Allows us to serialize changes before
+/// sending them here.
+class AnthemListChange<T> {
+  AnthemListChange({this.elementChanges, this.rangeChanges});
+
+  final List<AnthemElementChange<T>>? elementChanges;
+  final List<AnthemRangeChange<T>>? rangeChanges;
+}
+
+class AnthemElementChange<T> {
+  AnthemElementChange(
+      {required this.index,
+      this.type = OperationType.update,
+      this.newValueSerialized});
+
+  final int index;
+  final OperationType type;
+  final T? newValueSerialized;
+}
+
+class AnthemRangeChange<T> {
+  AnthemRangeChange(
+      {required this.index,
+      this.newValuesSerialized,
+      this.numItemsRemoved = 0});
+
+  final int index;
+  final List<T>? newValuesSerialized;
+  final int numItemsRemoved;
 }
 
 /// This mixin defines functionality that Anthem models use.
@@ -63,7 +243,10 @@ mixin AnthemModelBase {
   String? _parentFieldName;
 
   /// Listeners that are notified when a field is changed.
-  final List<void Function(Iterable<FieldAccessor> accessors)> _listeners = [];
+  final List<
+          void Function(
+              Iterable<FieldAccessor> accessors, FieldOperation operation)>
+      _listeners = [];
 
   /// Tracks the initialization status of the model. This works in conjunction
   /// with [Hydratable] to ensure that the model is initialized when it is
@@ -71,32 +254,44 @@ mixin AnthemModelBase {
   bool isInitialized = false;
 
   void notifyFieldChanged({
-    required List<FieldAccessor> accessors,
-    required String fieldName,
-    required FieldType fieldType,
-    int? index,
-    dynamic key,
+    required FieldOperation operation,
+    List<FieldAccessor>? accessorChain,
   }) {
-    accessors.add(FieldAccessor(fieldName, fieldType, index: index, key: key));
+    final accessorChainNotNull = accessorChain ?? <FieldAccessor>[];
 
     for (final listener in _listeners) {
-      listener(accessors.reversed);
+      listener(accessorChainNotNull.reversed, operation);
     }
 
-    if (_parent != null) {
-      _parent!.notifyFieldChanged(
-        accessors: accessors,
+    // If the parent field is not set, then this model doesn't have a parent yet
+    // and so shouldn't try to propagate the change up the tree.
+    if (_parent == null) {
+      return;
+    }
+
+    // Add the accessor for this item in the parent model
+    accessorChainNotNull.add(
+      FieldAccessor(
         fieldName: _parentFieldName!,
         fieldType: _parentFieldType!,
         index: _parentListIndex,
         key: _parentMapKey,
+      ),
+    );
+
+    // Propagate the change up the tree
+    if (_parent != null) {
+      _parent!.notifyFieldChanged(
+        operation: operation,
+        accessorChain: accessorChainNotNull,
       );
     }
   }
 
   /// Adds a listener that is notified when a field is changed.
   void addFieldChangedListener(
-      void Function(Iterable<FieldAccessor> accessors) listener) {
+      void Function(Iterable<FieldAccessor> accessors, FieldOperation operation)
+          listener) {
     _listeners.add(listener);
   }
 
@@ -126,7 +321,7 @@ mixin AnthemModelBase {
   void handleListUpdate<T>({
     required String fieldName,
     required ObservableList<T> list,
-    required ListChange<T> change,
+    required AnthemListChange<T> change,
   }) {
     int? resetAfterIndex;
 
@@ -134,7 +329,29 @@ mixin AnthemModelBase {
       for (final elementChange in change.elementChanges!) {
         switch (elementChange.type) {
           case OperationType.add:
+            notifyFieldChanged(
+              operation: ListInsert(
+                fieldName: fieldName,
+                fieldType: FieldType.list,
+                index: elementChange.index,
+                value: elementChange.newValueSerialized,
+              ),
+            );
+
+            if (resetAfterIndex == null ||
+                resetAfterIndex > elementChange.index) {
+              resetAfterIndex = elementChange.index;
+            }
+            break;
           case OperationType.remove:
+            notifyFieldChanged(
+              operation: ListRemove(
+                fieldName: fieldName,
+                fieldType: FieldType.list,
+                index: elementChange.index,
+              ),
+            );
+
             if (resetAfterIndex == null ||
                 resetAfterIndex > elementChange.index) {
               resetAfterIndex = elementChange.index;
@@ -151,6 +368,15 @@ mixin AnthemModelBase {
                 index: elementChange.index,
               );
             }
+
+            notifyFieldChanged(
+              operation: ListUpdate(
+                fieldName: fieldName,
+                fieldType: FieldType.list,
+                index: elementChange.index,
+                value: elementChange.newValueSerialized,
+              ),
+            );
             break;
         }
       }
@@ -158,6 +384,29 @@ mixin AnthemModelBase {
 
     if (change.rangeChanges != null) {
       for (final rangeChange in change.rangeChanges!) {
+        for (var i = rangeChange.index;
+            i < rangeChange.index + rangeChange.newValuesSerialized!.length;
+            i++) {
+          notifyFieldChanged(
+            operation: ListInsert(
+              fieldName: fieldName,
+              fieldType: FieldType.list,
+              index: i,
+              value: rangeChange.newValuesSerialized![i - rangeChange.index],
+            ),
+          );
+        }
+
+        for (var i = 0; i < rangeChange.numItemsRemoved; i++) {
+          notifyFieldChanged(
+            operation: ListRemove(
+              fieldName: fieldName,
+              fieldType: FieldType.list,
+              index: rangeChange.index,
+            ),
+          );
+        }
+
         if (resetAfterIndex == null || resetAfterIndex > rangeChange.index) {
           resetAfterIndex = rangeChange.index;
         }
@@ -175,22 +424,6 @@ mixin AnthemModelBase {
           );
         }
       }
-    }
-  }
-
-  /// Handles updates to a map.
-  void handleMapUpdate<K, V>({
-    required String fieldName,
-    required ObservableMap<K, V> map,
-    required MapChange<K, V> change,
-  }) {
-    if (change.newValue is AnthemModelBase) {
-      (change.newValue as AnthemModelBase).setParentProperties(
-        parent: this,
-        parentFieldName: fieldName,
-        fieldType: FieldType.map,
-        key: change.key,
-      );
     }
   }
 }
