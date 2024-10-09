@@ -182,7 +182,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   void _init() {
     (this as _$ProjectModelAnthemModelMixin).init();
 
-    addFieldChangedListener((accessors) {
+    addFieldChangedListener((accessors, operation) {
       final accessString = accessors.map((accessor) {
         final type = accessor.fieldType;
 
@@ -195,7 +195,10 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
         }
       }).join('.');
 
+      // ignore: avoid_print
       print('ProjectModel changed: project.$accessString');
+      // ignore: avoid_print
+      print(operation.toString());
     });
   }
 

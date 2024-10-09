@@ -153,50 +153,39 @@ String _generateGettersAndSetters(
     if (generateModelSyncCode) {
       switch (fieldInfo.typeInfo) {
         case ListModelType():
-          setter += '''
-super.$fieldName$typeQ.observe(
-  (change) {
-    handleListUpdate(
-      fieldName: '$fieldName',
-      list: super.$fieldName,
-      change: change,
-    );
-  },
-  fireImmediately: true,
-);
-''';
+          setter += _generateListObserver(
+            fieldName: fieldName,
+            isNullable: fieldInfo.typeInfo.isNullable,
+            hasToJson: fieldInfo.typeInfo is CustomModelType,
+          );
           break;
         case MapModelType():
-          setter += '''
-super.$fieldName$typeQ.observe(
-  (change) {
-    handleMapUpdate(
-      fieldName: '$fieldName',
-      map: super.$fieldName,
-      change: change,
-    );
-  },
-  fireImmediately: true,
-);
-''';
+          setter += _generateMapObserver(
+            fieldName: fieldName,
+            isNullable: fieldInfo.typeInfo.isNullable,
+            hasToJson: fieldInfo.typeInfo is CustomModelType,
+          );
           break;
         case CustomModelType():
-          setter += 'super.$fieldName$typeQ.setParentProperties(\n';
-          setter += '  parent: this,\n';
-          setter += '  parentFieldName: \'$fieldName\',\n';
-          setter += '  fieldType: FieldType.raw,\n';
-          setter += ');\n';
+          setter += '''
+super.$fieldName$typeQ.setParentProperties(
+  parent: this,
+  parentFieldName: '$fieldName',
+  fieldType: FieldType.raw,
+);
+
+notifyFieldChanged(
+  operation: RawFieldUpdate(
+    fieldName: '$fieldName',
+    fieldType: FieldType.raw,
+    newValue: value$typeQ.toJson(),
+  ),
+);
+''';
           break;
         case _:
           break;
       }
-
-      setter += 'notifyFieldChanged(\n';
-      setter += '  accessors: [],\n';
-      setter += '  fieldName: \'$fieldName\',\n';
-
-      setter += '  fieldType: FieldType.raw,\n';
-      setter += ');\n';
     }
 
     result += '@override\n';
@@ -224,39 +213,48 @@ String _generateInitFunction({required ModelClassInfo context}) {
     final typeQ = fieldInfo.typeInfo.isNullable ? '?' : '';
 
     switch (fieldInfo.typeInfo) {
-      case ListModelType():
-        result += '''
-super.$fieldName$typeQ.observe(
-  (change) {
-    handleListUpdate(
-      fieldName: '$fieldName',
-      list: super.$fieldName,
-      change: change,
-    );
-  },
-  fireImmediately: true,
-);
-''';
+      // TODO: This does not support lists of lists, lists of maps, maps of
+      // lists of maps, etc., because it will not serialize the inner type if it
+      // is a custom model type.
+      //
+      // e.g.
+      // ```dart
+      // List<List<CustomModel>> list;
+      // ```
+      //
+      // This will come out unserialized.
+      //
+      // It's possible to recurse through any number of nested lists and maps,
+      // we just need to do it.
+      case ListModelType listModelType:
+        final hasToJson = listModelType.itemType is CustomModelType ||
+            listModelType.itemType is UnknownModelType;
+
+        // When observing the list, we get a set of changes in each callback.
+        // For any elements added, we need to rewrite the elements provided so
+        // that they're in a serialized form before sending them to be handled.
+        // This is because there is no generic interface for serialization.
+        result += _generateListObserver(
+          fieldName: fieldName,
+          isNullable: fieldInfo.typeInfo.isNullable,
+          hasToJson: hasToJson,
+        );
         break;
-      case MapModelType():
-        result += '''
-super.$fieldName$typeQ.observe(
-  (change) {
-    handleMapUpdate(
-      fieldName: '$fieldName',
-      map: super.$fieldName,
-      change: change,
-    );
-  },
-  fireImmediately: true,
-);
-''';
+      case MapModelType mapModelType:
+        final hasToJson = mapModelType.valueType is CustomModelType ||
+            mapModelType.valueType is UnknownModelType;
+
+        result += _generateMapObserver(
+          fieldName: fieldName,
+          isNullable: fieldInfo.typeInfo.isNullable,
+          hasToJson: hasToJson,
+        );
         break;
       case CustomModelType():
         result += '''
 super.$fieldName$typeQ.setParentProperties(
   parent: this,
-  parentFieldName: \'$fieldName\',
+  parentFieldName: '$fieldName',
   fieldType: FieldType.raw,
 );
 ''';
@@ -271,4 +269,86 @@ super.$fieldName$typeQ.setParentProperties(
   result += '}\n';
 
   return result;
+}
+
+String _generateListObserver({
+  required String fieldName,
+  required bool isNullable,
+  required bool hasToJson,
+}) {
+  final typeQ = isNullable ? '?' : '';
+
+  return '''
+super.$fieldName$typeQ.observe(
+  (change) {
+    final newChange = AnthemListChange(
+      elementChanges: change.elementChanges?.map((elementChange) {
+        return AnthemElementChange(
+          index: elementChange.index,
+          type: elementChange.type,
+          newValueSerialized: elementChange.newValue${hasToJson ? '?.toJson()' : ''},
+        );
+      }).toList(),
+
+      rangeChanges: change.rangeChanges?.map((rangeChange) {
+        return AnthemRangeChange(
+          index: rangeChange.index,
+          newValuesSerialized: rangeChange.newValues${hasToJson ? '?.map((e) => e.toJson()).toList()' : ''},
+          numItemsRemoved: rangeChange.oldValues?.length ?? 0,
+        );
+      }).toList(),
+    );
+
+    handleListUpdate(
+      fieldName: '$fieldName',
+      list: super.$fieldName,
+      change: newChange,
+    );
+  },
+  fireImmediately: true,
+);
+''';
+}
+
+String _generateMapObserver({
+  required String fieldName,
+  required bool isNullable,
+  required bool hasToJson,
+}) {
+  final typeQ = isNullable ? '?' : '';
+
+  return '''
+super.$fieldName$typeQ.observe(
+  (change) {
+    if (change.newValue != null) {
+      if (change.newValue is AnthemModelBase) {
+        (change.newValue as AnthemModelBase).setParentProperties(
+          parent: this,
+          parentFieldName: '$fieldName',
+          fieldType: FieldType.map,
+          key: change.key,
+        );
+      }
+
+      notifyFieldChanged(
+        operation: MapInsert(
+          fieldName: '$fieldName',
+          fieldType: FieldType.map,
+          key: change.key,
+          value: change.newValue${hasToJson ? '?.toJson()' : ''},
+        ),
+      );
+    } else {
+      notifyFieldChanged(
+        operation: MapRemove(
+          fieldName: '$fieldName',
+          fieldType: FieldType.map,
+          key: change.key,
+        ),
+      );
+    }
+  },
+  fireImmediately: true,
+);
+''';
 }
