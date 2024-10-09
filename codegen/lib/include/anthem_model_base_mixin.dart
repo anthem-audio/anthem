@@ -139,6 +139,7 @@ mixin AnthemModelBase {
                 resetAfterIndex > elementChange.index) {
               resetAfterIndex = elementChange.index;
             }
+            break;
           case OperationType.update:
             if (list.nonObservableInner[elementChange.index]
                 is AnthemModelBase) {
