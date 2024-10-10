@@ -152,18 +152,25 @@ String _generateGettersAndSetters(
 
     if (generateModelSyncCode) {
       switch (fieldInfo.typeInfo) {
-        case ListModelType():
+        case ListModelType listType:
           setter += _generateListObserver(
             fieldName: fieldName,
             isNullable: fieldInfo.typeInfo.isNullable,
-            hasToJson: fieldInfo.typeInfo is CustomModelType,
+            toJsonConverter: (field, [firstIterationAlwaysNullable]) =>
+                _convertToJson(field, listType.itemType,
+                    firstIterationAlwaysNullable ?? false),
           );
           break;
-        case MapModelType():
+        case MapModelType mapType:
           setter += _generateMapObserver(
             fieldName: fieldName,
             isNullable: fieldInfo.typeInfo.isNullable,
-            hasToJson: fieldInfo.typeInfo is CustomModelType,
+            // Hack - regular string keys are sometimes coming through as unknown
+            // model types, and I don't feel like tracking it down now. This
+            // should work for now.
+            keyToJsonConverter: (field) => field,
+            valueToJsonConverter: (field) =>
+                _convertToJson(field, mapType.valueType, true),
           );
           break;
         case CustomModelType():
@@ -213,23 +220,7 @@ String _generateInitFunction({required ModelClassInfo context}) {
     final typeQ = fieldInfo.typeInfo.isNullable ? '?' : '';
 
     switch (fieldInfo.typeInfo) {
-      // TODO: This does not support lists of lists, lists of maps, maps of
-      // lists of maps, etc., because it will not serialize the inner type if it
-      // is a custom model type.
-      //
-      // e.g.
-      // ```dart
-      // List<List<CustomModel>> list;
-      // ```
-      //
-      // This will come out unserialized.
-      //
-      // It's possible to recurse through any number of nested lists and maps,
-      // we just need to do it.
-      case ListModelType listModelType:
-        final hasToJson = listModelType.itemType is CustomModelType ||
-            listModelType.itemType is UnknownModelType;
-
+      case ListModelType listType:
         // When observing the list, we get a set of changes in each callback.
         // For any elements added, we need to rewrite the elements provided so
         // that they're in a serialized form before sending them to be handled.
@@ -237,17 +228,21 @@ String _generateInitFunction({required ModelClassInfo context}) {
         result += _generateListObserver(
           fieldName: fieldName,
           isNullable: fieldInfo.typeInfo.isNullable,
-          hasToJson: hasToJson,
+          toJsonConverter: (field, [firstIterationAlwaysNullable]) =>
+              _convertToJson(field, listType.itemType,
+                  firstIterationAlwaysNullable ?? false),
         );
         break;
-      case MapModelType mapModelType:
-        final hasToJson = mapModelType.valueType is CustomModelType ||
-            mapModelType.valueType is UnknownModelType;
-
+      case MapModelType mapType:
         result += _generateMapObserver(
           fieldName: fieldName,
           isNullable: fieldInfo.typeInfo.isNullable,
-          hasToJson: hasToJson,
+          // Hack - regular string keys are sometimes coming through as unknown
+          // model types, and I don't feel like tracking it down now. This
+          // should work for now.
+          keyToJsonConverter: (field) => field,
+          valueToJsonConverter: (field) =>
+              _convertToJson(field, mapType.valueType, true),
         );
         break;
       case CustomModelType():
@@ -274,7 +269,8 @@ super.$fieldName$typeQ.setParentProperties(
 String _generateListObserver({
   required String fieldName,
   required bool isNullable,
-  required bool hasToJson,
+  required String Function(String, [bool? firstIterationAlwaysNullable])
+      toJsonConverter,
 }) {
   final typeQ = isNullable ? '?' : '';
 
@@ -286,14 +282,14 @@ super.$fieldName$typeQ.observe(
         return AnthemElementChange(
           index: elementChange.index,
           type: elementChange.type,
-          newValueSerialized: elementChange.newValue${hasToJson ? '?.toJson()' : ''},
+          newValueSerialized: ${toJsonConverter('elementChange.newValue', true)},
         );
       }).toList(),
 
       rangeChanges: change.rangeChanges?.map((rangeChange) {
         return AnthemRangeChange(
           index: rangeChange.index,
-          newValuesSerialized: rangeChange.newValues${hasToJson ? '?.map((e) => e.toJson()).toList()' : ''},
+          newValuesSerialized: rangeChange.newValues?.map((e) => ${toJsonConverter('e')}).toList(),
           numItemsRemoved: rangeChange.oldValues?.length ?? 0,
         );
       }).toList(),
@@ -313,7 +309,8 @@ super.$fieldName$typeQ.observe(
 String _generateMapObserver({
   required String fieldName,
   required bool isNullable,
-  required bool hasToJson,
+  required String Function(String) keyToJsonConverter,
+  required String Function(String) valueToJsonConverter,
 }) {
   final typeQ = isNullable ? '?' : '';
 
@@ -334,8 +331,8 @@ super.$fieldName$typeQ.observe(
         operation: MapInsert(
           fieldName: '$fieldName',
           fieldType: FieldType.map,
-          key: change.key,
-          value: change.newValue${hasToJson ? '?.toJson()' : ''},
+          key: ${keyToJsonConverter('change.key')},
+          value: ${valueToJsonConverter('change.newValue')},
         ),
       );
     } else {
@@ -351,4 +348,30 @@ super.$fieldName$typeQ.observe(
   fireImmediately: true,
 );
 ''';
+}
+
+String _convertToJson(
+    String field, ModelType type, bool useExclamationForNotNullable) {
+  final typeQ = type.isNullable
+      ? '?'
+      : useExclamationForNotNullable
+          ? '!'
+          : '';
+
+  return switch (type) {
+    StringModelType() => field,
+    IntModelType() => field,
+    DoubleModelType() => field,
+    NumModelType() => field,
+    BoolModelType() => field,
+    EnumModelType() => '$field$typeQ.name',
+    ListModelType() =>
+      '$field$typeQ.map((e) => ${_convertToJson('e', type.itemType, false)}).toList()',
+    MapModelType() =>
+      '$field$typeQ.map((key, value) => MapEntry(${_convertToJson('key', type.keyType, false)}, ${_convertToJson('value', type.valueType, false)}))',
+    ColorModelType() =>
+      "{ 'a': $field.alpha, 'r': $field.red, 'g': $field.green, 'b': $field.blue }",
+    CustomModelType() => '$field$typeQ.toJson()',
+    UnknownModelType() => '$field$typeQ.toJson()',
+  };
 }
