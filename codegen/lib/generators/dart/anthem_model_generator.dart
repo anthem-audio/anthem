@@ -158,7 +158,8 @@ String _generateGettersAndSetters(
             isNullable: fieldInfo.typeInfo.isNullable,
             toJsonConverter: (field, [firstIterationAlwaysNullable]) =>
                 _convertToJson(field, listType.itemType,
-                    firstIterationAlwaysNullable ?? false),
+                    useQuestionForNotNullable:
+                        firstIterationAlwaysNullable ?? false),
           );
           break;
         case MapModelType mapType:
@@ -169,8 +170,9 @@ String _generateGettersAndSetters(
             // model types, and I don't feel like tracking it down now. This
             // should work for now.
             keyToJsonConverter: (field) => field,
-            valueToJsonConverter: (field) =>
-                _convertToJson(field, mapType.valueType, true),
+            valueToJsonConverter: (field) => _convertToJson(
+                field, mapType.valueType,
+                useExclamationForNotNullable: true),
           );
           break;
         case CustomModelType():
@@ -230,7 +232,8 @@ String _generateInitFunction({required ModelClassInfo context}) {
           isNullable: fieldInfo.typeInfo.isNullable,
           toJsonConverter: (field, [firstIterationAlwaysNullable]) =>
               _convertToJson(field, listType.itemType,
-                  firstIterationAlwaysNullable ?? false),
+                  useQuestionForNotNullable:
+                      firstIterationAlwaysNullable ?? false),
         );
         break;
       case MapModelType mapType:
@@ -241,8 +244,9 @@ String _generateInitFunction({required ModelClassInfo context}) {
           // model types, and I don't feel like tracking it down now. This
           // should work for now.
           keyToJsonConverter: (field) => field,
-          valueToJsonConverter: (field) =>
-              _convertToJson(field, mapType.valueType, true),
+          valueToJsonConverter: (field) => _convertToJson(
+              field, mapType.valueType,
+              useExclamationForNotNullable: true),
         );
         break;
       case CustomModelType():
@@ -350,9 +354,10 @@ super.$fieldName$typeQ.observe(
 ''';
 }
 
-String _convertToJson(
-    String field, ModelType type, bool useExclamationForNotNullable) {
-  final typeQ = type.isNullable
+String _convertToJson(String field, ModelType type,
+    {bool useExclamationForNotNullable = false,
+    bool useQuestionForNotNullable = false}) {
+  final typeQ = type.isNullable || useQuestionForNotNullable
       ? '?'
       : useExclamationForNotNullable
           ? '!'
@@ -366,9 +371,9 @@ String _convertToJson(
     BoolModelType() => field,
     EnumModelType() => '$field$typeQ.name',
     ListModelType() =>
-      '$field$typeQ.map((e) => ${_convertToJson('e', type.itemType, false)}).toList()',
+      '$field$typeQ.map((e) => ${_convertToJson('e', type.itemType)}).toList()',
     MapModelType() =>
-      '$field$typeQ.map((key, value) => MapEntry(${_convertToJson('key', type.keyType, false)}, ${_convertToJson('value', type.valueType, false)}))',
+      '$field$typeQ.map((key, value) => MapEntry(${_convertToJson('key', type.keyType)}, ${_convertToJson('value', type.valueType)}))',
     ColorModelType() =>
       "{ 'a': $field.alpha, 'r': $field.red, 'g': $field.green, 'b': $field.blue }",
     CustomModelType() => '$field$typeQ.toJson()',
