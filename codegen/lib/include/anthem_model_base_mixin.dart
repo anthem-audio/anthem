@@ -297,7 +297,9 @@ mixin AnthemModelBase {
 
   /// Removes a listener that is notified when a field is changed.
   void removeFieldChangedListener(
-      void Function(Iterable<FieldAccessor> accessors, FieldOperation operation) listener) {
+    void Function(Iterable<FieldAccessor> accessors, FieldOperation operation)
+        listener,
+  ) {
     _listeners.remove(listener);
   }
 
