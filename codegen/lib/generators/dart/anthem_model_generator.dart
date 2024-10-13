@@ -98,7 +98,7 @@ class AnthemModelGenerator extends Generator {
       result += '\n';
       result += _generateGettersAndSetters(
         context: context,
-        generateModelSyncCode: anthemModelAnnotation.generateModelSync,
+        classHasModelSyncCode: anthemModelAnnotation.generateModelSync,
       );
       if (anthemModelAnnotation.generateModelSync) {
         result += '\n  // Init function\n';
@@ -121,14 +121,16 @@ class AnthemModelGenerator extends Generator {
 ///
 /// Note that this will not generate anything for fields in sealed classes.
 String _generateGettersAndSetters(
-    {required ModelClassInfo context, required bool generateModelSyncCode}) {
+    {required ModelClassInfo context, required bool classHasModelSyncCode}) {
   var result = '';
 
   for (final MapEntry(key: fieldName, value: fieldInfo)
       in context.fields.entries) {
+    final shouldGenerateModelSync =
+        classHasModelSyncCode && fieldInfo.hideAnnotation?.cpp != true;
+
     // Skip if this field doesn't need a getter/setter
-    if (!fieldInfo.isObservable &&
-        (!generateModelSyncCode || fieldInfo.hideAnnotation?.cpp == true)) {
+    if (!fieldInfo.isObservable && !shouldGenerateModelSync) {
       continue;
     }
 
@@ -150,7 +152,7 @@ String _generateGettersAndSetters(
 
     var setter = 'super.$fieldName = value;\n';
 
-    if (generateModelSyncCode) {
+    if (shouldGenerateModelSync) {
       switch (fieldInfo.typeInfo) {
         case ListModelType listType:
           setter += _generateListObserver(
@@ -175,24 +177,46 @@ String _generateGettersAndSetters(
                 useExclamationForNotNullable: true),
           );
           break;
-        case CustomModelType():
-          setter += '''
+        case _:
+          // If the field is a custom model type, we need to tell it about its
+          // parent.
+          if (fieldInfo.typeInfo is CustomModelType ||
+              fieldInfo.typeInfo is UnknownModelType) {
+            setter += '''
 super.$fieldName$typeQ.setParentProperties(
   parent: this,
   parentFieldName: '$fieldName',
   fieldType: FieldType.raw,
 );
+''';
+          }
 
+          final valueGetter = switch (fieldInfo.typeInfo) {
+            ListModelType() || MapModelType() => throw Exception(
+                'As originally designed, this should not be possible. This is a bug.'),
+            StringModelType() ||
+            IntModelType() ||
+            DoubleModelType() ||
+            NumModelType() ||
+            BoolModelType() =>
+              'value',
+            EnumModelType() => 'value$typeQ.name',
+            ColorModelType() =>
+              "{ 'a': value.alpha, 'r': value.red, 'g': value.green, 'b': value.blue }",
+            CustomModelType() || UnknownModelType() => 'value$typeQ.toJson()',
+          };
+
+          // Regardless of the type, we need to notify that this field was
+          // changed.
+          setter += '''
 notifyFieldChanged(
   operation: RawFieldUpdate(
     fieldName: '$fieldName',
     fieldType: FieldType.raw,
-    newValue: value$typeQ.toJson(),
+    newValue: $valueGetter,
   ),
 );
 ''';
-          break;
-        case _:
           break;
       }
     }
