@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:convert';
+
 import 'package:anthem/commands/command.dart';
 import 'package:anthem/commands/command_queue.dart';
 import 'package:anthem/commands/journal_commands.dart';
@@ -24,6 +26,7 @@ import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/song.dart';
 import 'package:anthem_codegen/include.dart';
+import 'package:anthem/engine_api/messages/messages.dart' as message_api;
 import 'package:mobx/mobx.dart';
 
 import 'generator.dart';
@@ -159,6 +162,9 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     _init();
   }
 
+  @hide
+  void Function(Iterable<FieldAccessor>, FieldOperation)? _fieldChangedListener;
+
   _ProjectModel.create() : super() {
     _commandQueue = CommandQueue(this as ProjectModel);
 
@@ -170,6 +176,100 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
 
     engine.engineStateStream.listen((state) {
       (this as ProjectModel).engineState = state;
+
+      // Send model state change messages to the engine
+      if (state == EngineState.running) {
+        // Any time the engine starts, we send the entire current model state to the engine
+        engine.modelSyncApi.initModel(
+          jsonEncode((this as _$ProjectModelAnthemModelMixin).toJson()),
+        );
+
+        _fieldChangedListener = (accesses, operation) {
+          String serializeMapKey(dynamic key) {
+            return switch (key) {
+              null => 'null',
+              int i => '$i',
+              double d => '$d',
+              String s => s,
+              bool b => '$b',
+              _ => throw AssertionError('Invalid map key type'),
+            };
+          }
+
+          // Values will already be in JSON format, but we need to convert to
+          // string. This is just like the above but with the addition of
+          // Map<String, dynamic> and List<dynamic>.
+          String serializeValue(dynamic value) {
+            return switch (value) {
+              null => 'null',
+              int i => '$i',
+              double d => '$d',
+              String s => s,
+              bool b => '$b',
+              Map<String, dynamic> m => jsonEncode(m),
+              List<dynamic> l => jsonEncode(l),
+              _ => throw AssertionError(
+                  'Invalid value type: ${value.runtimeType}'),
+            };
+          }
+
+          final convertedAccesses = accesses.map((access) {
+            return message_api.FieldAccess(
+              fieldName: access.fieldName,
+              fieldType: switch (access.fieldType) {
+                FieldType.raw => message_api.FieldType.raw,
+                FieldType.list => message_api.FieldType.list,
+                FieldType.map => message_api.FieldType.map,
+              },
+              listIndex: access.index,
+              serializedMapKey: serializeMapKey(access.key),
+            );
+          }).toList();
+
+          engine.modelSyncApi.updateModel(
+            updateKind: switch (operation) {
+              RawFieldUpdate() ||
+              ListUpdate() ||
+              MapPut() =>
+                message_api.FieldUpdateKind.set,
+              ListInsert() => message_api.FieldUpdateKind.add,
+              ListRemove() || MapRemove() => message_api.FieldUpdateKind.remove,
+            },
+            fieldAccesses: convertedAccesses,
+            fieldName: operation.fieldName,
+            listIndex: switch (operation) {
+              ListInsert() => operation.index,
+              ListRemove() => operation.index,
+              ListUpdate() => operation.index,
+              _ => null,
+            },
+            serializedMapKey: switch (operation) {
+              MapPut() => serializeMapKey(operation.key),
+              MapRemove() => serializeMapKey(operation.key),
+              _ => null,
+            },
+            serializedValue: switch (operation) {
+              RawFieldUpdate() => serializeValue(operation.newValue),
+              ListInsert() => serializeValue(operation.value),
+              ListUpdate() => serializeValue(operation.value),
+              MapPut() => serializeValue(operation.value),
+              _ => null,
+            },
+          );
+        };
+
+        // Hook up the model change stream to the engine
+        (this as AnthemModelBase)
+            .addFieldChangedListener(_fieldChangedListener!);
+      }
+
+      if (state == EngineState.stopped) {
+        if (_fieldChangedListener != null) {
+          // Unhook the model change stream from the engine
+          (this as AnthemModelBase)
+              .removeFieldChangedListener(_fieldChangedListener!);
+        }
+      }
     });
 
     // We don't need to hydrate here. All `SomeModel.Create()` functions should
@@ -181,25 +281,6 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
 
   void _init() {
     (this as _$ProjectModelAnthemModelMixin).init();
-
-    addFieldChangedListener((accessors, operation) {
-      final accessString = accessors.map((accessor) {
-        final type = accessor.fieldType;
-
-        if (type == FieldType.raw) {
-          return accessor.fieldName;
-        } else if (type == FieldType.list) {
-          return '${accessor.fieldName}[${accessor.index}]';
-        } else if (type == FieldType.map) {
-          return "${accessor.fieldName}['${accessor.key}']";
-        }
-      }).join('.');
-
-      // ignore: avoid_print
-      print('ProjectModel changed: project.$accessString');
-      // ignore: avoid_print
-      print(operation.toString());
-    });
   }
 
   // Initializes this project in the engine

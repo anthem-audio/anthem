@@ -21,6 +21,7 @@
 
 import 'package:anthem_codegen/include.dart';
 
+part 'model_sync.dart';
 part 'project.dart';
 part 'processing_graph.dart';
 part 'processors.dart';

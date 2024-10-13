@@ -25,8 +25,9 @@ import 'package:anthem/engine_api/engine_connector.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/model/project.dart';
 
-part 'api/project_api.dart';
+part 'api/model_sync_api.dart';
 part 'api/processing_graph_api.dart';
+part 'api/project_api.dart';
 
 enum EngineState {
   stopped,
@@ -49,8 +50,9 @@ class Engine {
   /// The project that this engine is attached to
   ProjectModel project;
 
-  late ProjectApi projectApi;
+  late ModelSyncApi modelSyncApi;
   late ProcessingGraphApi processingGraphApi;
+  late ProjectApi projectApi;
 
   Map<int, void Function(Response response)> replyFunctions = {};
 
@@ -71,8 +73,9 @@ class Engine {
   Engine(this.id, this.project) {
     engineStateStream = _engineStateStreamController.stream;
 
-    projectApi = ProjectApi(this);
+    modelSyncApi = ModelSyncApi(this);
     processingGraphApi = ProcessingGraphApi(this);
+    projectApi = ProjectApi(this);
   }
 
   void _onReply(Response response) {

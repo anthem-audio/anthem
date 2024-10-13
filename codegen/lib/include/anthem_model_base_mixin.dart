@@ -133,7 +133,7 @@ class ListUpdate extends FieldOperation {
 }
 
 /// Represents inserting or replacing an item in a map.
-class MapInsert extends FieldOperation {
+class MapPut extends FieldOperation {
   final dynamic key;
 
   /// This is the new value of the field. It is a serialized representation.
@@ -141,7 +141,7 @@ class MapInsert extends FieldOperation {
   /// See above for the types that this can be.
   final dynamic value;
 
-  MapInsert(
+  MapPut(
       {required this.key,
       required this.value,
       required String fieldName,
@@ -150,7 +150,7 @@ class MapInsert extends FieldOperation {
 
   @override
   String toString() {
-    return 'MapInsert(fieldName: $fieldName, fieldType: $fieldType, key: $key, value (${value.runtimeType}): ${_stringifyValue(value)})';
+    return 'MapPut(fieldName: $fieldName, fieldType: $fieldType, key: $key, value (${value.runtimeType}): ${_stringifyValue(value)})';
   }
 }
 
@@ -297,7 +297,7 @@ mixin AnthemModelBase {
 
   /// Removes a listener that is notified when a field is changed.
   void removeFieldChangedListener(
-      void Function(Iterable<FieldAccessor> accessors) listener) {
+      void Function(Iterable<FieldAccessor> accessors, FieldOperation operation) listener) {
     _listeners.remove(listener);
   }
 

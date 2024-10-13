@@ -332,7 +332,7 @@ super.$fieldName$typeQ.observe(
       }
 
       notifyFieldChanged(
-        operation: MapInsert(
+        operation: MapPut(
           fieldName: '$fieldName',
           fieldType: FieldType.map,
           key: ${keyToJsonConverter('change.key')},
