@@ -384,7 +384,7 @@ String _getCppType(ModelType type) {
     DoubleModelType() || NumModelType() => 'double',
     BoolModelType() => 'bool',
     ColorModelType() =>
-      'rfl::NamedTuple<rfl::Field<"r", byte>, rfl::Field<"g", byte>, rfl::Field<"b", byte>, rfl::Field<"a", byte>>',
+      'rfl::NamedTuple<rfl::Field<"r", unsigned char>, rfl::Field<"g", unsigned char>, rfl::Field<"b", unsigned char>, rfl::Field<"a", unsigned char>>',
     EnumModelType(enumName: var name) => name,
     ListModelType(itemType: var inner) => 'std::vector<${_getCppType(inner)}>',
     MapModelType(keyType: var key, valueType: var value) =>
