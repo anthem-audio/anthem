@@ -389,7 +389,7 @@ String _getCppType(ModelType type) {
     ListModelType(itemType: var inner) => 'std::vector<${_getCppType(inner)}>',
     MapModelType(keyType: var key, valueType: var value) =>
       'std::map<${_getCppType(key)}, ${_getCppType(value)}>',
-    CustomModelType(name: var name) => name,
+    CustomModelType(name: var name) => 'rfl::Box<$name>',
     UnknownModelType() => 'TYPE_ERROR_UNKNOWN_TYPE',
   };
 
