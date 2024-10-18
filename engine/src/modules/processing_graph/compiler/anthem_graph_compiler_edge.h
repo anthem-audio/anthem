@@ -21,8 +21,8 @@
 
 #include <memory>
 
-#include "anthem_graph_node.h"
-#include "anthem_graph_data_type.h"
+#include "modules/processing_graph/topology/anthem_graph_node.h"
+#include "modules/processing_graph/topology/anthem_graph_data_type.h"
 
 class AnthemGraphNodeConnection;
 

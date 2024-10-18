@@ -23,9 +23,9 @@
 #include <vector>
 #include <iostream>
 
-#include "anthem_graph_compiler_action.h"
-#include "anthem_process_context.h"
-#include "anthem_graph_node.h"
+#include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
+#include "modules/processing_graph/compiler/anthem_process_context.h"
+#include "modules/processing_graph/topology/anthem_graph_node.h"
 
 // This class is used to represent the result of compiling a processing graph.
 class AnthemGraphCompilationResult {

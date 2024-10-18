@@ -19,10 +19,10 @@
 
 #include "processing_graph_command_handler.h"
 
-#include "simple_volume_lfo_node.h"
-#include "simple_midi_generator_node.h"
-#include "tone_generator_node.h"
-#include "gain_node.h"
+#include "modules/processors/simple_volume_lfo_node.h"
+#include "modules/processors/simple_midi_generator_node.h"
+#include "modules/processors/tone_generator_node.h"
+#include "modules/processors/gain_node.h"
 
 std::optional<Response>
 handleProcessingGraphCommand(Request& request, Anthem* anthem) {

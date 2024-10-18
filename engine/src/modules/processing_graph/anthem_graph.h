@@ -21,11 +21,11 @@
 
 #include <memory>
 
-#include "anthem_graph_node.h"
-#include "anthem_processor.h"
-#include "anthem_graph_topology.h"
-#include "anthem_graph_compiler.h"
-#include "anthem_graph_processor.h"
+#include "topology/anthem_graph_node.h"
+#include "processor/anthem_processor.h"
+#include "topology/anthem_graph_topology.h"
+#include "compiler/anthem_graph_compiler.h"
+#include "runtime/anthem_graph_processor.h"
 
 // This class is used to store processors and their connections, and to manage
 // the flow of audio, MIDI and control data between them.

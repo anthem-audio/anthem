@@ -23,8 +23,8 @@
 
 #include <juce_events/juce_events.h>
 
-#include "anthem_graph_compilation_result.h"
-#include "thread_safe_queue.h"
+#include "modules/processing_graph/compiler/anthem_graph_compilation_result.h"
+#include "modules/util/thread_safe_queue.h"
 
 // This class is used to handle the audio thread concerns of the processing
 // graph. It owns a read-only instance of AnthemGraphTopology as well as a

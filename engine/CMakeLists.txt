@@ -23,21 +23,14 @@ add_subdirectory(include/JUCE)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-# Include module folders so we don't have to use relative paths
 include_directories(
   ${CMAKE_SOURCE_DIR}
+
+  # Allows #include "messages/messages.h" for generated messages
   ${CMAKE_SOURCE_DIR}/generated/lib/engine_api
-  ${CMAKE_SOURCE_DIR}/src/modules/core
-  ${CMAKE_SOURCE_DIR}/src/modules/processing_graph
-  ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/compiler
-  ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/compiler/actions
-  ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/debug
-  ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/events
-  ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/processor
-  ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/runtime
-  ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/topology
-  ${CMAKE_SOURCE_DIR}/src/modules/processors
-  ${CMAKE_SOURCE_DIR}/src/modules/util
+
+  ${CMAKE_SOURCE_DIR}/src
+  ${CMAKE_SOURCE_DIR}/src/modules
 )
 
 # Make this a JUCE console application

@@ -19,7 +19,7 @@
 
 #include "simple_volume_lfo_node.h"
 
-#include "anthem_process_context.h"
+#include "modules/processing_graph/compiler/anthem_process_context.h"
 
 SimpleVolumeLfoNode::SimpleVolumeLfoNode() : AnthemProcessor("SimpleVolumeLfo") {
   rate = 0.0001f;

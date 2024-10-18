@@ -22,8 +22,8 @@
 #include <memory>
 #include <vector>
 
-#include "anthem_processor.h"
-#include "anthem_graph_node_port.h"
+#include "modules/processing_graph/processor/anthem_processor.h"
+#include "modules/processing_graph/topology/anthem_graph_node_port.h"
 
 // Represents a node in the processing graph.
 class AnthemGraphNode : public std::enable_shared_from_this<AnthemGraphNode> {

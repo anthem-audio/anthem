@@ -24,11 +24,13 @@
 
 #include <juce_audio_devices/juce_audio_devices.h>
 
-#include "anthem_audio_callback.h"
-#include "anthem_graph.h"
-#include "master_output_node.h"
+#include "modules/core/anthem_audio_callback.h"
+#include "modules/processing_graph/anthem_graph.h"
+#include "modules/processors/master_output_node.h"
 
-#include "id_generator.h"
+#include "modules/util/id_generator.h"
+
+// #include "generated/lib/model/model.h"
 
 class Anthem {
 private:

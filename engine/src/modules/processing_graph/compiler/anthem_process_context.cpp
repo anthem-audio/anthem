@@ -17,9 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "anthem_graph_node.h"
 #include "anthem_process_context.h"
-#include "constants.h"
+
+#include "modules/processing_graph/topology/anthem_graph_node.h"
+#include "modules/core/constants.h"
 
 AnthemProcessContext::AnthemProcessContext(std::shared_ptr<AnthemGraphNode> graphNode, ArenaBufferAllocator<AnthemProcessorEvent>* eventAllocator) : graphNode(graphNode) {
   for (int i = 0; i < graphNode->audioInputs.size(); i++) {

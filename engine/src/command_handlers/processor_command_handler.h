@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "anthem.h"
+#include "modules/core/anthem.h"
 #include <rfl.hpp>
 
 #include "messages/messages.h"
