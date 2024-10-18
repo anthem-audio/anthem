@@ -19,7 +19,7 @@
 
 #include "gain_node.h"
 
-#include "anthem_process_context.h"
+#include "modules/processing_graph/compiler/anthem_process_context.h"
 
 GainNode::GainNode() : AnthemProcessor("Gain") {
   // Audio input port

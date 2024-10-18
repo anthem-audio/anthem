@@ -22,8 +22,8 @@
 #include <memory>
 #include <vector>
 
-#include "anthem_processor_port_config.h"
-#include "anthem_graph_node_connection.h"
+#include "modules/processing_graph/processor/anthem_processor_port_config.h"
+#include "modules/processing_graph/topology/anthem_graph_node_connection.h"
 
 class AnthemGraphNode;
 

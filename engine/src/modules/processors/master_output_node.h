@@ -23,8 +23,8 @@
 
 #include <juce_audio_basics/juce_audio_basics.h>
 
-#include "anthem_graph_node.h"
-#include "anthem_processor.h"
+#include "modules/processing_graph/topology/anthem_graph_node.h"
+#include "modules/processing_graph/processor/anthem_processor.h"
 
 class MasterOutputNode : public AnthemProcessor {
 public:

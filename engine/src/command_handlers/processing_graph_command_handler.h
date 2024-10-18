@@ -20,7 +20,7 @@
 #pragma once
 
 #include "../plugin_window.h"
-#include "anthem.h"
+#include "modules/core/anthem.h"
 
 #include "messages/messages.h"
 

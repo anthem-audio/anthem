@@ -25,9 +25,9 @@
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_events/juce_events.h>
 
-#include "anthem_graph_node.h"
-#include "linear_parameter_smoother.h"
-#include "anthem_event_buffer.h"
+#include "modules/processing_graph/processor/anthem_event_buffer.h"
+#include "modules/processing_graph/topology/anthem_graph_node.h"
+#include "modules/util/linear_parameter_smoother.h"
 
 // This class acts as a context for node graph processors. It is passed to the
 // `process()` method of each `AnthemProcessor`, and provides a way to query

@@ -21,8 +21,8 @@
 
 #include <string>
 
-#include "tone_generator_node.h"
-#include "simple_volume_lfo_node.h"
+#include "modules/processors/tone_generator_node.h"
+#include "modules/processors/simple_volume_lfo_node.h"
 
 std::optional<Response> handleProjectCommand(
   Request& request,

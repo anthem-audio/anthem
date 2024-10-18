@@ -22,7 +22,7 @@
 #include <string>
 #include <optional>
 
-#include "anthem_graph_data_type.h"
+#include "modules/processing_graph/topology/anthem_graph_data_type.h"
 
 // This class defines info about a port on an AnthemProcessor. This info is used
 // to configure instances of the processor in the processing graph.
