@@ -23,7 +23,6 @@
 #include "anthem.h"
 #include <rfl.hpp>
 
-// TODO: Fix CMake so this isn't necessary
-#include "../../../../generated/lib/engine_api/messages/messages.h"
+#include "messages/messages.h"
 
 std::optional<Response> handleProjectCommand(Request& request, Anthem* anthem);
