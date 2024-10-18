@@ -29,7 +29,7 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
   if (rfl::holds_alternative<GetProcessorsRequest>(request.variant())) {
     auto& getProcessorsRequest = rfl::get<GetProcessorsRequest>(request.variant());
 
-    std::vector<ProcessorDescription> processorList;
+    std::vector<rfl::Ref<ProcessorDescription>> processorList;
 
     // TODO: This should probably be stored somewhere for real, so we don't
     // have to manage it here
@@ -43,11 +43,14 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
       auto id = std::get<0>(processor);
       auto category = std::get<1>(processor);
 
-      auto processorDescription = ProcessorDescription{
-        .processorId = id,
-        .category = category
-      };
-      processorList.push_back(processorDescription);
+      auto processorDescription = rfl::make_ref<ProcessorDescription>(
+        ProcessorDescription{
+          .processorId = id,
+          .category = category
+        }
+      );
+
+      processorList.push_back(std::move(processorDescription));
     }
 
     auto response = GetProcessorsResponse {
@@ -80,73 +83,91 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
 
     auto node = anthem->getNode(nodeId);
 
-    std::vector<ProcessorPortDescription> audioInputPorts;
+    std::vector<rfl::Ref<ProcessorPortDescription>> audioInputPorts;
 
     for (const auto& port : node->audioInputs) {
       auto id = port->config->id;
 
-      auto portDescription = ProcessorPortDescription {
-        .id = id
-      };
+      auto portDescription = rfl::make_ref<ProcessorPortDescription>(
+        ProcessorPortDescription {
+          .id = id
+        }
+      );
+
       audioInputPorts.push_back(std::move(portDescription));
     }
 
-    std::vector<ProcessorPortDescription> controlInputPorts;
+    std::vector<rfl::Ref<ProcessorPortDescription>> controlInputPorts;
 
     for (const auto& port : node->controlInputs) {
       auto id = port->config->id;
 
-      auto portDescription = ProcessorPortDescription {
-        .id = id
-      };
+      auto portDescription = rfl::make_ref<ProcessorPortDescription>(
+          ProcessorPortDescription {
+          .id = id
+        }
+      );
+
       controlInputPorts.push_back(std::move(portDescription));
     }
 
-    std::vector<ProcessorPortDescription> noteEventInputPorts;
+    std::vector<rfl::Ref<ProcessorPortDescription>> noteEventInputPorts;
 
     for (const auto& port : node->noteEventInputs) {
       auto id = port->config->id;
 
-      auto portDescription = ProcessorPortDescription {
-        .id = id
-      };
+      auto portDescription = rfl::make_ref<ProcessorPortDescription>(
+          ProcessorPortDescription {
+          .id = id
+        }
+      );
+
       noteEventInputPorts.push_back(std::move(portDescription));
     }
 
-    std::vector<ProcessorPortDescription> audioOutputPorts;
+    std::vector<rfl::Ref<ProcessorPortDescription>> audioOutputPorts;
 
     for (const auto& port : node->audioOutputs) {
       auto id = port->config->id;
 
-      auto portDescription = ProcessorPortDescription {
-        .id = id
-      };
+      auto portDescription = rfl::make_ref<ProcessorPortDescription>(
+          ProcessorPortDescription {
+          .id = id
+        }
+      );
+
       audioOutputPorts.push_back(std::move(portDescription));
     }
 
-    std::vector<ProcessorPortDescription> controlOutputPorts;
+    std::vector<rfl::Ref<ProcessorPortDescription>> controlOutputPorts;
 
     for (const auto& port : node->controlOutputs) {
       auto id = port->config->id;
 
-      auto portDescription = ProcessorPortDescription {
-        .id = id
-      };
+      auto portDescription = rfl::make_ref<ProcessorPortDescription>(
+          ProcessorPortDescription {
+          .id = id
+        }
+      );
+
       controlOutputPorts.push_back(std::move(portDescription));
     }
 
-    std::vector<ProcessorPortDescription> noteEventOutputPorts;
+    std::vector<rfl::Ref<ProcessorPortDescription>> noteEventOutputPorts;
 
     for (const auto& port : node->noteEventOutputs) {
       auto id = port->config->id;
     
-      auto portDescription = ProcessorPortDescription {
-        .id = id
-      };
+      auto portDescription = rfl::make_ref<ProcessorPortDescription>(
+          ProcessorPortDescription {
+          .id = id
+        }
+      );
+
       noteEventOutputPorts.push_back(std::move(portDescription));
     }
 
-    std::vector<ProcessorParameterDescription> parameters;
+    std::vector<rfl::Ref<ProcessorParameterDescription>> parameters;
 
     for (int i = 0; i < node->controlInputs.size(); i++) {
       auto& port = node->controlInputs[i];
@@ -157,13 +178,16 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
       auto min = parameter->minValue;
       auto max = parameter->maxValue;
 
-      auto parameterDescription = ProcessorParameterDescription {
-        id = id,
-        defaultValue = defaultValue,
-        min = min,
-        max = max
-      };
-      parameters.push_back(parameterDescription);
+      auto parameterDescription = rfl::make_ref<ProcessorParameterDescription>(
+        ProcessorParameterDescription {
+          id = id,
+          defaultValue = defaultValue,
+          min = min,
+          max = max
+        }
+      );
+
+      parameters.push_back(std::move(parameterDescription));
     }
 
     auto response = GetProcessorPortsResponse {
