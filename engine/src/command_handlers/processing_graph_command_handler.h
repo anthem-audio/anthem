@@ -22,8 +22,7 @@
 #include "../plugin_window.h"
 #include "anthem.h"
 
-// TODO: Fix CMake so this isn't necessary
-#include "../../../../generated/lib/engine_api/messages/messages.h"
+#include "messages/messages.h"
 
 std::optional<Response>
 handleProcessingGraphCommand(Request& request, Anthem* anthem);

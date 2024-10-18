@@ -21,9 +21,12 @@ include_directories(${CMAKE_SOURCE_DIR}/generated)
 
 add_subdirectory(include/JUCE)
 
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+
 # Include module folders so we don't have to use relative paths
 include_directories(
-  ${CMAKE_SOURCE_DIR}/generated
+  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/generated/lib/engine_api
   ${CMAKE_SOURCE_DIR}/src/modules/core
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph
   ${CMAKE_SOURCE_DIR}/src/modules/processing_graph/compiler

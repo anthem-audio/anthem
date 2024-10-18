@@ -40,7 +40,7 @@
 #include "./command_handlers/processor_command_handler.h"
 #include "./command_handlers/project_command_handler.h"
 
-#include "../generated/lib/engine_api/messages/messages.h"
+#include "messages/messages.h"
 
 Anthem* anthem;
 
