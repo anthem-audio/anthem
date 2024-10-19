@@ -103,7 +103,7 @@ public:
       };
 
       response = std::optional(
-        Response::TaggedUnion(std::move(exitReply))
+        std::move(exitReply)
       );
 
       isExit = true;
@@ -119,7 +119,7 @@ public:
       };
 
       response = std::optional(
-        Response::TaggedUnion(std::move(heartbeatReply))
+        std::move(heartbeatReply)
       );
 
       heartbeatOccurred = true;
