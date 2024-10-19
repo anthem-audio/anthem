@@ -180,10 +180,10 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
 
       auto parameterDescription = rfl::make_ref<ProcessorParameterDescription>(
         ProcessorParameterDescription {
-          id = static_cast<int64_t>(id),
-          defaultValue = defaultValue,
-          min = min,
-          max = max
+          .id = static_cast<int64_t>(id),
+          .defaultValue = defaultValue,
+          .minValue = min,
+          .maxValue = max
         }
       );
 
