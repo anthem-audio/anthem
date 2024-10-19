@@ -35,7 +35,7 @@
 #include <rfl/json.hpp>
 #include <rfl.hpp>
 
-#include "anthem.h"
+#include "modules/core/anthem.h"
 #include "./command_handlers/processing_graph_command_handler.h"
 #include "./command_handlers/processor_command_handler.h"
 #include "./command_handlers/project_command_handler.h"
