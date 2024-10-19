@@ -90,7 +90,7 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
 
       auto portDescription = rfl::make_ref<ProcessorPortDescription>(
         ProcessorPortDescription {
-          .id = id
+          .id = static_cast<int64_t>(id)
         }
       );
 
@@ -104,7 +104,7 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
 
       auto portDescription = rfl::make_ref<ProcessorPortDescription>(
           ProcessorPortDescription {
-          .id = id
+          .id = static_cast<int64_t>(id)
         }
       );
 
@@ -118,7 +118,7 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
 
       auto portDescription = rfl::make_ref<ProcessorPortDescription>(
           ProcessorPortDescription {
-          .id = id
+          .id = static_cast<int64_t>(id)
         }
       );
 
@@ -132,7 +132,7 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
 
       auto portDescription = rfl::make_ref<ProcessorPortDescription>(
           ProcessorPortDescription {
-          .id = id
+          .id = static_cast<int64_t>(id)
         }
       );
 
@@ -146,7 +146,7 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
 
       auto portDescription = rfl::make_ref<ProcessorPortDescription>(
           ProcessorPortDescription {
-          .id = id
+          .id = static_cast<int64_t>(id)
         }
       );
 
@@ -160,7 +160,7 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
     
       auto portDescription = rfl::make_ref<ProcessorPortDescription>(
           ProcessorPortDescription {
-          .id = id
+          .id = static_cast<int64_t>(id)
         }
       );
 
@@ -180,7 +180,7 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
 
       auto parameterDescription = rfl::make_ref<ProcessorParameterDescription>(
         ProcessorParameterDescription {
-          id = id,
+          id = static_cast<int64_t>(id),
           defaultValue = defaultValue,
           min = min,
           max = max
