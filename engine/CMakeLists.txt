@@ -36,114 +36,18 @@ include_directories(
 # Make this a JUCE console application
 juce_add_console_app(AnthemEngine ANTHEM_ENGINE "Anthem Engine" VERSION "0.0.1")
 
-# Set the sources for the AnthemEngine executable
-set(ANTHEM_ENGINE_SOURCES
-  src/command_handlers/processing_graph_command_handler.cpp
-  src/command_handlers/processing_graph_command_handler.h
-  src/command_handlers/processor_command_handler.cpp
-  src/command_handlers/processor_command_handler.h
-  src/command_handlers/project_command_handler.cpp
-  src/command_handlers/project_command_handler.h
-
-  #############################
-  #         Modules           #
-  #############################
-
-  ### Core ###
-
-  src/modules/core/anthem_audio_callback.cpp
-  src/modules/core/anthem_audio_callback.h
-  src/modules/core/anthem.cpp
-  src/modules/core/anthem.h
-  src/modules/core/constants.h
-
-  ### Processing Graph ###
-  
-  src/modules/processing_graph/compiler/actions/anthem_graph_compiler_action.h
-  src/modules/processing_graph/compiler/actions/clear_buffers_action.cpp
-  src/modules/processing_graph/compiler/actions/clear_buffers_action.h
-  src/modules/processing_graph/compiler/actions/copy_audio_buffer_action.cpp
-  src/modules/processing_graph/compiler/actions/copy_audio_buffer_action.h
-  src/modules/processing_graph/compiler/actions/copy_control_buffer_action.cpp
-  src/modules/processing_graph/compiler/actions/copy_control_buffer_action.h
-  src/modules/processing_graph/compiler/actions/copy_note_events_action.cpp
-  src/modules/processing_graph/compiler/actions/copy_note_events_action.h
-  src/modules/processing_graph/compiler/actions/process_node_action.cpp
-  src/modules/processing_graph/compiler/actions/process_node_action.h
-  src/modules/processing_graph/compiler/actions/write_parameters_to_control_inputs_action.cpp
-  src/modules/processing_graph/compiler/actions/write_parameters_to_control_inputs_action.h
-  # src/modules/processing_graph/compiler/anthem_graph_compilation_result.cpp
-  src/modules/processing_graph/compiler/anthem_graph_compilation_result.h
-  src/modules/processing_graph/compiler/anthem_graph_compiler_edge.h
-  src/modules/processing_graph/compiler/anthem_graph_compiler_node.h
-  src/modules/processing_graph/compiler/anthem_graph_compiler.cpp
-  src/modules/processing_graph/compiler/anthem_graph_compiler.h
-  src/modules/processing_graph/compiler/anthem_process_context.cpp
-  src/modules/processing_graph/compiler/anthem_process_context.h
-
-  src/modules/processing_graph/debug/generate_graphvis_from_graph.cpp
-  src/modules/processing_graph/debug/generate_graphvis_from_graph.h
-
-  src/modules/processing_graph/events/anthem_processor_event.h
-  src/modules/processing_graph/events/anthem_processor_note_events.h
-
-  src/modules/processing_graph/processor/anthem_event_buffer.h
-  src/modules/processing_graph/processor/anthem_processor_config.cpp
-  src/modules/processing_graph/processor/anthem_processor_config.h
-  # src/modules/processing_graph/processor/anthem_processor_parameter_config.cpp
-  src/modules/processing_graph/processor/anthem_processor_parameter_config.h
-  # src/modules/processing_graph/processor/anthem_processor_port_config.cpp
-  src/modules/processing_graph/processor/anthem_processor_port_config.h
-  # src/modules/processing_graph/processor/anthem_processor.cpp
-  src/modules/processing_graph/processor/anthem_processor.h
-
-  src/modules/processing_graph/runtime/anthem_graph_processor.cpp
-  src/modules/processing_graph/runtime/anthem_graph_processor.h
-
-  src/modules/processing_graph/topology/anthem_graph_data_type.h
-  # src/modules/processing_graph/topology/anthem_graph_node_port.cpp
-  src/modules/processing_graph/topology/anthem_graph_node_port.h
-  # src/modules/processing_graph/topology/anthem_graph_node_connection.cpp
-  src/modules/processing_graph/topology/anthem_graph_node_connection.h
-  src/modules/processing_graph/topology/anthem_graph_node.cpp
-  src/modules/processing_graph/topology/anthem_graph_node.h
-  src/modules/processing_graph/topology/anthem_graph_topology.cpp
-  src/modules/processing_graph/topology/anthem_graph_topology.h
-  
-  src/modules/processing_graph/anthem_graph.cpp
-  src/modules/processing_graph/anthem_graph.h
-
-  ### Processors ###
-
-  src/modules/processors/gain_node.cpp
-  src/modules/processors/gain_node.h
-  src/modules/processors/master_output_node.cpp
-  src/modules/processors/master_output_node.h
-  src/modules/processors/simple_midi_generator_node.cpp
-  src/modules/processors/simple_midi_generator_node.h
-  src/modules/processors/simple_volume_lfo_node.cpp
-  src/modules/processors/simple_volume_lfo_node.h
-  src/modules/processors/tone_generator_node.cpp
-  src/modules/processors/tone_generator_node.h
-
-  src/main.cpp
-  src/plugin_window.cpp
-  src/plugin_window.h
-
-  ### Util ###
-
-  src/modules/util/arena_allocator.h
-  src/modules/util/id_generator.cpp
-  src/modules/util/id_generator.h
-  src/modules/util/linear_parameter_smoother.cpp
-  src/modules/util/linear_parameter_smoother.h
-  src/modules/util/thread_safe_queue.h
+# Add the source files
+file(
+  GLOB_RECURSE
+  ANTHEM_ENGINE_SOURCES
+  ${PROJECT_SOURCE_DIR}/src/*.h
+  ${PROJECT_SOURCE_DIR}/src/*.cpp
+  ${PROJECT_SOURCE_DIR}/src/**/*.h
+  ${PROJECT_SOURCE_DIR}/src/**/*.cpp
 )
 
 target_sources(AnthemEngine PRIVATE ${ANTHEM_ENGINE_SOURCES})
 
-# Create the AnthemEngine executable
-# add_executable(AnthemEngine ${ANTHEM_ENGINE_SOURCES})
 
 target_compile_definitions(AnthemEngine PRIVATE JUCE_PLUGINHOST_VST3=1)
 
