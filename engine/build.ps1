@@ -18,6 +18,11 @@ New-Item -ItemType Directory -Path .\build -Force
 
 Push-Location -Path .\build
 
+if ($IsLinux) {
+    $env:CC = "/usr/bin/clang"
+    $env:CXX = "/usr/bin/clang++"
+}
+
 echo-green "Running CMake..."
 cmake ..
 
