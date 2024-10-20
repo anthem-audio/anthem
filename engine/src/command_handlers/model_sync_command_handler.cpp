@@ -26,7 +26,34 @@
 
 std::optional<Response> handleModelSyncCommand(
   Request& request,
-  [[maybe_unused]] Anthem* anthem
+  Anthem* anthem
 ) {
+  if (rfl::holds_alternative<ModelInitRequest>(request.variant())) {
+    std::cout << "Loading project model..." << std::endl;
+
+    auto& modelInitRequest = rfl::get<ModelInitRequest>(request.variant());
+
+    // std::cout << modelInitRequest.serializedModel << std::endl;
+
+    auto result = rfl::json::read<std::unique_ptr<ProjectModel>>(
+      modelInitRequest.serializedModel
+    );
+
+    auto err = result.error();
+
+    if (err.has_value()) {
+      std::cout << "Error during deserialize:" << std::endl;
+      std::cout << err.value().what() << std::endl;
+    }
+    else {
+      anthem->projectModel = std::move(
+        result.value()
+      );
+
+      std::cout << "Loaded project model" << std::endl;
+      std::cout << "id: " << anthem->projectModel->id << std::endl;
+    }
+  }
+
   return std::nullopt;
 }

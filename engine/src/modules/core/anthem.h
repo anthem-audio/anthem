@@ -30,7 +30,7 @@
 
 #include "modules/util/id_generator.h"
 
-// #include "generated/lib/model/model.h"
+#include "generated/lib/model/model.h"
 
 class Anthem {
 private:
@@ -47,6 +47,8 @@ private:
   // Initializes the engine
   void init();
 public:
+    std::unique_ptr<ProjectModel> projectModel;
+
   Anthem();
 
   std::shared_ptr<AnthemGraph> getProcessingGraph() {
