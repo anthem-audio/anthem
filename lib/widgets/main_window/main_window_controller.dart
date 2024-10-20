@@ -44,8 +44,6 @@ class MainWindowController {
     await project.engine.engineStateStream
         .firstWhere((element) => element == EngineState.running);
 
-    await project.createInEngine();
-
     _addProject(project);
 
     return project.id;

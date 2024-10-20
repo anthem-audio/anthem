@@ -133,21 +133,23 @@ class ProjectController {
     final key = event.logicalKey;
 
     if (viewModel.keyboardPianoEnabled && isTypingPianoKey(key)) {
-      final note = getMidiNoteFromKeyboardKey(key)!;
+      // TODO: Reimplement this
 
-      if (event is KeyDownEvent) {
-        project.engine.projectApi.noteOn(
-          note: note,
-          editId: project
-              .song.arrangements[project.song.activeArrangementID]!.editPointer,
-        );
-      } else {
-        project.engine.projectApi.noteOff(
-          note: note,
-          editId: project
-              .song.arrangements[project.song.activeArrangementID]!.editPointer,
-        );
-      }
+      // final note = getMidiNoteFromKeyboardKey(key)!;
+
+      // if (event is KeyDownEvent) {
+      //   project.engine.projectApi.noteOn(
+      //     note: note,
+      //     editId: project
+      //         .song.arrangements[project.song.activeArrangementID]!.editPointer,
+      //   );
+      // } else {
+      //   project.engine.projectApi.noteOff(
+      //     note: note,
+      //     editId: project
+      //         .song.arrangements[project.song.activeArrangementID]!.editPointer,
+      //   );
+      // }
 
       return true;
     }

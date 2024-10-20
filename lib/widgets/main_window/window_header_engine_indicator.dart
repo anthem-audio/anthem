@@ -49,7 +49,6 @@ class EngineIndicator extends StatelessObserverWidget {
           activeProject?.engine.stop();
         } else {
           await activeProject?.engine.start();
-          await activeProject?.createInEngine();
           await activeProject?.engine.processingGraphApi.compile();
         }
       },

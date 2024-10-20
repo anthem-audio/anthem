@@ -27,7 +27,6 @@ import 'package:anthem/model/project.dart';
 
 part 'api/model_sync_api.dart';
 part 'api/processing_graph_api.dart';
-part 'api/project_api.dart';
 
 enum EngineState {
   stopped,
@@ -52,7 +51,6 @@ class Engine {
 
   late ModelSyncApi modelSyncApi;
   late ProcessingGraphApi processingGraphApi;
-  late ProjectApi projectApi;
 
   Map<int, void Function(Response response)> replyFunctions = {};
 
@@ -75,7 +73,6 @@ class Engine {
 
     modelSyncApi = ModelSyncApi(this);
     processingGraphApi = ProcessingGraphApi(this);
-    projectApi = ProjectApi(this);
   }
 
   void _onReply(Response response) {
