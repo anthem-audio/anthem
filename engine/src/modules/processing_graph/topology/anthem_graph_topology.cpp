@@ -19,6 +19,10 @@
 
 #include <stdexcept>
 
+// Note: Without this import, Clang specifically will throw an esoteric error
+// for std::remove_if.
+#include <algorithm>
+
 #include "anthem_graph_topology.h"
 
 AnthemGraphTopology::AnthemGraphTopology() {
