@@ -36,9 +36,9 @@
 #include <rfl.hpp>
 
 #include "modules/core/anthem.h"
+#include "./command_handlers/model_sync_command_handler.h"
 #include "./command_handlers/processing_graph_command_handler.h"
 #include "./command_handlers/processor_command_handler.h"
-#include "./command_handlers/project_command_handler.h"
 
 #include "messages/messages.h"
 
@@ -129,12 +129,12 @@ public:
 
     bool didOverwriteResponse = false;
     
-    auto handleProjectCommandResponse = handleProjectCommand(request, anthem);
-    if (handleProjectCommandResponse.has_value()) {
+    auto handleModelSyncCommandResponse = handleModelSyncCommand(request, anthem);
+    if (handleModelSyncCommandResponse.has_value()) {
       if (response.has_value()) {
         didOverwriteResponse = true;
       }
-      response = std::move(handleProjectCommandResponse);
+      response = std::move(handleModelSyncCommandResponse);
     }
 
     auto handleProcessingGraphCommandResponse = handleProcessingGraphCommand(request, anthem);
