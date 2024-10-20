@@ -181,7 +181,8 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
       if (state == EngineState.running) {
         // Any time the engine starts, we send the entire current model state to the engine
         engine.modelSyncApi.initModel(
-          jsonEncode((this as _$ProjectModelAnthemModelMixin).toJson()),
+          jsonEncode((this as _$ProjectModelAnthemModelMixin)
+              .toJson(includeFieldsForEngine: true)),
         );
 
         _fieldChangedListener = (accesses, operation) {

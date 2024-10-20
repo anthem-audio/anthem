@@ -37,7 +37,7 @@ String generateJsonSerializationCode({
 
   result += '''// ignore: duplicate_ignore
 // ignore: non_constant_identifier_names
-Map<String, dynamic> toJson() {
+Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
   final map = <String, dynamic>{};
 ''';
 
@@ -45,8 +45,14 @@ Map<String, dynamic> toJson() {
     final name = entry.key;
     final fieldInfo = entry.value;
 
-    if (_shouldSkip(fieldInfo.fieldElement)) {
+    final fieldBehavior = _getFieldBehavior(fieldInfo.fieldElement);
+
+    if (fieldBehavior == _FieldBehavior.skip) {
       continue;
+    }
+
+    if (fieldBehavior == _FieldBehavior.serializeForEngineOnly) {
+      result += 'if (includeFieldsForEngine) {\n';
     }
 
     result += _createSetterForField(
@@ -54,6 +60,10 @@ Map<String, dynamic> toJson() {
       fieldName: name,
       mapName: 'map',
     );
+
+    if (fieldBehavior == _FieldBehavior.serializeForEngineOnly) {
+      result += '}\n';
+    }
   }
 
   if (context.isSealed) {
@@ -77,8 +87,14 @@ Map<String, dynamic> toJson() {
         final name = field.key;
         final fieldInfo = field.value;
 
-        if (_shouldSkip(fieldInfo.fieldElement)) {
+        final fieldBehavior = _getFieldBehavior(fieldInfo.fieldElement);
+
+        if (fieldBehavior == _FieldBehavior.skip) {
           continue;
+        }
+
+        if (fieldBehavior == _FieldBehavior.serializeForEngineOnly) {
+          result += 'if (includeFieldsForEngine) {\n';
         }
 
         result += _createSetterForField(
@@ -87,6 +103,10 @@ Map<String, dynamic> toJson() {
           accessor: '(this as ${subclass.name}).$name',
           mapName: 'map',
         );
+
+        if (fieldBehavior == _FieldBehavior.serializeForEngineOnly) {
+          result += '}\n';
+        }
       }
 
       result += '}\n';
@@ -103,20 +123,37 @@ Map<String, dynamic> toJson() {
   return result;
 }
 
-/// Checks if a field should be skipped when generating JSON serialization code,
-/// based on the @Hide annotation.
-bool _shouldSkip(FieldElement field) {
+enum _FieldBehavior {
+  skip,
+  alwaysSerialize,
+  serializeForEngineOnly,
+}
+
+/// Gets the behavior of a field in the context of JSON serialization. This is
+/// based on the @Hide annotation. The options are:
+/// - skip: The field should not be serialized
+/// - alwaysSerialize: The field should always be serialized
+/// - serializeForEngineOnly: The field should be serialized only when sending
+///   the model to the engine
+_FieldBehavior _getFieldBehavior(FieldElement field) {
   final hideAnnotation =
       const TypeChecker.fromRuntime(Hide).firstAnnotationOf(field);
 
-  if (hideAnnotation == null) return false;
+  if (hideAnnotation == null) return _FieldBehavior.alwaysSerialize;
 
   final hide = Hide(
     serialization:
         hideAnnotation.getField('serialization')?.toBoolValue() ?? false,
+    cpp: hideAnnotation.getField('cpp')?.toBoolValue() ?? false,
   );
 
-  return hide.serialization;
+  if (!hide.cpp && hide.serialization) {
+    return _FieldBehavior.serializeForEngineOnly;
+  } else if (!hide.cpp && !hide.serialization) {
+    return _FieldBehavior.alwaysSerialize;
+  }
+
+  return _FieldBehavior.skip;
 }
 
 String _createSetterForField({
@@ -230,5 +267,5 @@ String _createConverterForCustomType({
   required CustomModelType type,
   required String accessor,
 }) {
-  return '$accessor${type.isNullable ? '?' : ''}.toJson()';
+  return '$accessor${type.isNullable ? '?' : ''}.toJson(includeFieldsForEngine: includeFieldsForEngine)';
 }

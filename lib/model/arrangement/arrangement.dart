@@ -61,9 +61,6 @@ abstract class _ArrangementModel extends Hydratable
   @hide
   ProjectModel? _project;
 
-  @hideFromSerialization
-  late int editPointer;
-
   ProjectModel get project {
     return _project!;
   }

@@ -203,7 +203,9 @@ super.$fieldName$typeQ.setParentProperties(
             EnumModelType() => 'value$typeQ.name',
             ColorModelType() =>
               "{ 'a': value.alpha, 'r': value.red, 'g': value.green, 'b': value.blue }",
-            CustomModelType() || UnknownModelType() => 'value$typeQ.toJson()',
+            CustomModelType() ||
+            UnknownModelType() =>
+              'value$typeQ.toJson(includeFieldsForEngine: true)',
           };
 
           // Regardless of the type, we need to notify that this field was
@@ -400,7 +402,7 @@ String _convertToJson(String field, ModelType type,
       '$field$typeQ.map((key, value) => MapEntry(${_convertToJson('key', type.keyType)}, ${_convertToJson('value', type.valueType)}))',
     ColorModelType() =>
       "{ 'a': $field.alpha, 'r': $field.red, 'g': $field.green, 'b': $field.blue }",
-    CustomModelType() => '$field$typeQ.toJson()',
-    UnknownModelType() => '$field$typeQ.toJson()',
+    CustomModelType() => '$field$typeQ.toJson(includeFieldsForEngine: true)',
+    UnknownModelType() => '$field$typeQ.toJson(includeFieldsForEngine: true)',
   };
 }
