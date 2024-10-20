@@ -17,12 +17,16 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#pragma once
+#include "model_sync_command_handler.h"
 
-#include "../plugin_window.h"
-#include "modules/core/anthem.h"
-#include <rfl.hpp>
+#include <string>
 
-#include "messages/messages.h"
+#include "modules/processors/tone_generator_node.h"
+#include "modules/processors/simple_volume_lfo_node.h"
 
-std::optional<Response> handleProjectCommand(Request& request, Anthem* anthem);
+std::optional<Response> handleModelSyncCommand(
+  Request& request,
+  [[maybe_unused]] Anthem* anthem
+) {
+  return std::nullopt;
+}
