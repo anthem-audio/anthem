@@ -19,7 +19,6 @@
 
 import 'dart:math';
 
-import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/hydratable.dart';
@@ -88,16 +87,6 @@ abstract class _ArrangementModel extends Hydratable
     (this as _$ArrangementModelAnthemModelMixin).init();
     _project = project;
     isHydrated = true;
-  }
-
-  Future<void> createInEngine(Engine engine) async {
-    // Creates a corresponding Tracktion `Edit` in the engine
-    editPointer = await project.engine.projectApi.addArrangement();
-  }
-
-  void deleteInEngine(Engine engine) {
-    // Deletes the edit in the engine
-    project.engine.projectApi.deleteArrangement(editPointer);
   }
 
   /// Gets the time position of the end of the last clip in this arrangement,

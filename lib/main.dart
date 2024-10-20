@@ -26,7 +26,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_window_close/flutter_window_close.dart';
 import 'package:provider/provider.dart';
 
-import 'engine_api/engine.dart';
 import 'model/project.dart';
 import 'model/store.dart';
 import 'widgets/main_window/main_window.dart';
@@ -79,11 +78,6 @@ void main() async {
   store.projects[projectModel.id] = projectModel;
   store.projectOrder.add(projectModel.id);
   store.activeProjectID = projectModel.id;
-
-  await projectModel.engine.engineStateStream
-      .firstWhere((element) => element == EngineState.running);
-
-  await projectModel.createInEngine();
 }
 
 class MyApp extends StatelessWidget {

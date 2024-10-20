@@ -283,18 +283,6 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     (this as _$ProjectModelAnthemModelMixin).init();
   }
 
-  // Initializes this project in the engine
-  Future<void> createInEngine() async {
-    masterOutputNodeId =
-        await engine.processingGraphApi.getMasterOutputNodeId();
-
-    await song.createInEngine(engine);
-
-    for (final generator in generators.values) {
-      await generator.createInEngine(engine);
-    }
-  }
-
   /// This function is run after deserialization. It allows us to do some setup
   /// that the deserialization step can't do for us.
   void hydrate() {
