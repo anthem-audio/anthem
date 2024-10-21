@@ -28,6 +28,13 @@ import 'package:source_gen/source_gen.dart';
 /// This map is used to cache class parsing. If we have a reference loop, e.g.
 /// class A has a field of type B, and class B has a field of type A, then this
 /// prevents an infinite loop in the parser.
+///
+/// This must be cleared at the beginning of each build step (e.g., between each
+/// entire file being parsed), because the build tool compiles a single script
+/// that runs all of the builders, and analysis for one step will cause odd
+/// behavior if it leaks into the next step. This should be done at the
+/// beginning of each builder's `build()` function, if that builder uses this
+/// cache.
 Map<ClassElement, ModelClassInfo> _modelClassInfoCache = {};
 
 /// Clears the cache for model items.
@@ -128,6 +135,8 @@ class _MyModel {
   late bool isSealed;
   List<SealedSubclassInfo> sealedSubclasses = [];
 
+  AnthemModel? annotation;
+
   factory ModelClassInfo(
       LibraryReader libraryReader, ClassElement annotatedClass) {
     return _modelClassInfoCache[annotatedClass] ??
@@ -135,6 +144,21 @@ class _MyModel {
   }
 
   ModelClassInfo._create(this.libraryReader, this.annotatedClass) {
+    final annotationElement = const TypeChecker.fromRuntime(AnthemModel)
+        .firstAnnotationOf(annotatedClass);
+
+    if (annotationElement != null) {
+      annotation = AnthemModel(
+        serializable:
+            annotationElement.getField('serializable')?.toBoolValue() ?? false,
+        generateCpp:
+            annotationElement.getField('generateCpp')?.toBoolValue() ?? false,
+        generateModelSync:
+            annotationElement.getField('generateModelSync')?.toBoolValue() ??
+                false,
+      );
+    }
+
     // Find matching base class for the library class
 
     final libraryAndImportedClasses = [

@@ -65,25 +65,12 @@ class AnthemModelGenerator extends Generator {
 
       // Read properties from @AnthemModel() annotation
 
-      final anthemModelAnnotation = AnthemModel(
-        serializable:
-            annotationFromAnalyzer.getField('serializable')?.toBoolValue() ??
-                false,
-        generateCpp:
-            annotationFromAnalyzer.getField('generateCpp')?.toBoolValue() ??
-                false,
-        generateModelSync: annotationFromAnalyzer
-                .getField('generateModelSync')
-                ?.toBoolValue() ??
-            false,
-      );
-
       final context = ModelClassInfo(library, libraryClass);
 
       result +=
-          'mixin _\$${libraryClass.name}AnthemModelMixin on ${context.baseClass.name}${anthemModelAnnotation.generateModelSync ? ', AnthemModelBase' : ''} {\n';
+          'mixin _\$${libraryClass.name}AnthemModelMixin on ${context.baseClass.name}${context.annotation!.generateModelSync ? ', AnthemModelBase' : ''} {\n';
 
-      if (anthemModelAnnotation.serializable) {
+      if (context.annotation!.serializable) {
         result += '\n  // JSON serialization\n';
         result += '\n';
         result += generateJsonSerializationCode(context: context);
@@ -98,9 +85,9 @@ class AnthemModelGenerator extends Generator {
       result += '\n';
       result += _generateGettersAndSetters(
         context: context,
-        classHasModelSyncCode: anthemModelAnnotation.generateModelSync,
+        classHasModelSyncCode: context.annotation!.generateModelSync,
       );
-      if (anthemModelAnnotation.generateModelSync) {
+      if (context.annotation!.generateModelSync) {
         result += '\n  // Init function\n';
         result += '\n';
         result += _generateInitFunction(context: context);
