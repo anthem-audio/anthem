@@ -128,31 +128,18 @@ class CppModelBuilder implements Builder {
     // Looks for @AnthemModel on each class in the file, and generates the
     // appropriate code
     for (final libraryClass in libraryReader.classes) {
-      final annotation = libraryClass.metadata
-          .where(
-            (annotation) =>
-                annotation.element?.enclosingElement?.name == 'AnthemModel',
-          )
-          .firstOrNull;
+      final annotation = const TypeChecker.fromRuntime(AnthemModel)
+          .firstAnnotationOf(libraryClass);
 
       // If there is no annotation on this class, don't do anything
-      if (annotation == null) continue;
-
-      // Using ConstantReader to read annotation properties
-      final reader = ConstantReader(annotation.computeConstantValue());
+      if (annotation == null) {
+        continue;
+      }
 
       // Read properties from @AnthemModel() annotation
 
-      bool generateCpp;
-
-      if (reader.isNull) {
-        log.severe(
-            '[Anthem codegen] Annotation reader is null for class ${libraryClass.name}. This is either a bug, or we need better error messages here.');
-        continue;
-      } else {
-        // Reading properties of the annotation
-        generateCpp = reader.read('generateCpp').literalValue as bool;
-      }
+      final generateCpp =
+          annotation.getField('generateCpp')?.toBoolValue() ?? false;
 
       if (!generateCpp) {
         continue;
