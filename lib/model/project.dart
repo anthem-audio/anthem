@@ -191,7 +191,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
               null => 'null',
               int i => '$i',
               double d => '$d',
-              String s => s,
+              String s => '"$s"',
               bool b => '$b',
               _ => throw AssertionError('Invalid map key type'),
             };
@@ -205,7 +205,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
               null => 'null',
               int i => '$i',
               double d => '$d',
-              String s => s,
+              String s => '"$s"',
               bool b => '$b',
               Map<String, dynamic> m => jsonEncode(m),
               List<dynamic> l => jsonEncode(l),

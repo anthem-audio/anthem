@@ -36,14 +36,13 @@ void writeModelSyncFn(
         '${isFirst ? '' : 'else '}if (request.fieldAccesses[fieldAccessIndex]->fieldName == "$fieldName") {');
     writer.incrementWhitespace();
 
-    // ignore: unused_element
     void writeInvalidAccessWarning() {
       writer.writeLine(
-          'std::cout << "Invalid field access: $fieldName, on model ${context.annotatedClass.name}" << std::endl;');
+          'std::cout << "Invalid field access: \\"$fieldName\\", on model \\"${context.annotatedClass.name}\\"" << std::endl;');
       writer.writeLine(
-          'std::cout << "$fieldName is not an Anthem model or collection of Anthem models, so the update could not be forwarded." << std::endl;');
+          'std::cout << "\\"$fieldName\\" is not an Anthem model or collection of Anthem models, so the update could not be forwarded." << std::endl;');
       writer.writeLine(
-          'std::cout << "$fieldName is of type ${field.typeInfo.name}." << std::endl;');
+          'std::cout << "\\"$fieldName\\" is of type \\"${field.typeInfo.name}\\"." << std::endl;');
     }
 
     void writeSerializedValueNullCheck() {
@@ -56,32 +55,60 @@ void writeModelSyncFn(
       writer.writeLine('}');
     }
 
+    void writeIndexCheckForPrimitive() {
+      writer.writeLine(
+          'if (request.fieldAccesses.size() > fieldAccessIndex + 1) {');
+      writer.incrementWhitespace();
+      writeInvalidAccessWarning();
+      writer.writeLine('return;');
+      writer.decrementWhitespace();
+      writer.writeLine('}');
+    }
+
     switch (field.typeInfo) {
       case StringModelType():
-        // TODO: Implement
+        writeIndexCheckForPrimitive();
+        writeSerializedValueNullCheck();
+
+        if (field.typeInfo.isNullable) {
+          writer.writeLine('if (request.serializedValue.value() == null) {');
+          writer.incrementWhitespace();
+          writer.writeLine('this->$fieldName = std::nullopt;');
+          writer.decrementWhitespace();
+          writer.writeLine('} else {');
+          writer.incrementWhitespace();
+          writer.writeLine(
+              'this->$fieldName = std::optional<std::string>(request.serializedValue.value());');
+          writer.decrementWhitespace();
+          writer.writeLine('}');
+        } else {
+          writer
+              .writeLine('this->$fieldName = request.serializedValue.value();');
+        }
+
         break;
       case IntModelType():
-        // TODO: Implement
+        writeIndexCheckForPrimitive();
         break;
       case DoubleModelType():
-        // TODO: Implement
+        writeIndexCheckForPrimitive();
         break;
       case NumModelType():
-        // TODO: Implement
+        writeIndexCheckForPrimitive();
         break;
       case BoolModelType():
-        // TODO: Implement
+        writeIndexCheckForPrimitive();
         break;
       case EnumModelType():
-        // TODO: Implement
+        writeIndexCheckForPrimitive();
+        break;
+      case ColorModelType():
+        writeIndexCheckForPrimitive();
         break;
       case ListModelType():
         // TODO: Implement
         break;
       case MapModelType():
-        // TODO: Implement
-        break;
-      case ColorModelType():
         // TODO: Implement
         break;
       case CustomModelType() || UnknownModelType():
@@ -99,6 +126,7 @@ void writeModelSyncFn(
         writer.incrementWhitespace();
         writer.writeLine(
             'std::cout << "Error deserializing $fieldName:" << std::endl << error.value().what() << std::endl;');
+        writer.writeLine('return;');
         writer.decrementWhitespace();
         writer.writeLine('} else {');
         writer.incrementWhitespace();
