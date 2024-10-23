@@ -23,10 +23,16 @@ import 'package:anthem_codegen/generators/util/model_class_info.dart';
 
 import 'shared.dart';
 
-void writeModelSyncFn(
-    {required Writer writer, required ModelClassInfo context}) {
+void writeModelSyncFnDeclaration(Writer writer) {
   writer.writeLine(
-      'void handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {');
+      'void handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex);');
+}
+
+String getModelSyncFn(ModelClassInfo context) {
+  final writer = Writer();
+
+  writer.writeLine(
+      'void ${context.annotatedClass.name}::handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {');
   writer.incrementWhitespace();
 
   var isFirst = true;
@@ -175,4 +181,6 @@ void writeModelSyncFn(
 
   writer.decrementWhitespace();
   writer.writeLine('}');
+
+  return writer.result;
 }
