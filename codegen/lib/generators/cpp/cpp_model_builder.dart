@@ -36,6 +36,8 @@ import 'shared.dart';
 class CppModelBuilder implements Builder {
   @override
   Future<void> build(BuildStep buildStep) async {
+    cleanModelClassInfoCache();
+
     final inputId = buildStep.inputId;
     if (inputId.extension != '.dart') return;
 
