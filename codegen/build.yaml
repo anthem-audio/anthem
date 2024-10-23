@@ -19,7 +19,7 @@ builders:
     import: 'package:anthem_codegen/codegen.dart'
     builder_factories: ['cppModelBuilder']
     build_extensions: {
-      ".dart": [".h"],
+      ".dart": [".h", ".cpp"],
     }
     build_to: source
     auto_apply: dependents
