@@ -32,6 +32,10 @@ void writeModelSyncFn(
   var isFirst = true;
 
   for (var MapEntry(key: fieldName, value: field) in context.fields.entries) {
+    if (field.hideAnnotation?.cpp == true) {
+      continue;
+    }
+
     writer.writeLine(
         '${isFirst ? '' : 'else '}if (request.fieldAccesses[fieldAccessIndex]->fieldName == "$fieldName") {');
     writer.incrementWhitespace();
