@@ -71,14 +71,14 @@ void writeModelSyncFn(
         writeSerializedValueNullCheck();
 
         if (field.typeInfo.isNullable) {
-          writer.writeLine('if (request.serializedValue.value() == null) {');
+          writer.writeLine('if (request.serializedValue.value() == "null") {');
           writer.incrementWhitespace();
           writer.writeLine('this->$fieldName = std::nullopt;');
           writer.decrementWhitespace();
           writer.writeLine('} else {');
           writer.incrementWhitespace();
           writer.writeLine(
-              'this->$fieldName = std::optional<std::string>(request.serializedValue.value());');
+              'this->$fieldName = std::optional<std::string>(request.serializedValue.value().substr(1, request.serializedValue.value().size() - 2));');
           writer.decrementWhitespace();
           writer.writeLine('}');
         } else {
