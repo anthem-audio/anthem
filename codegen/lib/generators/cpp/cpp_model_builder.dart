@@ -62,6 +62,63 @@ class CppModelBuilder implements Builder {
     // detailed description in the doc comment on the @GenerateCppModuleFile
     // annotation.
 
+    // Checks the imports of this library for any that themselves contain Anthem
+    // models, and generates the appropriate imports for the C++ module file.
+    for (final importElement in library.libraryImports) {
+      final importLibrary = importElement.importedLibrary;
+
+      if (importLibrary == null) {
+        continue;
+      }
+
+      final importLibraryReader = LibraryReader(importLibrary);
+
+      bool hasAnyAnthemModel = false;
+
+      for (final classElement in importLibraryReader.classes) {
+        final annotation = const TypeChecker.fromRuntime(AnthemModel)
+            .firstAnnotationOf(classElement);
+
+        if (annotation == null) {
+          continue;
+        }
+
+        final generateCpp =
+            annotation.getField('generateCpp')?.toBoolValue() ?? false;
+
+        if (generateCpp) {
+          hasAnyAnthemModel = true;
+          break;
+        }
+      }
+
+      for (final enumElement in importLibraryReader.enums) {
+        if (hasAnyAnthemModel) break;
+
+        final annotation = const TypeChecker.fromRuntime(AnthemEnum)
+            .firstAnnotationOf(enumElement);
+
+        if (annotation == null) {
+          continue;
+        }
+
+        hasAnyAnthemModel = true;
+      }
+
+      if (!hasAnyAnthemModel) {
+        continue;
+      }
+
+      final uri = importElement.uri;
+      if (uri is DirectiveUriWithLibrary) {
+        final pathStr = uri.relativeUri
+            .toString()
+            .replaceFirst('.dart', '.h')
+            .replaceFirst('package:anthem/', 'generated/lib/');
+        imports.add('#include "$pathStr"');
+      }
+    }
+
     // Looks for @GenerateCppModuleFile on this library.
     final libraryAnnotation = library.metadata
         .where(

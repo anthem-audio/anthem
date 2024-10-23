@@ -14,8 +14,8 @@ endif()
 
 add_subdirectory(include)
 
+include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
-include_directories(${CMAKE_SOURCE_DIR}/generated)
 
 # Add JUCE
 
