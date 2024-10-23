@@ -99,12 +99,43 @@ String getModelSyncFn(ModelClassInfo context) {
         break;
       case IntModelType():
         writeIndexCheckForPrimitive();
+        writeSerializedValueNullCheck();
+
+        if (field.typeInfo.isNullable) {
+          writer.writeLine('if (request.serializedValue.value() == "null") {');
+          writer.incrementWhitespace();
+          writer.writeLine('this->$fieldName = std::nullopt;');
+          writer.decrementWhitespace();
+          writer.writeLine('} else {');
+          writer.incrementWhitespace();
+          writer.writeLine(
+              'this->$fieldName = std::optional<int64_t>(std::stoll(request.serializedValue.value()));');
+          writer.decrementWhitespace();
+          writer.writeLine('}');
+        } else {
+          writer.writeLine(
+              'this->$fieldName = std::stoll(request.serializedValue.value());');
+        }
         break;
-      case DoubleModelType():
+      case DoubleModelType() || NumModelType():
         writeIndexCheckForPrimitive();
-        break;
-      case NumModelType():
-        writeIndexCheckForPrimitive();
+        writeSerializedValueNullCheck();
+
+        if (field.typeInfo.isNullable) {
+          writer.writeLine('if (request.serializedValue.value() == "null") {');
+          writer.incrementWhitespace();
+          writer.writeLine('this->$fieldName = std::nullopt;');
+          writer.decrementWhitespace();
+          writer.writeLine('} else {');
+          writer.incrementWhitespace();
+          writer.writeLine(
+              'this->$fieldName = std::optional<double>(std::stod(request.serializedValue.value()));');
+          writer.decrementWhitespace();
+          writer.writeLine('}');
+        } else {
+          writer.writeLine(
+              'this->$fieldName = std::stod(request.serializedValue.value());');
+        }
         break;
       case BoolModelType():
         writeIndexCheckForPrimitive();
