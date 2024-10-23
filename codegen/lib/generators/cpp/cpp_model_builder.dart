@@ -20,6 +20,7 @@
 import 'dart:async';
 
 import 'package:analyzer/dart/element/element.dart';
+import 'package:anthem_codegen/generators/cpp/cpp_model_sync.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
@@ -28,6 +29,7 @@ import '../util/enum_info.dart';
 import '../util/model_class_info.dart';
 import '../util/model_types.dart';
 import '../util/writer.dart';
+import 'shared.dart';
 
 /// This builder generates models in C++ to match the `@AnthemModel` classes in
 /// the Dart code.
@@ -50,13 +52,15 @@ class CppModelBuilder implements Builder {
 
     final libraryReader = LibraryReader(library);
 
+    final imports = <String>[];
     final forwardDeclarations = <String>[];
     final usingDirectives = <String>[];
-    final imports = <String>[]; // See note below
+    final moduleFileImports = <String>[]; // See note below
     final codeBlocks = <String>[];
 
-    // Note that imports are only used for module files. There is a detailed
-    // description in the doc comment on the @GenerateCppModuleFile annotation.
+    // Note that module file imports are only used for module files. There is a
+    // detailed description in the doc comment on the @GenerateCppModuleFile
+    // annotation.
 
     // Looks for @GenerateCppModuleFile on this library.
     final libraryAnnotation = library.metadata
@@ -71,7 +75,7 @@ class CppModelBuilder implements Builder {
     // function to do it here.
     if (libraryAnnotation != null) {
       final result = _generateCppModuleFile(libraryReader);
-      imports.addAll(result.imports);
+      moduleFileImports.addAll(result.imports);
       forwardDeclarations.addAll(result.forwardDeclarations);
     }
 
@@ -151,6 +155,12 @@ class CppModelBuilder implements Builder {
       // Create a new ModelClassInfo instance for this class
       final modelClassInfo = ModelClassInfo(libraryReader, libraryClass);
 
+      if (modelClassInfo.annotation!.generateModelSync) {
+        // The model sync code needs ModelUpdateRequest, which comes from the
+        // messaging model
+        imports.add('#include "messages/messages.h"');
+      }
+
       codeBlocks.add('// ${modelClassInfo.annotatedClass.name}\n\n');
 
       // Generate the code for this class
@@ -169,9 +179,10 @@ class CppModelBuilder implements Builder {
 
     // If we didn't generate any items for this file, don't try to write
     // anything.
-    if (forwardDeclarations.isEmpty &&
+    if (imports.isEmpty &&
+        forwardDeclarations.isEmpty &&
         usingDirectives.isEmpty &&
-        imports.isEmpty &&
+        moduleFileImports.isEmpty &&
         codeBlocks.isEmpty) {
       return;
     }
@@ -186,6 +197,13 @@ class CppModelBuilder implements Builder {
 #include <rfl.hpp>
 
 ''';
+
+    for (final import in imports) {
+      codeToWrite += import;
+      codeToWrite += '\n';
+    }
+
+    codeToWrite += '\n';
 
     // We forward declare all enums and structs at the top of the file, to
     // ensure that order doesn't matter when actually defining the structs and
@@ -206,7 +224,7 @@ class CppModelBuilder implements Builder {
       codeToWrite += '\n';
     }
 
-    for (final import in imports) {
+    for (final import in moduleFileImports) {
       codeToWrite += import;
       codeToWrite += '\n';
     }
@@ -290,8 +308,14 @@ String _generateEnum(EnumInfo enumInfo) {
       continue;
     }
 
-    final type = _getCppType(fieldInfo.typeInfo);
+    final type = getCppType(fieldInfo.typeInfo);
     writer.writeLine('$type $fieldName;');
+  }
+
+  writer.writeLine();
+
+  if (modelClassInfo.annotation?.generateModelSync == true) {
+    writeModelSyncFn(writer: writer, context: modelClassInfo);
   }
 
   writer.decrementWhitespace();
@@ -314,7 +338,7 @@ String _generateEnum(EnumInfo enumInfo) {
         continue;
       }
 
-      final type = _getCppType(fieldInfo.typeInfo);
+      final type = getCppType(fieldInfo.typeInfo);
       writer.writeLine('$type $fieldName;');
     }
 
@@ -362,29 +386,6 @@ String _generateEnum(EnumInfo enumInfo) {
     forwardDeclarations: forwardDeclarations,
     usingDirectives: usingDirectives,
   );
-}
-
-String _getCppType(ModelType type) {
-  final typeStr = switch (type) {
-    StringModelType() => 'std::string',
-    IntModelType() => 'int64_t',
-    DoubleModelType() || NumModelType() => 'double',
-    BoolModelType() => 'bool',
-    ColorModelType() =>
-      'rfl::NamedTuple<rfl::Field<"r", unsigned char>, rfl::Field<"g", unsigned char>, rfl::Field<"b", unsigned char>, rfl::Field<"a", unsigned char>>',
-    EnumModelType(enumName: var name) => name,
-    ListModelType(itemType: var inner) => 'std::vector<${_getCppType(inner)}>',
-    MapModelType(keyType: var key, valueType: var value) =>
-      'std::map<${_getCppType(key)}, ${_getCppType(value)}>',
-    CustomModelType(name: var name) => 'rfl::Ref<$name>',
-    UnknownModelType() => 'TYPE_ERROR_UNKNOWN_TYPE',
-  };
-
-  if (type.isNullable) {
-    return 'std::optional<$typeStr>';
-  }
-
-  return typeStr;
 }
 
 /// Used to generate the imports for a C++ module file.
