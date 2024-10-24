@@ -98,6 +98,9 @@ String getModelSyncFn(ModelClassInfo context) {
           writeIndexCheckForPrimitive();
           writeSerializedValueNullCheck();
 
+          final stringGetter =
+              'request.serializedValue.value().substr(1, request.serializedValue.value().size() - 2)';
+
           if (type.isNullable) {
             writer
                 .writeLine('if (request.serializedValue.value() == "null") {');
@@ -107,12 +110,11 @@ String getModelSyncFn(ModelClassInfo context) {
             writer.writeLine('} else {');
             writer.incrementWhitespace();
             writer.writeLine(
-                '$assignmentTarget = std::optional<std::string>(request.serializedValue.value().substr(1, request.serializedValue.value().size() - 2));');
+                '$assignmentTarget = std::optional<std::string>($stringGetter);');
             writer.decrementWhitespace();
             writer.writeLine('}');
           } else {
-            writer.writeLine(
-                '$assignmentTarget = request.serializedValue.value();');
+            writer.writeLine('$assignmentTarget = $stringGetter;');
           }
 
           break;
