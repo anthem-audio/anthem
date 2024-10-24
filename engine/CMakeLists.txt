@@ -40,6 +40,10 @@ juce_add_console_app(AnthemEngine ANTHEM_ENGINE "Anthem Engine" VERSION "0.0.1")
 file(
   GLOB_RECURSE
   ANTHEM_ENGINE_SOURCES
+  ${PROJECT_SOURCE_DIR}/generated/*.h
+  ${PROJECT_SOURCE_DIR}/generated/*.cpp
+  ${PROJECT_SOURCE_DIR}/generated/**/*.h
+  ${PROJECT_SOURCE_DIR}/generated/**/*.cpp
   ${PROJECT_SOURCE_DIR}/src/*.h
   ${PROJECT_SOURCE_DIR}/src/*.cpp
   ${PROJECT_SOURCE_DIR}/src/**/*.h
