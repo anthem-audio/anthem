@@ -75,134 +75,226 @@ String getModelSyncFn(ModelClassInfo context) {
       writer.writeLine('}');
     }
 
-    switch (field.typeInfo) {
-      case StringModelType():
-        writeIndexCheckForPrimitive();
-        writeSerializedValueNullCheck();
-
-        if (field.typeInfo.isNullable) {
-          writer.writeLine('if (request.serializedValue.value() == "null") {');
-          writer.incrementWhitespace();
-          writer.writeLine('this->$fieldName = std::nullopt;');
-          writer.decrementWhitespace();
-          writer.writeLine('} else {');
-          writer.incrementWhitespace();
-          writer.writeLine(
-              'this->$fieldName = std::optional<std::string>(request.serializedValue.value().substr(1, request.serializedValue.value().size() - 2));');
-          writer.decrementWhitespace();
-          writer.writeLine('}');
-        } else {
-          writer
-              .writeLine('this->$fieldName = request.serializedValue.value();');
-        }
-
-        break;
-      case IntModelType():
-        writeIndexCheckForPrimitive();
-        writeSerializedValueNullCheck();
-
-        if (field.typeInfo.isNullable) {
-          writer.writeLine('if (request.serializedValue.value() == "null") {');
-          writer.incrementWhitespace();
-          writer.writeLine('this->$fieldName = std::nullopt;');
-          writer.decrementWhitespace();
-          writer.writeLine('} else {');
-          writer.incrementWhitespace();
-          writer.writeLine(
-              'this->$fieldName = std::optional<int64_t>(std::stoll(request.serializedValue.value()));');
-          writer.decrementWhitespace();
-          writer.writeLine('}');
-        } else {
-          writer.writeLine(
-              'this->$fieldName = std::stoll(request.serializedValue.value());');
-        }
-        break;
-      case DoubleModelType() || NumModelType():
-        writeIndexCheckForPrimitive();
-        writeSerializedValueNullCheck();
-
-        if (field.typeInfo.isNullable) {
-          writer.writeLine('if (request.serializedValue.value() == "null") {');
-          writer.incrementWhitespace();
-          writer.writeLine('this->$fieldName = std::nullopt;');
-          writer.decrementWhitespace();
-          writer.writeLine('} else {');
-          writer.incrementWhitespace();
-          writer.writeLine(
-              'this->$fieldName = std::optional<double>(std::stod(request.serializedValue.value()));');
-          writer.decrementWhitespace();
-          writer.writeLine('}');
-        } else {
-          writer.writeLine(
-              'this->$fieldName = std::stod(request.serializedValue.value());');
-        }
-        break;
-      case BoolModelType():
-        writeIndexCheckForPrimitive();
-        break;
-      case EnumModelType():
-        writeIndexCheckForPrimitive();
-        break;
-      case ColorModelType():
-        writeIndexCheckForPrimitive();
-        break;
-      case ListModelType():
-        // TODO: Implement
-        break;
-      case MapModelType():
-        // TODO: Implement
-        break;
-      case CustomModelType() || UnknownModelType():
-        // If this field is a custom model and this is the last accessor in the
-        // chain, then we should deserialize the provided JSON into this field.
-        writer.writeLine(
-            'if (request.fieldAccesses.size() == fieldAccessIndex + 1) {');
-        writer.incrementWhitespace();
-        writeSerializedValueNullCheck();
-        writer.writeLine(
-            'auto result = rfl::json::read<${getCppType(field.typeInfo)}>(request.serializedValue.value());');
-        writer.writeLine('auto error = result.error();');
-
-        writer.writeLine('if (error.has_value()) {');
-        writer.incrementWhitespace();
-        writer.writeLine(
-            'std::cout << "Error deserializing $fieldName:" << std::endl << error.value().what() << std::endl;');
-        writer.writeLine('return;');
-        writer.decrementWhitespace();
-        writer.writeLine('} else {');
-        writer.incrementWhitespace();
-        writer.writeLine('this->$fieldName = result.value();');
-        writer.decrementWhitespace();
-        writer.writeLine('}');
-
-        writer.decrementWhitespace();
-
-        // If this field is a custom model and this is not the last accessor in
-        // the chain, then we should forward the update to the child.
-        writer.writeLine('} else {');
-        writer.incrementWhitespace();
-        var nullable = '';
-        if (field.typeInfo.isNullable) {
-          writer.writeLine('if (this->$fieldName.has_value()) {');
-          writer.incrementWhitespace();
-          nullable = '.value()';
-        }
-        writer.writeLine(
-            'this->$fieldName$nullable->handleModelUpdate(request, fieldAccessIndex + 1);');
-        if (field.typeInfo.isNullable) {
-          writer.decrementWhitespace();
-          writer.writeLine('} else {');
-          writer.incrementWhitespace();
-          writer.writeLine(
-              'std::cout << "Field $fieldName is null, so the update could not be forwarded." << std::endl;');
-          writer.decrementWhitespace();
-          writer.writeLine('}');
-        }
-        writer.decrementWhitespace();
-        writer.writeLine('}');
-
-        break;
+    void writeUpdateTypeInvalidError(_FieldUpdateKind updateKind) {
+      writer.writeLine(
+          'std::cout << "Invalid update type for \\"$fieldName\\" on model \\"${context.annotatedClass.name}\\"" << std::endl;');
+      writer.writeLine(
+          'std::cout << "Update type \\"${updateKind.name}\\" is not valid for field \\"$fieldName\\"." << std::endl;');
     }
+
+    void writeUpdate({
+      required ModelType type,
+      required _FieldUpdateKind updateKind,
+      String? assignmentTarget,
+    }) {
+      switch (type) {
+        case StringModelType():
+          assignmentTarget!;
+          if (updateKind != _FieldUpdateKind.set) {
+            writeUpdateTypeInvalidError(updateKind);
+            return;
+          }
+
+          writeIndexCheckForPrimitive();
+          writeSerializedValueNullCheck();
+
+          if (type.isNullable) {
+            writer
+                .writeLine('if (request.serializedValue.value() == "null") {');
+            writer.incrementWhitespace();
+            writer.writeLine('$assignmentTarget = std::nullopt;');
+            writer.decrementWhitespace();
+            writer.writeLine('} else {');
+            writer.incrementWhitespace();
+            writer.writeLine(
+                '$assignmentTarget = std::optional<std::string>(request.serializedValue.value().substr(1, request.serializedValue.value().size() - 2));');
+            writer.decrementWhitespace();
+            writer.writeLine('}');
+          } else {
+            writer.writeLine(
+                '$assignmentTarget = request.serializedValue.value();');
+          }
+
+          break;
+        case IntModelType():
+          assignmentTarget!;
+          if (updateKind != _FieldUpdateKind.set) {
+            writeUpdateTypeInvalidError(updateKind);
+            return;
+          }
+
+          writeIndexCheckForPrimitive();
+          writeSerializedValueNullCheck();
+
+          if (type.isNullable) {
+            writer
+                .writeLine('if (request.serializedValue.value() == "null") {');
+            writer.incrementWhitespace();
+            writer.writeLine('$assignmentTarget = std::nullopt;');
+            writer.decrementWhitespace();
+            writer.writeLine('} else {');
+            writer.incrementWhitespace();
+            writer.writeLine(
+                '$assignmentTarget = std::optional<int64_t>(std::stoll(request.serializedValue.value()));');
+            writer.decrementWhitespace();
+            writer.writeLine('}');
+          } else {
+            writer.writeLine(
+                '$assignmentTarget = std::stoll(request.serializedValue.value());');
+          }
+          break;
+        case DoubleModelType() || NumModelType():
+          assignmentTarget!;
+          if (updateKind != _FieldUpdateKind.set) {
+            writeUpdateTypeInvalidError(updateKind);
+            return;
+          }
+
+          writeIndexCheckForPrimitive();
+          writeSerializedValueNullCheck();
+
+          if (type.isNullable) {
+            writer
+                .writeLine('if (request.serializedValue.value() == "null") {');
+            writer.incrementWhitespace();
+            writer.writeLine('$assignmentTarget = std::nullopt;');
+            writer.decrementWhitespace();
+            writer.writeLine('} else {');
+            writer.incrementWhitespace();
+            writer.writeLine(
+                '$assignmentTarget = std::optional<double>(std::stod(request.serializedValue.value()));');
+            writer.decrementWhitespace();
+            writer.writeLine('}');
+          } else {
+            writer.writeLine(
+                '$assignmentTarget = std::stod(request.serializedValue.value());');
+          }
+          break;
+        case BoolModelType():
+          assignmentTarget!;
+          if (updateKind != _FieldUpdateKind.set) {
+            writeUpdateTypeInvalidError(updateKind);
+            return;
+          }
+
+          writeIndexCheckForPrimitive();
+          writeSerializedValueNullCheck();
+
+          if (type.isNullable) {
+            writer
+                .writeLine('if (request.serializedValue.value() == "null") {');
+            writer.incrementWhitespace();
+            writer.writeLine('$assignmentTarget = std::nullopt;');
+            writer.decrementWhitespace();
+            writer.writeLine('} else {');
+            writer.incrementWhitespace();
+            writer.writeLine(
+                '$assignmentTarget = std::optional<bool>(request.serializedValue.value() == "true");');
+            writer.decrementWhitespace();
+            writer.writeLine('}');
+          } else {
+            writer.writeLine(
+                '$assignmentTarget = request.serializedValue.value() == "true";');
+          }
+          break;
+        case EnumModelType():
+          writeIndexCheckForPrimitive();
+          break;
+        case ColorModelType():
+          writeIndexCheckForPrimitive();
+          break;
+        case ListModelType():
+          // TODO: Implement
+          break;
+        case MapModelType():
+          // TODO: Implement
+          break;
+        case CustomModelType() || UnknownModelType():
+          assignmentTarget!;
+          if (updateKind != _FieldUpdateKind.set) {
+            writeUpdateTypeInvalidError(updateKind);
+            return;
+          }
+
+          // If this field is a custom model and this is the last accessor in the
+          // chain, then we should deserialize the provided JSON into this field.
+          writer.writeLine(
+              'if (request.fieldAccesses.size() == fieldAccessIndex + 1) {');
+          writer.incrementWhitespace();
+          writeSerializedValueNullCheck();
+          writer.writeLine(
+              'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
+          writer.writeLine('auto error = result.error();');
+
+          writer.writeLine('if (error.has_value()) {');
+          writer.incrementWhitespace();
+          writer.writeLine(
+              'std::cout << "Error deserializing $fieldName:" << std::endl << error.value().what() << std::endl;');
+          writer.writeLine('return;');
+          writer.decrementWhitespace();
+          writer.writeLine('} else {');
+          writer.incrementWhitespace();
+          writer.writeLine('$assignmentTarget = result.value();');
+          writer.decrementWhitespace();
+          writer.writeLine('}');
+
+          writer.decrementWhitespace();
+
+          // If this field is a custom model and this is not the last accessor in
+          // the chain, then we should forward the update to the child.
+          writer.writeLine('} else {');
+          writer.incrementWhitespace();
+          var nullable = '';
+          if (type.isNullable) {
+            writer.writeLine('if ($assignmentTarget.has_value()) {');
+            writer.incrementWhitespace();
+            nullable = '.value()';
+          }
+          writer.writeLine(
+              '$assignmentTarget$nullable->handleModelUpdate(request, fieldAccessIndex + 1);');
+          if (type.isNullable) {
+            writer.decrementWhitespace();
+            writer.writeLine('} else {');
+            writer.incrementWhitespace();
+            writer.writeLine(
+                'std::cout << "Field $fieldName is null, so the update could not be forwarded." << std::endl;');
+            writer.decrementWhitespace();
+            writer.writeLine('}');
+          }
+          writer.decrementWhitespace();
+          writer.writeLine('}');
+
+          break;
+      }
+    }
+
+    writer.writeLine('if (request.updateKind == FieldUpdateKind::set) {');
+    writer.incrementWhitespace();
+    writeUpdate(
+      type: field.typeInfo,
+      updateKind: _FieldUpdateKind.set,
+      assignmentTarget: 'this->$fieldName',
+    );
+    writer.decrementWhitespace();
+    writer
+        .writeLine('} else if (request.updateKind == FieldUpdateKind::add) {');
+    writer.incrementWhitespace();
+    writeUpdate(
+      type: field.typeInfo,
+      updateKind: _FieldUpdateKind.add,
+      assignmentTarget: 'this->$fieldName',
+    );
+    writer.decrementWhitespace();
+    writer.writeLine(
+        '} else if (request.updateKind == FieldUpdateKind::remove) {');
+    writer.incrementWhitespace();
+    writeUpdate(
+      type: field.typeInfo,
+      updateKind: _FieldUpdateKind.remove,
+      assignmentTarget: 'this->$fieldName',
+    );
+    writer.decrementWhitespace();
+    writer.writeLine('}');
 
     writer.decrementWhitespace();
     writer.writeLine('}');
@@ -215,3 +307,5 @@ String getModelSyncFn(ModelClassInfo context) {
 
   return writer.result;
 }
+
+enum _FieldUpdateKind { set, add, remove }
