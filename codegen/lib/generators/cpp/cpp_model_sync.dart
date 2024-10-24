@@ -187,7 +187,7 @@ void _writeUpdateTypeInvalidError({
 ///   // writeUpdate(
 ///   //   type: IntModelType(),
 ///   //   updateKind: _FieldUpdateKind.set,
-///   //   modificationTarget: 'this->myMapField[request.fieldAccesses[fieldAccessIndex + 1]->serializedMapValue.value()]',
+///   //   modificationTarget: 'this->myMapField[request.fieldAccesses[fieldAccessIndex + 1]->serializedValue.value()]',
 ///   // );
 /// }
 /// // Etc...
@@ -374,23 +374,35 @@ void _writeUpdate({
       // TODO: Implement
       break;
     case MapModelType():
+      // If the field is a map and this is *not* the last accessor in the chain,
+      // then one of the two following things is true:
+      //  1. The request is to set or remove a specific value in the map, in
+      //     which case we should handle it by either setting or removing the
+      //     value.
+      //  2. The request is to update some distant child whose parent lives in
+      //     this map, in which case we should forward the request to the child.
       writer.writeLine(
           'if (request.fieldAccesses.size() > fieldAccessIndex + 1) {');
       writer.incrementWhitespace();
+      // TODO: If update kind is delete, then we should delete. If add, we should error.
       _writeUpdate(
         context: context,
         writer: writer,
         type: type.valueType,
         updateKind: updateKind,
         fieldAccessExpression:
-            '$fieldAccessExpression[request.fieldAccesses[fieldAccessIndex + 1]->serializedMapValue.value()]', // TODO: deserialize the key!
+            '$fieldAccessExpression[request.fieldAccesses[fieldAccessIndex + 1]->serializedMapKey.value()]', // TODO: deserialize the key!
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
       );
       writer.decrementWhitespace();
 
+      // If this *is* the last accessor in the chain, then the provided JSON is
+      // the new value for the entire map, and we should deserialize it into
+      // this field.
       writer.writeLine('} else {');
       writer.incrementWhitespace();
-      if (updateKind == _FieldUpdateKind.add) {
+      if (updateKind == _FieldUpdateKind.add ||
+          updateKind == _FieldUpdateKind.remove) {
         _writeUpdateTypeInvalidError(
           writer: writer,
           context: context,
@@ -398,11 +410,16 @@ void _writeUpdate({
           type: type,
           fieldAccessExpression: fieldAccessExpression,
         );
-        return;
-      } else if (updateKind == _FieldUpdateKind.remove) {
-        writer.writeLine('// TODO: remove');
       } else if (updateKind == _FieldUpdateKind.set) {
-        writer.writeLine('// TODO: set');
+        _writeSerializedValueNullCheck(writer: writer);
+        writer.writeLine(
+            'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
+
+        if (type.isNullable) {
+          writer.writeLine('$fieldAccessExpression = std::optional<${getCppType(type)}>(result.value());');
+        } else {
+          writer.writeLine('$fieldAccessExpression = result.value();');
+        }
       }
       writer.decrementWhitespace();
       writer.writeLine('}');
