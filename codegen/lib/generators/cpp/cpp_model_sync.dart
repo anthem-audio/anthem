@@ -65,9 +65,9 @@ String getModelSyncFn(ModelClassInfo context) {
       writer.writeLine('}');
     }
 
-    void writeIndexCheckForPrimitive() {
+    void writeIndexCheckForPrimitive(int fieldAccessIndexMod) {
       writer.writeLine(
-          'if (request.fieldAccesses.size() > fieldAccessIndex + 1) {');
+          'if (request.fieldAccesses.size() > fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
       writer.incrementWhitespace();
       writeInvalidAccessWarning();
       writer.writeLine('return;');
@@ -75,27 +75,28 @@ String getModelSyncFn(ModelClassInfo context) {
       writer.writeLine('}');
     }
 
-    void writeUpdateTypeInvalidError(_FieldUpdateKind updateKind) {
+    void writeUpdateTypeInvalidError(
+        _FieldUpdateKind updateKind, ModelType type) {
       writer.writeLine(
           'std::cout << "Invalid update type for \\"$fieldName\\" on model \\"${context.annotatedClass.name}\\"" << std::endl;');
       writer.writeLine(
-          'std::cout << "Update type \\"${updateKind.name}\\" is not valid for field \\"$fieldName\\"." << std::endl;');
+          'std::cout << "Update type \\"${updateKind.name}\\" is not valid for field \\"$fieldName\\" of type ${type.toString()}." << std::endl;');
     }
 
     void writeUpdate({
       required ModelType type,
       required _FieldUpdateKind updateKind,
-      String? assignmentTarget,
+      required String modificationTarget,
+      int fieldAccessIndexMod = 0,
     }) {
       switch (type) {
         case StringModelType():
-          assignmentTarget!;
           if (updateKind != _FieldUpdateKind.set) {
-            writeUpdateTypeInvalidError(updateKind);
+            writeUpdateTypeInvalidError(updateKind, type);
             return;
           }
 
-          writeIndexCheckForPrimitive();
+          writeIndexCheckForPrimitive(fieldAccessIndexMod);
           writeSerializedValueNullCheck();
 
           final stringGetter =
@@ -105,123 +106,142 @@ String getModelSyncFn(ModelClassInfo context) {
             writer
                 .writeLine('if (request.serializedValue.value() == "null") {');
             writer.incrementWhitespace();
-            writer.writeLine('$assignmentTarget = std::nullopt;');
+            writer.writeLine('$modificationTarget = std::nullopt;');
             writer.decrementWhitespace();
             writer.writeLine('} else {');
             writer.incrementWhitespace();
             writer.writeLine(
-                '$assignmentTarget = std::optional<std::string>($stringGetter);');
+                '$modificationTarget = std::optional<std::string>($stringGetter);');
             writer.decrementWhitespace();
             writer.writeLine('}');
           } else {
-            writer.writeLine('$assignmentTarget = $stringGetter;');
+            writer.writeLine('$modificationTarget = $stringGetter;');
           }
 
           break;
         case IntModelType():
-          assignmentTarget!;
           if (updateKind != _FieldUpdateKind.set) {
-            writeUpdateTypeInvalidError(updateKind);
+            writeUpdateTypeInvalidError(updateKind, type);
             return;
           }
 
-          writeIndexCheckForPrimitive();
+          writeIndexCheckForPrimitive(fieldAccessIndexMod);
           writeSerializedValueNullCheck();
 
           if (type.isNullable) {
             writer
                 .writeLine('if (request.serializedValue.value() == "null") {');
             writer.incrementWhitespace();
-            writer.writeLine('$assignmentTarget = std::nullopt;');
+            writer.writeLine('$modificationTarget = std::nullopt;');
             writer.decrementWhitespace();
             writer.writeLine('} else {');
             writer.incrementWhitespace();
             writer.writeLine(
-                '$assignmentTarget = std::optional<int64_t>(std::stoll(request.serializedValue.value()));');
+                '$modificationTarget = std::optional<int64_t>(std::stoll(request.serializedValue.value()));');
             writer.decrementWhitespace();
             writer.writeLine('}');
           } else {
             writer.writeLine(
-                '$assignmentTarget = std::stoll(request.serializedValue.value());');
+                '$modificationTarget = std::stoll(request.serializedValue.value());');
           }
           break;
         case DoubleModelType() || NumModelType():
-          assignmentTarget!;
           if (updateKind != _FieldUpdateKind.set) {
-            writeUpdateTypeInvalidError(updateKind);
+            writeUpdateTypeInvalidError(updateKind, type);
             return;
           }
 
-          writeIndexCheckForPrimitive();
+          writeIndexCheckForPrimitive(fieldAccessIndexMod);
           writeSerializedValueNullCheck();
 
           if (type.isNullable) {
             writer
                 .writeLine('if (request.serializedValue.value() == "null") {');
             writer.incrementWhitespace();
-            writer.writeLine('$assignmentTarget = std::nullopt;');
+            writer.writeLine('$modificationTarget = std::nullopt;');
             writer.decrementWhitespace();
             writer.writeLine('} else {');
             writer.incrementWhitespace();
             writer.writeLine(
-                '$assignmentTarget = std::optional<double>(std::stod(request.serializedValue.value()));');
+                '$modificationTarget = std::optional<double>(std::stod(request.serializedValue.value()));');
             writer.decrementWhitespace();
             writer.writeLine('}');
           } else {
             writer.writeLine(
-                '$assignmentTarget = std::stod(request.serializedValue.value());');
+                '$modificationTarget = std::stod(request.serializedValue.value());');
           }
           break;
         case BoolModelType():
-          assignmentTarget!;
           if (updateKind != _FieldUpdateKind.set) {
-            writeUpdateTypeInvalidError(updateKind);
+            writeUpdateTypeInvalidError(updateKind, type);
             return;
           }
 
-          writeIndexCheckForPrimitive();
+          writeIndexCheckForPrimitive(fieldAccessIndexMod);
           writeSerializedValueNullCheck();
 
           if (type.isNullable) {
             writer
                 .writeLine('if (request.serializedValue.value() == "null") {');
             writer.incrementWhitespace();
-            writer.writeLine('$assignmentTarget = std::nullopt;');
+            writer.writeLine('$modificationTarget = std::nullopt;');
             writer.decrementWhitespace();
             writer.writeLine('} else {');
             writer.incrementWhitespace();
             writer.writeLine(
-                '$assignmentTarget = std::optional<bool>(request.serializedValue.value() == "true");');
+                '$modificationTarget = std::optional<bool>(request.serializedValue.value() == "true");');
             writer.decrementWhitespace();
             writer.writeLine('}');
           } else {
             writer.writeLine(
-                '$assignmentTarget = request.serializedValue.value() == "true";');
+                '$modificationTarget = request.serializedValue.value() == "true";');
           }
           break;
         case EnumModelType():
-          writeIndexCheckForPrimitive();
+          writeIndexCheckForPrimitive(fieldAccessIndexMod);
           break;
         case ColorModelType():
-          writeIndexCheckForPrimitive();
+          writeIndexCheckForPrimitive(fieldAccessIndexMod);
           break;
         case ListModelType():
           // TODO: Implement
           break;
         case MapModelType():
-          // TODO: Implement
+          writer.writeLine(
+              'if (request.fieldAccesses.size() > fieldAccessIndex + 1) {');
+          writer.incrementWhitespace();
+          writeUpdate(
+            type: type.valueType,
+            updateKind: updateKind,
+            modificationTarget:
+                'this->$fieldName[request.fieldAccesses[fieldAccessIndex + 1]->serializedMapValue.value()]', // TODO: deserialize this!
+            fieldAccessIndexMod: fieldAccessIndexMod + 1,
+          );
+          writer.decrementWhitespace();
+
+          writer.writeLine('} else {');
+          writer.incrementWhitespace();
+          if (updateKind == _FieldUpdateKind.add) {
+            writeUpdateTypeInvalidError(updateKind, type);
+            return;
+          } else if (updateKind == _FieldUpdateKind.remove) {
+            writer.writeLine('// TODO: remove');
+          } else if (updateKind == _FieldUpdateKind.set) {
+            writer.writeLine('// TODO: set');
+          }
+          writer.decrementWhitespace();
+          writer.writeLine('}');
           break;
         case CustomModelType() || UnknownModelType():
-          assignmentTarget!;
           if (updateKind != _FieldUpdateKind.set) {
-            writeUpdateTypeInvalidError(updateKind);
+            writeUpdateTypeInvalidError(updateKind, type);
             return;
           }
 
           // If this field is a custom model and this is the last accessor in the
           // chain, then we should deserialize the provided JSON into this field.
           writer.writeLine(
-              'if (request.fieldAccesses.size() == fieldAccessIndex + 1) {');
+              'if (request.fieldAccesses.size() == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
           writer.incrementWhitespace();
           writeSerializedValueNullCheck();
           writer.writeLine(
@@ -236,7 +256,7 @@ String getModelSyncFn(ModelClassInfo context) {
           writer.decrementWhitespace();
           writer.writeLine('} else {');
           writer.incrementWhitespace();
-          writer.writeLine('$assignmentTarget = result.value();');
+          writer.writeLine('$modificationTarget =  result.value();');
           writer.decrementWhitespace();
           writer.writeLine('}');
 
@@ -248,12 +268,12 @@ String getModelSyncFn(ModelClassInfo context) {
           writer.incrementWhitespace();
           var nullable = '';
           if (type.isNullable) {
-            writer.writeLine('if ($assignmentTarget.has_value()) {');
+            writer.writeLine('if ($modificationTarget.has_value()) {');
             writer.incrementWhitespace();
             nullable = '.value()';
           }
           writer.writeLine(
-              '$assignmentTarget$nullable->handleModelUpdate(request, fieldAccessIndex + 1);');
+              '$modificationTarget$nullable->handleModelUpdate(request, fieldAccessIndex + 1 + $fieldAccessIndexMod);');
           if (type.isNullable) {
             writer.decrementWhitespace();
             writer.writeLine('} else {');
@@ -275,7 +295,7 @@ String getModelSyncFn(ModelClassInfo context) {
     writeUpdate(
       type: field.typeInfo,
       updateKind: _FieldUpdateKind.set,
-      assignmentTarget: 'this->$fieldName',
+      modificationTarget: 'this->$fieldName',
     );
     writer.decrementWhitespace();
     writer
@@ -284,7 +304,7 @@ String getModelSyncFn(ModelClassInfo context) {
     writeUpdate(
       type: field.typeInfo,
       updateKind: _FieldUpdateKind.add,
-      assignmentTarget: 'this->$fieldName',
+      modificationTarget: 'this->$fieldName',
     );
     writer.decrementWhitespace();
     writer.writeLine(
@@ -293,7 +313,7 @@ String getModelSyncFn(ModelClassInfo context) {
     writeUpdate(
       type: field.typeInfo,
       updateKind: _FieldUpdateKind.remove,
-      assignmentTarget: 'this->$fieldName',
+      modificationTarget: 'this->$fieldName',
     );
     writer.decrementWhitespace();
     writer.writeLine('}');
