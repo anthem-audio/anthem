@@ -373,7 +373,9 @@ void _writeUpdate({
         context: context,
       );
 
-      // TODO: Implement
+      // TODO: If this works, replicate this in the other types.
+      writer.writeLine(
+          '$fieldAccessExpression = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
 
       break;
     case ColorModelType():
@@ -384,7 +386,16 @@ void _writeUpdate({
         fieldAccessIndexMod: fieldAccessIndexMod,
         fieldAccessExpression: fieldAccessExpression,
       );
-      // TODO: Implement
+      writeSetUpdateKindAssertion();
+      _writeSerializedValueNullCheck(
+        writer: writer,
+        accessor: fieldAccessExpression,
+        context: context,
+      );
+      
+      writer.writeLine(
+          '$fieldAccessExpression = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
+
       break;
     case ListModelType():
       // If the field is a list and this is *not* the last accessor in the
