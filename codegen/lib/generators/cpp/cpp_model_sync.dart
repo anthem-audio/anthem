@@ -134,7 +134,6 @@ void _writeUpdateTypeInvalidError({
 /// ```dart
 /// writeUpdate(
 ///   type: IntModelType(),
-///   updateKind: _FieldUpdateKind.set,
 ///   modificationTarget: 'this->myStringField',
 /// );
 /// ```
@@ -159,7 +158,6 @@ void _writeUpdateTypeInvalidError({
 ///   // recursively like so:
 ///   // writeUpdate(
 ///   //   type: IntModelType(),
-///   //   updateKind: _FieldUpdateKind.set,
 ///   //   modificationTarget: 'this->myMapField[request.fieldAccesses[fieldAccessIndex + 1]->serializedValue.value()]',
 ///   // );
 /// }
@@ -172,7 +170,7 @@ void _writeUpdate({
   required ModelClassInfo context,
   int fieldAccessIndexMod = 0,
 }) {
-  void assertSetUpdateKind() {
+  void writeSetUpdateKindAssertion() {
     writer.writeLine('if (request.updateKind == FieldUpdateKind::add) {');
     writer.incrementWhitespace();
     _writeUpdateTypeInvalidError(
@@ -209,7 +207,7 @@ void _writeUpdate({
         fieldAccessIndexMod: fieldAccessIndexMod,
         fieldAccessExpression: fieldAccessExpression,
       );
-      assertSetUpdateKind();
+      writeSetUpdateKindAssertion();
       _writeSerializedValueNullCheck(writer: writer);
 
       final stringGetter =
@@ -239,7 +237,7 @@ void _writeUpdate({
         fieldAccessIndexMod: fieldAccessIndexMod,
         fieldAccessExpression: fieldAccessExpression,
       );
-      assertSetUpdateKind();
+      writeSetUpdateKindAssertion();
       _writeSerializedValueNullCheck(writer: writer);
 
       if (type.isNullable) {
@@ -266,7 +264,7 @@ void _writeUpdate({
         fieldAccessIndexMod: fieldAccessIndexMod,
         fieldAccessExpression: fieldAccessExpression,
       );
-      assertSetUpdateKind();
+      writeSetUpdateKindAssertion();
       _writeSerializedValueNullCheck(writer: writer);
 
       if (type.isNullable) {
@@ -293,7 +291,7 @@ void _writeUpdate({
         fieldAccessIndexMod: fieldAccessIndexMod,
         fieldAccessExpression: fieldAccessExpression,
       );
-      assertSetUpdateKind();
+      writeSetUpdateKindAssertion();
       _writeSerializedValueNullCheck(writer: writer);
 
       if (type.isNullable) {
@@ -320,7 +318,7 @@ void _writeUpdate({
         fieldAccessIndexMod: fieldAccessIndexMod,
         fieldAccessExpression: fieldAccessExpression,
       );
-      assertSetUpdateKind();
+      writeSetUpdateKindAssertion();
       break;
     case ColorModelType():
       _writeIndexCheckForPrimitive(
@@ -343,16 +341,39 @@ void _writeUpdate({
       //  2. The request is to update some distant child whose parent lives in
       //     this map, in which case we should forward the request to the child.
       writer.writeLine(
-          'if (request.fieldAccesses.size() > fieldAccessIndex + 1) {');
-      writer.incrementWhitespace();
-      // TODO: If update kind is delete, then we should delete. If add, we should error.
+          'if (request.fieldAccesses.size() >= fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
       _writeKeyDeserialize(
         writer: writer,
         keyExpression:
-            'request.fieldAccesses[fieldAccessIndex + 1]->serializedMapKey',
+            'request.fieldAccesses[fieldAccessIndex + 1 + $fieldAccessIndexMod]->serializedMapKey',
         keyType: type.keyType,
         outputVariable: 'deserializedKey',
       );
+
+      writer.incrementWhitespace();
+      writer.writeLine(
+          'if (request.updateKind == FieldUpdateKind.delete && request.fieldAccesses.size() == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
+      writer.incrementWhitespace();
+      writer.writeLine('$fieldAccessExpression.erase(deserializedKey);');
+      writer.decrementWhitespace();
+      writer.writeLine(
+          'else if (request.updateKind == FieldUpdateKind.add && request.fieldAccess.size() == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
+      writer.incrementWhitespace();
+      // "Add" is only valid for list. Should use "set" instead.
+      _writeUpdateTypeInvalidError(
+        writer: writer,
+        context: context,
+        updateKind: 'add',
+        type: type,
+        fieldAccessExpression: fieldAccessExpression,
+      );
+      writer.decrementWhitespace();
+      writer.writeLine('} else {');
+      writer.incrementWhitespace();
+
+      // This will handle setting the value or forwarding the value, depending
+      // on which is needed. We only have to explicitly handle deletion here,
+      // which we do above.
       _writeUpdate(
         context: context,
         writer: writer,
@@ -360,15 +381,18 @@ void _writeUpdate({
         fieldAccessExpression: '$fieldAccessExpression[deserializedKey]',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
       );
+
       writer.decrementWhitespace();
+      writer.writeLine('}');
 
       // If this *is* the last accessor in the chain, then the provided JSON is
       // the new value for the entire map, and we should deserialize it into
       // this field.
+      writer.decrementWhitespace();
       writer.writeLine('} else {');
       writer.incrementWhitespace();
-      assertSetUpdateKind();
       _writeSerializedValueNullCheck(writer: writer);
+      writeSetUpdateKindAssertion();
       writer.writeLine(
           'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
 
@@ -378,6 +402,7 @@ void _writeUpdate({
       } else {
         writer.writeLine('$fieldAccessExpression = result.value();');
       }
+
       writer.decrementWhitespace();
       writer.writeLine('}');
       break;
@@ -387,7 +412,7 @@ void _writeUpdate({
       writer.writeLine(
           'if (request.fieldAccesses.size() == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
       writer.incrementWhitespace();
-      assertSetUpdateKind();
+      writeSetUpdateKindAssertion();
       _writeSerializedValueNullCheck(writer: writer);
       writer.writeLine(
           'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
