@@ -46,39 +46,12 @@ String getModelSyncFn(ModelClassInfo context) {
         '${isFirst ? '' : 'else '}if (request.fieldAccesses[fieldAccessIndex]->fieldName == "$fieldName") {');
     writer.incrementWhitespace();
 
-    writer.writeLine('if (request.updateKind == FieldUpdateKind::set) {');
-    writer.incrementWhitespace();
     _writeUpdate(
       context: context,
       writer: writer,
       type: field.typeInfo,
-      updateKind: _FieldUpdateKind.set,
       fieldAccessExpression: 'this->$fieldName',
     );
-    writer.decrementWhitespace();
-    writer
-        .writeLine('} else if (request.updateKind == FieldUpdateKind::add) {');
-    writer.incrementWhitespace();
-    _writeUpdate(
-      context: context,
-      writer: writer,
-      type: field.typeInfo,
-      updateKind: _FieldUpdateKind.add,
-      fieldAccessExpression: 'this->$fieldName',
-    );
-    writer.decrementWhitespace();
-    writer.writeLine(
-        '} else if (request.updateKind == FieldUpdateKind::remove) {');
-    writer.incrementWhitespace();
-    _writeUpdate(
-      context: context,
-      writer: writer,
-      type: field.typeInfo,
-      updateKind: _FieldUpdateKind.remove,
-      fieldAccessExpression: 'this->$fieldName',
-    );
-    writer.decrementWhitespace();
-    writer.writeLine('}');
 
     writer.decrementWhitespace();
     writer.writeLine('}');
@@ -140,14 +113,14 @@ void _writeIndexCheckForPrimitive({
 void _writeUpdateTypeInvalidError({
   required Writer writer,
   required ModelClassInfo context,
-  required _FieldUpdateKind updateKind,
+  required String updateKind,
   required ModelType type,
   required String fieldAccessExpression,
 }) {
   writer.writeLine(
       'std::cout << "Invalid update type for accessor \\"$fieldAccessExpression\\" on model \\"${context.annotatedClass.name}\\"" << std::endl;');
   writer.writeLine(
-      'std::cout << "Update type \\"${updateKind.name}\\" is not valid for field \\"$fieldAccessExpression\\" of type ${type.toString()}." << std::endl;');
+      'std::cout << "Update type \\"$updateKind\\" is not valid for field \\"$fieldAccessExpression\\" of type ${type.toString()}." << std::endl;');
 }
 
 /// Writes a field update for the given field.
@@ -195,24 +168,40 @@ void _writeUpdateTypeInvalidError({
 void _writeUpdate({
   required Writer writer,
   required ModelType type,
-  required _FieldUpdateKind updateKind,
   required String fieldAccessExpression,
   required ModelClassInfo context,
   int fieldAccessIndexMod = 0,
 }) {
+  void assertSetUpdateKind() {
+    writer.writeLine('if (request.updateKind == FieldUpdateKind::add) {');
+    writer.incrementWhitespace();
+    _writeUpdateTypeInvalidError(
+      writer: writer,
+      context: context,
+      updateKind: 'add',
+      type: type,
+      fieldAccessExpression: fieldAccessExpression,
+    );
+    writer.writeLine('return;');
+    writer.decrementWhitespace();
+    writer.writeLine(
+        '} else if (request.updateKind == FieldUpdateKind::remove) {');
+    writer.incrementWhitespace();
+    _writeUpdateTypeInvalidError(
+      writer: writer,
+      context: context,
+      updateKind: 'remove',
+      type: type,
+      fieldAccessExpression: fieldAccessExpression,
+    );
+    writer.writeLine('return;');
+    writer.decrementWhitespace();
+    writer.writeLine('}');
+    writer.writeLine();
+  }
+
   switch (type) {
     case StringModelType():
-      if (updateKind != _FieldUpdateKind.set) {
-        _writeUpdateTypeInvalidError(
-          writer: writer,
-          context: context,
-          updateKind: updateKind,
-          type: type,
-          fieldAccessExpression: fieldAccessExpression,
-        );
-        return;
-      }
-
       _writeIndexCheckForPrimitive(
         writer: writer,
         context: context,
@@ -220,6 +209,7 @@ void _writeUpdate({
         fieldAccessIndexMod: fieldAccessIndexMod,
         fieldAccessExpression: fieldAccessExpression,
       );
+      assertSetUpdateKind();
       _writeSerializedValueNullCheck(writer: writer);
 
       final stringGetter =
@@ -242,17 +232,6 @@ void _writeUpdate({
 
       break;
     case IntModelType():
-      if (updateKind != _FieldUpdateKind.set) {
-        _writeUpdateTypeInvalidError(
-          writer: writer,
-          context: context,
-          updateKind: updateKind,
-          type: type,
-          fieldAccessExpression: fieldAccessExpression,
-        );
-        return;
-      }
-
       _writeIndexCheckForPrimitive(
         writer: writer,
         context: context,
@@ -260,6 +239,7 @@ void _writeUpdate({
         fieldAccessIndexMod: fieldAccessIndexMod,
         fieldAccessExpression: fieldAccessExpression,
       );
+      assertSetUpdateKind();
       _writeSerializedValueNullCheck(writer: writer);
 
       if (type.isNullable) {
@@ -279,17 +259,6 @@ void _writeUpdate({
       }
       break;
     case DoubleModelType() || NumModelType():
-      if (updateKind != _FieldUpdateKind.set) {
-        _writeUpdateTypeInvalidError(
-          writer: writer,
-          context: context,
-          updateKind: updateKind,
-          type: type,
-          fieldAccessExpression: fieldAccessExpression,
-        );
-        return;
-      }
-
       _writeIndexCheckForPrimitive(
         writer: writer,
         context: context,
@@ -297,6 +266,7 @@ void _writeUpdate({
         fieldAccessIndexMod: fieldAccessIndexMod,
         fieldAccessExpression: fieldAccessExpression,
       );
+      assertSetUpdateKind();
       _writeSerializedValueNullCheck(writer: writer);
 
       if (type.isNullable) {
@@ -316,17 +286,6 @@ void _writeUpdate({
       }
       break;
     case BoolModelType():
-      if (updateKind != _FieldUpdateKind.set) {
-        _writeUpdateTypeInvalidError(
-          writer: writer,
-          context: context,
-          updateKind: updateKind,
-          type: type,
-          fieldAccessExpression: fieldAccessExpression,
-        );
-        return;
-      }
-
       _writeIndexCheckForPrimitive(
         writer: writer,
         context: context,
@@ -334,6 +293,7 @@ void _writeUpdate({
         fieldAccessIndexMod: fieldAccessIndexMod,
         fieldAccessExpression: fieldAccessExpression,
       );
+      assertSetUpdateKind();
       _writeSerializedValueNullCheck(writer: writer);
 
       if (type.isNullable) {
@@ -360,6 +320,7 @@ void _writeUpdate({
         fieldAccessIndexMod: fieldAccessIndexMod,
         fieldAccessExpression: fieldAccessExpression,
       );
+      assertSetUpdateKind();
       break;
     case ColorModelType():
       _writeIndexCheckForPrimitive(
@@ -396,7 +357,6 @@ void _writeUpdate({
         context: context,
         writer: writer,
         type: type.valueType,
-        updateKind: updateKind,
         fieldAccessExpression: '$fieldAccessExpression[deserializedKey]',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
       );
@@ -407,47 +367,27 @@ void _writeUpdate({
       // this field.
       writer.writeLine('} else {');
       writer.incrementWhitespace();
-      if (updateKind == _FieldUpdateKind.add ||
-          updateKind == _FieldUpdateKind.remove) {
-        _writeUpdateTypeInvalidError(
-          writer: writer,
-          context: context,
-          updateKind: updateKind,
-          type: type,
-          fieldAccessExpression: fieldAccessExpression,
-        );
-      } else if (updateKind == _FieldUpdateKind.set) {
-        _writeSerializedValueNullCheck(writer: writer);
-        writer.writeLine(
-            'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
+      assertSetUpdateKind();
+      _writeSerializedValueNullCheck(writer: writer);
+      writer.writeLine(
+          'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
 
-        if (type.isNullable) {
-          writer.writeLine(
-              '$fieldAccessExpression = std::optional<${getCppType(type)}>(result.value());');
-        } else {
-          writer.writeLine('$fieldAccessExpression = result.value();');
-        }
+      if (type.isNullable) {
+        writer.writeLine(
+            '$fieldAccessExpression = std::optional<${getCppType(type)}>(result.value());');
+      } else {
+        writer.writeLine('$fieldAccessExpression = result.value();');
       }
       writer.decrementWhitespace();
       writer.writeLine('}');
       break;
     case CustomModelType() || UnknownModelType():
-      if (updateKind != _FieldUpdateKind.set) {
-        _writeUpdateTypeInvalidError(
-          writer: writer,
-          context: context,
-          updateKind: updateKind,
-          type: type,
-          fieldAccessExpression: fieldAccessExpression,
-        );
-        return;
-      }
-
       // If this field is a custom model and this is the last accessor in the
       // chain, then we should deserialize the provided JSON into this field.
       writer.writeLine(
           'if (request.fieldAccesses.size() == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
       writer.incrementWhitespace();
+      assertSetUpdateKind();
       _writeSerializedValueNullCheck(writer: writer);
       writer.writeLine(
           'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
@@ -608,5 +548,3 @@ void _writeKeyDeserialize({
           'These types should not be marked as map keys, and so should be caught above. This is a bug.');
   }
 }
-
-enum _FieldUpdateKind { set, add, remove }
