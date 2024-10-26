@@ -374,7 +374,51 @@ void _writeUpdate({
       writer.writeLine(
           'if (fieldAccessIndex + 1 + $fieldAccessIndexMod < request.fieldAccesses.size()) {');
       writer.incrementWhitespace();
-      writer.writeLine('// ...');
+
+      writer.writeLine(
+          'if (!request.fieldAccesses[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.has_value()) {');
+      writer.incrementWhitespace();
+      writer.writeLine(
+          'std::cout << "Error processing list update for accessor $fieldAccessExpression: list index is null." << std::endl;');
+      writer.writeLine('return;');
+      writer.decrementWhitespace();
+      writer.writeLine('}');
+
+      writer.writeLine(
+          'if (request.updateKind == FieldUpdateKind::remove && request.fieldAccesses.size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
+      writer.incrementWhitespace();
+      writer.writeLine(
+          '$fieldAccessExpression.erase(request.fieldAccesses[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value());');
+      writer.decrementWhitespace();
+      writer.writeLine(
+          '} else if (request.updateKind == FieldUpdateKind::add && request.fieldAccesses.size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
+      writer.incrementWhitespace();
+      _writeSerializedValueNullCheck(writer: writer);
+      writer.writeLine('${getCppType(type)} itemResult;');
+      _writeUpdate(
+        context: context,
+        writer: writer,
+        type: type.itemType,
+        fieldAccessExpression: 'itemResult',
+        fieldAccessIndexMod: fieldAccessIndexMod + 1,
+      );
+      writer.writeLine(
+          '$fieldAccessExpression.insert(request.fieldAccesses[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value(), std::move(itemResult));');
+      writer.decrementWhitespace();
+      writer.writeLine('} else {');
+      writer.incrementWhitespace();
+      // This will either set the field in the list, or forward the request to
+      // the child model represented by the field in the list.
+      _writeUpdate(
+        context: context,
+        writer: writer,
+        type: type.itemType,
+        fieldAccessExpression:
+            '$fieldAccessExpression[request.listIndex.value()]',
+        fieldAccessIndexMod: fieldAccessIndexMod + 1,
+      );
+      writer.decrementWhitespace();
+      writer.writeLine('}');
 
       // If this *is* the last accessor in the chain, then the provided JSON is
       // the new value for the entire list, and we should deserialize it into
@@ -425,12 +469,12 @@ void _writeUpdate({
       );
 
       writer.writeLine(
-          'if (request.updateKind == FieldUpdateKind.delete && request.fieldAccesses.size() == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
+          'if (request.updateKind == FieldUpdateKind.delete && request.fieldAccesses.size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
       writer.incrementWhitespace();
       writer.writeLine('$fieldAccessExpression.erase(deserializedKey);');
       writer.decrementWhitespace();
       writer.writeLine(
-          'else if (request.updateKind == FieldUpdateKind.add && request.fieldAccess.size() == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
+          'else if (request.updateKind == FieldUpdateKind.add && request.fieldAccess.size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
       writer.incrementWhitespace();
       // "Add" is only valid for list. Should use "set" instead.
       _writeUpdateTypeInvalidError(
