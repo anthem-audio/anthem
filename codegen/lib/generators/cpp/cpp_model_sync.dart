@@ -105,9 +105,15 @@ void _writeInvalidAccessWarning({
       'std::cout << "\\"$fieldAccessExpression\\" is of type \\"${type.name}\\"." << std::endl;');
 }
 
-void _writeSerializedValueNullCheck({required Writer writer}) {
+void _writeSerializedValueNullCheck({
+  required Writer writer,
+  required String accessor,
+  required ModelClassInfo context,
+}) {
   writer.writeLine('if (!request.serializedValue.has_value()) {');
   writer.incrementWhitespace();
+  writer.writeLine(
+      'std::cout << "Error updating accessor \\"$accessor\\" on model \\"${context.annotatedClass.name}\\"." << std::endl;');
   writer.writeLine(
       'std::cout << "Serialized value is null, but shouldn\'t be in this context." << std::endl;');
   writer.writeLine('return;');
@@ -234,7 +240,11 @@ void _writeUpdate({
         fieldAccessExpression: fieldAccessExpression,
       );
       writeSetUpdateKindAssertion();
-      _writeSerializedValueNullCheck(writer: writer);
+      _writeSerializedValueNullCheck(
+        writer: writer,
+        accessor: fieldAccessExpression,
+        context: context,
+      );
 
       final stringGetter =
           'request.serializedValue.value().substr(1, request.serializedValue.value().size() - 2)';
@@ -264,7 +274,11 @@ void _writeUpdate({
         fieldAccessExpression: fieldAccessExpression,
       );
       writeSetUpdateKindAssertion();
-      _writeSerializedValueNullCheck(writer: writer);
+      _writeSerializedValueNullCheck(
+        writer: writer,
+        accessor: fieldAccessExpression,
+        context: context,
+      );
 
       if (type.isNullable) {
         writer.writeLine('if (request.serializedValue.value() == "null") {');
@@ -291,7 +305,11 @@ void _writeUpdate({
         fieldAccessExpression: fieldAccessExpression,
       );
       writeSetUpdateKindAssertion();
-      _writeSerializedValueNullCheck(writer: writer);
+      _writeSerializedValueNullCheck(
+        writer: writer,
+        accessor: fieldAccessExpression,
+        context: context,
+      );
 
       if (type.isNullable) {
         writer.writeLine('if (request.serializedValue.value() == "null") {');
@@ -318,7 +336,11 @@ void _writeUpdate({
         fieldAccessExpression: fieldAccessExpression,
       );
       writeSetUpdateKindAssertion();
-      _writeSerializedValueNullCheck(writer: writer);
+      _writeSerializedValueNullCheck(
+        writer: writer,
+        accessor: fieldAccessExpression,
+        context: context,
+      );
 
       if (type.isNullable) {
         writer.writeLine('if (request.serializedValue.value() == "null") {');
@@ -345,7 +367,14 @@ void _writeUpdate({
         fieldAccessExpression: fieldAccessExpression,
       );
       writeSetUpdateKindAssertion();
+      _writeSerializedValueNullCheck(
+        writer: writer,
+        accessor: fieldAccessExpression,
+        context: context,
+      );
+
       // TODO: Implement
+
       break;
     case ColorModelType():
       _writeIndexCheckForPrimitive(
@@ -382,7 +411,7 @@ void _writeUpdate({
           'if (!request.fieldAccesses[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.has_value()) {');
       writer.incrementWhitespace();
       writer.writeLine(
-          'std::cout << "Error processing list update for accessor $fieldAccessExpression: list index is null." << std::endl;');
+          'std::cout << "Error processing list update for accessor \\"$fieldAccessExpression\\": list index is null." << std::endl;');
       writer.writeLine('return;');
       writer.decrementWhitespace();
       writer.writeLine('}');
@@ -396,7 +425,11 @@ void _writeUpdate({
       writer.writeLine(
           '} else if (request.updateKind == FieldUpdateKind::add && request.fieldAccesses.size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
       writer.incrementWhitespace();
-      _writeSerializedValueNullCheck(writer: writer);
+      _writeSerializedValueNullCheck(
+        writer: writer,
+        accessor: fieldAccessExpression,
+        context: context,
+      );
       writer.writeLine('${getCppType(type)} itemResult;');
       _writeUpdate(
         context: context,
@@ -429,7 +462,11 @@ void _writeUpdate({
       writer.decrementWhitespace();
       writer.writeLine('} else {');
       writer.incrementWhitespace();
-      _writeSerializedValueNullCheck(writer: writer);
+      _writeSerializedValueNullCheck(
+        writer: writer,
+        accessor: fieldAccessExpression,
+        context: context,
+      );
       writeSetUpdateKindAssertion();
       writer.writeLine(
           'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
@@ -511,7 +548,11 @@ void _writeUpdate({
       writer.decrementWhitespace();
       writer.writeLine('} else {');
       writer.incrementWhitespace();
-      _writeSerializedValueNullCheck(writer: writer);
+      _writeSerializedValueNullCheck(
+        writer: writer,
+        accessor: fieldAccessExpression,
+        context: context,
+      );
       writeSetUpdateKindAssertion();
       writer.writeLine(
           'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
@@ -533,7 +574,11 @@ void _writeUpdate({
           'if (request.fieldAccesses.size() == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
       writer.incrementWhitespace();
       writeSetUpdateKindAssertion();
-      _writeSerializedValueNullCheck(writer: writer);
+      _writeSerializedValueNullCheck(
+        writer: writer,
+        accessor: fieldAccessExpression,
+        context: context,
+      );
       writer.writeLine(
           'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
       writer.writeLine('auto error = result.error();');
