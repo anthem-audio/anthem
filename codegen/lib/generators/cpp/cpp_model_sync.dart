@@ -60,13 +60,16 @@ String getModelSyncFn(ModelClassInfo context) {
 
   var isFirst = true;
 
+  writer.writeLine(
+      'auto& fieldName = request.fieldAccesses[fieldAccessIndex]->fieldName;');
+
   for (var MapEntry(key: fieldName, value: field) in context.fields.entries) {
     if (field.hideAnnotation?.cpp == true) {
       continue;
     }
 
-    writer.writeLine(
-        '${isFirst ? '' : 'else '}if (request.fieldAccesses[fieldAccessIndex]->fieldName == "$fieldName") {');
+    writer
+        .writeLine('${isFirst ? '' : 'else '}if (fieldName == "$fieldName") {');
     writer.incrementWhitespace();
 
     _writeUpdate(
