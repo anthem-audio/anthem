@@ -389,9 +389,9 @@ void _writeUpdate({
 
       if (type.isNullable) {
         writer.writeLine(
-            '$fieldAccessExpression = std::optional<${getCppType(type)}>(result.value());');
+            '$fieldAccessExpression = std::optional<${getCppType(type)}>(std::move(result.value()));');
       } else {
-        writer.writeLine('$fieldAccessExpression = result.value();');
+        writer.writeLine('$fieldAccessExpression = std::move(result.value());');
       }
 
       writer.decrementWhitespace();
@@ -471,9 +471,9 @@ void _writeUpdate({
 
       if (type.isNullable) {
         writer.writeLine(
-            '$fieldAccessExpression = std::optional<${getCppType(type)}>(result.value());');
+            '$fieldAccessExpression = std::optional<${getCppType(type)}>(std::move(result.value()));');
       } else {
-        writer.writeLine('$fieldAccessExpression = result.value();');
+        writer.writeLine('$fieldAccessExpression = std::move(result.value());');
       }
 
       writer.decrementWhitespace();
@@ -499,7 +499,7 @@ void _writeUpdate({
       writer.decrementWhitespace();
       writer.writeLine('} else {');
       writer.incrementWhitespace();
-      writer.writeLine('$fieldAccessExpression =  result.value();');
+      writer.writeLine('$fieldAccessExpression = std::move(result.value());');
       writer.decrementWhitespace();
       writer.writeLine('}');
 
