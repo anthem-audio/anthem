@@ -385,13 +385,19 @@ void _writeUpdate({
           'if (request.fieldAccesses.size() > fieldAccessIndex + 1) {');
       writer.incrementWhitespace();
       // TODO: If update kind is delete, then we should delete. If add, we should error.
+      _writeKeyDeserialize(
+        writer: writer,
+        keyExpression:
+            'request.fieldAccesses[fieldAccessIndex + 1]->serializedMapKey',
+        keyType: type.keyType,
+        outputVariable: 'deserializedKey',
+      );
       _writeUpdate(
         context: context,
         writer: writer,
         type: type.valueType,
         updateKind: updateKind,
-        fieldAccessExpression:
-            '$fieldAccessExpression[request.fieldAccesses[fieldAccessIndex + 1]->serializedMapKey.value()]', // TODO: deserialize the key!
+        fieldAccessExpression: '$fieldAccessExpression[deserializedKey]',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
       );
       writer.decrementWhitespace();
@@ -416,7 +422,8 @@ void _writeUpdate({
             'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
 
         if (type.isNullable) {
-          writer.writeLine('$fieldAccessExpression = std::optional<${getCppType(type)}>(result.value());');
+          writer.writeLine(
+              '$fieldAccessExpression = std::optional<${getCppType(type)}>(result.value());');
         } else {
           writer.writeLine('$fieldAccessExpression = result.value();');
         }
@@ -485,6 +492,120 @@ void _writeUpdate({
       writer.writeLine('}');
 
       break;
+  }
+}
+
+void _writeKeyDeserialize({
+  required Writer writer,
+  required String keyExpression,
+  required ModelType keyType,
+  required String outputVariable,
+}) {
+  if (!keyType.canBeMapKey) {
+    throw ArgumentError(
+        'The provided key type, ${keyType.name}, cannot be used as a map key.');
+  }
+
+  void writeKeyExistsCheck() {
+    writer.writeLine('if (!$keyExpression.has_value()) {');
+    writer.incrementWhitespace();
+    writer.writeLine(
+        'std::cout << "Error deserializing map key: key is null." << std::endl;');
+    writer.writeLine('return;');
+    writer.decrementWhitespace();
+    writer.writeLine('}');
+  }
+
+  switch (keyType) {
+    case StringModelType():
+      writeKeyExistsCheck();
+      if (keyType.isNullable) {
+        writer.writeLine('std::optional<std::string> $outputVariable;');
+        writer.writeLine('if ($keyExpression.value() == "null") {');
+        writer.incrementWhitespace();
+        writer.writeLine('$outputVariable = std::nullopt;');
+        writer.decrementWhitespace();
+        writer.writeLine('} else {');
+        writer.incrementWhitespace();
+        writer.writeLine(
+            '$outputVariable = std::optional<std::string>($keyExpression.value().substr(1, $keyExpression.value().size() - 2));');
+        writer.decrementWhitespace();
+        writer.writeLine('}');
+      } else {
+        writer.writeLine(
+            'auto $outputVariable = $keyExpression.value().substr(1, $keyExpression.value().size() - 2);');
+      }
+      break;
+    case IntModelType():
+      writeKeyExistsCheck();
+      if (keyType.isNullable) {
+        writer.writeLine('std::optional<int64_t> $outputVariable;');
+        writer.writeLine('if ($keyExpression.value() == "null") {');
+        writer.incrementWhitespace();
+        writer.writeLine('$outputVariable = std::nullopt;');
+        writer.decrementWhitespace();
+        writer.writeLine('} else {');
+        writer.incrementWhitespace();
+        writer.writeLine(
+            '$outputVariable = std::optional<int64_t>(std::stoll($keyExpression.value()));');
+        writer.decrementWhitespace();
+        writer.writeLine('}');
+      } else {
+        writer.writeLine(
+            'auto $outputVariable = std::stoll($keyExpression.value());');
+      }
+
+      break;
+    case DoubleModelType() || NumModelType():
+      writeKeyExistsCheck();
+      if (keyType.isNullable) {
+        writer.writeLine('std::optional<double> $outputVariable;');
+        writer.writeLine('if ($keyExpression.value() == "null") {');
+        writer.incrementWhitespace();
+        writer.writeLine('$outputVariable = std::nullopt;');
+        writer.decrementWhitespace();
+        writer.writeLine('} else {');
+        writer.incrementWhitespace();
+        writer.writeLine(
+            '$outputVariable = std::optional<double>(std::stod($keyExpression.value()));');
+        writer.decrementWhitespace();
+        writer.writeLine('}');
+      } else {
+        writer.writeLine(
+            'auto $outputVariable = std::stod($keyExpression.value());');
+      }
+
+      break;
+    case BoolModelType():
+      writeKeyExistsCheck();
+      if (keyType.isNullable) {
+        writer.writeLine('std::optional<bool> $outputVariable;');
+        writer.writeLine('if ($keyExpression.value() == "null") {');
+        writer.incrementWhitespace();
+        writer.writeLine('$outputVariable = std::nullopt;');
+        writer.decrementWhitespace();
+        writer.writeLine('} else {');
+        writer.incrementWhitespace();
+        writer.writeLine(
+            '$outputVariable = std::optional<bool>($keyExpression.value() == "true");');
+        writer.decrementWhitespace();
+        writer.writeLine('}');
+      } else {
+        writer.writeLine(
+            'auto $outputVariable = $keyExpression.value() == "true";');
+      }
+
+      break;
+    case EnumModelType():
+      throw UnimplementedError(
+          'Enums are not yet supported as map keys. This can be implemented in the future if the need arises.');
+    case ListModelType() ||
+          MapModelType() ||
+          ColorModelType() ||
+          CustomModelType() ||
+          UnknownModelType():
+      throw Exception(
+          'These types should not be marked as map keys, and so should be caught above. This is a bug.');
   }
 }
 
