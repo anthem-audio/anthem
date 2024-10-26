@@ -363,8 +363,16 @@ void _writeUpdate({
       //     value.
       //  2. The request is to update some distant child whose parent lives in
       //     this map, in which case we should forward the request to the child.
+      //
+      // This if statement will be true if this concerns a specific key in the
+      // map. This is because fieldAccessIndex refers to the index in the
+      // accessor list that identifies the map itself, whereas fieldAccessIndex
+      // + 1 refers to the index in the accessor list that identifies a specific
+      // item in that map. If the list contains an item for fieldAccessIndex +
+      // 1, then this is a request to update a specific item in the map, or a
+      // request for a distant child of that item.
       writer.writeLine(
-          'if (request.fieldAccesses.size() >= fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
+          'if (fieldAccessIndex + 1 + $fieldAccessIndexMod < request.fieldAccesses.size()) {');
       _writeKeyDeserialize(
         writer: writer,
         keyExpression:
