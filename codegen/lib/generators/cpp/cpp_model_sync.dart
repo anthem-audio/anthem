@@ -342,6 +342,7 @@ void _writeUpdate({
         fieldAccessExpression: fieldAccessExpression,
       );
       writeSetUpdateKindAssertion();
+      // TODO: Implement
       break;
     case ColorModelType():
       _writeIndexCheckForPrimitive(
@@ -351,9 +352,50 @@ void _writeUpdate({
         fieldAccessIndexMod: fieldAccessIndexMod,
         fieldAccessExpression: fieldAccessExpression,
       );
+      // TODO: Implement
       break;
     case ListModelType():
-      // TODO: Implement
+      // If the field is a list and this is *not* the last accessor in the
+      // chain, then one of the two following things is true:
+      //  1. The request is to add, set or remove a specific value in the list,
+      //     in which case we should handle it by either adding, setting or
+      //     removing the value.
+      //  2. The request is to update some distant child whose parent lives in
+      //     this list, in which case we should forward the request to the
+      //     child.
+      //
+      // This if statement will be true if this concerns a specific index in the
+      // list. This is because fieldAccessIndex refers to the index in the
+      // accessor list that identifies the list itself, whereas fieldAccessIndex
+      // + 1 refers to the index in the accessor list that identifies a
+      // specific item in the list. If the list contains an item for
+      // fieldAccessIndex + 1, then this is a request to update a specific item
+      // in the list, or a request for a distant child of that item.
+      writer.writeLine(
+          'if (fieldAccessIndex + 1 + $fieldAccessIndexMod < request.fieldAccesses.size()) {');
+      writer.incrementWhitespace();
+      writer.writeLine('// ...');
+
+      // If this *is* the last accessor in the chain, then the provided JSON is
+      // the new value for the entire list, and we should deserialize it into
+      // this field.
+      writer.decrementWhitespace();
+      writer.writeLine('} else {');
+      writer.incrementWhitespace();
+      _writeSerializedValueNullCheck(writer: writer);
+      writeSetUpdateKindAssertion();
+      writer.writeLine(
+          'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
+
+      if (type.isNullable) {
+        writer.writeLine(
+            '$fieldAccessExpression = std::optional<${getCppType(type)}>(result.value());');
+      } else {
+        writer.writeLine('$fieldAccessExpression = result.value();');
+      }
+
+      writer.decrementWhitespace();
+      writer.writeLine('}');
       break;
     case MapModelType():
       // If the field is a map and this is *not* the last accessor in the chain,
@@ -373,6 +415,7 @@ void _writeUpdate({
       // request for a distant child of that item.
       writer.writeLine(
           'if (fieldAccessIndex + 1 + $fieldAccessIndexMod < request.fieldAccesses.size()) {');
+      writer.incrementWhitespace();
       _writeKeyDeserialize(
         writer: writer,
         keyExpression:
@@ -381,7 +424,6 @@ void _writeUpdate({
         outputVariable: 'deserializedKey',
       );
 
-      writer.incrementWhitespace();
       writer.writeLine(
           'if (request.updateKind == FieldUpdateKind.delete && request.fieldAccesses.size() == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
       writer.incrementWhitespace();
