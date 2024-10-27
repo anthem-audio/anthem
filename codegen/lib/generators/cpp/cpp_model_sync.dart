@@ -155,6 +155,22 @@ void _writeUpdateTypeInvalidError({
       'std::cout << "Update type \\"$updateKind\\" is not valid for field \\"$fieldAccessExpression\\" of type ${type.toString()}." << std::endl;');
 }
 
+void _writeJsonResultCheck({
+  required Writer writer,
+  required String resultVariable,
+  required ModelClassInfo context,
+  required String fieldAccessExpression,
+}) {
+  writer.writeLine('auto error = $resultVariable.error();');
+  writer.writeLine('if (error.has_value()) {');
+  writer.incrementWhitespace();
+  writer.writeLine(
+      'std::cout << "Error deserializing to field \\"$fieldAccessExpression\\" in model \\"${context.annotatedClass.name}\\":" << std::endl << error.value().what() << std::endl;');
+  writer.writeLine('return;');
+  writer.decrementWhitespace();
+  writer.writeLine('}');
+}
+
 /// Writes a field update for the given field.
 ///
 /// The [fieldAccessExpression] parameter specifies the target to be modified,
@@ -375,7 +391,14 @@ void _writeUpdate({
 
       // TODO: If this works, replicate this in the other types.
       writer.writeLine(
-          '$fieldAccessExpression = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
+          'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
+      _writeJsonResultCheck(
+        writer: writer,
+        resultVariable: 'result',
+        context: context,
+        fieldAccessExpression: fieldAccessExpression,
+      );
+      writer.writeLine('$fieldAccessExpression = result.value();');
 
       break;
     case ColorModelType():
@@ -394,7 +417,14 @@ void _writeUpdate({
       );
 
       writer.writeLine(
-          '$fieldAccessExpression = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
+          'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
+      _writeJsonResultCheck(
+        writer: writer,
+        resultVariable: 'result',
+        context: context,
+        fieldAccessExpression: fieldAccessExpression,
+      );
+      writer.writeLine('$fieldAccessExpression = result.value();');
 
       break;
     case ListModelType():
@@ -479,15 +509,16 @@ void _writeUpdate({
         context: context,
       );
       writeSetUpdateKindAssertion();
+
       writer.writeLine(
           'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
-
-      if (type.isNullable) {
-        writer.writeLine(
-            '$fieldAccessExpression = std::optional<${getCppType(type)}>(std::move(result.value()));');
-      } else {
-        writer.writeLine('$fieldAccessExpression = std::move(result.value());');
-      }
+      _writeJsonResultCheck(
+        writer: writer,
+        resultVariable: 'result',
+        context: context,
+        fieldAccessExpression: fieldAccessExpression,
+      );
+      writer.writeLine('$fieldAccessExpression = std::move(result.value());');
 
       writer.decrementWhitespace();
       writer.writeLine('}');
@@ -565,15 +596,16 @@ void _writeUpdate({
         context: context,
       );
       writeSetUpdateKindAssertion();
+
       writer.writeLine(
           'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
-
-      if (type.isNullable) {
-        writer.writeLine(
-            '$fieldAccessExpression = std::optional<${getCppType(type)}>(std::move(result.value()));');
-      } else {
-        writer.writeLine('$fieldAccessExpression = std::move(result.value());');
-      }
+      _writeJsonResultCheck(
+        writer: writer,
+        resultVariable: 'result',
+        context: context,
+        fieldAccessExpression: fieldAccessExpression,
+      );
+      writer.writeLine('$fieldAccessExpression = std::move(result.value());');
 
       writer.decrementWhitespace();
       writer.writeLine('}');
@@ -590,21 +622,16 @@ void _writeUpdate({
         accessor: fieldAccessExpression,
         context: context,
       );
+
       writer.writeLine(
           'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
-      writer.writeLine('auto error = result.error();');
-
-      writer.writeLine('if (error.has_value()) {');
-      writer.incrementWhitespace();
-      writer.writeLine(
-          'std::cout << "Error deserializing to $fieldAccessExpression:" << std::endl << error.value().what() << std::endl;');
-      writer.writeLine('return;');
-      writer.decrementWhitespace();
-      writer.writeLine('} else {');
-      writer.incrementWhitespace();
+      _writeJsonResultCheck(
+        writer: writer,
+        resultVariable: 'result',
+        context: context,
+        fieldAccessExpression: fieldAccessExpression,
+      );
       writer.writeLine('$fieldAccessExpression = std::move(result.value());');
-      writer.decrementWhitespace();
-      writer.writeLine('}');
 
       writer.decrementWhitespace();
 
