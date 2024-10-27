@@ -392,7 +392,7 @@ void _writeUpdate({
         accessor: fieldAccessExpression,
         context: context,
       );
-      
+
       writer.writeLine(
           '$fieldAccessExpression = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
 
@@ -441,7 +441,7 @@ void _writeUpdate({
         accessor: fieldAccessExpression,
         context: context,
       );
-      writer.writeLine('${getCppType(type)} itemResult;');
+      writer.writeLine('${getCppType(type.itemType)} itemResult;');
       _writeUpdate(
         context: context,
         writer: writer,
@@ -520,12 +520,12 @@ void _writeUpdate({
       );
 
       writer.writeLine(
-          'if (request.updateKind == FieldUpdateKind.delete && request.fieldAccesses.size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
+          'if (request.updateKind == FieldUpdateKind::remove && request.fieldAccesses.size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
       writer.incrementWhitespace();
       writer.writeLine('$fieldAccessExpression.erase(deserializedKey);');
       writer.decrementWhitespace();
       writer.writeLine(
-          'else if (request.updateKind == FieldUpdateKind.add && request.fieldAccess.size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
+          '} else if (request.updateKind == FieldUpdateKind::add && request.fieldAccesses.size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
       writer.incrementWhitespace();
       // "Add" is only valid for list. Should use "set" instead.
       _writeUpdateTypeInvalidError(
