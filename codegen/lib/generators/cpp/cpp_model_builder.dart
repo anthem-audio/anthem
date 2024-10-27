@@ -182,7 +182,9 @@ class CppModelBuilder implements Builder {
           .toList(),
     );
 
-    codeBlocks.add(enumsCode);
+    if (enumsCode.isNotEmpty) {
+      codeBlocks.add(enumsCode);
+    }
     forwardDeclarations.addAll(enumsForwardDeclarations);
 
     // Looks for @AnthemModel on each class in the file, and generates the
@@ -237,8 +239,11 @@ class CppModelBuilder implements Builder {
 
     // If we didn't generate any items for this file, don't try to write
     // anything.
-    if (imports.isEmpty &&
-        forwardDeclarations.isEmpty &&
+    //
+    // Note that imports is not included here. If we generate a file with only
+    // imports, but everything else is skipped, we still want to skip writing
+    // the file.
+    if (forwardDeclarations.isEmpty &&
         usingDirectives.isEmpty &&
         moduleFileImports.isEmpty &&
         codeBlocks.isEmpty &&
