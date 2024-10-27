@@ -321,8 +321,8 @@ class CppModelBuilder implements Builder {
 
     if (functionDefinitions.isNotEmpty) {
       final cppAssetId = inputId.changeExtension('.cpp');
-      final cppAssetIdInEngine =
-          AssetId(cppAssetId.package, 'engine/src/generated/${cppAssetId.path}');
+      final cppAssetIdInEngine = AssetId(
+          cppAssetId.package, 'engine/src/generated/${cppAssetId.path}');
       await buildStep.writeAsString(cppAssetIdInEngine, cppCodeToWrite);
     }
   }
