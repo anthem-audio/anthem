@@ -582,7 +582,7 @@ void _writeUpdate({
         context: context,
         writer: writer,
         type: type.valueType,
-        fieldAccessExpression: '$fieldAccessExpression[deserializedKey]',
+        fieldAccessExpression: '$fieldAccessExpression.at(deserializedKey)',
         createFieldSetter: (value) =>
             '$fieldAccessExpression.insert_or_assign(deserializedKey, $value);',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
