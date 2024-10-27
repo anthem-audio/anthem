@@ -316,13 +316,13 @@ class CppModelBuilder implements Builder {
 
     final headerAssetId = inputId.changeExtension('.h');
     final headerAssetIdInEngine = AssetId(
-        headerAssetId.package, 'engine/generated/${headerAssetId.path}');
+        headerAssetId.package, 'engine/src/generated/${headerAssetId.path}');
     await buildStep.writeAsString(headerAssetIdInEngine, headerCodeToWrite);
 
     if (functionDefinitions.isNotEmpty) {
       final cppAssetId = inputId.changeExtension('.cpp');
       final cppAssetIdInEngine =
-          AssetId(cppAssetId.package, 'engine/generated/${cppAssetId.path}');
+          AssetId(cppAssetId.package, 'engine/src/generated/${cppAssetId.path}');
       await buildStep.writeAsString(cppAssetIdInEngine, cppCodeToWrite);
     }
   }
@@ -330,8 +330,8 @@ class CppModelBuilder implements Builder {
   @override
   Map<String, List<String>> get buildExtensions => {
         '{{dir}}/{{file}}.dart': [
-          'engine/generated/{{dir}}/{{file}}.h',
-          'engine/generated/{{dir}}/{{file}}.cpp'
+          'engine/src/generated/{{dir}}/{{file}}.h',
+          'engine/src/generated/{{dir}}/{{file}}.cpp'
         ],
       };
 }

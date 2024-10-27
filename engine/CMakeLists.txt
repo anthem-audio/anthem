@@ -27,7 +27,7 @@ include_directories(
   ${CMAKE_SOURCE_DIR}
 
   # Allows #include "messages/messages.h" for generated messages
-  ${CMAKE_SOURCE_DIR}/generated/lib/engine_api
+  ${CMAKE_SOURCE_DIR}/src/generated/lib/engine_api
 
   ${CMAKE_SOURCE_DIR}/src
   ${CMAKE_SOURCE_DIR}/src/modules
@@ -40,11 +40,6 @@ juce_add_console_app(AnthemEngine ANTHEM_ENGINE "Anthem Engine" VERSION "0.0.1")
 file(
   GLOB_RECURSE
   ANTHEM_ENGINE_SOURCES
-  # I don't know why but adding this causes the build to fail, and I don't want to figure it out right now
-  # ${PROJECT_SOURCE_DIR}/generated/*.h
-  # ${PROJECT_SOURCE_DIR}/generated/*.cpp
-  # ${PROJECT_SOURCE_DIR}/generated/**/*.h
-  # ${PROJECT_SOURCE_DIR}/generated/**/*.cpp
   ${PROJECT_SOURCE_DIR}/src/*.h
   ${PROJECT_SOURCE_DIR}/src/*.cpp
   ${PROJECT_SOURCE_DIR}/src/**/*.h
