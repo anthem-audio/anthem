@@ -38,6 +38,11 @@ class CppModelBuilder implements Builder {
   Future<void> build(BuildStep buildStep) async {
     cleanModelClassInfoCache();
 
+    // A list of models that are in this file. We use this while generating
+    // imports to ensure that the generated imports are only for fields that are
+    // not hidden.
+    List<ModelClassInfo> classesProcessed = [];
+
     final inputId = buildStep.inputId;
     if (inputId.extension != '.dart') return;
 
@@ -60,63 +65,6 @@ class CppModelBuilder implements Builder {
     // Note that module file imports are only used for module files. There is a
     // detailed description in the doc comment on the @GenerateCppModuleFile
     // annotation.
-
-    // Checks the imports of this library for any that themselves contain Anthem
-    // models, and generates the appropriate imports for the C++ module file.
-    for (final importElement in library.libraryImports) {
-      final importLibrary = importElement.importedLibrary;
-
-      if (importLibrary == null) {
-        continue;
-      }
-
-      final importLibraryReader = LibraryReader(importLibrary);
-
-      bool hasAnyAnthemModel = false;
-
-      for (final classElement in importLibraryReader.classes) {
-        final annotation = const TypeChecker.fromRuntime(AnthemModel)
-            .firstAnnotationOf(classElement);
-
-        if (annotation == null) {
-          continue;
-        }
-
-        final generateCpp =
-            annotation.getField('generateCpp')?.toBoolValue() ?? false;
-
-        if (generateCpp) {
-          hasAnyAnthemModel = true;
-          break;
-        }
-      }
-
-      for (final enumElement in importLibraryReader.enums) {
-        if (hasAnyAnthemModel) break;
-
-        final annotation = const TypeChecker.fromRuntime(AnthemEnum)
-            .firstAnnotationOf(enumElement);
-
-        if (annotation == null) {
-          continue;
-        }
-
-        hasAnyAnthemModel = true;
-      }
-
-      if (!hasAnyAnthemModel) {
-        continue;
-      }
-
-      final uri = importElement.uri;
-      if (uri is DirectiveUriWithLibrary) {
-        final pathStr = uri.relativeUri
-            .toString()
-            .replaceFirst('.dart', '.h')
-            .replaceFirst('package:anthem/', 'generated/lib/');
-        imports.add('#include "$pathStr"');
-      }
-    }
 
     // Looks for @GenerateCppModuleFile on this library.
     final libraryAnnotation = library.metadata
@@ -212,6 +160,7 @@ class CppModelBuilder implements Builder {
 
       // Create a new ModelClassInfo instance for this class
       final modelClassInfo = ModelClassInfo(libraryReader, libraryClass);
+      classesProcessed.add(modelClassInfo);
 
       if (modelClassInfo.annotation!.generateModelSync) {
         // The model sync code needs ModelUpdateRequest, which comes from the
@@ -235,6 +184,105 @@ class CppModelBuilder implements Builder {
       functionDefinitions.addAll(structFunctionDefinitions);
 
       codeBlocks.add('\n\n\n');
+    }
+
+    // Checks the imports of this library for any that themselves contain Anthem
+    // models, and generates the appropriate imports for the C++ module file.
+    for (final importElement in library.libraryImports) {
+      final importLibrary = importElement.importedLibrary;
+
+      if (importLibrary == null) {
+        continue;
+      }
+
+      final importLibraryReader = LibraryReader(importLibrary);
+
+      List<ClassElement> annotatedClasses = [];
+      List<EnumElement> annotatedEnums = [];
+
+      for (final classElement in importLibraryReader.classes) {
+        final annotation = const TypeChecker.fromRuntime(AnthemModel)
+            .firstAnnotationOf(classElement);
+
+        if (annotation == null) {
+          continue;
+        }
+
+        final generateCpp =
+            annotation.getField('generateCpp')?.toBoolValue() ?? false;
+
+        if (generateCpp) {
+          annotatedClasses.add(classElement);
+        }
+      }
+
+      for (final enumElement in importLibraryReader.enums) {
+        final annotation = const TypeChecker.fromRuntime(AnthemEnum)
+            .firstAnnotationOf(enumElement);
+
+        if (annotation == null) {
+          continue;
+        }
+
+        annotatedEnums.add(enumElement);
+      }
+
+      if (annotatedClasses.isEmpty && annotatedEnums.isEmpty) {
+        continue;
+      }
+
+      // Ensure that at least one of the annotated classes is actually used in
+      // this file. If none are, we shouldn't generate an import for this file.
+      //
+      // This is because we may, for example, have a field in the Dart class that
+      // references another model, such as the parent model, but we hide this from
+      // all codegen. If this is the case, we may import the parent model in the
+      // Dart code, but we do not want to import it in the C++ code because it's
+      // not actually used (and may cause circular import issues).
+      var foundMatch = false;
+      outer:
+      for (final modelClassInfo in classesProcessed) {
+        for (final field in modelClassInfo.fields.values) {
+          // Recursively checks if the given type uses any type that comes from
+          // imported library that we're currently checking.
+          bool typeMatches(ModelType type) {
+            if (type is ListModelType) {
+              return typeMatches(type.itemType);
+            } else if (type is MapModelType) {
+              return typeMatches(type.keyType) || typeMatches(type.valueType);
+            } else if (type is CustomModelType) {
+              if (annotatedClasses.contains(type.type.annotatedClass)) {
+                return true;
+              }
+            } else if (type is EnumModelType) {
+              final enumModelType = type;
+              if (annotatedEnums.contains(enumModelType.enumElement)) {
+                return true;
+              }
+            }
+
+            return false;
+          }
+
+          if (typeMatches(field.typeInfo)) {
+            foundMatch = true;
+            break outer;
+          }
+        }
+      }
+
+      if (!foundMatch) {
+        continue;
+      }
+
+      final uri = importElement.uri;
+      if (uri is DirectiveUriWithLibrary) {
+        final pathStr = uri.relativeUri
+            .toString()
+            .replaceFirst('.dart', '.h')
+            .replaceFirst('package:anthem/', 'generated/lib/');
+        imports.add('#include "$pathStr"');
+      }
     }
 
     // If we didn't generate any items for this file, don't try to write
