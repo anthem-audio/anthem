@@ -431,7 +431,7 @@ void _writeUpdate({
           'if (request.updateKind == FieldUpdateKind::remove && request.fieldAccesses.size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
       writer.incrementWhitespace();
       writer.writeLine(
-          '$fieldAccessExpression.erase(request.fieldAccesses[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value());');
+          '$fieldAccessExpression.erase($fieldAccessExpression.begin() + request.fieldAccesses[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value());');
       writer.decrementWhitespace();
       writer.writeLine(
           '} else if (request.updateKind == FieldUpdateKind::add && request.fieldAccesses.size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
