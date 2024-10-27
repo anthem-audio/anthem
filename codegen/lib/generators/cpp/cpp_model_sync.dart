@@ -450,7 +450,7 @@ void _writeUpdate({
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
       );
       writer.writeLine(
-          '$fieldAccessExpression.insert(request.fieldAccesses[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value(), std::move(itemResult));');
+          '$fieldAccessExpression.insert($fieldAccessExpression.begin() + request.fieldAccesses[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value(), std::move(itemResult));');
       writer.decrementWhitespace();
       writer.writeLine('} else {');
       writer.incrementWhitespace();
