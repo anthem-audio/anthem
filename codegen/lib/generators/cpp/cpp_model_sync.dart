@@ -76,6 +76,7 @@ String getModelSyncFn(ModelClassInfo context) {
       context: context,
       writer: writer,
       type: field.typeInfo,
+      createFieldSetter: (value) => 'this->$fieldName = $value;',
       fieldAccessExpression: 'this->$fieldName',
     );
 
@@ -107,13 +108,13 @@ void _writeInvalidAccessWarning({
 
 void _writeSerializedValueNullCheck({
   required Writer writer,
-  required String accessor,
+  required String fieldAccessExpression,
   required ModelClassInfo context,
 }) {
   writer.writeLine('if (!request.serializedValue.has_value()) {');
   writer.incrementWhitespace();
   writer.writeLine(
-      'std::cout << "Error updating accessor \\"$accessor\\" on model \\"${context.annotatedClass.name}\\"." << std::endl;');
+      'std::cout << "Error updating accessor \\"$fieldAccessExpression\\" on model \\"${context.annotatedClass.name}\\"." << std::endl;');
   writer.writeLine(
       'std::cout << "Serialized value is null, but shouldn\'t be in this context." << std::endl;');
   writer.writeLine('return;');
@@ -214,6 +215,7 @@ void _writeJsonResultCheck({
 void _writeUpdate({
   required Writer writer,
   required ModelType type,
+  required String Function(String valueExpression) createFieldSetter,
   required String fieldAccessExpression,
   required ModelClassInfo context,
   int fieldAccessIndexMod = 0,
@@ -258,7 +260,7 @@ void _writeUpdate({
       writeSetUpdateKindAssertion();
       _writeSerializedValueNullCheck(
         writer: writer,
-        accessor: fieldAccessExpression,
+        fieldAccessExpression: fieldAccessExpression,
         context: context,
       );
 
@@ -268,16 +270,16 @@ void _writeUpdate({
       if (type.isNullable) {
         writer.writeLine('if (request.serializedValue.value() == "null") {');
         writer.incrementWhitespace();
-        writer.writeLine('$fieldAccessExpression = std::nullopt;');
+        writer.writeLine(createFieldSetter('std::nullopt'));
         writer.decrementWhitespace();
         writer.writeLine('} else {');
         writer.incrementWhitespace();
         writer.writeLine(
-            '$fieldAccessExpression = std::optional<std::string>($stringGetter);');
+            createFieldSetter('std::optional<std::string>($stringGetter)'));
         writer.decrementWhitespace();
         writer.writeLine('}');
       } else {
-        writer.writeLine('$fieldAccessExpression = $stringGetter;');
+        writer.writeLine(createFieldSetter(stringGetter));
       }
 
       break;
@@ -292,24 +294,24 @@ void _writeUpdate({
       writeSetUpdateKindAssertion();
       _writeSerializedValueNullCheck(
         writer: writer,
-        accessor: fieldAccessExpression,
+        fieldAccessExpression: fieldAccessExpression,
         context: context,
       );
 
       if (type.isNullable) {
         writer.writeLine('if (request.serializedValue.value() == "null") {');
         writer.incrementWhitespace();
-        writer.writeLine('$fieldAccessExpression = std::nullopt;');
+        writer.writeLine(createFieldSetter('std::nullopt'));
         writer.decrementWhitespace();
         writer.writeLine('} else {');
         writer.incrementWhitespace();
-        writer.writeLine(
-            '$fieldAccessExpression = std::optional<int64_t>(std::stoll(request.serializedValue.value()));');
+        writer.writeLine(createFieldSetter(
+            'std::optional<int64_t>(std::stoll(request.serializedValue.value()))'));
         writer.decrementWhitespace();
         writer.writeLine('}');
       } else {
         writer.writeLine(
-            '$fieldAccessExpression = std::stoll(request.serializedValue.value());');
+            createFieldSetter('std::stoll(request.serializedValue.value())'));
       }
       break;
     case DoubleModelType() || NumModelType():
@@ -323,24 +325,24 @@ void _writeUpdate({
       writeSetUpdateKindAssertion();
       _writeSerializedValueNullCheck(
         writer: writer,
-        accessor: fieldAccessExpression,
+        fieldAccessExpression: fieldAccessExpression,
         context: context,
       );
 
       if (type.isNullable) {
         writer.writeLine('if (request.serializedValue.value() == "null") {');
         writer.incrementWhitespace();
-        writer.writeLine('$fieldAccessExpression = std::nullopt;');
+        writer.writeLine(createFieldSetter('std::nullopt'));
         writer.decrementWhitespace();
         writer.writeLine('} else {');
         writer.incrementWhitespace();
-        writer.writeLine(
-            '$fieldAccessExpression = std::optional<double>(std::stod(request.serializedValue.value()));');
+        writer.writeLine(createFieldSetter(
+            'std::optional<double>(std::stod(request.serializedValue.value()))'));
         writer.decrementWhitespace();
         writer.writeLine('}');
       } else {
         writer.writeLine(
-            '$fieldAccessExpression = std::stod(request.serializedValue.value());');
+            createFieldSetter('std::stod(request.serializedValue.value())'));
       }
       break;
     case BoolModelType():
@@ -354,24 +356,24 @@ void _writeUpdate({
       writeSetUpdateKindAssertion();
       _writeSerializedValueNullCheck(
         writer: writer,
-        accessor: fieldAccessExpression,
+        fieldAccessExpression: fieldAccessExpression,
         context: context,
       );
 
       if (type.isNullable) {
         writer.writeLine('if (request.serializedValue.value() == "null") {');
         writer.incrementWhitespace();
-        writer.writeLine('$fieldAccessExpression = std::nullopt;');
+        writer.writeLine(createFieldSetter('std::nullopt'));
         writer.decrementWhitespace();
         writer.writeLine('} else {');
         writer.incrementWhitespace();
-        writer.writeLine(
-            '$fieldAccessExpression = std::optional<bool>(request.serializedValue.value() == "true");');
+        writer.writeLine(createFieldSetter(
+            'std::optional<bool>(request.serializedValue.value() == "true")'));
         writer.decrementWhitespace();
         writer.writeLine('}');
       } else {
         writer.writeLine(
-            '$fieldAccessExpression = request.serializedValue.value() == "true";');
+            createFieldSetter('request.serializedValue.value() == "true"'));
       }
       break;
     case EnumModelType():
@@ -385,7 +387,7 @@ void _writeUpdate({
       writeSetUpdateKindAssertion();
       _writeSerializedValueNullCheck(
         writer: writer,
-        accessor: fieldAccessExpression,
+        fieldAccessExpression: fieldAccessExpression,
         context: context,
       );
 
@@ -398,7 +400,7 @@ void _writeUpdate({
         context: context,
         fieldAccessExpression: fieldAccessExpression,
       );
-      writer.writeLine('$fieldAccessExpression = result.value();');
+      writer.writeLine(createFieldSetter('result.value()'));
 
       break;
     case ColorModelType():
@@ -412,7 +414,7 @@ void _writeUpdate({
       writeSetUpdateKindAssertion();
       _writeSerializedValueNullCheck(
         writer: writer,
-        accessor: fieldAccessExpression,
+        fieldAccessExpression: fieldAccessExpression,
         context: context,
       );
 
@@ -424,7 +426,7 @@ void _writeUpdate({
         context: context,
         fieldAccessExpression: fieldAccessExpression,
       );
-      writer.writeLine('$fieldAccessExpression = result.value();');
+      writer.writeLine(createFieldSetter('result.value()'));
 
       break;
     case ListModelType():
@@ -452,7 +454,7 @@ void _writeUpdate({
           'if (!request.fieldAccesses[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.has_value()) {');
       writer.incrementWhitespace();
       writer.writeLine(
-          'std::cout << "Error processing list update for accessor \\"$fieldAccessExpression\\": list index is null." << std::endl;');
+          'std::cout << "Error processing list update for setter \\"${createFieldSetter("[value here]")}\\": list index is null." << std::endl;');
       writer.writeLine('return;');
       writer.decrementWhitespace();
       writer.writeLine('}');
@@ -468,7 +470,7 @@ void _writeUpdate({
       writer.incrementWhitespace();
       _writeSerializedValueNullCheck(
         writer: writer,
-        accessor: fieldAccessExpression,
+        fieldAccessExpression: fieldAccessExpression,
         context: context,
       );
       writer.writeLine('${getCppType(type.itemType)} itemResult;');
@@ -477,6 +479,7 @@ void _writeUpdate({
         writer: writer,
         type: type.itemType,
         fieldAccessExpression: 'itemResult',
+        createFieldSetter: (value) => 'itemResult = $value;',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
       );
       writer.writeLine(
@@ -492,6 +495,8 @@ void _writeUpdate({
         type: type.itemType,
         fieldAccessExpression:
             '$fieldAccessExpression[request.listIndex.value()]',
+        createFieldSetter: (value) =>
+            '$fieldAccessExpression[request.listIndex.value()] = $value;',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
       );
       writer.decrementWhitespace();
@@ -505,7 +510,7 @@ void _writeUpdate({
       writer.incrementWhitespace();
       _writeSerializedValueNullCheck(
         writer: writer,
-        accessor: fieldAccessExpression,
+        fieldAccessExpression: fieldAccessExpression,
         context: context,
       );
       writeSetUpdateKindAssertion();
@@ -578,6 +583,8 @@ void _writeUpdate({
         writer: writer,
         type: type.valueType,
         fieldAccessExpression: '$fieldAccessExpression[deserializedKey]',
+        createFieldSetter: (value) =>
+            '$fieldAccessExpression.insert_or_assign(deserializedKey, $value);',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
       );
 
@@ -592,7 +599,7 @@ void _writeUpdate({
       writer.incrementWhitespace();
       _writeSerializedValueNullCheck(
         writer: writer,
-        accessor: fieldAccessExpression,
+        fieldAccessExpression: fieldAccessExpression,
         context: context,
       );
       writeSetUpdateKindAssertion();
@@ -605,7 +612,7 @@ void _writeUpdate({
         context: context,
         fieldAccessExpression: fieldAccessExpression,
       );
-      writer.writeLine('$fieldAccessExpression = std::move(result.value());');
+      writer.writeLine(createFieldSetter('std::move(result.value())'));
 
       writer.decrementWhitespace();
       writer.writeLine('}');
@@ -619,7 +626,7 @@ void _writeUpdate({
       writeSetUpdateKindAssertion();
       _writeSerializedValueNullCheck(
         writer: writer,
-        accessor: fieldAccessExpression,
+        fieldAccessExpression: fieldAccessExpression,
         context: context,
       );
 
@@ -631,7 +638,7 @@ void _writeUpdate({
         context: context,
         fieldAccessExpression: fieldAccessExpression,
       );
-      writer.writeLine('$fieldAccessExpression = std::move(result.value());');
+      writer.writeLine(createFieldSetter('std::move(result.value())'));
 
       writer.decrementWhitespace();
 
