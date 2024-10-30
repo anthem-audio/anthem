@@ -494,9 +494,9 @@ void _writeUpdate({
         writer: writer,
         type: type.itemType,
         fieldAccessExpression:
-            '$fieldAccessExpression[request.listIndex.value()]',
+            '$fieldAccessExpression[request.fieldAccesses[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value()]',
         createFieldSetter: (value) =>
-            '$fieldAccessExpression[request.listIndex.value()] = $value;',
+            '$fieldAccessExpression[request.fieldAccesses[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value()] = $value;',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
       );
       writer.decrementWhitespace();
