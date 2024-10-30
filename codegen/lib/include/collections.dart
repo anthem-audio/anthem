@@ -112,8 +112,10 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
       }
 
       if (firstChangedIndex != null) {
-        for (var i = firstChangedIndex; i < length; i++) {
-          _setParamsOnIndex(i);
+        if (T is AnthemModelBase) {
+          for (var i = firstChangedIndex; i < length; i++) {
+            _setParamsOnIndex(i);
+          }
         }
       }
     });
