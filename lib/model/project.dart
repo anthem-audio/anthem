@@ -237,18 +237,6 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
               ListRemove() || MapRemove() => message_api.FieldUpdateKind.remove,
             },
             fieldAccesses: convertedAccesses,
-            fieldName: operation.fieldName,
-            listIndex: switch (operation) {
-              ListInsert() => operation.index,
-              ListRemove() => operation.index,
-              ListUpdate() => operation.index,
-              _ => null,
-            },
-            serializedMapKey: switch (operation) {
-              MapPut() => serializeMapKey(operation.key),
-              MapRemove() => serializeMapKey(operation.key),
-              _ => null,
-            },
             serializedValue: switch (operation) {
               RawFieldUpdate() => serializeValue(operation.newValue),
               ListInsert() => serializeValue(operation.value),

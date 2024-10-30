@@ -70,7 +70,6 @@ abstract class _SongModel extends Hydratable with Store, AnthemModelBase {
   ID? activeArrangementID;
 
   @anthemObservable
-  // @hide
   ObservableMap<ID, TrackModel> tracks = ObservableMap();
 
   @anthemObservable
