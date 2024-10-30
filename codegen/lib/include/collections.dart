@@ -68,7 +68,7 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
   void _init() {
     if (T is AnthemModelBase) {
       for (var i = 0; i < length; i++) {
-        _setParamsOnIndex(i);
+        _setParentPropertiesOnIndex(i);
       }
     }
 
@@ -114,14 +114,14 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
       if (firstChangedIndex != null) {
         if (T is AnthemModelBase) {
           for (var i = firstChangedIndex; i < length; i++) {
-            _setParamsOnIndex(i);
+            _setParentPropertiesOnIndex(i);
           }
         }
       }
     });
   }
 
-  void _setParamsOnIndex(int index) {
+  void _setParentPropertiesOnIndex(int index) {
     final element = elementAt(index) as AnthemModelBase;
 
     element.setParentProperties(
@@ -153,7 +153,7 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
   void _init() {
     if (V is AnthemModelBase) {
       for (final key in keys) {
-        _setParamsOnValue(key);
+        _setParentPropertiesOnValue(key);
       }
     }
 
@@ -175,7 +175,7 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
         );
 
         if (V is AnthemModelBase && change.key is K) {
-          _setParamsOnValue(change.key as K);
+          _setParentPropertiesOnValue(change.key as K);
         }
       } else if (change.type == OperationType.remove) {
         notifyFieldChanged(
@@ -186,7 +186,7 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
     });
   }
 
-  void _setParamsOnValue(K key) {
+  void _setParentPropertiesOnValue(K key) {
     final model = this[key] as AnthemModelBase;
 
     model.setParentProperties(
