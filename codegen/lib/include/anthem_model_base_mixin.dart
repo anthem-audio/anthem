@@ -65,55 +65,45 @@ class RawFieldUpdate extends FieldOperation {
 
 /// Represents inserting an item in a list
 class ListInsert extends FieldOperation {
-  final int index;
-
   /// This is the new value of the field. It is a serialized representation.
   ///
   /// See above for the types that this can be.
   final dynamic value;
 
   ListInsert({
-    required this.index,
     required this.value,
   });
 
   @override
   String toString() {
-    return 'ListInsert(index: $index, value: ${_stringifyValue(value)})';
+    return 'ListInsert(value: ${_stringifyValue(value)})';
   }
 }
 
 /// Represents removing an item from a list
 class ListRemove extends FieldOperation {
-  final int index;
-
-  ListRemove({
-    required this.index,
-  });
+  ListRemove();
 
   @override
   String toString() {
-    return 'ListRemove(index: $index)';
+    return 'ListRemove()';
   }
 }
 
 /// Represents updating an item in a list
 class ListUpdate extends FieldOperation {
-  final int index;
-
   /// This is the new value of the field. It is a serialized representation.
   ///
   /// See above for the types that this can be.
   final dynamic value;
 
   ListUpdate({
-    required this.index,
     required this.value,
   });
 
   @override
   String toString() {
-    return 'ListUpdate(index: $index, value: ${_stringifyValue(value)})';
+    return 'ListUpdate(value: ${_stringifyValue(value)})';
   }
 }
 
