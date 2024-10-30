@@ -23,3 +23,4 @@ library;
 
 export 'include/annotations.dart';
 export 'include/anthem_model_base_mixin.dart';
+export 'include/collections.dart';
