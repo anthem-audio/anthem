@@ -22,7 +22,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
-import 'package:mobx/mobx.dart';
+import 'package:anthem_codegen/include/collections.dart';
 
 void _addNote(
   PatternModel pattern,
@@ -30,7 +30,7 @@ void _addNote(
   NoteModel note,
 ) {
   if (!pattern.notes.containsKey(generatorID)) {
-    pattern.notes[generatorID] = ObservableList();
+    pattern.notes[generatorID] = AnthemObservableList();
   }
 
   pattern.notes[generatorID]!.add(note);

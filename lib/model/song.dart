@@ -50,30 +50,31 @@ abstract class _SongModel extends Hydratable with Store, AnthemModelBase {
   int ticksPerQuarter = 96;
 
   @anthemObservable
-  ObservableMap<ID, PatternModel> patterns = ObservableMap();
+  AnthemObservableMap<ID, PatternModel> patterns = AnthemObservableMap();
 
   @anthemObservable
-  ObservableList<ID> patternOrder = ObservableList();
+  AnthemObservableList<ID> patternOrder = AnthemObservableList();
 
   @anthemObservable
   @hideFromSerialization
   ID? activePatternID;
 
   @anthemObservable
-  ObservableMap<ID, ArrangementModel> arrangements = ObservableMap();
+  AnthemObservableMap<ID, ArrangementModel> arrangements =
+      AnthemObservableMap();
 
   @anthemObservable
-  ObservableList<ID> arrangementOrder = ObservableList();
+  AnthemObservableList<ID> arrangementOrder = AnthemObservableList();
 
   @anthemObservable
   @hideFromSerialization
   ID? activeArrangementID;
 
   @anthemObservable
-  ObservableMap<ID, TrackModel> tracks = ObservableMap();
+  AnthemObservableMap<ID, TrackModel> tracks = AnthemObservableMap();
 
   @anthemObservable
-  ObservableList<ID> trackOrder = ObservableList();
+  AnthemObservableList<ID> trackOrder = AnthemObservableList();
 
   @anthemObservable
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
@@ -95,8 +96,8 @@ abstract class _SongModel extends Hydratable with Store, AnthemModelBase {
       id: getID(),
       project: project,
     );
-    arrangements = ObservableMap.of({arrangement.id: arrangement});
-    arrangementOrder = ObservableList.of([arrangement.id]);
+    arrangements = AnthemObservableMap.of({arrangement.id: arrangement});
+    arrangementOrder = AnthemObservableList.of([arrangement.id]);
     activeArrangementID = arrangement.id;
 
     final Map<ID, TrackModel> initTracks = {};
@@ -108,8 +109,8 @@ abstract class _SongModel extends Hydratable with Store, AnthemModelBase {
       initTrackOrder.add(track.id);
     }
 
-    tracks = ObservableMap.of(initTracks);
-    trackOrder = ObservableList.of(initTrackOrder);
+    tracks = AnthemObservableMap.of(initTracks);
+    trackOrder = AnthemObservableList.of(initTrackOrder);
 
     hydrate(
       project: project,

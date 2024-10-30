@@ -54,7 +54,7 @@ class ProcessorModel extends _ProcessorModel
           .defaultValue; // TODO - This is incorrect. We should get the current parameter value, but we can't yet.
     }
 
-    parameterValues = ObservableMap.of(newParams);
+    parameterValues = AnthemObservableMap.of(newParams);
 
     // Report changes back to the engine
     parameterValues.observe((change) async {
@@ -99,7 +99,7 @@ abstract class _ProcessorModel extends Hydratable with Store, AnthemModelBase {
   @anthemObservable
   String? processorKey;
 
-  ObservableMap<int, double> parameterValues = ObservableMap();
+  AnthemObservableMap<int, double> parameterValues = AnthemObservableMap();
 
   _ProcessorModel({required this.processorKey}) : super() {
     (this as _$ProcessorModelAnthemModelMixin).init();

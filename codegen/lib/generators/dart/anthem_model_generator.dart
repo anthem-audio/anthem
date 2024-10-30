@@ -140,74 +140,45 @@ String _generateGettersAndSetters(
     var setter = 'super.$fieldName = value;\n';
 
     if (shouldGenerateModelSync) {
-      switch (fieldInfo.typeInfo) {
-        case ListModelType listType:
-          setter += _generateListObserver(
-            fieldName: fieldName,
-            isNullable: fieldInfo.typeInfo.isNullable,
-            toJsonConverter: (field, [firstIterationAlwaysNullable]) =>
-                _convertToJson(field, listType.itemType,
-                    useQuestionForNotNullable:
-                        firstIterationAlwaysNullable ?? false),
-          );
-          break;
-        case MapModelType mapType:
-          setter += _generateMapObserver(
-            fieldName: fieldName,
-            isNullable: fieldInfo.typeInfo.isNullable,
-            // Hack - regular string keys are sometimes coming through as unknown
-            // model types, and I don't feel like tracking it down now. This
-            // should work for now.
-            keyToJsonConverter: (field) => field,
-            valueToJsonConverter: (field) => _convertToJson(
-                field, mapType.valueType,
-                useExclamationForNotNullable: true),
-          );
-          break;
-        case _:
-          // If the field is a custom model type, we need to tell it about its
-          // parent.
-          if (fieldInfo.typeInfo is CustomModelType ||
-              fieldInfo.typeInfo is UnknownModelType) {
-            setter += '''
+      // If the field is a custom model type, we need to tell it about its
+      // parent.
+      if (fieldInfo.typeInfo is CustomModelType ||
+          fieldInfo.typeInfo is UnknownModelType) {
+        setter += '''
 super.$fieldName$typeQ.setParentProperties(
   parent: this,
-  parentFieldName: '$fieldName',
+  fieldName: '$fieldName',
   fieldType: FieldType.raw,
 );
 ''';
-          }
+      }
 
-          final valueGetter = switch (fieldInfo.typeInfo) {
-            ListModelType() || MapModelType() => throw Exception(
-                'As originally designed, this should not be possible. This is a bug.'),
-            StringModelType() ||
-            IntModelType() ||
-            DoubleModelType() ||
-            NumModelType() ||
-            BoolModelType() =>
-              'value',
-            EnumModelType() => 'value$typeQ.name',
-            ColorModelType() =>
-              "{ 'a': value.alpha, 'r': value.red, 'g': value.green, 'b': value.blue }",
-            CustomModelType() ||
-            UnknownModelType() =>
-              'value$typeQ.toJson(includeFieldsForEngine: true)',
-          };
+      final valueGetter = switch (fieldInfo.typeInfo) {
+        StringModelType() ||
+        IntModelType() ||
+        DoubleModelType() ||
+        NumModelType() ||
+        BoolModelType() =>
+          'value',
+        EnumModelType() => 'value$typeQ.name',
+        ColorModelType() =>
+          "{ 'a': value.alpha, 'r': value.red, 'g': value.green, 'b': value.blue }",
+        CustomModelType() ||
+        UnknownModelType() ||
+        ListModelType() ||
+        MapModelType() =>
+          'value$typeQ.toJson(includeFieldsForEngine: true)',
+      };
 
-          // Regardless of the type, we need to notify that this field was
-          // changed.
-          setter += '''
+      // Regardless of the type, we need to notify that this field was
+      // changed.
+      setter += '''
 notifyFieldChanged(
   operation: RawFieldUpdate(
-    fieldName: '$fieldName',
-    fieldType: FieldType.raw,
     newValue: $valueGetter,
   ),
 );
 ''';
-          break;
-      }
     }
 
     result += '@override\n';
@@ -234,45 +205,16 @@ String _generateInitFunction({required ModelClassInfo context}) {
       in context.fields.entries) {
     final typeQ = fieldInfo.typeInfo.isNullable ? '?' : '';
 
-    switch (fieldInfo.typeInfo) {
-      case ListModelType listType:
-        // When observing the list, we get a set of changes in each callback.
-        // For any elements added, we need to rewrite the elements provided so
-        // that they're in a serialized form before sending them to be handled.
-        // This is because there is no generic interface for serialization.
-        result += _generateListObserver(
-          fieldName: fieldName,
-          isNullable: fieldInfo.typeInfo.isNullable,
-          toJsonConverter: (field, [firstIterationAlwaysNullable]) =>
-              _convertToJson(field, listType.itemType,
-                  useQuestionForNotNullable:
-                      firstIterationAlwaysNullable ?? false),
-        );
-        break;
-      case MapModelType mapType:
-        result += _generateMapObserver(
-          fieldName: fieldName,
-          isNullable: fieldInfo.typeInfo.isNullable,
-          // Hack - regular string keys are sometimes coming through as unknown
-          // model types, and I don't feel like tracking it down now. This
-          // should work for now.
-          keyToJsonConverter: (field) => field,
-          valueToJsonConverter: (field) => _convertToJson(
-              field, mapType.valueType,
-              useExclamationForNotNullable: true),
-        );
-        break;
-      case CustomModelType():
-        result += '''
+    if (fieldInfo.typeInfo is ListModelType ||
+        fieldInfo.typeInfo is MapModelType ||
+        fieldInfo.typeInfo is CustomModelType) {
+      result += '''
 super.$fieldName$typeQ.setParentProperties(
   parent: this,
-  parentFieldName: '$fieldName',
+  fieldName: '$fieldName',
   fieldType: FieldType.raw,
 );
 ''';
-        break;
-      case _:
-        break;
     }
   }
 
@@ -281,115 +223,4 @@ super.$fieldName$typeQ.setParentProperties(
   result += '}\n';
 
   return result;
-}
-
-String _generateListObserver({
-  required String fieldName,
-  required bool isNullable,
-  required String Function(String, [bool? firstIterationAlwaysNullable])
-      toJsonConverter,
-}) {
-  final typeQ = isNullable ? '?' : '';
-
-  return '''
-super.$fieldName$typeQ.observe(
-  (change) {
-    final newChange = AnthemListChange(
-      elementChanges: change.elementChanges?.map((elementChange) {
-        return AnthemElementChange(
-          index: elementChange.index,
-          type: elementChange.type,
-          newValueSerialized: ${toJsonConverter('elementChange.newValue', true)},
-        );
-      }).toList(),
-
-      rangeChanges: change.rangeChanges?.map((rangeChange) {
-        return AnthemRangeChange(
-          index: rangeChange.index,
-          newValuesSerialized: rangeChange.newValues?.map((e) => ${toJsonConverter('e')}).toList(),
-          numItemsRemoved: rangeChange.oldValues?.length ?? 0,
-        );
-      }).toList(),
-    );
-
-    handleListUpdate(
-      fieldName: '$fieldName',
-      list: super.$fieldName,
-      change: newChange,
-    );
-  },
-  fireImmediately: true,
-);
-''';
-}
-
-String _generateMapObserver({
-  required String fieldName,
-  required bool isNullable,
-  required String Function(String) keyToJsonConverter,
-  required String Function(String) valueToJsonConverter,
-}) {
-  final typeQ = isNullable ? '?' : '';
-
-  return '''
-super.$fieldName$typeQ.observe(
-  (change) {
-    if (change.newValue != null) {
-      if (change.newValue is AnthemModelBase) {
-        (change.newValue as AnthemModelBase).setParentProperties(
-          parent: this,
-          parentFieldName: '$fieldName',
-          fieldType: FieldType.map,
-          key: change.key,
-        );
-      }
-
-      notifyFieldChanged(
-        operation: MapPut(
-          fieldName: '$fieldName',
-          fieldType: FieldType.map,
-          key: ${keyToJsonConverter('change.key')},
-          value: ${valueToJsonConverter('change.newValue')},
-        ),
-      );
-    } else {
-      notifyFieldChanged(
-        operation: MapRemove(
-          fieldName: '$fieldName',
-          fieldType: FieldType.map,
-          key: change.key,
-        ),
-      );
-    }
-  },
-  fireImmediately: true,
-);
-''';
-}
-
-String _convertToJson(String field, ModelType type,
-    {bool useExclamationForNotNullable = false,
-    bool useQuestionForNotNullable = false}) {
-  final typeQ = type.isNullable || useQuestionForNotNullable
-      ? '?'
-      : useExclamationForNotNullable
-          ? '!'
-          : '';
-
-  return switch (type) {
-    StringModelType() => field,
-    IntModelType() => field,
-    DoubleModelType() => field,
-    NumModelType() => field,
-    BoolModelType() => field,
-    EnumModelType() => '$field$typeQ.name',
-    ListModelType() =>
-      '$field$typeQ.map((e) => ${_convertToJson('e', type.itemType)}).toList()',
-    MapModelType() =>
-      '$field$typeQ.map((key, value) => MapEntry(${_convertToJson('key', type.keyType)}, ${_convertToJson('value', type.valueType)}))',
-    ColorModelType() =>
-      "{ 'a': $field.alpha, 'r': $field.red, 'g': $field.green, 'b': $field.blue }",
-    CustomModelType() => '$field$typeQ.toJson(includeFieldsForEngine: true)',
-    UnknownModelType() => '$field$typeQ.toJson(includeFieldsForEngine: true)',
-  };
 }

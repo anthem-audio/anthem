@@ -53,7 +53,7 @@ abstract class _ArrangementModel extends Hydratable
   String name;
 
   @anthemObservable
-  ObservableMap<ID, ClipModel> clips = ObservableMap();
+  AnthemObservableMap<ID, ClipModel> clips = AnthemObservableMap();
 
   @anthemObservable
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);

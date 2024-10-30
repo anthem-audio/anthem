@@ -97,15 +97,17 @@ abstract class _PatternModel extends Hydratable with Store, AnthemModelBase {
 
   /// The ID here is channel ID `Map<ChannelID, List<NoteModel>>`
   @anthemObservable
-  ObservableMap<ID, ObservableList<NoteModel>> notes = ObservableMap();
+  AnthemObservableMap<ID, AnthemObservableList<NoteModel>> notes =
+      AnthemObservableMap();
 
   /// The ID here is channel ID
   @anthemObservable
-  ObservableMap<ID, AutomationLaneModel> automationLanes = ObservableMap();
+  AnthemObservableMap<ID, AutomationLaneModel> automationLanes =
+      AnthemObservableMap();
 
   @anthemObservable
-  ObservableList<TimeSignatureChangeModel> timeSignatureChanges =
-      ObservableList();
+  AnthemObservableList<TimeSignatureChangeModel> timeSignatureChanges =
+      AnthemObservableList();
 
   @hide
   ProjectModel? _project;
@@ -125,7 +127,7 @@ abstract class _PatternModel extends Hydratable with Store, AnthemModelBase {
       hue: 0,
       saturationMultiplier: 0,
     );
-    timeSignatureChanges = ObservableList();
+    timeSignatureChanges = AnthemObservableList();
   }
 
   void hydrate({required ProjectModel project}) {

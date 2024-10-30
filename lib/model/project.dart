@@ -57,11 +57,11 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
 
   /// Map of generators in the project.
   @anthemObservable
-  ObservableMap<ID, GeneratorModel> generators = ObservableMap();
+  AnthemObservableMap<ID, GeneratorModel> generators = AnthemObservableMap();
 
   /// List of generator IDs in the project (to preserve order).
   @anthemObservable
-  ObservableList<ID> generatorList = ObservableList();
+  AnthemObservableList<ID> generatorList = AnthemObservableList();
 
   /// ID of the active instrument, used to determine which instrument is shown
   /// in the channel rack, which is used for piano roll, etc.

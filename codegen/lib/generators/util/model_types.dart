@@ -100,41 +100,65 @@ class EnumModelType extends ModelType {
   String get name => enumName;
 }
 
+enum CollectionType {
+  raw,
+  mobXObservable,
+  anthemObservable,
+}
+
 class ListModelType extends ModelType {
   @override
   final bool canBeMapKey = false;
 
+  final CollectionType collectionType;
+
   /// Defines whether this is a regular list (false) or a MobX ObservableList /
   /// AnthemObservableList (true).
-  final bool isObservable;
+  bool get isObservable => collectionType != CollectionType.raw;
 
   final ModelType itemType;
 
   ListModelType(this.itemType,
-      {this.isObservable = false, required super.isNullable});
+      {this.collectionType = CollectionType.raw, required super.isNullable});
 
   @override
-  String get name =>
-      '${isObservable ? 'Observable' : ''}List<${itemType.name}${itemType.isNullable ? '?' : ''}>';
+  String get name {
+    final collectionTypeName = switch (collectionType) {
+      CollectionType.raw => 'List',
+      CollectionType.mobXObservable => 'ObservableList',
+      CollectionType.anthemObservable => 'AnthemObservableList',
+    };
+
+    return '$collectionTypeName<${itemType.name}${itemType.isNullable ? '?' : ''}>';
+  }
 }
 
 class MapModelType extends ModelType {
   @override
   final bool canBeMapKey = false;
 
+  final CollectionType collectionType;
+
   /// Defines whether this is a regular map (false) or a MobX ObservableMap /
   /// AnthemObservableMap (true).
-  final bool isObservable;
+  bool get isObservable => collectionType != CollectionType.raw;
 
   final ModelType keyType;
   final ModelType valueType;
 
   MapModelType(this.keyType, this.valueType,
-      {this.isObservable = false, required super.isNullable});
+      {this.collectionType = CollectionType.raw, required super.isNullable});
 
   @override
-  String get name =>
-      '${isObservable ? 'Observable' : ''}Map<${keyType.name}${keyType.isNullable ? '?' : ''}, ${valueType.name}${valueType.isNullable ? '?' : ''}>';
+  String get name {
+    final collectionTypeName = switch (collectionType) {
+      CollectionType.raw => 'Map',
+      CollectionType.mobXObservable => 'ObservableMap',
+      CollectionType.anthemObservable => 'AnthemObservableMap',
+    };
+
+    return '$collectionTypeName<${keyType.name}${keyType.isNullable ? '?' : ''}, ${valueType.name}${valueType.isNullable ? '?' : ''}>';
+  }
 }
 
 class ColorModelType extends ModelType {
@@ -203,8 +227,11 @@ ModelType getModelType(
               getModelType(typeParam, libraryReader, annotatedClass);
           return ListModelType(
             itemType,
-            isObservable: element.name == 'ObservableList' ||
-                element.name == 'AnthemObservableList',
+            collectionType: switch (element.name) {
+              'ObservableList' => CollectionType.mobXObservable,
+              'AnthemObservableList' => CollectionType.anthemObservable,
+              _ => CollectionType.raw,
+            },
             isNullable: isNullable,
           );
         }
@@ -234,8 +261,11 @@ ModelType getModelType(
           return MapModelType(
             keyType,
             valueType,
-            isObservable: element.name == 'ObservableMap' ||
-                element.name == 'AnthemObservableMap',
+            collectionType: switch (element.name) {
+              'ObservableMap' => CollectionType.mobXObservable,
+              'AnthemObservableMap' => CollectionType.anthemObservable,
+              _ => CollectionType.raw,
+            },
             isNullable: isNullable,
           );
         }
