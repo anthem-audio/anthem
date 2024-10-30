@@ -48,10 +48,7 @@ class ModelSyncApi {
   void updateModel({
     required FieldUpdateKind updateKind,
     required List<FieldAccess> fieldAccesses,
-    required String fieldName,
     String? serializedValue,
-    int? listIndex,
-    String? serializedMapKey,
   }) {
     final id = _engine._getRequestId();
 
@@ -59,10 +56,7 @@ class ModelSyncApi {
       id: id,
       updateKind: updateKind,
       fieldAccesses: fieldAccesses,
-      fieldName: fieldName,
       serializedValue: serializedValue,
-      listIndex: listIndex,
-      serializedMapKey: serializedMapKey,
     );
 
     _engine._request(id, request);

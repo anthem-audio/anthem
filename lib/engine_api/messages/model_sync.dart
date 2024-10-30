@@ -42,13 +42,13 @@ class FieldAccess extends _FieldAccess with _$FieldAccessAnthemModelMixin {
 
 abstract class _FieldAccess with AnthemModelBase {
   FieldType fieldType;
-  String fieldName;
+  String? fieldName;
   String? serializedMapKey;
   int? listIndex;
 
   _FieldAccess({
     required this.fieldType,
-    required this.fieldName,
+    this.fieldName,
     this.serializedMapKey,
     this.listIndex,
   });
@@ -64,17 +64,8 @@ class ModelUpdateRequest extends Request {
   /// Path to the object to be updated
   List<FieldAccess> fieldAccesses = [];
 
-  /// The name of the field to be updated on the object specified by [fieldAccesses]
-  String fieldName = '';
-
-  /// The new value to be used, if the update kind is set
+  /// The new value to be used, if the update kind is set or add
   String? serializedValue;
-
-  /// The index of the list to be updated, if the update kind is add or remove
-  int? listIndex;
-
-  /// The key of the map to be updated, if the update kind is add or remove
-  String? serializedMapKey;
 
   ModelUpdateRequest.uninitialized();
 
@@ -82,10 +73,7 @@ class ModelUpdateRequest extends Request {
     required int id,
     required this.updateKind,
     required this.fieldAccesses,
-    required this.fieldName,
     this.serializedValue,
-    this.listIndex,
-    this.serializedMapKey,
   }) {
     super.id = id;
   }
