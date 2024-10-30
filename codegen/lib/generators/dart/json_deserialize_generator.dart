@@ -191,10 +191,13 @@ String _generateListGetter({
   return ${_createGetterForField(type: type.itemType, fieldName: fieldName, getter: 'e')};
 }).cast<${type.itemType.name}$listParameterTypeQ>().toList()''';
 
-  if (type.isObservable) {
-    return 'ObservableList.of($result)';
-  } else {
-    return result;
+  switch (type.collectionType) {
+    case CollectionType.raw:
+      return result;
+    case CollectionType.mobXObservable:
+      return 'ObservableList.of($result)';
+    case CollectionType.anthemObservable:
+      return 'AnthemObservableList.of($result)';
   }
 }
 
@@ -221,10 +224,13 @@ String _generateMapGetter({
   return map;
 })()''';
 
-  if (type.isObservable) {
-    return 'ObservableMap.of($result)';
-  } else {
-    return result;
+  switch (type.collectionType) {
+    case CollectionType.raw:
+      return result;
+    case CollectionType.mobXObservable:
+      return 'ObservableMap.of($result)';
+    case CollectionType.anthemObservable:
+      return 'AnthemObservableMap.of($result)';
   }
 }
 
