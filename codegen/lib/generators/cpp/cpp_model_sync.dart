@@ -61,7 +61,17 @@ String getModelSyncFn(ModelClassInfo context) {
   var isFirst = true;
 
   writer.writeLine(
-      'auto& fieldName = request.fieldAccesses[fieldAccessIndex]->fieldName;');
+      'auto& fieldNameNullable = request.fieldAccesses[fieldAccessIndex]->fieldName;');
+
+  writer.writeLine('if (!fieldNameNullable.has_value()) {');
+  writer.incrementWhitespace();
+  writer.writeLine(
+      'std::cout << "Error updating model \\"${context.annotatedClass.name}\\": field name is null." << std::endl;');
+  writer.writeLine('return;');
+  writer.decrementWhitespace();
+  writer.writeLine('}');
+
+  writer.writeLine('auto& fieldName = fieldNameNullable.value();');
 
   for (var MapEntry(key: fieldName, value: field) in context.fields.entries) {
     if (field.hideAnnotation?.cpp == true) {
@@ -84,6 +94,15 @@ String getModelSyncFn(ModelClassInfo context) {
     writer.writeLine('}');
 
     isFirst = false;
+  }
+
+  if (context.fields.entries.isNotEmpty) {
+    writer.writeLine('else {');
+    writer.incrementWhitespace();
+    writer.writeLine(
+        'std::cout << "Unexpected field name \\"" << fieldName << "\\" on model \\"${context.annotatedClass.name}\\". This update will be ignored." << std::endl;');
+    writer.decrementWhitespace();
+    writer.writeLine('}');
   }
 
   writer.decrementWhitespace();
