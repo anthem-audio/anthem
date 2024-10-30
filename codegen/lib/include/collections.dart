@@ -82,7 +82,6 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
 
             notifyFieldChanged(
               operation: ListInsert(
-                index: elementChange.index,
                 value: _serializeValue(elementChange.newValue,
                     includeFieldsForEngine: true),
               ),
@@ -93,7 +92,7 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
                 ),
               ],
             );
-          }
+          } // TODO...
         }
       }
 
