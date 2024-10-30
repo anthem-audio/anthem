@@ -220,34 +220,6 @@ void _writeUpdate({
   required ModelClassInfo context,
   int fieldAccessIndexMod = 0,
 }) {
-  void writeSetUpdateKindAssertion() {
-    writer.writeLine('if (request.updateKind == FieldUpdateKind::add) {');
-    writer.incrementWhitespace();
-    _writeUpdateTypeInvalidError(
-      writer: writer,
-      context: context,
-      updateKind: 'add',
-      type: type,
-      fieldAccessExpression: fieldAccessExpression,
-    );
-    writer.writeLine('return;');
-    writer.decrementWhitespace();
-    writer.writeLine(
-        '} else if (request.updateKind == FieldUpdateKind::remove) {');
-    writer.incrementWhitespace();
-    _writeUpdateTypeInvalidError(
-      writer: writer,
-      context: context,
-      updateKind: 'remove',
-      type: type,
-      fieldAccessExpression: fieldAccessExpression,
-    );
-    writer.writeLine('return;');
-    writer.decrementWhitespace();
-    writer.writeLine('}');
-    writer.writeLine();
-  }
-
   switch (type) {
     case StringModelType():
       _writeIndexCheckForPrimitive(
@@ -257,7 +229,6 @@ void _writeUpdate({
         fieldAccessIndexMod: fieldAccessIndexMod,
         fieldAccessExpression: fieldAccessExpression,
       );
-      writeSetUpdateKindAssertion();
       _writeSerializedValueNullCheck(
         writer: writer,
         fieldAccessExpression: fieldAccessExpression,
@@ -291,7 +262,6 @@ void _writeUpdate({
         fieldAccessIndexMod: fieldAccessIndexMod,
         fieldAccessExpression: fieldAccessExpression,
       );
-      writeSetUpdateKindAssertion();
       _writeSerializedValueNullCheck(
         writer: writer,
         fieldAccessExpression: fieldAccessExpression,
@@ -322,7 +292,6 @@ void _writeUpdate({
         fieldAccessIndexMod: fieldAccessIndexMod,
         fieldAccessExpression: fieldAccessExpression,
       );
-      writeSetUpdateKindAssertion();
       _writeSerializedValueNullCheck(
         writer: writer,
         fieldAccessExpression: fieldAccessExpression,
@@ -353,7 +322,6 @@ void _writeUpdate({
         fieldAccessIndexMod: fieldAccessIndexMod,
         fieldAccessExpression: fieldAccessExpression,
       );
-      writeSetUpdateKindAssertion();
       _writeSerializedValueNullCheck(
         writer: writer,
         fieldAccessExpression: fieldAccessExpression,
@@ -384,7 +352,6 @@ void _writeUpdate({
         fieldAccessIndexMod: fieldAccessIndexMod,
         fieldAccessExpression: fieldAccessExpression,
       );
-      writeSetUpdateKindAssertion();
       _writeSerializedValueNullCheck(
         writer: writer,
         fieldAccessExpression: fieldAccessExpression,
@@ -411,7 +378,6 @@ void _writeUpdate({
         fieldAccessIndexMod: fieldAccessIndexMod,
         fieldAccessExpression: fieldAccessExpression,
       );
-      writeSetUpdateKindAssertion();
       _writeSerializedValueNullCheck(
         writer: writer,
         fieldAccessExpression: fieldAccessExpression,
@@ -513,7 +479,6 @@ void _writeUpdate({
         fieldAccessExpression: fieldAccessExpression,
         context: context,
       );
-      writeSetUpdateKindAssertion();
 
       writer.writeLine(
           'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
@@ -602,7 +567,6 @@ void _writeUpdate({
         fieldAccessExpression: fieldAccessExpression,
         context: context,
       );
-      writeSetUpdateKindAssertion();
 
       writer.writeLine(
           'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
@@ -623,7 +587,6 @@ void _writeUpdate({
       writer.writeLine(
           'if (request.fieldAccesses.size() == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
       writer.incrementWhitespace();
-      writeSetUpdateKindAssertion();
       _writeSerializedValueNullCheck(
         writer: writer,
         fieldAccessExpression: fieldAccessExpression,
