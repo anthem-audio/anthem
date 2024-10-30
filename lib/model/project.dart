@@ -186,9 +186,9 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
         );
 
         _fieldChangedListener = (accesses, operation) {
-          String serializeMapKey(dynamic key) {
+          String? serializeMapKey(dynamic key) {
             return switch (key) {
-              null => 'null',
+              null => null,
               int i => '$i',
               double d => '$d',
               String s => '"$s"',
