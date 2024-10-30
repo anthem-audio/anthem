@@ -173,6 +173,10 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
                   includeFieldsForEngine: true)),
           accessorChain: accessorChain,
         );
+
+        if (V is AnthemModelBase && change.key is K) {
+          _setParamsOnValue(change.key as K);
+        }
       } else if (change.type == OperationType.remove) {
         notifyFieldChanged(
           operation: MapRemove(),
