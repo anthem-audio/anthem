@@ -104,8 +104,8 @@ class ListModelType extends ModelType {
   @override
   final bool canBeMapKey = false;
 
-  /// Defines whether this is a regular list (false) or a MobX ObservableList
-  /// (true).
+  /// Defines whether this is a regular list (false) or a MobX ObservableList /
+  /// AnthemObservableList (true).
   final bool isObservable;
 
   final ModelType itemType;
@@ -122,8 +122,8 @@ class MapModelType extends ModelType {
   @override
   final bool canBeMapKey = false;
 
-  /// Defines whether this is a regular map (false) or a MobX ObservableMap
-  /// (true).
+  /// Defines whether this is a regular map (false) or a MobX ObservableMap /
+  /// AnthemObservableMap (true).
   final bool isObservable;
 
   final ModelType keyType;
@@ -191,7 +191,9 @@ ModelType getModelType(
     _ => (() {
         // Check if this is a list
         if (element is ClassElement &&
-            (element.name == 'List' || element.name == 'ObservableList')) {
+            (element.name == 'List' ||
+                element.name == 'ObservableList' ||
+                element.name == 'AnthemObservableList')) {
           if (type is! ParameterizedType) return UnknownModelType.error();
 
           final typeParam = type.typeArguments.first;
@@ -201,14 +203,17 @@ ModelType getModelType(
               getModelType(typeParam, libraryReader, annotatedClass);
           return ListModelType(
             itemType,
-            isObservable: element.name == 'ObservableList',
+            isObservable: element.name == 'ObservableList' ||
+                element.name == 'AnthemObservableList',
             isNullable: isNullable,
           );
         }
 
         // Check if this is a map
         if (element is ClassElement &&
-            (element.name == 'Map' || element.name == 'ObservableMap')) {
+            (element.name == 'Map' ||
+                element.name == 'ObservableMap' ||
+                element.name == 'AnthemObservableMap')) {
           if (type is! ParameterizedType) return UnknownModelType.error();
 
           final typeParams = type.typeArguments;
@@ -229,7 +234,8 @@ ModelType getModelType(
           return MapModelType(
             keyType,
             valueType,
-            isObservable: element.name == 'ObservableMap',
+            isObservable: element.name == 'ObservableMap' ||
+                element.name == 'AnthemObservableMap',
             isNullable: isNullable,
           );
         }
