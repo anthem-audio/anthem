@@ -17,10 +17,41 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem_codegen/include/serialize_value.dart';
 import 'package:mobx/mobx.dart';
 
 import 'package:anthem_codegen/include.dart';
+
+/// Serializes a model value to a JSON-serializable object.
+///
+/// This will take values of a few types, including Anthem models, and turn them
+/// into objects that can be serialized to JSON. For simple values:
+/// - `String` -> `String`
+/// - `int` -> `int`
+/// - `bool` -> `bool` etc...
+///
+/// For enums, it will return the name of the enum as a string.
+///
+/// For Anthem models, it will call `toJson()` on the model, which will give
+/// back a map, or a list if the model is an AnthemObservableList.
+Object? _serializeValue(Object? value, {required bool includeFieldsForEngine}) {
+  if (value is String) {
+    return value;
+  } else if (value is int) {
+    return value;
+  } else if (value is double) {
+    return value;
+  } else if (value is bool) {
+    return value;
+  } else if (value is Enum) {
+    return value.name;
+  } else if (value is AnthemModelBase) {
+    return value.toJson(includeFieldsForEngine: includeFieldsForEngine);
+  } else if (value == null) {
+    return null;
+  } else {
+    throw ArgumentError('Unsupported type: ${value.runtimeType}');
+  }
+}
 
 class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
   @override
@@ -52,7 +83,7 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
             notifyFieldChanged(
               operation: ListInsert(
                 index: elementChange.index,
-                value: serializeValue(elementChange.newValue,
+                value: _serializeValue(elementChange.newValue,
                     includeFieldsForEngine: true),
               ),
               accessorChain: [
@@ -87,7 +118,7 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
   @override
   List<Object?> toJson({bool includeFieldsForEngine = false}) {
     return map(
-      (e) => serializeValue(e, includeFieldsForEngine: includeFieldsForEngine),
+      (e) => _serializeValue(e, includeFieldsForEngine: includeFieldsForEngine),
     ).toList();
   }
 }
@@ -117,7 +148,7 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
 
         notifyFieldChanged(
           operation: MapPut(
-              value: serializeValue(this[key], includeFieldsForEngine: true)),
+              value: _serializeValue(this[key], includeFieldsForEngine: true)),
           accessorChain: [
             FieldAccessor(
               fieldType: FieldType.map,
@@ -143,8 +174,8 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
   Map<Object?, Object?> toJson({bool includeFieldsForEngine = false}) {
     return map(
       (key, value) => MapEntry(
-        serializeValue(key, includeFieldsForEngine: includeFieldsForEngine),
-        serializeValue(value, includeFieldsForEngine: includeFieldsForEngine),
+        _serializeValue(key, includeFieldsForEngine: includeFieldsForEngine),
+        _serializeValue(value, includeFieldsForEngine: includeFieldsForEngine),
       ),
     );
   }
