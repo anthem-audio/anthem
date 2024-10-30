@@ -37,7 +37,7 @@ String generateJsonSerializationCode({
 
   result += '''// ignore: duplicate_ignore
 // ignore: non_constant_identifier_names
-@override
+${(context.annotation?.generateModelSync == true) ? '@override' : ''}
 Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
   final map = <String, dynamic>{};
 ''';

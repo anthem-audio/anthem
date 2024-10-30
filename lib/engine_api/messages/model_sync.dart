@@ -40,7 +40,7 @@ class FieldAccess extends _FieldAccess with _$FieldAccessAnthemModelMixin {
       _$FieldAccessAnthemModelMixin.fromJson(json);
 }
 
-abstract class _FieldAccess with AnthemModelBase {
+abstract class _FieldAccess {
   FieldType fieldType;
   String? fieldName;
   String? serializedMapKey;
