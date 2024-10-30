@@ -77,6 +77,13 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
 
       if (change.elementChanges != null) {
         for (final elementChange in change.elementChanges!) {
+          final accessorChain = [
+            FieldAccessor(
+              fieldType: FieldType.list,
+              index: elementChange.index,
+            ),
+          ];
+
           if (elementChange.type == OperationType.add) {
             firstChangedIndex = elementChange.index;
 
@@ -85,14 +92,22 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
                 value: _serializeValue(elementChange.newValue,
                     includeFieldsForEngine: true),
               ),
-              accessorChain: [
-                FieldAccessor(
-                  fieldType: FieldType.list,
-                  index: elementChange.index,
-                ),
-              ],
+              accessorChain: accessorChain,
             );
-          } // TODO...
+          } else if (elementChange.type == OperationType.remove) {
+            notifyFieldChanged(
+              operation: ListRemove(),
+              accessorChain: accessorChain,
+            );
+          } else if (elementChange.type == OperationType.update) {
+            notifyFieldChanged(
+              operation: ListUpdate(
+                value: _serializeValue(elementChange.newValue,
+                    includeFieldsForEngine: true),
+              ),
+              accessorChain: accessorChain,
+            );
+          }
         }
       }
 
@@ -141,19 +156,25 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
     }
 
     observe((change) {
+      final accessorChain = [
+        FieldAccessor(
+          fieldType: FieldType.map,
+          key: change.key,
+        ),
+      ];
+
       if (change.type == OperationType.add ||
           change.type == OperationType.update) {
-        final key = change.key as K;
-
         notifyFieldChanged(
           operation: MapPut(
-              value: _serializeValue(this[key], includeFieldsForEngine: true)),
-          accessorChain: [
-            FieldAccessor(
-              fieldType: FieldType.map,
-              key: key,
-            ),
-          ],
+              value: _serializeValue(this[change.key],
+                  includeFieldsForEngine: true)),
+          accessorChain: accessorChain,
+        );
+      } else if (change.type == OperationType.remove) {
+        notifyFieldChanged(
+          operation: MapRemove(),
+          accessorChain: accessorChain,
         );
       }
     });
