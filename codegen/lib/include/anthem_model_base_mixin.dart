@@ -223,7 +223,8 @@ mixin AnthemModelBase {
     required FieldOperation operation,
     List<FieldAccessor>? accessorChain,
   }) {
-    final accessorChainNotNull = accessorChain ?? <FieldAccessor>[];
+    final accessorChainNotNull = accessorChain ??
+        [FieldAccessor(fieldType: FieldType.raw, fieldName: parentFieldName)];
 
     for (final listener in _listeners) {
       listener(accessorChainNotNull.reversed, operation);
