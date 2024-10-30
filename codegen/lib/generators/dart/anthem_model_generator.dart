@@ -177,6 +177,12 @@ notifyFieldChanged(
   operation: RawFieldUpdate(
     newValue: $valueGetter,
   ),
+  accessorChain: [
+    FieldAccessor(
+      fieldType: FieldType.raw,
+      fieldName: '$fieldName',
+    ),
+  ],
 );
 ''';
     }
