@@ -66,10 +66,8 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
   }
 
   void _init() {
-    if (T is AnthemModelBase) {
-      for (var i = 0; i < length; i++) {
-        _setParentPropertiesOnIndex(i);
-      }
+    for (var i = 0; i < length; i++) {
+      _setParentPropertiesOnIndex(i);
     }
 
     observe((change) {
@@ -112,17 +110,18 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
       }
 
       if (firstChangedIndex != null) {
-        if (T is AnthemModelBase) {
-          for (var i = firstChangedIndex; i < length; i++) {
-            _setParentPropertiesOnIndex(i);
-          }
+        for (var i = firstChangedIndex; i < length; i++) {
+          _setParentPropertiesOnIndex(i);
         }
       }
     });
   }
 
   void _setParentPropertiesOnIndex(int index) {
-    final element = elementAt(index) as AnthemModelBase;
+    final element = elementAt(index);
+    if (element is! AnthemModelBase) {
+      return;
+    }
 
     element.setParentProperties(
       parent: this,
@@ -151,10 +150,8 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
   }
 
   void _init() {
-    if (V is AnthemModelBase) {
-      for (final key in keys) {
-        _setParentPropertiesOnValue(key);
-      }
+    for (final key in keys) {
+      _setParentPropertiesOnValue(key);
     }
 
     observe((change) {
@@ -169,12 +166,12 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
           change.type == OperationType.update) {
         notifyFieldChanged(
           operation: MapPut(
-              value: _serializeValue(this[change.key],
+              value: _serializeValue(change.newValue,
                   includeFieldsForEngine: true)),
           accessorChain: accessorChain,
         );
 
-        if (V is AnthemModelBase && change.key is K) {
+        if (change.newValue is AnthemModelBase && change.key is K) {
           _setParentPropertiesOnValue(change.key as K);
         }
       } else if (change.type == OperationType.remove) {
@@ -187,9 +184,12 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
   }
 
   void _setParentPropertiesOnValue(K key) {
-    final model = this[key] as AnthemModelBase;
+    final value = this[key];
+    if (value is! AnthemModelBase) {
+      return;
+    }
 
-    model.setParentProperties(
+    value.setParentProperties(
       parent: this,
       fieldType: FieldType.map,
       key: key,
