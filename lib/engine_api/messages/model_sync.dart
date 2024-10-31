@@ -88,3 +88,11 @@ class ModelInitRequest extends Request {
     super.id = id;
   }
 }
+
+class ModelDebugPrintRequest extends Request {
+  ModelDebugPrintRequest.uninitialized();
+
+  ModelDebugPrintRequest({required int id}) {
+    super.id = id;
+  }
+}

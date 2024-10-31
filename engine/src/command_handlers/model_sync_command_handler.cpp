@@ -53,7 +53,8 @@ std::optional<Response> handleModelSyncCommand(
       std::cout << "Loaded project model" << std::endl;
       std::cout << "id: " << anthem->projectModel->id << std::endl;
     }
-  } else if (rfl::holds_alternative<ModelUpdateRequest>(request.variant())) {
+  }
+  else if (rfl::holds_alternative<ModelUpdateRequest>(request.variant())) {
     std::cout << "Model update received. Applying..." << std::endl;
 
     auto& modelUpdateRequest = rfl::get<ModelUpdateRequest>(request.variant());
@@ -64,6 +65,11 @@ std::optional<Response> handleModelSyncCommand(
     );
 
     std::cout << "Model update applied." << std::endl;
+  }
+  else if (rfl::holds_alternative<ModelDebugPrintRequest>(request.variant())) {
+    std::cout << rfl::json::write(
+      anthem->projectModel.get()
+    ) << std::endl;
   }
 
   return std::nullopt;

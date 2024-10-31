@@ -62,6 +62,12 @@ class ModelSyncApi {
     _engine._request(id, request);
   }
 
+  /// Prints the current state of the engine model to the engine's stdout.
+  void debugPrintModel() {
+    final id = _engine._getRequestId();
+
+    final request = ModelDebugPrintRequest(id: id);
+
     _engine._request(id, request);
   }
 }
