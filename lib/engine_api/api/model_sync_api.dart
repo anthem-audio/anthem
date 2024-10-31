@@ -61,4 +61,7 @@ class ModelSyncApi {
 
     _engine._request(id, request);
   }
+
+    _engine._request(id, request);
+  }
 }
