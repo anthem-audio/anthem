@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/processing_graph/node_config.dart';
 import 'package:anthem/model/shared/hydratable.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -26,9 +27,10 @@ part 'node.g.dart';
 @AnthemModel.all()
 class NodeModel extends _NodeModel
     with _$NodeModel, _$NodeModelAnthemModelMixin {
-  NodeModel({required super.id});
+  NodeModel({required super.id, required super.config});
 
-  NodeModel.uninitialized() : super(id: '');
+  NodeModel.uninitialized()
+      : super(id: '', config: NodeConfigModel.uninitialized());
 
   factory NodeModel.fromJson(Map<String, dynamic> json) =>
       _$NodeModelAnthemModelMixin.fromJson(json);
@@ -37,7 +39,9 @@ class NodeModel extends _NodeModel
 abstract class _NodeModel extends Hydratable with Store, AnthemModelBase {
   String id;
 
-  _NodeModel({required this.id}) {
+  NodeConfigModel config;
+
+  _NodeModel({required this.id, required this.config}) {
     isHydrated = true;
     (this as _$NodeModelAnthemModelMixin).init();
   }
