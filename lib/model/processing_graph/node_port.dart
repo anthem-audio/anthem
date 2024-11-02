@@ -21,14 +21,9 @@ import 'package:anthem/model/shared/hydratable.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
-part 'node_port.g.dart';
+import 'node_port_config.dart';
 
-@AnthemEnum()
-enum NodePortDataType {
-  audio,
-  midi,
-  control,
-}
+part 'node_port.g.dart';
 
 @AnthemModel.all()
 class NodePortModel extends _NodePortModel
@@ -36,11 +31,11 @@ class NodePortModel extends _NodePortModel
   NodePortModel({
     required super.id,
     required super.nodeId,
-    required super.dataType,
+    required super.config,
   });
 
   NodePortModel.uninitialized()
-      : super(id: '', nodeId: '', dataType: NodePortDataType.audio);
+      : super(id: '', nodeId: '', config: NodePortConfigModel.uninitialized());
 
   factory NodePortModel.fromJson(Map<String, dynamic> json) =>
       _$NodePortModelAnthemModelMixin.fromJson(json);
@@ -51,12 +46,16 @@ abstract class _NodePortModel extends Hydratable with Store, AnthemModelBase {
 
   String nodeId;
 
-  NodePortDataType dataType;
+  NodePortConfigModel config;
+
+  /// The value of the parameter, if this port is a control input port.
+  @anthemObservable
+  double? parameterValue;
 
   _NodePortModel({
     required this.id,
     required this.nodeId,
-    required this.dataType,
+    required this.config,
   }) {
     isHydrated = true;
     (this as _$NodePortModelAnthemModelMixin).init();
