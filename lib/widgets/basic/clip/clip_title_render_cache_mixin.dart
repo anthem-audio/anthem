@@ -27,7 +27,6 @@ part of 'package:anthem/model/pattern/pattern.dart';
 
 // ignore: library_private_types_in_public_api
 mixin _ClipTitleRenderCacheMixin on _PatternModel {
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @observable
   Image? renderedTitle;
 

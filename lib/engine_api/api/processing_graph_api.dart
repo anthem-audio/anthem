@@ -30,29 +30,21 @@ class ProcessingGraphApi {
   Future<List<ProcessorDescription>> getAvailableProcessors() async {
     final id = _engine._getRequestId();
 
-    final request = RequestObjectBuilder(
-      id: id,
-      commandType: CommandTypeId.GetProcessors,
-      command: GetProcessorsObjectBuilder(),
-    );
+    final request = GetProcessorsRequest(id: id);
 
-    final response = (await _engine._request(id, request)).returnValue
-        as GetProcessorsResponse;
+    final response =
+        (await _engine._request(id, request)) as GetProcessorsResponse;
 
-    return response.processors!;
+    return response.processors;
   }
 
   Future<int> getMasterOutputNodeId() async {
     final id = _engine._getRequestId();
 
-    final request = RequestObjectBuilder(
-      id: id,
-      commandType: CommandTypeId.GetMasterOutputNodeId,
-      command: GetMasterOutputNodeIdObjectBuilder(),
-    );
+    final request = GetMasterOutputNodeIdRequest(id: id);
 
-    final response = (await _engine._request(id, request)).returnValue
-        as GetMasterOutputNodeIdResponse;
+    final response =
+        (await _engine._request(id, request)) as GetMasterOutputNodeIdResponse;
 
     return response.nodeId;
   }
@@ -61,16 +53,10 @@ class ProcessingGraphApi {
   Future<int> addProcessor(String processorId) async {
     final id = _engine._getRequestId();
 
-    final request = RequestObjectBuilder(
-      id: id,
-      commandType: CommandTypeId.AddProcessor,
-      command: AddProcessorObjectBuilder(
-        id: processorId,
-      ),
-    );
+    final request = AddProcessorRequest(id: id, processorId: processorId);
 
-    final response = (await _engine._request(id, request)).returnValue
-        as AddProcessorResponse;
+    final response =
+        (await _engine._request(id, request)) as AddProcessorResponse;
 
     if (response.success) {
       return response.processorId;
@@ -85,16 +71,10 @@ class ProcessingGraphApi {
   Future<void> removeProcessor(int processorId) async {
     final id = _engine._getRequestId();
 
-    final request = RequestObjectBuilder(
-      id: id,
-      commandType: CommandTypeId.RemoveProcessor,
-      command: RemoveProcessorObjectBuilder(
-        id: processorId,
-      ),
-    );
+    final request = RemoveProcessorRequest(id: id, nodeId: processorId);
 
-    final response = (await _engine._request(id, request)).returnValue
-        as RemoveProcessorResponse;
+    final response =
+        (await _engine._request(id, request)) as RemoveProcessorResponse;
 
     if (response.success) {
       return;
@@ -114,20 +94,17 @@ class ProcessingGraphApi {
   }) async {
     final id = _engine._getRequestId();
 
-    final request = RequestObjectBuilder(
+    final request = ConnectProcessorsRequest(
       id: id,
-      commandType: CommandTypeId.ConnectProcessors,
-      command: ConnectProcessorsObjectBuilder(
-        sourceId: sourceId,
-        sourcePortIndex: sourcePortIndex,
-        destinationId: destinationId,
-        destinationPortIndex: destinationPortIndex,
-        connectionType: connectionType,
-      ),
+      sourceId: sourceId,
+      destinationId: destinationId,
+      connectionType: connectionType,
+      sourcePortIndex: sourcePortIndex,
+      destinationPortIndex: destinationPortIndex,
     );
 
-    final response = (await _engine._request(id, request)).returnValue
-        as ConnectProcessorsResponse;
+    final response =
+        (await _engine._request(id, request)) as ConnectProcessorsResponse;
 
     if (response.success) {
       return;
@@ -147,20 +124,17 @@ class ProcessingGraphApi {
   }) async {
     final id = _engine._getRequestId();
 
-    final request = RequestObjectBuilder(
+    final request = DisconnectProcessorsRequest(
       id: id,
-      commandType: CommandTypeId.DisconnectProcessors,
-      command: DisconnectProcessorsObjectBuilder(
-        sourceId: sourceId,
-        sourcePortIndex: sourcePortIndex,
-        destinationId: destinationId,
-        destinationPortIndex: destinationPortIndex,
-        connectionType: connectionType,
-      ),
+      sourceId: sourceId,
+      destinationId: destinationId,
+      connectionType: connectionType,
+      sourcePortIndex: sourcePortIndex,
+      destinationPortIndex: destinationPortIndex,
     );
 
-    final response = (await _engine._request(id, request)).returnValue
-        as DisconnectProcessorsResponse;
+    final response =
+        (await _engine._request(id, request)) as DisconnectProcessorsResponse;
 
     if (response.success) {
       return;
@@ -179,14 +153,12 @@ class ProcessingGraphApi {
   Future<void> compile() async {
     final id = _engine._getRequestId();
 
-    final request = RequestObjectBuilder(
+    final request = CompileProcessingGraphRequest(
       id: id,
-      commandType: CommandTypeId.CompileProcessingGraph,
-      command: CompileProcessingGraphObjectBuilder(),
     );
 
-    final response = (await _engine._request(id, request)).returnValue
-        as CompileProcessingGraphResponse;
+    final response =
+        (await _engine._request(id, request)) as CompileProcessingGraphResponse;
 
     if (response.success) {
       return;
@@ -203,18 +175,15 @@ class ProcessingGraphApi {
   }) async {
     final id = _engine._getRequestId();
 
-    final request = RequestObjectBuilder(
+    final request = SetParameterRequest(
       id: id,
-      commandType: CommandTypeId.SetParameter,
-      command: SetParameterObjectBuilder(
-        nodeId: nodeId,
-        parameterId: parameterId,
-        value: value,
-      ),
+      nodeId: nodeId,
+      parameterId: parameterId,
+      value: value,
     );
 
-    final response = (await _engine._request(id, request)).returnValue
-        as SetParameterResponse;
+    final response =
+        (await _engine._request(id, request)) as SetParameterResponse;
 
     if (response.success) {
       return;
@@ -228,16 +197,13 @@ class ProcessingGraphApi {
       {required int processorId}) async {
     final id = _engine._getRequestId();
 
-    final request = RequestObjectBuilder(
+    final request = GetProcessorPortsRequest(
       id: id,
-      commandType: CommandTypeId.GetProcessorPorts,
-      command: GetProcessorPortsObjectBuilder(
-        id: processorId,
-      ),
+      nodeId: processorId,
     );
 
-    final response = (await _engine._request(id, request)).returnValue
-        as GetProcessorPortsResponse;
+    final response =
+        (await _engine._request(id, request)) as GetProcessorPortsResponse;
 
     if (!response.success) {
       throw Exception(
@@ -245,18 +211,18 @@ class ProcessingGraphApi {
     }
 
     final audioInputPorts =
-        response.inputAudioPorts!.map((port) => (id: port.id)).toList();
+        response.inputAudioPorts.map((port) => (id: port.id)).toList();
     final controlInputPorts =
-        response.inputControlPorts!.map((port) => (id: port.id)).toList();
+        response.inputControlPorts.map((port) => (id: port.id)).toList();
     final noteEventInputPorts =
-        response.inputNoteEventPorts!.map((port) => (id: port.id)).toList();
+        response.inputNoteEventPorts.map((port) => (id: port.id)).toList();
     final audioOutputPorts =
-        response.outputAudioPorts!.map((port) => (id: port.id)).toList();
+        response.outputAudioPorts.map((port) => (id: port.id)).toList();
     final controlOutputPorts =
-        response.outputControlPorts!.map((port) => (id: port.id)).toList();
+        response.outputControlPorts.map((port) => (id: port.id)).toList();
     final noteEventOutputPorts =
-        response.outputNoteEventPorts!.map((port) => (id: port.id)).toList();
-    final parameters = response.parameters!
+        response.outputNoteEventPorts.map((port) => (id: port.id)).toList();
+    final parameters = response.parameters
         .map((parameter) => (
               id: parameter.id,
               defaultValue: parameter.defaultValue,

@@ -36,7 +36,7 @@ class TimeSignatureChangeDetailView extends StatelessObserverWidget {
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     final detailView =
-        project.selectedDetailView as TimeSignatureChangeDetailViewKind;
+        project.getSelectedDetailView() as TimeSignatureChangeDetailViewKind;
 
     late TimeSignatureChangeModel timeSignatureChange;
     if (detailView.arrangementID != null) {

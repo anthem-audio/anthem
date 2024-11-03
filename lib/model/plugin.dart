@@ -18,26 +18,32 @@
 */
 
 import 'package:anthem/engine_api/engine.dart';
-import 'package:json_annotation/json_annotation.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
+
+import 'shared/hydratable.dart';
 
 part 'plugin.g.dart';
 
 /// A model representing a plugin.
-@JsonSerializable()
-class PluginModel extends _PluginModel with _$PluginModel {
+@AnthemModel.all()
+class PluginModel extends _PluginModel
+    with _$PluginModel, _$PluginModelAnthemModelMixin {
   PluginModel({required super.path});
 
+  PluginModel.uninitialized() : super(path: '');
+
   factory PluginModel.fromJson(Map<String, dynamic> json) =>
-      _$PluginModelFromJson(json);
+      _$PluginModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _PluginModel with Store {
+abstract class _PluginModel extends Hydratable with Store, AnthemModelBase {
   String? path;
 
-  _PluginModel({required this.path});
-
-  Map<String, dynamic> toJson() => _$PluginModelToJson(this as PluginModel);
+  _PluginModel({required this.path}) : super() {
+    (this as _$PluginModelAnthemModelMixin).init();
+    isHydrated = true;
+  }
 
   Future<bool> createInEngine(Engine engine) async {
     if (path == null) return false;

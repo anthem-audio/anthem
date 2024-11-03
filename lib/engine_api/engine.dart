@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,15 +18,14 @@
 */
 
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:anthem/engine_api/engine_connector.dart';
-import 'package:anthem/generated/messages_generated.dart';
-import 'package:anthem/generated/processors_generated.dart';
-import 'package:anthem/generated/project_generated.dart';
-import 'package:anthem/generated/processing_graph_generated.dart';
+import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/model/project.dart';
 
-part 'api/project_api.dart';
+part 'api/model_sync_api.dart';
 part 'api/processing_graph_api.dart';
 
 enum EngineState {
@@ -50,7 +49,7 @@ class Engine {
   /// The project that this engine is attached to
   ProjectModel project;
 
-  late ProjectApi projectApi;
+  late ModelSyncApi modelSyncApi;
   late ProcessingGraphApi processingGraphApi;
 
   Map<int, void Function(Response response)> replyFunctions = {};
@@ -72,7 +71,7 @@ class Engine {
   Engine(this.id, this.project) {
     engineStateStream = _engineStateStreamController.stream;
 
-    projectApi = ProjectApi(this);
+    modelSyncApi = ModelSyncApi(this);
     processingGraphApi = ProcessingGraphApi(this);
   }
 
@@ -90,11 +89,7 @@ class Engine {
   Future<void> _exit() async {
     final id = _getRequestId();
 
-    final request = RequestObjectBuilder(
-      id: id,
-      commandType: CommandTypeId.Exit,
-      command: ExitObjectBuilder(),
-    );
+    final request = Exit(id: id);
 
     await _request(id, request);
 
@@ -134,7 +129,7 @@ class Engine {
   }
 
   /// Sends a request to the engine, and asynchronously returns the response.
-  Future<Response> _request(int id, RequestObjectBuilder request) {
+  Future<Response> _request(int id, Request request) {
     if (engineState != EngineState.running) {
       throw AssertionError('Engine must be running to send commands.');
     }
@@ -147,7 +142,9 @@ class Engine {
 
     replyFunctions[id] = onResponse;
 
-    _engineConnector.send(request);
+    final encoder = JsonUtf8Encoder();
+
+    _engineConnector.send(encoder.convert(request.toJson()) as Uint8List);
 
     return completer.future;
   }

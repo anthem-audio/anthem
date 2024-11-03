@@ -23,8 +23,8 @@
 #include <map>
 #include <vector>
 
-#include "anthem_graph_compiler_edge.h"
-#include "anthem_graph_node.h"
+#include "modules/processing_graph/compiler/anthem_graph_compiler_edge.h"
+#include "modules/processing_graph/topology/anthem_graph_node.h"
 
 class AnthemGraphNode;
 class AnthemProcessContext;

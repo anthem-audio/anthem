@@ -20,19 +20,24 @@
 // import 'package:anthem/controller/processor_manager/processor_list.dart';
 // import 'package:anthem/controller/processor_manager/processor_manager.dart';
 import 'package:anthem/engine_api/engine.dart';
-import 'package:json_annotation/json_annotation.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
+
+import '../shared/hydratable.dart';
 
 part 'processor.g.dart';
 
-@JsonSerializable()
-class ProcessorModel extends _ProcessorModel with _$ProcessorModel {
+@AnthemModel.all()
+class ProcessorModel extends _ProcessorModel
+    with _$ProcessorModel, _$ProcessorModelAnthemModelMixin {
   ProcessorModel({
     required super.processorKey,
   });
 
+  ProcessorModel.uninitialized() : super(processorKey: '');
+
   factory ProcessorModel.fromJson(Map<String, dynamic> json) =>
-      _$ProcessorModelFromJson(json);
+      _$ProcessorModelAnthemModelMixin.fromJson(json);
 
   Future<void> createInEngine(Engine engine) async {
     if (processorKey == null) return;
@@ -49,7 +54,7 @@ class ProcessorModel extends _ProcessorModel with _$ProcessorModel {
           .defaultValue; // TODO - This is incorrect. We should get the current parameter value, but we can't yet.
     }
 
-    parameterValues = ObservableMap.of(newParams);
+    parameterValues = AnthemObservableMap.of(newParams);
 
     // Report changes back to the engine
     parameterValues.observe((change) async {
@@ -88,26 +93,16 @@ class ProcessorModel extends _ProcessorModel with _$ProcessorModel {
   }
 }
 
-abstract class _ProcessorModel with Store {
+abstract class _ProcessorModel extends Hydratable with Store, AnthemModelBase {
   int? idInEngine;
 
-  @observable
+  @anthemObservable
   String? processorKey;
 
-  @JsonKey(fromJson: _parameterValuesFromJson, toJson: _parameterValuesToJson)
-  ObservableMap<int, double> parameterValues = ObservableMap();
+  AnthemObservableMap<int, double> parameterValues = AnthemObservableMap();
 
-  _ProcessorModel({required this.processorKey});
-
-  Map<String, dynamic> toJson() =>
-      _$ProcessorModelToJson(this as ProcessorModel);
-}
-
-ObservableMap<int, double> _parameterValuesFromJson(Map<String, dynamic> json) {
-  return ObservableMap.of(
-      json.map((key, value) => MapEntry(int.parse(key), value)));
-}
-
-Map<String, dynamic> _parameterValuesToJson(ObservableMap<int, double> map) {
-  return map.map((key, value) => MapEntry(key.toString(), value));
+  _ProcessorModel({required this.processorKey}) : super() {
+    (this as _$ProcessorModelAnthemModelMixin).init();
+    isHydrated = true;
+  }
 }

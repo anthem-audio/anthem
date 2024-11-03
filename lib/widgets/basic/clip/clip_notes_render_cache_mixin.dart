@@ -22,15 +22,12 @@ part of 'package:anthem/model/pattern/pattern.dart';
 mixin _ClipNotesRenderCacheMixin on _PatternModel {
   // When generators can be removed, removing a generator should clear the
   // associated item in this map.
-  @JsonKey(includeFromJson: false, includeToJson: false)
   final clipNotesRenderCache = <ID, ClipNotesRenderCache>{};
 
   /// This is crude, but it allows us to signal changes in the
   /// ClipNotesRenderCache without needing to tangle MobX with that object.
-  @JsonKey(includeFromJson: false, includeToJson: false)
   final Observable<int> clipNotesUpdateSignal = Observable(0);
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
   late final Action incrementClipUpdateSignal;
 
   void updateClipNotesRenderCache() {

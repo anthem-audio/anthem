@@ -37,7 +37,8 @@ class _ArrangementDetailViewState extends State<ArrangementDetailView> {
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     final arrangementID =
-        (project.selectedDetailView as ArrangementDetailViewKind).arrangementID;
+        (project.getSelectedDetailView() as ArrangementDetailViewKind)
+            .arrangementID;
     final arrangement = project.song.arrangements[arrangementID]!;
 
     return Column(

@@ -18,22 +18,21 @@
 */
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:anthem/engine_api/engine_socket_server.dart';
 import 'package:anthem/engine_api/memory_block.dart';
+import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:flutter/foundation.dart';
-
-import 'package:anthem/generated/messages_generated.dart';
 
 /// Set this to override the path to the engine. Should be a full path.
 ///
 /// This will allow you to stop the engine from Anthem, compile a new engine,
 /// and start the new engine, all without re-building the Anthem UI.
 // ignore: unnecessary_nullable_for_final_variable_declarations
-const String? enginePathOverride =
-    'C:/Users/qbgee/Documents/Code/anthem/engine/build/AnthemEngine_artefacts/Debug/AnthemEngine.exe';
+const String? enginePathOverride = null;
 
 final mainExecutablePath = File(Platform.resolvedExecutable);
 
@@ -42,8 +41,8 @@ final mainExecutablePath = File(Platform.resolvedExecutable);
 /// The [EngineConnector] class manages an engine process. It uses a socket to
 /// communicate with the process.
 ///
-/// The [send] method can be used to send a Flatbuffers message to the engine. A
-/// message can be sent like so:
+/// The [send] method can be used to send messages to the engine. A message can
+/// be sent like so:
 ///
 /// ```dart
 /// final engineConnectorID = getID();
@@ -58,13 +57,12 @@ final mainExecutablePath = File(Platform.resolvedExecutable);
 ///
 /// final id = engineConnector.getRequestId();
 ///
-/// final request = RequestObjectBuilder(
-///   id: id,
-///   commandType: CommandTypeId.AddArrangement,
-///   command: AddArrangementObjectBuilder(),
-/// );
+/// final request = Heartbeat(id: id);
 ///
-/// engineConnector.send(request);
+/// final encoder = JsonUtf8Encoder();
+/// final requestBytes = encoder.convert(request.toJson()) as Uint8List;
+///
+/// engineConnector.send(requestBytes);
 /// ```
 class EngineConnector {
   var requestIdGen = 0;
@@ -93,7 +91,7 @@ class EngineConnector {
   /// If any requests are sent before the engine starts and IPC is set up, this
   /// list will hold the requests until the engine is initialized, at which
   /// point they will all be sent.
-  final List<RequestObjectBuilder> _bufferedRequests = [];
+  final List<Uint8List> _bufferedRequests = [];
 
   /// Timer that sends a heartbeat message to the engine every 5 seconds. If
   /// the engine doesn't receive one after 10 seconds, it will stop itself.
@@ -201,12 +199,12 @@ class EngineConnector {
       const Duration(seconds: 5),
       (timer) {
         final id = getRequestId();
-        final heartbeat = RequestObjectBuilder(
-          id: id,
-          commandType: CommandTypeId.Heartbeat,
-          command: HeartbeatObjectBuilder(),
-        );
-        send(heartbeat);
+
+        final heartbeat = Heartbeat(id: id);
+
+        final encoder = JsonUtf8Encoder();
+
+        send(encoder.convert(heartbeat.toJson()) as Uint8List);
       },
     );
 
@@ -221,12 +219,10 @@ class EngineConnector {
     return true;
   }
 
-  /// Sends the given [Request] to the engine.
-  Future<void> send(RequestObjectBuilder request) async {
-    final bytes = request.toBytes();
-
+  /// Sends the given bytes to the engine.
+  Future<void> send(Uint8List bytes) async {
     if (!_initialized) {
-      _bufferedRequests.add(request);
+      _bufferedRequests.add(bytes);
       return;
     }
 
@@ -259,10 +255,14 @@ class EngineConnector {
         // Extract the full message
         final fullMessage = _messageBuffer.buffer.sublist(8, 8 + messageLength);
 
-        final response = Response(fullMessage);
+        final response = Response.fromJson(
+          jsonDecode(
+            utf8.decode(fullMessage),
+          ),
+        );
 
         // Handle heartbeat reply
-        if (response.returnValueType == ReturnValueTypeId.HeartbeatReply) {
+        if (response is HeartbeatReply) {
           _heartbeatReceived = true;
         } else {
           _onReply(response);

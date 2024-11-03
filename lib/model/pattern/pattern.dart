@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -29,8 +29,8 @@ import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/shared/hydratable.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes_render_cache.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:flutter/widgets.dart' as widgets;
-import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
 import '../shared/time_signature.dart';
@@ -41,10 +41,11 @@ part 'pattern.g.dart';
 part 'package:anthem/widgets/basic/clip/clip_title_render_cache_mixin.dart';
 part 'package:anthem/widgets/basic/clip/clip_notes_render_cache_mixin.dart';
 
-@JsonSerializable()
+@AnthemModel.all()
 class PatternModel extends _PatternModel
     with
         _$PatternModel,
+        _$PatternModelAnthemModelMixin,
         _ClipTitleRenderCacheMixin,
         _ClipNotesRenderCacheMixin {
   PatternModel() : super() {
@@ -59,51 +60,56 @@ class PatternModel extends _PatternModel
         (generator) => generator.generatorType == GeneratorType.automation)) {
       automationLanes[generator.id] = AutomationLaneModel();
     }
+    super.hydrate(project: project);
   }
 
   factory PatternModel.fromJson(Map<String, dynamic> json) {
-    final result = _$PatternModelFromJson(json);
+    final result = _$PatternModelAnthemModelMixin.fromJson(json);
     result._init();
     return result;
   }
 
   void _init() {
-    incrementClipUpdateSignal = Action(() {
-      clipNotesUpdateSignal.value =
-          (clipNotesUpdateSignal.value + 1) % 0xFFFFFFFF;
-    });
-    updateClipTitleCache();
-    updateClipNotesRenderCache();
+    if (isHydrated) throw Exception('Should always init before hydrate');
+
+    super._onHydrateAction = () {
+      incrementClipUpdateSignal = Action(() {
+        clipNotesUpdateSignal.value =
+            (clipNotesUpdateSignal.value + 1) % 0xFFFFFFFF;
+      });
+      updateClipTitleCache();
+      updateClipNotesRenderCache();
+    };
   }
 }
 
-abstract class _PatternModel extends Hydratable with Store {
+abstract class _PatternModel extends Hydratable with Store, AnthemModelBase {
+  @hide
+  void Function()? _onHydrateAction;
+
   ID id = getID();
 
-  @observable
+  @anthemObservable
   String name = '';
 
-  @observable
+  @anthemObservable
   AnthemColor color = AnthemColor(hue: 0);
 
   /// The ID here is channel ID `Map<ChannelID, List<NoteModel>>`
-  @observable
-  @JsonKey(fromJson: _notesFromJson, toJson: _notesToJson)
-  ObservableMap<ID, ObservableList<NoteModel>> notes = ObservableMap();
+  @anthemObservable
+  AnthemObservableMap<ID, AnthemObservableList<NoteModel>> notes =
+      AnthemObservableMap();
 
   /// The ID here is channel ID
-  @observable
-  @JsonKey(fromJson: _automationLanesFromJson, toJson: _automationLanesToJson)
-  ObservableMap<ID, AutomationLaneModel> automationLanes = ObservableMap();
+  @anthemObservable
+  AnthemObservableMap<ID, AutomationLaneModel> automationLanes =
+      AnthemObservableMap();
 
-  @observable
-  @JsonKey(
-      fromJson: _timeSignatureChangesFromJson,
-      toJson: _timeSignatureChangesToJson)
-  ObservableList<TimeSignatureChangeModel> timeSignatureChanges =
-      ObservableList();
+  @anthemObservable
+  AnthemObservableList<TimeSignatureChangeModel> timeSignatureChanges =
+      AnthemObservableList();
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @hide
   ProjectModel? _project;
 
   ProjectModel get project {
@@ -121,14 +127,17 @@ abstract class _PatternModel extends Hydratable with Store {
       hue: 0,
       saturationMultiplier: 0,
     );
-    timeSignatureChanges = ObservableList();
-    hydrate(project: project);
+    timeSignatureChanges = AnthemObservableList();
   }
 
-  Map<String, dynamic> toJson() => _$PatternModelToJson(this as PatternModel);
-
   void hydrate({required ProjectModel project}) {
+    (this as _$PatternModelAnthemModelMixin).init();
+
     _project = project;
+
+    _onHydrateAction?.call();
+    _onHydrateAction = null;
+
     isHydrated = true;
   }
 
@@ -170,63 +179,4 @@ abstract class _PatternModel extends Hydratable with Store {
   bool get hasTimeMarkers {
     return timeSignatureChanges.isNotEmpty;
   }
-}
-
-// JSON serialization and deserialization functions
-
-typedef NotesJsonType = Map<String, List<Map<String, dynamic>>>;
-typedef NotesModelType = ObservableMap<ID, ObservableList<NoteModel>>;
-
-NotesModelType _notesFromJson(Map<String, dynamic> json) {
-  return ObservableMap.of(
-    json.cast<String, List<dynamic>>().map(
-          (key, value) => MapEntry(
-            key,
-            ObservableList.of(
-              value
-                  .cast<Map<String, dynamic>>()
-                  .map((e) => NoteModel.fromJson(e)),
-            ),
-          ),
-        ),
-  );
-}
-
-NotesJsonType _notesToJson(NotesModelType model) {
-  return model.map(
-    (key, value) =>
-        MapEntry(key, value.map((element) => element.toJson()).toList()),
-  );
-}
-
-ObservableList<TimeSignatureChangeModel> _timeSignatureChangesFromJson(
-    List<dynamic> json) {
-  return ObservableList.of(
-    json.map((e) => TimeSignatureChangeModel.fromJson(e)),
-  );
-}
-
-List<dynamic> _timeSignatureChangesToJson(
-    ObservableList<TimeSignatureChangeModel> model) {
-  return model.map((value) => value.toJson()).toList();
-}
-
-typedef AutomationLanesJsonType = Map<String, Map<String, dynamic>>;
-typedef AutomationLanesModelType = ObservableMap<ID, AutomationLaneModel>;
-
-AutomationLanesModelType _automationLanesFromJson(Map<String, dynamic> json) {
-  return ObservableMap.of(
-    json.cast<String, Map<String, dynamic>>().map(
-          (key, value) => MapEntry(
-            key,
-            AutomationLaneModel.fromJson(value),
-          ),
-        ),
-  );
-}
-
-AutomationLanesJsonType _automationLanesToJson(AutomationLanesModelType model) {
-  return model.map(
-    (key, value) => MapEntry(key, value.toJson()),
-  );
 }

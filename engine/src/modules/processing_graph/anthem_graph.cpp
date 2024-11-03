@@ -21,7 +21,7 @@
 
 #include <iostream>
 
-#include "generate_graphvis_from_graph.h"
+#include "modules/processing_graph/debug/generate_graphvis_from_graph.h"
 
 AnthemGraph::AnthemGraph() {
   topology = std::make_unique<AnthemGraphTopology>();

@@ -19,8 +19,8 @@
 
 #include <memory>
 
-#include "anthem_graph_compiler_action.h"
-#include "anthem_process_context.h"
+#include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
+#include "modules/processing_graph/compiler/anthem_process_context.h"
 
 // This action writes parameter values to control inputs ports for a given
 // processor (given by that processor's processContext). This initializes the

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,13 +18,14 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:json_annotation/json_annotation.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 part 'note.g.dart';
 
-@JsonSerializable()
-class NoteModel extends _NoteModel with _$NoteModel {
+@AnthemModel.all()
+class NoteModel extends _NoteModel
+    with _$NoteModel, _$NoteModelAnthemModelMixin {
   NoteModel({
     required super.key,
     required super.velocity,
@@ -32,6 +33,9 @@ class NoteModel extends _NoteModel with _$NoteModel {
     required super.offset,
     required super.pan,
   });
+
+  NoteModel.uninitialized()
+      : super(key: 0, velocity: 0, length: 0, offset: 0, pan: 0);
 
   NoteModel.fromNoteModel(NoteModel model)
       : super(
@@ -43,25 +47,25 @@ class NoteModel extends _NoteModel with _$NoteModel {
         );
 
   factory NoteModel.fromJson(Map<String, dynamic> json) =>
-      _$NoteModelFromJson(json);
+      _$NoteModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _NoteModel with Store {
+abstract class _NoteModel with Store, AnthemModelBase {
   String id;
 
-  @observable
+  @anthemObservable
   int key;
 
-  @observable
+  @anthemObservable
   int velocity;
 
-  @observable
+  @anthemObservable
   int length;
 
-  @observable
+  @anthemObservable
   int offset;
 
-  @observable
+  @anthemObservable
   int pan;
 
   _NoteModel({
@@ -71,6 +75,4 @@ abstract class _NoteModel with Store {
     required this.offset,
     required this.pan,
   }) : id = getID();
-
-  Map<String, dynamic> toJson() => _$NoteModelToJson(this as NoteModel);
 }

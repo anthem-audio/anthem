@@ -2,9 +2,6 @@
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 Push-Location $scriptPath\..
 
-# Run bindgen
-.\scripts\bindgen.ps1
-
 # Build engine executable
 .\engine\build.ps1
 

@@ -22,7 +22,7 @@
 #include <iostream>
 #include <cmath>
 
-#include "anthem_process_context.h"
+#include "modules/processing_graph/compiler/anthem_process_context.h"
 
 ToneGeneratorNode::ToneGeneratorNode() : AnthemProcessor("ToneGenerator") {
   phase = 0;

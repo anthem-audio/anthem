@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,9 +17,16 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem_codegen/include.dart';
 import 'package:flutter/foundation.dart';
-import 'package:json_annotation/json_annotation.dart';
 
+/// Note (October 2024): This solution was created when 'json_serializable' was
+/// used to deserialize models. Since then, the project has moved to a custom
+/// serialization solution. It's possible that this solution is no longer the
+/// best way to handle this issue.
+///
+/// # Hydratable
+///
 /// ## Context
 ///
 /// Deserialization from project files is handled using the `json_serializable`
@@ -103,7 +110,7 @@ import 'package:json_annotation/json_annotation.dart';
 /// // When running in debug mode, this will cause an exception
 /// ```
 class Hydratable {
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @hide
   bool isHydrated = false;
 
   /// Checks that isHydrated is true after construction. It is expected that the
@@ -120,6 +127,14 @@ class Hydratable {
           Error.throwWithStackTrace(
               Exception(_getHydrationError()), stackTrace);
         }
+
+        if (this is AnthemModelBase) {
+          final model = this as AnthemModelBase;
+          if (!model.isInitialized) {
+            Error.throwWithStackTrace(
+                Exception(_getAnthemModelNoInitError()), stackTrace);
+          }
+        }
       }
 
       Future.delayed(const Duration(seconds: 0), check);
@@ -128,4 +143,7 @@ class Hydratable {
 
   String _getHydrationError() =>
       '$runtimeType was not hydrated after being constructed. See lib/model/shared/hydratable.dart for more info.';
+
+  String _getAnthemModelNoInitError() =>
+      '$runtimeType was not initialized. Anthem model codegen defines an _init() function that must be called after the model is constructed.';
 }

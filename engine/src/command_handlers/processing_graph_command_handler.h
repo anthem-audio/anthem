@@ -20,10 +20,9 @@
 #pragma once
 
 #include "../plugin_window.h"
-#include "anthem.h"
-#include "messages_generated.h"
+#include "modules/core/anthem.h"
 
-std::optional<flatbuffers::Offset<Response>>
-handleProcessingGraphCommand(const Request *request,
-                             flatbuffers::FlatBufferBuilder &builder,
-                             Anthem *anthem);
+#include "messages/messages.h"
+
+std::optional<Response>
+handleProcessingGraphCommand(Request& request, Anthem* anthem);

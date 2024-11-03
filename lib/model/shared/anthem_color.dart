@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,38 +17,49 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:json_annotation/json_annotation.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
+
+import '../shared/hydratable.dart';
 
 part 'anthem_color.g.dart';
 
-@JsonSerializable()
-class AnthemColor extends _AnthemColor with _$AnthemColor {
+@AnthemModel.all()
+class AnthemColor extends _AnthemColor
+    with _$AnthemColor, _$AnthemColorAnthemModelMixin {
   AnthemColor({
     required super.hue,
     super.lightnessMultiplier = 1,
     super.saturationMultiplier = 1,
   });
 
+  AnthemColor.uninitialized()
+      : super(
+          hue: 0,
+          lightnessMultiplier: 1,
+          saturationMultiplier: 1,
+        );
+
   factory AnthemColor.fromJson(Map<String, dynamic> json) =>
-      _$AnthemColorFromJson(json);
+      _$AnthemColorAnthemModelMixin.fromJson(json);
 }
 
-abstract class _AnthemColor with Store {
-  @observable
+abstract class _AnthemColor extends Hydratable with Store, AnthemModelBase {
+  @anthemObservable
   double hue;
 
-  @observable
+  @anthemObservable
   double lightnessMultiplier; // 1 is normal, + is brighter, - is dimmer
 
-  @observable
+  @anthemObservable
   double saturationMultiplier; // 1 is normal, 0 is unsaturated
 
   _AnthemColor({
     required this.hue,
     required this.lightnessMultiplier,
     required this.saturationMultiplier,
-  });
-
-  Map<String, dynamic> toJson() => _$AnthemColorToJson(this as AnthemColor);
+  }) : super() {
+    (this as _$AnthemColorAnthemModelMixin).init();
+    isHydrated = true;
+  }
 }
