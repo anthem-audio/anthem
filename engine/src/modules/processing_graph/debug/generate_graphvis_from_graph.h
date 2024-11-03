@@ -21,7 +21,7 @@
 
 #include <string>
 
-#include "anthem_graph.h"
+#include "modules/processing_graph/anthem_graph.h"
 
 // This class is used to generate a Graphviz file from an AnthemGraph. It can be
 // used to visualize the graph for debugging purposes.

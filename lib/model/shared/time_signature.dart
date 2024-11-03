@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,67 +18,83 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:json_annotation/json_annotation.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
+
+import '../shared/hydratable.dart';
 
 part 'time_signature.g.dart';
 
-@JsonSerializable()
-class TimeSignatureModel extends _TimeSignatureModel with _$TimeSignatureModel {
+@AnthemModel.all()
+class TimeSignatureModel extends _TimeSignatureModel
+    with _$TimeSignatureModel, _$TimeSignatureModelAnthemModelMixin {
   TimeSignatureModel(super.numerator, super.denominator);
 
+  TimeSignatureModel.uninitialized() : super(4, 4);
+
   factory TimeSignatureModel.fromJson(Map<String, dynamic> json) =>
-      _$TimeSignatureModelFromJson(json);
+      _$TimeSignatureModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _TimeSignatureModel with Store {
-  @observable
+abstract class _TimeSignatureModel extends Hydratable
+    with Store, AnthemModelBase {
+  @anthemObservable
   int numerator;
 
-  @observable
+  @anthemObservable
   int denominator;
 
   _TimeSignatureModel(
     this.numerator,
     this.denominator,
-  );
-
-  Map<String, dynamic> toJson() =>
-      _$TimeSignatureModelToJson(this as TimeSignatureModel);
+  ) : super() {
+    (this as _$TimeSignatureModelAnthemModelMixin).init();
+    isHydrated = true;
+  }
 
   String toDisplayString() => '$numerator/$denominator';
 }
 
-@JsonSerializable()
+@AnthemModel.all()
 class TimeSignatureChangeModel extends _TimeSignatureChangeModel
-    with _$TimeSignatureChangeModel {
+    with
+        _$TimeSignatureChangeModel,
+        _$TimeSignatureChangeModelAnthemModelMixin {
   TimeSignatureChangeModel({
     super.id,
     required super.timeSignature,
     required super.offset,
   });
 
+  TimeSignatureChangeModel.uninitialized()
+      : super(
+          id: '',
+          timeSignature: TimeSignatureModel(4, 4),
+          offset: 0,
+        );
+
   factory TimeSignatureChangeModel.fromJson(Map<String, dynamic> json) =>
-      _$TimeSignatureChangeModelFromJson(json);
+      _$TimeSignatureChangeModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _TimeSignatureChangeModel with Store {
+abstract class _TimeSignatureChangeModel extends Hydratable
+    with Store, AnthemModelBase {
   ID id = '';
 
-  @observable
+  @anthemObservable
   TimeSignatureModel timeSignature;
 
-  @observable
+  @anthemObservable
   int offset;
 
   _TimeSignatureChangeModel({
     ID? id,
     required this.timeSignature,
     required this.offset,
-  }) {
+  }) : super() {
     this.id = id ?? getID();
-  }
 
-  Map<String, dynamic> toJson() =>
-      _$TimeSignatureChangeModelToJson(this as TimeSignatureChangeModel);
+    (this as _$TimeSignatureChangeModelAnthemModelMixin).init();
+    isHydrated = true;
+  }
 }

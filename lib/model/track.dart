@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,28 +17,36 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:json_annotation/json_annotation.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 import 'package:anthem/helpers/id.dart';
 
+import 'shared/hydratable.dart';
+
 part 'track.g.dart';
 
-@JsonSerializable()
-class TrackModel extends _TrackModel with _$TrackModel {
+@AnthemModel.all()
+class TrackModel extends _TrackModel
+    with _$TrackModel, _$TrackModelAnthemModelMixin {
   TrackModel({required super.name});
 
+  TrackModel.uninitialized() : super(name: '');
+
   factory TrackModel.fromJson(Map<String, dynamic> json) =>
-      _$TrackModelFromJson(json);
+      _$TrackModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _TrackModel with Store {
+abstract class _TrackModel extends Hydratable with Store, AnthemModelBase {
   ID id;
 
-  @observable
+  @anthemObservable
   String name;
 
-  _TrackModel({required this.name}) : id = getID();
-
-  Map<String, dynamic> toJson() => _$TrackModelToJson(this as TrackModel);
+  _TrackModel({required this.name})
+      : id = getID(),
+        super() {
+    (this as _$TrackModelAnthemModelMixin).init();
+    isHydrated = true;
+  }
 }

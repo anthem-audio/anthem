@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,13 +19,24 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
-import 'package:json_annotation/json_annotation.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
+
+import '../shared/hydratable.dart';
 
 part 'clip.g.dart';
 
-@JsonSerializable()
-class ClipModel extends _ClipModel with _$ClipModel {
+@AnthemModel.all()
+class ClipModel extends _ClipModel
+    with _$ClipModel, _$ClipModelAnthemModelMixin {
+  ClipModel.uninitialized()
+      : super.create(
+          id: getID(),
+          patternID: getID(),
+          trackID: getID(),
+          offset: 0,
+        );
+
   ClipModel(
       {required super.id,
       super.timeView,
@@ -59,22 +70,22 @@ class ClipModel extends _ClipModel with _$ClipModel {
   }
 
   factory ClipModel.fromJson(Map<String, dynamic> json) =>
-      _$ClipModelFromJson(json);
+      _$ClipModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _ClipModel with Store {
+abstract class _ClipModel extends Hydratable with Store, AnthemModelBase {
   ID id;
 
-  @observable
+  @anthemObservable
   TimeViewModel? timeView; // If null, we snap to content
 
-  @observable
+  @anthemObservable
   ID patternID;
 
-  @observable
+  @anthemObservable
   ID trackID;
 
-  @observable
+  @anthemObservable
   int offset;
 
   /// Used for deserialization. Use ClipModel.create() instead.
@@ -84,7 +95,9 @@ abstract class _ClipModel with Store {
     required this.patternID,
     required this.trackID,
     required this.offset,
-  }) : super();
+  }) : super() {
+    hydrate();
+  }
 
   _ClipModel.create({
     required this.id,
@@ -92,9 +105,14 @@ abstract class _ClipModel with Store {
     required this.patternID,
     required this.trackID,
     required this.offset,
-  });
+  }) : super() {
+    hydrate();
+  }
 
-  Map<String, dynamic> toJson() => _$ClipModelToJson(this as ClipModel);
+  void hydrate() {
+    (this as _$ClipModelAnthemModelMixin).init();
+    isHydrated = true;
+  }
 
   int getWidth(ProjectModel project) {
     if (timeView != null) {
@@ -105,24 +123,25 @@ abstract class _ClipModel with Store {
   }
 }
 
-@JsonSerializable()
-class TimeViewModel extends _TimeViewModel with _$TimeViewModel {
+@AnthemModel.all()
+class TimeViewModel extends _TimeViewModel
+    with _$TimeViewModel, _$TimeViewModelAnthemModelMixin {
   TimeViewModel({required super.start, required super.end});
 
+  TimeViewModel.uninitialized() : super(start: 0, end: 0);
+
   factory TimeViewModel.fromJson(Map<String, dynamic> json) =>
-      _$TimeViewModelFromJson(json);
+      _$TimeViewModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _TimeViewModel with Store {
-  @observable
+abstract class _TimeViewModel with Store, AnthemModelBase {
+  @anthemObservable
   int start;
 
-  @observable
+  @anthemObservable
   int end;
 
   _TimeViewModel({required this.start, required this.end});
-
-  Map<String, dynamic> toJson() => _$TimeViewModelToJson(this as TimeViewModel);
 
   int get width {
     return end - start;

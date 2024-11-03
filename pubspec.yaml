@@ -13,7 +13,6 @@ dependencies:
   provider: ^6.0.2
   flutter_svg: ^2.0.4
   file_picker: ^5.2.0+1
-  json_annotation: ^4.8.0
   bitsdojo_window: ^0.1.5
   nanoid: ^1.0.0
   fuzzywuzzy: ^0.2.0
@@ -25,16 +24,19 @@ dependencies:
   flutter_window_close: ^0.2.2
   ffi: ^2.0.1
   flutter_shaders: ^0.1.2
-
-dev_dependencies:
-  json_serializable: ^6.6.1
-  build_runner: ^2.3.3
-  mobx_codegen: ^2.1.1
+  build: ^2.4.1
+  source_gen: ^1.5.0
+  anthem_codegen:
+    path: codegen
   flutter_test:
     sdk: flutter
   integration_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
+
+dev_dependencies:
+  build_runner: ^2.3.3
+  mobx_codegen: ^2.1.1
+  flutter_lints: ^5.0.0
 
 flutter:
   uses-material-design: false

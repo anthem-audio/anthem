@@ -19,29 +19,23 @@
 
 #include "processor_command_handler.h"
 
-std::optional<flatbuffers::Offset<Response>>
-handleProcessorCommand(const Request *request,
-                       flatbuffers::FlatBufferBuilder &builder,
-                        Anthem *anthem) {
-  auto commandType = request->command_type();
+std::optional<Response> handleProcessorCommand(Request& request, Anthem* anthem) {
+  if (rfl::holds_alternative<SetParameterRequest>(request.variant())) {
+    auto& setParameterRequest = rfl::get<SetParameterRequest>(request.variant());
 
-  switch (commandType) {
-    case Command_SetParameter: {
-      auto command = request->command_as_SetParameter();
-      auto nodeId = command->node_id();
-      auto parameterId = command->parameter_id();
-      auto value = command->value();
+    auto nodeId = setParameterRequest.nodeId;
+    auto parameterId = setParameterRequest.parameterId;
+    auto value = setParameterRequest.value;
 
-      anthem->getNode(nodeId)->setParameter(parameterId, value);
+    anthem->getNode(nodeId)->setParameter(parameterId, value);
 
-      auto response = CreateSetParameterResponse(builder, true);
-      auto responseOffset = response.Union();
-
-      auto message = CreateResponse(builder, request->id(), ReturnValue_SetParameterResponse, responseOffset);
-
-      return std::optional(message);
-    }
-    default:
-      return std::nullopt;
+    return std::optional(SetParameterResponse {
+      .success = true,
+      .responseBase = ResponseBase {
+        .id = setParameterRequest.requestBase.get().id
+      }
+    });
   }
+
+  return std::nullopt;
 }

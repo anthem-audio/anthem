@@ -17,10 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "anthem.h"
-#include "tone_generator_node.h"
-#include "simple_volume_lfo_node.h"
-#include <generate_graphvis_from_graph.h>
+#include "modules/core/anthem.h"
+#include "modules/processors/tone_generator_node.h"
+#include "modules/processors/simple_volume_lfo_node.h"
+#include "modules/processing_graph/debug/generate_graphvis_from_graph.h"
 
 Anthem::Anthem() {
   processingGraph = std::make_shared<AnthemGraph>();

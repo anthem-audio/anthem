@@ -35,12 +35,12 @@ class PatternDetailView extends StatelessObserverWidget {
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
 
-    if (project.selectedDetailView is! PatternDetailViewKind) {
+    if (project.getSelectedDetailView() is! PatternDetailViewKind) {
       return const SizedBox();
     }
 
     final patternID =
-        (project.selectedDetailView as PatternDetailViewKind).patternID;
+        (project.getSelectedDetailView() as PatternDetailViewKind).patternID;
     final pattern = project.song.patterns[patternID]!;
 
     return Column(

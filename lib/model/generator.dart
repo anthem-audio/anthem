@@ -17,13 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:ui';
 import 'package:anthem/engine_api/engine.dart';
-import 'package:anthem/generated/processing_graph_generated.dart';
-import 'package:anthem/helpers/convert.dart';
+import 'package:anthem/engine_api/messages/messages.dart'
+    show ProcessorConnectionType;
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/hydratable.dart';
-import 'package:json_annotation/json_annotation.dart';
+import 'package:anthem_codegen/include.dart';
+import 'package:flutter/material.dart';
 import 'package:mobx/mobx.dart';
 
 import 'processing_graph/processor.dart';
@@ -35,10 +35,20 @@ part 'generator.g.dart';
 // For now, we're just marking each generator with an enum saying what kind it
 // is, and we can rethink later.
 
+@AnthemEnum()
 enum GeneratorType { instrument, automation }
 
-@JsonSerializable()
-class GeneratorModel extends _GeneratorModel with _$GeneratorModel {
+@AnthemModel.all()
+class GeneratorModel extends _GeneratorModel
+    with _$GeneratorModel, _$GeneratorModelAnthemModelMixin {
+  GeneratorModel.uninitialized()
+      : super(
+            color: Colors.black,
+            id: '',
+            name: '',
+            generatorType: GeneratorType.instrument,
+            processor: ProcessorModel.uninitialized());
+
   GeneratorModel({
     required super.id,
     required super.name,
@@ -57,29 +67,31 @@ class GeneratorModel extends _GeneratorModel with _$GeneratorModel {
   }) : super.create();
 
   factory GeneratorModel.fromJson(Map<String, dynamic> json) =>
-      _$GeneratorModelFromJson(json);
+      _$GeneratorModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _GeneratorModel extends Hydratable with Store {
+abstract class _GeneratorModel extends Hydratable with Store, AnthemModelBase {
   String id;
 
-  @observable
+  @anthemObservable
   String name;
 
-  @observable
+  @anthemObservable
   GeneratorType generatorType;
 
-  @JsonKey(toJson: ColorConvert.colorToInt, fromJson: ColorConvert.intToColor)
-  @observable
+  @anthemObservable
   Color color;
 
-  @observable
+  @anthemObservable
   ProcessorModel processor;
 
-  @observable
+  @anthemObservable
   ProcessorModel gainNode;
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @anthemObservable
+  ProcessorModel midiGeneratorNode;
+
+  @hide
   ProjectModel? _project;
 
   _GeneratorModel({
@@ -88,7 +100,9 @@ abstract class _GeneratorModel extends Hydratable with Store {
     required this.generatorType,
     required this.color,
     required this.processor,
-  }) : gainNode = ProcessorModel(processorKey: 'Gain');
+  })  : gainNode = ProcessorModel(processorKey: 'Gain'),
+        midiGeneratorNode = ProcessorModel(processorKey: 'SimpleMidiGenerator'),
+        super();
 
   _GeneratorModel.create({
     required this.id,
@@ -98,16 +112,15 @@ abstract class _GeneratorModel extends Hydratable with Store {
     required this.processor,
     required ProjectModel project,
   })  : gainNode = ProcessorModel(processorKey: 'Gain'),
+        midiGeneratorNode = ProcessorModel(processorKey: 'SimpleMidiGenerator'),
         super() {
     hydrate(project: project);
   }
 
-  Map<String, dynamic> toJson() =>
-      _$GeneratorModelToJson(this as GeneratorModel);
-
   void hydrate({
     required ProjectModel project,
   }) {
+    (this as _$GeneratorModelAnthemModelMixin).init();
     _project = project;
     isHydrated = true;
   }
@@ -116,9 +129,18 @@ abstract class _GeneratorModel extends Hydratable with Store {
     await processor.createInEngine(engine);
 
     await gainNode.createInEngine(engine);
+    // await midiGeneratorNode.createInEngine(engine);
+
+    // await engine.processingGraphApi.connectProcessors(
+    //   connectionType: ProcessorConnectionType.NoteEvent,
+    //   sourceId: midiGeneratorNode.idInEngine!,
+    //   sourcePortIndex: 0,
+    //   destinationId: processor.idInEngine!,
+    //   destinationPortIndex: 0,
+    // );
 
     await engine.processingGraphApi.connectProcessors(
-      connectionType: ProcessorConnectionType.Audio,
+      connectionType: ProcessorConnectionType.audio,
       sourceId: processor.idInEngine!,
       sourcePortIndex: 0,
       destinationId: gainNode.idInEngine!,
@@ -126,7 +148,7 @@ abstract class _GeneratorModel extends Hydratable with Store {
     );
 
     await engine.processingGraphApi.connectProcessors(
-      connectionType: ProcessorConnectionType.Audio,
+      connectionType: ProcessorConnectionType.audio,
       sourceId: gainNode.idInEngine!,
       sourcePortIndex: 0,
       destinationId: _project!.masterOutputNodeId!,

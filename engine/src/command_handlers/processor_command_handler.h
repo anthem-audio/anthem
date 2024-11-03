@@ -19,10 +19,9 @@
 
 #pragma once
 
-#include "messages_generated.h"
-#include "anthem.h"
+#include "modules/core/anthem.h"
+#include <rfl.hpp>
 
-std::optional<flatbuffers::Offset<Response>>
-handleProcessorCommand(const Request *request,
-                       flatbuffers::FlatBufferBuilder &builder,
-                       Anthem *anthem);
+#include "messages/messages.h"
+
+std::optional<Response> handleProcessorCommand(Request& request, Anthem* anthem);

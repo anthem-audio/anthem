@@ -17,13 +17,16 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:convert';
+
 import 'package:anthem/commands/command.dart';
 import 'package:anthem/commands/command_queue.dart';
 import 'package:anthem/commands/journal_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/song.dart';
-import 'package:json_annotation/json_annotation.dart';
+import 'package:anthem_codegen/include.dart';
+import 'package:anthem/engine_api/messages/messages.dart' as message_api;
 import 'package:mobx/mobx.dart';
 
 import 'generator.dart';
@@ -33,134 +36,134 @@ part 'project.g.dart';
 
 enum ProjectLayoutKind { arrange, edit, mix }
 
-@JsonSerializable()
-class ProjectModel extends _ProjectModel with _$ProjectModel {
+@AnthemModel.all()
+class ProjectModel extends _ProjectModel
+    with _$ProjectModel, _$ProjectModelAnthemModelMixin {
   ProjectModel() : super();
   ProjectModel.create() : super.create();
 
-  factory ProjectModel.fromJson(Map<String, dynamic> json) {
-    final model = _$ProjectModelFromJson(json);
-    model.isSaved = true;
-    return model;
-  }
+  factory ProjectModel.fromJson(Map<String, dynamic> json) =>
+      _$ProjectModelAnthemModelMixin.fromJson(json)..isSaved = true;
 }
 
-abstract class _ProjectModel extends Hydratable with Store {
+abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   late SongModel song;
 
   /// ID of the master output node in the processing graph. Audio that is routed
   /// to this node is sent to the audio output device.
-  @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @anthemObservable
+  @hideFromSerialization
   int? masterOutputNodeId;
 
   /// Map of generators in the project.
-  @observable
-  @JsonKey(fromJson: _generatorsFromJson, toJson: _generatorsToJson)
-  ObservableMap<ID, GeneratorModel> generators = ObservableMap();
+  @anthemObservable
+  AnthemObservableMap<ID, GeneratorModel> generators = AnthemObservableMap();
 
   /// List of generator IDs in the project (to preserve order).
-  @observable
-  @JsonKey(fromJson: _generatorListFromJson, toJson: _generatorListToJson)
-  ObservableList<ID> generatorList = ObservableList();
+  @anthemObservable
+  AnthemObservableList<ID> generatorList = AnthemObservableList();
 
   /// ID of the active instrument, used to determine which instrument is shown
   /// in the channel rack, which is used for piano roll, etc.
-  @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @anthemObservable
+  @hideFromSerialization
   ID? activeInstrumentID;
 
   /// ID of the active automation generator, used to determine which automation
   /// generator is being written to using the automation editor.
-  @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @anthemObservable
+  @hideFromSerialization
   ID? activeAutomationGeneratorID;
 
   /// The ID of the project.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @hideFromSerialization
   ID id = getID();
 
   /// The file path of the project.
-  @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @anthemObservable
+  @hideFromSerialization
   String? filePath;
 
   /// Whether or not the project has been saved. If false, the project has
   /// either never been saved, or has been modified since the last save.
-  @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @anthemObservable
+  @hideFromSerialization
   bool isSaved = false;
 
   // Detail view state
 
-  @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @anthemObservable
+  @hide
   DetailViewKind? _selectedDetailView;
 
   /// `selectedDetailView` controls which detail item (in the left panel) is
   /// active. Detail views contain attributes about various items in the
   /// project, such as patterns, arrangements, notes, etc.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  DetailViewKind? get selectedDetailView => _selectedDetailView;
-  set selectedDetailView(DetailViewKind? detailView) {
+  DetailViewKind? getSelectedDetailView() => _selectedDetailView;
+
+  /// Sets the selected detail view. See getSelectedDetailView() for more info.
+  void setSelectedDetailView(DetailViewKind? detailView) {
     _selectedDetailView = detailView;
     if (detailView != null) isDetailViewSelected = true;
   }
 
   /// Whether the detail view is active. If false, the project explorer is
   /// shown instead.
-  @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @anthemObservable
+  @hide
   bool isDetailViewSelected = false;
 
   // Visual layout flags
 
-  @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @anthemObservable
+  @hide
   bool isProjectExplorerVisible = true;
 
-  @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @anthemObservable
+  @hide
   bool isPatternEditorVisible = true;
 
-  @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @anthemObservable
+  @hide
   bool isAutomationMatrixVisible = true;
 
-  @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @anthemObservable
+  @hide
   ProjectLayoutKind layout = ProjectLayoutKind.arrange;
 
   // Undo / redo & etc
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @hide
   late final CommandQueue _commandQueue;
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @hide
   List<Command> _journalPageAccumulator = [];
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @hide
   bool _journalPageActive = false;
 
   // Engine
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @hide
   final engineID = getEngineID();
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @hide
   late Engine engine;
 
-  @observable
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @anthemObservable
+  @hide
   var engineState = EngineState.stopped;
 
   // This method is used for deserialization and so doesn't create new child
   // models.
   _ProjectModel() : super() {
     _commandQueue = CommandQueue(this as ProjectModel);
+
+    _init();
   }
+
+  @hide
+  void Function(Iterable<FieldAccessor>, FieldOperation)? _fieldChangedListener;
 
   _ProjectModel.create() : super() {
     _commandQueue = CommandQueue(this as ProjectModel);
@@ -173,26 +176,101 @@ abstract class _ProjectModel extends Hydratable with Store {
 
     engine.engineStateStream.listen((state) {
       (this as ProjectModel).engineState = state;
+
+      // Send model state change messages to the engine
+      if (state == EngineState.running) {
+        // Any time the engine starts, we send the entire current model state to the engine
+        engine.modelSyncApi.initModel(
+          jsonEncode((this as _$ProjectModelAnthemModelMixin)
+              .toJson(includeFieldsForEngine: true)),
+        );
+
+        _fieldChangedListener = (accesses, operation) {
+          String? serializeMapKey(dynamic key) {
+            return switch (key) {
+              null => null,
+              int i => '$i',
+              double d => '$d',
+              String s => '"$s"',
+              bool b => '$b',
+              _ => throw AssertionError('Invalid map key type'),
+            };
+          }
+
+          // Values will already be in JSON format, but we need to convert to
+          // string. This is just like the above but with the addition of
+          // Map<String, dynamic> and List<dynamic>.
+          String serializeValue(dynamic value) {
+            return switch (value) {
+              null => 'null',
+              int i => '$i',
+              double d => '$d',
+              String s => '"$s"',
+              bool b => '$b',
+              Map<String, dynamic> m => jsonEncode(m),
+              List<dynamic> l => jsonEncode(l),
+              _ => throw AssertionError(
+                  'Invalid value type: ${value.runtimeType}'),
+            };
+          }
+
+          final convertedAccesses = accesses.map((access) {
+            return message_api.FieldAccess(
+              fieldName: access.fieldName,
+              fieldType: switch (access.fieldType) {
+                FieldType.raw => message_api.FieldType.raw,
+                FieldType.list => message_api.FieldType.list,
+                FieldType.map => message_api.FieldType.map,
+              },
+              listIndex: access.index,
+              serializedMapKey: serializeMapKey(access.key),
+            );
+          }).toList();
+
+          engine.modelSyncApi.updateModel(
+            updateKind: switch (operation) {
+              RawFieldUpdate() ||
+              ListUpdate() ||
+              MapPut() =>
+                message_api.FieldUpdateKind.set,
+              ListInsert() => message_api.FieldUpdateKind.add,
+              ListRemove() || MapRemove() => message_api.FieldUpdateKind.remove,
+            },
+            fieldAccesses: convertedAccesses,
+            serializedValue: switch (operation) {
+              RawFieldUpdate() => serializeValue(operation.newValue),
+              ListInsert() => serializeValue(operation.value),
+              ListUpdate() => serializeValue(operation.value),
+              MapPut() => serializeValue(operation.value),
+              _ => null,
+            },
+          );
+        };
+
+        // Hook up the model change stream to the engine
+        (this as AnthemModelBase)
+            .addFieldChangedListener(_fieldChangedListener!);
+      }
+
+      if (state == EngineState.stopped) {
+        if (_fieldChangedListener != null) {
+          // Unhook the model change stream from the engine
+          (this as AnthemModelBase)
+              .removeFieldChangedListener(_fieldChangedListener!);
+        }
+      }
     });
 
     // We don't need to hydrate here. All `SomeModel.Create()` functions should
     // call hydrate().
     isHydrated = true;
+
+    _init();
   }
 
-  // Initializes this project in the engine
-  Future<void> createInEngine() async {
-    masterOutputNodeId =
-        await engine.processingGraphApi.getMasterOutputNodeId();
-
-    await song.createInEngine(engine);
-
-    for (final generator in generators.values) {
-      await generator.createInEngine(engine);
-    }
+  void _init() {
+    (this as _$ProjectModelAnthemModelMixin).init();
   }
-
-  Map<String, dynamic> toJson() => _$ProjectModelToJson(this as ProjectModel);
 
   /// This function is run after deserialization. It allows us to do some setup
   /// that the deserialization step can't do for us.
@@ -297,30 +375,4 @@ class TimeSignatureChangeDetailViewKind extends DetailViewKind {
     this.patternID,
     required this.changeID,
   });
-}
-
-// JSON serialization and deserialization functions
-
-ObservableMap<ID, GeneratorModel> _generatorsFromJson(
-    Map<String, dynamic> json) {
-  return ObservableMap.of(
-    json.map(
-      (key, value) => MapEntry(key, GeneratorModel.fromJson(value)),
-    ),
-  );
-}
-
-Map<String, dynamic> _generatorsToJson(
-    ObservableMap<ID, GeneratorModel> generators) {
-  return generators.map(
-    (key, value) => MapEntry(key, value.toJson()),
-  );
-}
-
-ObservableList<ID> _generatorListFromJson(List<dynamic> json) {
-  return ObservableList.of(json.cast<String>());
-}
-
-List<String> _generatorListToJson(ObservableList<ID> generatorList) {
-  return generatorList.toList();
 }

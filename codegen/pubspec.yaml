@@ -1,0 +1,18 @@
+name: anthem_codegen
+description: Code generation for Anthem
+publish_to: 'none'
+version: 0.0.1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+dependencies:
+  analyzer: ^6.7.0
+  build: ^2.4.1
+  source_gen: ^1.5.0
+  flutter_test:
+    sdk: flutter
+  mobx: ^2.3.3+2
+dev_dependencies:
+  build_runner: ^2.4.12
+  flutter_lints: ^5.0.0

@@ -24,7 +24,7 @@
 #include <string>
 
 #include "anthem_processor_parameter_config.h"
-#include "anthem_processor_port_config.h"
+#include "modules/processing_graph/processor/anthem_processor_port_config.h"
 
 // This class defines properties for an AnthemProcessor. These properties are
 // used by the graph to define things like inputs and outputs.

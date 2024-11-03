@@ -19,6 +19,10 @@
 
 #include <stdexcept>
 
+// Note: Without this import, Clang specifically will throw an esoteric error
+// for std::remove_if.
+#include <algorithm>
+
 #include "anthem_graph_topology.h"
 
 AnthemGraphTopology::AnthemGraphTopology() {
@@ -49,7 +53,7 @@ void AnthemGraphTopology::removeNode(std::shared_ptr<AnthemGraphNode> processor)
     std::remove_if(
       nodes.begin(),
       nodes.end(),
-      [processor](std::shared_ptr<AnthemGraphNode> node) {
+      [&processor](std::shared_ptr<AnthemGraphNode>& node) -> bool {
         return node == processor;
       }
     ),
@@ -110,7 +114,7 @@ void AnthemGraphTopology::removeConnection(
         std::remove_if(
           audioPortConnections.begin(),
           audioPortConnections.end(),
-          [source, destination](std::shared_ptr<AnthemGraphNodeConnection> connection) {
+          [&source, &destination](std::shared_ptr<AnthemGraphNodeConnection>& connection) -> bool {
             return connection->source.lock() == source && connection->destination.lock() == destination;
           }
         ),
@@ -122,7 +126,7 @@ void AnthemGraphTopology::removeConnection(
         std::remove_if(
           noteEventPortConnections.begin(),
           noteEventPortConnections.end(),
-          [source, destination](std::shared_ptr<AnthemGraphNodeConnection> connection) {
+          [&source, &destination](std::shared_ptr<AnthemGraphNodeConnection>& connection) -> bool {
             return connection->source.lock() == source && connection->destination.lock() == destination;
           }
         ),
@@ -134,7 +138,7 @@ void AnthemGraphTopology::removeConnection(
         std::remove_if(
           controlPortConnections.begin(),
           controlPortConnections.end(),
-          [source, destination](std::shared_ptr<AnthemGraphNodeConnection> connection) {
+          [&source, &destination](std::shared_ptr<AnthemGraphNodeConnection>& connection) -> bool {
             return connection->source.lock() == source && connection->destination.lock() == destination;
           }
         ),
@@ -147,7 +151,7 @@ void AnthemGraphTopology::removeConnection(
     std::remove_if(
       source->connections.begin(),
       source->connections.end(),
-      [source, destination](std::shared_ptr<AnthemGraphNodeConnection> connection) {
+      [&source, &destination](std::shared_ptr<AnthemGraphNodeConnection>& connection) -> bool {
         return connection->source.lock() == source && connection->destination.lock() == destination;
       }
     ),
@@ -158,7 +162,7 @@ void AnthemGraphTopology::removeConnection(
     std::remove_if(
       destination->connections.begin(),
       destination->connections.end(),
-      [source, destination](std::shared_ptr<AnthemGraphNodeConnection> connection) {
+      [&source, &destination](std::shared_ptr<AnthemGraphNodeConnection>& connection) -> bool {
         return connection->source.lock() == source && connection->destination.lock() == destination;
       }
     ),

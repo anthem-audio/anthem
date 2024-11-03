@@ -44,8 +44,6 @@ class MainWindowController {
     await project.engine.engineStateStream
         .firstWhere((element) => element == EngineState.running);
 
-    await project.createInEngine();
-
     _addProject(project);
 
     return project.id;
@@ -72,7 +70,7 @@ class MainWindowController {
   }
 
   /// Returns the ID of the loaded project, or null if the project load failed
-  /// or was cancelled
+  /// or was cancelled.
   Future<ID?> loadProject() async {
     final path = (await FilePicker.platform.pickFiles(
       type: FileType.custom,

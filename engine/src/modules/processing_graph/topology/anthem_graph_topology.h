@@ -22,8 +22,8 @@
 #include <vector>
 #include <memory>
 
-#include "anthem_graph_node.h"
-#include "anthem_graph_node_connection.h"
+#include "modules/processing_graph/topology/anthem_graph_node.h"
+#include "modules/processing_graph/topology/anthem_graph_node_connection.h"
 
 // This is a container for the processing graph. It holds nodes and their
 // connections, and it can be cloned to create a new graph with the same

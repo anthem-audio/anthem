@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "anthem_processor.h"
+#include "modules/processing_graph/processor/anthem_processor.h"
 
 // The gain node takes an audio input and multiplies each sample by a control
 // input.

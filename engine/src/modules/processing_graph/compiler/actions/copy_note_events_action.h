@@ -17,8 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "anthem_process_context.h"
-#include "anthem_graph_compiler_action.h"
+#include "modules/processing_graph/compiler/anthem_process_context.h"
+#include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
 
 class CopyNoteEventsAction : public AnthemGraphCompilerAction {
 public:

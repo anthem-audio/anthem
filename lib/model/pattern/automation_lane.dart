@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:json_annotation/json_annotation.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 import 'automation_point.dart';
@@ -25,35 +25,20 @@ import 'automation_point.dart';
 part 'automation_lane.g.dart';
 
 /// Represents a set of automation points for a particular channel.
-@JsonSerializable()
+@AnthemModel.all()
 class AutomationLaneModel extends _AutomationLaneModel
-    with _$AutomationLaneModel {
+    with _$AutomationLaneModel, _$AutomationLaneModelAnthemModelMixin {
   AutomationLaneModel() : super();
 
   factory AutomationLaneModel.fromJson(Map<String, dynamic> json) =>
-      _$AutomationLaneModelFromJson(json);
+      _$AutomationLaneModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _AutomationLaneModel with Store {
+abstract class _AutomationLaneModel with Store, AnthemModelBase {
   _AutomationLaneModel();
 
   /// The automation points for this lane. The first point should always have a
   /// time of 0.
-  @observable
-  @JsonKey(fromJson: _pointsFromJson, toJson: _pointsToJson)
-  ObservableList<AutomationPointModel> points = ObservableList();
-
-  Map<String, dynamic> toJson() =>
-      _$AutomationLaneModelToJson(this as AutomationLaneModel);
-}
-
-ObservableList<AutomationPointModel> _pointsFromJson(List<dynamic> json) {
-  return ObservableList.of(
-    json.map(
-        (e) => AutomationPointModel.fromJson(e.cast<Map<String, dynamic>>())),
-  );
-}
-
-List<dynamic> _pointsToJson(ObservableList<AutomationPointModel> model) {
-  return model.map((value) => value.toJson()).toList();
+  @anthemObservable
+  AnthemObservableList<AutomationPointModel> points = AnthemObservableList();
 }

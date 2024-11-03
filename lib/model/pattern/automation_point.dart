@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2024 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,16 +18,21 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:json_annotation/json_annotation.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 part 'automation_point.g.dart';
 
+@AnthemEnum()
 enum AutomationCurveType { smooth, stairs, wave, hold }
 
-@JsonSerializable()
+@AnthemModel.all()
 class AutomationPointModel extends _AutomationPointModel
-    with _$AutomationPointModel {
+    with _$AutomationPointModel, _$AutomationPointModelAnthemModelMixin {
+  AutomationPointModel.uninitialized()
+      : super(
+            offset: 0, value: 0, tension: 0, curve: AutomationCurveType.smooth);
+
   AutomationPointModel({
     required super.offset,
     required super.value,
@@ -36,22 +41,22 @@ class AutomationPointModel extends _AutomationPointModel
   });
 
   factory AutomationPointModel.fromJson(Map<String, dynamic> json) =>
-      _$AutomationPointModelFromJson(json);
+      _$AutomationPointModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _AutomationPointModel with Store {
+abstract class _AutomationPointModel with Store, AnthemModelBase {
   late final ID id;
 
-  @observable
+  @anthemObservable
   int offset;
 
-  @observable
+  @anthemObservable
   double value;
 
-  @observable
+  @anthemObservable
   double tension;
 
-  @observable
+  @anthemObservable
   AutomationCurveType curve;
 
   _AutomationPointModel({
@@ -62,7 +67,4 @@ abstract class _AutomationPointModel with Store {
   }) {
     id = getID();
   }
-
-  Map<String, dynamic> toJson() =>
-      _$AutomationPointModelToJson(this as AutomationPointModel);
 }

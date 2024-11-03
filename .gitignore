@@ -30,7 +30,9 @@
 .pub-cache/
 .pub/
 /build/
+/codegen/build/
 *.g.dart
+*.g.part
 
 # Web related
 lib/generated_plugin_registrant.dart
@@ -52,7 +54,7 @@ app.*.map.json
 /assets/engine/*
 /engine_connector/build/
 /engine/build/
-/engine/generated/
+/engine/src/generated/
 
 # Visual Studio
 **/out/build/**

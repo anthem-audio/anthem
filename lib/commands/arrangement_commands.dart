@@ -66,7 +66,6 @@ class AddArrangementCommand extends Command {
       id: arrangementID,
       project: project,
     );
-    arrangement.createInEngine(project.engine);
 
     project.song.arrangements[arrangementID] = arrangement;
     project.song.arrangementOrder.add(arrangementID);
@@ -74,12 +73,7 @@ class AddArrangementCommand extends Command {
 
   @override
   void rollback(ProjectModel project) {
-    final arrangement = project.song.arrangements.remove(arrangementID)!;
     project.song.arrangementOrder.removeLast();
-
-    // Remove from engine
-    final editPointer = arrangement.editPointer;
-    project.engine.projectApi.deleteArrangement(editPointer);
   }
 }
 
@@ -94,7 +88,6 @@ class DeleteArrangementCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
-    arrangement.deleteInEngine(project.engine);
     project.song.arrangements.remove(arrangement.id);
     index = project.song.arrangementOrder.indexOf(arrangement.id);
     project.song.arrangementOrder.removeAt(index);
@@ -102,7 +95,6 @@ class DeleteArrangementCommand extends Command {
 
   @override
   void rollback(ProjectModel project) {
-    arrangement.createInEngine(project.engine);
     project.song.arrangements[arrangement.id] = arrangement;
     project.song.arrangementOrder.insert(index, arrangement.id);
   }

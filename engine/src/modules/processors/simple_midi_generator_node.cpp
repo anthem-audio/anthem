@@ -19,8 +19,8 @@
 
 #include "simple_midi_generator_node.h"
 
-#include "anthem_process_context.h"
-#include "anthem_processor_event.h"
+#include "modules/processing_graph/compiler/anthem_process_context.h"
+#include "modules/processing_graph/events/anthem_processor_event.h"
 
 SimpleMidiGeneratorNode::SimpleMidiGeneratorNode() : AnthemProcessor("SimpleMidiGenerator") {
   sampleRate = 44100; // TODO: This should be dynamic - in the context maybe?

@@ -21,7 +21,7 @@
 
 #include <iostream>
 
-#include "anthem_process_context.h"
+#include "modules/processing_graph/compiler/anthem_process_context.h"
 
 MasterOutputNode::MasterOutputNode(int numChannels, int bufferSize) : AnthemProcessor("MasterOutput") {
   buffer = juce::AudioSampleBuffer(numChannels, bufferSize);

@@ -23,9 +23,9 @@
 
 #include <juce_audio_devices/juce_audio_devices.h>
 
-#include "anthem_graph.h"
-#include "constants.h"
-#include "master_output_node.h"
+#include "modules/processing_graph/anthem_graph.h"
+#include "modules/core/constants.h"
+#include "modules/processors/master_output_node.h"
 
 class AnthemAudioCallback : public juce::AudioIODeviceCallback
 {

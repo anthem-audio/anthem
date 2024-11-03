@@ -18,7 +18,8 @@
 */
 
 #include "anthem_graph_node.h"
-#include "anthem_process_context.h"
+
+#include "modules/processing_graph/compiler/anthem_process_context.h"
 
 AnthemGraphNode::AnthemGraphNode(std::unique_ptr<AnthemProcessor> processor) {
   audioInputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();

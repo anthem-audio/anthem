@@ -21,9 +21,9 @@
 
 #include <memory>
 
-#include "anthem_graph_node.h"
-#include "anthem_graph_compiler_action.h"
-#include "anthem_process_context.h"
+#include "modules/processing_graph/topology/anthem_graph_node.h"
+#include "modules/processing_graph/compiler/actions/anthem_graph_compiler_action.h"
+#include "modules/processing_graph/compiler/anthem_process_context.h"
 
 class ClearBuffersAction : public AnthemGraphCompilerAction {
 public:
