@@ -39,15 +39,17 @@ Anthem has two main components, the UI and the engine, which live in separate pr
 
 ### Message Flow
 
-When the UI wants to do something, it will send a message to the engine. A typical round-trip for a message looks like this:
+When the UI wants communicate with the engine, it will send a message to the engine over a TCP socket. A typical round-trip for a message looks like this:
 
-1. A function in the Dart API for the engine is called, such as `Engine.projectApi.addArrangement()`, which returns a `Future<int>`. The integer it returns represents a pointer to the corresponding Tracktion `Edit` object in the memory space of the engine process.
+1. A function in the Dart API for the engine is called, e.g. `Engine.projectApi.myCommand()`, which returns a `Future<SomeValue>`.
 
-2. The `addArrangement()` function constructs an `AddArrangement` message with JSON and sends it to the engine via the engine connector. The engine connector uses a socket connection to send the JSON to the engine as a UTF8-encoded string.
+2. The `myCommand()` function constructs an `MyCommandRequest` message with JSON and sends it to the engine via the engine connector. The engine connector uses a socket connection to send the JSON to the engine as a UTF8-encoded string.
 
-3. The engine process has an event loop. The main thread of the engine will block while waiting for new messages on the message queue, and will handle messages as they come in. When the engine receives the AddArrangement message, it creates a new `Edit`, gets its pointer, and sends the pointer back to the UI as an integer. This pointer is stored in the UI and is used when manipulating this `Edit`.
+3. The engine process has an event loop, provided by JUCE. There is a messaging thread in the engine that will block while waiting for new messages on the message queue, and will register tasks with the JUCE event scheduler to handle each message. When the engine receives the MyCommandRequest message, it handles the message, and sends back a `MyCommandResponse`.
 
-4. The UI listens for replies via the socket connection. When the socket receives a message, it decodes the reply, and uses the decoded object to complete the future.
+4. The UI listens for replies via the socket connection. When the socket receives a message, it decodes the reply as a `MyCommandResponse` message, and uses the decoded object to complete the future.
+
+Note that the UI sends an ID with each request, and if the engine gives a response, the response will contain the same ID. This allows the UI to align requests and responses.
 
 ## Project structure
 
