@@ -39,7 +39,7 @@ part 'parameter_config.g.dart';
 /// the processing graph. This includes the default value of the parameter, the
 /// minimum and maximum values of the parameter, and the duration over which the
 /// parameter value will be smoothed.
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class ParameterConfigModel extends _ParameterConfigModel
     with _$ParameterConfigModel, _$ParameterConfigModelAnthemModelMixin {
   ParameterConfigModel({

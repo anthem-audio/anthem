@@ -79,9 +79,9 @@ class ModelClassInfo {
   /// File being parsed:
   ///
   /// ```dart
-  /// @AnthemModel.all()
+  /// @AnthemModel.syncedModel()
   /// class SomeClass extends _SomeClass with _$SomeClassAnthemModelMixin {
-  ///   ...
+  ///   // ...
   /// }
   ///
   /// // We can *always* find this, because it's in the file currently being
@@ -89,23 +89,23 @@ class ModelClassInfo {
   /// class _SomeClass {
   ///   // We will try to parse this into a ModelClassInfo as well
   ///   SomeOtherClass otherClass;
-  ///   ...
+  ///   // ...
   /// }
   /// ```
   ///
   /// Some file that is imported by the file being parsed:
   ///
   /// ```dart
-  /// @AnthemModel.all()
+  /// @AnthemModel.syncedModel()
   /// class SomeOtherClass extends _SomeOtherClass with _$SomeOtherClassAnthemModelMixin {
-  ///   ...
+  ///   // ...
   /// }
   ///
   /// // Randomly, the analyzer will fail to find this class. This is fine,
   /// // because when the build package is processing this file, it will always
   /// // find this class.
   /// class _SomeOtherClass {
-  ///   ...
+  ///   // ...
   /// }
   /// ```
   ClassElement get baseClass {

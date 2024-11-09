@@ -26,7 +26,7 @@ import '../shared/hydratable.dart';
 
 part 'clip.g.dart';
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class ClipModel extends _ClipModel
     with _$ClipModel, _$ClipModelAnthemModelMixin {
   ClipModel.uninitialized()
@@ -123,7 +123,7 @@ abstract class _ClipModel extends Hydratable with Store, AnthemModelBase {
   }
 }
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class TimeViewModel extends _TimeViewModel
     with _$TimeViewModel, _$TimeViewModelAnthemModelMixin {
   TimeViewModel({required super.start, required super.end});

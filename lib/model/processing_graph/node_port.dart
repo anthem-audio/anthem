@@ -25,7 +25,7 @@ import 'node_port_config.dart';
 
 part 'node_port.g.dart';
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class NodePortModel extends _NodePortModel
     with _$NodePortModel, _$NodePortModelAnthemModelMixin {
   NodePortModel({

@@ -22,12 +22,12 @@
 /// Usage:
 ///
 /// ```dart
-/// @AnthemModel.all()
+/// @AnthemModel()
 /// class MyModel {
 ///   // ...
 /// }
 ///
-/// @AnthemModel(generateCpp: true, serializable: true)
+/// @AnthemModel.ipc()
 /// class MyIpcMessage {
 ///   // ...
 /// }
@@ -50,6 +50,7 @@ class AnthemModel {
   final bool serializable;
   final bool generateCpp;
   final bool generateModelSync;
+  final bool generateCppWrapperClass;
 
   /// Constructor for [AnthemModel].
   ///
@@ -57,13 +58,30 @@ class AnthemModel {
   const AnthemModel(
       {this.serializable = false,
       this.generateCpp = false,
-      this.generateModelSync = false});
+      this.generateModelSync = false,
+      this.generateCppWrapperClass = false});
 
-  /// Constructor for [AnthemModel], which enables all options.
+  /// Constructor for [AnthemModel], which enables options necessary for model
+  /// generation and syncing with C++.
   ///
   /// See the documentation above for more info.
-  const AnthemModel.all()
-      : this(serializable: true, generateCpp: true, generateModelSync: true);
+  const AnthemModel.syncedModel()
+      : this(
+            serializable: true,
+            generateCpp: true,
+            generateModelSync: true,
+            generateCppWrapperClass: true);
+
+  /// Constructor for [AnthemModel], which enables options necessary for IPC
+  /// messages.
+  ///
+  /// See the documentation above for more info.
+  const AnthemModel.ipc()
+      : this(
+            serializable: true,
+            generateCpp: true,
+            generateModelSync: false,
+            generateCppWrapperClass: false);
 }
 
 /// An annotation that triggers the Anthem code generator to create a module

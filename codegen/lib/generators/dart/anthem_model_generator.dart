@@ -38,7 +38,7 @@ import 'json_serialize_generator.dart';
 ///
 /// part 'my_model.g.dart'
 ///
-/// @AnthemModel.all()
+/// @AnthemModel.syncedModel()
 /// class MyModel extends _MyModel with _$MyModelAnthemModelMixin;
 ///
 /// class _MyModel {

@@ -26,7 +26,7 @@ import 'shared/hydratable.dart';
 part 'plugin.g.dart';
 
 /// A model representing a plugin.
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class PluginModel extends _PluginModel
     with _$PluginModel, _$PluginModelAnthemModelMixin {
   PluginModel({required super.path});

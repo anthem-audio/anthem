@@ -26,7 +26,7 @@ import 'shared/hydratable.dart';
 
 part 'track.g.dart';
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class TrackModel extends _TrackModel
     with _$TrackModel, _$TrackModelAnthemModelMixin {
   TrackModel({required super.name});
