@@ -27,7 +27,7 @@ import '../shared/hydratable.dart';
 
 part 'processor.g.dart';
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class ProcessorModel extends _ProcessorModel
     with _$ProcessorModel, _$ProcessorModelAnthemModelMixin {
   ProcessorModel({

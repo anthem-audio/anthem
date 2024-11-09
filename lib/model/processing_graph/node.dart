@@ -24,7 +24,7 @@ import 'package:mobx/mobx.dart';
 
 part 'node.g.dart';
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class NodeModel extends _NodeModel
     with _$NodeModel, _$NodeModelAnthemModelMixin {
   NodeModel({required super.id, required super.config});

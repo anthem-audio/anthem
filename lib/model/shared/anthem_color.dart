@@ -24,7 +24,7 @@ import '../shared/hydratable.dart';
 
 part 'anthem_color.g.dart';
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class AnthemColor extends _AnthemColor
     with _$AnthemColor, _$AnthemColorAnthemModelMixin {
   AnthemColor({

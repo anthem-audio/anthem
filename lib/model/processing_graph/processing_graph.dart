@@ -26,7 +26,7 @@ import 'node_port.dart';
 
 part 'processing_graph.g.dart';
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class ProcessingGraphModel extends _ProcessingGraphModel
     with _$ProcessingGraphModel, _$ProcessingGraphModelAnthemModelMixin {
   ProcessingGraphModel();

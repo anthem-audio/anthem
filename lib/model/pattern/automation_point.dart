@@ -26,7 +26,7 @@ part 'automation_point.g.dart';
 @AnthemEnum()
 enum AutomationCurveType { smooth, stairs, wave, hold }
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class AutomationPointModel extends _AutomationPointModel
     with _$AutomationPointModel, _$AutomationPointModelAnthemModelMixin {
   AutomationPointModel.uninitialized()

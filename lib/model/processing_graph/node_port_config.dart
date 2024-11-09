@@ -31,7 +31,7 @@ enum NodePortDataType {
   control,
 }
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class NodePortConfigModel extends _NodePortConfigModel
     with _$NodePortConfigModel, _$NodePortConfigModelAnthemModelMixin {
   NodePortConfigModel({

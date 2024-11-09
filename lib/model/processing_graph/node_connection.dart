@@ -23,7 +23,7 @@ import 'package:mobx/mobx.dart';
 
 part 'node_connection.g.dart';
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class NodeConnectionModel extends _NodeConnectionModel
     with _$NodeConnectionModel, _$NodeConnectionModelAnthemModelMixin {
   NodeConnectionModel({

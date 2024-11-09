@@ -46,7 +46,7 @@ enum ProcessorKind {
   toneGenerator,
 }
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class NodeConfigModel extends _NodeConfigModel
     with _$NodeConfigModel, _$NodeConfigModelAnthemModelMixin {
   NodeConfigModel({

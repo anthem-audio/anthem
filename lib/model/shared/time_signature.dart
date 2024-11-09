@@ -25,7 +25,7 @@ import '../shared/hydratable.dart';
 
 part 'time_signature.g.dart';
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class TimeSignatureModel extends _TimeSignatureModel
     with _$TimeSignatureModel, _$TimeSignatureModelAnthemModelMixin {
   TimeSignatureModel(super.numerator, super.denominator);
@@ -55,7 +55,7 @@ abstract class _TimeSignatureModel extends Hydratable
   String toDisplayString() => '$numerator/$denominator';
 }
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class TimeSignatureChangeModel extends _TimeSignatureChangeModel
     with
         _$TimeSignatureChangeModel,

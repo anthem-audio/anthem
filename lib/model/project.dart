@@ -36,7 +36,7 @@ part 'project.g.dart';
 
 enum ProjectLayoutKind { arrange, edit, mix }
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class ProjectModel extends _ProjectModel
     with _$ProjectModel, _$ProjectModelAnthemModelMixin {
   ProjectModel() : super();
