@@ -174,7 +174,7 @@ String _createGetterForField({
         getter: getter,
       ),
     CustomModelType() =>
-      '${type.isNullable ? '$getter == null ? null : ' : ''}${type.type.annotatedClass.name}.fromJson($getter)',
+      '${type.isNullable ? '$getter == null ? null : ' : ''}${type.modelClassInfo.annotatedClass.name}.fromJson($getter)',
     UnknownModelType() => 'null',
   };
 }

@@ -176,12 +176,12 @@ class CustomModelType extends ModelType {
   @override
   final bool canBeMapKey = false;
 
-  final ModelClassInfo type;
+  final ModelClassInfo modelClassInfo;
 
-  CustomModelType(this.type, {required super.isNullable});
+  CustomModelType(this.modelClassInfo, {required super.isNullable});
 
   @override
-  String get dartName => type.annotatedClass.name;
+  String get dartName => modelClassInfo.annotatedClass.name;
 }
 
 /// Represents a type that may or may not be valid, but cannot be parsed for

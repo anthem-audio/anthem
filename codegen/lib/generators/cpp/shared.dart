@@ -32,7 +32,7 @@ String getCppType(ModelType type) {
     MapModelType(keyType: final key, valueType: final value) =>
       'std::map<${getCppType(key)}, ${getCppType(value)}>',
     CustomModelType(dartName: final dartName) =>
-      'rfl::Ref<${type.type.annotation?.cppBehaviorClassName != null ? type.type.annotation!.cppBehaviorClassName : dartName}>',
+      'rfl::Ref<${type.modelClassInfo.annotation?.cppBehaviorClassName != null ? type.modelClassInfo.annotation!.cppBehaviorClassName : dartName}>',
     UnknownModelType() => 'TYPE_ERROR_UNKNOWN_TYPE',
   };
 
