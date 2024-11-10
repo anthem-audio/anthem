@@ -251,7 +251,8 @@ class CppModelBuilder implements Builder {
             } else if (type is MapModelType) {
               return typeMatches(type.keyType) || typeMatches(type.valueType);
             } else if (type is CustomModelType) {
-              if (annotatedClasses.contains(type.type.annotatedClass)) {
+              if (annotatedClasses
+                  .contains(type.modelClassInfo.annotatedClass)) {
                 return true;
               }
             } else if (type is EnumModelType) {
