@@ -160,7 +160,19 @@ class _MyModel {
                 .getField('generateCppWrapperClass')
                 ?.toBoolValue() ??
             false,
+        cppBehaviorClassName:
+            annotationElement.getField('cppBehaviorClassName')?.toStringValue(),
+        cppBehaviorClassIncludePath: annotationElement
+            .getField('cppBehaviorClassIncludePath')
+            ?.toStringValue(),
       );
+
+      assert(
+          (annotation?.cppBehaviorClassName == null &&
+                  annotation?.cppBehaviorClassIncludePath == null) ||
+              (annotation?.cppBehaviorClassName != null &&
+                  annotation?.cppBehaviorClassIncludePath != null),
+          'If you provide a cppBehaviorClassName, you must also provide a cppBehaviorClassIncludePath, and vice versa.');
     }
 
     // Find matching base class for the library class

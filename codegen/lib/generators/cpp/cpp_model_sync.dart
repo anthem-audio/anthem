@@ -58,8 +58,11 @@ String getModelSyncFn(ModelClassInfo context) {
       context.annotation?.generateCppWrapperClass == true;
   final parentheses = fieldAccessIsFunctionCall ? '()' : '';
 
+  final baseSuffix =
+      context.annotation?.cppBehaviorClassName != null ? 'Base' : '';
+
   writer.writeLine(
-      'void ${context.annotatedClass.name}::handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {');
+      'void ${context.annotatedClass.name}$baseSuffix::handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {');
   writer.incrementWhitespace();
 
   var isFirst = true;
@@ -126,7 +129,7 @@ void _writeInvalidAccessWarning({
   writer.writeLine(
       'std::cout << "The accessor \\"$fieldAccessExpression\\" does not point to an Anthem model or collection of Anthem models, so the update could not be forwarded." << std::endl;');
   writer.writeLine(
-      'std::cout << "\\"$fieldAccessExpression\\" is of type \\"${type.name}\\"." << std::endl;');
+      'std::cout << "\\"$fieldAccessExpression\\" is of type \\"${type.dartName}\\"." << std::endl;');
 }
 
 void _writeSerializedValueNullCheck({
@@ -664,7 +667,7 @@ void _writeKeyDeserialize({
 }) {
   if (!keyType.canBeMapKey) {
     throw ArgumentError(
-        'The provided key type, ${keyType.name}, cannot be used as a map key.');
+        'The provided key type, ${keyType.dartName}, cannot be used as a map key.');
   }
 
   void writeKeyExistsCheck() {

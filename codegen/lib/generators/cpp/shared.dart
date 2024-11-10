@@ -27,11 +27,12 @@ String getCppType(ModelType type) {
     BoolModelType() => 'bool',
     ColorModelType() =>
       'rfl::NamedTuple<rfl::Field<"r", unsigned char>, rfl::Field<"g", unsigned char>, rfl::Field<"b", unsigned char>, rfl::Field<"a", unsigned char>>',
-    EnumModelType(enumName: var name) => name,
-    ListModelType(itemType: var inner) => 'std::vector<${getCppType(inner)}>',
-    MapModelType(keyType: var key, valueType: var value) =>
+    EnumModelType(enumName: final name) => name,
+    ListModelType(itemType: final inner) => 'std::vector<${getCppType(inner)}>',
+    MapModelType(keyType: final key, valueType: final value) =>
       'std::map<${getCppType(key)}, ${getCppType(value)}>',
-    CustomModelType(name: var name) => 'rfl::Ref<$name>',
+    CustomModelType(dartName: final dartName) =>
+      'rfl::Ref<${type.type.annotation?.cppBehaviorClassName != null ? type.type.annotation!.cppBehaviorClassName : dartName}>',
     UnknownModelType() => 'TYPE_ERROR_UNKNOWN_TYPE',
   };
 

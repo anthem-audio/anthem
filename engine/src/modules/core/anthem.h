@@ -30,7 +30,7 @@
 
 #include "modules/util/id_generator.h"
 
-#include "generated/lib/model/model.h"
+#include "project.h"
 
 class Anthem {
 private:
@@ -47,7 +47,7 @@ private:
   // Initializes the engine
   void init();
 public:
-    std::unique_ptr<ProjectModel> projectModel;
+    std::unique_ptr<Project> project;
 
   Anthem();
 

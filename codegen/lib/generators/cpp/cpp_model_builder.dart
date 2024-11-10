@@ -481,24 +481,30 @@ String _generateEnum(EnumInfo enumInfo) {
 
   if (generateWrapper) {
     final className = modelClassInfo.annotatedClass.name;
+    final baseSuffix =
+        modelClassInfo.annotation?.cppBehaviorClassName != null ? 'Base' : '';
 
-    forwardDeclarations.add('class $className;');
+    forwardDeclarations.add('class $className$baseSuffix;');
+    if (baseSuffix.isNotEmpty) {
+      forwardDeclarations
+          .add('class ${modelClassInfo.annotation!.cppBehaviorClassName!};');
+    }
 
-    writer.writeLine('class $className {');
+    writer.writeLine('class $className$baseSuffix {');
     writer.writeLine('public:');
     writer.incrementWhitespace();
 
     writer.writeLine('using ReflectionType = ${className}Impl;');
     writer.writeLine();
 
-    writer.writeLine('$className() = default;');
+    writer.writeLine('$className$baseSuffix() = default;');
     writer.writeLine();
 
     writer.writeLine(
-        '$className(const ${className}Impl& _impl) : impl(_impl) {}');
+        '$className$baseSuffix(const ${className}Impl& _impl) : impl(_impl) {}');
     writer.writeLine();
 
-    writer.writeLine('~$className() = default;');
+    writer.writeLine('~$className$baseSuffix() = default;');
     writer.writeLine();
 
     writer
@@ -546,6 +552,14 @@ String _generateEnum(EnumInfo enumInfo) {
     writer.decrementWhitespace();
     writer.writeLine('};');
     writer.writeLine();
+
+    // If we're using a custom-defined super class, we need to make sure that
+    // anyone who imports this file also imports the super class.
+    if (modelClassInfo.annotation?.cppBehaviorClassIncludePath != null) {
+      writer.writeLine(
+          '#include "${modelClassInfo.annotation!.cppBehaviorClassIncludePath}"');
+      writer.writeLine();
+    }
   }
 
   // If there are any sealed subclasses, generate structs for them as well.

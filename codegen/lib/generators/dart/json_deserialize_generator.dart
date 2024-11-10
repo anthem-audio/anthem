@@ -189,7 +189,7 @@ String _generateListGetter({
 
   final result = '''($getter as List$q)$q.map((e) {
   return ${_createGetterForField(type: type.itemType, fieldName: fieldName, getter: 'e')};
-}).cast<${type.itemType.name}$listParameterTypeQ>().toList()''';
+}).cast<${type.itemType.dartName}$listParameterTypeQ>().toList()''';
 
   switch (type.collectionType) {
     case CollectionType.raw:
@@ -214,7 +214,7 @@ String _generateMapGetter({
   final valueFromJson = $getter as Map<String, dynamic>$q;
   ${type.isNullable ? 'if (valueFromJson == null) return null;' : ''}
 
-  final map = <${type.keyType.name}$keyTypeQ, ${type.valueType.name}$valueTypeQ>{};
+  final map = <${type.keyType.dartName}$keyTypeQ, ${type.valueType.dartName}$valueTypeQ>{};
 
   for (final entry in valueFromJson.entries) {
     map[${_createGetterForKeyField(type: type.keyType, fieldName: fieldName, getter: 'entry.key')}]

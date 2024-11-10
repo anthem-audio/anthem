@@ -35,7 +35,7 @@ std::optional<Response> handleModelSyncCommand(
 
     // std::cout << modelInitRequest.serializedModel << std::endl;
 
-    auto result = rfl::json::read<std::unique_ptr<ProjectModel>>(
+    auto result = rfl::json::read<std::unique_ptr<Project>>(
       modelInitRequest.serializedModel
     );
 
@@ -46,12 +46,12 @@ std::optional<Response> handleModelSyncCommand(
       std::cout << err.value().what() << std::endl;
     }
     else {
-      anthem->projectModel = std::move(
+      anthem->project = std::move(
         result.value()
       );
 
       std::cout << "Loaded project model" << std::endl;
-      std::cout << "id: " << anthem->projectModel->id() << std::endl;
+      std::cout << "id: " << anthem->project->id() << std::endl;
     }
   }
   else if (rfl::holds_alternative<ModelUpdateRequest>(request.variant())) {
@@ -59,7 +59,7 @@ std::optional<Response> handleModelSyncCommand(
 
     auto& modelUpdateRequest = rfl::get<ModelUpdateRequest>(request.variant());
 
-    anthem->projectModel->handleModelUpdate(
+    anthem->project->handleModelUpdate(
       modelUpdateRequest,
       0
     );
@@ -68,7 +68,7 @@ std::optional<Response> handleModelSyncCommand(
   }
   else if (rfl::holds_alternative<ModelDebugPrintRequest>(request.variant())) {
     std::cout << rfl::json::write(
-      anthem->projectModel.get()
+      anthem->project.get()
     ) << std::endl;
   }
 
