@@ -51,7 +51,7 @@ std::optional<Response> handleModelSyncCommand(
       );
 
       std::cout << "Loaded project model" << std::endl;
-      std::cout << "id: " << anthem->projectModel->id << std::endl;
+      std::cout << "id: " << anthem->projectModel->id() << std::endl;
     }
   }
   else if (rfl::holds_alternative<ModelUpdateRequest>(request.variant())) {

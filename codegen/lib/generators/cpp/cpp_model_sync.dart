@@ -54,6 +54,10 @@ void writeModelSyncFnDeclaration(Writer writer) {
 String getModelSyncFn(ModelClassInfo context) {
   final writer = Writer();
 
+  final fieldAccessIsFunctionCall =
+      context.annotation?.generateCppWrapperClass == true;
+  final parentheses = fieldAccessIsFunctionCall ? '()' : '';
+
   writer.writeLine(
       'void ${context.annotatedClass.name}::handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {');
   writer.incrementWhitespace();
@@ -86,8 +90,8 @@ String getModelSyncFn(ModelClassInfo context) {
       context: context,
       writer: writer,
       type: field.typeInfo,
-      createFieldSetter: (value) => 'this->$fieldName = $value;',
-      fieldAccessExpression: 'this->$fieldName',
+      createFieldSetter: (value) => 'this->$fieldName$parentheses = $value;',
+      fieldAccessExpression: 'this->$fieldName$parentheses',
     );
 
     writer.decrementWhitespace();

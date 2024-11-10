@@ -425,10 +425,26 @@ String _generateEnum(EnumInfo enumInfo) {
   final functionDefinitions = <String>[];
   final writer = Writer();
 
+  final generateModelSync =
+      modelClassInfo.annotation?.generateModelSync == true;
+  final generateWrapper =
+      modelClassInfo.annotation?.generateCppWrapperClass == true;
+
   var baseText = '';
 
   if (modelClassInfo.isSealed) {
+    if (generateWrapper) {
+      // Sealed classes are generated with tagged unions, and that complicates
+      // the story for a wrapper class, so we won't handle it for now.
+      throw ArgumentError(
+          'Cannot generate a wrapper class for a sealed class.');
+    }
+
     baseText = 'Base';
+  }
+
+  if (generateWrapper) {
+    baseText = 'Impl'; // Convention borrowed from reflect-cpp docs
   }
 
   // Generate the main struct. If the class is sealed, this will be the "base
@@ -452,7 +468,7 @@ String _generateEnum(EnumInfo enumInfo) {
 
   writer.writeLine();
 
-  if (modelClassInfo.annotation?.generateModelSync == true) {
+  if (generateModelSync && !generateWrapper) {
     writeModelSyncFnDeclaration(writer);
     functionDefinitions.add(getModelSyncFn(modelClassInfo));
   }
@@ -460,6 +476,77 @@ String _generateEnum(EnumInfo enumInfo) {
   writer.decrementWhitespace();
   writer.writeLine('};');
   writer.writeLine();
+
+  // If we need to generate a wrapper class for this model, do so now.
+
+  if (generateWrapper) {
+    final className = modelClassInfo.annotatedClass.name;
+
+    forwardDeclarations.add('class $className;');
+
+    writer.writeLine('class $className {');
+    writer.writeLine('public:');
+    writer.incrementWhitespace();
+
+    writer.writeLine('using ReflectionType = ${className}Impl;');
+    writer.writeLine();
+
+    writer.writeLine('$className() = default;');
+    writer.writeLine();
+
+    writer.writeLine(
+        '$className(const ${className}Impl& _impl) : impl(_impl) {}');
+    writer.writeLine();
+
+    writer.writeLine('~$className() = default;');
+    writer.writeLine();
+
+    writer
+        .writeLine('const ReflectionType& reflection() const { return impl; }');
+    writer.writeLine();
+
+    if (generateModelSync) {
+      writeModelSyncFnDeclaration(writer);
+      writer.writeLine();
+
+      functionDefinitions.add(getModelSyncFn(modelClassInfo));
+    }
+
+    writer.writeLine('// Reference getters');
+
+    /// Writes a set of methods that can be used to get references to the fields
+    /// in the impl struct. These can be used to get:
+    /// ```
+    /// auto& field = model.field();
+    /// ```
+    ///
+    /// Or to set:
+    /// ```
+    /// model.field() = value;
+    /// ```
+    for (final MapEntry(key: fieldName, value: fieldInfo)
+        in modelClassInfo.fields.entries) {
+      if (_shouldSkip(fieldInfo.fieldElement)) {
+        continue;
+      }
+
+      final type = getCppType(fieldInfo.typeInfo);
+      writer.writeLine('$type& $fieldName() { return impl.$fieldName; }');
+    }
+
+    writer.writeLine();
+
+    writer.decrementWhitespace();
+    writer.writeLine('private:');
+    writer.incrementWhitespace();
+
+    writer.writeLine('${className}Impl impl;');
+    writer.writeLine();
+
+    writer.decrementWhitespace();
+    writer.writeLine('};');
+    writer.writeLine();
+  }
 
   // If there are any sealed subclasses, generate structs for them as well.
 
@@ -559,6 +646,8 @@ String _generateEnum(EnumInfo enumInfo) {
     bool hasAnyAnthemModel = false;
 
     for (final classElement in exportLibraryReader.classes) {
+      if (hasAnyAnthemModel) break;
+
       final annotation = const TypeChecker.fromRuntime(AnthemModel)
           .firstAnnotationOf(classElement);
 
@@ -571,13 +660,12 @@ String _generateEnum(EnumInfo enumInfo) {
 
       if (generateCpp) {
         hasAnyAnthemModel = true;
-
-        // Add forward declaration
-        forwardDeclarations.add('struct ${classElement.name};');
       }
     }
 
     for (final enumElement in exportLibraryReader.enums) {
+      if (hasAnyAnthemModel) break;
+
       final annotation = const TypeChecker.fromRuntime(AnthemEnum)
           .firstAnnotationOf(enumElement);
 
@@ -586,9 +674,6 @@ String _generateEnum(EnumInfo enumInfo) {
       }
 
       hasAnyAnthemModel = true;
-
-      // Add forward declaration
-      forwardDeclarations.add('enum class ${enumElement.name};');
     }
 
     if (!hasAnyAnthemModel) {
