@@ -156,6 +156,10 @@ class _MyModel {
         generateModelSync:
             annotationElement.getField('generateModelSync')?.toBoolValue() ??
                 false,
+        generateCppWrapperClass: annotationElement
+                .getField('generateCppWrapperClass')
+                ?.toBoolValue() ??
+            false,
       );
     }
 
