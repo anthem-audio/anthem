@@ -4,6 +4,23 @@ project(AnthemEngine)
 
 set(CMAKE_CXX_STANDARD 20)
 
+if(WIN32)
+  # Disables a couple warnings about struct alignment (C4324, C4820), which
+  # don't seem to indicate anything, though I may be wrong.
+  #
+  # https://learn.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-4-c4324?view=msvc-170
+  add_definitions("/wd4324")
+  add_definitions("/wd4820")
+
+  # Disables "relative include path contains '..'" warning, which shows up in
+  # reflect-cpp.
+  add_definitions("/wd4464")
+
+  # I guess reflect-cpp just chucks GNU preprocessor macros into the void on
+  # MSVC, and it makes the compiler unhappy.
+  add_definitions("/wd4668")
+endif(WIN32)
+
 # JUCE is having trouble finding GTK
 if (LINUX)
   find_package(PkgConfig REQUIRED)
