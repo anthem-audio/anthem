@@ -36,7 +36,10 @@ part 'project.g.dart';
 
 enum ProjectLayoutKind { arrange, edit, mix }
 
-@AnthemModel.syncedModel()
+@AnthemModel.syncedModel(
+  cppBehaviorClassName: 'Project',
+  cppBehaviorClassIncludePath: 'modules/core/project.h',
+)
 class ProjectModel extends _ProjectModel
     with _$ProjectModel, _$ProjectModelAnthemModelMixin {
   ProjectModel() : super();

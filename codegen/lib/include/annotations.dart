@@ -51,6 +51,8 @@ class AnthemModel {
   final bool generateCpp;
   final bool generateModelSync;
   final bool generateCppWrapperClass;
+  final String? cppBehaviorClassName;
+  final String? cppBehaviorClassIncludePath;
 
   /// Constructor for [AnthemModel].
   ///
@@ -59,18 +61,24 @@ class AnthemModel {
       {this.serializable = false,
       this.generateCpp = false,
       this.generateModelSync = false,
-      this.generateCppWrapperClass = false});
+      this.generateCppWrapperClass = false,
+      this.cppBehaviorClassName,
+      this.cppBehaviorClassIncludePath});
 
   /// Constructor for [AnthemModel], which enables options necessary for model
   /// generation and syncing with C++.
   ///
   /// See the documentation above for more info.
-  const AnthemModel.syncedModel()
-      : this(
+  const AnthemModel.syncedModel({
+    String? cppBehaviorClassName,
+    String? cppBehaviorClassIncludePath,
+  }) : this(
             serializable: true,
             generateCpp: true,
             generateModelSync: true,
-            generateCppWrapperClass: true);
+            generateCppWrapperClass: true,
+            cppBehaviorClassName: cppBehaviorClassName,
+            cppBehaviorClassIncludePath: cppBehaviorClassIncludePath);
 
   /// Constructor for [AnthemModel], which enables options necessary for IPC
   /// messages.

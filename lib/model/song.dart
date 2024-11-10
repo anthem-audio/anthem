@@ -30,7 +30,10 @@ import 'shared/hydratable.dart';
 
 part 'song.g.dart';
 
-@AnthemModel.syncedModel()
+@AnthemModel.syncedModel(
+  cppBehaviorClassName: 'Song',
+  cppBehaviorClassIncludePath: 'modules/core/song.h',
+)
 class SongModel extends _SongModel
     with _$SongModel, _$SongModelAnthemModelMixin {
   SongModel() : super();

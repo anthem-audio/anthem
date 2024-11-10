@@ -29,7 +29,7 @@ import 'model_class_info.dart';
 /// Represents a type in the model.
 sealed class ModelType {
   abstract final bool canBeMapKey;
-  abstract final String name;
+  abstract final String dartName;
   final bool isNullable;
 
   ModelType({required this.isNullable});
@@ -40,7 +40,7 @@ class StringModelType extends ModelType {
   final bool canBeMapKey = true;
 
   @override
-  String get name => 'String';
+  String get dartName => 'String';
 
   StringModelType({required super.isNullable});
 }
@@ -50,7 +50,7 @@ class IntModelType extends ModelType {
   final bool canBeMapKey = true;
 
   @override
-  String get name => 'int';
+  String get dartName => 'int';
 
   IntModelType({required super.isNullable});
 }
@@ -60,7 +60,7 @@ class DoubleModelType extends ModelType {
   final bool canBeMapKey = true;
 
   @override
-  String get name => 'double';
+  String get dartName => 'double';
 
   DoubleModelType({required super.isNullable});
 }
@@ -70,7 +70,7 @@ class NumModelType extends ModelType {
   final bool canBeMapKey = true;
 
   @override
-  String get name => 'num';
+  String get dartName => 'num';
 
   NumModelType({required super.isNullable});
 }
@@ -80,7 +80,7 @@ class BoolModelType extends ModelType {
   final bool canBeMapKey = true;
 
   @override
-  String get name => 'bool';
+  String get dartName => 'bool';
 
   BoolModelType({required super.isNullable});
 }
@@ -97,7 +97,7 @@ class EnumModelType extends ModelType {
       {required super.isNullable, required this.enumElement});
 
   @override
-  String get name => enumName;
+  String get dartName => enumName;
 }
 
 enum CollectionType {
@@ -122,14 +122,14 @@ class ListModelType extends ModelType {
       {this.collectionType = CollectionType.raw, required super.isNullable});
 
   @override
-  String get name {
+  String get dartName {
     final collectionTypeName = switch (collectionType) {
       CollectionType.raw => 'List',
       CollectionType.mobXObservable => 'ObservableList',
       CollectionType.anthemObservable => 'AnthemObservableList',
     };
 
-    return '$collectionTypeName<${itemType.name}${itemType.isNullable ? '?' : ''}>';
+    return '$collectionTypeName<${itemType.dartName}${itemType.isNullable ? '?' : ''}>';
   }
 }
 
@@ -150,14 +150,14 @@ class MapModelType extends ModelType {
       {this.collectionType = CollectionType.raw, required super.isNullable});
 
   @override
-  String get name {
+  String get dartName {
     final collectionTypeName = switch (collectionType) {
       CollectionType.raw => 'Map',
       CollectionType.mobXObservable => 'ObservableMap',
       CollectionType.anthemObservable => 'AnthemObservableMap',
     };
 
-    return '$collectionTypeName<${keyType.name}${keyType.isNullable ? '?' : ''}, ${valueType.name}${valueType.isNullable ? '?' : ''}>';
+    return '$collectionTypeName<${keyType.dartName}${keyType.isNullable ? '?' : ''}, ${valueType.dartName}${valueType.isNullable ? '?' : ''}>';
   }
 }
 
@@ -166,7 +166,7 @@ class ColorModelType extends ModelType {
   final bool canBeMapKey = false;
 
   @override
-  String get name => 'Color';
+  String get dartName => 'Color';
 
   ColorModelType({required super.isNullable});
 }
@@ -181,7 +181,7 @@ class CustomModelType extends ModelType {
   CustomModelType(this.type, {required super.isNullable});
 
   @override
-  String get name => type.annotatedClass.name;
+  String get dartName => type.annotatedClass.name;
 }
 
 /// Represents a type that may or may not be valid, but cannot be parsed for
@@ -191,10 +191,11 @@ class UnknownModelType extends ModelType {
   final bool canBeMapKey = false;
 
   @override
-  final String name;
+  final String dartName;
 
-  UnknownModelType({required this.name, required super.isNullable});
-  UnknownModelType.error({this.name = 'ErrorType', super.isNullable = false});
+  UnknownModelType({required this.dartName, required super.isNullable});
+  UnknownModelType.error(
+      {this.dartName = 'ErrorType', super.isNullable = false});
 }
 
 /// Parses a Dart type into a [ModelType].
@@ -277,7 +278,8 @@ ModelType getModelType(
               const TypeChecker.fromRuntime(AnthemModel)
                   .firstAnnotationOf(element);
           if (anthemModelAnnotation == null) {
-            return UnknownModelType(name: element.name, isNullable: isNullable);
+            return UnknownModelType(
+                dartName: element.name, isNullable: isNullable);
           }
 
           try {
@@ -289,7 +291,8 @@ ModelType getModelType(
                 'This may be because the type is not formed correctly.');
             log.warning(
                 '${element.name} is a field on ${annotatedClass.name}.');
-            return UnknownModelType(name: element.name, isNullable: isNullable);
+            return UnknownModelType(
+                dartName: element.name, isNullable: isNullable);
           }
         }
 

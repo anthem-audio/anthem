@@ -128,7 +128,7 @@ String _generateGettersAndSetters(
     result += '@override\n';
     result += '// ignore: duplicate_ignore\n';
     result += '// ignore: unnecessary_overrides\n';
-    result += '${fieldInfo.typeInfo.name}$typeQ get $fieldName {\n';
+    result += '${fieldInfo.typeInfo.dartName}$typeQ get $fieldName {\n';
     if (fieldInfo.isObservable) {
       result += generateMobXGetter(fieldName, fieldInfo);
     }
@@ -188,7 +188,7 @@ notifyFieldChanged(
     }
 
     result += '@override\n';
-    result += 'set $fieldName(${fieldInfo.typeInfo.name}$typeQ value) {\n';
+    result += 'set $fieldName(${fieldInfo.typeInfo.dartName}$typeQ value) {\n';
     if (fieldInfo.isObservable) {
       result += wrapCodeWithMobXSetter(fieldName, fieldInfo, setter);
     } else {
