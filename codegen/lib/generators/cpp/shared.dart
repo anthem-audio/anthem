@@ -19,7 +19,9 @@
 
 import 'package:anthem_codegen/generators/util/model_types.dart';
 
-String getCppType(ModelType type) {
+import '../util/model_class_info.dart';
+
+String getCppType(ModelType type, ModelClassInfo context) {
   final typeStr = switch (type) {
     StringModelType() => 'std::string',
     IntModelType() => 'int64_t',
@@ -28,9 +30,10 @@ String getCppType(ModelType type) {
     ColorModelType() =>
       'rfl::NamedTuple<rfl::Field<"r", unsigned char>, rfl::Field<"g", unsigned char>, rfl::Field<"b", unsigned char>, rfl::Field<"a", unsigned char>>',
     EnumModelType(enumName: final name) => name,
-    ListModelType(itemType: final inner) => 'std::vector<${getCppType(inner)}>',
+    ListModelType(itemType: final inner) =>
+      '${context.annotation?.generateModelSync == true ? 'AnthemModelVector' : 'std::vector'}<${getCppType(inner, context)}>',
     MapModelType(keyType: final key, valueType: final value) =>
-      'std::map<${getCppType(key)}, ${getCppType(value)}>',
+      '${context.annotation?.generateModelSync == true ? 'AnthemModelUnorderedMap' : 'std::unordered_map'}<${getCppType(key, context)}, ${getCppType(value, context)}>',
     CustomModelType(dartName: final dartName) =>
       'rfl::Ref<${type.modelClassInfo.annotation?.cppBehaviorClassName != null ? type.modelClassInfo.annotation!.cppBehaviorClassName : dartName}>',
     UnknownModelType() => 'TYPE_ERROR_UNKNOWN_TYPE',
