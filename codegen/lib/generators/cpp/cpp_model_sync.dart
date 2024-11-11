@@ -386,7 +386,7 @@ void _writeUpdate({
 
       // TODO: If this works, replicate this in the other types.
       writer.writeLine(
-          'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
+          'auto result = rfl::json::read<${getCppType(type, context)}>(request.serializedValue.value());');
       _writeJsonResultCheck(
         writer: writer,
         resultVariable: 'result',
@@ -411,7 +411,7 @@ void _writeUpdate({
       );
 
       writer.writeLine(
-          'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
+          'auto result = rfl::json::read<${getCppType(type, context)}>(request.serializedValue.value());');
       _writeJsonResultCheck(
         writer: writer,
         resultVariable: 'result',
@@ -465,7 +465,7 @@ void _writeUpdate({
         fieldAccessExpression: fieldAccessExpression,
         context: context,
       );
-      writer.writeLine('${getCppType(type.itemType)} itemResult;');
+      writer.writeLine('${getCppType(type.itemType, context)} itemResult;');
       _writeUpdate(
         context: context,
         writer: writer,
@@ -507,7 +507,7 @@ void _writeUpdate({
       );
 
       writer.writeLine(
-          'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
+          'auto result = rfl::json::read<${getCppType(type, context)}>(request.serializedValue.value());');
       _writeJsonResultCheck(
         writer: writer,
         resultVariable: 'result',
@@ -595,7 +595,7 @@ void _writeUpdate({
       );
 
       writer.writeLine(
-          'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
+          'auto result = rfl::json::read<${getCppType(type, context)}>(request.serializedValue.value());');
       _writeJsonResultCheck(
         writer: writer,
         resultVariable: 'result',
@@ -620,7 +620,7 @@ void _writeUpdate({
       );
 
       writer.writeLine(
-          'auto result = rfl::json::read<${getCppType(type)}>(request.serializedValue.value());');
+          'auto result = rfl::json::read<${getCppType(type, context)}>(request.serializedValue.value());');
       _writeJsonResultCheck(
         writer: writer,
         resultVariable: 'result',

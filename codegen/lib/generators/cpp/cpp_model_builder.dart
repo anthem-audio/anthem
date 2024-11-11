@@ -309,6 +309,9 @@ class CppModelBuilder implements Builder {
 #include <rfl/json.hpp>
 #include <rfl.hpp>
 
+#include "modules/codegen_helpers/anthem_model_vector.h"
+#include "modules/codegen_helpers/anthem_model_unordered_map.h"
+
 ''';
 
     var cppCodeToWrite = '''/*
@@ -463,7 +466,7 @@ String _generateEnum(EnumInfo enumInfo) {
       continue;
     }
 
-    final type = getCppType(fieldInfo.typeInfo);
+    final type = getCppType(fieldInfo.typeInfo, modelClassInfo);
     writer.writeLine('$type $fieldName;');
   }
 
@@ -537,7 +540,7 @@ String _generateEnum(EnumInfo enumInfo) {
         continue;
       }
 
-      final type = getCppType(fieldInfo.typeInfo);
+      final type = getCppType(fieldInfo.typeInfo, modelClassInfo);
       writer.writeLine('$type& $fieldName() { return impl.$fieldName; }');
     }
 
@@ -579,7 +582,7 @@ String _generateEnum(EnumInfo enumInfo) {
         continue;
       }
 
-      final type = getCppType(fieldInfo.typeInfo);
+      final type = getCppType(fieldInfo.typeInfo, modelClassInfo);
       writer.writeLine('$type $fieldName;');
     }
 
