@@ -309,6 +309,7 @@ class CppModelBuilder implements Builder {
 #include <rfl/json.hpp>
 #include <rfl.hpp>
 
+#include "modules/codegen_helpers/anthem_model_base.h"
 #include "modules/codegen_helpers/anthem_model_vector.h"
 #include "modules/codegen_helpers/anthem_model_unordered_map.h"
 
@@ -494,7 +495,7 @@ String _generateEnum(EnumInfo enumInfo) {
           .add('class ${modelClassInfo.annotation!.cppBehaviorClassName!};');
     }
 
-    writer.writeLine('class $className$baseSuffix {');
+    writer.writeLine('class $className$baseSuffix : public AnthemModelBase {');
     writer.writeLine('public:');
     writer.incrementWhitespace();
 

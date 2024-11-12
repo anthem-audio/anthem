@@ -21,16 +21,12 @@
 
 #include <vector>
 #include <memory>
-#include <iterator> // For std::distance
+#include <iterator>
 
-// class AnthemModelBase;
+#include "anthem_model_base.h"
 
 template <typename T>
-class AnthemModelVector {
-public:
-  // Public weak pointer to parent, defaults to being unassigned
-  // std::weak_ptr<AnthemModelBase> parent;
-
+class AnthemModelVector : public AnthemModelBase {
 private:
   // The internal vector
   std::vector<T> data;
@@ -41,26 +37,20 @@ public:
 
   // Copy constructor
   AnthemModelVector(const AnthemModelVector& other)
-    : data(other.data) {
-    // parent = other.parent;
-  }
+    : data(other.data) {}
 
   // Move constructor
   AnthemModelVector(AnthemModelVector&& other) noexcept
-    : data(std::move(other.data)) {
-    // parent = std::move(other.parent);
-  }
+    : data(std::move(other.data)) {}
 
   // Copy assignment operator
   AnthemModelVector& operator=(const AnthemModelVector& other) {
-    // parent = other.parent;
     data = other.data;
     return *this;
   }
 
   // Move assignment operator
   AnthemModelVector& operator=(AnthemModelVector&& other) noexcept {
-    // parent = std::move(other.parent);
     data = std::move(other.data);
     return *this;
   }
@@ -145,7 +135,6 @@ public:
   // Swap method
   void swap(AnthemModelVector& other) noexcept(std::is_nothrow_swappable_v<std::vector<T>>) {
     data.swap(other.data);
-    // parent.swap(other.parent);
   }
 
   // Iterator access
