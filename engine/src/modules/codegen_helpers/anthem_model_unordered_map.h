@@ -21,15 +21,10 @@
 
 #include <unordered_map>
 #include <memory>
-
-class AnthemModelBase; // Forward declaration if necessary
+#include "anthem_model_base.h"
 
 template <typename Key, typename T, typename Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>>
-class AnthemModelUnorderedMap {
-public:
-  // Public weak pointer to parent, defaults to being unassigned
-  // std::weak_ptr<AnthemModelBase> parent;
-
+class AnthemModelUnorderedMap : public AnthemModelBase {
 private:
   // The internal unordered_map
   std::unordered_map<Key, T, Hash, KeyEqual> data;
@@ -40,11 +35,11 @@ public:
 
   // Copy constructor
   AnthemModelUnorderedMap(const AnthemModelUnorderedMap& other)
-    : /*parent(other.parent),*/ data(other.data) {}
+    : data(other.data) {}
 
   // Move constructor
   AnthemModelUnorderedMap(AnthemModelUnorderedMap&& other) noexcept
-    : /*parent(std::move(other.parent)),*/ data(std::move(other.data)) {}
+    : data(std::move(other.data)) {}
 
   // Initializer list constructor
   AnthemModelUnorderedMap(std::initializer_list<typename std::unordered_map<Key, T>::value_type> init)
@@ -52,13 +47,11 @@ public:
 
   // Assignment operators
   AnthemModelUnorderedMap& operator=(const AnthemModelUnorderedMap& other) {
-    // parent = other.parent;
     data = other.data;
     return *this;
   }
 
   AnthemModelUnorderedMap& operator=(AnthemModelUnorderedMap&& other) noexcept {
-    // parent = std::move(other.parent);
     data = std::move(other.data);
     return *this;
   }
@@ -145,7 +138,6 @@ public:
 
   void swap(AnthemModelUnorderedMap& other) noexcept {
     data.swap(other.data);
-    // parent.swap(other.parent);
   }
 
   // Lookup
