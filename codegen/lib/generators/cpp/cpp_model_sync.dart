@@ -772,3 +772,91 @@ void _writeKeyDeserialize({
           'These types should not be marked as map keys, and so should be caught above. This is a bug.');
   }
 }
+
+/// Writes code to set the parent fields for all children to this.
+///
+/// This will be written to the constructor of the parent class.
+void writeParentSetters({
+  required Writer writer,
+  required ModelClassInfo context,
+}) {
+  if (context.annotation?.generateCppWrapperClass != true) {
+    return;
+  }
+
+  void writeForType(ModelType type, String accessor) {
+    final shouldWrite = type is CustomModelType ||
+        type is ListModelType ||
+        type is MapModelType;
+
+    if (shouldWrite && type.isNullable) {
+      writer.writeLine('if ($accessor.has_value()) {');
+      writer.incrementWhitespace();
+    }
+
+    if (type is CustomModelType) {
+      final valueFn = type.isNullable ? '.value()' : '';
+      writer.writeLine('$accessor$valueFn->parent = this;');
+    } else if (type is ListModelType) {
+      if (type.itemType is CustomModelType ||
+          type.itemType is ListModelType ||
+          type.itemType is MapModelType) {
+        final valueFn = type.isNullable ? '.value()' : '';
+
+        writer.writeLine('for (auto& item : $accessor$valueFn) {');
+        writer.incrementWhitespace();
+        writeForType(type.itemType, 'item');
+        writer.decrementWhitespace();
+        writer.writeLine('}');
+      }
+    } else if (type is MapModelType) {
+      if (type.valueType is CustomModelType ||
+          type.valueType is ListModelType ||
+          type.valueType is MapModelType) {
+        final valueFn = type.isNullable ? '.value()' : '';
+
+        writer.writeLine('for (auto& [key, value] : $accessor$valueFn) {');
+        writer.incrementWhitespace();
+        writeForType(type.valueType, 'value');
+        writer.decrementWhitespace();
+        writer.writeLine('}');
+      }
+    }
+
+    if (shouldWrite && type.isNullable) {
+      writer.decrementWhitespace();
+      writer.writeLine('}');
+    }
+  }
+
+  for (var MapEntry(key: fieldName, value: field) in context.fields.entries) {
+    if (field.hideAnnotation?.cpp == true) {
+      continue;
+    }
+
+    final type = field.typeInfo;
+
+    writeForType(type, 'this->$fieldName()');
+  }
+}
+
+String getWrapperConstructor(ModelClassInfo context) {
+  final writer = Writer();
+
+  final className = context.annotatedClass.name;
+  final baseSuffix =
+      context.annotation?.cppBehaviorClassName != null ? 'Base' : '';
+
+  writer.writeLine('$className$baseSuffix::'
+      '$className$baseSuffix(const ${className}Impl& _impl) : impl(_impl) {');
+  writer.incrementWhitespace();
+
+  writeParentSetters(writer: writer, context: context);
+  writer.writeLine(
+      'std::cout << "Created $className instance and set parent pointers." << std::endl;');
+
+  writer.decrementWhitespace();
+  writer.writeLine('}');
+
+  return writer.result;
+}

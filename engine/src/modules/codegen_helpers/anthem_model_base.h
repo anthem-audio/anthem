@@ -34,5 +34,11 @@ class AnthemModelBase;
 // collection wrappers).
 class AnthemModelBase {
 public:
-  std::weak_ptr<AnthemModelBase> parent;
+  // The parent of this model.
+  //
+  // Anthem models in C++ are never moved or copied. Since they are managed by
+  // codegen, we can easily guarantee this. If this ever changes, this behavior
+  // should be redesigned, and we will need to more carefully manage pointers to
+  // each object to allow this to be a weak pointer.
+  AnthemModelBase* parent;
 };
