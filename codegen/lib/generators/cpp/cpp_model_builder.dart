@@ -505,8 +505,7 @@ String _generateEnum(EnumInfo enumInfo) {
     writer.writeLine('$className$baseSuffix() = default;');
     writer.writeLine();
 
-    writer.writeLine(
-        '$className$baseSuffix(const ${className}Impl& _impl) : impl(_impl) {}');
+    writer.writeLine('$className$baseSuffix(const ${className}Impl& _impl);');
     writer.writeLine();
 
     writer.writeLine('~$className$baseSuffix() = default;');
@@ -520,6 +519,7 @@ String _generateEnum(EnumInfo enumInfo) {
       writeModelSyncFnDeclaration(writer);
       writer.writeLine();
 
+      functionDefinitions.add(getWrapperConstructor(modelClassInfo));
       functionDefinitions.add(getModelSyncFn(modelClassInfo));
     }
 
