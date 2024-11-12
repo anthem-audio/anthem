@@ -245,6 +245,7 @@ void _writeUpdate({
   required String fieldAccessExpression,
   required ModelClassInfo context,
   int fieldAccessIndexMod = 0,
+  String parentAccessor = 'this',
 }) {
   switch (type) {
     case StringModelType():
@@ -473,6 +474,7 @@ void _writeUpdate({
         fieldAccessExpression: 'itemResult',
         createFieldSetter: (value) => 'itemResult = $value;',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
+        parentAccessor: '&$fieldAccessExpression',
       );
       writer.writeLine(
           '$fieldAccessExpression.insert($fieldAccessExpression.begin() + request.fieldAccesses[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value(), std::move(itemResult));');
@@ -490,6 +492,7 @@ void _writeUpdate({
         createFieldSetter: (value) =>
             '$fieldAccessExpression[request.fieldAccesses[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value()] = $value;',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
+        parentAccessor: '&$fieldAccessExpression',
       );
       writer.decrementWhitespace();
       writer.writeLine('}');
@@ -515,6 +518,12 @@ void _writeUpdate({
         fieldAccessExpression: fieldAccessExpression,
       );
       writer.writeLine('$fieldAccessExpression = std::move(result.value());');
+      writeParentSetterForType(
+        writer: writer,
+        type: type,
+        fieldAccessor: fieldAccessExpression,
+        parentAccessor: parentAccessor,
+      );
 
       writer.decrementWhitespace();
       writer.writeLine('}');
@@ -577,6 +586,7 @@ void _writeUpdate({
         createFieldSetter: (value) =>
             '$fieldAccessExpression.insert_or_assign(deserializedKey, $value);',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
+        parentAccessor: '&$fieldAccessExpression',
       );
 
       writer.decrementWhitespace();
@@ -628,6 +638,12 @@ void _writeUpdate({
         fieldAccessExpression: fieldAccessExpression,
       );
       writer.writeLine(createFieldSetter('std::move(result.value())'));
+      writeParentSetterForType(
+        writer: writer,
+        type: type,
+        fieldAccessor: fieldAccessExpression,
+        parentAccessor: parentAccessor,
+      );
 
       writer.decrementWhitespace();
 
@@ -773,60 +789,76 @@ void _writeKeyDeserialize({
   }
 }
 
+void writeParentSetterForType({
+  required Writer writer,
+  required ModelType type,
+  required String fieldAccessor,
+  required String parentAccessor,
+}) {
+  final shouldWrite =
+      type is CustomModelType || type is ListModelType || type is MapModelType;
+
+  if (shouldWrite && type.isNullable) {
+    writer.writeLine('if ($fieldAccessor.has_value()) {');
+    writer.incrementWhitespace();
+  }
+
+  if (type is CustomModelType) {
+    final valueFn = type.isNullable ? '.value()' : '';
+    writer.writeLine('$fieldAccessor$valueFn->parent = $parentAccessor;');
+  } else if (type is ListModelType) {
+    if (type.itemType is CustomModelType ||
+        type.itemType is ListModelType ||
+        type.itemType is MapModelType) {
+      final valueFn = type.isNullable ? '.value()' : '';
+
+      writer.writeLine('$fieldAccessor$valueFn.parent = $parentAccessor;');
+
+      writer.writeLine('for (auto& item : $fieldAccessor$valueFn) {');
+      writer.incrementWhitespace();
+      writeParentSetterForType(
+          writer: writer,
+          type: type.itemType,
+          fieldAccessor: 'item',
+          parentAccessor: '&$fieldAccessor$valueFn');
+      writer.decrementWhitespace();
+      writer.writeLine('}');
+    }
+  } else if (type is MapModelType) {
+    if (type.valueType is CustomModelType ||
+        type.valueType is ListModelType ||
+        type.valueType is MapModelType) {
+      final valueFn = type.isNullable ? '.value()' : '';
+
+      writer.writeLine('$fieldAccessor$valueFn.parent = $parentAccessor;');
+
+      writer.writeLine('for (auto& [key, value] : $fieldAccessor$valueFn) {');
+      writer.incrementWhitespace();
+      writeParentSetterForType(
+          writer: writer,
+          type: type.valueType,
+          fieldAccessor: 'value',
+          parentAccessor: '&$fieldAccessor$valueFn');
+      writer.decrementWhitespace();
+      writer.writeLine('}');
+    }
+  }
+
+  if (shouldWrite && type.isNullable) {
+    writer.decrementWhitespace();
+    writer.writeLine('}');
+  }
+}
+
 /// Writes code to set the parent fields for all children to this.
 ///
 /// This will be written to the constructor of the parent class.
-void writeParentSetters({
+void writeParentSettersForConstructor({
   required Writer writer,
   required ModelClassInfo context,
 }) {
   if (context.annotation?.generateCppWrapperClass != true) {
     return;
-  }
-
-  void writeForType(ModelType type, String accessor) {
-    final shouldWrite = type is CustomModelType ||
-        type is ListModelType ||
-        type is MapModelType;
-
-    if (shouldWrite && type.isNullable) {
-      writer.writeLine('if ($accessor.has_value()) {');
-      writer.incrementWhitespace();
-    }
-
-    if (type is CustomModelType) {
-      final valueFn = type.isNullable ? '.value()' : '';
-      writer.writeLine('$accessor$valueFn->parent = this;');
-    } else if (type is ListModelType) {
-      if (type.itemType is CustomModelType ||
-          type.itemType is ListModelType ||
-          type.itemType is MapModelType) {
-        final valueFn = type.isNullable ? '.value()' : '';
-
-        writer.writeLine('for (auto& item : $accessor$valueFn) {');
-        writer.incrementWhitespace();
-        writeForType(type.itemType, 'item');
-        writer.decrementWhitespace();
-        writer.writeLine('}');
-      }
-    } else if (type is MapModelType) {
-      if (type.valueType is CustomModelType ||
-          type.valueType is ListModelType ||
-          type.valueType is MapModelType) {
-        final valueFn = type.isNullable ? '.value()' : '';
-
-        writer.writeLine('for (auto& [key, value] : $accessor$valueFn) {');
-        writer.incrementWhitespace();
-        writeForType(type.valueType, 'value');
-        writer.decrementWhitespace();
-        writer.writeLine('}');
-      }
-    }
-
-    if (shouldWrite && type.isNullable) {
-      writer.decrementWhitespace();
-      writer.writeLine('}');
-    }
   }
 
   for (var MapEntry(key: fieldName, value: field) in context.fields.entries) {
@@ -836,7 +868,12 @@ void writeParentSetters({
 
     final type = field.typeInfo;
 
-    writeForType(type, 'this->$fieldName()');
+    writeParentSetterForType(
+      writer: writer,
+      type: type,
+      fieldAccessor: 'this->$fieldName()',
+      parentAccessor: 'this',
+    );
   }
 }
 
@@ -851,9 +888,7 @@ String getWrapperConstructor(ModelClassInfo context) {
       '$className$baseSuffix(const ${className}Impl& _impl) : impl(_impl) {');
   writer.incrementWhitespace();
 
-  writeParentSetters(writer: writer, context: context);
-  writer.writeLine(
-      'std::cout << "Created $className instance and set parent pointers." << std::endl;');
+  writeParentSettersForConstructor(writer: writer, context: context);
 
   writer.decrementWhitespace();
   writer.writeLine('}');
