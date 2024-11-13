@@ -4,7 +4,7 @@ project(AnthemEngine)
 
 set(CMAKE_CXX_STANDARD 20)
 
-if(WIN32)
+if(MSVC)
   # Disables a couple warnings about struct alignment (C4324, C4820), which
   # don't seem to indicate anything, though I may be wrong.
   #
@@ -19,7 +19,7 @@ if(WIN32)
   # I guess reflect-cpp just chucks GNU preprocessor macros into the void on
   # MSVC, and it makes the compiler unhappy.
   add_definitions("/wd4668")
-endif(WIN32)
+endif()
 
 # JUCE is having trouble finding GTK
 if (LINUX)
@@ -32,7 +32,6 @@ endif()
 add_subdirectory(include)
 
 include_directories(${CMAKE_SOURCE_DIR})
-include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # Add JUCE
 
