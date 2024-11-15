@@ -5,6 +5,13 @@ function echo-green {
     Write-Host ""
 }
 
+function echo-red {
+    param([string]$text)
+    Write-Host ""
+    Write-Host -ForegroundColor Red $text
+    Write-Host ""
+}
+
 # Set the script's location as the current directory
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 Push-Location $scriptPath
@@ -29,7 +36,11 @@ cmake ..
 echo-green "Building..."
 cmake --build .
 
-echo-green "Engine build complete."
+if (-not $?) {
+    echo-red "Engine build failed."
+} else {
+    echo-green "Engine build succeeded."
+}
 
 Pop-Location
 
