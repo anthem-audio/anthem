@@ -497,7 +497,7 @@ void _writeUpdate({
         fieldAccessExpression: 'itemResult',
         createFieldSetter: (value) => 'itemResult = $value;',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
-        parentAccessor: '$fieldAccessExpression',
+        parentAccessor: fieldAccessExpression,
       );
       writer.writeLine(
           '$fieldAccessExpression->insert($fieldAccessExpression->begin() + (*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value(), std::move(itemResult));');
@@ -515,7 +515,7 @@ void _writeUpdate({
         createFieldSetter: (value) =>
             '(*$fieldAccessExpression)[(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value()] = $value;',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
-        parentAccessor: '$fieldAccessExpression',
+        parentAccessor: fieldAccessExpression,
       );
       writer.decrementWhitespace();
       writer.writeLine('}');
