@@ -20,8 +20,27 @@
 #pragma once
 
 #include <memory>
+#include <unordered_map>
+#include <functional>
+#include <optional>
 
 class AnthemModelBase;
+
+// Specifies a set of filters on model changes.
+struct AnthemModelChangeFilter {
+  std::optional<std::string> fieldName;
+
+  // We can add more things here if needed, like collection change filters, etc.
+  //
+  // For now, we can do two things:
+  //   - Filter by field name, which is specified here
+  //   - Trigger behavior on model constructor and destructor
+  //
+  // In the future, we may want to, for example, observe a list of integers. In
+  // this case, we can't just add behavior to an element constructor because the
+  // element is a primitive, so we'll need to add behavior here to allow for
+  // observing the list itself.
+};
 
 // Base class used for all generated model classes.
 //
@@ -33,12 +52,62 @@ class AnthemModelBase;
 // generated model classes, and anything else that is part of the model tree (e.g.
 // collection wrappers).
 class AnthemModelBase {
+private:
+  uint64_t nextObserverId = 0;
+
+  // The set of observers that are listening for changes to this model.
+  std::unordered_map<
+    uint64_t,
+    std::tuple<std::optional<AnthemModelChangeFilter>, std::function<void()>>
+  > observers;
+
 public:
+  // Default empty constructor
+  AnthemModelBase() = default;
+
+  // Delete copy constructors
+  AnthemModelBase(const AnthemModelBase&) = delete;
+  AnthemModelBase& operator=(const AnthemModelBase&) = delete;
+
+  // Default move constructors
+  AnthemModelBase(AnthemModelBase&&) noexcept = default;
+  AnthemModelBase& operator=(AnthemModelBase&&) noexcept = default;
+
   // The parent of this model.
-  //
-  // Anthem models in C++ are never moved or copied. Since they are managed by
-  // codegen, we can easily guarantee this. If this ever changes, this behavior
-  // should be redesigned, and we will need to more carefully manage pointers to
-  // each object to allow this to be a weak pointer.
-  AnthemModelBase* parent;
+  std::weak_ptr<AnthemModelBase> parent;
+
+  // This model.
+  std::weak_ptr<AnthemModelBase> self;
+
+  virtual void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) {
+    this->self = self;
+    this->parent = parent;
+  }
+
+  // Adds an observer to this model.
+  uint64_t addObserver(AnthemModelChangeFilter filter, std::function<void()> observer) {
+    auto id = nextObserverId++;
+    observers[id] = std::make_tuple(filter, observer);
+    return id;
+  }
+
+  uint64_t addObserver(std::string fieldName, std::function<void()> observer) {
+    return addObserver(AnthemModelChangeFilter{.fieldName = std::optional(fieldName)}, observer);
+  }
+
+  // Removes an observer from this model.
+  void removeObserver(uint64_t observerId) {
+    observers.erase(observerId);
+  }
+
+  // Processes a change to this model.
+  void processChange(std::string fieldName) {
+    for (auto& [_, observer] : observers) {
+      auto [filter, observer] = observer;
+
+      if (!filter.has_value() || !filter->fieldName.has_value() || filter->fieldName.value() == fieldName) {
+        observer();
+      }
+    }
+  }
 };

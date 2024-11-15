@@ -23,12 +23,18 @@
 
 class Project : public ProjectModelBase {
 public:
-  Project() : ProjectModelBase() {}
   Project(const ProjectModelImpl& _impl) : ProjectModelBase(_impl) {std::cout << "Project created" << std::endl; this->test();}
   ~Project() {}
 
+  Project(const Project&) = delete;
+  Project& operator=(const Project&) = delete;
+  
+  Project(Project&&) noexcept = default;
+  Project& operator=(Project&&) noexcept = default;
+
   void test() {
     std::cout << "Project test - id: " << this->id() << std::endl;
+    std::cout << "Project test - song: " << this->song()->id() << std::endl;
   }
 
   // void handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {

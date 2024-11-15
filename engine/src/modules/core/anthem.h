@@ -47,7 +47,7 @@ private:
   // Initializes the engine
   void init();
 public:
-    std::unique_ptr<Project> project;
+    std::shared_ptr<Project> project;
 
   Anthem();
 

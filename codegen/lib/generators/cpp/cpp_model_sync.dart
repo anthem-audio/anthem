@@ -35,9 +35,9 @@ void writeModelSyncFnDeclaration(Writer writer) {
 ///
 /// ```cpp
 /// void MyModel::handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {
-///   if (request.fieldAccesses[fieldAccessIndex]->fieldName == "myFirstField") {
+///   if ((*request.fieldAccesses)[fieldAccessIndex]->fieldName == "myFirstField") {
 ///     this->myFirstField = std::stoll(request.serializedValue.value());
-///   } else if (request.fieldAccesses[fieldAccessIndex]->fieldName == "mySecondField") {
+///   } else if ((*request.fieldAccesses)[fieldAccessIndex]->fieldName == "mySecondField") {
 ///     // etc...
 ///   }
 /// }
@@ -65,10 +65,19 @@ String getModelSyncFn(ModelClassInfo context) {
       'void ${context.annotatedClass.name}$baseSuffix::handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {');
   writer.incrementWhitespace();
 
+  writer.writeLine('if (self.expired()) {');
+  writer.incrementWhitespace();
+  writer.writeLine(
+      'std::cout << "Error updating model \\"${context.annotatedClass.name}\\": model has been deleted." << std::endl;');
+  writer.writeLine('return;');
+  writer.decrementWhitespace();
+  writer.writeLine('}');
+  writer.writeLine('auto self = this->self.lock();');
+
   var isFirst = true;
 
   writer.writeLine(
-      'auto& fieldNameNullable = request.fieldAccesses[fieldAccessIndex]->fieldName;');
+      'auto& fieldNameNullable = (*request.fieldAccesses)[fieldAccessIndex]->fieldName;');
 
   writer.writeLine('if (!fieldNameNullable.has_value()) {');
   writer.incrementWhitespace();
@@ -96,6 +105,20 @@ String getModelSyncFn(ModelClassInfo context) {
       createFieldSetter: (value) => 'this->$fieldName$parentheses = $value;',
       fieldAccessExpression: 'this->$fieldName$parentheses',
     );
+
+    // If this was a raw field update, then we should notify the current model
+    // that it has been updated.
+    //
+    // Note that this is very simplistic, and only handles setting fields to new
+    // values. It doesn't allow observations for collection changes. This can be
+    // added in the future if needed.
+    writer.writeLine();
+    writer.writeLine(
+        'if (fieldAccessIndex == request.fieldAccesses->size() - 1) {');
+    writer.incrementWhitespace();
+    writer.writeLine('this->processChange("$fieldName");');
+    writer.decrementWhitespace();
+    writer.writeLine('}');
 
     writer.decrementWhitespace();
     writer.writeLine('}');
@@ -156,7 +179,7 @@ void _writeIndexCheckForPrimitive({
   required String fieldAccessExpression,
 }) {
   writer.writeLine(
-      'if (request.fieldAccesses.size() > fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
+      'if (request.fieldAccesses->size() > fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
   writer.incrementWhitespace();
   _writeInvalidAccessWarning(
     writer: writer,
@@ -228,12 +251,12 @@ void _writeJsonResultCheck({
 ///
 /// ```cpp
 /// // (A few validation checks on the request)
-/// if (request.fieldAccesses.size() == fieldAccessIndex + 1) {
+/// if (request.fieldAccesses->size() == fieldAccessIndex + 1) {
 ///   // After generating up to this point, the function will call itself
 ///   // recursively like so:
 ///   // writeUpdate(
 ///   //   type: IntModelType(),
-///   //   modificationTarget: 'this->myMapField[request.fieldAccesses[fieldAccessIndex + 1]->serializedValue.value()]',
+///   //   modificationTarget: 'this->myMapField[(*request.fieldAccesses)[fieldAccessIndex + 1]->serializedValue.value()]',
 ///   // );
 /// }
 /// // Etc...
@@ -245,7 +268,7 @@ void _writeUpdate({
   required String fieldAccessExpression,
   required ModelClassInfo context,
   int fieldAccessIndexMod = 0,
-  String parentAccessor = 'this',
+  String parentAccessor = 'self',
 }) {
   switch (type) {
     case StringModelType():
@@ -440,11 +463,11 @@ void _writeUpdate({
       // fieldAccessIndex + 1, then this is a request to update a specific item
       // in the list, or a request for a distant child of that item.
       writer.writeLine(
-          'if (fieldAccessIndex + 1 + $fieldAccessIndexMod < request.fieldAccesses.size()) {');
+          'if (fieldAccessIndex + 1 + $fieldAccessIndexMod < request.fieldAccesses->size()) {');
       writer.incrementWhitespace();
 
       writer.writeLine(
-          'if (!request.fieldAccesses[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.has_value()) {');
+          'if (!(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.has_value()) {');
       writer.incrementWhitespace();
       writer.writeLine(
           'std::cout << "Error processing list update for setter \\"${createFieldSetter("[value here]")}\\": list index is null." << std::endl;');
@@ -453,13 +476,13 @@ void _writeUpdate({
       writer.writeLine('}');
 
       writer.writeLine(
-          'if (request.updateKind == FieldUpdateKind::remove && request.fieldAccesses.size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
+          'if (request.updateKind == FieldUpdateKind::remove && request.fieldAccesses->size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
       writer.incrementWhitespace();
       writer.writeLine(
-          '$fieldAccessExpression.erase($fieldAccessExpression.begin() + request.fieldAccesses[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value());');
+          '$fieldAccessExpression->erase($fieldAccessExpression->begin() + (*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value());');
       writer.decrementWhitespace();
       writer.writeLine(
-          '} else if (request.updateKind == FieldUpdateKind::add && request.fieldAccesses.size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
+          '} else if (request.updateKind == FieldUpdateKind::add && request.fieldAccesses->size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
       writer.incrementWhitespace();
       _writeSerializedValueNullCheck(
         writer: writer,
@@ -474,10 +497,10 @@ void _writeUpdate({
         fieldAccessExpression: 'itemResult',
         createFieldSetter: (value) => 'itemResult = $value;',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
-        parentAccessor: '&$fieldAccessExpression',
+        parentAccessor: '$fieldAccessExpression',
       );
       writer.writeLine(
-          '$fieldAccessExpression.insert($fieldAccessExpression.begin() + request.fieldAccesses[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value(), std::move(itemResult));');
+          '$fieldAccessExpression->insert($fieldAccessExpression->begin() + (*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value(), std::move(itemResult));');
       writer.decrementWhitespace();
       writer.writeLine('} else {');
       writer.incrementWhitespace();
@@ -488,11 +511,11 @@ void _writeUpdate({
         writer: writer,
         type: type.itemType,
         fieldAccessExpression:
-            '$fieldAccessExpression[request.fieldAccesses[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value()]',
+            '(*$fieldAccessExpression)[(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value()]',
         createFieldSetter: (value) =>
-            '$fieldAccessExpression[request.fieldAccesses[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value()] = $value;',
+            '(*$fieldAccessExpression)[(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value()] = $value;',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
-        parentAccessor: '&$fieldAccessExpression',
+        parentAccessor: '$fieldAccessExpression',
       );
       writer.decrementWhitespace();
       writer.writeLine('}');
@@ -545,23 +568,23 @@ void _writeUpdate({
       // 1, then this is a request to update a specific item in the map, or a
       // request for a distant child of that item.
       writer.writeLine(
-          'if (fieldAccessIndex + 1 + $fieldAccessIndexMod < request.fieldAccesses.size()) {');
+          'if (fieldAccessIndex + 1 + $fieldAccessIndexMod < request.fieldAccesses->size()) {');
       writer.incrementWhitespace();
       _writeKeyDeserialize(
         writer: writer,
         keyExpression:
-            'request.fieldAccesses[fieldAccessIndex + 1 + $fieldAccessIndexMod]->serializedMapKey',
+            '(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->serializedMapKey',
         keyType: type.keyType,
         outputVariable: 'deserializedKey',
       );
 
       writer.writeLine(
-          'if (request.updateKind == FieldUpdateKind::remove && request.fieldAccesses.size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
+          'if (request.updateKind == FieldUpdateKind::remove && request.fieldAccesses->size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
       writer.incrementWhitespace();
-      writer.writeLine('$fieldAccessExpression.erase(deserializedKey);');
+      writer.writeLine('$fieldAccessExpression->erase(deserializedKey);');
       writer.decrementWhitespace();
       writer.writeLine(
-          '} else if (request.updateKind == FieldUpdateKind::add && request.fieldAccesses.size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
+          '} else if (request.updateKind == FieldUpdateKind::add && request.fieldAccesses->size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
       writer.incrementWhitespace();
       // "Add" is only valid for list. Should use "set" instead.
       _writeUpdateTypeInvalidError(
@@ -582,11 +605,11 @@ void _writeUpdate({
         context: context,
         writer: writer,
         type: type.valueType,
-        fieldAccessExpression: '$fieldAccessExpression.at(deserializedKey)',
+        fieldAccessExpression: '$fieldAccessExpression->at(deserializedKey)',
         createFieldSetter: (value) =>
-            '$fieldAccessExpression.insert_or_assign(deserializedKey, $value);',
+            '$fieldAccessExpression->insert_or_assign(deserializedKey, $value);',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
-        parentAccessor: '&$fieldAccessExpression',
+        parentAccessor: fieldAccessExpression,
       );
 
       writer.decrementWhitespace();
@@ -621,7 +644,7 @@ void _writeUpdate({
       // If this field is a custom model and this is the last accessor in the
       // chain, then we should deserialize the provided JSON into this field.
       writer.writeLine(
-          'if (request.fieldAccesses.size() == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
+          'if (request.fieldAccesses->size() == fieldAccessIndex + 1 + $fieldAccessIndexMod) {');
       writer.incrementWhitespace();
       _writeSerializedValueNullCheck(
         writer: writer,
@@ -805,22 +828,24 @@ void writeParentSetterForType({
 
   if (type is CustomModelType) {
     final valueFn = type.isNullable ? '.value()' : '';
-    writer.writeLine('$fieldAccessor$valueFn->parent = $parentAccessor;');
+    writer.writeLine(
+        '$fieldAccessor$valueFn->initialize($fieldAccessor$valueFn, $parentAccessor);');
   } else if (type is ListModelType) {
     if (type.itemType is CustomModelType ||
         type.itemType is ListModelType ||
         type.itemType is MapModelType) {
       final valueFn = type.isNullable ? '.value()' : '';
 
-      writer.writeLine('$fieldAccessor$valueFn.parent = $parentAccessor;');
+      writer.writeLine(
+          '$fieldAccessor$valueFn->initialize($fieldAccessor$valueFn, $parentAccessor);');
 
-      writer.writeLine('for (auto& item : $fieldAccessor$valueFn) {');
+      writer.writeLine('for (auto& item : (*$fieldAccessor$valueFn)) {');
       writer.incrementWhitespace();
       writeParentSetterForType(
           writer: writer,
           type: type.itemType,
           fieldAccessor: 'item',
-          parentAccessor: '&$fieldAccessor$valueFn');
+          parentAccessor: '$fieldAccessor$valueFn');
       writer.decrementWhitespace();
       writer.writeLine('}');
     }
@@ -830,15 +855,17 @@ void writeParentSetterForType({
         type.valueType is MapModelType) {
       final valueFn = type.isNullable ? '.value()' : '';
 
-      writer.writeLine('$fieldAccessor$valueFn.parent = $parentAccessor;');
+      writer.writeLine(
+          '$fieldAccessor$valueFn->initialize($fieldAccessor$valueFn, $parentAccessor);');
 
-      writer.writeLine('for (auto& [key, value] : $fieldAccessor$valueFn) {');
+      writer
+          .writeLine('for (auto& [key, value] : (*$fieldAccessor$valueFn)) {');
       writer.incrementWhitespace();
       writeParentSetterForType(
           writer: writer,
           type: type.valueType,
           fieldAccessor: 'value',
-          parentAccessor: '&$fieldAccessor$valueFn');
+          parentAccessor: '$fieldAccessor$valueFn');
       writer.decrementWhitespace();
       writer.writeLine('}');
     }
@@ -853,7 +880,7 @@ void writeParentSetterForType({
 /// Writes code to set the parent fields for all children to this.
 ///
 /// This will be written to the constructor of the parent class.
-void writeParentSettersForConstructor({
+void writeParentSettersForInitializeFn({
   required Writer writer,
   required ModelClassInfo context,
 }) {
@@ -872,23 +899,25 @@ void writeParentSettersForConstructor({
       writer: writer,
       type: type,
       fieldAccessor: 'this->$fieldName()',
-      parentAccessor: 'this',
+      parentAccessor: 'this->self.lock()',
     );
   }
 }
 
-String getWrapperConstructor(ModelClassInfo context) {
+String getInitializeFn(ModelClassInfo context) {
   final writer = Writer();
 
   final className = context.annotatedClass.name;
   final baseSuffix =
       context.annotation?.cppBehaviorClassName != null ? 'Base' : '';
 
-  writer.writeLine('$className$baseSuffix::'
-      '$className$baseSuffix(const ${className}Impl& _impl) : impl(_impl) {');
+  writer.writeLine(
+      'void $className$baseSuffix::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) {');
   writer.incrementWhitespace();
+  writer.writeLine('AnthemModelBase::initialize(self, parent);');
+  writer.writeLine();
 
-  writeParentSettersForConstructor(writer: writer, context: context);
+  writeParentSettersForInitializeFn(writer: writer, context: context);
 
   writer.decrementWhitespace();
   writer.writeLine('}');

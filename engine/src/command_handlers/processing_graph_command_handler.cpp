@@ -29,7 +29,7 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
   if (rfl::holds_alternative<GetProcessorsRequest>(request.variant())) {
     auto& getProcessorsRequest = rfl::get<GetProcessorsRequest>(request.variant());
 
-    std::vector<rfl::Ref<ProcessorDescription>> processorList;
+    std::shared_ptr<std::vector<std::shared_ptr<ProcessorDescription>>> processorList;
 
     // TODO: This should probably be stored somewhere for real, so we don't
     // have to manage it here
@@ -43,14 +43,14 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
       auto id = std::get<0>(processor);
       auto category = std::get<1>(processor);
 
-      auto processorDescription = rfl::make_ref<ProcessorDescription>(
+      auto processorDescription = std::make_shared<ProcessorDescription>(
         ProcessorDescription{
           .processorId = id,
           .category = category
         }
       );
 
-      processorList.push_back(std::move(processorDescription));
+      processorList->push_back(std::move(processorDescription));
     }
 
     auto response = GetProcessorsResponse {
@@ -83,91 +83,91 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
 
     auto node = anthem->getNode(nodeId);
 
-    std::vector<rfl::Ref<ProcessorPortDescription>> audioInputPorts;
+    std::shared_ptr<std::vector<std::shared_ptr<ProcessorPortDescription>>> audioInputPorts;
 
     for (const auto& port : node->audioInputs) {
       auto id = port->config->id;
 
-      auto portDescription = rfl::make_ref<ProcessorPortDescription>(
+      auto portDescription = std::make_shared<ProcessorPortDescription>(
         ProcessorPortDescription {
           .id = static_cast<int64_t>(id)
         }
       );
 
-      audioInputPorts.push_back(std::move(portDescription));
+      audioInputPorts->push_back(std::move(portDescription));
     }
 
-    std::vector<rfl::Ref<ProcessorPortDescription>> controlInputPorts;
+    std::shared_ptr<std::vector<std::shared_ptr<ProcessorPortDescription>>> controlInputPorts;
 
     for (const auto& port : node->controlInputs) {
       auto id = port->config->id;
 
-      auto portDescription = rfl::make_ref<ProcessorPortDescription>(
+      auto portDescription = std::make_shared<ProcessorPortDescription>(
           ProcessorPortDescription {
           .id = static_cast<int64_t>(id)
         }
       );
 
-      controlInputPorts.push_back(std::move(portDescription));
+      controlInputPorts->push_back(std::move(portDescription));
     }
 
-    std::vector<rfl::Ref<ProcessorPortDescription>> noteEventInputPorts;
+    std::shared_ptr<std::vector<std::shared_ptr<ProcessorPortDescription>>> noteEventInputPorts;
 
     for (const auto& port : node->noteEventInputs) {
       auto id = port->config->id;
 
-      auto portDescription = rfl::make_ref<ProcessorPortDescription>(
+      auto portDescription = std::make_shared<ProcessorPortDescription>(
           ProcessorPortDescription {
           .id = static_cast<int64_t>(id)
         }
       );
 
-      noteEventInputPorts.push_back(std::move(portDescription));
+      noteEventInputPorts->push_back(std::move(portDescription));
     }
 
-    std::vector<rfl::Ref<ProcessorPortDescription>> audioOutputPorts;
+    std::shared_ptr<std::vector<std::shared_ptr<ProcessorPortDescription>>> audioOutputPorts;
 
     for (const auto& port : node->audioOutputs) {
       auto id = port->config->id;
 
-      auto portDescription = rfl::make_ref<ProcessorPortDescription>(
+      auto portDescription = std::make_shared<ProcessorPortDescription>(
           ProcessorPortDescription {
           .id = static_cast<int64_t>(id)
         }
       );
 
-      audioOutputPorts.push_back(std::move(portDescription));
+      audioOutputPorts->push_back(std::move(portDescription));
     }
 
-    std::vector<rfl::Ref<ProcessorPortDescription>> controlOutputPorts;
+    std::shared_ptr<std::vector<std::shared_ptr<ProcessorPortDescription>>> controlOutputPorts;
 
     for (const auto& port : node->controlOutputs) {
       auto id = port->config->id;
 
-      auto portDescription = rfl::make_ref<ProcessorPortDescription>(
+      auto portDescription = std::make_shared<ProcessorPortDescription>(
           ProcessorPortDescription {
           .id = static_cast<int64_t>(id)
         }
       );
 
-      controlOutputPorts.push_back(std::move(portDescription));
+      controlOutputPorts->push_back(std::move(portDescription));
     }
 
-    std::vector<rfl::Ref<ProcessorPortDescription>> noteEventOutputPorts;
+    std::shared_ptr<std::vector<std::shared_ptr<ProcessorPortDescription>>> noteEventOutputPorts;
 
     for (const auto& port : node->noteEventOutputs) {
       auto id = port->config->id;
     
-      auto portDescription = rfl::make_ref<ProcessorPortDescription>(
+      auto portDescription = std::make_shared<ProcessorPortDescription>(
           ProcessorPortDescription {
           .id = static_cast<int64_t>(id)
         }
       );
 
-      noteEventOutputPorts.push_back(std::move(portDescription));
+      noteEventOutputPorts->push_back(std::move(portDescription));
     }
 
-    std::vector<rfl::Ref<ProcessorParameterDescription>> parameters;
+    std::shared_ptr<std::vector<std::shared_ptr<ProcessorParameterDescription>>> parameters;
 
     for (int i = 0; i < node->controlInputs.size(); i++) {
       auto& port = node->controlInputs[i];
@@ -178,7 +178,7 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
       auto min = parameter->minValue;
       auto max = parameter->maxValue;
 
-      auto parameterDescription = rfl::make_ref<ProcessorParameterDescription>(
+      auto parameterDescription = std::make_shared<ProcessorParameterDescription>(
         ProcessorParameterDescription {
           .id = static_cast<int64_t>(id),
           .defaultValue = defaultValue,
@@ -187,7 +187,7 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
         }
       );
 
-      parameters.push_back(std::move(parameterDescription));
+      parameters->push_back(std::move(parameterDescription));
     }
 
     auto response = GetProcessorPortsResponse {
