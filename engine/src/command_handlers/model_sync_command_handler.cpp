@@ -35,7 +35,7 @@ std::optional<Response> handleModelSyncCommand(
 
     // std::cout << modelInitRequest.serializedModel << std::endl;
 
-    auto result = rfl::json::read<std::unique_ptr<Project>>(
+    auto result = rfl::json::read<std::shared_ptr<Project>>(
       modelInitRequest.serializedModel
     );
 
@@ -48,6 +48,11 @@ std::optional<Response> handleModelSyncCommand(
     else {
       anthem->project = std::move(
         result.value()
+      );
+
+      anthem->project->initialize(
+        anthem->project,
+        nullptr
       );
 
       std::cout << "Loaded project model" << std::endl;

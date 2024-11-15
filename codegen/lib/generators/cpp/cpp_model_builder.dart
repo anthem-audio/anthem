@@ -502,24 +502,40 @@ String _generateEnum(EnumInfo enumInfo) {
     writer.writeLine('using ReflectionType = ${className}Impl;');
     writer.writeLine();
 
-    writer.writeLine('$className$baseSuffix() = default;');
-    writer.writeLine();
-
-    writer.writeLine('$className$baseSuffix(const ${className}Impl& _impl);');
+    writer.writeLine(
+        '$className$baseSuffix(const ${className}Impl& _impl) : impl(_impl) {}');
     writer.writeLine();
 
     writer.writeLine('~$className$baseSuffix() = default;');
+    writer.writeLine();
+
+    // Delete copy constructor and assignment operator
+    writer.writeLine(
+        '$className$baseSuffix(const $className$baseSuffix&) = delete;');
+    writer.writeLine(
+        '$className$baseSuffix& operator=(const $className$baseSuffix&) = delete;');
+    writer.writeLine();
+
+    // Create a move constructor and assignment operator
+    writer.writeLine(
+        '$className$baseSuffix($className$baseSuffix&&) noexcept = default;');
+    writer.writeLine(
+        '$className$baseSuffix& operator=($className$baseSuffix&&) noexcept = default;');
     writer.writeLine();
 
     writer
         .writeLine('const ReflectionType& reflection() const { return impl; }');
     writer.writeLine();
 
+    writer.writeLine(
+        'void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override;');
+    writer.writeLine();
+
     if (generateModelSync) {
       writeModelSyncFnDeclaration(writer);
       writer.writeLine();
 
-      functionDefinitions.add(getWrapperConstructor(modelClassInfo));
+      functionDefinitions.add(getInitializeFn(modelClassInfo));
       functionDefinitions.add(getModelSyncFn(modelClassInfo));
     }
 
