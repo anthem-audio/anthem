@@ -102,8 +102,8 @@ public:
 
   // Processes a change to this model.
   void processChange(std::string fieldName) {
-    for (auto& [_, observer] : observers) {
-      auto [filter, observer] = observer;
+    for (auto& [_, observerTuple] : observers) {
+      auto [filter, observer] = observerTuple;
 
       if (!filter.has_value() || !filter->fieldName.has_value() || filter->fieldName.value() == fieldName) {
         observer();
