@@ -30,6 +30,7 @@ import 'package:anthem/engine_api/messages/messages.dart' as message_api;
 import 'package:mobx/mobx.dart';
 
 import 'generator.dart';
+import 'processing_graph/processing_graph.dart';
 import 'shared/hydratable.dart';
 
 part 'project.g.dart';
@@ -50,7 +51,14 @@ class ProjectModel extends _ProjectModel
 }
 
 abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
+  /// Represents information about the sequenced content in the project, such as
+  /// arrangements and patterns, and their content.
   late SongModel song;
+
+  /// Represents the processing graph for the project. This is used to route
+  /// audio, control and notes between processors, and to eventually route the
+  /// resulting audio to the audio output device.
+  late ProcessingGraphModel processingGraph;
 
   /// ID of the master output node in the processing graph. Audio that is routed
   /// to this node is sent to the audio output device.
@@ -161,8 +169,6 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   // models.
   _ProjectModel() : super() {
     _commandQueue = CommandQueue(this as ProjectModel);
-
-    _init();
   }
 
   @hide
@@ -277,6 +283,11 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
         }
       }
     });
+
+    // Normally we rely on the fact that this will always be put in the field of
+    // another model, which will call setParentPropertiesOnChildren. Since this
+    // is the top level, we need to call it ourselves.
+    setParentPropertiesOnChildren();
 
     isHydrated = true;
   }

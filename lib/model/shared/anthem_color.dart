@@ -20,8 +20,6 @@
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
-import '../shared/hydratable.dart';
-
 part 'anthem_color.g.dart';
 
 @AnthemModel.syncedModel()
@@ -44,7 +42,7 @@ class AnthemColor extends _AnthemColor
       _$AnthemColorAnthemModelMixin.fromJson(json);
 }
 
-abstract class _AnthemColor extends Hydratable with Store, AnthemModelBase {
+abstract class _AnthemColor with Store, AnthemModelBase {
   @anthemObservable
   double hue;
 
@@ -58,8 +56,5 @@ abstract class _AnthemColor extends Hydratable with Store, AnthemModelBase {
     required this.hue,
     required this.lightnessMultiplier,
     required this.saturationMultiplier,
-  }) : super() {
-    (this as _$AnthemColorAnthemModelMixin).init();
-    isHydrated = true;
-  }
+  }) : super();
 }

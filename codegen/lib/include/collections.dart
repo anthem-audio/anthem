@@ -131,6 +131,13 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
   }
 
   @override
+  void setParentPropertiesOnChildren() {
+    for (var i = 0; i < length; i++) {
+      _setParentPropertiesOnIndex(i);
+    }
+  }
+
+  @override
   List<Object?> toJson({bool includeFieldsForEngine = false}) {
     return map(
       (e) => _serializeValue(e, includeFieldsForEngine: includeFieldsForEngine),
@@ -194,6 +201,13 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
       fieldType: FieldType.map,
       key: key,
     );
+  }
+
+  @override
+  void setParentPropertiesOnChildren() {
+    for (final key in keys) {
+      _setParentPropertiesOnValue(key);
+    }
   }
 
   @override

@@ -127,14 +127,6 @@ class Hydratable {
           Error.throwWithStackTrace(
               Exception(_getHydrationError()), stackTrace);
         }
-
-        if (this is AnthemModelBase) {
-          final model = this as AnthemModelBase;
-          if (!model.isInitialized) {
-            Error.throwWithStackTrace(
-                Exception(_getAnthemModelNoInitError()), stackTrace);
-          }
-        }
       }
 
       Future.delayed(const Duration(seconds: 0), check);
@@ -143,7 +135,4 @@ class Hydratable {
 
   String _getHydrationError() =>
       '$runtimeType was not hydrated after being constructed. See lib/model/shared/hydratable.dart for more info.';
-
-  String _getAnthemModelNoInitError() =>
-      '$runtimeType was not initialized. Anthem model codegen defines an _init() function that must be called after the model is constructed.';
 }

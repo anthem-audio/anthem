@@ -22,8 +22,6 @@ import 'package:mobx/mobx.dart';
 
 import 'package:anthem/helpers/id.dart';
 
-import 'shared/hydratable.dart';
-
 part 'track.g.dart';
 
 @AnthemModel.syncedModel()
@@ -37,7 +35,7 @@ class TrackModel extends _TrackModel
       _$TrackModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _TrackModel extends Hydratable with Store, AnthemModelBase {
+abstract class _TrackModel with Store, AnthemModelBase {
   ID id;
 
   @anthemObservable
@@ -45,8 +43,5 @@ abstract class _TrackModel extends Hydratable with Store, AnthemModelBase {
 
   _TrackModel({required this.name})
       : id = getID(),
-        super() {
-    (this as _$TrackModelAnthemModelMixin).init();
-    isHydrated = true;
-  }
+        super();
 }

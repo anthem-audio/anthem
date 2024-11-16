@@ -211,11 +211,6 @@ mixin AnthemModelBase {
               Iterable<FieldAccessor> accessors, FieldOperation operation)>
       _listeners = [];
 
-  /// Tracks the initialization status of the model. This works in conjunction
-  /// with [Hydratable] to ensure that the model is initialized when it is
-  /// constructed.
-  bool isInitialized = false;
-
   /// Serializes the model to a JSON representation.
   dynamic toJson({bool includeFieldsForEngine = false});
 
@@ -283,5 +278,12 @@ mixin AnthemModelBase {
     parentListIndex = index;
     parentMapKey = key;
     parentFieldName = fieldName;
+
+    // setParentProperties() will only be called when the model is added to a
+    // parent model or collection. Models really shouldn't be moved around, so
+    // we will assume that we can recursively initialize all children too.
+    setParentPropertiesOnChildren();
   }
+
+  void setParentPropertiesOnChildren();
 }

@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/shared/hydratable.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
@@ -41,7 +40,7 @@ class NodePortModel extends _NodePortModel
       _$NodePortModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _NodePortModel extends Hydratable with Store, AnthemModelBase {
+abstract class _NodePortModel with Store, AnthemModelBase {
   String id;
 
   String nodeId;
@@ -56,8 +55,5 @@ abstract class _NodePortModel extends Hydratable with Store, AnthemModelBase {
     required this.id,
     required this.nodeId,
     required this.config,
-  }) {
-    isHydrated = true;
-    (this as _$NodePortModelAnthemModelMixin).init();
-  }
+  });
 }

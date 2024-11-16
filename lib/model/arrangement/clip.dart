@@ -22,8 +22,6 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
-import '../shared/hydratable.dart';
-
 part 'clip.g.dart';
 
 @AnthemModel.syncedModel()
@@ -73,7 +71,7 @@ class ClipModel extends _ClipModel
       _$ClipModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _ClipModel extends Hydratable with Store, AnthemModelBase {
+abstract class _ClipModel with Store, AnthemModelBase {
   ID id;
 
   @anthemObservable
@@ -95,9 +93,7 @@ abstract class _ClipModel extends Hydratable with Store, AnthemModelBase {
     required this.patternID,
     required this.trackID,
     required this.offset,
-  }) : super() {
-    hydrate();
-  }
+  }) : super();
 
   _ClipModel.create({
     required this.id,
@@ -105,14 +101,7 @@ abstract class _ClipModel extends Hydratable with Store, AnthemModelBase {
     required this.patternID,
     required this.trackID,
     required this.offset,
-  }) : super() {
-    hydrate();
-  }
-
-  void hydrate() {
-    (this as _$ClipModelAnthemModelMixin).init();
-    isHydrated = true;
-  }
+  }) : super();
 
   int getWidth(ProjectModel project) {
     if (timeView != null) {
