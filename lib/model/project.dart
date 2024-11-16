@@ -175,6 +175,20 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
       project: this as ProjectModel,
     );
 
+    processingGraph = ProcessingGraphModel();
+
+    hydrate(false);
+  }
+
+  /// This function is run after deserialization. It allows us to do some setup
+  /// that the deserialization step can't do for us.
+  void hydrate([bool recurse = true]) {
+    if (recurse) {
+      song.hydrate(
+        project: this as ProjectModel,
+      );
+    }
+
     engine = Engine(engineID, this as ProjectModel)..start();
 
     engine.engineStateStream.listen((state) {
@@ -263,26 +277,6 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
         }
       }
     });
-
-    // We don't need to hydrate here. All `SomeModel.Create()` functions should
-    // call hydrate().
-    isHydrated = true;
-
-    _init();
-  }
-
-  void _init() {
-    (this as _$ProjectModelAnthemModelMixin).init();
-  }
-
-  /// This function is run after deserialization. It allows us to do some setup
-  /// that the deserialization step can't do for us.
-  void hydrate() {
-    song.hydrate(
-      project: this as ProjectModel,
-    );
-
-    engine = Engine(engineID, this as ProjectModel)..start();
 
     isHydrated = true;
   }
