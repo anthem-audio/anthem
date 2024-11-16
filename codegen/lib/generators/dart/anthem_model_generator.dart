@@ -203,9 +203,9 @@ notifyFieldChanged(
 
 /// Generates the init function for the model.
 String _generateInitFunction({required ModelClassInfo context}) {
-  var result = '';
+  var result = '@override\n';
 
-  result += 'void init() {\n';
+  result += 'void setParentPropertiesOnChildren() {\n';
 
   for (final MapEntry(key: fieldName, value: fieldInfo)
       in context.fields.entries) {
@@ -223,8 +223,6 @@ super.$fieldName$typeQ.setParentProperties(
 ''';
     }
   }
-
-  result += 'isInitialized = true;';
 
   result += '}\n';
 

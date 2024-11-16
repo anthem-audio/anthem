@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/shared/hydratable.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
@@ -73,7 +72,7 @@ class NodeConfigModel extends _NodeConfigModel
       _$NodeConfigModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _NodeConfigModel extends Hydratable with Store, AnthemModelBase {
+abstract class _NodeConfigModel with Store, AnthemModelBase {
   ProcessorKind processorKind;
 
   AnthemObservableList<NodePortConfigModel> audioInputs;
@@ -92,8 +91,5 @@ abstract class _NodeConfigModel extends Hydratable with Store, AnthemModelBase {
     required this.audioOutputs,
     required this.midiOutputs,
     required this.controlOutputs,
-  }) {
-    isHydrated = true;
-    (this as _$NodeConfigModelAnthemModelMixin).init();
-  }
+  });
 }

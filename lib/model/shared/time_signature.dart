@@ -47,10 +47,7 @@ abstract class _TimeSignatureModel extends Hydratable
   _TimeSignatureModel(
     this.numerator,
     this.denominator,
-  ) : super() {
-    (this as _$TimeSignatureModelAnthemModelMixin).init();
-    isHydrated = true;
-  }
+  ) : super();
 
   String toDisplayString() => '$numerator/$denominator';
 }
@@ -94,7 +91,6 @@ abstract class _TimeSignatureChangeModel extends Hydratable
   }) : super() {
     this.id = id ?? getID();
 
-    (this as _$TimeSignatureChangeModelAnthemModelMixin).init();
     isHydrated = true;
   }
 }

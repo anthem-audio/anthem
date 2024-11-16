@@ -131,8 +131,6 @@ abstract class _PatternModel extends Hydratable with Store, AnthemModelBase {
   }
 
   void hydrate({required ProjectModel project}) {
-    (this as _$PatternModelAnthemModelMixin).init();
-
     _project = project;
 
     _onHydrateAction?.call();

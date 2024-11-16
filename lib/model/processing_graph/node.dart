@@ -18,7 +18,6 @@
 */
 
 import 'package:anthem/model/processing_graph/node_config.dart';
-import 'package:anthem/model/shared/hydratable.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
@@ -36,13 +35,10 @@ class NodeModel extends _NodeModel
       _$NodeModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _NodeModel extends Hydratable with Store, AnthemModelBase {
+abstract class _NodeModel with Store, AnthemModelBase {
   String id;
 
   NodeConfigModel config;
 
-  _NodeModel({required this.id, required this.config}) {
-    isHydrated = true;
-    (this as _$NodeModelAnthemModelMixin).init();
-  }
+  _NodeModel({required this.id, required this.config});
 }
