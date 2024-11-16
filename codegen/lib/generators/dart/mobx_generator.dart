@@ -43,7 +43,24 @@ String generateMobXGetter(String fieldName, ModelFieldInfo fieldInfo) {
 
 String wrapCodeWithMobXSetter(
     String fieldName, ModelFieldInfo fieldInfo, String code) {
-  return '''_\$${fieldName}Atom.reportWrite(value, super.$fieldName, () {
+  String valueSetter;
+
+  // If the field is late, we need to report that the old value is null. The
+  // only way to tell if the field is previously unset is to catch the error
+  // that is thrown when trying to access it.
+  if (fieldInfo.fieldElement.isLate) {
+    valueSetter = '''try {
+  oldValue = $fieldName;
+} catch (_) {
+  oldValue = null;
+}''';
+  } else {
+    valueSetter = 'oldValue = $fieldName;';
+  }
+
+  return '''var oldValue;
+$valueSetter
+_\$${fieldName}Atom.reportWrite(value, oldValue, () {
   $code
 });''';
 }
