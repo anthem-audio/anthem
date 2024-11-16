@@ -58,7 +58,7 @@ String wrapCodeWithMobXSetter(
     valueSetter = 'oldValue = $fieldName;';
   }
 
-  return '''var oldValue;
+  return '''${fieldInfo.typeInfo.dartName}? oldValue;
 $valueSetter
 _\$${fieldName}Atom.reportWrite(value, oldValue, () {
   $code
