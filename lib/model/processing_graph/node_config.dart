@@ -18,61 +18,22 @@
 */
 
 import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem/model/collections.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
-
-import 'node_port_config.dart';
 
 part 'node_config.g.dart';
 
 @AnthemModel.syncedModel()
 class NodeConfigModel extends _NodeConfigModel
     with _$NodeConfigModel, _$NodeConfigModelAnthemModelMixin {
-  NodeConfigModel({
-    AnthemObservableList<NodePortConfigModel>? audioInputs,
-    AnthemObservableList<NodePortConfigModel>? midiInputs,
-    AnthemObservableList<NodePortConfigModel>? controlInputs,
-    AnthemObservableList<NodePortConfigModel>? audioOutputs,
-    AnthemObservableList<NodePortConfigModel>? midiOutputs,
-    AnthemObservableList<NodePortConfigModel>? controlOutputs,
-  }) : super(
-          audioInputs: audioInputs ?? AnthemObservableList(),
-          midiInputs: midiInputs ?? AnthemObservableList(),
-          controlInputs: controlInputs ?? AnthemObservableList(),
-          audioOutputs: audioOutputs ?? AnthemObservableList(),
-          midiOutputs: midiOutputs ?? AnthemObservableList(),
-          controlOutputs: controlOutputs ?? AnthemObservableList(),
-        );
+  NodeConfigModel() : super();
 
-  NodeConfigModel.uninitialized()
-      : super(
-            audioInputs: AnthemObservableList(),
-            midiInputs: AnthemObservableList(),
-            controlInputs: AnthemObservableList(),
-            audioOutputs: AnthemObservableList(),
-            midiOutputs: AnthemObservableList(),
-            controlOutputs: AnthemObservableList());
+  NodeConfigModel.uninitialized() : super();
 
   factory NodeConfigModel.fromJson(Map<String, dynamic> json) =>
       _$NodeConfigModelAnthemModelMixin.fromJson(json);
 }
 
 abstract class _NodeConfigModel with Store, AnthemModelBase {
-  AnthemObservableList<NodePortConfigModel> audioInputs;
-  AnthemObservableList<NodePortConfigModel> midiInputs;
-  AnthemObservableList<NodePortConfigModel> controlInputs;
-
-  AnthemObservableList<NodePortConfigModel> audioOutputs;
-  AnthemObservableList<NodePortConfigModel> midiOutputs;
-  AnthemObservableList<NodePortConfigModel> controlOutputs;
-
-  _NodeConfigModel({
-    required this.audioInputs,
-    required this.midiInputs,
-    required this.controlInputs,
-    required this.audioOutputs,
-    required this.midiOutputs,
-    required this.controlOutputs,
-  });
+  _NodeConfigModel();
 }

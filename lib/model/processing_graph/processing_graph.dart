@@ -17,17 +17,16 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/collections.dart';
-import 'package:anthem/model/processing_graph/node_config.dart';
-import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/processors/master_output.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
 import 'node.dart';
 import 'node_connection.dart';
-import 'node_port.dart';
+import 'processors/tone_generator.dart';
 
 part 'processing_graph.g.dart';
 
@@ -37,18 +36,24 @@ class ProcessingGraphModel extends _ProcessingGraphModel
   ProcessingGraphModel.uninitialized();
 
   ProcessingGraphModel() {
-    nodes['masterOutput'] = NodeModel(
-      id: 'masterOutput',
-      config: NodeConfigModel(
-        audioInputs: AnthemObservableList.of([
-          NodePortConfigModel(dataType: NodePortDataType.audio),
-        ]),
-      ),
-    );
-    masterOutput = MasterOutputProcessorModel();
+    // Set up the master output node
+    final masterOutputNode = MasterOutputProcessorModel.createNode();
+    nodes[masterOutputNode.id] = masterOutputNode;
+    masterOutput = MasterOutputProcessorModel(nodeId: masterOutputNode.id);
 
-    (this as _$ProcessingGraphModelAnthemModelMixin)
-        .setParentPropertiesOnChildren();
+    // For testing purposes, connect a tone generator to the master output
+    final toneGeneratorNode = ToneGeneratorProcessorModel.createNode();
+    nodes[toneGeneratorNode.id] = toneGeneratorNode;
+    toneGenerator = ToneGeneratorProcessorModel(nodeId: toneGeneratorNode.id);
+
+    final connectionId = getID();
+    connections[connectionId] = NodeConnectionModel(
+      id: connectionId,
+      sourceNodeId: toneGeneratorNode.id,
+      sourcePortId: toneGeneratorNode.audioOutputPorts[0].id,
+      destinationNodeId: masterOutputNode.id,
+      destinationPortId: masterOutputNode.audioInputPorts[0].id,
+    );
   }
 
   factory ProcessingGraphModel.fromJson(Map<String, dynamic> json) =>
@@ -60,12 +65,12 @@ abstract class _ProcessingGraphModel with Store, AnthemModelBase {
   AnthemObservableMap<String, NodeModel> nodes = AnthemObservableMap();
 
   @anthemObservable
-  AnthemObservableMap<String, NodePortModel> ports = AnthemObservableMap();
-
-  @anthemObservable
   AnthemObservableMap<String, NodeConnectionModel> connections =
       AnthemObservableMap();
 
   @anthemObservable
   late MasterOutputProcessorModel masterOutput;
+
+  @AnthemObservable()
+  late ToneGeneratorProcessorModel toneGenerator;
 }
