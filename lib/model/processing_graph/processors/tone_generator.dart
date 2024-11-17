@@ -17,8 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/processing_graph/node.dart';
+import 'package:anthem/model/processing_graph/node_config.dart';
+import 'package:anthem/model/processing_graph/node_port.dart';
+import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
@@ -38,6 +44,35 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
 
   factory ToneGeneratorProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$ToneGeneratorProcessorModelAnthemModelMixin.fromJson(json);
+
+  /// The node that this processor represents.
+  NodeModel get node => (project.processingGraph.nodes[nodeId])!;
+
+  /// Creates a node for this processor.
+  static NodeModel createNode() {
+    final id = 'tone-generator-${getID()}';
+
+    return NodeModel(
+      config: NodeConfigModel(),
+      id: id,
+      audioOutputPorts: AnthemObservableList.of([
+        NodePortModel(
+          id: 0,
+          config: NodePortConfigModel(
+            dataType: NodePortDataType.audio,
+            parameterConfig: ParameterConfigModel(
+              id: 0,
+              defaultValue: 440,
+              minimumValue: 1,
+              maximumValue: 22500,
+              smoothingDurationSeconds: 0.5,
+            ),
+          ),
+          nodeId: id,
+        ),
+      ]),
+    );
+  }
 }
 
 abstract class _ToneGeneratorProcessorModel with Store, AnthemModelBase {
@@ -46,7 +81,4 @@ abstract class _ToneGeneratorProcessorModel with Store, AnthemModelBase {
   _ToneGeneratorProcessorModel({
     required this.nodeId,
   });
-
-  /// The node that this processor represents.
-  NodeModel get node => (project.processingGraph.nodes[nodeId])!;
 }

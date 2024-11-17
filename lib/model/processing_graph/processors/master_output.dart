@@ -18,7 +18,11 @@
 */
 
 import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/processing_graph/node.dart';
+import 'package:anthem/model/processing_graph/node_config.dart';
+import 'package:anthem/model/processing_graph/node_port.dart';
+import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
@@ -34,17 +38,34 @@ class MasterOutputProcessorModel extends _MasterOutputProcessorModel
     with
         _$MasterOutputProcessorModel,
         _$MasterOutputProcessorModelAnthemModelMixin {
-  MasterOutputProcessorModel.uninitialized();
+  MasterOutputProcessorModel.uninitialized() : super(nodeId: '');
 
-  MasterOutputProcessorModel();
+  MasterOutputProcessorModel({required super.nodeId});
 
   factory MasterOutputProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$MasterOutputProcessorModelAnthemModelMixin.fromJson(json);
 
   /// The node that this processor represents.
   NodeModel get node => (project.processingGraph.nodes[nodeId])!;
+
+  /// Creates a node for this processor.
+  static NodeModel createNode() {
+    return NodeModel(
+      config: NodeConfigModel(),
+      id: 'masterOutput',
+      audioInputPorts: AnthemObservableList.of([
+        NodePortModel(
+          id: 0,
+          config: NodePortConfigModel(dataType: NodePortDataType.audio),
+          nodeId: 'masterOutput',
+        ),
+      ]),
+    );
+  }
 }
 
 abstract class _MasterOutputProcessorModel with Store, AnthemModelBase {
-  String? nodeId;
+  late String nodeId;
+
+  _MasterOutputProcessorModel({required this.nodeId});
 }

@@ -28,12 +28,20 @@ class NodeConnectionModel extends _NodeConnectionModel
     with _$NodeConnectionModel, _$NodeConnectionModelAnthemModelMixin {
   NodeConnectionModel({
     required super.id,
+    required super.sourceNodeId,
     required super.sourcePortId,
-    required super.targetPortId,
+    required super.destinationNodeId,
+    required super.destinationPortId,
   });
 
   NodeConnectionModel.uninitialized()
-      : super(id: '', sourcePortId: '', targetPortId: '');
+      : super(
+          id: '',
+          sourceNodeId: '',
+          sourcePortId: 0,
+          destinationNodeId: '',
+          destinationPortId: 0,
+        );
 
   factory NodeConnectionModel.fromJson(Map<String, dynamic> json) =>
       _$NodeConnectionModelAnthemModelMixin.fromJson(json);
@@ -42,11 +50,17 @@ class NodeConnectionModel extends _NodeConnectionModel
 abstract class _NodeConnectionModel with Store, AnthemModelBase {
   String id;
 
-  String sourcePortId;
-  String targetPortId;
+  String sourceNodeId;
+  int sourcePortId;
 
-  _NodeConnectionModel(
-      {required this.id,
-      required this.sourcePortId,
-      required this.targetPortId});
+  String destinationNodeId;
+  int destinationPortId;
+
+  _NodeConnectionModel({
+    required this.id,
+    required this.sourceNodeId,
+    required this.sourcePortId,
+    required this.destinationNodeId,
+    required this.destinationPortId,
+  });
 }

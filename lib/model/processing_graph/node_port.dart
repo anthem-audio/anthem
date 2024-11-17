@@ -35,14 +35,22 @@ class NodePortModel extends _NodePortModel
   });
 
   NodePortModel.uninitialized()
-      : super(id: '', nodeId: '', config: NodePortConfigModel.uninitialized());
+      : super(id: -1, nodeId: '', config: NodePortConfigModel.uninitialized());
+
+  void init() {
+    if (config.dataType == NodePortDataType.control) {
+      parameterValue = config.parameterConfig!.defaultValue;
+    }
+  }
 
   factory NodePortModel.fromJson(Map<String, dynamic> json) =>
       _$NodePortModelAnthemModelMixin.fromJson(json);
 }
 
 abstract class _NodePortModel with Store, AnthemModelBase {
-  String id;
+  // This will map to the 32-bit parameter ID from the VST standard if this is a
+  // control input port.
+  int id;
 
   String nodeId;
 
