@@ -19,6 +19,7 @@
 
 import 'dart:convert';
 
+import 'package:anthem/model/project.dart';
 import 'package:mobx/mobx.dart';
 
 /// Represents a type of field in the model.
@@ -286,4 +287,23 @@ mixin AnthemModelBase {
   }
 
   void setParentPropertiesOnChildren();
+
+  ProjectModel? _project;
+  ProjectModel get project {
+    if (_project != null) {
+      return _project!;
+    }
+
+    var model = parent;
+    while (model != null) {
+      if (model is ProjectModel) {
+        _project = model;
+        return model;
+      }
+
+      model = model.parent;
+    }
+
+    throw Exception('Could not find project model');
+  }
 }

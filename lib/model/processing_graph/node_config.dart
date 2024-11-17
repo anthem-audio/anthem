@@ -17,50 +17,36 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/collections.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
 import 'node_port_config.dart';
 
 part 'node_config.g.dart';
 
-/// Enumerates the possible node processors.
-///
-/// Each node in the Anthem processing graph must have a processor. This
-/// processor is one of two things:
-/// - A built-in processor, such as a gain node or a delay node.
-/// - A plugin processor, such as a VST3 plugin.
-///
-/// All built-in processors are enumerated here. Plugin processors are listed
-/// here by their type, such as VST3 or AU. When a plugin processor is
-/// instantiated, a NodeConfigModel must be generated for it, whose ports are
-/// set up in the config to match what the plugin requests. Since this can only
-/// be done in the engine, we have a "handshake" process where the UI asks the
-/// engine to enumerate the specific plugin's ports, and then the engine sends
-/// back the information needed to compose a NodeConfigModel.
-@AnthemEnum()
-enum ProcessorKind {
-  masterOutput,
-  gain,
-  toneGenerator,
-}
-
 @AnthemModel.syncedModel()
 class NodeConfigModel extends _NodeConfigModel
     with _$NodeConfigModel, _$NodeConfigModelAnthemModelMixin {
   NodeConfigModel({
-    required super.processorKind,
-    required super.audioInputs,
-    required super.midiInputs,
-    required super.controlInputs,
-    required super.audioOutputs,
-    required super.midiOutputs,
-    required super.controlOutputs,
-  });
+    AnthemObservableList<NodePortConfigModel>? audioInputs,
+    AnthemObservableList<NodePortConfigModel>? midiInputs,
+    AnthemObservableList<NodePortConfigModel>? controlInputs,
+    AnthemObservableList<NodePortConfigModel>? audioOutputs,
+    AnthemObservableList<NodePortConfigModel>? midiOutputs,
+    AnthemObservableList<NodePortConfigModel>? controlOutputs,
+  }) : super(
+          audioInputs: audioInputs ?? AnthemObservableList(),
+          midiInputs: midiInputs ?? AnthemObservableList(),
+          controlInputs: controlInputs ?? AnthemObservableList(),
+          audioOutputs: audioOutputs ?? AnthemObservableList(),
+          midiOutputs: midiOutputs ?? AnthemObservableList(),
+          controlOutputs: controlOutputs ?? AnthemObservableList(),
+        );
 
   NodeConfigModel.uninitialized()
       : super(
-            processorKind: ProcessorKind.gain,
             audioInputs: AnthemObservableList(),
             midiInputs: AnthemObservableList(),
             controlInputs: AnthemObservableList(),
@@ -73,8 +59,6 @@ class NodeConfigModel extends _NodeConfigModel
 }
 
 abstract class _NodeConfigModel with Store, AnthemModelBase {
-  ProcessorKind processorKind;
-
   AnthemObservableList<NodePortConfigModel> audioInputs;
   AnthemObservableList<NodePortConfigModel> midiInputs;
   AnthemObservableList<NodePortConfigModel> controlInputs;
@@ -84,7 +68,6 @@ abstract class _NodeConfigModel with Store, AnthemModelBase {
   AnthemObservableList<NodePortConfigModel> controlOutputs;
 
   _NodeConfigModel({
-    required this.processorKind,
     required this.audioInputs,
     required this.midiInputs,
     required this.controlInputs,

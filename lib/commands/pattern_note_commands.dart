@@ -19,10 +19,10 @@
 
 import 'package:anthem/commands/command.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem_codegen/include/collections.dart';
 
 void _addNote(
   PatternModel pattern,

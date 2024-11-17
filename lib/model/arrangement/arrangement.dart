@@ -20,10 +20,11 @@
 import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/model/shared/hydratable.dart';
 import 'package:anthem/model/shared/time_signature.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
 import 'clip.dart';
@@ -45,8 +46,7 @@ class ArrangementModel extends _ArrangementModel
       _$ArrangementModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _ArrangementModel extends Hydratable
-    with Store, AnthemModelBase {
+abstract class _ArrangementModel with Store, AnthemModelBase {
   ID id;
 
   @anthemObservable
@@ -58,13 +58,6 @@ abstract class _ArrangementModel extends Hydratable
   @anthemObservable
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
 
-  @hide
-  ProjectModel? _project;
-
-  ProjectModel get project {
-    return _project!;
-  }
-
   _ArrangementModel({
     required this.name,
     required this.id,
@@ -74,16 +67,7 @@ abstract class _ArrangementModel extends Hydratable
     required this.name,
     required this.id,
     required ProjectModel project,
-  }) : super() {
-    hydrate(project: project);
-  }
-
-  void hydrate({
-    required ProjectModel project,
-  }) {
-    _project = project;
-    isHydrated = true;
-  }
+  }) : super();
 
   /// Gets the time position of the end of the last clip in this arrangement,
   /// rounded upward to the nearest `barMultiple` bars.

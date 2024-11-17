@@ -19,7 +19,7 @@
 
 import 'package:mobx/mobx.dart';
 
-import 'package:anthem_codegen/include.dart';
+import 'anthem_model_base_mixin.dart';
 
 /// Serializes a model value to a JSON-serializable object.
 ///
