@@ -75,7 +75,7 @@ class ProjectController {
       } while (existingNames.contains(name));
     }
 
-    final patternModel = PatternModel.create(name: name, project: project);
+    final patternModel = PatternModel.create(name: name);
 
     project.execute(
       AddPatternCommand(

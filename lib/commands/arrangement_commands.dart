@@ -64,7 +64,6 @@ class AddArrangementCommand extends Command {
     final arrangement = ArrangementModel.create(
       name: arrangementName,
       id: arrangementID,
-      project: project,
     );
 
     project.song.arrangements[arrangementID] = arrangement;

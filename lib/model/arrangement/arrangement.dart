@@ -22,7 +22,6 @@ import 'dart:math';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/collections.dart';
-import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
@@ -38,8 +37,7 @@ class ArrangementModel extends _ArrangementModel
 
   ArrangementModel.uninitialized() : super(name: '', id: '');
 
-  ArrangementModel.create(
-      {required super.name, required super.id, required super.project})
+  ArrangementModel.create({required super.name, required super.id})
       : super.create();
 
   factory ArrangementModel.fromJson(Map<String, dynamic> json) =>
@@ -66,7 +64,6 @@ abstract class _ArrangementModel with Store, AnthemModelBase {
   _ArrangementModel.create({
     required this.name,
     required this.id,
-    required ProjectModel project,
   }) : super();
 
   /// Gets the time position of the end of the last clip in this arrangement,

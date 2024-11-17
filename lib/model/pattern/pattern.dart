@@ -26,7 +26,6 @@ import 'package:anthem/main.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/generator.dart';
-import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/shared/hydratable.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes_render_cache.dart';
@@ -54,15 +53,14 @@ class PatternModel extends _PatternModel
     _init();
   }
 
-  PatternModel.create({required super.name, required ProjectModel project})
-      : super.create(project: project) {
+  PatternModel.create({required super.name}) : super.create() {
     _init();
     // TODO: remove
     for (final generator in project.generators.values.where(
         (generator) => generator.generatorType == GeneratorType.automation)) {
       automationLanes[generator.id] = AutomationLaneModel();
     }
-    super.hydrate(project: project);
+    super.hydrate();
   }
 
   factory PatternModel.fromJson(Map<String, dynamic> json) {
@@ -116,7 +114,6 @@ abstract class _PatternModel extends Hydratable with Store, AnthemModelBase {
 
   _PatternModel.create({
     required this.name,
-    required ProjectModel project,
   }) {
     color = AnthemColor(
       hue: 0,
@@ -125,7 +122,7 @@ abstract class _PatternModel extends Hydratable with Store, AnthemModelBase {
     timeSignatureChanges = AnthemObservableList();
   }
 
-  void hydrate({required ProjectModel project}) {
+  void hydrate() {
     _onHydrateAction?.call();
     _onHydrateAction = null;
 
