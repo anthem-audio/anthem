@@ -179,9 +179,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   _ProjectModel.create() : super() {
     _commandQueue = CommandQueue(this as ProjectModel);
 
-    song = SongModel.create(
-      project: this as ProjectModel,
-    );
+    song = SongModel.create();
 
     processingGraph = ProcessingGraphModel();
 
@@ -192,9 +190,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// that the deserialization step can't do for us.
   void hydrate([bool recurse = true]) {
     if (recurse) {
-      song.hydrate(
-        project: this as ProjectModel,
-      );
+      song.hydrate();
     }
 
     engine = Engine(engineID, this as ProjectModel)..start();

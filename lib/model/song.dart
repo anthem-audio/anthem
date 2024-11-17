@@ -40,9 +40,7 @@ class SongModel extends _SongModel
     with _$SongModel, _$SongModelAnthemModelMixin {
   SongModel() : super();
   SongModel.uninitialized() : super();
-  SongModel.create({
-    required super.project,
-  }) : super.create();
+  SongModel.create() : super.create();
 
   factory SongModel.fromJson(Map<String, dynamic> json) =>
       _$SongModelAnthemModelMixin.fromJson(json);
@@ -86,13 +84,10 @@ abstract class _SongModel extends Hydratable with Store, AnthemModelBase {
 
   _SongModel() : super();
 
-  _SongModel.create({
-    required ProjectModel project,
-  }) : super() {
+  _SongModel.create() : super() {
     final arrangement = ArrangementModel.create(
       name: 'Arrangement 1',
       id: getID(),
-      project: project,
     );
     arrangements = AnthemObservableMap.of({arrangement.id: arrangement});
     arrangementOrder = AnthemObservableList.of([arrangement.id]);
@@ -109,17 +104,11 @@ abstract class _SongModel extends Hydratable with Store, AnthemModelBase {
 
     tracks = AnthemObservableMap.of(initTracks);
     trackOrder = AnthemObservableList.of(initTrackOrder);
-
-    hydrate(
-      project: project,
-    );
   }
 
-  void hydrate({
-    required ProjectModel project,
-  }) {
+  void hydrate() {
     for (final pattern in patterns.values) {
-      pattern.hydrate(project: project);
+      pattern.hydrate();
     }
 
     isHydrated = true;
