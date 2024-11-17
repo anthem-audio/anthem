@@ -23,13 +23,15 @@ import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/main.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/shared/hydratable.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes_render_cache.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:flutter/widgets.dart' as widgets;
 import 'package:mobx/mobx.dart';
 
@@ -109,13 +111,6 @@ abstract class _PatternModel extends Hydratable with Store, AnthemModelBase {
   AnthemObservableList<TimeSignatureChangeModel> timeSignatureChanges =
       AnthemObservableList();
 
-  @hide
-  ProjectModel? _project;
-
-  ProjectModel get project {
-    return _project!;
-  }
-
   /// For deserialization. Use `PatternModel.create()` instead.
   _PatternModel();
 
@@ -131,8 +126,6 @@ abstract class _PatternModel extends Hydratable with Store, AnthemModelBase {
   }
 
   void hydrate({required ProjectModel project}) {
-    _project = project;
-
     _onHydrateAction?.call();
     _onHydrateAction = null;
 
@@ -147,8 +140,8 @@ abstract class _PatternModel extends Hydratable with Store, AnthemModelBase {
     int minPaddingInBarMultiples = 1,
   }) {
     final ticksPerBar = project.song.ticksPerQuarter ~/
-        (_project!.song.defaultTimeSignature.denominator ~/ 4) *
-        _project!.song.defaultTimeSignature.numerator;
+        (project.song.defaultTimeSignature.denominator ~/ 4) *
+        project.song.defaultTimeSignature.numerator;
 
     final lastNoteContent = notes.values.expand((e) => e).fold<int>(
         ticksPerBar * barMultiple * minPaddingInBarMultiples,

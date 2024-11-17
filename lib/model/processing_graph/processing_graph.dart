@@ -17,7 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/collections.dart';
+import 'package:anthem/model/processing_graph/node_config.dart';
+import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/processors/master_output.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
 import 'node.dart';
@@ -29,7 +34,22 @@ part 'processing_graph.g.dart';
 @AnthemModel.syncedModel()
 class ProcessingGraphModel extends _ProcessingGraphModel
     with _$ProcessingGraphModel, _$ProcessingGraphModelAnthemModelMixin {
-  ProcessingGraphModel();
+  ProcessingGraphModel.uninitialized();
+
+  ProcessingGraphModel() {
+    nodes['masterOutput'] = NodeModel(
+      id: 'masterOutput',
+      config: NodeConfigModel(
+        audioInputs: AnthemObservableList.of([
+          NodePortConfigModel(dataType: NodePortDataType.audio),
+        ]),
+      ),
+    );
+    masterOutput = MasterOutputProcessorModel();
+
+    (this as _$ProcessingGraphModelAnthemModelMixin)
+        .setParentPropertiesOnChildren();
+  }
 
   factory ProcessingGraphModel.fromJson(Map<String, dynamic> json) =>
       _$ProcessingGraphModelAnthemModelMixin.fromJson(json);
@@ -45,4 +65,7 @@ abstract class _ProcessingGraphModel with Store, AnthemModelBase {
   @anthemObservable
   AnthemObservableMap<String, NodeConnectionModel> connections =
       AnthemObservableMap();
+
+  @anthemObservable
+  late MasterOutputProcessorModel masterOutput;
 }

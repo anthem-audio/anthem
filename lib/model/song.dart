@@ -18,11 +18,13 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/model/track.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
 import 'arrangement/arrangement.dart';
@@ -82,13 +84,6 @@ abstract class _SongModel extends Hydratable with Store, AnthemModelBase {
   @anthemObservable
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
 
-  @hide
-  ProjectModel? _project;
-
-  ProjectModel get project {
-    return _project!;
-  }
-
   _SongModel() : super();
 
   _SongModel.create({
@@ -123,12 +118,6 @@ abstract class _SongModel extends Hydratable with Store, AnthemModelBase {
   void hydrate({
     required ProjectModel project,
   }) {
-    _project = project;
-
-    for (final arrangement in arrangements.values) {
-      arrangement.hydrate(project: project);
-    }
-
     for (final pattern in patterns.values) {
       pattern.hydrate(project: project);
     }

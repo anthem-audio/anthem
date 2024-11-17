@@ -18,28 +18,35 @@
 */
 
 import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem/model/processing_graph/node_config.dart';
+import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
-part 'node.g.dart';
+part 'tone_generator.g.dart';
 
+/// A processor that generates a tone.
 @AnthemModel.syncedModel()
-class NodeModel extends _NodeModel
-    with _$NodeModel, _$NodeModelAnthemModelMixin {
-  NodeModel({required super.id, required super.config});
+class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
+    with
+        _$ToneGeneratorProcessorModel,
+        _$ToneGeneratorProcessorModelAnthemModelMixin {
+  ToneGeneratorProcessorModel({
+    required super.nodeId,
+  });
 
-  NodeModel.uninitialized()
-      : super(id: '', config: NodeConfigModel.uninitialized());
+  ToneGeneratorProcessorModel.uninitialized() : super(nodeId: '');
 
-  factory NodeModel.fromJson(Map<String, dynamic> json) =>
-      _$NodeModelAnthemModelMixin.fromJson(json);
+  factory ToneGeneratorProcessorModel.fromJson(Map<String, dynamic> json) =>
+      _$ToneGeneratorProcessorModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _NodeModel with Store, AnthemModelBase {
-  String id;
+abstract class _ToneGeneratorProcessorModel with Store, AnthemModelBase {
+  String nodeId;
 
-  NodeConfigModel config;
+  _ToneGeneratorProcessorModel({
+    required this.nodeId,
+  });
 
-  _NodeModel({required this.id, required this.config});
+  /// The node that this processor represents.
+  NodeModel get node => (project.processingGraph.nodes[nodeId])!;
 }

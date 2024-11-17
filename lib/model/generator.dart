@@ -20,9 +20,10 @@
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart'
     show ProcessorConnectionType;
+import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/hydratable.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:flutter/material.dart';
 import 'package:mobx/mobx.dart';
 
