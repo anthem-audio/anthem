@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
@@ -93,6 +94,27 @@ class ProjectHeader extends StatelessWidget {
                     onSelected: () {
                       mainWindowController.saveProject(projectID, true);
                     },
+                  ),
+                  Separator(),
+                  AnthemMenuItem(
+                    text: 'Debug',
+                    submenu: MenuDef(
+                      children: [
+                        AnthemMenuItem(
+                          text: 'Print project JSON',
+                          hint:
+                              'Print the project as JSON to the engine console',
+                          onSelected: () {
+                            AnthemStore
+                                .instance
+                                .projects[AnthemStore.instance.activeProjectID]!
+                                .engine
+                                .modelSyncApi
+                                .debugPrintModel();
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
