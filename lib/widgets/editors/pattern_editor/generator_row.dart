@@ -37,7 +37,7 @@ import 'package:provider/provider.dart';
 import '../../../theme.dart';
 
 class GeneratorRow extends StatefulWidget {
-  final ID generatorID;
+  final Id generatorID;
 
   const GeneratorRow({
     super.key,

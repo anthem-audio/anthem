@@ -29,11 +29,11 @@ class ScreenOverlayViewModel = _ScreenOverlayViewModel
 
 abstract class _ScreenOverlayViewModel with Store {
   @observable
-  ObservableMap<ID, ScreenOverlayEntry> entries = ObservableMap();
+  ObservableMap<Id, ScreenOverlayEntry> entries = ObservableMap();
 }
 
 class ScreenOverlayEntry {
-  final Widget Function(BuildContext, ID) builder;
+  final Widget Function(BuildContext, Id) builder;
   final void Function()? onClose;
 
   const ScreenOverlayEntry({required this.builder, this.onClose});

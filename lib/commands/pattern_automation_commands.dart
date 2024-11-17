@@ -24,8 +24,8 @@ import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/project.dart';
 
 class AddAutomationPointCommand extends Command {
-  ID patternID;
-  ID automationGeneratorID;
+  Id patternID;
+  Id automationGeneratorID;
   AutomationPointModel point;
   int index;
   bool createAutomationLane;
@@ -62,8 +62,8 @@ class AddAutomationPointCommand extends Command {
 }
 
 class DeleteAutomationPointCommand extends Command {
-  ID patternID;
-  ID automationGeneratorID;
+  Id patternID;
+  Id automationGeneratorID;
   AutomationPointModel point;
   int index;
 
@@ -90,8 +90,8 @@ class DeleteAutomationPointCommand extends Command {
 }
 
 class SetAutomationPointValueCommand extends Command {
-  ID patternID;
-  ID automationGeneratorID;
+  Id patternID;
+  Id automationGeneratorID;
   int pointIndex;
   double oldValue;
   double newValue;
@@ -118,8 +118,8 @@ class SetAutomationPointValueCommand extends Command {
 }
 
 class SetAutomationPointOffsetCommand extends Command {
-  ID patternID;
-  ID automationGeneratorID;
+  Id patternID;
+  Id automationGeneratorID;
   int pointIndex;
   int oldOffset;
   int newOffset;
@@ -146,8 +146,8 @@ class SetAutomationPointOffsetCommand extends Command {
 }
 
 class SetAutomationPointTensionCommand extends Command {
-  ID patternID;
-  ID automationGeneratorID;
+  Id patternID;
+  Id automationGeneratorID;
   int pointIndex;
   double oldTension;
   double newTension;

@@ -31,8 +31,8 @@ import '../helpers/time_helpers.dart';
 import '../helpers/types.dart';
 
 class Timeline extends StatefulWidget {
-  final ID? arrangementID;
-  final ID? patternID;
+  final Id? arrangementID;
+  final Id? patternID;
 
   final AnimationController timeViewAnimationController;
   final Animation<double> timeViewStartAnimation;
@@ -206,7 +206,7 @@ const _labelHandleMouseAreaPadding = 5.0;
 
 class TimelineLabel extends StatefulWidget {
   final String text;
-  final ID id;
+  final Id id;
   final Time offset;
   final double timelineWidth;
   // We need to pass in the parent's build context, since our build context

@@ -50,7 +50,7 @@ abstract class PianoRollPointerEvent extends PianoRollEvent {
 }
 
 class PianoRollPointerDownEvent extends PianoRollPointerEvent {
-  final ID? noteUnderCursor;
+  final Id? noteUnderCursor;
   final bool isResize;
 
   PianoRollPointerDownEvent({

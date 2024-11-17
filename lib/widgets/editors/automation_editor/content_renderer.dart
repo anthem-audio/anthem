@@ -333,7 +333,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
 
 double getRadiusMultiplier({
   required AutomationPointAnimationTracker tracker,
-  required ID pointId,
+  required Id pointId,
   required PointAnnotation? hoveredPoint,
   required PointAnnotation? pressedPoint,
   required HandleKind handleKind,

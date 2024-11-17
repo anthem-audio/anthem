@@ -72,7 +72,7 @@ void _drawNote({
 /// pixel coordinates when rendering.
 class ClipNotesRenderCache {
   final PatternModel pattern;
-  final ID generatorID;
+  final Id generatorID;
 
   Float32List? rawVertices;
   Vertices? renderedVertices;

@@ -26,7 +26,7 @@ class PatternEditorController {
 
   PatternEditorController({required this.project});
 
-  void deletePattern(ID patternID) {
+  void deletePattern(Id patternID) {
     project.execute(DeletePatternCommand(
       pattern: project.song.patterns[patternID]!,
       index: project.song.patternOrder.indexOf(patternID),

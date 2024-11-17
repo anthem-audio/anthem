@@ -54,8 +54,8 @@ class _ClipMoveActionData {
   ClipModel clipUnderCursor;
   double timeOffset;
   double trackOffset;
-  Map<ID, Time> startTimes;
-  Map<ID, int> startTracks;
+  Map<Id, Time> startTimes;
+  Map<Id, int> startTracks;
   Time startOfFirstClip;
   int trackOfTopClip;
   int trackOfBottomClip;
@@ -74,7 +74,7 @@ class _ClipMoveActionData {
 
 class _SelectionBoxActionData {
   Point<double> start;
-  Set<ID> originalSelection;
+  Set<Id> originalSelection;
 
   _SelectionBoxActionData({
     required this.start,
@@ -100,11 +100,11 @@ class _DeleteActionData {
 
 class _ClipResizeActionData {
   double pointerStartOffset;
-  Map<ID, Time> startWidths;
-  Map<ID, Time> startTimeViewStarts;
-  Map<ID, Time> startOffsets;
+  Map<Id, Time> startWidths;
+  Map<Id, Time> startTimeViewStarts;
+  Map<Id, Time> startOffsets;
   TimeRange smallestStartTimeRange;
-  ID smallestClip;
+  Id smallestClip;
   ClipModel pressedClip;
   bool isFromStartOfClip;
 

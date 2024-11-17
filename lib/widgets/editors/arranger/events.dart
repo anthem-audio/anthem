@@ -40,7 +40,7 @@ class ArrangerPointerEvent {
 
   /// The clip under the cursor during this event, if any. Currently just used
   /// for pointer down events.
-  ID? clipUnderCursor;
+  Id? clipUnderCursor;
 
   // Whether this is a resize event from the start of the clip.
   bool isResizeFromStart;

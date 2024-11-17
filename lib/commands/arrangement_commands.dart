@@ -25,7 +25,7 @@ import 'package:anthem/model/project.dart';
 import 'command.dart';
 
 abstract class ArrangementCommand extends Command {
-  final ID arrangementID;
+  final Id arrangementID;
 
   ArrangementCommand(this.arrangementID);
 }
@@ -35,7 +35,7 @@ class AddClipCommand extends ArrangementCommand {
   final ClipModel clip;
 
   AddClipCommand({
-    required ID arrangementID,
+    required Id arrangementID,
     required this.clip,
   }) : super(arrangementID);
 
@@ -51,7 +51,7 @@ class AddClipCommand extends ArrangementCommand {
 }
 
 class AddArrangementCommand extends Command {
-  final ID arrangementID = getID();
+  final Id arrangementID = getId();
   final String arrangementName;
 
   AddArrangementCommand({
@@ -105,7 +105,7 @@ class SetArrangementNameCommand extends ArrangementCommand {
 
   SetArrangementNameCommand({
     required ProjectModel project,
-    required ID arrangementID,
+    required Id arrangementID,
     required this.newName,
   }) : super(arrangementID) {
     oldName = project.song.arrangements[arrangementID]!.name;
@@ -123,14 +123,14 @@ class SetArrangementNameCommand extends ArrangementCommand {
 }
 
 class MoveClipCommand extends ArrangementCommand {
-  final ID clipID;
+  final Id clipID;
   final int oldOffset;
   final int newOffset;
-  final ID oldTrack;
-  final ID newTrack;
+  final Id oldTrack;
+  final Id newTrack;
 
   MoveClipCommand({
-    required ID arrangementID,
+    required Id arrangementID,
     required this.clipID,
     required this.oldOffset,
     required this.newOffset,
@@ -161,7 +161,7 @@ class DeleteClipCommand extends ArrangementCommand {
   final ClipModel clip;
 
   DeleteClipCommand({
-    required ID arrangementID,
+    required Id arrangementID,
     required this.clip,
   }) : super(arrangementID);
 
@@ -179,14 +179,14 @@ class DeleteClipCommand extends ArrangementCommand {
 }
 
 class ResizeClipCommand extends ArrangementCommand {
-  final ID clipID;
+  final Id clipID;
   final int oldOffset;
   final TimeViewModel? oldTimeView;
   final int newOffset;
   final TimeViewModel? newTimeView;
 
   ResizeClipCommand({
-    required ID arrangementID,
+    required Id arrangementID,
     required this.clipID,
     required this.oldOffset,
     required this.oldTimeView,

@@ -46,7 +46,7 @@ class AutomationPointModel extends _AutomationPointModel
 }
 
 abstract class _AutomationPointModel with Store, AnthemModelBase {
-  late final ID id;
+  late final Id id;
 
   @anthemObservable
   int offset;
@@ -66,6 +66,6 @@ abstract class _AutomationPointModel with Store, AnthemModelBase {
     required this.tension,
     required this.curve,
   }) {
-    id = getID();
+    id = getId();
   }
 }

@@ -58,11 +58,11 @@ class ProjectController {
     project.isDetailViewSelected = isVisible;
   }
 
-  void setActiveGeneratorID(ID id) {
+  void setActiveGeneratorID(Id id) {
     project.activeInstrumentID = id;
   }
 
-  ID addPattern([String? name]) {
+  Id addPattern([String? name]) {
     if (name == null) {
       final patterns = project.song.patterns.nonObservableInner;
       var patternNumber = patterns.length;
@@ -171,7 +171,7 @@ class ProjectController {
     required GeneratorType generatorType,
     required Color color,
   }) {
-    final id = getID();
+    final id = getId();
 
     project.execute(
       AddGeneratorCommand(
@@ -209,7 +209,7 @@ class ProjectController {
     // );
   }
 
-  void removeGenerator(ID generatorID) {
+  void removeGenerator(Id generatorID) {
     project.execute(
       RemoveGeneratorCommand(
         project: project,

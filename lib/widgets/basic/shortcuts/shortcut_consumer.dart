@@ -61,7 +61,7 @@ class _ShortcutConsumerState extends State<ShortcutConsumer> {
   var registered = false;
   ShortcutProviderController? controller;
 
-  String getID() {
+  String getId() {
     final project = Provider.of<ProjectModel>(context, listen: false);
     return '${project.id}-${widget.id}';
   }
@@ -69,7 +69,7 @@ class _ShortcutConsumerState extends State<ShortcutConsumer> {
   late String id;
 
   void register() {
-    id = getID();
+    id = getId();
     controller!.registerRawKeyHandler(
         id: id,
         handler: (event) {

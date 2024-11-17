@@ -37,7 +37,7 @@ enum TimelineLabelType { timeSignatureChange }
 
 abstract class TimelineLabelPointerNotification
     extends TimelinePointerNotification {
-  final ID labelID;
+  final Id labelID;
   final TimelineLabelType labelType;
 
   TimelineLabelPointerNotification({

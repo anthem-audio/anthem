@@ -46,7 +46,7 @@ class ProcessingGraphModel extends _ProcessingGraphModel
     nodes[toneGeneratorNode.id] = toneGeneratorNode;
     toneGenerator = ToneGeneratorProcessorModel(nodeId: toneGeneratorNode.id);
 
-    final connectionId = getID();
+    final connectionId = getId();
     connections[connectionId] = NodeConnectionModel(
       id: connectionId,
       sourceNodeId: toneGeneratorNode.id,

@@ -37,12 +37,12 @@ class TrackModel extends _TrackModel
 }
 
 abstract class _TrackModel with Store, AnthemModelBase {
-  ID id;
+  Id id;
 
   @anthemObservable
   String name;
 
   _TrackModel({required this.name})
-      : id = getID(),
+      : id = getId(),
         super();
 }

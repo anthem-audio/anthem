@@ -45,13 +45,13 @@ class ArrangementModel extends _ArrangementModel
 }
 
 abstract class _ArrangementModel with Store, AnthemModelBase {
-  ID id;
+  Id id;
 
   @anthemObservable
   String name;
 
   @anthemObservable
-  AnthemObservableMap<ID, ClipModel> clips = AnthemObservableMap();
+  AnthemObservableMap<Id, ClipModel> clips = AnthemObservableMap();
 
   @anthemObservable
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);

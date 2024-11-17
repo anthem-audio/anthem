@@ -50,7 +50,7 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
 
   /// Creates a node for this processor.
   static NodeModel createNode() {
-    final id = 'tone-generator-${getID()}';
+    final id = 'tone-generator-${getId()}';
 
     return NodeModel(
       config: NodeConfigModel(),

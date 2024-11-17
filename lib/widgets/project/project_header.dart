@@ -33,7 +33,7 @@ import 'package:provider/provider.dart';
 import '../basic/icon.dart';
 
 class ProjectHeader extends StatelessWidget {
-  final ID projectID;
+  final Id projectID;
 
   const ProjectHeader({super.key, required this.projectID});
 
