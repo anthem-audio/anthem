@@ -34,6 +34,9 @@
 
 class Anthem {
 private:
+  // Singleton shared pointer instance
+  static std::shared_ptr<Anthem> instance;
+
   juce::AudioDeviceManager deviceManager;
   std::unique_ptr<AnthemAudioCallback> audioCallback;
 
@@ -87,5 +90,21 @@ public:
     this->processingGraph->removeNode(node);
     nodes.erase(nodeId);
     return true;
+  }
+
+  // Singleton instance getter
+  static std::shared_ptr<Anthem> getInstancePtr() {
+    if (!instance) {
+      instance = std::make_shared<Anthem>();
+    }
+    return instance;
+  }
+
+  // Singleton instance getter
+  static Anthem& getInstance() {
+    if (!instance) {
+      instance = std::make_shared<Anthem>();
+    }
+    return *instance;
   }
 };

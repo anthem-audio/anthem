@@ -24,10 +24,9 @@
 #include "modules/processors/tone_generator_node.h"
 #include "modules/processors/simple_volume_lfo_node.h"
 
-std::optional<Response> handleModelSyncCommand(
-  Request& request,
-  Anthem* anthem
-) {
+std::optional<Response> handleModelSyncCommand(Request& request) {
+  auto& anthem = Anthem::getInstance();
+
   if (rfl::holds_alternative<ModelInitRequest>(request.variant())) {
     std::cout << "Loading project model..." << std::endl;
 
@@ -46,17 +45,17 @@ std::optional<Response> handleModelSyncCommand(
       std::cout << err.value().what() << std::endl;
     }
     else {
-      anthem->project = std::move(
+      anthem.project = std::move(
         result.value()
       );
 
-      anthem->project->initialize(
-        anthem->project,
+      anthem.project->initialize(
+        anthem.project,
         nullptr
       );
 
       std::cout << "Loaded project model" << std::endl;
-      std::cout << "id: " << anthem->project->id() << std::endl;
+      std::cout << "id: " << anthem.project->id() << std::endl;
     }
   }
   else if (rfl::holds_alternative<ModelUpdateRequest>(request.variant())) {
@@ -64,7 +63,7 @@ std::optional<Response> handleModelSyncCommand(
 
     auto& modelUpdateRequest = rfl::get<ModelUpdateRequest>(request.variant());
 
-    anthem->project->handleModelUpdate(
+    anthem.project->handleModelUpdate(
       modelUpdateRequest,
       0
     );
@@ -73,7 +72,7 @@ std::optional<Response> handleModelSyncCommand(
   }
   else if (rfl::holds_alternative<ModelDebugPrintRequest>(request.variant())) {
     std::cout << rfl::json::write(
-      anthem->project.get()
+      anthem.project.get()
     ) << std::endl;
   }
 

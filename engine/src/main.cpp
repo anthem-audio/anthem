@@ -42,8 +42,6 @@
 
 #include "messages/messages.h"
 
-Anthem* anthem;
-
 juce::StreamingSocket socketToUi;
 
 std::mutex socketInUseMutex;
@@ -129,7 +127,7 @@ public:
 
     bool didOverwriteResponse = false;
     
-    auto handleModelSyncCommandResponse = handleModelSyncCommand(request, anthem);
+    auto handleModelSyncCommandResponse = handleModelSyncCommand(request);
     if (handleModelSyncCommandResponse.has_value()) {
       if (response.has_value()) {
         didOverwriteResponse = true;
@@ -137,7 +135,7 @@ public:
       response = std::move(handleModelSyncCommandResponse);
     }
 
-    auto handleProcessingGraphCommandResponse = handleProcessingGraphCommand(request, anthem);
+    auto handleProcessingGraphCommandResponse = handleProcessingGraphCommand(request);
     if (handleProcessingGraphCommandResponse.has_value()) {
       if (response.has_value()) {
         didOverwriteResponse = true;
@@ -145,7 +143,7 @@ public:
       response = std::move(handleProcessingGraphCommandResponse);
     }
 
-    auto handleProcessorCommandResponse = handleProcessorCommand(request, anthem);
+    auto handleProcessorCommandResponse = handleProcessorCommand(request);
     if (handleProcessorCommandResponse.has_value()) {
       if (response.has_value()) {
         didOverwriteResponse = true;
@@ -343,7 +341,10 @@ public:
   void anotherInstanceStarted(const juce::String &/*commandLineParameters*/) override {}
   void suspended() override {}
   void resumed() override {}
-  void shutdown() override {}
+  void shutdown() override {
+    // Destruct Anthem instance
+    Anthem::getInstancePtr().reset();
+  }
 
   void systemRequestedQuit() override
   {
@@ -382,7 +383,7 @@ public:
     std::cin.get();
 
     std::cout << "Starting Anthem engine..." << std::endl;
-    anthem = new Anthem();
+    Anthem::getInstance();
 
     // This starts the message loop in a thread. The message loop thread
     // communicates back to the main thread every time it receives a

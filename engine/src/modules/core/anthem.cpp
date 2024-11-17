@@ -22,6 +22,8 @@
 #include "modules/processors/simple_volume_lfo_node.h"
 #include "modules/processing_graph/debug/generate_graphvis_from_graph.h"
 
+std::shared_ptr<Anthem> Anthem::instance = nullptr;
+
 Anthem::Anthem() {
   processingGraph = std::make_shared<AnthemGraph>();
 

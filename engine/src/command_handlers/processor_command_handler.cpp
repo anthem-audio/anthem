@@ -19,7 +19,9 @@
 
 #include "processor_command_handler.h"
 
-std::optional<Response> handleProcessorCommand(Request& request, Anthem* anthem) {
+std::optional<Response> handleProcessorCommand(Request& request) {
+  auto& anthem = Anthem::getInstance();
+
   if (rfl::holds_alternative<SetParameterRequest>(request.variant())) {
     auto& setParameterRequest = rfl::get<SetParameterRequest>(request.variant());
 
@@ -27,7 +29,7 @@ std::optional<Response> handleProcessorCommand(Request& request, Anthem* anthem)
     auto parameterId = setParameterRequest.parameterId;
     auto value = setParameterRequest.value;
 
-    anthem->getNode(nodeId)->setParameter(parameterId, value);
+    anthem.getNode(nodeId)->setParameter(parameterId, value);
 
     return std::optional(SetParameterResponse {
       .success = true,
