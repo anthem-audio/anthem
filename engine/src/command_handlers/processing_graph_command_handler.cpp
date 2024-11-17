@@ -25,7 +25,9 @@
 #include "modules/processors/gain_node.h"
 
 std::optional<Response>
-handleProcessingGraphCommand(Request& request, Anthem* anthem) {
+handleProcessingGraphCommand(Request& request) {
+  auto& anthem = Anthem::getInstance();
+
   if (rfl::holds_alternative<GetProcessorsRequest>(request.variant())) {
     auto& getProcessorsRequest = rfl::get<GetProcessorsRequest>(request.variant());
 
@@ -68,7 +70,7 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
 
     int64_t nodeId = getProcessorPortsRequest.nodeId;
 
-    if (!anthem->hasNode(nodeId)) {
+    if (!anthem.hasNode(nodeId)) {
       std::string error = "Node not found";
       auto errorResponse = GetProcessorPortsResponse {
         .success = false,
@@ -81,7 +83,7 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
       return std::optional(errorResponse);
     }
 
-    auto node = anthem->getNode(nodeId);
+    auto node = anthem.getNode(nodeId);
 
     std::shared_ptr<std::vector<std::shared_ptr<ProcessorPortDescription>>> audioInputPorts;
 
@@ -212,7 +214,7 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
     auto& getMasterOutputNodeIdRequest = rfl::get<GetMasterOutputNodeIdRequest>(request.variant());
 
     return std::optional(GetMasterOutputNodeIdResponse {
-      .nodeId = static_cast<int64_t>(anthem->getMasterOutputNodeId()),
+      .nodeId = static_cast<int64_t>(anthem.getMasterOutputNodeId()),
       .responseBase = ResponseBase {
         .id = getMasterOutputNodeIdRequest.requestBase.get().id
       }
@@ -263,7 +265,7 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
 
     uint64_t nodeId;
     if (success) {
-      nodeId = anthem->addNode(std::move(processor));
+      nodeId = anthem.addNode(std::move(processor));
     } else {
       return std::nullopt;
     }
@@ -280,7 +282,7 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
     auto& removeProcessorRequest = rfl::get<RemoveProcessorRequest>(request.variant());
     auto nodeId = removeProcessorRequest.nodeId;
 
-    bool success = anthem->removeNode(nodeId);
+    bool success = anthem.removeNode(nodeId);
 
     return std::optional(RemoveProcessorResponse {
       .success = success,
@@ -305,19 +307,19 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
     bool success = true;
     std::string error = "";
 
-    if (!anthem->hasNode(sourceId)) {
+    if (!anthem.hasNode(sourceId)) {
       success = false;
       error = "Source node not found";
     }
 
-    if (!anthem->hasNode(destinationId)) {
+    if (!anthem.hasNode(destinationId)) {
       success = false;
       error = "Destination node not found";
     }
 
     if (success) {
-      auto sourceNode = anthem->getNode(sourceId);
-      auto destinationNode = anthem->getNode(destinationId);
+      auto sourceNode = anthem.getNode(sourceId);
+      auto destinationNode = anthem.getNode(destinationId);
 
       if (connectionType == ProcessorConnectionType::audio) {
         if (sourceNode->audioOutputs.size() <= sourcePortIndex) {
@@ -331,7 +333,7 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
         }
 
         if (success) {
-          anthem->getProcessingGraph()->connectNodes(
+          anthem.getProcessingGraph()->connectNodes(
             sourceNode->audioOutputs[sourcePortIndex],
             destinationNode->audioInputs[destinationPortIndex]
           );
@@ -348,7 +350,7 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
         }
 
         if (success) {
-          anthem->getProcessingGraph()->connectNodes(
+          anthem.getProcessingGraph()->connectNodes(
             sourceNode->controlOutputs[sourcePortIndex],
             destinationNode->controlInputs[destinationPortIndex]
           );
@@ -365,7 +367,7 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
         }
 
         if (success) {
-          anthem->getProcessingGraph()->connectNodes(
+          anthem.getProcessingGraph()->connectNodes(
             sourceNode->noteEventOutputs[sourcePortIndex],
             destinationNode->noteEventInputs[destinationPortIndex]
           );
@@ -393,19 +395,19 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
     bool success = true;
     std::string error = "";
 
-    if (!anthem->hasNode(sourceId)) {
+    if (!anthem.hasNode(sourceId)) {
       success = false;
       error = "Source node not found";
     }
 
-    if (!anthem->hasNode(destinationId)) {
+    if (!anthem.hasNode(destinationId)) {
       success = false;
       error = "Destination node not found";
     }
 
     if (success) {
-      auto sourceNode = anthem->getNode(sourceId);
-      auto destinationNode = anthem->getNode(destinationId);
+      auto sourceNode = anthem.getNode(sourceId);
+      auto destinationNode = anthem.getNode(destinationId);
 
       if (sourceNode->audioOutputs.size() <= sourcePortIndex) {
         success = false;
@@ -418,7 +420,7 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
       }
 
       if (success) {
-        anthem->getProcessingGraph()->disconnectNodes(
+        anthem.getProcessingGraph()->disconnectNodes(
           sourceNode->audioOutputs[sourcePortIndex],
           destinationNode->audioInputs[destinationPortIndex]
         );
@@ -437,9 +439,9 @@ handleProcessingGraphCommand(Request& request, Anthem* anthem) {
   else if (rfl::holds_alternative<CompileProcessingGraphRequest>(request.variant())) {
     auto& compileProcessingGraphRequest = rfl::get<CompileProcessingGraphRequest>(request.variant());
 
-    anthem->getProcessingGraph()->compile();
+    anthem.getProcessingGraph()->compile();
 
-    anthem->getProcessingGraph()->debugPrint();
+    anthem.getProcessingGraph()->debugPrint();
 
     return std::optional(CompileProcessingGraphResponse {
       .success = true,

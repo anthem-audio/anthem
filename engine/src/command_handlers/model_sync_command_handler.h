@@ -25,4 +25,4 @@
 
 #include "messages/messages.h"
 
-std::optional<Response> handleModelSyncCommand(Request& request, Anthem* anthem);
+std::optional<Response> handleModelSyncCommand(Request& request);

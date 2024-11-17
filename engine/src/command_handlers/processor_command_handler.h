@@ -24,4 +24,4 @@
 
 #include "messages/messages.h"
 
-std::optional<Response> handleProcessorCommand(Request& request, Anthem* anthem);
+std::optional<Response> handleProcessorCommand(Request& request);
