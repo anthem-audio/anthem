@@ -45,8 +45,8 @@ class AttributeEditorPointerEvent {
 
 class AttributeEditorController {
   PianoRollViewModel viewModel;
-  final oldValues = <ID, int>{};
-  final newValues = <ID, int>{};
+  final oldValues = <Id, int>{};
+  final newValues = <Id, int>{};
 
   AttributeEditorController({required this.viewModel});
 

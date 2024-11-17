@@ -77,7 +77,7 @@ class TimeSignatureChangeModel extends _TimeSignatureChangeModel
 
 abstract class _TimeSignatureChangeModel extends Hydratable
     with Store, AnthemModelBase {
-  ID id = '';
+  Id id = '';
 
   @anthemObservable
   TimeSignatureModel timeSignature;
@@ -86,11 +86,11 @@ abstract class _TimeSignatureChangeModel extends Hydratable
   int offset;
 
   _TimeSignatureChangeModel({
-    ID? id,
+    Id? id,
     required this.timeSignature,
     required this.offset,
   }) : super() {
-    this.id = id ?? getID();
+    this.id = id ?? getId();
 
     isHydrated = true;
   }

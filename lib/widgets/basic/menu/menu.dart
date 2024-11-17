@@ -51,7 +51,7 @@ class Menu extends StatefulWidget {
 
 class _MenuState extends State<Menu> {
   int openMenuID = -1;
-  List<ID> openMenus = [];
+  List<Id> openMenus = [];
 
   @override
   Widget build(BuildContext context) {
@@ -78,7 +78,7 @@ class _MenuState extends State<Menu> {
                 : contentRenderBox.size.height,
           ),
         );
-    final id = getID();
+    final id = getId();
     final projectController =
         Provider.of<ProjectController>(context, listen: false);
 

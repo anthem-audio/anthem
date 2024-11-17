@@ -47,37 +47,37 @@ class SongModel extends _SongModel
 }
 
 abstract class _SongModel extends Hydratable with Store, AnthemModelBase {
-  ID id = getID();
+  Id id = getId();
 
   @anthemObservable
   int ticksPerQuarter = 96;
 
   @anthemObservable
-  AnthemObservableMap<ID, PatternModel> patterns = AnthemObservableMap();
+  AnthemObservableMap<Id, PatternModel> patterns = AnthemObservableMap();
 
   @anthemObservable
-  AnthemObservableList<ID> patternOrder = AnthemObservableList();
+  AnthemObservableList<Id> patternOrder = AnthemObservableList();
 
   @anthemObservable
   @hideFromSerialization
-  ID? activePatternID;
+  Id? activePatternID;
 
   @anthemObservable
-  AnthemObservableMap<ID, ArrangementModel> arrangements =
+  AnthemObservableMap<Id, ArrangementModel> arrangements =
       AnthemObservableMap();
 
   @anthemObservable
-  AnthemObservableList<ID> arrangementOrder = AnthemObservableList();
+  AnthemObservableList<Id> arrangementOrder = AnthemObservableList();
 
   @anthemObservable
   @hideFromSerialization
-  ID? activeArrangementID;
+  Id? activeArrangementID;
 
   @anthemObservable
-  AnthemObservableMap<ID, TrackModel> tracks = AnthemObservableMap();
+  AnthemObservableMap<Id, TrackModel> tracks = AnthemObservableMap();
 
   @anthemObservable
-  AnthemObservableList<ID> trackOrder = AnthemObservableList();
+  AnthemObservableList<Id> trackOrder = AnthemObservableList();
 
   @anthemObservable
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
@@ -87,14 +87,14 @@ abstract class _SongModel extends Hydratable with Store, AnthemModelBase {
   _SongModel.create() : super() {
     final arrangement = ArrangementModel.create(
       name: 'Arrangement 1',
-      id: getID(),
+      id: getId(),
     );
     arrangements = AnthemObservableMap.of({arrangement.id: arrangement});
     arrangementOrder = AnthemObservableList.of([arrangement.id]);
     activeArrangementID = arrangement.id;
 
-    final Map<ID, TrackModel> initTracks = {};
-    final List<ID> initTrackOrder = [];
+    final Map<Id, TrackModel> initTracks = {};
+    final List<Id> initTrackOrder = [];
 
     for (var i = 1; i <= 200; i++) {
       final track = TrackModel(name: 'Track $i');
@@ -114,7 +114,7 @@ abstract class _SongModel extends Hydratable with Store, AnthemModelBase {
     isHydrated = true;
   }
 
-  void setActivePattern(ID? patternID) {
+  void setActivePattern(Id? patternID) {
     activePatternID = patternID;
 
     if (patternID != null) {
@@ -122,7 +122,7 @@ abstract class _SongModel extends Hydratable with Store, AnthemModelBase {
     }
   }
 
-  void setActiveArrangement(ID? arrangementID) {
+  void setActiveArrangement(Id? arrangementID) {
     activeArrangementID = arrangementID;
 
     if (arrangementID != null) {

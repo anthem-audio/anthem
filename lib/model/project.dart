@@ -70,27 +70,27 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
 
   /// Map of generators in the project.
   @anthemObservable
-  AnthemObservableMap<ID, GeneratorModel> generators = AnthemObservableMap();
+  AnthemObservableMap<Id, GeneratorModel> generators = AnthemObservableMap();
 
   /// List of generator IDs in the project (to preserve order).
   @anthemObservable
-  AnthemObservableList<ID> generatorList = AnthemObservableList();
+  AnthemObservableList<Id> generatorList = AnthemObservableList();
 
   /// ID of the active instrument, used to determine which instrument is shown
   /// in the channel rack, which is used for piano roll, etc.
   @anthemObservable
   @hideFromSerialization
-  ID? activeInstrumentID;
+  Id? activeInstrumentID;
 
   /// ID of the active automation generator, used to determine which automation
   /// generator is being written to using the automation editor.
   @anthemObservable
   @hideFromSerialization
-  ID? activeAutomationGeneratorID;
+  Id? activeAutomationGeneratorID;
 
   /// The ID of the project.
   @hideFromSerialization
-  ID id = getID();
+  Id id = getId();
 
   /// The file path of the project.
   @anthemObservable
@@ -363,19 +363,19 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
 abstract class DetailViewKind {}
 
 class PatternDetailViewKind extends DetailViewKind {
-  ID patternID;
+  Id patternID;
   PatternDetailViewKind(this.patternID);
 }
 
 class ArrangementDetailViewKind extends DetailViewKind {
-  ID arrangementID;
+  Id arrangementID;
   ArrangementDetailViewKind(this.arrangementID);
 }
 
 class TimeSignatureChangeDetailViewKind extends DetailViewKind {
-  ID? arrangementID;
-  ID? patternID;
-  ID changeID;
+  Id? arrangementID;
+  Id? patternID;
+  Id changeID;
   TimeSignatureChangeDetailViewKind({
     this.arrangementID,
     this.patternID,

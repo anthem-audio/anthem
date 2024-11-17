@@ -87,7 +87,7 @@ abstract class _PatternModel extends Hydratable with Store, AnthemModelBase {
   @hide
   void Function()? _onHydrateAction;
 
-  ID id = getID();
+  Id id = getId();
 
   @anthemObservable
   String name = '';
@@ -97,12 +97,12 @@ abstract class _PatternModel extends Hydratable with Store, AnthemModelBase {
 
   /// The ID here is channel ID `Map<ChannelID, List<NoteModel>>`
   @anthemObservable
-  AnthemObservableMap<ID, AnthemObservableList<NoteModel>> notes =
+  AnthemObservableMap<Id, AnthemObservableList<NoteModel>> notes =
       AnthemObservableMap();
 
   /// The ID here is channel ID
   @anthemObservable
-  AnthemObservableMap<ID, AutomationLaneModel> automationLanes =
+  AnthemObservableMap<Id, AutomationLaneModel> automationLanes =
       AnthemObservableMap();
 
   @anthemObservable

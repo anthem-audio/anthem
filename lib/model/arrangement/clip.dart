@@ -30,9 +30,9 @@ class ClipModel extends _ClipModel
     with _$ClipModel, _$ClipModelAnthemModelMixin {
   ClipModel.uninitialized()
       : super.create(
-          id: getID(),
-          patternID: getID(),
-          trackID: getID(),
+          id: getId(),
+          patternID: getId(),
+          trackID: getId(),
           offset: 0,
         );
 
@@ -44,18 +44,18 @@ class ClipModel extends _ClipModel
       required super.offset});
 
   ClipModel.create({
-    ID? id,
+    Id? id,
     super.timeView,
     required super.patternID,
     required super.trackID,
     required super.offset,
   }) : super.create(
-          id: id ?? getID(),
+          id: id ?? getId(),
         );
 
   factory ClipModel.fromClipModel(ClipModel other) {
     return ClipModel.create(
-      id: getID(),
+      id: getId(),
       patternID: other.patternID,
       trackID: other.trackID,
       offset: other.offset,
@@ -73,16 +73,16 @@ class ClipModel extends _ClipModel
 }
 
 abstract class _ClipModel with Store, AnthemModelBase {
-  ID id;
+  Id id;
 
   @anthemObservable
   TimeViewModel? timeView; // If null, we snap to content
 
   @anthemObservable
-  ID patternID;
+  Id patternID;
 
   @anthemObservable
-  ID trackID;
+  Id trackID;
 
   @anthemObservable
   int offset;

@@ -48,7 +48,7 @@ abstract class _ArrangerViewModel with Store {
   /// Per-track modifier that is multiplied by baseTrackHeight and clamped to
   /// get the actual height for each track
   @observable
-  ObservableMap<ID, double> trackHeightModifiers;
+  ObservableMap<Id, double> trackHeightModifiers;
 
   /// Vertical scroll position, in pixels.
   @observable
@@ -56,7 +56,7 @@ abstract class _ArrangerViewModel with Store {
 
   /// Current pattern that will be placed when the user places a pattern.
   @observable
-  ID? cursorPattern;
+  Id? cursorPattern;
 
   /// Time range for cursor pattern.
   @observable
@@ -66,14 +66,14 @@ abstract class _ArrangerViewModel with Store {
   Rectangle<double>? selectionBox;
 
   @observable
-  ObservableSet<ID> selectedClips = ObservableSet();
+  ObservableSet<Id> selectedClips = ObservableSet();
 
   @observable
-  ID? pressedClip;
+  Id? pressedClip;
 
-  final visibleClips = CanvasAnnotationSet<({ID id})>();
+  final visibleClips = CanvasAnnotationSet<({Id id})>();
   final visibleResizeAreas =
-      CanvasAnnotationSet<({ID id, ResizeAreaType type})>();
+      CanvasAnnotationSet<({Id id, ResizeAreaType type})>();
 
   _ArrangerViewModel({
     required this.baseTrackHeight,
@@ -88,8 +88,8 @@ abstract class _ArrangerViewModel with Store {
 
   /// Calculates the clip and resize handle under the cursor, if there is one.
   ({
-    CanvasAnnotation<({ID id})>? clip,
-    CanvasAnnotation<({ID id, ResizeAreaType type})>? resizeHandle,
+    CanvasAnnotation<({Id id})>? clip,
+    CanvasAnnotation<({Id id, ResizeAreaType type})>? resizeHandle,
   }) getContentUnderCursor(Offset pos) {
     final clipUnderCursor = visibleClips.hitTest(pos);
     final resizeHandleUnderCursor = visibleResizeAreas

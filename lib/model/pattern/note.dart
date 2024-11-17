@@ -75,5 +75,5 @@ abstract class _NoteModel with Store, AnthemModelBase {
     required this.length,
     required this.offset,
     required this.pan,
-  }) : id = getID();
+  }) : id = getId();
 }

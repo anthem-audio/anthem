@@ -29,12 +29,12 @@ import 'package:provider/provider.dart';
 import 'main_window_controller.dart';
 
 class WindowHeader extends StatefulWidget {
-  final ID selectedTabID;
+  final Id selectedTabId;
   final List<TabDef> tabs;
 
   const WindowHeader({
     super.key,
-    required this.selectedTabID,
+    required this.selectedTabId,
     required this.tabs,
   });
 
@@ -59,7 +59,7 @@ class _WindowHeaderState extends State<WindowHeader> {
             widget.tabs
                 .map<Widget>(
                   (tab) => _Tab(
-                    isSelected: tab.id == widget.selectedTabID,
+                    isSelected: tab.id == widget.selectedTabId,
                     id: tab.id,
                     title: tab.title,
                   ),
@@ -145,7 +145,7 @@ class _WindowHeaderState extends State<WindowHeader> {
 
 class _Tab extends StatefulWidget {
   final bool isSelected;
-  final ID id;
+  final Id id;
   final String title;
 
   const _Tab({

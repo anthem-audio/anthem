@@ -26,7 +26,7 @@ import 'package:anthem/model/project.dart';
 
 import 'command.dart';
 
-Future<void> _removeGenerator(ProjectModel project, ID generatorID) async {
+Future<void> _removeGenerator(ProjectModel project, Id generatorID) async {
   final generator = project.generators[generatorID];
 
   project.generatorList.removeWhere((element) => element == generatorID);
@@ -44,7 +44,7 @@ Future<void> _removeGenerator(ProjectModel project, ID generatorID) async {
 }
 
 class AddGeneratorCommand extends Command {
-  ID generatorId;
+  Id generatorId;
   String? processorId;
   String name;
   GeneratorType generatorType;

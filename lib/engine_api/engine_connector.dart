@@ -45,7 +45,7 @@ final mainExecutablePath = File(Platform.resolvedExecutable);
 /// be sent like so:
 ///
 /// ```dart
-/// final engineConnectorID = getID();
+/// final engineConnectorID = getId();
 /// final engineConnector = EngineConnector(
 ///   engineConnectorID,
 ///   (Response response) {

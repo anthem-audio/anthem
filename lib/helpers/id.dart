@@ -19,8 +19,8 @@
 
 import 'package:nanoid/nanoid.dart';
 
-typedef ID = String;
+typedef Id = String;
 
-ID getID() {
+Id getId() {
   return nanoid(14);
 }

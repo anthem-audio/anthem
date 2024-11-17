@@ -38,7 +38,7 @@ enum HandleKind {
 typedef PointAnnotation = ({
   HandleKind kind,
   int pointIndex,
-  ID pointId,
+  Id pointId,
   Offset center,
 });
 

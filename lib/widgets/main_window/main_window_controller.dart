@@ -38,7 +38,7 @@ class MainWindowController {
   }
 
   // Returns the ID of the new tab
-  Future<ID> newProject() async {
+  Future<Id> newProject() async {
     ProjectModel project = ProjectModel.create();
 
     await project.engine.engineStateStream
@@ -49,11 +49,11 @@ class MainWindowController {
     return project.id;
   }
 
-  void switchTab(ID newTabID) {
+  void switchTab(Id newTabID) {
     AnthemStore.instance.activeProjectID = newTabID;
   }
 
-  void closeProject(ID projectID) {
+  void closeProject(Id projectID) {
     final store = AnthemStore.instance;
 
     // Stop engine
@@ -71,7 +71,7 @@ class MainWindowController {
 
   /// Returns the ID of the loaded project, or null if the project load failed
   /// or was cancelled.
-  Future<ID?> loadProject() async {
+  Future<Id?> loadProject() async {
     final path = (await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['anthem'],
@@ -87,7 +87,7 @@ class MainWindowController {
     return project.id;
   }
 
-  Future<void> saveProject(ID projectID, bool alwaysUseFilePicker) async {
+  Future<void> saveProject(Id projectID, bool alwaysUseFilePicker) async {
     try {
       final project = AnthemStore.instance.projects[projectID]!;
 
@@ -119,7 +119,7 @@ class MainWindowController {
 
 @immutable
 class TabDef {
-  final ID id;
+  final Id id;
   final String title;
 
   const TabDef({required this.id, required this.title});
