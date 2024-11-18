@@ -183,16 +183,12 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
 
     processingGraph = ProcessingGraphModel();
 
-    hydrate(false);
+    hydrate();
   }
 
   /// This function is run after deserialization. It allows us to do some setup
   /// that the deserialization step can't do for us.
-  void hydrate([bool recurse = true]) {
-    if (recurse) {
-      song.hydrate();
-    }
-
+  void hydrate() {
     engine = Engine(engineID, this as ProjectModel)..start();
 
     engine.engineStateStream.listen((state) {

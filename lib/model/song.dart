@@ -28,7 +28,6 @@ import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
 import 'arrangement/arrangement.dart';
-import 'shared/hydratable.dart';
 
 part 'song.g.dart';
 
@@ -46,7 +45,7 @@ class SongModel extends _SongModel
       _$SongModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _SongModel extends Hydratable with Store, AnthemModelBase {
+abstract class _SongModel with Store, AnthemModelBase {
   Id id = getId();
 
   @anthemObservable
@@ -104,14 +103,6 @@ abstract class _SongModel extends Hydratable with Store, AnthemModelBase {
 
     tracks = AnthemObservableMap.of(initTracks);
     trackOrder = AnthemObservableList.of(initTrackOrder);
-  }
-
-  void hydrate() {
-    for (final pattern in patterns.values) {
-      pattern.hydrate();
-    }
-
-    isHydrated = true;
   }
 
   void setActivePattern(Id? patternID) {

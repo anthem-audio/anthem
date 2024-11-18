@@ -27,7 +27,6 @@ import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
-import 'package:anthem/model/shared/hydratable.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes_render_cache.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
 import 'package:anthem_codegen/include/annotations.dart';
@@ -55,12 +54,14 @@ class PatternModel extends _PatternModel
 
   PatternModel.create({required super.name}) : super.create() {
     _init();
-    // TODO: remove
-    for (final generator in project.generators.values.where(
-        (generator) => generator.generatorType == GeneratorType.automation)) {
-      automationLanes[generator.id] = AutomationLaneModel();
-    }
-    super.hydrate();
+
+    onModelAttached(() {
+      // TODO: remove
+      for (final generator in project.generators.values.where(
+          (generator) => generator.generatorType == GeneratorType.automation)) {
+        automationLanes[generator.id] = AutomationLaneModel();
+      }
+    });
   }
 
   factory PatternModel.fromJson(Map<String, dynamic> json) {
@@ -70,23 +71,18 @@ class PatternModel extends _PatternModel
   }
 
   void _init() {
-    if (isHydrated) throw Exception('Should always init before hydrate');
-
-    super._onHydrateAction = () {
+    onModelAttached(() {
       incrementClipUpdateSignal = Action(() {
         clipNotesUpdateSignal.value =
             (clipNotesUpdateSignal.value + 1) % 0xFFFFFFFF;
       });
       updateClipTitleCache();
       updateClipNotesRenderCache();
-    };
+    });
   }
 }
 
-abstract class _PatternModel extends Hydratable with Store, AnthemModelBase {
-  @hide
-  void Function()? _onHydrateAction;
-
+abstract class _PatternModel with Store, AnthemModelBase {
   Id id = getId();
 
   @anthemObservable
@@ -120,13 +116,6 @@ abstract class _PatternModel extends Hydratable with Store, AnthemModelBase {
       saturationMultiplier: 0,
     );
     timeSignatureChanges = AnthemObservableList();
-  }
-
-  void hydrate() {
-    _onHydrateAction?.call();
-    _onHydrateAction = null;
-
-    isHydrated = true;
   }
 
   /// Gets the time position of the end of the last item in this pattern
