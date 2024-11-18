@@ -284,6 +284,11 @@ mixin AnthemModelBase {
     // parent model or collection. Models really shouldn't be moved around, so
     // we will assume that we can recursively initialize all children too.
     setParentPropertiesOnChildren();
+
+    // Run any attach actions that have been queued up
+    for (final action in _onAttachActions) {
+      action();
+    }
   }
 
   void setParentPropertiesOnChildren();
@@ -305,5 +310,16 @@ mixin AnthemModelBase {
     }
 
     throw Exception('Could not find project model');
+  }
+
+  final List<void Function()> _onAttachActions = [];
+
+  /// Schedules work to be done when this model is attached to the tree.
+  void onModelAttached(void Function() onModelAttached) {
+    if (parent != null) {
+      throw Exception('Model is already attached');
+    }
+
+    _onAttachActions.add(onModelAttached);
   }
 }
