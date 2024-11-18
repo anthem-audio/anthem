@@ -22,8 +22,6 @@ import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
-import '../shared/hydratable.dart';
-
 part 'time_signature.g.dart';
 
 @AnthemModel.syncedModel()
@@ -37,8 +35,7 @@ class TimeSignatureModel extends _TimeSignatureModel
       _$TimeSignatureModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _TimeSignatureModel extends Hydratable
-    with Store, AnthemModelBase {
+abstract class _TimeSignatureModel with Store, AnthemModelBase {
   @anthemObservable
   int numerator;
 
@@ -75,8 +72,7 @@ class TimeSignatureChangeModel extends _TimeSignatureChangeModel
       _$TimeSignatureChangeModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _TimeSignatureChangeModel extends Hydratable
-    with Store, AnthemModelBase {
+abstract class _TimeSignatureChangeModel with Store, AnthemModelBase {
   Id id = '';
 
   @anthemObservable
@@ -91,7 +87,5 @@ abstract class _TimeSignatureChangeModel extends Hydratable
     required this.offset,
   }) : super() {
     this.id = id ?? getId();
-
-    isHydrated = true;
   }
 }
