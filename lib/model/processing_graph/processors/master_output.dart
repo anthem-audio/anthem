@@ -33,7 +33,10 @@ part 'master_output.g.dart';
 /// Note that this only links to the actual node in the processing graph. As
 /// this is a synced model, the actual audio implementation attaches to the
 /// generated version of this class in the engine.
-@AnthemModel.syncedModel()
+@AnthemModel.syncedModel(
+  cppBehaviorClassName: 'MasterOutputProcessor',
+  cppBehaviorClassIncludePath: 'modules/processors/master_output.h',
+)
 class MasterOutputProcessorModel extends _MasterOutputProcessorModel
     with
         _$MasterOutputProcessorModel,

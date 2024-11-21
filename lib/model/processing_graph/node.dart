@@ -26,7 +26,10 @@ import 'package:mobx/mobx.dart';
 
 part 'node.g.dart';
 
-@AnthemModel.syncedModel()
+@AnthemModel.syncedModel(
+  cppBehaviorClassName: 'Node',
+  cppBehaviorClassIncludePath: 'modules/processing_graph/model/node.h',
+)
 class NodeModel extends _NodeModel
     with _$NodeModel, _$NodeModelAnthemModelMixin {
   NodeModel(

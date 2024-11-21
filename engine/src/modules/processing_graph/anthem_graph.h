@@ -29,6 +29,8 @@
 
 // This class is used to store processors and their connections, and to manage
 // the flow of audio, MIDI and control data between them.
+//
+// TODO: Unify with the processing graph in the model
 class AnthemGraph {
 private:
   // The topology for this graph

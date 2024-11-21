@@ -17,14 +17,15 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "tone_generator_node.h"
+#include "tone_generator.h"
 
 #include <iostream>
 #include <cmath>
 
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 
-ToneGeneratorNode::ToneGeneratorNode() : AnthemProcessor("ToneGenerator") {
+ToneGeneratorProcessor::ToneGeneratorProcessor(const ToneGeneratorProcessorModelImpl& _impl)
+      : AnthemProcessor("MasterOutput"), ToneGeneratorProcessorModelBase(_impl) {
   phase = 0;
   // amplitude = 0.125;
   // this->frequency = frequency;
@@ -62,9 +63,9 @@ ToneGeneratorNode::ToneGeneratorNode() : AnthemProcessor("ToneGenerator") {
   );
 }
 
-ToneGeneratorNode::~ToneGeneratorNode() {}
+ToneGeneratorProcessor::~ToneGeneratorProcessor() {}
 
-void ToneGeneratorNode::process(AnthemProcessContext& context, int numSamples) {
+void ToneGeneratorProcessor::process(AnthemProcessContext& context, int numSamples) {
   auto& audioOutBuffer = context.getOutputAudioBuffer(0);
 
   auto& frequencyControlBuffer = context.getInputControlBuffer(0);

@@ -30,8 +30,15 @@ export 'pattern/automation_point.dart';
 export 'pattern/note.dart';
 export 'pattern/pattern.dart';
 
-export 'processing_graph/processor.dart';
+export 'processing_graph/node_config.dart';
+export 'processing_graph/node_connection.dart';
+export 'processing_graph/node_port_config.dart';
+export 'processing_graph/node_port.dart';
+export 'processing_graph/node.dart';
+export 'processing_graph/parameter_config.dart';
+export 'processing_graph/processing_graph.dart';
 export 'processing_graph/processor_definition.dart';
+export 'processing_graph/processor.dart';
 
 export 'shared/anthem_color.dart';
 export 'shared/hydratable.dart';

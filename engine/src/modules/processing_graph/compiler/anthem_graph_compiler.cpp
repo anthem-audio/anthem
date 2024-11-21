@@ -24,7 +24,9 @@
 // See the header file for an overview of the graph processing algorithm. Each
 // step in the algorithm is annotated here.
 
-AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& topology) {
+AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
+  auto& processingGraphModel = Anthem::getInstance().project->processingGraph();
+
   AnthemGraphCompilationResult* result = new AnthemGraphCompilationResult();
 
   // We store these in a vector so that when it goes out of scope, the nodes
@@ -34,31 +36,31 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
 
   std::set<AnthemGraphCompilerNode*> nodesToProcess;
 
-  std::map<AnthemGraphNode*, std::shared_ptr<AnthemGraphCompilerNode>> nodeToCompilerNode;
-  std::map<AnthemGraphNodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>> connectionToCompilerEdge;
+  std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>> nodeToCompilerNode;
+  std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>> connectionToCompilerEdge;
 
   std::cout
     << "\033[32m"
     << "AnthemGraphCompiler::compile(): Compiling graph with "
-    << topology.getNodes().size()
-    << (topology.getNodes().size() > 1 ? " nodes" : " node")
+    << processingGraphModel->nodes()->size()
+    << (processingGraphModel->nodes()->size() > 1 ? " nodes" : " node")
     << " and "
-    << topology.getConnections().size()
-    << (topology.getConnections().size() > 1 ? " connections" : " connection")
+    << processingGraphModel->connections()->size()
+    << (processingGraphModel->connections()->size() > 1 ? " connections" : " connection")
     << "\033[0m"
     << std::endl;
 
   size_t totalEventPorts = 0;
 
   // Get the total number of event ports in the graph.
-  for (auto& node : topology.getNodes()) {
-    totalEventPorts += node->noteEventInputs.size();
-    totalEventPorts += node->noteEventOutputs.size();
+  for (auto& node : processingGraphModel->nodes()) {
+    totalEventPorts += node->midiInputPorts->size();
+    totalEventPorts += node->midiOutputPorts->size();
   }
 
   // Create a buffer allocator for events, and allocate double the size of the
-  // buffer for each port. This is because, if any port buffer overflows, it
-  // will reallocate, so we need some free space.
+  // buffer for each port. This is because if any port buffer overflows, it will
+  // reallocate, so we need some free space.
   //
   // This is probably way too much free space, but I won't try to tweak it
   // unless it becomes a problem.
@@ -68,7 +70,9 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
     );
 
   // Create contexts for each node
-  for (auto& node : topology.getNodes()) {
+  for (auto& pair : processingGraphModel->nodes()) {
+    auto& node = pair.second;
+
     auto context = new AnthemProcessContext(node, result->eventAllocator.get());
     result->processContexts.push_back(std::unique_ptr<AnthemProcessContext>(context));
 
@@ -90,7 +94,8 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
     node->assignEdges(nodeToCompilerNode, connectionToCompilerEdge);
   }
 
-  std::unique_ptr<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>> actions = std::make_unique<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>();
+  std::unique_ptr<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>> actions =
+        std::make_unique<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>();
 
   std::cout << "Step 1: Zero input buffers" << std::endl;
 
@@ -185,7 +190,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
     // Step 3: Process nodes that are ready to process
     for (auto& node : nodesToProcess) {
       if (node->readyToProcess) {
-        std::cout << "Processing node " << node->node->processor->config.getId() << std::endl;
+        std::cout << "Processing node " << node->node->id() << std::endl;
         actions->push_back(std::make_unique<ProcessNodeAction>(node->context, node->node.get()));
         nodesToRemoveFromProcessing.push_back(node);
         i++;

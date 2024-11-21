@@ -23,7 +23,10 @@ import 'package:mobx/mobx.dart';
 
 part 'node_connection.g.dart';
 
-@AnthemModel.syncedModel()
+@AnthemModel.syncedModel(
+  cppBehaviorClassName: 'NodeConnection',
+  cppBehaviorClassIncludePath: 'modules/processing_graph/model/node_connection.h',
+)
 class NodeConnectionModel extends _NodeConnectionModel
     with _$NodeConnectionModel, _$NodeConnectionModelAnthemModelMixin {
   NodeConnectionModel({

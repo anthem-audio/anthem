@@ -19,46 +19,45 @@
 
 #include "anthem_process_context.h"
 
-#include "modules/processing_graph/topology/anthem_graph_node.h"
 #include "modules/core/constants.h"
 
-AnthemProcessContext::AnthemProcessContext(std::shared_ptr<AnthemGraphNode> graphNode, ArenaBufferAllocator<AnthemProcessorEvent>* eventAllocator) : graphNode(graphNode) {
-  for (int i = 0; i < graphNode->audioInputs.size(); i++) {
+AnthemProcessContext::AnthemProcessContext(std::shared_ptr<NodeModel> graphNode, ArenaBufferAllocator<AnthemProcessorEvent>* eventAllocator) : graphNode(graphNode) {
+  for (int i = 0; i < graphNode->audioInputPorts()->size(); i++) {
     inputAudioBuffers.push_back(juce::AudioSampleBuffer(2, MAX_AUDIO_BUFFER_SIZE));
   }
 
-  for (int i = 0; i < graphNode->audioOutputs.size(); i++) {
+  for (int i = 0; i < graphNode->audioOutputPorts()->size(); i++) {
     outputAudioBuffers.push_back(juce::AudioSampleBuffer(2, MAX_AUDIO_BUFFER_SIZE));
   }
 
-  for (int i = 0; i < graphNode->controlInputs.size(); i++) {
+  for (int i = 0; i < graphNode->controlInputPorts()->size(); i++) {
     inputControlBuffers.push_back(juce::AudioSampleBuffer(1, MAX_AUDIO_BUFFER_SIZE));
   }
 
-  for (int i = 0; i < graphNode->controlOutputs.size(); i++) {
+  for (int i = 0; i < graphNode->controlOutputPorts()->size(); i++) {
     outputControlBuffers.push_back(juce::AudioSampleBuffer(1, MAX_AUDIO_BUFFER_SIZE));
   }
 
-  for (int i = 0; i < graphNode->noteEventInputs.size(); i++) {
+  for (int i = 0; i < graphNode->midiInputPorts()->size(); i++) {
     inputNoteEventBuffers.push_back(AnthemEventBuffer(eventAllocator, 1024));
   }
 
-  for (int i = 0; i < graphNode->noteEventOutputs.size(); i++) {
+  for (int i = 0; i < graphNode->midiOutputPorts()->size(); i++) {
     outputNoteEventBuffers.push_back(AnthemEventBuffer(eventAllocator, 1024));
   }
 
   // Because parameter values use std::atomic, we need to initialize them in an odd way
 
-  parameterValues = std::vector<std::atomic<float>>(graphNode->controlInputs.size());
+  parameterValues = std::vector<std::atomic<float>>(graphNode->controlInputsPorts()->size());
 
-  for (int i = 0; i < graphNode->controlInputs.size(); i++) {
+  for (int i = 0; i < graphNode->controlInputsPorts()->size(); i++) {
     std::atomic<float> value(graphNode->parameters[i]);
     parameterValues[i] = value.load();
   }
 
   parameterSmoothers = std::vector<std::unique_ptr<LinearParameterSmoother>>();
 
-  for (int i = 0; i < graphNode->controlInputs.size(); i++) {
+  for (int i = 0; i < graphNode->controlInputsPorts()->size(); i++) {
     auto parameterValue = graphNode->parameters[i];
     auto& parameterConfig = graphNode->processor->config.getParameterByIndex(i);
 
@@ -67,6 +66,7 @@ AnthemProcessContext::AnthemProcessContext(std::shared_ptr<AnthemGraphNode> grap
   }
 }
 
+// TODO: We should set parameters automatically when the model is changed
 void AnthemProcessContext::setParameterValue(size_t index, float value) {
   // Throw if not on the JUCE message thread
   if (!juce::MessageManager::getInstance()->isThisTheMessageThread()) {

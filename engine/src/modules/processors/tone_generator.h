@@ -24,7 +24,7 @@
 #include "modules/processing_graph/processor/anthem_processor.h"
 #include "modules/processing_graph/topology/anthem_graph_node_port.h"
 
-class ToneGeneratorNode : public AnthemProcessor {
+class ToneGeneratorProcessor : public AnthemProcessor, public ToneGeneratorProcessorModelBase {
 private:
   double phase;
   double sampleRate;
@@ -32,8 +32,14 @@ private:
   bool hasNoteOverride;
   int noteOverride;
 public:
-  ToneGeneratorNode();
-  ~ToneGeneratorNode() override;
+  ToneGeneratorProcessor(const ToneGeneratorProcessorModelImpl& _impl);
+  ~ToneGeneratorProcessor() override;
+
+  ToneGeneratorProcessor(const ToneGeneratorProcessor&) = delete;
+  ToneGeneratorProcessor& operator=(const ToneGeneratorProcessor&) = delete;
+
+  ToneGeneratorProcessor(ToneGeneratorProcessor&&) noexcept = default;
+  ToneGeneratorProcessor& operator=(ToneGeneratorProcessor&&) noexcept = default;
 
   int getOutputPortIndex() {
     return 0;

@@ -26,7 +26,7 @@
 
 #include "modules/core/anthem_audio_callback.h"
 #include "modules/processing_graph/anthem_graph.h"
-#include "modules/processors/master_output_node.h"
+#include "modules/processors/master_output.h"
 
 #include "modules/util/id_generator.h"
 
@@ -34,6 +34,8 @@
 
 class Anthem {
 private:
+  bool isAudioCallbackRunning;
+
   // Singleton shared pointer instance
   static std::shared_ptr<Anthem> instance;
 
@@ -47,8 +49,8 @@ private:
 
   std::map<uint64_t, std::shared_ptr<AnthemGraphNode>> nodes;
 
-  // Initializes the engine
-  void init();
+  // Sets up the audio callback
+  void startAudioCallback();
 public:
     std::shared_ptr<Project> project;
 
@@ -107,4 +109,9 @@ public:
     }
     return *instance;
   }
+
+  // TODO: These generic config items should be settable, which means they
+  // should live in the actual synced model.
+  static const int SAMPLE_RATE = 44100;
+  static const int NUM_CHANNELS = 2;
 };
