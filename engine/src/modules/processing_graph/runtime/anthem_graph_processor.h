@@ -43,8 +43,6 @@ private:
 public:
   // Processes a single block of audio in the graph. This will also process and
   // propagate MIDI and control data.
-  //
-  // The output can be read from a node, such as a MasterOutputNode.
   void process(int numSamples);
 
   // This function adds a new set of processing steps to the queue. This is

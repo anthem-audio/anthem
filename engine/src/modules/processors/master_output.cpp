@@ -17,14 +17,15 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "master_output_node.h"
+#include "master_output.h"
 
 #include <iostream>
 
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 
-MasterOutputNode::MasterOutputNode(int numChannels, int bufferSize) : AnthemProcessor("MasterOutput") {
-  buffer = juce::AudioSampleBuffer(numChannels, bufferSize);
+MasterOutputProcessor::MasterOutputProcessor(MasterOutputProcessorModelImpl& _impl)
+      : AnthemProcessor("MasterOutput"), MasterOutputProcessorModelBase(_impl) {
+  buffer = juce::AudioSampleBuffer(Anthem::NUM_CHANNELS, MAX_AUDIO_BUFFER_SIZE);
 
   // Audio input port
   config.addAudioInput(
@@ -32,10 +33,10 @@ MasterOutputNode::MasterOutputNode(int numChannels, int bufferSize) : AnthemProc
   );
 }
 
-MasterOutputNode::~MasterOutputNode() {}
+MasterOutputProcessor::~MasterOutputProcessor() {}
 
-void MasterOutputNode::process(AnthemProcessContext& context, int numSamples) {
-  auto& inputBuffer = context.getInputAudioBuffer(0);
+void MasterOutputProcessor::process(AnthemProcessContext& context, int numSamples) {
+  auto& inputBuffer = context.getInputAudioBuffer(0); // TODO: This isn't correct - buffers need to be in maps by id
 
   for (int channel = 0; channel < buffer.getNumChannels(); channel++) {
     this->buffer.copyFrom(channel, 0, inputBuffer, channel, 0, numSamples);

@@ -21,9 +21,6 @@
 
 #include <string>
 
-#include "modules/processors/tone_generator_node.h"
-#include "modules/processors/simple_volume_lfo_node.h"
-
 std::optional<Response> handleModelSyncCommand(Request& request) {
   auto& anthem = Anthem::getInstance();
 

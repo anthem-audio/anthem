@@ -21,7 +21,7 @@
 
 #include "modules/processors/simple_volume_lfo_node.h"
 #include "modules/processors/simple_midi_generator_node.h"
-#include "modules/processors/tone_generator_node.h"
+#include "modules/processors/tone_generator.h"
 #include "modules/processors/gain_node.h"
 
 std::optional<Response>
@@ -234,7 +234,7 @@ handleProcessingGraphCommand(Request& request) {
       processor = std::make_unique<SimpleVolumeLfoNode>();
       success = true;
     } else if (processorId == "ToneGenerator") {
-      processor = std::make_unique<ToneGeneratorNode>();
+      processor = std::make_unique<ToneGeneratorProcessor>();
       success = true;
     } else if (processorId == "SimpleMidiGenerator") {
       processor = std::make_unique<SimpleMidiGeneratorNode>();
@@ -438,6 +438,8 @@ handleProcessingGraphCommand(Request& request) {
 
   else if (rfl::holds_alternative<CompileProcessingGraphRequest>(request.variant())) {
     auto& compileProcessingGraphRequest = rfl::get<CompileProcessingGraphRequest>(request.variant());
+
+    std::cout << "Compiling from UI request" << std::endl;
 
     anthem.getProcessingGraph()->compile();
 

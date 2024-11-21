@@ -26,7 +26,7 @@
 #include <juce_events/juce_events.h>
 
 #include "modules/processing_graph/processor/anthem_event_buffer.h"
-#include "modules/processing_graph/topology/anthem_graph_node.h"
+#include "generated/lib/model/model.h"
 #include "modules/util/linear_parameter_smoother.h"
 
 // This class acts as a context for node graph processors. It is passed to the
@@ -48,7 +48,7 @@ private:
 
   std::weak_ptr<AnthemGraphNode> graphNode;
 public:
-  AnthemProcessContext(std::shared_ptr<AnthemGraphNode> graphNode, ArenaBufferAllocator<AnthemProcessorEvent>* eventAllocator);
+  AnthemProcessContext(std::shared_ptr<NodeModel> graphNode, ArenaBufferAllocator<AnthemProcessorEvent>* eventAllocator);
 
   std::shared_ptr<AnthemGraphNode> getGraphNode() {
     // This function is for debugging. The graph node is mutated on the JUCE

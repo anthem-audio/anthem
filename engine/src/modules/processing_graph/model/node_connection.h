@@ -19,23 +19,20 @@
 
 #pragma once
 
-#include <memory>
+#include "generated/lib/model/processing_graph/node_connection.h"
 
-#include <juce_audio_basics/juce_audio_basics.h>
-
-#include "modules/processing_graph/topology/anthem_graph_node.h"
-#include "modules/processing_graph/processor/anthem_processor.h"
-
-class MasterOutputNode : public AnthemProcessor {
+class NodeConnection : public NodeConnectionModelBase {
 public:
-  juce::AudioSampleBuffer buffer;
+  NodeConnection(const NodeConnectionModelImpl& _impl) : NodeConnectionModelBase(_impl) {std::cout << "NodeConnection created" << std::endl;}
+  ~NodeConnection() {}
 
-  MasterOutputNode(int numChannels, int bufferSize);
-  ~MasterOutputNode() override;
+  NodeConnection(const NodeConnection&) = delete;
+  NodeConnection& operator=(const NodeConnection&) = delete;
 
-  int getInputPortIndex() {
-    return 0;
+  NodeConnection(NodeConnection&&) noexcept = default;
+  NodeConnection& operator=(NodeConnection&&) noexcept = default;
+
+  void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override {
+    std::cout << "NODE CONNECTION INITIALIZE" << std::endl;
   }
-
-  void process(AnthemProcessContext& context, int numSamples) override;
 };

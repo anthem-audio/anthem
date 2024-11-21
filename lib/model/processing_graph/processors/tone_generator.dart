@@ -31,7 +31,10 @@ import 'package:mobx/mobx.dart';
 part 'tone_generator.g.dart';
 
 /// A processor that generates a tone.
-@AnthemModel.syncedModel()
+@AnthemModel.syncedModel(
+  cppBehaviorClassName: 'ToneGeneratorProcessor',
+  cppBehaviorClassIncludePath: 'modules/processors/tone_generator.h',
+)
 class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
     with
         _$ToneGeneratorProcessorModel,

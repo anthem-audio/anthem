@@ -26,6 +26,8 @@
 #include "modules/processing_graph/compiler/anthem_graph_compiler_edge.h"
 #include "modules/processing_graph/topology/anthem_graph_node.h"
 
+#include "generated/lib/model/model.h"
+
 class AnthemGraphNode;
 class AnthemProcessContext;
 
@@ -34,7 +36,7 @@ class AnthemProcessContext;
 class AnthemGraphCompilerNode {
 public:
   // The node that this compiled node represents
-  std::shared_ptr<AnthemGraphNode> node;
+  std::shared_ptr<Node> node;
 
   std::vector<std::shared_ptr<AnthemGraphCompilerEdge>> inputEdges;
   std::vector<std::shared_ptr<AnthemGraphCompilerEdge>> outputEdges;
@@ -49,8 +51,8 @@ public:
 
   // Populate the input and output edges for this node
   void assignEdges(
-    std::map<AnthemGraphNode*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
-    std::map<AnthemGraphNodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>& connectionToCompilerEdge
+    std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
+    std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>& connectionToCompilerEdge
   ) {
     for (auto& port : node->audioInputs) {
       for (auto connection : port->connections) {
