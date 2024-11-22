@@ -67,6 +67,10 @@ static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
         final name = entry.key;
         final fieldInfo = entry.value;
 
+        if (fieldInfo.isModelConstant) {
+          continue;
+        }
+
         if (_shouldSkip(fieldInfo.fieldElement)) {
           continue;
         }
@@ -87,6 +91,10 @@ static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
   for (final entry in context.fields.entries) {
     final name = entry.key;
     final fieldInfo = entry.value;
+
+    if (fieldInfo.isModelConstant) {
+      continue;
+    }
 
     if (_shouldSkip(fieldInfo.fieldElement)) {
       continue;

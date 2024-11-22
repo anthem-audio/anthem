@@ -46,6 +46,10 @@ Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
     final name = entry.key;
     final fieldInfo = entry.value;
 
+    if (fieldInfo.isModelConstant) {
+      continue;
+    }
+
     final fieldBehavior = _getFieldBehavior(fieldInfo.fieldElement);
 
     if (fieldBehavior == _FieldBehavior.skip) {
@@ -87,6 +91,10 @@ Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
       for (final field in subclass.fields.entries) {
         final name = field.key;
         final fieldInfo = field.value;
+
+        if (fieldInfo.isModelConstant) {
+          continue;
+        }
 
         final fieldBehavior = _getFieldBehavior(fieldInfo.fieldElement);
 
