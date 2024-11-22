@@ -90,6 +90,10 @@ String getModelSyncFn(ModelClassInfo context) {
   writer.writeLine('auto& fieldName = fieldNameNullable.value();');
 
   for (var MapEntry(key: fieldName, value: field) in context.fields.entries) {
+    if (field.isModelConstant) {
+      continue;
+    }
+
     if (field.hideAnnotation?.cpp == true) {
       continue;
     }

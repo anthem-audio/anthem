@@ -467,8 +467,13 @@ String _generateEnum(EnumInfo enumInfo) {
       continue;
     }
 
+    if (fieldInfo.isModelConstant) {
+      final type = getCppType(fieldInfo.typeInfo, modelClassInfo);
+      writer.writeLine('static const $type $fieldName = ${fieldInfo.constantValue};');
+    } else {
     final type = getCppType(fieldInfo.typeInfo, modelClassInfo);
     writer.writeLine('$type $fieldName;');
+    }
   }
 
   writer.writeLine();

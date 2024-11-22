@@ -202,13 +202,29 @@ class _MyModel {
     //   continue;
     // }
 
-    for (final field in _baseClass?.fields ?? []) {
+    for (final field in _baseClass?.fields ?? <FieldElement>[]) {
       // If the field doesn't have a setter, it's not something we can
       // deserialize, so we won't include it. This can happen if the field is
       // final, or if the field is a getter.
       if (field.setter == null) continue;
 
+      // Check for skip annotation
       if (_skipAll(field)) continue;
+
+      // We treat static const fields as constants, if they are primitive types
+      // (e.g. string, number, bool). If the field is static and/or const but
+      // not both, or if it's not a primitive type, we will just skip over it.
+      if (field.isStatic && field.isConst) {
+        if (!field.type.isDartCoreString &&
+            !field.type.isDartCoreInt &&
+            !field.type.isDartCoreDouble &&
+            !field.type.isDartCoreNum &&
+            !field.type.isDartCoreBool) {
+          continue;
+        }
+      } else if (field.isStatic || field.isConst) {
+        continue;
+      }
 
       fields[field.name] = ModelFieldInfo(
         fieldElement: field,
@@ -260,10 +276,29 @@ class SealedSubclassInfo {
 
 /// Represents a parsed field in an Anthem model.
 class ModelFieldInfo {
+  /// The field element for this field.
   final FieldElement fieldElement;
-  final ModelType typeInfo;
-  final bool isObservable;
 
+  /// The parsed type info for this field.
+  final ModelType typeInfo;
+
+  /// Whether this field is observable, as defined by the MobX @observable
+  /// annotation.
+  final bool isObservable;
+  
+  /// Whether this field represents a constant for the model.
+  ///
+  /// Constants are defined as static and const fields that are primitive types.
+  /// E.g.:
+  ///
+  /// ```dart
+  /// static const String myString = 'Hello, world!';
+  /// ```
+  final bool isModelConstant;
+
+  final String? constantValue;
+
+  /// The @Hide annotation for this field, if there is one.
   final Hide? hideAnnotation;
 
   ModelFieldInfo({
@@ -292,6 +327,21 @@ class ModelFieldInfo {
                     false,
             cpp: hideAnnotation.getField('cpp')?.toBoolValue() ?? false,
           );
+        })(),
+        isModelConstant = fieldElement.isStatic && fieldElement.isConst,
+        constantValue = (() {
+          if (!(fieldElement.isStatic && fieldElement.isConst)) return null;
+
+          final value = fieldElement.computeConstantValue();
+
+          if (value == null) return null;
+
+          // If the value is a string, return it as a string
+          if (value.type?.element?.name == 'String') {
+            return '"${value.toString()}"';
+          }
+
+          return value.toString();
         })();
 }
 
