@@ -16,6 +16,7 @@
     "endl",
     "fuzzywuzzy",
     "interprocess",
+    "jassert",
     "juce",
     "LTRB",
     "LTWH",
