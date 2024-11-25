@@ -191,7 +191,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
     for (auto& node : nodesToProcess) {
       if (node->readyToProcess) {
         std::cout << "Processing node " << node->node->id() << std::endl;
-        actions->push_back(std::make_unique<ProcessNodeAction>(node->context, node->node.get()));
+        actions->push_back(std::make_unique<ProcessNodeAction>(node->context, node->node.get()->processor.get()));
         nodesToRemoveFromProcessing.push_back(node);
         i++;
       }

@@ -22,7 +22,7 @@
 #include <iostream>
 
 void ProcessNodeAction::execute(int numSamples) {
-  this->node->processor->process(*this->context, numSamples);
+  this->processor->process(*this->context, numSamples);
 }
 
 void ProcessNodeAction::debugPrint() {
