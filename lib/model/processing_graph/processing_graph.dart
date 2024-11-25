@@ -37,7 +37,8 @@ class ProcessingGraphModel extends _ProcessingGraphModel
 
   ProcessingGraphModel() {
     // Set up the master output node
-    final masterOutputNode = MasterOutputProcessorModel.createNode();
+    final masterOutputNode =
+        MasterOutputProcessorModel.createNode('masterOutput');
     nodes[masterOutputNode.id] = masterOutputNode;
     masterOutput = MasterOutputProcessorModel(nodeId: masterOutputNode.id);
 
