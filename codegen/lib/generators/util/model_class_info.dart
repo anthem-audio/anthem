@@ -285,7 +285,7 @@ class ModelFieldInfo {
   /// Whether this field is observable, as defined by the MobX @observable
   /// annotation.
   final bool isObservable;
-  
+
   /// Whether this field represents a constant for the model.
   ///
   /// Constants are defined as static and const fields that are primitive types.
