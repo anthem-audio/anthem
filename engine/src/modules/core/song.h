@@ -33,8 +33,8 @@ public:
   Song& operator=(Song&&) noexcept = default;
 
   void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override {
-    std::cout << "SONG INITIALIZE" << std::endl;
     SongModelBase::initialize(self, parent);
+    std::cout << "SONG INITIALIZE" << std::endl;
 
     this->test();
   }
