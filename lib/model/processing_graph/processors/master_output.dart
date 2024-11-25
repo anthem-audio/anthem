@@ -52,15 +52,15 @@ class MasterOutputProcessorModel extends _MasterOutputProcessorModel
   NodeModel get node => (project.processingGraph.nodes[nodeId])!;
 
   /// Creates a node for this processor.
-  static NodeModel createNode() {
+  static NodeModel createNode(String nodeId) {
     return NodeModel(
       config: NodeConfigModel(),
-      id: 'masterOutput',
+      id: nodeId,
       audioInputPorts: AnthemObservableList.of([
         NodePortModel(
-          id: 0,
+          id: _MasterOutputProcessorModel.inputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.audio),
-          nodeId: 'masterOutput',
+          nodeId: nodeId,
         ),
       ]),
     );
@@ -68,6 +68,8 @@ class MasterOutputProcessorModel extends _MasterOutputProcessorModel
 }
 
 abstract class _MasterOutputProcessorModel with Store, AnthemModelBase {
+  static const int inputPortId = 0;
+
   late String nodeId;
 
   _MasterOutputProcessorModel({required this.nodeId});
