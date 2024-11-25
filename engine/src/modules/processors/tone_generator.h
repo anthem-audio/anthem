@@ -46,4 +46,9 @@ public:
   }
 
   void process(AnthemProcessContext& context, int numSamples) override;
+
+  void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override {
+    ToneGeneratorProcessorModelBase::initialize(self, parent);
+    AnthemProcessor::assignProcessorToNode(this->nodeId(), std::static_pointer_cast<std::shared_ptr<AnthemProcessor>>(self));
+  }
 };
