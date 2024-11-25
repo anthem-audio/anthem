@@ -24,6 +24,7 @@
 class Node : public NodeModelBase {
 public:
   std::optional<AnthemProcessContext*> runtimeContext;
+  std::shared_ptr<AnthemProcessor> processor;
 
   Node(const NodeModelImpl& _impl) : NodeModelBase(_impl) {std::cout << "Node created" << std::endl;}
   ~Node() {}
@@ -35,6 +36,8 @@ public:
   Node& operator=(Node&&) noexcept = default;
 
   void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override {
+    NodeModelBase::initialize(self, parent);
+
     std::cout << "NODE INITIALIZE" << std::endl;
   }
 };
