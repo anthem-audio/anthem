@@ -206,25 +206,28 @@ class _MyModel {
       // If the field doesn't have a setter, it's not something we can
       // deserialize, so we won't include it. This can happen if the field is
       // final, or if the field is a getter.
-      if (field.setter == null) continue;
+      //
+      // The only exception to this is if the field is a static const field, in
+      // which case we will include it as a constant.
+      if (field.setter == null) {
+        // We treat static const fields as constants, if they are primitive types
+        // (e.g. string, number, bool). If the field is static and/or const but
+        // not both, or if it's not a primitive type, we will just skip over it.
+        if (field.isStatic && field.isConst) {
+          if (!field.type.isDartCoreString &&
+              !field.type.isDartCoreInt &&
+              !field.type.isDartCoreDouble &&
+              !field.type.isDartCoreNum &&
+              !field.type.isDartCoreBool) {
+            continue;
+          }
+        } else {
+          continue;
+        }
+      }
 
       // Check for skip annotation
       if (_skipAll(field)) continue;
-
-      // We treat static const fields as constants, if they are primitive types
-      // (e.g. string, number, bool). If the field is static and/or const but
-      // not both, or if it's not a primitive type, we will just skip over it.
-      if (field.isStatic && field.isConst) {
-        if (!field.type.isDartCoreString &&
-            !field.type.isDartCoreInt &&
-            !field.type.isDartCoreDouble &&
-            !field.type.isDartCoreNum &&
-            !field.type.isDartCoreBool) {
-          continue;
-        }
-      } else if (field.isStatic || field.isConst) {
-        continue;
-      }
 
       fields[field.name] = ModelFieldInfo(
         fieldElement: field,
