@@ -468,9 +468,11 @@ String _generateEnum(EnumInfo enumInfo) {
     }
 
     if (fieldInfo.isModelConstant) {
-      final type = getCppType(fieldInfo.typeInfo, modelClassInfo);
-      writer.writeLine(
-          'static const $type $fieldName = ${fieldInfo.constantValue};');
+      if (!generateWrapper) {
+        final type = getCppType(fieldInfo.typeInfo, modelClassInfo);
+        writer.writeLine(
+            'static const $type $fieldName = ${fieldInfo.constantValue};');
+      }
     } else {
       final type = getCppType(fieldInfo.typeInfo, modelClassInfo);
       writer.writeLine('$type $fieldName;');
@@ -504,6 +506,17 @@ String _generateEnum(EnumInfo enumInfo) {
     writer.writeLine('class $className$baseSuffix : public AnthemModelBase {');
     writer.writeLine('public:');
     writer.incrementWhitespace();
+
+    // Serialize any constants
+    for (final field in modelClassInfo.fields.values) {
+      if (!field.isModelConstant) {
+        continue;
+      }
+
+      final type = getCppType(field.typeInfo, modelClassInfo);
+      writer.writeLine(
+          'static const $type ${field.fieldElement.name} = ${field.constantValue};');
+    }
 
     writer.writeLine('using ReflectionType = ${className}Impl;');
     writer.writeLine();
