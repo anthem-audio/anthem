@@ -340,11 +340,17 @@ class ModelFieldInfo {
           if (value == null) return null;
 
           // If the value is a string, return it as a string
-          if (value.type?.element?.name == 'String') {
+          if (value.type?.isDartCoreString == true) {
             return '"${value.toString()}"';
+          } else if (value.type?.isDartCoreInt == true) {
+            return value.toIntValue()?.toString();
+          } else if (value.type?.isDartCoreDouble == true) {
+            return value.toDoubleValue()?.toString();
+          } else if (value.type?.isDartCoreBool == true) {
+            return value.toBoolValue()?.toString();
           }
 
-          return value.toString();
+          return null;
         })();
 }
 
