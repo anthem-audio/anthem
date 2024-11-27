@@ -21,6 +21,9 @@
 
 #include "generated/lib/model/processing_graph/node.h"
 
+class AnthemProcessContext;
+class AnthemProcessor;
+
 class Node : public NodeModelBase {
 public:
   std::optional<AnthemProcessContext*> runtimeContext;

@@ -43,9 +43,5 @@ public:
   // control data. It is called once per processing block.
   virtual void process(AnthemProcessContext& context, int numSamples) = 0;
 
-  static void assignProcessorToNode(std::string nodeId, std::shared_ptr<AnthemProcessor> processor) {
-    auto& processingGraphModel = Anthem::getInstance().project->processingGraph();
-    auto node = (*processingGraphModel->nodes())[id];
-    node->processor = processor;
-  }
+  static void assignProcessorToNode(std::string nodeId, std::shared_ptr<AnthemProcessor> processor);
 };
