@@ -117,7 +117,8 @@ String _generateGettersAndSetters(
         classHasModelSyncCode && fieldInfo.hideAnnotation?.cpp != true;
 
     // Skip if this field doesn't need a getter/setter
-    if (!fieldInfo.isObservable && !shouldGenerateModelSync) {
+    if (fieldInfo.isModelConstant ||
+        (!fieldInfo.isObservable && !shouldGenerateModelSync)) {
       continue;
     }
 
