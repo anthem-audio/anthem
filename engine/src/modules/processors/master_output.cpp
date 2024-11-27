@@ -36,7 +36,7 @@ MasterOutputProcessor::MasterOutputProcessor(MasterOutputProcessorModelImpl& _im
 MasterOutputProcessor::~MasterOutputProcessor() {}
 
 void MasterOutputProcessor::process(AnthemProcessContext& context, int numSamples) {
-  auto& inputBuffer = context.getInputAudioBuffer(0); // TODO: This isn't correct - buffers need to be in maps by id
+  auto& inputBuffer = context.getInputAudioBuffer(MasterOutputProcessorModelBase::inputPortId);
 
   for (int channel = 0; channel < buffer.getNumChannels(); channel++) {
     this->buffer.copyFrom(channel, 0, inputBuffer, channel, 0, numSamples);
