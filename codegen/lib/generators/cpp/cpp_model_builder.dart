@@ -572,7 +572,7 @@ String _generateEnum(EnumInfo enumInfo) {
     /// ```
     for (final MapEntry(key: fieldName, value: fieldInfo)
         in modelClassInfo.fields.entries) {
-      if (_shouldSkip(fieldInfo.fieldElement)) {
+      if (_shouldSkip(fieldInfo.fieldElement) || fieldInfo.isModelConstant) {
         continue;
       }
 
