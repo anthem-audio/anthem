@@ -39,32 +39,80 @@ class ProcessingGraphModel extends _ProcessingGraphModel
     // Set up the master output node
     final masterOutputNode =
         MasterOutputProcessorModel.createNode('masterOutput');
-    nodes[masterOutputNode.id] = masterOutputNode;
+    addNode(masterOutputNode);
     masterOutput = MasterOutputProcessorModel(nodeId: masterOutputNode.id);
 
     // For testing purposes, connect a tone generator to the master output
     final toneGeneratorNode = ToneGeneratorProcessorModel.createNode();
-    nodes[toneGeneratorNode.id] = toneGeneratorNode;
+    addNode(toneGeneratorNode);
     toneGenerator = ToneGeneratorProcessorModel(nodeId: toneGeneratorNode.id);
 
     final connectionId = getId();
-    connections[connectionId] = NodeConnectionModel(
-      id: connectionId,
-      sourceNodeId: toneGeneratorNode.id,
-      sourcePortId: toneGeneratorNode.audioOutputPorts[0].id,
-      destinationNodeId: masterOutputNode.id,
-      destinationPortId: masterOutputNode.audioInputPorts[0].id,
+    addConnection(
+      NodeConnectionModel(
+        id: connectionId,
+        sourceNodeId: toneGeneratorNode.id,
+        sourcePortId: toneGeneratorNode.audioOutputPorts[0].id,
+        destinationNodeId: masterOutputNode.id,
+        destinationPortId: masterOutputNode.audioInputPorts[0].id,
+      ),
     );
   }
 
   factory ProcessingGraphModel.fromJson(Map<String, dynamic> json) =>
       _$ProcessingGraphModelAnthemModelMixin.fromJson(json);
+
+  void addNode(NodeModel node) {
+    nodes[node.id] = node;
+  }
+
+  void removeNode(String nodeId) {
+    nodes.remove(nodeId);
+  }
+
+  void addConnection(NodeConnectionModel connection) {
+    connections[connection.id] = connection;
+
+    final sourceNode = nodes[connection.sourceNodeId]!;
+    final sourceNodePort = sourceNode.getPortById(connection.sourcePortId);
+    sourceNodePort.connections.add(connection.id);
+
+    final destinationNode = nodes[connection.destinationNodeId];
+    final destinationNodePort =
+        destinationNode!.getPortById(connection.destinationPortId);
+    destinationNodePort.connections.add(connection.id);
+  }
+
+  void removeConnection(String connectionId) {
+    final connection = connections[connectionId]!;
+    final sourceNode = nodes[connection.sourceNodeId]!;
+    final sourceNodePort = sourceNode.getPortById(connection.sourcePortId);
+    sourceNodePort.connections.removeWhere((e) => e == connectionId);
+
+    final destinationNode = nodes[connection.destinationNodeId]!;
+    final destinationNodePort =
+        destinationNode.getPortById(connection.destinationPortId);
+    destinationNodePort.connections.removeWhere((e) => e == connectionId);
+
+    connections.remove(connectionId);
+  }
 }
 
 abstract class _ProcessingGraphModel with Store, AnthemModelBase {
+  /// A map of nodes in the graph.
+  ///
+  /// The key is the node ID.
+  ///
+  /// This should not be modified directly. Use [addNode] and [removeNode].
   @anthemObservable
   AnthemObservableMap<String, NodeModel> nodes = AnthemObservableMap();
 
+  /// A map of connections between nodes in the graph.
+  ///
+  /// The key is the connection ID.
+  ///
+  /// This should not be modified directly. Use [addConnection] and
+  /// [removeConnection].
   @anthemObservable
   AnthemObservableMap<String, NodeConnectionModel> connections =
       AnthemObservableMap();
