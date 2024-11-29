@@ -70,6 +70,28 @@ class NodeModel extends _NodeModel
 
   factory NodeModel.fromJson(Map<String, dynamic> json) =>
       _$NodeModelAnthemModelMixin.fromJson(json);
+
+  NodePortModel getPortById(int portId) {
+    for (final port in audioInputPorts) {
+      if (port.id == portId) return port;
+    }
+    for (final port in midiInputPorts) {
+      if (port.id == portId) return port;
+    }
+    for (final port in controlInputPorts) {
+      if (port.id == portId) return port;
+    }
+    for (final port in audioOutputPorts) {
+      if (port.id == portId) return port;
+    }
+    for (final port in midiOutputPorts) {
+      if (port.id == portId) return port;
+    }
+    for (final port in controlOutputPorts) {
+      if (port.id == portId) return port;
+    }
+    throw Exception('Port with id $portId not found');
+  }
 }
 
 abstract class _NodeModel with Store, AnthemModelBase {

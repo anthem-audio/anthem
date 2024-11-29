@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/collections.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
@@ -32,10 +33,14 @@ class NodePortModel extends _NodePortModel
     required super.id,
     required super.nodeId,
     required super.config,
-  });
+  }) : super(connections: AnthemObservableList());
 
   NodePortModel.uninitialized()
-      : super(id: -1, nodeId: '', config: NodePortConfigModel.uninitialized());
+      : super(
+            id: -1,
+            nodeId: '',
+            config: NodePortConfigModel.uninitialized(),
+            connections: AnthemObservableList());
 
   void init() {
     if (config.dataType == NodePortDataType.control) {
@@ -56,6 +61,8 @@ abstract class _NodePortModel with Store, AnthemModelBase {
 
   NodePortConfigModel config;
 
+  AnthemObservableList<String> connections;
+
   /// The value of the parameter, if this port is a control input port.
   @anthemObservable
   double? parameterValue;
@@ -64,5 +71,6 @@ abstract class _NodePortModel with Store, AnthemModelBase {
     required this.id,
     required this.nodeId,
     required this.config,
+    required this.connections,
   });
 }
