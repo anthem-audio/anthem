@@ -36,7 +36,7 @@ public:
   AnthemProcessContext* destinationNodeContext;
 
   // The type of this edge
-  AnthemGraphDataType type;
+  NodePortDataType type;
 
   // Whether this edge has been processed
   bool processed = false;
@@ -45,6 +45,6 @@ public:
     std::shared_ptr<AnthemGraphNodeConnection> edge,
     AnthemProcessContext* sourceNodeContext,
     AnthemProcessContext* destinationNodeContext,
-    AnthemGraphDataType type
+    NodePortDataType type
   ) : edgeSource(edge), sourceNodeContext(sourceNodeContext), destinationNodeContext(destinationNodeContext), type(type) {}
 };
