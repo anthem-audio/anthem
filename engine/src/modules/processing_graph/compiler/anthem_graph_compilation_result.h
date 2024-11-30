@@ -79,7 +79,7 @@ public:
   //       the node, which results in a use-after-free.
   std::vector<
     std::shared_ptr<
-      NodeModel
+      Node
     >
   > graphNodes;
 

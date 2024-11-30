@@ -47,11 +47,11 @@ private:
   std::unordered_map<int32_t, std::atomic<float>> parameterValues;
   std::unordered_map<int32_t, std::unique_ptr<LinearParameterSmoother>> parameterSmoothers;
 
-  std::weak_ptr<AnthemGraphNode> graphNode;
+  std::weak_ptr<Node> graphNode;
 public:
-  AnthemProcessContext(std::shared_ptr<NodeModel> graphNode, ArenaBufferAllocator<AnthemProcessorEvent>* eventAllocator);
+  AnthemProcessContext(std::shared_ptr<Node> graphNode, ArenaBufferAllocator<AnthemProcessorEvent>* eventAllocator);
 
-  std::shared_ptr<AnthemGraphNode> getGraphNode() {
+  std::shared_ptr<Node> getGraphNode() {
     // This function is for debugging. The graph node is mutated on the JUCE
     // message thread without any concern for thread safety, so we throw if
     // we're not on that thread.
