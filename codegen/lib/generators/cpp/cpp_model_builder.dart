@@ -55,11 +55,15 @@ class CppModelBuilder implements Builder {
 
     final libraryReader = LibraryReader(library);
 
-    final imports = <String>[];
+    // Header file definitions
+    final headerImports = <String>[];
     final forwardDeclarations = <String>[];
     final usingDirectives = <String>[];
     final moduleFileImports = <String>[]; // See note below
     final codeBlocks = <String>[];
+
+    // C++ file definitions
+    final cppFileImports = <String>[];
     final functionDefinitions = <String>[];
 
     // Note that module file imports are only used for module files. There is a
@@ -165,7 +169,7 @@ class CppModelBuilder implements Builder {
       if (modelClassInfo.annotation!.generateModelSync) {
         // The model sync code needs ModelUpdateRequest, which comes from the
         // messaging model
-        imports.add('#include "messages/messages.h"');
+        headerImports.add('#include "messages/messages.h"');
       }
 
       codeBlocks.add('// ${modelClassInfo.annotatedClass.name}\n\n');
@@ -175,12 +179,14 @@ class CppModelBuilder implements Builder {
         code: structsCode,
         forwardDeclarations: structsForwardDeclarations,
         usingDirectives: structUsingDirectives,
+        cppFileImports: structCppFileImports,
         functionDefinitions: structFunctionDefinitions,
       ) = _generateStructsForModel(modelClassInfo);
 
       codeBlocks.add(structsCode);
       forwardDeclarations.addAll(structsForwardDeclarations);
       usingDirectives.addAll(structUsingDirectives);
+      cppFileImports.addAll(structCppFileImports);
       functionDefinitions.addAll(structFunctionDefinitions);
 
       codeBlocks.add('\n\n\n');
@@ -282,7 +288,7 @@ class CppModelBuilder implements Builder {
             .toString()
             .replaceFirst('.dart', '.h')
             .replaceFirst('package:anthem/', 'generated/lib/');
-        imports.add('#include "$pathStr"');
+        headerImports.add('#include "$pathStr"');
       }
     }
 
@@ -296,6 +302,7 @@ class CppModelBuilder implements Builder {
         usingDirectives.isEmpty &&
         moduleFileImports.isEmpty &&
         codeBlocks.isEmpty &&
+        cppFileImports.isEmpty &&
         functionDefinitions.isEmpty) {
       return;
     }
@@ -323,12 +330,19 @@ class CppModelBuilder implements Builder {
 
 ''';
 
-    for (final import in imports) {
+    for (final import in headerImports) {
       headerCodeToWrite += import;
       headerCodeToWrite += '\n';
     }
 
     headerCodeToWrite += '\n';
+
+    for (final import in cppFileImports) {
+      cppCodeToWrite += import;
+      cppCodeToWrite += '\n';
+    }
+
+    cppCodeToWrite += '\n';
 
     // We forward declare all enums and structs at the top of the file, to
     // ensure that order doesn't matter when actually defining the structs and
@@ -423,10 +437,12 @@ String _generateEnum(EnumInfo enumInfo) {
   String code,
   List<String> forwardDeclarations,
   List<String> usingDirectives,
-  List<String> functionDefinitions
+  List<String> cppFileImports,
+  List<String> functionDefinitions,
 }) _generateStructsForModel(ModelClassInfo modelClassInfo) {
   final forwardDeclarations = <String>[];
   final usingDirectives = <String>[];
+  final cppFileImports = <String>[];
   final functionDefinitions = <String>[];
   final writer = Writer();
 
@@ -482,7 +498,10 @@ String _generateEnum(EnumInfo enumInfo) {
   writer.writeLine();
 
   if (generateModelSync && !generateWrapper) {
+    cppFileImports.addAll(getCppFileImports(modelClassInfo));
+
     writeModelSyncFnDeclaration(writer);
+    functionDefinitions.add(getInitializeFn(modelClassInfo));
     functionDefinitions.add(getModelSyncFn(modelClassInfo));
   }
 
@@ -551,6 +570,8 @@ String _generateEnum(EnumInfo enumInfo) {
     writer.writeLine();
 
     if (generateModelSync) {
+      cppFileImports.addAll(getCppFileImports(modelClassInfo));
+
       writeModelSyncFnDeclaration(writer);
       writer.writeLine();
 
@@ -592,14 +613,6 @@ String _generateEnum(EnumInfo enumInfo) {
     writer.decrementWhitespace();
     writer.writeLine('};');
     writer.writeLine();
-
-    // If we're using a custom-defined super class, we need to make sure that
-    // anyone who imports this file also imports the super class.
-    if (modelClassInfo.annotation?.cppBehaviorClassIncludePath != null) {
-      writer.writeLine(
-          '#include "${modelClassInfo.annotation!.cppBehaviorClassIncludePath}"');
-      writer.writeLine();
-    }
   }
 
   // If there are any sealed subclasses, generate structs for them as well.
@@ -665,6 +678,7 @@ String _generateEnum(EnumInfo enumInfo) {
     code: writer.result,
     forwardDeclarations: forwardDeclarations,
     usingDirectives: usingDirectives,
+    cppFileImports: cppFileImports,
     functionDefinitions: functionDefinitions,
   );
 }

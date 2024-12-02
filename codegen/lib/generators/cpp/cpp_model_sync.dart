@@ -884,7 +884,7 @@ void writeParentSetterForType({
 /// Writes code to set the parent fields for all children to this.
 ///
 /// This will be written to the constructor of the parent class.
-void writeParentSettersForInitializeFn({
+void _writeParentSettersForInitializeFn({
   required Writer writer,
   required ModelClassInfo context,
 }) {
@@ -921,10 +921,59 @@ String getInitializeFn(ModelClassInfo context) {
   writer.writeLine('AnthemModelBase::initialize(self, parent);');
   writer.writeLine();
 
-  writeParentSettersForInitializeFn(writer: writer, context: context);
+  _writeParentSettersForInitializeFn(writer: writer, context: context);
 
   writer.decrementWhitespace();
   writer.writeLine('}');
 
   return writer.result;
+}
+
+/// Returns a list of imports that are needed for the cpp file of the given
+/// model.
+///
+/// The header file will contain imports for any generated model files. The only
+/// imports that we need are for custom models that use a custom implementation
+/// subclass. The custom subclass will be forward-declared in the header file,
+/// but we need to include the actual implementation in the cpp file to avoid
+/// circular dependencies.
+Iterable<String> getCppFileImports(ModelClassInfo context) {
+  final typesThatNeedImports = <ModelClassInfo>{};
+
+  if (context.annotation?.cppBehaviorClassIncludePath != null) {
+    typesThatNeedImports.add(context);
+  }
+
+  void process(ModelType type) {
+    switch (type) {
+      case CustomModelType():
+        if (type.modelClassInfo.annotation?.cppBehaviorClassIncludePath !=
+            null) {
+          typesThatNeedImports.add(type.modelClassInfo);
+        }
+        break;
+      case ListModelType():
+        process(type.itemType);
+        break;
+      case MapModelType():
+        process(type.keyType);
+        process(type.valueType);
+        break;
+      default:
+        break;
+    }
+  }
+
+  for (var MapEntry(key: _, value: field) in context.fields.entries) {
+    if (field.hideAnnotation?.cpp == true) {
+      continue;
+    }
+
+    final type = field.typeInfo;
+
+    process(type);
+  }
+
+  return typesThatNeedImports.map(
+      (info) => '#include "${info.annotation!.cppBehaviorClassIncludePath}"');
 }
