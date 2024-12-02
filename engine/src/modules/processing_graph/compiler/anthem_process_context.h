@@ -29,6 +29,7 @@
 #include "modules/processing_graph/processor/anthem_event_buffer.h"
 #include "generated/lib/model/model.h"
 #include "modules/util/linear_parameter_smoother.h"
+#include "modules/processing_graph/model/node.h"
 
 // This class acts as a context for node graph processors. It is passed to the
 // `process()` method of each `AnthemProcessor`, and provides a way to query
@@ -44,12 +45,13 @@ private:
   std::unordered_map<int32_t, AnthemEventBuffer> inputNoteEventBuffers;
   std::unordered_map<int32_t, AnthemEventBuffer> outputNoteEventBuffers;
 
-  std::unordered_map<int32_t, std::atomic<float>> parameterValues;
+  std::unordered_map<int32_t, std::atomic<float>*> parameterValues;
   std::unordered_map<int32_t, std::unique_ptr<LinearParameterSmoother>> parameterSmoothers;
 
   std::weak_ptr<Node> graphNode;
 public:
-  AnthemProcessContext(std::shared_ptr<Node> graphNode, ArenaBufferAllocator<AnthemProcessorEvent>* eventAllocator);
+  AnthemProcessContext(std::shared_ptr<Node>& graphNode, ArenaBufferAllocator<AnthemProcessorEvent>* eventAllocator);
+  ~AnthemProcessContext();
 
   std::shared_ptr<Node> getGraphNode() {
     // This function is for debugging. The graph node is mutated on the JUCE
@@ -92,7 +94,7 @@ public:
   size_t getNumInputNoteEventBuffers();
   size_t getNumOutputNoteEventBuffers();
 
-  std::unordered_map<int32_t, std::atomic<float>>& getParameterValues() {
+  std::unordered_map<int32_t, std::atomic<float>*>& getParameterValues() {
     return parameterValues;
   }
 

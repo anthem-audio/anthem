@@ -21,6 +21,7 @@
 
 #include <memory>
 
+#include "generated/lib/model/model.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
 #include "modules/processing_graph/topology/anthem_graph_node_port.h"
 
@@ -47,14 +48,5 @@ public:
 
   void process(AnthemProcessContext& context, int numSamples) override;
 
-  void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override {
-    ToneGeneratorProcessorModelBase::initialize(self, parent);
-
-    AnthemProcessor::assignProcessorToNode(
-      this->nodeId(),
-      std::static_pointer_cast<AnthemProcessor>(
-        std::static_pointer_cast<ToneGeneratorProcessor>(self)
-      )
-    );
-  }
+  void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override;
 };
