@@ -106,3 +106,14 @@ void ToneGeneratorProcessor::process(AnthemProcessContext& context, int numSampl
     phase = std::fmod((phase + (frequency / sampleRate)), 1.0);
   }
 }
+
+void ToneGeneratorProcessor::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) {
+  ToneGeneratorProcessorModelBase::initialize(self, parent);
+
+  AnthemProcessor::assignProcessorToNode(
+    this->nodeId(),
+    std::static_pointer_cast<AnthemProcessor>(
+      std::static_pointer_cast<ToneGeneratorProcessor>(self)
+    )
+  );
+}

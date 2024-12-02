@@ -21,41 +21,50 @@
 
 #include "modules/core/constants.h"
 
-AnthemProcessContext::AnthemProcessContext(Node& graphNode, ArenaBufferAllocator<AnthemProcessorEvent>* eventAllocator) : graphNode(graphNode) {
-  for (auto& port : graphNode.audioInputPorts()) {
+AnthemProcessContext::AnthemProcessContext(std::shared_ptr<Node>& graphNode, ArenaBufferAllocator<AnthemProcessorEvent>* eventAllocator) : graphNode(graphNode) {
+  for (auto& port : *graphNode->audioInputPorts()) {
     inputAudioBuffers[port->id()] = juce::AudioSampleBuffer(2, MAX_AUDIO_BUFFER_SIZE);
   }
 
-  for (auto& port : graphNode.audioOutputPorts()) {
+  for (auto& port : *graphNode->audioOutputPorts()) {
     outputAudioBuffers[port->id()] = juce::AudioSampleBuffer(2, MAX_AUDIO_BUFFER_SIZE);
   }
 
-  for (auto& port : graphNode.controlInputPorts()) {
+  for (auto& port : *graphNode->controlInputPorts()) {
     inputControlBuffers[port->id()] = juce::AudioSampleBuffer(1, MAX_AUDIO_BUFFER_SIZE);
   }
 
-  for (auto& port : graphNode.controlOutputPorts()) {
+  for (auto& port : *graphNode->controlOutputPorts()) {
     outputControlBuffers[port->id()] = juce::AudioSampleBuffer(1, MAX_AUDIO_BUFFER_SIZE);
   }
 
-  for (auto& port : graphNode.midiInputPorts()) {
+  for (auto& port : *graphNode->midiInputPorts()) {
     inputNoteEventBuffers[port->id()] = AnthemEventBuffer(eventAllocator, 1024);
   }
 
-  for (auto& port : graphNode.midiOutputPorts()) {
+  for (auto& port : *graphNode->midiOutputPorts()) {
     outputNoteEventBuffers[port->id()] = AnthemEventBuffer(eventAllocator, 1024);
   }
 
-  for (auto& port : graphNode.controlInputPorts()) {
-    parameterValues[port->id()] = std::atomic<float>(port->parameterValue().value_or(0.0f));
+  for (auto& port : *graphNode->controlInputPorts()) {
+    parameterValues[port->id()] = new std::atomic<float>(port->parameterValue().value_or(0.0f));
   }
 
-  for (auto& port : graphNode.controlInputPorts()) {
+  for (auto& port : *graphNode->controlInputPorts()) {
     auto parameterValue = port->parameterValue().value_or(0.0f);
     auto& parameterConfig = port->config()->parameterConfig();
 
-    auto smoother = std::make_unique<LinearParameterSmoother>(parameterValue, parameterConfig.smoothingDurationSeconds());
+    auto smoother = std::make_unique<LinearParameterSmoother>(parameterValue, parameterConfig.value()->smoothingDurationSeconds());
     parameterSmoothers[port->id()] = std::move(smoother);
+  }
+
+  this->graphNode = graphNode;
+}
+
+AnthemProcessContext::~AnthemProcessContext() {
+  // Delete the atomic floats
+  for (auto& [id, value] : parameterValues) {
+    delete value;
   }
 }
 
@@ -66,11 +75,11 @@ void AnthemProcessContext::setParameterValue(int32_t id, float value) {
     throw std::runtime_error("AnthemProcessContext::setParameterValue() must be called on the JUCE message thread.");
   }
 
-  parameterValues[id].store(value);
+  parameterValues[id]->store(value);
 }
 
 float AnthemProcessContext::getParameterValue(int32_t id) {
-  return parameterValues[id].load();
+  return parameterValues[id]->load();
 }
 
 void AnthemProcessContext::setAllInputAudioBuffers(const std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers) {

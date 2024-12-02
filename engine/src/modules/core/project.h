@@ -20,6 +20,7 @@
 #pragma once
 
 #include "generated/lib/model/project.h"
+#include "song.h"
 
 class Project : public ProjectModelBase {
 public:

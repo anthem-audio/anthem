@@ -26,7 +26,7 @@ void WriteParametersToControlInputsAction::execute(int numSamples) {
   // Set smoother targets to current parameter values
   for (int i = 0; i < parameterSmoothers.size(); i++) {
     auto& smoother = parameterSmoothers[i];
-    auto value = parameterValues[i].load();
+    auto value = parameterValues[i]->load();
 
     if (smoother->getTargetValue() != value) {
       smoother->setTargetValue(value);
