@@ -18,8 +18,11 @@
 */
 
 #include "anthem_audio_callback.h"
+#include "modules/core/anthem.h"
 
-AnthemAudioCallback::AnthemAudioCallback() {
+AnthemAudioCallback::AnthemAudioCallback(Anthem* anthem) {
+  this->anthem = anthem;
+
   masterOutputProcessorSharedPtr = Anthem::getInstance().project->processingGraph()->masterOutput();
   masterOutputProcessor = masterOutputProcessorSharedPtr.get();
 }
@@ -34,7 +37,7 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
 ) {
   jassert(numSamples <= MAX_AUDIO_BUFFER_SIZE);
 
-  masterOutputProcessor->process(numSamples);
+  anthem->graphProcessor->process(numSamples);
 
   auto& outputBuffer = masterOutputProcessor->buffer;
   

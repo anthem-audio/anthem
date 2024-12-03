@@ -27,7 +27,10 @@ std::shared_ptr<Anthem> Anthem::instance = nullptr;
 Anthem::Anthem() {
   isAudioCallbackRunning = false;
 
-  processingGraph = std::make_shared<AnthemGraph>();
+  compiler = std::make_unique<AnthemGraphCompiler>();
+  graphProcessor = std::make_unique<AnthemGraphProcessor>();
+
+  audioCallback = std::make_unique<AnthemAudioCallback>(this);
 }
 
 void Anthem::startAudioCallback() {
@@ -43,4 +46,9 @@ void Anthem::startAudioCallback() {
 
   // Set up the audio callback
   this->deviceManager.addAudioCallback(this->audioCallback.get());
+}
+
+void Anthem::compileProcessingGraph() {
+  auto result = compiler->compile();
+  graphProcessor->setProcessingStepsFromMainThread(result);
 }

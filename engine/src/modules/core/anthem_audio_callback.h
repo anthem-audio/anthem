@@ -23,10 +23,10 @@
 
 #include <juce_audio_devices/juce_audio_devices.h>
 
-#include "modules/core/anthem.h"
-#include "modules/processing_graph/anthem_graph.h"
 #include "modules/core/constants.h"
 #include "modules/processors/master_output.h"
+
+class Anthem;
 
 class AnthemAudioCallback : public juce::AudioIODeviceCallback
 {
@@ -37,8 +37,13 @@ private:
   std::shared_ptr<MasterOutputProcessor> masterOutputProcessorSharedPtr;
 
   MasterOutputProcessor* masterOutputProcessor;
+
+  // We will assume the Anthem application class is always available. This is
+  // normally stored in a shared_ptr, which we can't use from the audio thread
+  // since it's not real-time safe.
+  Anthem* anthem;
 public:
-  AnthemAudioCallback();
+  AnthemAudioCallback(Anthem* anthem);
 
   void audioDeviceIOCallbackWithContext(const float* const* inputChannelData,
                                                    int numInputChannels,

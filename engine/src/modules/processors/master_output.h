@@ -25,8 +25,6 @@
 
 #include "modules/core/constants.h"
 #include "modules/processing_graph/topology/anthem_graph_node.h"
-#include "modules/processing_graph/processor/anthem_processor.h"
-#include "modules/core/anthem.h"
 #include "generated/lib/model/processing_graph/processors/master_output.h"
 
 class MasterOutputProcessor : public AnthemProcessor, public MasterOutputProcessorModelBase {

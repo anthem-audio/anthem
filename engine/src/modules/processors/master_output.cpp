@@ -19,11 +19,13 @@
 
 #include "master_output.h"
 
+#include "modules/core/anthem.h"
+
 #include <iostream>
 
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 
-MasterOutputProcessor::MasterOutputProcessor(MasterOutputProcessorModelImpl& _impl)
+MasterOutputProcessor::MasterOutputProcessor(const MasterOutputProcessorModelImpl& _impl)
       : AnthemProcessor("MasterOutput"), MasterOutputProcessorModelBase(_impl) {
   buffer = juce::AudioSampleBuffer(Anthem::NUM_CHANNELS, MAX_AUDIO_BUFFER_SIZE);
 
