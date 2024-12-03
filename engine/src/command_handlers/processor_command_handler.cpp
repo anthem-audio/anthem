@@ -23,7 +23,12 @@ std::optional<Response> handleProcessorCommand(Request& request) {
   auto& anthem = Anthem::getInstance();
 
   if (rfl::holds_alternative<SetParameterRequest>(request.variant())) {
-    auto& setParameterRequest = rfl::get<SetParameterRequest>(request.variant());
+    // TODO: Validate that parameter changes are picked up and forwarded to the audio thread
+		// they probably aren't right now
+
+    // TODO: Remove this request
+
+    /*auto& setParameterRequest = rfl::get<SetParameterRequest>(request.variant());
 
     auto nodeId = setParameterRequest.nodeId;
     auto parameterId = setParameterRequest.parameterId;
@@ -36,7 +41,9 @@ std::optional<Response> handleProcessorCommand(Request& request) {
       .responseBase = ResponseBase {
         .id = setParameterRequest.requestBase.get().id
       }
-    });
+    });*/
+
+    return std::nullopt;
   }
 
   return std::nullopt;

@@ -53,9 +53,10 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
   size_t totalEventPorts = 0;
 
   // Get the total number of event ports in the graph.
-  for (auto& node : processingGraphModel->nodes()) {
-    totalEventPorts += node->midiInputPorts->size();
-    totalEventPorts += node->midiOutputPorts->size();
+  for (auto& nodePair : *processingGraphModel->nodes()) {
+    auto& node = nodePair.second;
+    totalEventPorts += node->midiInputPorts()->size();
+    totalEventPorts += node->midiOutputPorts()->size();
   }
 
   // Create a buffer allocator for events, and allocate double the size of the
@@ -70,7 +71,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
     );
 
   // Create contexts for each node
-  for (auto& pair : processingGraphModel->nodes()) {
+  for (auto& pair : *processingGraphModel->nodes()) {
     auto& node = pair.second;
 
     auto context = new AnthemProcessContext(node, result->eventAllocator.get());
@@ -225,7 +226,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
         auto destinationPort = edge->edgeSource->destination;
 
         switch (edge->type) {
-          case AnthemGraphDataType::Audio:
+          case NodePortDataType::audio:
             actions->push_back(
               std::make_unique<CopyAudioBufferAction>(
                 edge->sourceNodeContext,
@@ -235,7 +236,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
               )
             );
             break;
-          case AnthemGraphDataType::Midi:
+          case NodePortDataType::midi:
             actions->push_back(
               std::make_unique<CopyNoteEventsAction>(
                 edge->sourceNodeContext,
@@ -245,7 +246,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
               )
             );
             break;
-          case AnthemGraphDataType::Control:
+          case NodePortDataType::control:
             actions->push_back(
               std::make_unique<CopyControlBufferAction>(
                 edge->sourceNodeContext,

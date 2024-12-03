@@ -58,7 +58,7 @@ void AnthemGraph::sendCompiledGraphToProcessor(AnthemGraphCompilationResult* com
 }
 
 void AnthemGraph::compile() {
-  sendCompiledGraphToProcessor(compiler->compile(*topology));
+  sendCompiledGraphToProcessor(compiler->compile());
 }
 
 void AnthemGraph::debugPrint() {

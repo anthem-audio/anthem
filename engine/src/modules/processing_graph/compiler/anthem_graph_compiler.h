@@ -63,5 +63,5 @@
 // instructions that can be executed in a real-time context.
 class AnthemGraphCompiler {
 public:
-  static AnthemGraphCompilationResult* compile(AnthemGraphTopology& topology);
+  static AnthemGraphCompilationResult* compile();
 };
