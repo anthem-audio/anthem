@@ -951,6 +951,18 @@ Iterable<String> getCppFileImports(ModelClassInfo context) {
             null) {
           typesThatNeedImports.add(type.modelClassInfo);
         }
+
+        // Reflect-cpp is based on compile-time reflection. When it
+        // deserializes a model (e.g. ProjectModel), it will need to have
+        // access to the types of all fields in that model, but also of all
+        // fields in any child models. This means that we need to recursively
+        // process all child models to ensure that, if they have a custom
+        // implementation, that implementation is included in the cpp file.
+        for (var MapEntry(key: _, value: field)
+            in type.modelClassInfo.fields.entries) {
+          process(field.typeInfo);
+        }
+
         break;
       case ListModelType():
         process(type.itemType);
