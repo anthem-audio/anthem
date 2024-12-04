@@ -19,6 +19,8 @@
 
 #include "anthem_graph_compiler.h"
 
+#include "modules/core/anthem.h"
+
 #include <iostream>
 
 // See the header file for an overview of the graph processing algorithm. Each
