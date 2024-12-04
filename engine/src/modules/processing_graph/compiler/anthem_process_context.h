@@ -42,8 +42,8 @@ private:
   std::unordered_map<int32_t, juce::AudioSampleBuffer> inputControlBuffers;
   std::unordered_map<int32_t, juce::AudioSampleBuffer> outputControlBuffers;
 
-  std::unordered_map<int32_t, AnthemEventBuffer> inputNoteEventBuffers;
-  std::unordered_map<int32_t, AnthemEventBuffer> outputNoteEventBuffers;
+  std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>> inputNoteEventBuffers;
+  std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>> outputNoteEventBuffers;
 
   std::unordered_map<int32_t, std::atomic<float>*> parameterValues;
   std::unordered_map<int32_t, std::unique_ptr<LinearParameterSmoother>> parameterSmoothers;
@@ -67,8 +67,8 @@ public:
   void setParameterValue(int32_t id, float value);
   float getParameterValue(int32_t id);
 
-  void setAllInputAudioBuffers(const std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers);
-  void setAllOutputAudioBuffers(const std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers);
+  void setAllInputAudioBuffers(std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers);
+  void setAllOutputAudioBuffers(std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers);
 
   juce::AudioSampleBuffer& getInputAudioBuffer(int32_t id);
   juce::AudioSampleBuffer& getOutputAudioBuffer(int32_t id);
@@ -76,8 +76,8 @@ public:
   size_t getNumInputAudioBuffers();
   size_t getNumOutputAudioBuffers();
 
-  void setAllInputControlBuffers(const std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers);
-  void setAllOutputControlBuffers(const std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers);
+  void setAllInputControlBuffers(std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers);
+  void setAllOutputControlBuffers(std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers);
 
   juce::AudioSampleBuffer& getInputControlBuffer(int32_t id);
   juce::AudioSampleBuffer& getOutputControlBuffer(int32_t id);
@@ -85,11 +85,11 @@ public:
   size_t getNumInputControlBuffers();
   size_t getNumOutputControlBuffers();
 
-  void setAllInputNoteEventBuffers(const std::unordered_map<int32_t, AnthemEventBuffer>& buffers);
-  void setAllOutputNoteEventBuffers(const std::unordered_map<int32_t, AnthemEventBuffer>& buffers);
+  void setAllInputNoteEventBuffers(std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& buffers);
+  void setAllOutputNoteEventBuffers(std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& buffers);
 
-  AnthemEventBuffer& getInputNoteEventBuffer(int32_t id);
-  AnthemEventBuffer& getOutputNoteEventBuffer(int32_t id);
+  std::unique_ptr<AnthemEventBuffer>& getInputNoteEventBuffer(int32_t id);
+  std::unique_ptr<AnthemEventBuffer>& getOutputNoteEventBuffer(int32_t id);
 
   size_t getNumInputNoteEventBuffers();
   size_t getNumOutputNoteEventBuffers();
