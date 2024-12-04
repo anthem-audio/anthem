@@ -39,7 +39,7 @@ void Anthem::startAudioCallback() {
     return;
   }
 
-  audioCallback = std::make_unique<AnthemAudioCallback>();
+  audioCallback = std::make_unique<AnthemAudioCallback>(this);
 
   // Initialize the audio device manager with 2 input and 2 output channels
   this->deviceManager.initialiseWithDefaultDevices(2, 2);

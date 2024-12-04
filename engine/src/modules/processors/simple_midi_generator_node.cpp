@@ -48,7 +48,7 @@ void SimpleMidiGeneratorNode::process(AnthemProcessContext& context, int numSamp
     currentNote = 50;
     currentNoteId = 0;
     currentNoteDuration = 0;
-    midiOutBuffer.addEvent({
+    midiOutBuffer->addEvent({
       AnthemProcessorEventType::NoteOn,
       NoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f, currentNoteId)
     });
@@ -73,7 +73,7 @@ void SimpleMidiGeneratorNode::process(AnthemProcessContext& context, int numSamp
       };
       noteOffEvent.noteOff = NoteOffEvent(currentNote, 0, 0.0f, currentNoteId);
 
-      midiOutBuffer.addEvent(noteOffEvent);
+      midiOutBuffer->addEvent(noteOffEvent);
 
       currentNoteId++;
       currentNoteDuration = 0;
@@ -89,7 +89,7 @@ void SimpleMidiGeneratorNode::process(AnthemProcessContext& context, int numSamp
       };
       noteOnEvent.noteOn = NoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f, currentNoteId);
 
-      midiOutBuffer.addEvent(noteOnEvent);
+      midiOutBuffer->addEvent(noteOnEvent);
     }
   }
 }
