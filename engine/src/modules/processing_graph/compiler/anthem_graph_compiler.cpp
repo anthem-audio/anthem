@@ -224,17 +224,33 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
     // Step 4: Process connections
     for (auto& node : nodesToRemoveFromProcessing) {
       for (auto& edge : node->outputEdges) {
-        auto sourcePort = edge->edgeSource->source;
-        auto destinationPort = edge->edgeSource->destination;
+        auto& sourceNodeId = edge->edgeSource->sourceNodeId();
+        auto& destinationNodeId = edge->edgeSource->destinationNodeId();
+        auto& sourcePortId = edge->edgeSource->sourcePortId();
+        auto& destinationPortId = edge->edgeSource->destinationPortId();
+
+        auto& sourceNode = processingGraphModel->nodes()->at(sourceNodeId);
+        auto& destinationNode = processingGraphModel->nodes()->at(destinationNodeId);
+
+        auto sourcePortResult = sourceNode->getPortById(sourcePortId);
+        auto destinationPortResult = destinationNode->getPortById(destinationPortId);
+
+        if (!sourcePortResult.has_value() || !destinationPortResult.has_value()) {
+          std::cout << "Error: Could not find source or destination port" << std::endl;
+          continue;
+        }
+
+        auto& sourcePort = sourcePortResult.value();
+        auto& destinationPort = destinationPortResult.value();
 
         switch (edge->type) {
           case NodePortDataType::audio:
             actions->push_back(
               std::make_unique<CopyAudioBufferAction>(
                 edge->sourceNodeContext,
-                sourcePort.lock()->index,
+                sourcePort->id(),
                 edge->destinationNodeContext,
-                destinationPort.lock()->index
+                destinationPort->id()
               )
             );
             break;
@@ -242,19 +258,25 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
             actions->push_back(
               std::make_unique<CopyNoteEventsAction>(
                 edge->sourceNodeContext,
-                sourcePort.lock()->index,
+                sourcePort->id(),
                 edge->destinationNodeContext,
-                destinationPort.lock()->index
+                destinationPort->id()
               )
             );
             break;
           case NodePortDataType::control:
+            auto& portParameterConfig = sourcePort->config()->parameterConfig().value();
+            auto minParameterValue = (float) portParameterConfig->minimumValue();
+            auto maxParameterValue = (float) portParameterConfig->maximumValue();
+
             actions->push_back(
               std::make_unique<CopyControlBufferAction>(
                 edge->sourceNodeContext,
-                sourcePort.lock()->index,
+                sourcePort->id(),
                 edge->destinationNodeContext,
-                destinationPort.lock()->index
+                destinationPort->id(),
+                minParameterValue,
+                maxParameterValue
               )
             );
             break;

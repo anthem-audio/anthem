@@ -21,6 +21,8 @@
 
 #include "generated/lib/model/processing_graph/node.h"
 
+#include <optional>
+
 class AnthemProcessContext;
 class AnthemProcessor;
 
@@ -43,4 +45,6 @@ public:
 
     std::cout << "NODE INITIALIZE" << std::endl;
   }
+
+  std::optional<std::shared_ptr<NodePortModel>> getPortById(int32_t id);
 };

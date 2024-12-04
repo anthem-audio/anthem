@@ -20,15 +20,15 @@
 #include "copy_note_events_action.h"
 
 void CopyNoteEventsAction::execute([[maybe_unused]] int numSamples) {
-  auto& sourceBuffer = this->source->getOutputNoteEventBuffer(this->sourcePort);
-  auto& destinationBuffer = this->destination->getInputNoteEventBuffer(this->destinationPort);
+  auto& sourceBuffer = this->source->getOutputNoteEventBuffer(this->sourcePortId);
+  auto& destinationBuffer = this->destination->getInputNoteEventBuffer(this->destinationPortId);
 
   // Ensure the buffers have the same size
-  jassert(sourceBuffer.getNumEvents() == destinationBuffer.getNumEvents());
+  jassert(sourceBuffer->getNumEvents() == destinationBuffer->getNumEvents());
 
-  for (int event = 0; event < sourceBuffer.getNumEvents(); ++event) {
+  for (int event = 0; event < sourceBuffer->getNumEvents(); ++event) {
     // Copy the event from the source buffer to the destination buffer
-    destinationBuffer.addEvent(sourceBuffer.getEvent(event));
+    destinationBuffer->addEvent(sourceBuffer->getEvent(event));
   }
 }
 

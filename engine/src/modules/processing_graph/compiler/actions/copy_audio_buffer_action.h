@@ -30,17 +30,17 @@
 class CopyAudioBufferAction : public AnthemGraphCompilerAction {
 public:
   AnthemProcessContext* source;
-  int sourcePort;
+  int32_t sourcePortId;
 
   AnthemProcessContext* destination;
-  int destinationPort;
+  int32_t destinationPortId;
 
   CopyAudioBufferAction(
     AnthemProcessContext* source,
-    int sourcePort,
+    int32_t sourcePortId,
     AnthemProcessContext* destination,
-    int destinationPort
-  ) : source(source), sourcePort(sourcePort), destination(destination), destinationPort(destinationPort) {}
+    int32_t destinationPortId
+  ) : source(source), sourcePortId(sourcePortId), destination(destination), destinationPortId(destinationPortId) {}
 
   void execute(int numSamples) override;
 

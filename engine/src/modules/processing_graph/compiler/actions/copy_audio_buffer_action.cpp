@@ -22,8 +22,8 @@
 #include <iostream>
 
 void CopyAudioBufferAction::execute(int numSamples) {
-  auto& sourceBuffer = this->source->getOutputAudioBuffer(this->sourcePort);
-  auto& destinationBuffer = this->destination->getInputAudioBuffer(this->destinationPort);
+  auto& sourceBuffer = this->source->getOutputAudioBuffer(this->sourcePortId);
+  auto& destinationBuffer = this->destination->getInputAudioBuffer(this->destinationPortId);
 
   // Ensure the buffers have the same number of channels and the same size
   jassert(sourceBuffer.getNumChannels() == destinationBuffer.getNumChannels());
