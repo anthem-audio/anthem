@@ -29,12 +29,12 @@ void ClearBuffersAction::execute(int) {
 
   for (int i = 0; i < this->context->getNumInputNoteEventBuffers(); i++) {
     auto& buffer = this->context->getInputNoteEventBuffer(i);
-    buffer.clear();
+    buffer->clear();
   }
 
   for (int i = 0; i < this->context->getNumOutputNoteEventBuffers(); i++) {
     auto& buffer = this->context->getOutputNoteEventBuffer(i);
-    buffer.clear();
+    buffer->clear();
   }
 }
 
