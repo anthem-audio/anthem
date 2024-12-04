@@ -46,7 +46,6 @@
 #include "modules/processing_graph/events/anthem_processor_event.h"
 #include "modules/processing_graph/topology/anthem_graph_topology.h"
 #include "modules/util/arena_allocator.h"
-#include "modules/core/anthem.h"
 #include "generated/lib/model/model.h"
 
 #include "anthem_graph_compilation_result.h"
