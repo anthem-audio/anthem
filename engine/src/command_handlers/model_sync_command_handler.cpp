@@ -19,6 +19,10 @@
 
 #include "model_sync_command_handler.h"
 
+// I have absolutely no idea why this import is required, but reflect-cpp won't
+// compile the deserialization call without it.
+#include "modules/processors/tone_generator.h"
+
 #include <string>
 
 std::optional<Response> handleModelSyncCommand(Request& request) {
@@ -34,6 +38,8 @@ std::optional<Response> handleModelSyncCommand(Request& request) {
     auto result = rfl::json::read<std::shared_ptr<Project>>(
       modelInitRequest.serializedModel
     );
+
+    // auto result = Project::fromJson(modelInitRequest.serializedModel);
 
     auto err = result.error();
 
