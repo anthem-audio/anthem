@@ -74,8 +74,8 @@ void ToneGeneratorProcessor::process(AnthemProcessContext& context, int numSampl
   // Process incoming MIDI events
   auto& midiInBuffer = context.getInputNoteEventBuffer(0);
 
-  for (size_t i = 0; i < midiInBuffer.getNumEvents(); ++i) {
-    auto& event = midiInBuffer.getEvent(i);
+  for (size_t i = 0; i < midiInBuffer->getNumEvents(); ++i) {
+    auto& event = midiInBuffer->getEvent(i);
 
     if (event.type == AnthemProcessorEventType::NoteOn) {
       hasNoteOverride = true;
