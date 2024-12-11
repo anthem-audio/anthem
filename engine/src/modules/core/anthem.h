@@ -63,6 +63,8 @@ public:
 
   Anthem();
 
+	void initialize();
+
   // Singleton instance getter
   static std::shared_ptr<Anthem> getInstancePtr() {
     if (!instance) {

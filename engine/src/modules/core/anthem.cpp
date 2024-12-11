@@ -26,11 +26,11 @@ std::shared_ptr<Anthem> Anthem::instance = nullptr;
 
 Anthem::Anthem() {
   isAudioCallbackRunning = false;
+}
 
+void Anthem::initialize() {
   compiler = std::make_unique<AnthemGraphCompiler>();
   graphProcessor = std::make_unique<AnthemGraphProcessor>();
-
-  audioCallback = std::make_unique<AnthemAudioCallback>(this);
 }
 
 void Anthem::startAudioCallback() {
