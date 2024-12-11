@@ -383,7 +383,7 @@ public:
     std::cin.get();
 
     std::cout << "Starting Anthem engine..." << std::endl;
-    Anthem::getInstance();
+    Anthem::getInstance().initialize();
 
     // This starts the message loop in a thread. The message loop thread
     // communicates back to the main thread every time it receives a
