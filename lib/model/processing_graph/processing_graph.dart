@@ -57,6 +57,12 @@ class ProcessingGraphModel extends _ProcessingGraphModel
         destinationPortId: masterOutputNode.audioInputPorts[0].id,
       ),
     );
+
+    // Send a message to compile the processing graph after the model sync
+    // commands have been generated
+    Future.microtask(() async {
+      await project.engine.processingGraphApi.compile();
+    });
   }
 
   factory ProcessingGraphModel.fromJson(Map<String, dynamic> json) =>

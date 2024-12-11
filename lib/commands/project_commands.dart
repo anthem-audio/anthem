@@ -39,7 +39,6 @@ Future<void> _removeGenerator(ProjectModel project, Id generatorID) async {
       generator.processor.idInEngine != null) {
     await project.engine.processingGraphApi
         .removeProcessor(generator.processor.idInEngine!);
-    await project.engine.processingGraphApi.compile();
   }
 }
 
@@ -108,7 +107,6 @@ class RemoveGeneratorCommand extends Command {
 
     if (generator.generatorType == GeneratorType.instrument) {
       await generator.createInEngine(project.engine);
-      await project.engine.processingGraphApi.compile();
     }
   }
 }
