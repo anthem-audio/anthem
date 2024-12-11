@@ -58,9 +58,9 @@ void AnthemGraphProcessor::process(int numSamples) {
 
   // The audio thread can't do anything until it receives the first graph
   // compilation result.
-	if (this->processingSteps == nullptr) {
-		return;
-	}
+  if (this->processingSteps == nullptr) {
+    return;
+  }
 
   auto& actionGroups = this->processingSteps->actionGroups;
 

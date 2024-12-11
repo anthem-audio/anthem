@@ -24,7 +24,7 @@ std::optional<Response> handleProcessorCommand(Request& request) {
 
   if (rfl::holds_alternative<SetParameterRequest>(request.variant())) {
     // TODO: Validate that parameter changes are picked up and forwarded to the audio thread
-		// they probably aren't right now
+    // they probably aren't right now
 
     // TODO: Remove this request
 
