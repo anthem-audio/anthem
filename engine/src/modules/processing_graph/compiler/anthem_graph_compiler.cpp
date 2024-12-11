@@ -21,6 +21,8 @@
 
 #include "modules/core/anthem.h"
 
+#include "generated/lib/model/model.h"
+
 #include <iostream>
 
 // See the header file for an overview of the graph processing algorithm. Each
