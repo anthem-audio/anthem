@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:anthem/commands/command.dart';
@@ -186,6 +187,13 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     hydrate();
   }
 
+  @hide
+  final _modelSyncCompleter = Completer<void>();
+
+  /// Waits for the model to be synced with the engine. If the model is already
+  /// synced, this will return immediately.
+  Future<void> waitForFirstSync() => _modelSyncCompleter.future;
+
   /// This function is run after deserialization. It allows us to do some setup
   /// that the deserialization step can't do for us.
   void hydrate() {
@@ -201,6 +209,10 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
           jsonEncode((this as _$ProjectModelAnthemModelMixin)
               .toJson(includeFieldsForEngine: true)),
         );
+        // We won't wait for the engine to acknowledge this before saying that
+        // we're synced, since any subsequent messages will be processed after
+        // the engine has finished processing the init request.
+        _modelSyncCompleter.complete();
 
         _fieldChangedListener = (accesses, operation) {
           String? serializeMapKey(dynamic key) {

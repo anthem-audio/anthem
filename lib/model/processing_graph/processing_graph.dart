@@ -58,9 +58,10 @@ class ProcessingGraphModel extends _ProcessingGraphModel
       ),
     );
 
-    // Send a message to compile the processing graph after the model sync
-    // commands have been generated
-    Future.microtask(() async {
+    // Send a message to compile the processing graph after the model has been
+    // sent to the engine
+    onModelAttached(() async {
+      await project.waitForFirstSync();
       await project.engine.processingGraphApi.compile();
     });
   }
