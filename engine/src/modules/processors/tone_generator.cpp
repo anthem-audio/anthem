@@ -66,13 +66,13 @@ ToneGeneratorProcessor::ToneGeneratorProcessor(const ToneGeneratorProcessorModel
 ToneGeneratorProcessor::~ToneGeneratorProcessor() {}
 
 void ToneGeneratorProcessor::process(AnthemProcessContext& context, int numSamples) {
-  auto& audioOutBuffer = context.getOutputAudioBuffer(0);
+  auto& audioOutBuffer = context.getOutputAudioBuffer(ToneGeneratorProcessorModelBase::audioOutputPortId);
 
-  auto& frequencyControlBuffer = context.getInputControlBuffer(0);
-  auto& amplitudeControlBuffer = context.getInputControlBuffer(1);
+  auto& frequencyControlBuffer = context.getInputControlBuffer(ToneGeneratorProcessorModelBase::frequencyPortId);
+  auto& amplitudeControlBuffer = context.getInputControlBuffer(ToneGeneratorProcessorModelBase::amplitudePortId);
 
   // Process incoming MIDI events
-  auto& midiInBuffer = context.getInputNoteEventBuffer(0);
+  auto& midiInBuffer = context.getInputNoteEventBuffer(ToneGeneratorProcessorModelBase::midiInputPortId);
 
   for (size_t i = 0; i < midiInBuffer->getNumEvents(); ++i) {
     auto& event = midiInBuffer->getEvent(i);

@@ -60,18 +60,46 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
       id: id,
       audioOutputPorts: AnthemObservableList.of([
         NodePortModel(
-          id: 0,
+          nodeId: id,
+          id: _ToneGeneratorProcessorModel.audioOutputPortId,
+          config: NodePortConfigModel(dataType: NodePortDataType.audio),
+        ),
+      ]),
+      controlInputPorts: AnthemObservableList.of([
+        NodePortModel(
+          nodeId: id,
+          id: _ToneGeneratorProcessorModel.frequencyPortId,
           config: NodePortConfigModel(
             dataType: NodePortDataType.audio,
             parameterConfig: ParameterConfigModel(
-              id: 0,
+              id: _ToneGeneratorProcessorModel.frequencyPortId,
               defaultValue: 440,
               minimumValue: 1,
               maximumValue: 22500,
               smoothingDurationSeconds: 0.5,
             ),
           ),
+        ),
+        NodePortModel(
           nodeId: id,
+          id: _ToneGeneratorProcessorModel.amplitudePortId,
+          config: NodePortConfigModel(
+            dataType: NodePortDataType.audio,
+            parameterConfig: ParameterConfigModel(
+              id: _ToneGeneratorProcessorModel.amplitudePortId,
+              defaultValue: 0.125,
+              minimumValue: 0,
+              maximumValue: 1,
+              smoothingDurationSeconds: 0.5,
+            ),
+          ),
+        ),
+      ]),
+      midiInputPorts: AnthemObservableList.of([
+        NodePortModel(
+          nodeId: id,
+          id: _ToneGeneratorProcessorModel.midiInputPortId,
+          config: NodePortConfigModel(dataType: NodePortDataType.midi),
         ),
       ]),
     );
@@ -79,6 +107,13 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
 }
 
 abstract class _ToneGeneratorProcessorModel with Store, AnthemModelBase {
+  static const int audioOutputPortId = 0;
+
+  static const int frequencyPortId = 1;
+  static const int amplitudePortId = 2;
+
+  static const int midiInputPortId = 3;
+
   String nodeId;
 
   _ToneGeneratorProcessorModel({
