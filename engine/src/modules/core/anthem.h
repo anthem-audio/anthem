@@ -43,8 +43,6 @@ private:
 
   std::unique_ptr<AnthemAudioCallback> audioCallback;
 
-  // Sets up the audio callback
-  void startAudioCallback();
 public:
   // The project model.
   //
@@ -80,6 +78,9 @@ public:
     }
     return *instance;
   }
+
+  // Sets up the audio callback
+  void startAudioCallback();
 
   void compileProcessingGraph();
 
