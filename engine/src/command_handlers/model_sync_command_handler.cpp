@@ -59,6 +59,11 @@ std::optional<Response> handleModelSyncCommand(Request& request) {
 
       std::cout << "Loaded project model" << std::endl;
       std::cout << "id: " << anthem.project->id() << std::endl;
+
+      // We could probably move this action to a command, but for now we always
+      // want to start as soon as we have a valid project anyway, so this is
+      // probably fine.
+      anthem.startAudioCallback();
     }
   }
   else if (rfl::holds_alternative<ModelUpdateRequest>(request.variant())) {
