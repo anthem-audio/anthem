@@ -22,19 +22,16 @@
 #include <iostream>
 
 void ClearBuffersAction::execute(int) {
-  for (int i = 0; i < this->context->getNumInputAudioBuffers(); i++) {
-    auto& buffer = this->context->getInputAudioBuffer(i);
-    buffer.clear();
+  for (auto& pair : this->context->getAllInputAudioBuffers()) {
+    pair.second.clear();
   }
 
-  for (int i = 0; i < this->context->getNumInputNoteEventBuffers(); i++) {
-    auto& buffer = this->context->getInputNoteEventBuffer(i);
-    buffer->clear();
+  for (auto& pair : this->context->getAllInputNoteEventBuffers()) {
+    pair.second->clear();
   }
 
-  for (int i = 0; i < this->context->getNumOutputNoteEventBuffers(); i++) {
-    auto& buffer = this->context->getOutputNoteEventBuffer(i);
-    buffer->clear();
+  for (auto& pair : this->context->getAllOutputNoteEventBuffers()) {
+    pair.second->clear();
   }
 }
 

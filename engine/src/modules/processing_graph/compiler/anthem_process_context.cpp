@@ -90,20 +90,20 @@ void AnthemProcessContext::setAllOutputAudioBuffers(std::unordered_map<int32_t, 
   outputAudioBuffers = std::move(buffers);
 }
 
+std::unordered_map<int32_t, juce::AudioSampleBuffer>& AnthemProcessContext::getAllInputAudioBuffers() {
+  return inputAudioBuffers;
+}
+
+std::unordered_map<int32_t, juce::AudioSampleBuffer>& AnthemProcessContext::getAllOutputAudioBuffers() {
+  return outputAudioBuffers;
+}
+
 juce::AudioSampleBuffer& AnthemProcessContext::getInputAudioBuffer(int32_t id) {
   return inputAudioBuffers[id];
 }
 
 juce::AudioSampleBuffer& AnthemProcessContext::getOutputAudioBuffer(int32_t id) {
   return outputAudioBuffers[id];
-}
-
-size_t AnthemProcessContext::getNumInputAudioBuffers() {
-  return inputAudioBuffers.size();
-}
-
-size_t AnthemProcessContext::getNumOutputAudioBuffers() {
-  return outputAudioBuffers.size();
 }
 
 void AnthemProcessContext::setAllInputControlBuffers(std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers) {
@@ -114,20 +114,20 @@ void AnthemProcessContext::setAllOutputControlBuffers(std::unordered_map<int32_t
   outputControlBuffers = std::move(buffers);
 }
 
+std::unordered_map<int32_t, juce::AudioSampleBuffer>& AnthemProcessContext::getAllInputControlBuffers() {
+  return inputControlBuffers;
+}
+
+std::unordered_map<int32_t, juce::AudioSampleBuffer>& AnthemProcessContext::getAllOutputControlBuffers() {
+  return outputControlBuffers;
+}
+
 juce::AudioSampleBuffer& AnthemProcessContext::getInputControlBuffer(int32_t id) {
   return inputControlBuffers[id];
 }
 
 juce::AudioSampleBuffer& AnthemProcessContext::getOutputControlBuffer(int32_t id) {
   return outputControlBuffers[id];
-}
-
-size_t AnthemProcessContext::getNumInputControlBuffers() {
-  return inputControlBuffers.size();
-}
-
-size_t AnthemProcessContext::getNumOutputControlBuffers() {
-  return outputControlBuffers.size();
 }
 
 void AnthemProcessContext::setAllInputNoteEventBuffers(std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& buffers) {
@@ -138,18 +138,18 @@ void AnthemProcessContext::setAllOutputNoteEventBuffers(std::unordered_map<int32
   outputNoteEventBuffers = std::move(buffers);
 }
 
+std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& AnthemProcessContext::getAllInputNoteEventBuffers() {
+  return inputNoteEventBuffers;
+}
+
+std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& AnthemProcessContext::getAllOutputNoteEventBuffers() {
+  return outputNoteEventBuffers;
+}
+
 std::unique_ptr<AnthemEventBuffer>& AnthemProcessContext::getInputNoteEventBuffer(int32_t id) {
   return inputNoteEventBuffers[id];
 }
 
 std::unique_ptr<AnthemEventBuffer>& AnthemProcessContext::getOutputNoteEventBuffer(int32_t id) {
   return outputNoteEventBuffers[id];
-}
-
-size_t AnthemProcessContext::getNumInputNoteEventBuffers() {
-  return inputNoteEventBuffers.size();
-}
-
-size_t AnthemProcessContext::getNumOutputNoteEventBuffers() {
-  return outputNoteEventBuffers.size();
 }
