@@ -28,11 +28,6 @@
 MasterOutputProcessor::MasterOutputProcessor(const MasterOutputProcessorModelImpl& _impl)
       : AnthemProcessor("MasterOutput"), MasterOutputProcessorModelBase(_impl) {
   buffer = juce::AudioSampleBuffer(Anthem::NUM_CHANNELS, MAX_AUDIO_BUFFER_SIZE);
-
-  // Audio input port
-  config.addAudioInput(
-    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Audio, 0)
-  );
 }
 
 MasterOutputProcessor::~MasterOutputProcessor() {}

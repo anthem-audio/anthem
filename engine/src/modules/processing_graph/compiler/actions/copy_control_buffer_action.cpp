@@ -46,9 +46,9 @@ void CopyControlBufferAction::execute(int numSamples) {
 void CopyControlBufferAction::debugPrint() {
   std::cout 
     << "CopyControlBufferAction: "
-    << this->source->getGraphNode()->processor->config.getId()
+    << this->source->getGraphNode()->processor->name
     << " -> "
-    << this->destination->getGraphNode()->processor->config.getId()
+    << this->destination->getGraphNode()->processor->name
     << std::endl;
 }
 

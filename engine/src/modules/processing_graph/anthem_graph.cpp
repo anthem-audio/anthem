@@ -21,8 +21,6 @@
 
 #include <iostream>
 
-#include "modules/processing_graph/debug/generate_graphvis_from_graph.h"
-
 AnthemGraph::AnthemGraph() {
   topology = std::make_unique<AnthemGraphTopology>();
   compiler = std::make_unique<AnthemGraphCompiler>();
@@ -67,6 +65,4 @@ void AnthemGraph::debugPrint() {
   std::cout << topology->getConnections().size() << " edges" << std::endl;
 
   std::cout << std::endl;
-
-  std::cout << GenerateGraphVisFromGraph::generate(*this) << std::endl;
 }

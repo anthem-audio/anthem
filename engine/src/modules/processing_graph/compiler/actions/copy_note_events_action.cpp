@@ -35,8 +35,8 @@ void CopyNoteEventsAction::execute([[maybe_unused]] int numSamples) {
 void CopyNoteEventsAction::debugPrint() {
   std::cout 
     << "CopyNoteEventsAction: "
-    << this->source->getGraphNode()->processor->config.getId()
+    << this->source->getGraphNode()->processor->name
     << " -> "
-    << this->destination->getGraphNode()->processor->config.getId()
+    << this->destination->getGraphNode()->processor->name
     << std::endl;
 }

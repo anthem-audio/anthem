@@ -26,5 +26,5 @@ void ProcessNodeAction::execute(int numSamples) {
 }
 
 void ProcessNodeAction::debugPrint() {
-  std::cout << "ProcessNodeAction for node with ID: " << this->context->getGraphNode()->id() << std::endl;
+  std::cout << "ProcessNodeAction for node with ID: " << this->context->getGraphNode()->processor->name << std::endl;
 }

@@ -305,7 +305,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
     for (auto& node : nodesToProcess) {
       bool allInputsProcessed = true;
 
-      std::cout << "Checking node " << node->node->processor->config.getId() << std::endl;
+      std::cout << "Checking node " << node->node->id() << std::endl;
 
       for (auto& edge : node->inputEdges) {
         if (!edge->processed) {

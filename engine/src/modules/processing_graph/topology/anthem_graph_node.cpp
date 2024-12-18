@@ -22,24 +22,24 @@
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 
 AnthemGraphNode::AnthemGraphNode(std::unique_ptr<AnthemProcessor> processor) {
-  audioInputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
-  audioOutputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
+  // audioInputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
+  // audioOutputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
 
-  controlInputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
-  controlOutputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
+  // controlInputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
+  // controlOutputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
 
-  noteEventInputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
-  noteEventOutputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
+  // noteEventInputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
+  // noteEventOutputs = std::vector<std::shared_ptr<AnthemGraphNodePort>>();
 
-  parameters = std::vector<float>(processor->config.getNumControlInputs(), 0.0f);
+  // parameters = std::vector<float>(processor->config.getNumControlInputs(), 0.0f);
 
-  for (int i = 0; i < processor->config.getNumControlInputs(); i++) {
-    parameters[i] = processor->config.getParameterByIndex(i)->defaultValue;
-  }
+  // for (int i = 0; i < processor->config.getNumControlInputs(); i++) {
+  //   parameters[i] = processor->config.getParameterByIndex(i)->defaultValue;
+  // }
 
-  runtimeContext = std::nullopt;
+  // runtimeContext = std::nullopt;
 
-  this->processor = std::move(processor);
+  // this->processor = std::move(processor);
 }
 
 std::shared_ptr<AnthemGraphNode> AnthemGraphNode::create(std::unique_ptr<AnthemProcessor> processor) {
@@ -49,54 +49,54 @@ std::shared_ptr<AnthemGraphNode> AnthemGraphNode::create(std::unique_ptr<AnthemP
 }
 
 void AnthemGraphNode::initializePorts() {
-  std::shared_ptr<AnthemGraphNode> self = shared_from_this();
+  // std::shared_ptr<AnthemGraphNode> self = shared_from_this();
 
-  // Add input and output ports
-  for (int i = 0; i < processor->config.getNumAudioInputs(); i++) {
-    audioInputs.push_back(
-      std::make_shared<AnthemGraphNodePort>(self, processor->config.getAudioInputByIndex(i), i)
-    );
-  }
+  // // Add input and output ports
+  // for (int i = 0; i < processor->config.getNumAudioInputs(); i++) {
+  //   audioInputs.push_back(
+  //     std::make_shared<AnthemGraphNodePort>(self, processor->config.getAudioInputByIndex(i), i)
+  //   );
+  // }
 
-  for (int i = 0; i < processor->config.getNumAudioOutputs(); i++) {
-    audioOutputs.push_back(
-      std::make_shared<AnthemGraphNodePort>(self, processor->config.getAudioOutputByIndex(i), i)
-    );
-  }
+  // for (int i = 0; i < processor->config.getNumAudioOutputs(); i++) {
+  //   audioOutputs.push_back(
+  //     std::make_shared<AnthemGraphNodePort>(self, processor->config.getAudioOutputByIndex(i), i)
+  //   );
+  // }
   
-  for (int i = 0; i < processor->config.getNumControlInputs(); i++) {
-    controlInputs.push_back(
-      std::make_shared<AnthemGraphNodePort>(self, processor->config.getControlInputByIndex(i), i)
-    );
-  }
+  // for (int i = 0; i < processor->config.getNumControlInputs(); i++) {
+  //   controlInputs.push_back(
+  //     std::make_shared<AnthemGraphNodePort>(self, processor->config.getControlInputByIndex(i), i)
+  //   );
+  // }
 
-  for (int i = 0; i < processor->config.getNumControlOutputs(); i++) {
-    controlOutputs.push_back(
-      std::make_shared<AnthemGraphNodePort>(self, processor->config.getControlOutputByIndex(i), i)
-    );
-  }
+  // for (int i = 0; i < processor->config.getNumControlOutputs(); i++) {
+  //   controlOutputs.push_back(
+  //     std::make_shared<AnthemGraphNodePort>(self, processor->config.getControlOutputByIndex(i), i)
+  //   );
+  // }
 
-  for (int i = 0; i < processor->config.getNumMidiInputs(); i++) {
-    noteEventInputs.push_back(
-      std::make_shared<AnthemGraphNodePort>(self, processor->config.getMidiInputByIndex(i), i)
-    );
-  }
+  // for (int i = 0; i < processor->config.getNumMidiInputs(); i++) {
+  //   noteEventInputs.push_back(
+  //     std::make_shared<AnthemGraphNodePort>(self, processor->config.getMidiInputByIndex(i), i)
+  //   );
+  // }
 
-  for (int i = 0; i < processor->config.getNumMidiOutputs(); i++) {
-    noteEventOutputs.push_back(
-      std::make_shared<AnthemGraphNodePort>(self, processor->config.getMidiOutputByIndex(i), i)
-    );
-  }
+  // for (int i = 0; i < processor->config.getNumMidiOutputs(); i++) {
+  //   noteEventOutputs.push_back(
+  //     std::make_shared<AnthemGraphNodePort>(self, processor->config.getMidiOutputByIndex(i), i)
+  //   );
+  // }
 }
 
 void AnthemGraphNode::setParameter(uint64_t id, float value) {
-  auto index = processor->config.getIndexOfParameter(id);
+  // auto index = processor->config.getIndexOfParameter(id);
 
-  if (!index.has_value()) return;
+  // if (!index.has_value()) return;
 
-  parameters[index.value()] = value;
+  // parameters[index.value()] = value;
 
-  if (runtimeContext.has_value()) {
-    runtimeContext.value()->setParameterValue(index.value(), value);
-  }
+  // if (runtimeContext.has_value()) {
+  //   runtimeContext.value()->setParameterValue(index.value(), value);
+  // }
 }

@@ -34,9 +34,9 @@ SimpleMidiGeneratorNode::SimpleMidiGeneratorNode() : AnthemProcessor("SimpleMidi
 
   // Port config
 
-  config.addMidiOutput(
-    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Midi, 0)
-  );
+  // config.addMidiOutput(
+  //   std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Midi, 0)
+  // );
 }
 
 SimpleMidiGeneratorNode::~SimpleMidiGeneratorNode() {}
