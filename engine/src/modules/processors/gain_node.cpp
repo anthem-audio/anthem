@@ -22,23 +22,23 @@
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 
 GainNode::GainNode() : AnthemProcessor("Gain") {
-  // Audio input port
-  config.addAudioInput(
-    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Audio, 0)
-  );
+  // // Audio input port
+  // config.addAudioInput(
+  //   std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Audio, 0)
+  // );
 
-  // Audio output port
-  config.addAudioOutput(
-    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Audio, 0)
-  );
+  // // Audio output port
+  // config.addAudioOutput(
+  //   std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Audio, 0)
+  // );
 
-  // Control ports
+  // // Control ports
   
-  // Amplitude
-  config.addControlInput(
-    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Control, 0),
-    std::make_shared<AnthemProcessorParameterConfig>(0ul, 1.0f, 0.0f, 10.0f)
-  );
+  // // Amplitude
+  // config.addControlInput(
+  //   std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Control, 0),
+  //   std::make_shared<AnthemProcessorParameterConfig>(0ul, 1.0f, 0.0f, 10.0f)
+  // );
 }
 
 GainNode::~GainNode() {}

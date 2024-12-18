@@ -33,34 +33,6 @@ ToneGeneratorProcessor::ToneGeneratorProcessor(const ToneGeneratorProcessorModel
 
   hasNoteOverride = false;
   noteOverride = 0;
-
-  // Audio port config
-
-  // Audio output port
-  config.addAudioOutput(
-    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Audio, 0)
-  );
-
-  // Control port config
-
-  // Frequency
-  config.addControlInput(
-    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Control, 0),
-    std::make_shared<AnthemProcessorParameterConfig>(0ul, 440.0f, 0.0f, 20000.0f)
-  );
-
-  // Amplitude
-  config.addControlInput(
-    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Control, 1),
-    std::make_shared<AnthemProcessorParameterConfig>(1ul, 0.125f, 0.0f, 1.0f)
-  );
-
-  // MIDI port config
-
-  // Input
-  config.addMidiInput(
-    std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Midi, 0)
-  );
 }
 
 ToneGeneratorProcessor::~ToneGeneratorProcessor() {}

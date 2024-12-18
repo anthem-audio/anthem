@@ -36,5 +36,5 @@ void ClearBuffersAction::execute(int) {
 }
 
 void ClearBuffersAction::debugPrint() {
-  std::cout << "ClearBuffersAction: " << this->context->getGraphNode()->processor->config.getId() << std::endl;
+  std::cout << "ClearBuffersAction: " << this->context->getGraphNode()->processor->name << std::endl;
 }

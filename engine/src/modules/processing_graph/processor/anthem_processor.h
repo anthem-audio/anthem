@@ -31,11 +31,10 @@ class AnthemProcessContext;
 // several internal processing modules that interact with the processing graph.
 class AnthemProcessor {
 public:
-  // TODO: Remove this, as the configuration will happen in the model. This
-  // class is now just a base class for processors.
-  AnthemProcessorConfig config;
+  // The name of the processor.
+  std::string name;
 
-  AnthemProcessor(std::string name) : config(AnthemProcessorConfig(name)) {}
+  AnthemProcessor(std::string name) : name(name) {}
 
   virtual ~AnthemProcessor() = default;
 
