@@ -25,7 +25,7 @@
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 
 ToneGeneratorProcessor::ToneGeneratorProcessor(const ToneGeneratorProcessorModelImpl& _impl)
-      : AnthemProcessor("MasterOutput"), ToneGeneratorProcessorModelBase(_impl) {
+      : AnthemProcessor("ToneGenerator"), ToneGeneratorProcessorModelBase(_impl) {
   phase = 0;
   // amplitude = 0.125;
   // this->frequency = frequency;
