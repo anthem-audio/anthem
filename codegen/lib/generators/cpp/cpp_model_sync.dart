@@ -107,6 +107,8 @@ String getModelSyncFn(ModelClassInfo context) {
       writer: writer,
       type: field.typeInfo,
       createFieldSetter: (value) => 'this->$fieldName$parentheses = $value;',
+      observabilityNotifier:
+          'this->${fieldName}Observers.notify($fieldName$parentheses);',
       fieldAccessExpression: 'this->$fieldName$parentheses',
     );
 
@@ -269,6 +271,7 @@ void _writeUpdate({
   required Writer writer,
   required ModelType type,
   required String Function(String valueExpression) createFieldSetter,
+  required String observabilityNotifier,
   required String fieldAccessExpression,
   required ModelClassInfo context,
   int fieldAccessIndexMod = 0,
@@ -296,15 +299,18 @@ void _writeUpdate({
         writer.writeLine('if (request.serializedValue.value() == "null") {');
         writer.incrementWhitespace();
         writer.writeLine(createFieldSetter('std::nullopt'));
+        writer.writeLine(observabilityNotifier);
         writer.decrementWhitespace();
         writer.writeLine('} else {');
         writer.incrementWhitespace();
         writer.writeLine(
             createFieldSetter('std::optional<std::string>($stringGetter)'));
+        writer.writeLine(observabilityNotifier);
         writer.decrementWhitespace();
         writer.writeLine('}');
       } else {
         writer.writeLine(createFieldSetter(stringGetter));
+        writer.writeLine(observabilityNotifier);
       }
 
       break;
@@ -326,16 +332,19 @@ void _writeUpdate({
         writer.writeLine('if (request.serializedValue.value() == "null") {');
         writer.incrementWhitespace();
         writer.writeLine(createFieldSetter('std::nullopt'));
+        writer.writeLine(observabilityNotifier);
         writer.decrementWhitespace();
         writer.writeLine('} else {');
         writer.incrementWhitespace();
         writer.writeLine(createFieldSetter(
             'std::optional<int64_t>(std::stoll(request.serializedValue.value()))'));
+        writer.writeLine(observabilityNotifier);
         writer.decrementWhitespace();
         writer.writeLine('}');
       } else {
         writer.writeLine(
             createFieldSetter('std::stoll(request.serializedValue.value())'));
+        writer.writeLine(observabilityNotifier);
       }
       break;
     case DoubleModelType() || NumModelType():
@@ -356,16 +365,19 @@ void _writeUpdate({
         writer.writeLine('if (request.serializedValue.value() == "null") {');
         writer.incrementWhitespace();
         writer.writeLine(createFieldSetter('std::nullopt'));
+        writer.writeLine(observabilityNotifier);
         writer.decrementWhitespace();
         writer.writeLine('} else {');
         writer.incrementWhitespace();
         writer.writeLine(createFieldSetter(
             'std::optional<double>(std::stod(request.serializedValue.value()))'));
+        writer.writeLine(observabilityNotifier);
         writer.decrementWhitespace();
         writer.writeLine('}');
       } else {
         writer.writeLine(
             createFieldSetter('std::stod(request.serializedValue.value())'));
+        writer.writeLine(observabilityNotifier);
       }
       break;
     case BoolModelType():
@@ -386,16 +398,19 @@ void _writeUpdate({
         writer.writeLine('if (request.serializedValue.value() == "null") {');
         writer.incrementWhitespace();
         writer.writeLine(createFieldSetter('std::nullopt'));
+        writer.writeLine(observabilityNotifier);
         writer.decrementWhitespace();
         writer.writeLine('} else {');
         writer.incrementWhitespace();
         writer.writeLine(createFieldSetter(
             'std::optional<bool>(request.serializedValue.value() == "true")'));
+        writer.writeLine(observabilityNotifier);
         writer.decrementWhitespace();
         writer.writeLine('}');
       } else {
         writer.writeLine(
             createFieldSetter('request.serializedValue.value() == "true"'));
+        writer.writeLine(observabilityNotifier);
       }
       break;
     case EnumModelType():
@@ -422,6 +437,7 @@ void _writeUpdate({
         fieldAccessExpression: fieldAccessExpression,
       );
       writer.writeLine(createFieldSetter('result.value()'));
+      writer.writeLine(observabilityNotifier);
 
       break;
     case ColorModelType():
@@ -447,6 +463,7 @@ void _writeUpdate({
         fieldAccessExpression: fieldAccessExpression,
       );
       writer.writeLine(createFieldSetter('result.value()'));
+      writer.writeLine(observabilityNotifier);
 
       break;
     case ListModelType():
@@ -500,6 +517,7 @@ void _writeUpdate({
         type: type.itemType,
         fieldAccessExpression: 'itemResult',
         createFieldSetter: (value) => 'itemResult = $value;',
+        observabilityNotifier: '',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
         parentAccessor: fieldAccessExpression,
       );
@@ -518,6 +536,7 @@ void _writeUpdate({
             '(*$fieldAccessExpression)[(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value()]',
         createFieldSetter: (value) =>
             '(*$fieldAccessExpression)[(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value()] = $value;',
+        observabilityNotifier: '',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
         parentAccessor: fieldAccessExpression,
       );
@@ -544,7 +563,8 @@ void _writeUpdate({
         context: context,
         fieldAccessExpression: fieldAccessExpression,
       );
-      writer.writeLine('$fieldAccessExpression = std::move(result.value());');
+      writer.writeLine(createFieldSetter('std::move(result.value())'));
+      writer.writeLine(observabilityNotifier);
       writeParentSetterForType(
         writer: writer,
         type: type,
@@ -612,6 +632,7 @@ void _writeUpdate({
         fieldAccessExpression: '$fieldAccessExpression->at(deserializedKey)',
         createFieldSetter: (value) =>
             '$fieldAccessExpression->insert_or_assign(deserializedKey, $value);',
+        observabilityNotifier: '',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
         parentAccessor: fieldAccessExpression,
       );
@@ -640,6 +661,7 @@ void _writeUpdate({
         fieldAccessExpression: fieldAccessExpression,
       );
       writer.writeLine(createFieldSetter('std::move(result.value())'));
+      writer.writeLine(observabilityNotifier);
 
       writer.decrementWhitespace();
       writer.writeLine('}');
@@ -665,6 +687,7 @@ void _writeUpdate({
         fieldAccessExpression: fieldAccessExpression,
       );
       writer.writeLine(createFieldSetter('std::move(result.value())'));
+      writer.writeLine(observabilityNotifier);
       writeParentSetterForType(
         writer: writer,
         type: type,

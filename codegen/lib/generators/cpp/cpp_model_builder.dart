@@ -170,6 +170,11 @@ class CppModelBuilder implements Builder {
         // The model sync code needs ModelUpdateRequest, which comes from the
         // messaging model
         headerImports.add('#include "messages/messages.h"');
+
+        // If the model is being synced, then we will generate observability
+        // code for it. This requires including the observability header.
+        headerImports
+            .add('#include "modules/codegen_helpers/observability_helpers.h"');
       }
 
       codeBlocks.add('// ${modelClassInfo.annotatedClass.name}\n\n');
@@ -517,9 +522,11 @@ String _generateEnum(EnumInfo enumInfo) {
         modelClassInfo.annotation?.cppBehaviorClassName != null ? 'Base' : '';
 
     forwardDeclarations.add('class $className$baseSuffix;');
+
+    var outwardFacingClassName = '$className$baseSuffix';
     if (baseSuffix.isNotEmpty) {
-      forwardDeclarations
-          .add('class ${modelClassInfo.annotation!.cppBehaviorClassName!};');
+      outwardFacingClassName = modelClassInfo.annotation!.cppBehaviorClassName!;
+      forwardDeclarations.add('class $outwardFacingClassName;');
     }
 
     writer.writeLine('class $className$baseSuffix : public AnthemModelBase {');
@@ -581,6 +588,8 @@ String _generateEnum(EnumInfo enumInfo) {
 
     writer.writeLine('// Reference getters');
 
+    List<String> privateObserverCollections = [];
+
     /// Writes a set of methods that can be used to get references to the fields
     /// in the impl struct. These can be used to get:
     /// ```
@@ -599,6 +608,27 @@ String _generateEnum(EnumInfo enumInfo) {
 
       final type = getCppType(fieldInfo.typeInfo, modelClassInfo);
       writer.writeLine('$type& $fieldName() { return impl.$fieldName; }');
+
+      if (generateModelSync) {
+        final upperCamelCaseFieldName =
+            fieldName[0].toUpperCase() + fieldName.substring(1);
+        writer.writeLine(
+            'ObserverHandle add${upperCamelCaseFieldName}Observer(std::function<void($type)> callback) {');
+        writer.incrementWhitespace();
+        writer.writeLine('return ${fieldName}Observers.addObserver(callback);');
+        writer.decrementWhitespace();
+        writer.writeLine('}');
+
+        writer.writeLine(
+            'void remove${upperCamelCaseFieldName}Observer(ObserverHandle handle) {');
+        writer.incrementWhitespace();
+        writer.writeLine('${fieldName}Observers.removeObserver(handle);');
+        writer.decrementWhitespace();
+        writer.writeLine('}');
+
+        privateObserverCollections
+            .add('FieldObservers<$type> ${fieldName}Observers;');
+      }
     }
 
     writer.writeLine();
@@ -609,6 +639,10 @@ String _generateEnum(EnumInfo enumInfo) {
 
     writer.writeLine('${className}Impl impl;');
     writer.writeLine();
+
+    for (final observerCollection in privateObserverCollections) {
+      writer.writeLine(observerCollection);
+    }
 
     writer.decrementWhitespace();
     writer.writeLine('};');
