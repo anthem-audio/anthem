@@ -17,8 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/store.dart';
+import 'package:anthem/model/model.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
@@ -111,6 +113,23 @@ class ProjectHeader extends StatelessWidget {
                                 .engine
                                 .modelSyncApi
                                 .debugPrintModel();
+                          },
+                        ),
+                        AnthemMenuItem(
+                          text: 'Randomize frequency',
+                          hint:
+                              'Randomizes the frequency of the tone generator',
+                          onSelected: () {
+                            AnthemStore
+                                    .instance
+                                    .projects[AnthemStore.instance.activeProjectID]!
+                                    .processingGraph
+                                    .toneGenerator
+                                    .node
+                                    .getPortById(ToneGeneratorProcessorModel
+                                        .frequencyPortId)
+                                    .parameterValue =
+                                440 + (Random().nextDouble() * (440 + 880));
                           },
                         ),
                       ],

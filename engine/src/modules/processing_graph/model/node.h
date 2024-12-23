@@ -46,5 +46,5 @@ public:
     std::cout << "NODE INITIALIZE" << std::endl;
   }
 
-  std::optional<std::shared_ptr<NodePortModel>> getPortById(int32_t id);
+  std::optional<std::shared_ptr<NodePort>> getPortById(int32_t id);
 };

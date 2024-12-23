@@ -19,7 +19,7 @@
 
 #include "node.h"
 
-std::optional<std::shared_ptr<NodePortModel>> Node::getPortById(int32_t id) {
+std::optional<std::shared_ptr<NodePort>> Node::getPortById(int32_t id) {
   for (auto& port : *this->audioInputPorts()) {
     if (port->id() == id) {
       return port;
