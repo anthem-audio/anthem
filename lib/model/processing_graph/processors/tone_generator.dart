@@ -104,6 +104,16 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
       ]),
     );
   }
+
+  // TODO: Find a better way to do this...
+  static const int audioOutputPortId =
+      _ToneGeneratorProcessorModel.audioOutputPortId;
+  static const int frequencyPortId =
+      _ToneGeneratorProcessorModel.frequencyPortId;
+  static const int amplitudePortId =
+      _ToneGeneratorProcessorModel.amplitudePortId;
+  static const int midiInputPortId =
+      _ToneGeneratorProcessorModel.midiInputPortId;
 }
 
 abstract class _ToneGeneratorProcessorModel with Store, AnthemModelBase {

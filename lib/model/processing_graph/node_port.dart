@@ -26,7 +26,10 @@ import 'node_port_config.dart';
 
 part 'node_port.g.dart';
 
-@AnthemModel.syncedModel()
+@AnthemModel.syncedModel(
+  cppBehaviorClassName: 'NodePort',
+  cppBehaviorClassIncludePath: 'modules/processing_graph/model/node_port.h',
+)
 class NodePortModel extends _NodePortModel
     with _$NodePortModel, _$NodePortModelAnthemModelMixin {
   NodePortModel({
@@ -50,6 +53,8 @@ class NodePortModel extends _NodePortModel
 
   factory NodePortModel.fromJson(Map<String, dynamic> json) =>
       _$NodePortModelAnthemModelMixin.fromJson(json);
+
+  NodePortDataType get type => config.dataType;
 }
 
 abstract class _NodePortModel with Store, AnthemModelBase {
