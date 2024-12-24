@@ -19,6 +19,7 @@
 
 import 'dart:async';
 
+import 'package:analyzer/dart/constant/value.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:anthem_codegen/generators/cpp/cpp_model_sync.dart';
 import 'package:anthem_codegen/include/annotations.dart';
@@ -746,10 +747,9 @@ String _generateEnum(EnumInfo enumInfo) {
     // If the exported library doesn't have any Anthem model classes, then we
     // don't generate an import for it
     bool hasAnyAnthemModel = false;
+    List<DartObject> annotatedClasses = [];
 
     for (final classElement in exportLibraryReader.classes) {
-      if (hasAnyAnthemModel) break;
-
       final annotation = const TypeChecker.fromRuntime(AnthemModel)
           .firstAnnotationOf(classElement);
 
@@ -761,6 +761,7 @@ String _generateEnum(EnumInfo enumInfo) {
           annotation.getField('generateCpp')?.toBoolValue() ?? false;
 
       if (generateCpp) {
+        annotatedClasses.add(annotation);
         hasAnyAnthemModel = true;
       }
     }
@@ -786,6 +787,16 @@ String _generateEnum(EnumInfo enumInfo) {
         uri.relativeUriString.substring(0, uri.relativeUriString.length - 5);
 
     imports.add('#include "$cppFile.h"');
+
+    for (final classAnnotation in annotatedClasses) {
+      final cppBehaviorClassIncludePath = classAnnotation
+          .getField('cppBehaviorClassIncludePath')
+          ?.toStringValue();
+
+      if (cppBehaviorClassIncludePath != null) {
+        imports.add('#include "$cppBehaviorClassIncludePath"');
+      }
+    }
   }
 
   return (forwardDeclarations: forwardDeclarations, imports: imports);
