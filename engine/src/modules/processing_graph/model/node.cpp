@@ -18,6 +18,7 @@
 */
 
 #include "node.h"
+#include "generated/lib/model/model.h"
 
 std::optional<std::shared_ptr<NodePort>> Node::getPortById(int32_t id) {
   for (auto& port : *this->audioInputPorts()) {
