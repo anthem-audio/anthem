@@ -26,7 +26,7 @@ if (LINUX)
   find_package(PkgConfig REQUIRED)
   find_package(CURL REQUIRED)
   pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
-  pkg_check_modules(WEBKIT2GTK REQUIRED webkit2gtk-4.0)
+  pkg_check_modules(WEBKIT2GTK REQUIRED webkit2gtk-4.1)
 endif()
 
 add_subdirectory(include)
