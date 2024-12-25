@@ -19,16 +19,47 @@
 
 #include "node_port.h"
 
+#include "generated/lib/model/model.h"
+
+#include "modules/processing_graph/compiler/anthem_process_context.h"
+
 void NodePort::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) {
   NodePortModelBase::initialize(self, parent);
 
-  this->addParameterValueObserver([this](std::optional<double> value) {
-    if (value.has_value()) {
-      std::cout << "NodePort parameter value changed: " << std::to_string(value.value()) << std::endl;
-    } else {
-      std::cout << "NodePort parameter value changed: null" << std::endl;
-    }
-  });
+  if (this->config()->parameterConfig().has_value()) {
+    this->addParameterValueObserver([this](std::optional<double> value) {
+      if (value.has_value()) {
+        std::cout << "NodePort parameter value changed: " << std::to_string(value.value()) << std::endl;
+      } else {
+        std::cout << "NodePort parameter value changed: null" << std::endl;
+        return;
+      }
+
+      std::shared_ptr<AnthemModelBase> collectionParent = this->parent.lock();
+      
+      if (!collectionParent) {
+        return;
+      }
+
+      std::shared_ptr<AnthemModelBase> nodeAsBase = collectionParent->parent.lock();
+
+      if (!nodeAsBase) {
+        return;
+      }
+
+      std::shared_ptr<Node> node = std::dynamic_pointer_cast<Node>(nodeAsBase);
+
+      if (!node) {
+        return;
+      }
+
+      if (!node->runtimeContext.has_value()) {
+        return;
+      }
+
+      node->runtimeContext.value()->setParameterValue(this->id(), value.value());
+    });
+  }
 
   std::cout << "NodePort initialized" << std::endl;
 }
