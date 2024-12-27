@@ -52,7 +52,7 @@ public:
   std::optional<AnthemProcessContext*> runtimeContext;
   std::shared_ptr<AnthemProcessor> processor;
 
-  Node(const NodeModelImpl& _impl) : NodeModelBase(_impl) {std::cout << "Node created" << std::endl;}
+  Node(const NodeModelImpl& _impl) : NodeModelBase(_impl) {}
   ~Node() {}
 
   Node(const Node&) = delete;
@@ -63,8 +63,6 @@ public:
 
   void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override {
     NodeModelBase::initialize(self, parent);
-
-    std::cout << "NODE INITIALIZE" << std::endl;
   }
 
   std::optional<std::shared_ptr<NodePort>> getPortById(int32_t id);

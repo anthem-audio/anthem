@@ -23,7 +23,7 @@
 
 class NodePort : public NodePortModelBase {
 public:
-  NodePort(const NodePortModelImpl& _impl) : NodePortModelBase(_impl) {std::cout << "NodePort created" << std::endl;}
+  NodePort(const NodePortModelImpl& _impl) : NodePortModelBase(_impl) {}
   ~NodePort() {}
 
   NodePort(const NodePort&) = delete;
