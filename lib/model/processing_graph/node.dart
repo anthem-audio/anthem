@@ -48,9 +48,7 @@ class NodeModel extends _NodeModel
           audioOutputPorts: audioOutputPorts ?? AnthemObservableList(),
           midiOutputPorts: midiOutputPorts ?? AnthemObservableList(),
           controlOutputPorts: controlOutputPorts ?? AnthemObservableList(),
-        ) {
-    init();
-  }
+        );
 
   NodeModel.uninitialized()
       : super(
@@ -62,11 +60,7 @@ class NodeModel extends _NodeModel
           audioOutputPorts: AnthemObservableList(),
           midiOutputPorts: AnthemObservableList(),
           controlOutputPorts: AnthemObservableList(),
-        ) {
-    init();
-  }
-
-  void init() {}
+        );
 
   factory NodeModel.fromJson(Map<String, dynamic> json) =>
       _$NodeModelAnthemModelMixin.fromJson(json);

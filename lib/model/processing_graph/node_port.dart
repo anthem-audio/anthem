@@ -36,7 +36,11 @@ class NodePortModel extends _NodePortModel
     required super.id,
     required super.nodeId,
     required super.config,
-  }) : super(connections: AnthemObservableList());
+  }) : super(connections: AnthemObservableList()) {
+    if (config.parameterConfig != null) {
+      parameterValue = config.parameterConfig!.defaultValue;
+    }
+  }
 
   NodePortModel.uninitialized()
       : super(
@@ -44,12 +48,6 @@ class NodePortModel extends _NodePortModel
             nodeId: '',
             config: NodePortConfigModel.uninitialized(),
             connections: AnthemObservableList());
-
-  void init() {
-    if (config.dataType == NodePortDataType.control) {
-      parameterValue = config.parameterConfig!.defaultValue;
-    }
-  }
 
   factory NodePortModel.fromJson(Map<String, dynamic> json) =>
       _$NodePortModelAnthemModelMixin.fromJson(json);
