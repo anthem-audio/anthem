@@ -23,7 +23,6 @@
 
 #include "generated/lib/model/model.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
-#include "modules/processing_graph/topology/anthem_graph_node_port.h"
 
 class ToneGeneratorProcessor : public AnthemProcessor, public ToneGeneratorProcessorModelBase {
 private:

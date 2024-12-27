@@ -21,9 +21,7 @@
 
 #include <memory>
 
-#include "topology/anthem_graph_node.h"
 #include "processor/anthem_processor.h"
-#include "topology/anthem_graph_topology.h"
 #include "compiler/anthem_graph_compiler.h"
 #include "runtime/anthem_graph_processor.h"
 
@@ -33,10 +31,8 @@
 // TODO: Unify with the processing graph in the model
 class AnthemGraph {
 private:
-  // The topology for this graph
-  std::unique_ptr<AnthemGraphTopology> topology;
-
-  // The compiler, which turns the topology into processing steps
+  // The compiler, which takes the topology from the model and converts it into
+  // processing steps
   std::unique_ptr<AnthemGraphCompiler> compiler;
 
   // The processor, which takes the compilation result from the compiler and
@@ -49,32 +45,10 @@ private:
 public:
   AnthemGraph();
 
-  AnthemGraphTopology& getTopology() {
-    return *topology;
-  }
-
-  // Wraps a processor with a graph node, and adds the node to the graph.
-  std::shared_ptr<AnthemGraphNode> addNode(std::unique_ptr<AnthemProcessor> processor);
-
-  // Removes a node from the graph.
-  void removeNode(std::shared_ptr<AnthemGraphNode> node);
-
-  void connectNodes(
-    std::shared_ptr<AnthemGraphNodePort> source,
-    std::shared_ptr<AnthemGraphNodePort> destination
-  );
-
-  void disconnectNodes(
-    std::shared_ptr<AnthemGraphNodePort> source,
-    std::shared_ptr<AnthemGraphNodePort> destination
-  );
-
   AnthemGraphProcessor& getProcessor() {
     return *graphProcessor;
   }
 
   // Compiles the topology, and pushes the result to the audio thread
   void compile();
-
-  void debugPrint();
 };

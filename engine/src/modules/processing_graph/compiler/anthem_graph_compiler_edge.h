@@ -23,8 +23,6 @@
 
 #include "generated/lib/model/model.h"
 #include "modules/processing_graph/model/node_connection.h"
-#include "modules/processing_graph/topology/anthem_graph_node.h"
-#include "modules/processing_graph/topology/anthem_graph_data_type.h"
 
 class AnthemGraphNodeConnection;
 

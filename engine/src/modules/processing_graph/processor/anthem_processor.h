@@ -19,7 +19,8 @@
 
 #pragma once
 
-#include "anthem_processor_config.h"
+#include <string>
+#include <memory>
 
 class AnthemGraphNode;
 class AnthemProcessContext;
