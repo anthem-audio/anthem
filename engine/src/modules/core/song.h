@@ -23,7 +23,7 @@
 
 class Song : public SongModelBase {
 public:
-  Song(const SongModelImpl& _impl) : SongModelBase(_impl) {std::cout << "Song created" << std::endl;}
+  Song(const SongModelImpl& _impl) : SongModelBase(_impl) {}
   ~Song() {}
 
   Song(const Song&) = delete;
@@ -34,26 +34,6 @@ public:
 
   void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override {
     SongModelBase::initialize(self, parent);
-    std::cout << "SONG INITIALIZE" << std::endl;
-
-    this->test();
-  }
-
-  void test() {
-    std::cout << "Song test - track count: " << this->trackOrder()->size() << std::endl;
-
-    addObserver("activePatternID", [self = this->self]() {
-      if (auto selfLocked = self.lock()) {
-        auto selfResolved = std::dynamic_pointer_cast<Song>(selfLocked);
-        std::cout << "Active pattern changed: ";
-        if (selfResolved->activePatternID().has_value()) {
-          std::cout << selfResolved->activePatternID().value();
-        } else {
-          std::cout << "null";
-        }
-        std::cout << std::endl;
-      }
-    });
   }
 
   // void handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {

@@ -23,7 +23,7 @@
 
 class NodeConnection : public NodeConnectionModelBase {
 public:
-  NodeConnection(const NodeConnectionModelImpl& _impl) : NodeConnectionModelBase(_impl) {std::cout << "NodeConnection created" << std::endl;}
+  NodeConnection(const NodeConnectionModelImpl& _impl) : NodeConnectionModelBase(_impl) {}
   ~NodeConnection() {}
 
   NodeConnection(const NodeConnection&) = delete;
@@ -34,7 +34,5 @@ public:
 
   void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override {
     NodeConnectionModelBase::initialize(self, parent);
-
-    std::cout << "NODE CONNECTION INITIALIZE" << std::endl;
   }
 };
