@@ -24,7 +24,6 @@
 #include <vector>
 
 #include "modules/processing_graph/compiler/anthem_graph_compiler_edge.h"
-#include "modules/processing_graph/topology/anthem_graph_node.h"
 
 #include "generated/lib/model/model.h"
 

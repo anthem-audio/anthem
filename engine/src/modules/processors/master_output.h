@@ -24,7 +24,8 @@
 #include <juce_audio_basics/juce_audio_basics.h>
 
 #include "modules/core/constants.h"
-#include "modules/processing_graph/topology/anthem_graph_node.h"
+#include "modules/processing_graph/processor/anthem_processor.h"
+
 #include "generated/lib/model/processing_graph/processors/master_output.h"
 
 class MasterOutputProcessor : public AnthemProcessor, public MasterOutputProcessorModelBase {

@@ -21,8 +21,6 @@
 
 #include <memory>
 
-#include "modules/processing_graph/topology/anthem_graph_node.h"
-#include "modules/processing_graph/topology/anthem_graph_node_connection.h"
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 #include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
 
