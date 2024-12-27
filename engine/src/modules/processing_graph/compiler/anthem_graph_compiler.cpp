@@ -196,7 +196,13 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
     for (auto& node : nodesToProcess) {
       if (node->readyToProcess) {
         std::cout << "Processing node " << node->node->id() << std::endl;
-        actions->push_back(std::make_unique<ProcessNodeAction>(node->context, node->node.get()->processor.get()));
+        AnthemProcessor* processor = node->node->processor.get();
+        if (processor == nullptr) {
+          std::cout << "Error: Node " << node->node->id() << " has no processor." << std::endl;
+          continue;
+        }
+
+        actions->push_back(std::make_unique<ProcessNodeAction>(node->context, processor));
         nodesToRemoveFromProcessing.push_back(node);
         i++;
       }
