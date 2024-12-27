@@ -28,38 +28,51 @@ void NodePort::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr
 
   if (this->config()->parameterConfig().has_value()) {
     this->addParameterValueObserver([this](std::optional<double> value) {
-      if (value.has_value()) {
-        std::cout << "NodePort parameter value changed: " << std::to_string(value.value()) << std::endl;
-      } else {
-        std::cout << "NodePort parameter value changed: null" << std::endl;
+      if (!value.has_value()) {
         return;
       }
 
-      std::shared_ptr<AnthemModelBase> collectionParent = this->parent.lock();
-      
-      if (!collectionParent) {
-        return;
+      bool success = this->trySendParameterValueToAudioThread(value.value());
+      if (!success) {
+        std::cout << "Warning: failed to send parameter value update to audio thread. This is a bug." << std::endl;
       }
-
-      std::shared_ptr<AnthemModelBase> nodeAsBase = collectionParent->parent.lock();
-
-      if (!nodeAsBase) {
-        return;
-      }
-
-      std::shared_ptr<Node> node = std::dynamic_pointer_cast<Node>(nodeAsBase);
-
-      if (!node) {
-        return;
-      }
-
-      if (!node->runtimeContext.has_value()) {
-        return;
-      }
-
-      node->runtimeContext.value()->setParameterValue(this->id(), value.value());
     });
+
+    std::optional<double> value = this->parameterValue();
+
+    if (value.has_value()) {
+      bool success = this->trySendParameterValueToAudioThread(value.value());
+      if (!success) {
+        std::cout << "Warning: failed to send initial parameter value to audio thread. This indicates an unexpected timing issue and should be addressed." << std::endl;
+      }
+    }
+  }
+}
+
+bool NodePort::trySendParameterValueToAudioThread(double value) {
+  std::shared_ptr<AnthemModelBase> collectionParent = this->parent.lock();
+
+  if (!collectionParent) {
+    return false;
   }
 
-  std::cout << "NodePort initialized" << std::endl;
+  std::shared_ptr<AnthemModelBase> nodeAsBase = collectionParent->parent.lock();
+
+  if (!nodeAsBase) {
+    return false;
+  }
+
+  std::shared_ptr<Node> node = std::dynamic_pointer_cast<Node>(nodeAsBase);
+
+  if (!node) {
+    return false;
+  }
+
+  if (!node->runtimeContext.has_value()) {
+    return false;
+  }
+
+  node->runtimeContext.value()->setParameterValue(this->id(), value);
+
+  return true;
 }

@@ -33,4 +33,7 @@ public:
   NodePort& operator=(NodePort&&) = default;
 
   void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override;
+
+private:
+  bool trySendParameterValueToAudioThread(double value);
 };
