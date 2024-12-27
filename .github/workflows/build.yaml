@@ -47,7 +47,23 @@ jobs:
 
       # Build engine
       - name: Build engine
-        run: .\scripts\build.ps1
+        # Code generation has intermittent failures. Sometimes the Dart analysis
+        # tools will just not find parts of the code. We retry a few times here
+        # to try to get a successful build.
+        uses: nick-fields/retry@v3
+        with:
+          shell: pwsh
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_on: error
+          command: ./scripts/build.ps1
+          new_command_on_retry: |
+            cd codegen
+            dart run build_runner build
+            cd ..
+            dart run build_runner build
+
+            ./scripts/build.ps1
 
       # Build Flutter project
       - name: Build Flutter project
