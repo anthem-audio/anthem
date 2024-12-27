@@ -188,7 +188,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   }
 
   @hide
-  final _modelSyncCompleter = Completer<void>();
+  var _modelSyncCompleter = Completer<void>();
 
   /// Waits for the model to be synced with the engine. If the model is already
   /// synced, this will return immediately.
@@ -204,81 +204,8 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
 
       // Send model state change messages to the engine
       if (state == EngineState.running) {
-        // Any time the engine starts, we send the entire current model state to the engine
-        engine.modelSyncApi.initModel(
-          jsonEncode((this as _$ProjectModelAnthemModelMixin)
-              .toJson(includeFieldsForEngine: true)),
-        );
-        // We won't wait for the engine to acknowledge this before saying that
-        // we're synced, since any subsequent messages will be processed after
-        // the engine has finished processing the init request.
-        _modelSyncCompleter.complete();
-
-        _fieldChangedListener = (accesses, operation) {
-          String? serializeMapKey(dynamic key) {
-            return switch (key) {
-              null => null,
-              int i => '$i',
-              double d => '$d',
-              String s => '"$s"',
-              bool b => '$b',
-              _ => throw AssertionError('Invalid map key type'),
-            };
-          }
-
-          // Values will already be in JSON format, but we need to convert to
-          // string. This is just like the above but with the addition of
-          // Map<String, dynamic> and List<dynamic>.
-          String serializeValue(dynamic value) {
-            return switch (value) {
-              null => 'null',
-              int i => '$i',
-              double d => '$d',
-              String s => '"$s"',
-              bool b => '$b',
-              Map<String, dynamic> m => jsonEncode(m),
-              List<dynamic> l => jsonEncode(l),
-              _ => throw AssertionError(
-                  'Invalid value type: ${value.runtimeType}'),
-            };
-          }
-
-          final convertedAccesses = accesses.map((access) {
-            return message_api.FieldAccess(
-              fieldName: access.fieldName,
-              fieldType: switch (access.fieldType) {
-                FieldType.raw => message_api.FieldType.raw,
-                FieldType.list => message_api.FieldType.list,
-                FieldType.map => message_api.FieldType.map,
-              },
-              listIndex: access.index,
-              serializedMapKey: serializeMapKey(access.key),
-            );
-          }).toList();
-
-          engine.modelSyncApi.updateModel(
-            updateKind: switch (operation) {
-              RawFieldUpdate() ||
-              ListUpdate() ||
-              MapPut() =>
-                message_api.FieldUpdateKind.set,
-              ListInsert() => message_api.FieldUpdateKind.add,
-              ListRemove() || MapRemove() => message_api.FieldUpdateKind.remove,
-            },
-            fieldAccesses: convertedAccesses,
-            serializedValue: switch (operation) {
-              RawFieldUpdate() => serializeValue(operation.newValue),
-              ListInsert() => serializeValue(operation.value),
-              ListUpdate() => serializeValue(operation.value),
-              MapPut() => serializeValue(operation.value),
-              _ => null,
-            },
-          );
-        };
-
-        // Hook up the model change stream to the engine
-        (this as AnthemModelBase)
-            .addFieldChangedListener(_fieldChangedListener!);
+        _initializeEngine();
+        _attachModelChangeListener();
       }
 
       if (state == EngineState.stopped) {
@@ -287,6 +214,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
           (this as AnthemModelBase)
               .removeFieldChangedListener(_fieldChangedListener!);
         }
+        _modelSyncCompleter = Completer();
       }
     });
 
@@ -296,6 +224,102 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     setParentPropertiesOnChildren();
 
     isHydrated = true;
+  }
+
+  /// Initializes the engine. This is called when the engine is started.
+  void _initializeEngine() {
+    // Any time the engine starts, we send the entire current model state to the engine
+    engine.modelSyncApi.initModel(
+      jsonEncode((this as _$ProjectModelAnthemModelMixin)
+          .toJson(includeFieldsForEngine: true)),
+    );
+    // We won't wait for the engine to acknowledge this before saying that
+    // we're synced, since any subsequent messages will be processed after
+    // the engine has finished processing the init request.
+    _modelSyncCompleter.complete();
+
+    // The engine will receive the processing graph when we sync the model,
+    // but it still needs to be compiled by the engine for use on the audio
+    // thread, so we do that here.
+    engine.processingGraphApi.compile();
+  }
+
+  @hide
+  bool _isModelChangeListenerAttached = false;
+
+  /// Attaches a listener for model state change events, and send them to the
+  /// engine.
+  ///
+  /// This is used to keep the engine in sync with the UI model state. The state
+  /// change events are created by generated code, and also processed by
+  /// generated code in the engine.
+  void _attachModelChangeListener() {
+    if (_isModelChangeListenerAttached) return;
+    _isModelChangeListenerAttached = true;
+
+    _fieldChangedListener = (accesses, operation) {
+      String? serializeMapKey(dynamic key) {
+        return switch (key) {
+          null => null,
+          int i => '$i',
+          double d => '$d',
+          String s => '"$s"',
+          bool b => '$b',
+          _ => throw AssertionError('Invalid map key type'),
+        };
+      }
+
+      // Values will already be in JSON format, but we need to convert to
+      // string. This is just like the above but with the addition of
+      // Map<String, dynamic> and List<dynamic>.
+      String serializeValue(dynamic value) {
+        return switch (value) {
+          null => 'null',
+          int i => '$i',
+          double d => '$d',
+          String s => '"$s"',
+          bool b => '$b',
+          Map<String, dynamic> m => jsonEncode(m),
+          List<dynamic> l => jsonEncode(l),
+          _ => throw AssertionError('Invalid value type: ${value.runtimeType}'),
+        };
+      }
+
+      final convertedAccesses = accesses.map((access) {
+        return message_api.FieldAccess(
+          fieldName: access.fieldName,
+          fieldType: switch (access.fieldType) {
+            FieldType.raw => message_api.FieldType.raw,
+            FieldType.list => message_api.FieldType.list,
+            FieldType.map => message_api.FieldType.map,
+          },
+          listIndex: access.index,
+          serializedMapKey: serializeMapKey(access.key),
+        );
+      }).toList();
+
+      engine.modelSyncApi.updateModel(
+        updateKind: switch (operation) {
+          RawFieldUpdate() ||
+          ListUpdate() ||
+          MapPut() =>
+            message_api.FieldUpdateKind.set,
+          ListInsert() => message_api.FieldUpdateKind.add,
+          ListRemove() || MapRemove() => message_api.FieldUpdateKind.remove,
+        },
+        fieldAccesses: convertedAccesses,
+        serializedValue: switch (operation) {
+          RawFieldUpdate() => serializeValue(operation.newValue),
+          ListInsert() => serializeValue(operation.value),
+          ListUpdate() => serializeValue(operation.value),
+          MapPut() => serializeValue(operation.value),
+          _ => null,
+        },
+      );
+    };
+
+    // Hook up the model change stream to the engine
+    (this as AnthemModelBase).addFieldChangedListener(_fieldChangedListener!);
   }
 
   /// Executes the given command on the project and pushes it to the undo/redo
