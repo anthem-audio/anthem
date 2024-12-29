@@ -60,7 +60,7 @@ void heartbeat() {
   while (true) {
     if (!heartbeatOccurred) {
       juce::MessageManager::callAsync([]() {
-        juce::JUCEApplication::getInstance()->systemRequestedQuit();
+        juce::JUCEApplication::quit();
       });
     }
 
@@ -402,14 +402,15 @@ public:
         }
       }
 
-      juce::JUCEApplication::getInstance()->systemRequestedQuit();
+      juce::JUCEApplication::quit();
       return;
     }
 
-    #endif
-
     std::cout << "If you want to attach a debugger, you can do it now. Press enter to continue." << std::endl;
     std::cin.get();
+
+    #endif
+
 
     std::cout << "Starting Anthem engine..." << std::endl;
     Anthem::getInstance().initialize();
