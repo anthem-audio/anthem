@@ -23,6 +23,10 @@
 #include <juce_core/juce_core.h>
 #include <juce_audio_devices/juce_audio_devices.h>
 
+#ifndef NDEBUG
+#include "test.h"
+#endif
+
 #include <iostream>
 #include <string>
 #include <thread>
@@ -34,6 +38,8 @@
 
 #include <rfl/json.hpp>
 #include <rfl.hpp>
+
+#include "console_logger.h"
 
 #include "modules/core/anthem.h"
 #include "./command_handlers/model_sync_command_handler.h"
@@ -358,7 +364,7 @@ public:
     // This might not work
   }
 
-  void initialise(const juce::String &/*commandLineParameters*/) override
+  void initialise(const juce::String &commandLineParameters) override
   {
                                 // wow, C++ sure is weird
     const char * anthemSplash = R"V0G0N(
@@ -378,6 +384,29 @@ public:
 )V0G0N";
 
     std::cout << anthemSplash;
+
+    #ifndef NDEBUG
+
+    juce::Logger::setCurrentLogger(new ConsoleLogger());
+
+    if (commandLineParameters == "test") {
+      std::cout << "Running unit tests..." << std::endl;
+      juce::UnitTestRunner runner;
+      runner.runAllTests();
+
+      for (int i = 0; i < runner.getNumResults(); i++) {
+        auto result = runner.getResult(i);
+        
+        if (result->failures > 0) {
+          juce::JUCEApplication::getInstance()->setApplicationReturnValue(1);
+        }
+      }
+
+      juce::JUCEApplication::getInstance()->systemRequestedQuit();
+      return;
+    }
+
+    #endif
 
     std::cout << "If you want to attach a debugger, you can do it now. Press enter to continue." << std::endl;
     std::cin.get();
