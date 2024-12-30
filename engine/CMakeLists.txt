@@ -107,7 +107,7 @@ endif()
 
 # Unit tests
 
-add_executable(AnthemTest src/test.cpp)
+add_executable(AnthemTest src/test/test.cpp)
 
 target_link_libraries(AnthemTest
   PRIVATE
