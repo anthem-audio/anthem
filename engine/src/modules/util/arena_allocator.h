@@ -93,6 +93,10 @@ public:
 
   // Coalesces the arena, merging adjacent free sections.
   void coalesce();
+
+  // Returns the number of arenas that have been allocated. This should be 1 in
+  // normal circumstances.
+  unsigned int getArenaCount();
 };
 
 template<typename T>
@@ -270,4 +274,9 @@ void ArenaBufferAllocator<T>::coalesce() {
   for (auto arena : this->arenas) {
     this->coalesceInArena(arena);
   }
+}
+
+template<typename T>
+unsigned int ArenaBufferAllocator<T>::getArenaCount() {
+  return this->arenas.size();
 }

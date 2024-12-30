@@ -21,7 +21,7 @@
 
 #include "console_logger.h"
 
-
+#include "modules/util/arena_allocator_test.h"
 
 int main(int argc, char** argv) {
   juce::Logger::setCurrentLogger(new ConsoleLogger());
