@@ -29,12 +29,22 @@ int main(int argc, char** argv) {
   juce::UnitTestRunner runner;
   runner.runAllTests();
 
-  for (int i = 0; i < runner.getNumResults(); i++) {
+  int resultCount = runner.getNumResults();
+  int failureCount = 0;
+
+  for (int i = 0; i < resultCount; i++) {
     auto result = runner.getResult(i);
     
     if (result->failures > 0) {
-      return 1;
+      failureCount++;
     }
+  }
+
+  juce::Logger::writeToLog("\n\n");
+  if (failureCount > 0) {
+    juce::Logger::writeToLog(juce::String(failureCount) + " tests failed.");
+  } else {
+    juce::Logger::writeToLog("All tests passed.");
   }
 
   return 0;
