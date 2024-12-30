@@ -56,8 +56,12 @@ jobs:
           timeout_minutes: 10
           max_attempts: 3
           retry_on: error
-          command: ./scripts/build.ps1
+          command: |
+            $ErrorActionPreference = 'Stop'
+            ./scripts/build.ps1
           new_command_on_retry: |
+            $ErrorActionPreference = 'Stop'
+
             cd codegen
             dart run build_runner build
             cd ..
@@ -135,8 +139,12 @@ jobs:
           timeout_minutes: 10
           max_attempts: 3
           retry_on: error
-          command: ./scripts/build.ps1
+          command: |
+            $ErrorActionPreference = 'Stop'
+            ./scripts/build.ps1
           new_command_on_retry: |
+            $ErrorActionPreference = 'Stop'
+
             cd codegen
             dart run build_runner build
             cd ..
