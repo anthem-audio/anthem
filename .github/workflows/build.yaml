@@ -65,6 +65,10 @@ jobs:
 
             ./scripts/build.ps1
 
+      - name: Test engine
+        shell: pwsh
+        run: .\scripts\test.ps1 --build
+
       # Build Flutter project
       - name: Build Flutter project
         run: flutter build windows --verbose --release
@@ -139,6 +143,10 @@ jobs:
             dart run build_runner build
 
             ./scripts/build.ps1
+      
+      - name: Test engine
+        shell: pwsh
+        run: ./scripts/test.ps1 --build
 
       # Build Flutter project
       - name: Build Flutter project
