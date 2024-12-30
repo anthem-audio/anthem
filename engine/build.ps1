@@ -34,7 +34,7 @@ echo-green "Running CMake..."
 cmake ..
 
 echo-green "Building..."
-cmake --build .
+cmake --build . --target AnthemEngine
 
 if (-not $?) {
     echo-red "Engine build failed."
