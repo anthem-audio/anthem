@@ -21,20 +21,7 @@
 
 #include "console_logger.h"
 
-class MyTest : public juce::UnitTest {
-public:
-  MyTest() : juce::UnitTest("MyTest", "Anthem") {}
 
-  void runTest() override {
-    beginTest("Test 1");
-    expect(true);
-
-    beginTest("Test 2");
-    expect(1 + 1 == 2);
-  }
-};
-
-static MyTest myTest;
 
 int main(int argc, char** argv) {
   juce::Logger::setCurrentLogger(new ConsoleLogger());
