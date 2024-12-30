@@ -102,3 +102,31 @@ if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     juce::juce_recommended_warning_flags
   )
 endif()
+
+
+
+# Unit tests
+
+add_executable(AnthemTest src/test.cpp)
+
+target_link_libraries(AnthemTest
+  PRIVATE
+    juce::juce_audio_basics
+    juce::juce_audio_processors
+    reflectcpp
+)
+
+target_compile_definitions(AnthemTest PRIVATE JUCE_PLUGINHOST_VST3=1)
+
+if (LINUX)
+  target_include_directories(AnthemTest PRIVATE ${GTK3_INCLUDE_DIRS})
+  target_link_directories(AnthemTest PRIVATE ${GTK3_LIBRARY_DIRS})
+  target_link_libraries(AnthemTest PRIVATE ${GTK3_LIBRARIES})
+
+  target_include_directories(AnthemTest PRIVATE ${WEBKIT2GTK_INCLUDE_DIRS})
+  target_link_directories(AnthemTest PRIVATE ${WEBKIT2GTK_LIBRARY_DIRS})
+  target_link_libraries(AnthemTest PRIVATE ${WEBKIT2GTK_LIBRARIES})
+
+  target_link_libraries(AnthemTest PRIVATE CURL::libcurl)
+  target_link_libraries(AnthemTest PRIVATE atomic)
+endif()

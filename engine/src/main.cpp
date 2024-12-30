@@ -23,10 +23,6 @@
 #include <juce_core/juce_core.h>
 #include <juce_audio_devices/juce_audio_devices.h>
 
-#ifndef NDEBUG
-#include "test.h"
-#endif
-
 #include <iostream>
 #include <string>
 #include <thread>
@@ -38,8 +34,6 @@
 
 #include <rfl/json.hpp>
 #include <rfl.hpp>
-
-#include "console_logger.h"
 
 #include "modules/core/anthem.h"
 #include "./command_handlers/model_sync_command_handler.h"
@@ -295,6 +289,8 @@ void messageLoop(CommandMessageListener& messageListener) {
         // Convert message to a string
         std::string messageStr(reinterpret_cast<const char*>(messagePtr), messageLength);
 
+        std::cout << std::endl << "Received message: " << std::endl << messageStr << std::endl;
+
         // Convert to a Request object
         auto requestWrapped = rfl::json::read<Request>(messageStr);
 
@@ -349,7 +345,9 @@ public:
   void resumed() override {}
   void shutdown() override {
     // Destruct Anthem instance
-    Anthem::getInstancePtr().reset();
+    if (Anthem::hasInstance()) {
+      Anthem::getInstancePtr().reset();
+    }
   }
 
   void systemRequestedQuit() override
@@ -387,30 +385,10 @@ public:
 
     #ifndef NDEBUG
 
-    juce::Logger::setCurrentLogger(new ConsoleLogger());
-
-    if (commandLineParameters == "test") {
-      std::cout << "Running unit tests..." << std::endl;
-      juce::UnitTestRunner runner;
-      runner.runAllTests();
-
-      for (int i = 0; i < runner.getNumResults(); i++) {
-        auto result = runner.getResult(i);
-        
-        if (result->failures > 0) {
-          juce::JUCEApplication::getInstance()->setApplicationReturnValue(1);
-        }
-      }
-
-      juce::JUCEApplication::quit();
-      return;
-    }
-
     std::cout << "If you want to attach a debugger, you can do it now. Press enter to continue." << std::endl;
     std::cin.get();
 
     #endif
-
 
     std::cout << "Starting Anthem engine..." << std::endl;
     Anthem::getInstance().initialize();

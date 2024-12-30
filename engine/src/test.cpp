@@ -17,9 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#pragma once
-
 #include <juce_core/juce_core.h>
+
+#include "console_logger.h"
 
 class MyTest : public juce::UnitTest {
 public:
@@ -35,3 +35,20 @@ public:
 };
 
 static MyTest myTest;
+
+int main(int argc, char** argv) {
+  juce::Logger::setCurrentLogger(new ConsoleLogger());
+
+  juce::UnitTestRunner runner;
+  runner.runAllTests();
+
+  for (int i = 0; i < runner.getNumResults(); i++) {
+    auto result = runner.getResult(i);
+    
+    if (result->failures > 0) {
+      return 1;
+    }
+  }
+
+  return 0;
+}
