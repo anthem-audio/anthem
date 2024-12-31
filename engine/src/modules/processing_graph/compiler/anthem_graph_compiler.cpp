@@ -102,7 +102,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
   std::unique_ptr<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>> actions =
         std::make_unique<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>();
 
-  std::cout << "Step 1: Zero input buffers" << std::endl;
+  juce::Logger::writeToLog("Step 1: Zero input buffers");
 
   // Step 1 (part 1): Clear buffers
   //
@@ -171,7 +171,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
     }
   }
 
-  std::cout << "Step 2: Found " << i << " nodes with no inputs" << std::endl;
+  juce::Logger::writeToLog("Step 2: Found " + std::to_string(i) + " nodes with no inputs");
   std::cout << std::endl;
 
   auto lastSize = SIZE_MAX;
@@ -180,9 +180,9 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
 
   while (!nodesToProcess.empty()) {
     j++;
-    std::cout << "\033[32mLoop iteration " << j << "\033[0m" << std::endl;
-    std::cout << "Nodes still left to process: " << nodesToProcess.size() << std::endl;
-    std::cout << "Last size: " << lastSize << std::endl;
+    juce::Logger::writeToLog("\033[32mLoop iteration " + std::to_string(j) + "\033[0m");
+    std::cout << "Nodes still left to process: " << std::to_string(nodesToProcess.size()) << std::endl;
+    std::cout << "Last size: " << std::to_string(lastSize) << std::endl;
 
     // This will make it easier to track down infinite loops
     jassert(lastSize != nodesToProcess.size());
@@ -210,7 +210,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
       }
     }
 
-    std::cout << "Step 3: Added process actions for " << i << " nodes" << std::endl;
+    juce::Logger::writeToLog("Step 3: Added process actions for " + std::to_string(i) + " nodes");
 
     result->actionGroups.push_back(std::move(actions));
 
@@ -226,7 +226,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
       nodesToProcess.erase(node);
     }
 
-    std::cout << "Step 3: Removed " << i << " nodes from processing" << std::endl;
+    juce::Logger::writeToLog("Step 3: Removed " + std::to_string(i) + " nodes from processing");
     std::cout << std::endl;
 
     i = 0;
@@ -293,13 +293,11 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
         }
 
         edge->processed = true;
-        std::cout << "Marked edge with pointer " << std::hex << edge.get() << std::dec << " as processed" << std::endl;
-        std::cout << "This compiler edge represents a real edge with pointer " << std::hex << edge->edgeSource.get() << std::dec << std::endl;
         i++;
       }
     }
 
-    std::cout << "Step 4: Added " << i << " connection actions" << std::endl;
+    juce::Logger::writeToLog("Step 4: Added " + std::to_string(i) + " connection actions");
     std::cout << std::endl;
 
     result->actionGroups.push_back(std::move(actions));
@@ -332,9 +330,9 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
       }
     }
 
-    std::cout << "Step 5: Found " << i << " nodes with no unprocessed input connections" << std::endl;
+    juce::Logger::writeToLog("Step 5: Found " + std::to_string(i) + " nodes with no unprocessed input connections");
 
-    std::cout << "Restarting loop..." << std::endl;
+    juce::Logger::writeToLog("Restarting loop...");
     std::cout << std::endl;
   }
 

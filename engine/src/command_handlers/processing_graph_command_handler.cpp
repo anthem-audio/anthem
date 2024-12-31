@@ -64,11 +64,11 @@ handleProcessingGraphCommand(Request& request) {
   else if (rfl::holds_alternative<CompileProcessingGraphRequest>(request.variant())) {
     auto& compileProcessingGraphRequest = rfl::get<CompileProcessingGraphRequest>(request.variant());
 
-    std::cout << "Compiling from UI request..." << std::endl;
+    juce::Logger::writeToLog("Compiling from UI request...");
 
     anthem.compileProcessingGraph();
 
-    std::cout << "Finished compiling." << std::endl;
+    juce::Logger::writeToLog("Finished compiling.");
 
     return std::optional(CompileProcessingGraphResponse {
       .success = true,

@@ -97,7 +97,7 @@ public:
   > eventAllocator;
 
   void debugPrint() {
-    std::cout << "AnthemGraphCompilationResult" << std::endl;
+    juce::Logger::writeToLog("AnthemGraphCompilationResult");
     std::cout << actionGroups.size() << " action groups" << std::endl;
     for (auto& group : actionGroups) {
       std::cout << "  ActionGroup" << std::endl << "  ";
