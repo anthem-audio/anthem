@@ -68,7 +68,6 @@ AnthemProcessContext::~AnthemProcessContext() {
   }
 }
 
-// TODO: We should set parameters automatically when the model is changed
 void AnthemProcessContext::setParameterValue(int32_t id, float value) {
   // Throw if not on the JUCE message thread
   if (!juce::MessageManager::getInstance()->isThisTheMessageThread()) {
