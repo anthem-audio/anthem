@@ -39,17 +39,22 @@ struct ArenaBufferAllocateResult {
   void* deallocatePtr;
 };
 
-// A simple arena allocator for variable-size buffers.
+// A simple, real-time safe arena allocator for dynamically allocating buffers
+// of a given type.
 //
-// This class allocates a fixed-size buffer, and allows that buffer to be used
-// for allocating arrays of type T. The type must be known ahead of time to
-// ensure correct memory alignment.
+// This class allocates a fixed-size memory region ahead of time. Consumers can
+// then call `allocate()` to allocate a buffer of a given size. Since the memory
+// is pre-allocated, this class is real-time safe.
 //
-// Note:
+// A couple notes:
 //
-// When this class is deallocated, the memory is freed. However, no destructors
-// are called. If data stored in the arena needs to be cleaned up, it must be
-// cleaned up before the arena is deallocated.
+// - When this class is deallocated, the memory is freed. However, no
+//   destructors are called. If data stored in the arena needs to be cleaned up,
+//   it must be cleaned up before the arena is deallocated.
+//
+// - If the arena runs out of space, a new arena is allocated. This is not
+//   real-time safe, so the original arena shuold sized so that this does not
+//   happen under most circumstances.
 template<typename T>
 class ArenaBufferAllocator {
 private:
