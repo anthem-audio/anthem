@@ -42,7 +42,7 @@ class EngineSocketServer {
   final _engineConnections = <int, Socket>{};
 
   /// Map of engine ID to associated socket listener subscription.
-  final _engineConnectionSubs = <int, StreamSubscription>{};
+  final _engineConnectionSubs = <int, StreamSubscription<Uint8List>>{};
 
   /// Map of engine ID to associated message handler.
   final _engineSocketMessageHandlers = <int, void Function(Uint8List)>{};
@@ -62,7 +62,7 @@ class EngineSocketServer {
       _server.listen((socket) {
         late int engineId;
 
-        late StreamSubscription sub;
+        late StreamSubscription<Uint8List> sub;
 
         final id = Uint8List(8);
         var writePtr = 0;

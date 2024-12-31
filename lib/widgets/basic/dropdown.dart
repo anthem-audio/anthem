@@ -33,7 +33,7 @@ class Dropdown extends StatefulWidget {
   final double? height;
   final String? selectedID;
   final List<DropdownItem> items;
-  final Function(String?)? onChanged;
+  final void Function(String?)? onChanged;
   final bool showNameOnButton;
   final String? hint;
 

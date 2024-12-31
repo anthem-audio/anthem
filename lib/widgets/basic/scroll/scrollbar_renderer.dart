@@ -56,7 +56,7 @@ class ScrollbarRenderer extends StatefulWidget {
   final bool canScrollPastStart;
   final bool canScrollPastEnd;
 
-  final Function(ScrollbarChangeEvent event)? onChange;
+  final void Function(ScrollbarChangeEvent event)? onChange;
 
   /// If true, the scrollbar will show as disabled when the start is 0 and the
   /// end is 1.

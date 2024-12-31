@@ -36,7 +36,7 @@ class ShortcutConsumer extends StatefulWidget {
   final Widget? child;
 
   /// This function will be called when this consumer receives a shortcut.
-  final Function(LogicalKeySet shortcut)? shortcutHandler;
+  final void Function(LogicalKeySet shortcut)? shortcutHandler;
 
   /// This function will be called when this consumer receives a shortcut.
   final bool Function(KeyEvent event)? rawKeyHandler;
