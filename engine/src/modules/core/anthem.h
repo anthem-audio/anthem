@@ -79,6 +79,10 @@ public:
     return *instance;
   }
 
+  static bool hasInstance() {
+    return instance != nullptr;
+  }
+
   // Sets up the audio callback
   void startAudioCallback();
 
