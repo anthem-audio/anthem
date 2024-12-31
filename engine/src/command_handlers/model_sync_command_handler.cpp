@@ -29,7 +29,7 @@ std::optional<Response> handleModelSyncCommand(Request& request) {
   auto& anthem = Anthem::getInstance();
 
   if (rfl::holds_alternative<ModelInitRequest>(request.variant())) {
-    std::cout << "Loading project model..." << std::endl;
+    juce::Logger::writeToLog("Loading project model...");
 
     auto& modelInitRequest = rfl::get<ModelInitRequest>(request.variant());
 
@@ -44,7 +44,7 @@ std::optional<Response> handleModelSyncCommand(Request& request) {
     auto err = result.error();
 
     if (err.has_value()) {
-      std::cout << "Error during deserialize:" << std::endl;
+      juce::Logger::writeToLog("Error during deserialize:");
       std::cout << err.value().what() << std::endl;
     }
     else {
@@ -57,7 +57,7 @@ std::optional<Response> handleModelSyncCommand(Request& request) {
         nullptr
       );
 
-      std::cout << "Loaded project model" << std::endl;
+      juce::Logger::writeToLog("Loaded project model");
       std::cout << "id: " << anthem.project->id() << std::endl;
 
       // We could probably move this action to a command, but for now we always
@@ -67,7 +67,7 @@ std::optional<Response> handleModelSyncCommand(Request& request) {
     }
   }
   else if (rfl::holds_alternative<ModelUpdateRequest>(request.variant())) {
-    std::cout << "Model update received. Applying..." << std::endl;
+    juce::Logger::writeToLog("Model update received. Applying...");
 
     auto& modelUpdateRequest = rfl::get<ModelUpdateRequest>(request.variant());
 
@@ -76,7 +76,7 @@ std::optional<Response> handleModelSyncCommand(Request& request) {
       0
     );
 
-    std::cout << "Model update applied." << std::endl;
+    juce::Logger::writeToLog("Model update applied.");
   }
   else if (rfl::holds_alternative<ModelDebugPrintRequest>(request.variant())) {
     std::cout << rfl::json::write(
