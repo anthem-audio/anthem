@@ -75,7 +75,7 @@ class CppModelBuilder implements Builder {
     final libraryAnnotation = library.metadata
         .where(
           (annotation) =>
-              annotation.element?.enclosingElement?.name ==
+              annotation.element?.enclosingElement3?.name ==
               'GenerateCppModuleFile',
         )
         .firstOrNull;
@@ -200,7 +200,8 @@ class CppModelBuilder implements Builder {
 
     // Checks the imports of this library for any that themselves contain Anthem
     // models, and generates the appropriate imports for the C++ module file.
-    for (final importElement in library.libraryImports) {
+    for (final importElement
+        in library.definingCompilationUnit.libraryImports) {
       final importLibrary = importElement.importedLibrary;
 
       if (importLibrary == null) {
@@ -728,7 +729,7 @@ String _generateEnum(EnumInfo enumInfo) {
 
   final library = libraryReader.element;
 
-  for (final export in library.libraryExports
+  for (final export in library.definingCompilationUnit.libraryExports
       .where((export) => export.uri is DirectiveUriWithRelativeUriString)) {
     final uri = export.uri as DirectiveUriWithRelativeUriString;
 

@@ -279,13 +279,13 @@ class _TimelineLabelState extends State<TimelineLabel> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                color: const Color(0xFFFFFFFF).withOpacity(0.6),
+                color: const Color(0xFFFFFFFF).withValues(alpha: 0.6),
                 width: _labelHandleWidth,
                 height: 21,
               ),
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFFFFF).withOpacity(0.08),
+                  color: const Color(0xFFFFFFFF).withValues(alpha: 0.08),
                   borderRadius: const BorderRadius.only(
                     topRight: Radius.circular(3),
                   ),

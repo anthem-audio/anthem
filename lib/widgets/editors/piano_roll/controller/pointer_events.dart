@@ -392,7 +392,9 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
   void pointerDown(PianoRollPointerDownEvent event) {
     if (project.song.activePatternID == null ||
-        project.activeInstrumentID == null) return;
+        project.activeInstrumentID == null) {
+      return;
+    }
 
     if (event.pointerEvent.buttons & kPrimaryMouseButton ==
             kPrimaryMouseButton &&

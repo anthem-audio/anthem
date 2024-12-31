@@ -163,7 +163,7 @@ super.$fieldName$typeQ.setParentProperties(
           'value',
         EnumModelType() => 'value$typeQ.name',
         ColorModelType() =>
-          "{ 'a': value.alpha, 'r': value.red, 'g': value.green, 'b': value.blue }",
+          "{ 'a': value.a, 'r': value.r, 'g': value.g, 'b': value.b }",
         CustomModelType() ||
         UnknownModelType() ||
         ListModelType() ||

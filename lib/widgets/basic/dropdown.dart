@@ -109,7 +109,7 @@ class _DropdownState extends State<Dropdown> {
                       text: '(none)',
                       onSelected: () => select(null),
                     )
-                  ].whereNotNull().toList()),
+                  ].nonNulls.toList()),
       ),
       child: MouseRegion(
         // No need to setState since we're not reacting to these

@@ -143,7 +143,9 @@ class _PianoRollController {
   void deleteSelected() {
     if (viewModel.selectedNotes.isEmpty ||
         project.song.activePatternID == null ||
-        project.activeInstrumentID == null) return;
+        project.activeInstrumentID == null) {
+      return;
+    }
 
     final commands = project.song.patterns[project.song.activePatternID]!
         .notes[project.activeInstrumentID]!
@@ -166,7 +168,9 @@ class _PianoRollController {
   /// Adds all notes to the selection set in the view model.
   void selectAll() {
     if (project.song.activePatternID == null ||
-        project.activeInstrumentID == null) return;
+        project.activeInstrumentID == null) {
+      return;
+    }
 
     viewModel.selectedNotes = ObservableSet.of(
       project.song.patterns[project.song.activePatternID]!

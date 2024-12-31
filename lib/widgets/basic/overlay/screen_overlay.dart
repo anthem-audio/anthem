@@ -20,7 +20,6 @@
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 import 'package:flutter/widgets.dart';
-import 'package:collection/collection.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
@@ -61,7 +60,7 @@ class ScreenOverlay extends StatelessObserverWidget {
                   ),
                 )
               : null,
-        ].whereNotNull().toList() +
+        ].nonNulls.toList() +
         // state.entries is a Map<ID, ScreenOverlayEntry>
         // state.entries.entries is a Iterable<MapEntry<String, ScreenOverlayEntry>>
         viewModel.entries.entries

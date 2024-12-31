@@ -223,7 +223,7 @@ String _createConverterForColor({
   required String accessor,
 }) {
   return '''
-{'a': $accessor.alpha, 'r': $accessor.red, 'g': $accessor.green, 'b': $accessor.blue}
+{'a': $accessor.a, 'r': $accessor.r, 'g': $accessor.g, 'b': $accessor.b}
 ''';
 }
 
