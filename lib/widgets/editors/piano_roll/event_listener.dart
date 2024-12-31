@@ -45,7 +45,7 @@ class PianoRollEventListener extends StatefulWidget {
 }
 
 class _PianoRollEventListenerState extends State<PianoRollEventListener> {
-  handlePointerDown(BuildContext context, PointerDownEvent e) {
+  void handlePointerDown(BuildContext context, PointerDownEvent e) {
     if (e.buttons & kMiddleMouseButton == kMiddleMouseButton) {
       return;
     }
@@ -89,7 +89,7 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
     controller.pointerDown(event);
   }
 
-  handlePointerMove(BuildContext context, PointerMoveEvent e) {
+  void handlePointerMove(BuildContext context, PointerMoveEvent e) {
     if (e.buttons & kMiddleMouseButton == kMiddleMouseButton) {
       return;
     }
@@ -123,7 +123,7 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
     controller.pointerMove(event);
   }
 
-  handlePointerUp(BuildContext context, PointerEvent e) {
+  void handlePointerUp(BuildContext context, PointerEvent e) {
     final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
     final controller = Provider.of<PianoRollController>(context, listen: false);
     final keyboardModifiers =

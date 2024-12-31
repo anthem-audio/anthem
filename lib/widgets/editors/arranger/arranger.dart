@@ -363,7 +363,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
 
   mobx.ReactionDisposer? animationTweenUpdaterDisposer;
 
-  StreamSubscription? baseTrackHeightChangedSub;
+  StreamSubscription<void>? baseTrackHeightChangedSub;
 
   @override
   void dispose() {

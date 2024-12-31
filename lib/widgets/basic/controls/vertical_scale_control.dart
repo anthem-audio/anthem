@@ -29,7 +29,7 @@ class VerticalScaleControl extends StatefulWidget {
   final double min;
   final double max;
   final double value;
-  final Function(double newValue) onChange;
+  final void Function(double newValue) onChange;
 
   const VerticalScaleControl({
     super.key,
