@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,7 +21,7 @@
 #include "modules/processors/tone_generator.h"
 #include "modules/processors/simple_volume_lfo_node.h"
 
-std::shared_ptr<Anthem> Anthem::instance = nullptr;
+std::unique_ptr<Anthem> Anthem::instance = nullptr;
 
 Anthem::Anthem() {
   isAudioCallbackRunning = false;
@@ -30,6 +30,12 @@ Anthem::Anthem() {
 void Anthem::initialize() {
   compiler = std::make_unique<AnthemGraphCompiler>();
   graphProcessor = std::make_unique<AnthemGraphProcessor>();
+}
+
+void Anthem::shutdown() {
+  if (isAudioCallbackRunning) {
+    deviceManager.removeAudioCallback(audioCallback.get());
+  }
 }
 
 void Anthem::startAudioCallback() {

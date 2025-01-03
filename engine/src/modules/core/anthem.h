@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -37,7 +37,7 @@ private:
   bool isAudioCallbackRunning;
 
   // Singleton shared pointer instance
-  static std::shared_ptr<Anthem> instance;
+  static std::unique_ptr<Anthem> instance;
 
   juce::AudioDeviceManager deviceManager;
 
@@ -64,17 +64,9 @@ public:
   void initialize();
 
   // Singleton instance getter
-  static std::shared_ptr<Anthem> getInstancePtr() {
-    if (!instance) {
-      instance = std::make_shared<Anthem>();
-    }
-    return instance;
-  }
-
-  // Singleton instance getter
   static Anthem& getInstance() {
     if (!instance) {
-      instance = std::make_shared<Anthem>();
+      instance = std::make_unique<Anthem>();
     }
     return *instance;
   }
@@ -82,6 +74,12 @@ public:
   static bool hasInstance() {
     return instance != nullptr;
   }
+
+  static void cleanup() {
+    instance.reset();
+  }
+
+  void shutdown();
 
   // Sets up the audio callback
   void startAudioCallback();
