@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -348,7 +348,8 @@ public:
   void shutdown() override {
     // Destruct Anthem instance
     if (Anthem::hasInstance()) {
-      Anthem::getInstancePtr().reset();
+      Anthem::getInstance().shutdown();
+      Anthem::cleanup();
     }
   }
 
