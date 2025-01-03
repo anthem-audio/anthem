@@ -51,6 +51,8 @@ void Anthem::startAudioCallback() {
 
   // Set up the audio callback
   this->deviceManager.addAudioCallback(this->audioCallback.get());
+
+  isAudioCallbackRunning = true;
 }
 
 void Anthem::compileProcessingGraph() {
