@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -106,4 +106,8 @@ public:
       }
     }
   }
+
+  // Clean up the compilation result. This must be called before the compilation
+  // result is deallocated.
+  void cleanup();
 };

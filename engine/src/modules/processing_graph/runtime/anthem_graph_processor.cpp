@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -39,7 +39,9 @@ void AnthemGraphProcessor::clearDeletionQueueFromMainThread() {
 
   while (nextCompilationResult) {
     auto* ptr = nextCompilationResult.value();
+    ptr->cleanup();
     delete ptr;
+
     nextCompilationResult = this->processingStepsDeletionQueue.read();
   }
 }

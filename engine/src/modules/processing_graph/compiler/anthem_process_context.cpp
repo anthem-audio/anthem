@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -61,10 +61,19 @@ AnthemProcessContext::AnthemProcessContext(std::shared_ptr<Node>& graphNode, Are
   this->graphNode = graphNode;
 }
 
-AnthemProcessContext::~AnthemProcessContext() {
+void AnthemProcessContext::cleanup() {
   // Delete the atomic floats
   for (auto& [id, value] : parameterValues) {
     delete value;
+  }
+
+  // Cleanup the event buffers
+  for (auto& [id, buffer] : inputNoteEventBuffers) {
+    buffer->cleanup();
+  }
+
+  for (auto& [id, buffer] : outputNoteEventBuffers) {
+    buffer->cleanup();
   }
 }
 

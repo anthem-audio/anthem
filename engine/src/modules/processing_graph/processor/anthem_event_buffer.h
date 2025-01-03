@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -60,8 +60,9 @@ public:
     deallocatePtr = result.deallocatePtr;
   }
 
-  // Destructor
-  ~AnthemEventBuffer() {
+  // Clean up the buffer. This must be called before AnthemEventBuffer is
+  // deallocated.
+  void cleanup() {
     allocator->deallocate(deallocatePtr);
   }
 
