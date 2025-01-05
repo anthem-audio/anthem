@@ -17,8 +17,10 @@ dependencies:
   anthem_codegen:
     path: codegen
 
+  args: ^2.6.0
   bitsdojo_window: ^0.1.5
   collection: ^1.17.1
+  colorize: ^3.0.0
   file_picker: ^8.1.7
   flutter_mobx: ^2.3.0
   flutter_shaders: ^0.1.3
