@@ -17,20 +17,29 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+// ignore_for_file: avoid_print
+
 import 'package:args/command_runner.dart';
 
 import 'commands/build.dart';
+import 'commands/codegen.dart';
 
 /// Main entry point for the CLI command.
-/// 
+///
 /// Usage:
-/// 
+///
 /// ```sh
 /// dart run anthem:cli command [arguments]
 /// ```
-void main(List<String> args) {
-  final runner = CommandRunner<dynamic>('anthem:cli', 'Utilities for developing Anthem.')
-    ..addCommand(BuildCommand());
+void main(List<String> args) async {
+  final runner =
+      CommandRunner<dynamic>('anthem:cli', 'Utilities for developing Anthem.')
+        ..addCommand(BuildCommand())
+        ..addCommand(CodegenCommand());
 
-  runner.run(args);
+  try {
+    await runner.run(args);
+  } on UsageException catch (e) {
+    print(e);
+  }
 }

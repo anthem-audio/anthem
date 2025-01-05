@@ -34,18 +34,18 @@ class BuildCommand extends Command<dynamic> {
   String get description => 'Used to build different parts of Anthem.';
 
   BuildCommand() {
-    addSubcommand(BuildEngineCommand());
+    addSubcommand(_BuildEngineCommand());
   }
 }
 
-class BuildEngineCommand extends Command<dynamic> {
+class _BuildEngineCommand extends Command<dynamic> {
   @override
   String get name => 'engine';
 
   @override
   String get description => 'Builds the Anthem engine.';
 
-  BuildEngineCommand() {
+  _BuildEngineCommand() {
     // argParser.addFlag('output', abbr: 'o');
   }
 
@@ -90,11 +90,13 @@ Some things to keep in mind:
 ''');
 
     if (await _isIpcOutdated()) {
-      print(Colorize('''Error: IPC message files are outdated, and cannot be regenerated
+      print(Colorize(
+          '''Error: IPC message files are outdated, and cannot be regenerated
 normally due to a limitation in package:build. Run
     dart run anthem:cli codegen clean
     dart run anthem:cli codegen generate
-to generate the files.''')..red());
+to generate the files.''')
+        ..red());
       return;
     }
   }

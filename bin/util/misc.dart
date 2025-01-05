@@ -21,5 +21,6 @@ import 'dart:io';
 
 Uri getPackageRootPath() {
   final scriptPath = Platform.script;
-  return Uri.directory(scriptPath.pathSegments.takeWhile((s) => s != '.dart_tool').join('/'));
+  return Uri.directory(
+      scriptPath.pathSegments.takeWhile((s) => s != '.dart_tool').join('/'));
 }
