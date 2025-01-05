@@ -22,6 +22,7 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:colorize/colorize.dart';
 
 import '../util/misc.dart';
 
@@ -34,6 +35,7 @@ class CodegenCommand extends Command<dynamic> {
 
   CodegenCommand() {
     addSubcommand(_CodegenCleanCommand());
+    addSubcommand(_CodegenGenerateCommand());
   }
 }
 
@@ -45,7 +47,7 @@ class _CodegenCleanCommand extends Command<dynamic> {
   String get description => 'Cleans up generated files.';
 
   _CodegenCleanCommand() {
-    argParser.addFlag('skip-prompts', abbr: 'y', defaultsTo: false);
+    argParser.addFlag('skip-prompts', abbr: 'y');
   }
 
   @override
@@ -93,5 +95,47 @@ class _CodegenCleanCommand extends Command<dynamic> {
     } on PathNotFoundException catch (_) {}
 
     print('Deleted $deleteCount files.');
+  }
+}
+
+class _CodegenGenerateCommand extends Command<dynamic> {
+  @override
+  String get name => 'generate';
+
+  @override
+  String get description => 'Generates code for Anthem.';
+
+  _CodegenGenerateCommand() {
+    argParser.addFlag('watch', abbr: 'w', defaultsTo: false);
+  }
+
+  @override
+  Future<void> run() async {
+    print(Colorize('Generating code...\n\n').lightGreen());
+
+    final packageRootPath = getPackageRootPath();
+
+    final process = await Process.start(
+      'dart',
+      [
+        'run',
+        'build_runner',
+        argResults!['watch'] ? 'watch' : 'build',
+        '--delete-conflicting-outputs',
+      ],
+      workingDirectory: Platform.isWindows
+          ? packageRootPath.path.substring(1)
+          : packageRootPath.path,
+    )
+      ..stdout.pipe(stdout)
+      ..stderr.pipe(stderr);
+
+    final exitCode = await process.exitCode;
+
+    if (exitCode != 0) {
+      print(Colorize('\n\nError: Code generation failed.').red());
+      return;
+    }
+    print(Colorize('\n\nCode generation complete.').lightGreen());
   }
 }
