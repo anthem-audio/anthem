@@ -145,9 +145,8 @@ class _CodegenGenerateCommand extends Command<dynamic> {
         ],
         workingDirectory:
             packageRootPath.toFilePath(windows: Platform.isWindows),
-      )
-        ..stdout.pipe(stdout)
-        ..stderr.pipe(stderr);
+        mode: ProcessStartMode.inheritStdio,
+      );
 
       final exitCode = await process.exitCode;
 
@@ -176,10 +175,8 @@ class _CodegenGenerateCommand extends Command<dynamic> {
         ],
         workingDirectory:
             workingDirectory.toFilePath(windows: Platform.isWindows),
+        mode: ProcessStartMode.inheritStdio,
       );
-
-      process.stdout.forEach((list) => list.forEach(stdout.writeCharCode));
-      process.stderr.forEach((list) => list.forEach(stderr.writeCharCode));
 
       final exitCode = await process.exitCode;
 
