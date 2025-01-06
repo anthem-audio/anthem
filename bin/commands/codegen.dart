@@ -75,7 +75,7 @@ class _CodegenCleanCommand extends Command<dynamic> {
     var deleteCount = 0;
 
     final dartLibFilesToDelete =
-        Directory.fromUri(getPackageRootPath().resolve('lib'))
+        Directory.fromUri(getPackageRootPath().resolve('lib/'))
             .listSync(recursive: true)
             .where((f) {
       return f.path.endsWith('.g.dart') || f.path.endsWith('.g.part');
@@ -87,7 +87,7 @@ class _CodegenCleanCommand extends Command<dynamic> {
     }
 
     final dartCodegenFilesToDelete =
-        Directory.fromUri(getPackageRootPath().resolve('codegen'))
+        Directory.fromUri(getPackageRootPath().resolve('codegen/'))
             .listSync(recursive: true)
             .where((f) {
       return f.path.endsWith('.g.dart') || f.path.endsWith('.g.part');
@@ -100,7 +100,7 @@ class _CodegenCleanCommand extends Command<dynamic> {
 
     try {
       final engineGeneratedFolder = Directory.fromUri(
-        getPackageRootPath().resolve('engine/src/generated'),
+        getPackageRootPath().resolve('engine/src/generated/'),
       );
 
       deleteCount += engineGeneratedFolder.listSync(recursive: true).length;
@@ -157,7 +157,7 @@ class _CodegenGenerateCommand extends Command<dynamic> {
       return;
     }
 
-    for (final subpath in [null, if (!argResults!['root-only']) 'codegen']) {
+    for (final subpath in [null, if (!argResults!['root-only']) 'codegen/']) {
       final workingDirectory =
           subpath == null ? packageRootPath : packageRootPath.resolve(subpath);
 
