@@ -46,12 +46,55 @@ class _BuildEngineCommand extends Command<dynamic> {
   String get description => 'Builds the Anthem engine.';
 
   _BuildEngineCommand() {
-    argParser.addFlag('release', abbr: 'r', negatable: false, defaultsTo: true);
-    argParser.addFlag('debug', abbr: 'd', negatable: false, defaultsTo: false);
+    argParser.addFlag(
+      'release',
+      abbr: 'r',
+      defaultsTo: false,
+      help: 'Builds the engine in release mode.',
+    );
+
+    argParser.addFlag(
+      'debug',
+      abbr: 'd',
+      defaultsTo: false,
+      help: 'Builds the engine in debug mode.',
+    );
+
+    argParser.addFlag(
+      'address-sanitizer',
+      defaultsTo: false,
+      help:
+          'Builds the engine with address sanitizer enabled. This does not work with MSVC.',
+    );
   }
 
   @override
   Future<void> run() async {
+    if (Platform.isWindows && argResults!['address-sanitizer']) {
+      print(Colorize('Error: Address sanitizer is not supported on Windows.')
+        ..red());
+      return;
+    }
+
+    if (argResults!['release'] && argResults!['debug']) {
+      print(Colorize('Error: Cannot build in both release and debug mode.')
+        ..red());
+      return;
+    }
+
+    if (!argResults!['release'] && !argResults!['debug']) {
+      print(Colorize('Error: Must build in either release or debug mode.')
+        ..red());
+      return;
+    }
+
+    if (argResults!['release'] && argResults!['address-sanitizer']) {
+      print(Colorize(
+          'Error: Cannot build in release mode with address sanitizer enabled.')
+        ..red());
+      return;
+    }
+
     print(Colorize('Building the Anthem engine...\n\n')..lightGreen());
 
     // Check for generated files. If there aren't any, provide an error.
@@ -119,13 +162,14 @@ to generate the files, then run this script again.''')
         // Note: On Linux, if you get an error like:
         // CMake Warning:
         //   Manually-specified variables were not used by the project:
-        // 
+        //
         //     CMAKE_BUILD_TYPE
         //
         // Then you may need to set the debug/release flag in the same way that
         // Windows (and eventually macOS) does below in the build command. E.g.:
         //    cmake --build . --config (Release/Debug)
-        if (Platform.isLinux) '-DCMAKE_BUILD_TYPE=${argResults!['debug'] ? 'Debug' : 'Release'}',
+        if (Platform.isLinux)
+          '-DCMAKE_BUILD_TYPE=${argResults!['debug'] ? 'Debug' : 'Release'}',
 
         '..',
       ],
@@ -148,7 +192,14 @@ to generate the files, then run this script again.''')
         '--target',
         'AnthemEngine',
         if (Platform.isWindows || Platform.isMacOS) '--config',
-        if (Platform.isWindows || Platform.isMacOS) argResults!['debug'] ? 'Debug' : 'Release',
+        if (Platform.isWindows || Platform.isMacOS)
+          argResults!['debug'] ? 'Debug' : 'Release',
+        if (argResults!['address-sanitizer'])
+          '-DCMAKE_C_FLAGS="-fsanitize=address -g -O1"',
+        if (argResults!['address-sanitizer'])
+          '-DCMAKE_CXX_FLAGS="-fsanitize=address -g -O1"',
+        if (argResults!['address-sanitizer'])
+          '-DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address"',
       ],
       workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
       mode: ProcessStartMode.inheritStdio,
