@@ -16,10 +16,6 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # Set up environment
-      - name: Set up environment
-        run: .\scripts\setup.ps1
-
       # Get dependencies for Flutter
       - name: Get dependencies
         run: flutter pub get
