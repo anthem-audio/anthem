@@ -58,7 +58,7 @@ jobs:
 
       - name: Test engine
         shell: pwsh
-        run: .\scripts\test.ps1 --build
+        run: dart run anthem:cli engine test
 
       # Build Flutter project
       - name: Build Flutter project
@@ -132,7 +132,7 @@ jobs:
       
       - name: Test engine
         shell: pwsh
-        run: ./scripts/test.ps1 --build
+        run: dart run anthem:cli engine test
 
       # Build Flutter project
       - name: Build Flutter project
