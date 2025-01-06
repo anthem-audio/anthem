@@ -35,6 +35,7 @@ class EngineCommand extends Command<dynamic> {
 
   EngineCommand() {
     addSubcommand(_BuildEngineCommand());
+    addSubcommand(_CleanEngineCommand());
   }
 }
 
@@ -239,4 +240,26 @@ Future<bool> _isIpcOutdated() async {
   final newestSourceFileDate = await newestSourceFileDateFuture;
 
   return newestGeneratedFileDate.isBefore(newestSourceFileDate);
+}
+
+class _CleanEngineCommand extends Command<dynamic> {
+  @override
+  String get name => 'clean';
+
+  @override
+  String get description => 'Cleans the Anthem engine build.';
+
+  @override
+  Future<void> run() async {
+    print(Colorize('Cleaning the Anthem engine build...')..lightGreen());
+
+    final packageRootPath = getPackageRootPath();
+    final buildDirPath = packageRootPath.resolve('engine/build');
+    final buildDir = Directory.fromUri(buildDirPath);
+
+    print(Colorize('Deleting build directory...')..lightGreen());
+    buildDir.deleteSync(recursive: true);
+
+    print(Colorize('Clean complete.').lightGreen());
+  }
 }
