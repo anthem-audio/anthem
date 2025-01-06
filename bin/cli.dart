@@ -21,7 +21,7 @@
 
 import 'package:args/command_runner.dart';
 
-import 'commands/build.dart';
+import 'commands/engine.dart';
 import 'commands/codegen.dart';
 
 /// Main entry point for the CLI command.
@@ -34,8 +34,8 @@ import 'commands/codegen.dart';
 void main(List<String> args) async {
   final runner =
       CommandRunner<dynamic>('anthem:cli', 'Utilities for developing Anthem.')
-        ..addCommand(BuildCommand())
-        ..addCommand(CodegenCommand());
+        ..addCommand(CodegenCommand())
+        ..addCommand(EngineCommand());
 
   try {
     await runner.run(args);
