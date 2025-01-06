@@ -143,9 +143,8 @@ class _CodegenGenerateCommand extends Command<dynamic> {
           'watch',
           '--delete-conflicting-outputs',
         ],
-        workingDirectory: Platform.isWindows
-            ? packageRootPath.path.substring(1)
-            : packageRootPath.path,
+        workingDirectory:
+            packageRootPath.toFilePath(windows: Platform.isWindows),
       )
         ..stdout.pipe(stdout)
         ..stderr.pipe(stderr);
