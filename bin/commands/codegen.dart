@@ -57,6 +57,8 @@ class _CodegenCleanCommand extends Command<dynamic> {
           'This will delete ALL files/folders matching the following patterns:');
       print('  - lib/**/*.g.dart');
       print('  - lib/**/*.g.part');
+      print('  - codegen/**/*.g.dart');
+      print('  - codegen/**/*.g.part');
       print('  - engine/src/generated');
       print('Are you sure you want to delete all generated files? (y/n)');
 
@@ -72,14 +74,26 @@ class _CodegenCleanCommand extends Command<dynamic> {
 
     var deleteCount = 0;
 
-    final dartFilesToDelete =
+    final dartLibFilesToDelete =
         Directory.fromUri(getPackageRootPath().resolve('lib'))
             .listSync(recursive: true)
             .where((f) {
       return f.path.endsWith('.g.dart') || f.path.endsWith('.g.part');
     });
 
-    for (final file in dartFilesToDelete) {
+    for (final file in dartLibFilesToDelete) {
+      file.deleteSync();
+      deleteCount++;
+    }
+
+    final dartCodegenFilesToDelete =
+        Directory.fromUri(getPackageRootPath().resolve('codegen'))
+            .listSync(recursive: true)
+            .where((f) {
+      return f.path.endsWith('.g.dart') || f.path.endsWith('.g.part');
+    });
+
+    for (final file in dartCodegenFilesToDelete) {
       file.deleteSync();
       deleteCount++;
     }
@@ -106,7 +120,8 @@ class _CodegenGenerateCommand extends Command<dynamic> {
   String get description => 'Generates code for Anthem.';
 
   _CodegenGenerateCommand() {
-    argParser.addFlag('watch', abbr: 'w', defaultsTo: false);
+    argParser.addFlag('watch', abbr: 'w');
+    argParser.addFlag('root-only');
   }
 
   @override
@@ -115,27 +130,66 @@ class _CodegenGenerateCommand extends Command<dynamic> {
 
     final packageRootPath = getPackageRootPath();
 
-    final process = await Process.start(
-      'dart',
-      [
-        'run',
-        'build_runner',
-        argResults!['watch'] ? 'watch' : 'build',
-        '--delete-conflicting-outputs',
-      ],
-      workingDirectory: Platform.isWindows
-          ? packageRootPath.path.substring(1)
-          : packageRootPath.path,
-    )
-      ..stdout.pipe(stdout)
-      ..stderr.pipe(stderr);
+    // If we're watching, run the build_runner in watch mode, and just run in
+    // root package.
+    if (argResults!['watch']) {
+      print('Watching for changes in root package...');
 
-    final exitCode = await process.exitCode;
+      final process = await Process.start(
+        'dart',
+        [
+          'run',
+          'build_runner',
+          'watch',
+          '--delete-conflicting-outputs',
+        ],
+        workingDirectory: Platform.isWindows
+            ? packageRootPath.path.substring(1)
+            : packageRootPath.path,
+      )
+        ..stdout.pipe(stdout)
+        ..stderr.pipe(stderr);
 
-    if (exitCode != 0) {
-      print(Colorize('\n\nError: Code generation failed.').red());
+      final exitCode = await process.exitCode;
+
+      if (exitCode != 0) {
+        print(Colorize('\n\nError: Code generation failed.').red());
+      }
+
       return;
     }
+
+    for (final subpath in [null, if (!argResults!['root-only']) 'codegen']) {
+      final workingDirectory =
+          subpath == null ? packageRootPath : packageRootPath.resolve(subpath);
+
+      print(Colorize(
+              'Generating code in ${workingDirectory.toFilePath(windows: Platform.isWindows)}...')
+          .lightGreen());
+
+      final process = await Process.start(
+        'dart',
+        [
+          'run',
+          'build_runner',
+          'build',
+          '--delete-conflicting-outputs',
+        ],
+        workingDirectory:
+            workingDirectory.toFilePath(windows: Platform.isWindows),
+      );
+
+      process.stdout.forEach((list) => list.forEach(stdout.writeCharCode));
+      process.stderr.forEach((list) => list.forEach(stderr.writeCharCode));
+
+      final exitCode = await process.exitCode;
+
+      if (exitCode != 0) {
+        print(Colorize('\n\nError: Code generation failed.').red());
+        exit(exitCode);
+      }
+    }
+
     print(Colorize('\n\nCode generation complete.').lightGreen());
   }
 }
