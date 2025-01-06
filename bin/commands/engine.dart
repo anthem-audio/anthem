@@ -101,7 +101,7 @@ class _BuildEngineCommand extends Command<dynamic> {
     // Check for generated files. If there aren't any, provide an error.
     final packageRootPath = getPackageRootPath();
     final generatedCppFiles = Directory.fromUri(
-      packageRootPath.resolve('engine/src/generated'),
+      packageRootPath.resolve('engine/src/generated/'),
     ).listSync(recursive: true);
 
     if (generatedCppFiles.isEmpty) {
@@ -146,7 +146,7 @@ to generate the files, then run this script again.''')
     }
 
     print(Colorize('Creating build directory...')..lightGreen());
-    final buildDirPath = packageRootPath.resolve('engine/build');
+    final buildDirPath = packageRootPath.resolve('engine/build/');
     final buildDir = Directory.fromUri(buildDirPath);
     buildDir.createSync();
 
@@ -215,13 +215,33 @@ to generate the files, then run this script again.''')
     }
 
     print(Colorize('\n\nBuild complete.').lightGreen());
+
+    print(Colorize('Copying engine binary to Flutter assets directory...')
+      ..lightGreen());
+    final engineBinaryPath = buildDirPath.resolve(
+        './AnthemEngine_artefacts${argResults!['debug'] ? '/Debug' : ''}/AnthemEngine${Platform.isWindows ? '.exe' : ''}');
+    final flutterAssetsDirPath = packageRootPath.resolve('assets/engine/');
+
+    // Create the engine directory in assets if it doesn't exist
+    final flutterAssetsDir = Directory.fromUri(flutterAssetsDirPath);
+    if (!flutterAssetsDir.existsSync()) {
+      flutterAssetsDir.createSync(recursive: true);
+    }
+
+    // Copy the engine binary to the Flutter assets directory
+    final flutterEngineBinaryPath = flutterAssetsDirPath
+        .resolve('AnthemEngine${Platform.isWindows ? '.exe' : ''}');
+    File.fromUri(engineBinaryPath).copySync(
+        flutterEngineBinaryPath.toFilePath(windows: Platform.isWindows));
+
+    print(Colorize('Copy complete.').lightGreen());
   }
 }
 
 Future<bool> _isIpcOutdated() async {
   final packageRootPath = getPackageRootPath();
   final messagesFiles = Directory.fromUri(
-    packageRootPath.resolve('lib/engine_api/messages'),
+    packageRootPath.resolve('lib/engine_api/messages/'),
   ).listSync(recursive: true);
 
   final generatedFiles = messagesFiles.where((file) {
@@ -256,7 +276,7 @@ class _CleanEngineCommand extends Command<dynamic> {
     print(Colorize('Cleaning the Anthem engine build...')..lightGreen());
 
     final packageRootPath = getPackageRootPath();
-    final buildDirPath = packageRootPath.resolve('engine/build');
+    final buildDirPath = packageRootPath.resolve('engine/build/');
     final buildDir = Directory.fromUri(buildDirPath);
 
     print(Colorize('Deleting build directory...')..lightGreen());
