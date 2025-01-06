@@ -21,6 +21,6 @@ import 'dart:io';
 
 Uri getPackageRootPath() {
   final scriptPath = Platform.script;
-  return Uri.directory(
+  return Uri.directory((Platform.isWindows ? '' : '/') +
       scriptPath.pathSegments.takeWhile((s) => s != '.dart_tool').join('/'));
 }
