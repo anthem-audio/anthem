@@ -50,13 +50,11 @@ jobs:
           retry_on: error
           command: |
             $ErrorActionPreference = 'Stop'
-            ./scripts/build.ps1
+            dart run anthem:cli engine build --release
           new_command_on_retry: |
             $ErrorActionPreference = 'Stop'
-
             dart run anthem:cli codegen generate --root-only
-
-            ./scripts/build.ps1
+            dart run anthem:cli engine build --release
 
       - name: Test engine
         shell: pwsh
@@ -126,13 +124,11 @@ jobs:
           retry_on: error
           command: |
             $ErrorActionPreference = 'Stop'
-            ./scripts/build.ps1
+            dart run anthem:cli engine build --release
           new_command_on_retry: |
             $ErrorActionPreference = 'Stop'
-
             dart run anthem:cli codegen generate --root-only
-
-            ./scripts/build.ps1
+            dart run anthem:cli engine build --release
       
       - name: Test engine
         shell: pwsh
