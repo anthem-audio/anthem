@@ -91,13 +91,35 @@ Some things to keep in mind:
 
     if (await _isIpcOutdated()) {
       print(Colorize(
-          '''Error: IPC message files are outdated, and cannot be regenerated
+          '''Error: IPC message files are outdated, and cannot be updated
 normally due to a limitation in package:build. Run
     dart run anthem:cli codegen clean
     dart run anthem:cli codegen generate
-to generate the files.''')
+to generate the files, then run this script again.''')
         ..red());
       return;
+    }
+
+    print(Colorize('Creating build directory...')..lightGreen());
+    final buildDirPath = packageRootPath.resolve('engine/build');
+    final buildDir = Directory.fromUri(buildDirPath);
+    buildDir.createSync();
+
+    print(Colorize('Running CMake...')..lightGreen());
+    final cmakeProcess = await Process.start(
+      'cmake',
+      ['..'],
+      workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
+      environment: {},
+    );
+
+    cmakeProcess.stdout.forEach((list) => list.forEach(stdout.writeCharCode));
+    cmakeProcess.stderr.forEach((list) => list.forEach(stderr.writeCharCode));
+
+    final cmakeExitCode = await cmakeProcess.exitCode;
+    if (cmakeExitCode != 0) {
+      print(Colorize('\n\nError: CMake failed.').red());
+      exit(exitCode);
     }
   }
 }
