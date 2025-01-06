@@ -172,6 +172,13 @@ to generate the files, then run this script again.''')
         if (Platform.isLinux)
           '-DCMAKE_BUILD_TYPE=${argResults!['debug'] ? 'Debug' : 'Release'}',
 
+        if (argResults!['address-sanitizer'])
+          '-DCMAKE_C_FLAGS="-fsanitize=address -g -O1"',
+        if (argResults!['address-sanitizer'])
+          '-DCMAKE_CXX_FLAGS="-fsanitize=address -g -O1"',
+        if (argResults!['address-sanitizer'])
+          '-DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address"',
+
         '..',
       ],
       workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
@@ -195,12 +202,6 @@ to generate the files, then run this script again.''')
         if (Platform.isWindows || Platform.isMacOS) '--config',
         if (Platform.isWindows || Platform.isMacOS)
           argResults!['debug'] ? 'Debug' : 'Release',
-        if (argResults!['address-sanitizer'])
-          '-DCMAKE_C_FLAGS="-fsanitize=address -g -O1"',
-        if (argResults!['address-sanitizer'])
-          '-DCMAKE_CXX_FLAGS="-fsanitize=address -g -O1"',
-        if (argResults!['address-sanitizer'])
-          '-DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address"',
       ],
       workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
       mode: ProcessStartMode.inheritStdio,
