@@ -26,21 +26,21 @@ import 'package:colorize/colorize.dart';
 
 import '../util/misc.dart';
 
-class BuildCommand extends Command<dynamic> {
+class EngineCommand extends Command<dynamic> {
   @override
-  String get name => 'build';
+  String get name => 'engine';
 
   @override
-  String get description => 'Used to build different parts of Anthem.';
+  String get description => 'Utilities for devleoping the Anthem engine.';
 
-  BuildCommand() {
+  EngineCommand() {
     addSubcommand(_BuildEngineCommand());
   }
 }
 
 class _BuildEngineCommand extends Command<dynamic> {
   @override
-  String get name => 'engine';
+  String get name => 'build';
 
   @override
   String get description => 'Builds the Anthem engine.';
