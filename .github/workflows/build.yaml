@@ -22,11 +22,7 @@ jobs:
 
       # Run code generation
       - name: Run code generation
-        run: |
-          dart run build_runner build
-          cd codegen
-          dart run build_runner build
-          cd ..
+        run: dart run anthem:cli codegen generate
 
       # Check for formatting in Flutter project
       - name: Format Flutter code
@@ -58,10 +54,7 @@ jobs:
           new_command_on_retry: |
             $ErrorActionPreference = 'Stop'
 
-            cd codegen
-            dart run build_runner build
-            cd ..
-            dart run build_runner build
+            dart run anthem:cli codegen generate --root-only
 
             ./scripts/build.ps1
 
@@ -105,11 +98,7 @@ jobs:
 
       # Run code generation
       - name: Run code generation
-        run: |
-          cd codegen
-          dart run build_runner build
-          cd ..
-          dart run build_runner build
+        run: dart run anthem:cli codegen generate
 
       # Check for formatting in Flutter project
       - name: Format Flutter code
@@ -141,10 +130,7 @@ jobs:
           new_command_on_retry: |
             $ErrorActionPreference = 'Stop'
 
-            cd codegen
-            dart run build_runner build
-            cd ..
-            dart run build_runner build
+            dart run anthem:cli codegen generate --root-only
 
             ./scripts/build.ps1
       
