@@ -46,7 +46,8 @@ class _BuildEngineCommand extends Command<dynamic> {
   String get description => 'Builds the Anthem engine.';
 
   _BuildEngineCommand() {
-    // argParser.addFlag('output', abbr: 'o');
+    argParser.addFlag('release', abbr: 'r', negatable: false, defaultsTo: true);
+    argParser.addFlag('debug', abbr: 'd', negatable: false, defaultsTo: false);
   }
 
   @override
@@ -105,22 +106,61 @@ to generate the files, then run this script again.''')
     final buildDir = Directory.fromUri(buildDirPath);
     buildDir.createSync();
 
+    // final env = <String, String>{
+    // };
+
     print(Colorize('Running CMake...')..lightGreen());
     final cmakeProcess = await Process.start(
       'cmake',
-      ['..'],
-      workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
-      environment: {},
-    );
+      [
+        if (Platform.isLinux) '-DCMAKE_C_COMPILER=clang',
+        if (Platform.isLinux) '-DCMAKE_CXX_COMPILER=clang++',
 
-    cmakeProcess.stdout.forEach((list) => list.forEach(stdout.writeCharCode));
-    cmakeProcess.stderr.forEach((list) => list.forEach(stderr.writeCharCode));
+        // Note: On Linux, if you get an error like:
+        // CMake Warning:
+        //   Manually-specified variables were not used by the project:
+        // 
+        //     CMAKE_BUILD_TYPE
+        //
+        // Then you may need to set the debug/release flag in the same way that
+        // Windows (and eventually macOS) does below in the build command. E.g.:
+        //    cmake --build . --config (Release/Debug)
+        if (Platform.isLinux) '-DCMAKE_BUILD_TYPE=${argResults!['debug'] ? 'Debug' : 'Release'}',
+
+        '..',
+      ],
+      workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
+      mode: ProcessStartMode.inheritStdio,
+    );
 
     final cmakeExitCode = await cmakeProcess.exitCode;
     if (cmakeExitCode != 0) {
       print(Colorize('\n\nError: CMake failed.').red());
       exit(exitCode);
     }
+
+    print(Colorize('Running build...')..lightGreen());
+    final buildProcess = await Process.start(
+      'cmake',
+      [
+        '--build',
+        '.',
+        '--target',
+        'AnthemEngine',
+        if (Platform.isWindows || Platform.isMacOS) '--config',
+        if (Platform.isWindows || Platform.isMacOS) argResults!['debug'] ? 'Debug' : 'Release',
+      ],
+      workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
+      mode: ProcessStartMode.inheritStdio,
+    );
+
+    final buildExitCode = await buildProcess.exitCode;
+    if (buildExitCode != 0) {
+      print(Colorize('\n\nError: Build failed.').red());
+      exit(exitCode);
+    }
+
+    print(Colorize('\n\nBuild complete.').lightGreen());
   }
 }
 
