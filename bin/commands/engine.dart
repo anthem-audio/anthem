@@ -36,6 +36,7 @@ class EngineCommand extends Command<dynamic> {
   EngineCommand() {
     addSubcommand(_BuildEngineCommand());
     addSubcommand(_CleanEngineCommand());
+    addSubcommand(_TestEngineCommand());
   }
 }
 
@@ -145,81 +146,16 @@ to generate the files, then run this script again.''')
       return;
     }
 
-    print(Colorize('Creating build directory...')..lightGreen());
-    final buildDirPath = packageRootPath.resolve('engine/build/');
-    final buildDir = Directory.fromUri(buildDirPath);
-    buildDir.createSync();
-
-    // final env = <String, String>{
-    // };
-
-    print(Colorize('Running CMake...')..lightGreen());
-    final cmakeProcess = await Process.start(
-      'cmake',
-      [
-        // Note: On Linux, if you get an error like:
-        // CMake Warning:
-        //   Manually-specified variables were not used by the project:
-        //
-        //     CMAKE_BUILD_TYPE
-        //
-        // Then you may need to set the debug/release flag in the same way that
-        // Windows (and eventually macOS) does below in the build command. E.g.:
-        //    cmake --build . --config (Release/Debug)
-        if (Platform.isLinux)
-          '-DCMAKE_BUILD_TYPE=${argResults!['debug'] ? 'Debug' : 'Release'}',
-
-        if (argResults!['address-sanitizer'])
-          '-DCMAKE_C_FLAGS="-fsanitize=address"',
-        if (argResults!['address-sanitizer'])
-          '-DCMAKE_CXX_FLAGS="-fsanitize=address"',
-        if (argResults!['address-sanitizer'])
-          '-DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address"',
-
-        '..',
-      ],
-      workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
-      environment: {
-        if (Platform.isLinux) 'CC': '/usr/bin/clang',
-        if (Platform.isLinux) 'CXX': '/usr/bin/clang++',
-      },
-      mode: ProcessStartMode.inheritStdio,
+    await _buildCmakeTarget(
+      'AnthemEngine',
+      addressSanitizer: argResults!['address-sanitizer'],
+      debug: argResults!['debug'],
     );
-
-    final cmakeExitCode = await cmakeProcess.exitCode;
-    if (cmakeExitCode != 0) {
-      print(Colorize('\n\nError: CMake failed.').red());
-      exit(exitCode);
-    }
-
-    print(Colorize('Running build...')..lightGreen());
-    final buildProcess = await Process.start(
-      'cmake',
-      [
-        '--build',
-        '.',
-        '--target',
-        'AnthemEngine',
-        if (Platform.isWindows || Platform.isMacOS) '--config',
-        if (Platform.isWindows || Platform.isMacOS)
-          argResults!['debug'] ? 'Debug' : 'Release',
-      ],
-      workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
-      mode: ProcessStartMode.inheritStdio,
-    );
-
-    final buildExitCode = await buildProcess.exitCode;
-    if (buildExitCode != 0) {
-      print(Colorize('\n\nError: Build failed.').red());
-      exit(exitCode);
-    }
-
-    print(Colorize('\n\nBuild complete.').lightGreen());
 
     print(Colorize('Copying engine binary to Flutter assets directory...')
       ..lightGreen());
-    final engineBinaryPath = buildDirPath.resolve(
-        './AnthemEngine_artefacts${argResults!['debug'] ? '/Debug' : ''}/AnthemEngine${Platform.isWindows ? '.exe' : ''}');
+    final engineBinaryPath = packageRootPath.resolve(
+        'engine/build/AnthemEngine_artefacts${argResults!['debug'] ? '/Debug' : ''}/AnthemEngine${Platform.isWindows ? '.exe' : ''}');
     final flutterAssetsDirPath = packageRootPath.resolve('assets/engine/');
 
     // Create the engine directory in assets if it doesn't exist
@@ -284,4 +220,105 @@ class _CleanEngineCommand extends Command<dynamic> {
 
     print(Colorize('Clean complete.').lightGreen());
   }
+}
+
+class _TestEngineCommand extends Command<dynamic> {
+  @override
+  String get name => 'test';
+
+  @override
+  String get description => 'Runs tests for the Anthem engine.';
+
+  @override
+  Future<void> run() async {
+    print(Colorize('Running tests for the Anthem engine...')..lightGreen());
+
+    await _buildCmakeTarget('AnthemTest', debug: true);
+
+    final packageRootPath = getPackageRootPath();
+    final testExecutableLocation = packageRootPath.resolve(
+        'engine/build/Debug/AnthemTest${Platform.isWindows ? '.exe' : ''}');
+
+    final testProcess = await Process.start(
+      testExecutableLocation.toFilePath(windows: Platform.isWindows),
+      [],
+      mode: ProcessStartMode.inheritStdio,
+    );
+
+    final testExitCode = await testProcess.exitCode;
+    if (testExitCode != 0) {
+      print(Colorize('\n\nError: Tests failed.').red());
+      exit(exitCode);
+    }
+
+    print(Colorize('Testing complete.').lightGreen());
+  }
+}
+
+Future<void> _buildCmakeTarget(String target,
+    {bool addressSanitizer = false, bool debug = false}) async {
+  final packageRootPath = getPackageRootPath();
+
+  print(Colorize('Creating build directory...')..lightGreen());
+  final buildDirPath = packageRootPath.resolve('engine/build/');
+  final buildDir = Directory.fromUri(buildDirPath);
+  buildDir.createSync();
+
+  print(Colorize('Running CMake...')..lightGreen());
+  final cmakeProcess = await Process.start(
+    'cmake',
+    [
+      // Note: On Linux, if you get an error like:
+      // CMake Warning:
+      //   Manually-specified variables were not used by the project:
+      //
+      //     CMAKE_BUILD_TYPE
+      //
+      // Then you may need to set the debug/release flag in the same way that
+      // Windows (and eventually macOS) does below in the build command. E.g.:
+      //    cmake --build . --config (Release/Debug)
+      if (Platform.isLinux) '-DCMAKE_BUILD_TYPE=${debug ? 'Debug' : 'Release'}',
+
+      if (addressSanitizer) '-DCMAKE_C_FLAGS="-fsanitize=address"',
+      if (addressSanitizer) '-DCMAKE_CXX_FLAGS="-fsanitize=address"',
+      if (addressSanitizer) '-DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address"',
+
+      '..',
+    ],
+    workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
+    environment: {
+      if (Platform.isLinux) 'CC': '/usr/bin/clang',
+      if (Platform.isLinux) 'CXX': '/usr/bin/clang++',
+    },
+    mode: ProcessStartMode.inheritStdio,
+  );
+
+  final cmakeExitCode = await cmakeProcess.exitCode;
+  if (cmakeExitCode != 0) {
+    print(Colorize('\n\nError: CMake failed.').red());
+    exit(exitCode);
+  }
+
+  print(Colorize('Running build...')..lightGreen());
+  final buildProcess = await Process.start(
+    'cmake',
+    [
+      '--build',
+      '.',
+      '--target',
+      target,
+      if (Platform.isWindows || Platform.isMacOS) '--config',
+      if (Platform.isWindows || Platform.isMacOS) debug ? 'Debug' : 'Release',
+    ],
+    workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
+    mode: ProcessStartMode.inheritStdio,
+  );
+
+  final buildExitCode = await buildProcess.exitCode;
+  if (buildExitCode != 0) {
+    print(Colorize('\n\nError: Build failed.').red());
+    exit(exitCode);
+  }
+
+  print(Colorize('\n\nBuild complete.').lightGreen());
 }
