@@ -157,9 +157,6 @@ to generate the files, then run this script again.''')
     final cmakeProcess = await Process.start(
       'cmake',
       [
-        if (Platform.isLinux) '-DCMAKE_C_COMPILER=clang',
-        if (Platform.isLinux) '-DCMAKE_CXX_COMPILER=clang++',
-
         // Note: On Linux, if you get an error like:
         // CMake Warning:
         //   Manually-specified variables were not used by the project:
@@ -173,15 +170,19 @@ to generate the files, then run this script again.''')
           '-DCMAKE_BUILD_TYPE=${argResults!['debug'] ? 'Debug' : 'Release'}',
 
         if (argResults!['address-sanitizer'])
-          '-DCMAKE_C_FLAGS="-fsanitize=address -g -O1"',
+          '-DCMAKE_C_FLAGS="-fsanitize=address"',
         if (argResults!['address-sanitizer'])
-          '-DCMAKE_CXX_FLAGS="-fsanitize=address -g -O1"',
+          '-DCMAKE_CXX_FLAGS="-fsanitize=address"',
         if (argResults!['address-sanitizer'])
           '-DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address"',
 
         '..',
       ],
       workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
+      environment: {
+        if (Platform.isLinux) 'CC': '/usr/bin/clang',
+        if (Platform.isLinux) 'CXX': '/usr/bin/clang++',
+      },
       mode: ProcessStartMode.inheritStdio,
     );
 
