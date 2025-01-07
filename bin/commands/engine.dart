@@ -237,7 +237,7 @@ class _TestEngineCommand extends Command<dynamic> {
 
     final packageRootPath = getPackageRootPath();
     final testExecutableLocation = packageRootPath.resolve(
-        'engine/build/Debug/AnthemTest${Platform.isWindows ? '.exe' : ''}');
+        'engine/build${Platform.isWindows ? '/Debug' : ''}/AnthemTest${Platform.isWindows ? '.exe' : ''}');
 
     final testProcess = await Process.start(
       testExecutableLocation.toFilePath(windows: Platform.isWindows),
