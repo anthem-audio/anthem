@@ -47,7 +47,7 @@ class _CodegenCleanCommand extends Command<dynamic> {
   String get description => 'Cleans up generated files.';
 
   _CodegenCleanCommand() {
-    argParser.addFlag('skip-prompts', abbr: 'y');
+    argParser.addFlag('skip-prompts', abbr: 'y', help: 'Skip confirmation prompts.');
   }
 
   @override
@@ -120,8 +120,12 @@ class _CodegenGenerateCommand extends Command<dynamic> {
   String get description => 'Generates code for Anthem.';
 
   _CodegenGenerateCommand() {
-    argParser.addFlag('watch', abbr: 'w');
-    argParser.addFlag('root-only');
+    argParser.addFlag('watch',
+        abbr: 'w',
+        help:
+            'Starts build_runner in watch mode, which will regenerate code as files change.');
+    argParser.addFlag('root-only',
+        help: 'Only generate code in the root package.');
   }
 
   @override
