@@ -47,7 +47,8 @@ class _CodegenCleanCommand extends Command<dynamic> {
   String get description => 'Cleans up generated files.';
 
   _CodegenCleanCommand() {
-    argParser.addFlag('skip-prompts', abbr: 'y', help: 'Skip confirmation prompts.');
+    argParser.addFlag('skip-prompts',
+        abbr: 'y', help: 'Skip confirmation prompts.');
   }
 
   @override
