@@ -25,7 +25,6 @@ import 'dart:typed_data';
 import 'package:anthem/engine_api/engine_socket_server.dart';
 import 'package:anthem/engine_api/memory_block.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
-import 'package:flutter/foundation.dart';
 
 /// Set this to override the path to the engine. Should be a full path.
 ///
@@ -103,9 +102,14 @@ class EngineConnector {
   /// Stream subscription for socket messages from the engine.
   StreamSubscription<Uint8List>? _engineReplySub;
 
+  final bool _kDebugMode;
+
   EngineConnector(this._id,
-      {void Function(Response)? onReply, void Function()? onCrash})
-      : _onCrash = onCrash,
+      {required bool kDebugMode,
+      void Function(Response)? onReply,
+      void Function()? onCrash})
+      : _kDebugMode = kDebugMode,
+        _onCrash = onCrash,
         _onReply = onReply {
     onInit = _init();
 
@@ -125,10 +129,6 @@ class EngineConnector {
     // connect to. This will only cause a wait when the app is first launched.
     await EngineSocketServer.instance.init;
 
-    if (kDebugMode) {
-      print('Starting engine with ID: $_id');
-    }
-
     EngineSocketServer.instance.onMessage(_id, (message) {
       _onReceive(message);
     });
@@ -146,7 +146,7 @@ class EngineConnector {
             : '${mainExecutablePath.parent.path}/data/flutter_assets/assets/engine/AnthemEngine');
 
     // If we're in debug mode, start with a command line window so we can see logging
-    if (kDebugMode) {
+    if (_kDebugMode) {
       if (Platform.isWindows) {
         _engineProcess = await Process.start(
           'powershell',
