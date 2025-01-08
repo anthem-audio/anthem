@@ -58,7 +58,7 @@ jobs:
 
       - name: Test engine
         shell: pwsh
-        run: dart run anthem:cli engine test
+        run: dart run anthem:cli engine unit-test
 
       # Build Flutter project
       - name: Build Flutter project
@@ -132,7 +132,7 @@ jobs:
       
       - name: Test engine
         shell: pwsh
-        run: dart run anthem:cli engine test
+        run: dart run anthem:cli engine unit-test
 
       # Build Flutter project
       - name: Build Flutter project

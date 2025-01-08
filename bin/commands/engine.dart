@@ -36,7 +36,7 @@ class EngineCommand extends Command<dynamic> {
   EngineCommand() {
     addSubcommand(_BuildEngineCommand());
     addSubcommand(_CleanEngineCommand());
-    addSubcommand(_TestEngineCommand());
+    addSubcommand(_EngineUnitTestCommand());
   }
 }
 
@@ -222,12 +222,12 @@ class _CleanEngineCommand extends Command<dynamic> {
   }
 }
 
-class _TestEngineCommand extends Command<dynamic> {
+class _EngineUnitTestCommand extends Command<dynamic> {
   @override
-  String get name => 'test';
+  String get name => 'unit-test';
 
   @override
-  String get description => 'Runs tests for the Anthem engine.';
+  String get description => 'Runs unit tests for the Anthem engine.';
 
   @override
   Future<void> run() async {
