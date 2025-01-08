@@ -155,7 +155,7 @@ to generate the files, then run this script again.''')
     print(Colorize('Copying engine binary to Flutter assets directory...')
       ..lightGreen());
     final engineBinaryPath = packageRootPath.resolve(
-        'engine/build/AnthemEngine_artefacts${argResults!['debug'] ? '/Debug' : ''}/AnthemEngine${Platform.isWindows ? '.exe' : ''}');
+        'engine/build/AnthemEngine_artefacts${argResults!['debug'] ? '/Debug' : '/Release'}/AnthemEngine${Platform.isWindows ? '.exe' : ''}');
     final flutterAssetsDirPath = packageRootPath.resolve('assets/engine/');
 
     // Create the engine directory in assets if it doesn't exist
@@ -237,7 +237,7 @@ class _TestEngineCommand extends Command<dynamic> {
 
     final packageRootPath = getPackageRootPath();
     final testExecutableLocation = packageRootPath.resolve(
-        'engine/build/Debug/AnthemTest${Platform.isWindows ? '.exe' : ''}');
+        'engine/build${Platform.isWindows ? '/Debug' : ''}/AnthemTest${Platform.isWindows ? '.exe' : ''}');
 
     final testProcess = await Process.start(
       testExecutableLocation.toFilePath(windows: Platform.isWindows),
