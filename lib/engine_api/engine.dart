@@ -19,11 +19,11 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:anthem/engine_api/engine_connector.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/model/project.dart';
+import 'package:flutter/foundation.dart';
 
 part 'api/model_sync_api.dart';
 part 'api/processing_graph_api.dart';
@@ -120,8 +120,8 @@ class Engine {
 
     _setEngineState(EngineState.starting);
 
-    _engineConnector =
-        EngineConnector(id, onReply: _onReply, onCrash: _onCrash);
+    _engineConnector = EngineConnector(id,
+        kDebugMode: kDebugMode, onReply: _onReply, onCrash: _onCrash);
 
     final success = await _engineConnector.onInit;
 

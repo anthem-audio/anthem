@@ -18,8 +18,7 @@
 */
 
 import 'dart:math';
-
-import 'package:flutter/foundation.dart';
+import 'dart:typed_data';
 
 /// Modeled after JUCE memory blocks. Allows more efficient queueing of data
 /// from the socket connection.
