@@ -25,6 +25,7 @@ import 'package:args/command_runner.dart';
 import 'package:colorize/colorize.dart';
 
 import '../util/misc.dart';
+import 'engine_integration_test.dart';
 
 class EngineCommand extends Command<dynamic> {
   @override
@@ -36,6 +37,7 @@ class EngineCommand extends Command<dynamic> {
   EngineCommand() {
     addSubcommand(_BuildEngineCommand());
     addSubcommand(_CleanEngineCommand());
+    addSubcommand(EngineIntegrationTestCommand());
     addSubcommand(_EngineUnitTestCommand());
   }
 }

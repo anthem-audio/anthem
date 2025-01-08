@@ -56,9 +56,13 @@ jobs:
             dart run anthem:cli codegen generate --root-only
             dart run anthem:cli engine build --release
 
-      - name: Test engine
+      - name: Run engine unit tests
         shell: pwsh
         run: dart run anthem:cli engine unit-test
+      
+      - name: Run engine integration tests
+        shell: pwsh
+        run: dart run anthem:cli engine integration-test
 
       # Build Flutter project
       - name: Build Flutter project
@@ -130,9 +134,13 @@ jobs:
             dart run anthem:cli codegen generate --root-only
             dart run anthem:cli engine build --release
       
-      - name: Test engine
+      - name: Run engine unit tests
         shell: pwsh
         run: dart run anthem:cli engine unit-test
+
+      - name: Run engine integration tests
+        shell: pwsh
+        run: dart run anthem:cli engine integration-test
 
       # Build Flutter project
       - name: Build Flutter project
