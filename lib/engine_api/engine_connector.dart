@@ -31,7 +31,7 @@ import 'package:anthem/engine_api/messages/messages.dart';
 /// This will allow you to stop the engine from Anthem, compile a new engine,
 /// and start the new engine, all without re-building the Anthem UI.
 // ignore: unnecessary_nullable_for_final_variable_declarations
-const String? enginePathOverride = null;
+const String? _enginePathOverride = null;
 
 final mainExecutablePath = File(Platform.resolvedExecutable);
 
@@ -82,7 +82,7 @@ class EngineConnector {
   Process? _engineProcess;
 
   final void Function(Response reply)? _onReply;
-  final void Function()? _onCrash;
+  final void Function()? _onExit;
 
   late final Future<bool> onInit;
   bool _initialized = false;
@@ -102,14 +102,25 @@ class EngineConnector {
   /// Stream subscription for socket messages from the engine.
   StreamSubscription<Uint8List>? _engineReplySub;
 
-  final bool _kDebugMode;
+  /// Should be set to kDebugMode from Flutter, or false if not running in a
+  /// Flutter environment.
+  ///
+  /// kDebugMode comes from Flutter, and we can't import anything from Flutter
+  /// into our engine integration tests. Since we use this class to talk to the
+  /// engine in our engine integration tests, we need to pass this in.
+  final bool kDebugMode;
+
+  final bool noHeartbeat;
+
+  final String? enginePathOverride;
 
   EngineConnector(this._id,
-      {required bool kDebugMode,
+      {required this.kDebugMode,
       void Function(Response)? onReply,
-      void Function()? onCrash})
-      : _kDebugMode = kDebugMode,
-        _onCrash = onCrash,
+      void Function()? onExit,
+      this.noHeartbeat = false,
+      this.enginePathOverride = _enginePathOverride})
+      : _onExit = onExit,
         _onReply = onReply {
     onInit = _init();
 
@@ -146,21 +157,25 @@ class EngineConnector {
             : '${mainExecutablePath.parent.path}/data/flutter_assets/assets/engine/AnthemEngine');
 
     // If we're in debug mode, start with a command line window so we can see logging
-    if (_kDebugMode) {
+    if (kDebugMode) {
       if (Platform.isWindows) {
-        _engineProcess = await Process.start(
-          'powershell',
-          [
-            '-Command',
-            '& {Start-Process -FilePath "$anthemPathStr" -ArgumentList "${EngineSocketServer.instance.port} $_id" -Wait}'
-          ],
+        _setEngineProcess(
+          await Process.start(
+            'powershell',
+            [
+              '-Command',
+              '& {Start-Process -FilePath "$anthemPathStr" -ArgumentList "${EngineSocketServer.instance.port} $_id" -Wait}'
+            ],
+          ),
         );
       } else if (Platform.isLinux) {
         // Can't figure out a good way to start in a shell window on Linux, so
         // this mirrors the engine output to our standard out.
-        _engineProcess = await Process.start(
-          anthemPathStr,
-          [EngineSocketServer.instance.port.toString(), _id.toString()],
+        _setEngineProcess(
+          await Process.start(
+            anthemPathStr,
+            [EngineSocketServer.instance.port.toString(), _id.toString()],
+          ),
         );
         _engineProcess!.stdout.listen((msg) {
           for (final line in String.fromCharCodes(msg).split('\n')) {
@@ -176,37 +191,40 @@ class EngineConnector {
         });
       }
     } else {
-      _engineProcess = await Process.start(
-        anthemPathStr,
-        [EngineSocketServer.instance.port.toString(), _id.toString()],
+      _setEngineProcess(
+        await Process.start(
+          anthemPathStr,
+          [EngineSocketServer.instance.port.toString(), _id.toString()],
+        ),
       );
     }
 
-    _heartbeatCheckTimer = Timer.periodic(
-      // Maybe a bit long if this is our only way to tell if the engine died
-      const Duration(seconds: 10),
-      (_) {
-        if (!_heartbeatReceived) {
-          _onCrash?.call();
-          _shutdown();
-        }
+    if (!noHeartbeat) {
+      _heartbeatCheckTimer = Timer.periodic(
+        // Maybe a bit long if this is our only way to tell if the engine died
+        const Duration(seconds: 10),
+        (_) {
+          if (!_heartbeatReceived) {
+            _shutdown();
+          }
 
-        _heartbeatReceived = false;
-      },
-    );
+          _heartbeatReceived = false;
+        },
+      );
 
-    _engineHeartbeatTimer = Timer.periodic(
-      const Duration(seconds: 5),
-      (timer) {
-        final id = getRequestId();
+      _engineHeartbeatTimer = Timer.periodic(
+        const Duration(seconds: 5),
+        (timer) {
+          final id = getRequestId();
 
-        final heartbeat = Heartbeat(id: id);
+          final heartbeat = Heartbeat(id: id);
 
-        final encoder = JsonUtf8Encoder();
+          final encoder = JsonUtf8Encoder();
 
-        send(encoder.convert(heartbeat.toJson()) as Uint8List);
-      },
-    );
+          send(encoder.convert(heartbeat.toJson()) as Uint8List);
+        },
+      );
+    }
 
     // Wait for the engine to connect before setting our initialized state to
     // true, since we can't send messages until the engine has actually
@@ -296,5 +314,14 @@ class EngineConnector {
   /// Stops the engine process, and cleans up the messaging infrastructure.
   void dispose() {
     _shutdown();
+  }
+
+  /// Sets the engine process, and attaches a listener when it stops.
+  void _setEngineProcess(Process process) {
+    _engineProcess = process;
+
+    _engineProcess!.exitCode.then((exitCode) {
+      _onExit?.call();
+    });
   }
 }
