@@ -57,11 +57,9 @@ jobs:
             dart run anthem:cli engine build --release
 
       - name: Run engine unit tests
-        shell: pwsh
         run: dart run anthem:cli engine unit-test
       
       - name: Run engine integration tests
-        shell: pwsh
         run: dart run anthem:cli engine integration-test --release --no-debug
 
       # Build Flutter project
@@ -135,11 +133,9 @@ jobs:
             dart run anthem:cli engine build --release
       
       - name: Run engine unit tests
-        shell: pwsh
         run: dart run anthem:cli engine unit-test
 
       - name: Run engine integration tests
-        shell: pwsh
         run: dart run anthem:cli engine integration-test --release --no-debug
 
       # Build Flutter project
