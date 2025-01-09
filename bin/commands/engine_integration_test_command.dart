@@ -128,10 +128,20 @@ ALternatively, you can specify the path to the engine executable using the
 
     var heartbeatWaitCompleter = Completer<void>();
 
-    print('Waiting 15 seconds for engine heartbeat check to fail...');
+    print('Waiting for engine heartbeat check to fail (timeout 30 seconds)...');
 
-    Timer(Duration(seconds: 15), () {
-      heartbeatWaitCompleter.complete();
+    final startTime = DateTime.now();
+
+    Timer.periodic(Duration(milliseconds: 500), (timer) {
+      if (exitCalled) {
+        heartbeatWaitCompleter.complete();
+        timer.cancel();
+      }
+
+      if (DateTime.now().difference(startTime).inSeconds > 30) {
+        heartbeatWaitCompleter.complete();
+        timer.cancel();
+      }
     });
 
     await heartbeatWaitCompleter.future;
