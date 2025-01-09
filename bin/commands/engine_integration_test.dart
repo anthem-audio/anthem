@@ -30,41 +30,17 @@ import 'package:args/command_runner.dart';
 import 'package:colorize/colorize.dart';
 
 import '../util/misc.dart';
+import 'engine_integration_test_options.dart';
 
-class EngineIntegrationTestCommand extends Command<dynamic> {
+class _EngineIntegrationTestCommand extends Command<dynamic> {
   @override
   String get name => 'integration-test';
 
   @override
   String get description => 'Runs the engine integration tests.';
 
-  EngineIntegrationTestCommand() {
-    argParser.addOption('engine-path',
-        abbr: 'e',
-        help: 'Path to the engine executable.',
-        valueHelp: 'path/to/engine');
-
-    // On Windows in debug mode, certain crashes give us a dialog box that
-    // prevents the engine from exiting. I want these dialogs to remain in
-    // normal debug builds, but they can't happen in the integration tests.
-    //
-    // We could make a special build configuration for the integration tests,
-    // but since we still test in debug mode on other platforms, there isn't
-    // much benefit for the extra complexity.
-    //
-    // Instead, we just run the engine in release mode on Windows, and debug
-    // mode elsewhere.
-
-    argParser.addFlag('debug',
-        abbr: 'd',
-        help:
-            'Run the debug build of the engine, if no path is supplied. Defaults to false on Windows, and true elsewhere.',
-        defaultsTo: !Platform.isWindows);
-    argParser.addFlag('release',
-        abbr: 'r',
-        help:
-            'Run the engine in release mode. Defaults to true on Windows, and false elsewhere.',
-        defaultsTo: Platform.isWindows);
+  _EngineIntegrationTestCommand() {
+    addIntegrationTestOptions(argParser);
   }
 
   @override
@@ -224,4 +200,21 @@ void _expect(bool condition, [String? message]) {
 
 void _testHeader(String header) {
   print(Colorize('\n$header').lightCyan());
+}
+
+void main(List<String> args) async {
+  final runner = CommandRunner<dynamic>(
+      'integration-test', 'Runs the engine integration tests.')
+    ..addCommand(_EngineIntegrationTestCommand());
+
+  try {
+    // This is a hack - see the doc comment in engine_integration_test_options.dart
+    // for the best explanation of what's going on.
+    //
+    // This will pass the incoming arguments directly to the integration-test
+    // command above.
+    await runner.run(['integration-test', ...args]);
+  } on UsageException catch (e) {
+    print(e);
+  }
 }
