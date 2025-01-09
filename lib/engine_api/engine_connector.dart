@@ -169,26 +169,15 @@ class EngineConnector {
           ),
         );
       } else if (Platform.isLinux) {
-        // Can't figure out a good way to start in a shell window on Linux, so
-        // this mirrors the engine output to our standard out.
         _setEngineProcess(
           await Process.start(
             anthemPathStr,
             [EngineSocketServer.instance.port.toString(), _id.toString()],
+            // There's no singular way to start in a shell window on Linux, so
+            // this mirrors the engine output to our standard out.
+            mode: ProcessStartMode.inheritStdio,
           ),
         );
-        _engineProcess!.stdout.listen((msg) {
-          for (final line in String.fromCharCodes(msg).split('\n')) {
-            // ignore: avoid_print
-            print('[Engine $_id] $line');
-          }
-        });
-        _engineProcess!.stderr.listen((msg) {
-          for (final line in String.fromCharCodes(msg).split('\n')) {
-            // ignore: avoid_print
-            print('[Engine $_id stderr] $line');
-          }
-        });
       }
     } else {
       _setEngineProcess(
