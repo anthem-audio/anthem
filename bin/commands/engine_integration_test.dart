@@ -29,7 +29,6 @@ import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:args/command_runner.dart';
 import 'package:colorize/colorize.dart';
 
-import '../util/misc.dart';
 import 'engine_integration_test_options.dart';
 
 class _EngineIntegrationTestCommand extends Command<dynamic> {
@@ -74,8 +73,10 @@ class _EngineIntegrationTestCommand extends Command<dynamic> {
   Future<void> _runIntegrationTests() async {
     print(Colorize('Running engine integration tests...').lightGreen());
 
-    final enginePathFallback = getPackageRootPath().resolve(
-        'engine/build/AnthemEngine_artefacts${argResults!['debug'] ? '/Debug' : '/Release'}/AnthemEngine${Platform.isWindows ? '.exe' : ''}');
+    // Note that Platform.script works here becuase this is being run in a
+    // separate process via `dart run direct/path/to/script`.
+    final enginePathFallback = Platform.script.resolve(
+        '../../engine/build/AnthemEngine_artefacts${argResults!['debug'] ? '/Debug' : '/Release'}/AnthemEngine${Platform.isWindows ? '.exe' : ''}');
 
     final enginePath = (argResults!['engine-path'] as String?) ??
         enginePathFallback.toFilePath(windows: Platform.isWindows);
