@@ -82,7 +82,7 @@ class Engine {
     }
   }
 
-  void _onCrash() {
+  void _onExit() {
     _setEngineState(EngineState.stopped);
   }
 
@@ -121,7 +121,7 @@ class Engine {
     _setEngineState(EngineState.starting);
 
     _engineConnector = EngineConnector(id,
-        kDebugMode: kDebugMode, onReply: _onReply, onCrash: _onCrash);
+        kDebugMode: kDebugMode, onReply: _onReply, onExit: _onExit);
 
     final success = await _engineConnector.onInit;
 
