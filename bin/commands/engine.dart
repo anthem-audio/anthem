@@ -346,8 +346,8 @@ class _EngineIntegrationTestCommand extends Command<dynamic> {
   @override
   Future<void> run() async {
     final packageRootPath = getPackageRootPath();
-    final script =
-        packageRootPath.resolve('bin/commands/engine_integration_test.dart');
+    final script = packageRootPath
+        .resolve('bin/commands/engine_integration_test_command.dart');
 
     final process = await Process.start(
       'dart',
