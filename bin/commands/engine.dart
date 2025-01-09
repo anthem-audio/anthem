@@ -25,7 +25,7 @@ import 'package:args/command_runner.dart';
 import 'package:colorize/colorize.dart';
 
 import '../util/misc.dart';
-import 'engine_integration_test.dart';
+import 'engine_integration_test_options.dart';
 
 class EngineCommand extends Command<dynamic> {
   @override
@@ -37,7 +37,7 @@ class EngineCommand extends Command<dynamic> {
   EngineCommand() {
     addSubcommand(_BuildEngineCommand());
     addSubcommand(_CleanEngineCommand());
-    addSubcommand(EngineIntegrationTestCommand());
+    addSubcommand(_EngineIntegrationTestCommand());
     addSubcommand(_EngineUnitTestCommand());
   }
 }
@@ -323,4 +323,42 @@ Future<void> _buildCmakeTarget(String target,
   }
 
   print(Colorize('\n\nBuild complete.').lightGreen());
+}
+
+/// This command starts the actual integration tests.
+///
+/// The actual integration tests import Anthem, which doesn't work if the
+/// codegen hasn't run yet. Since all the commands are compiled together, this
+/// means that if codegen hasn't run, then we can't compile the cli script to
+/// run codegen. So, to run codegen, we spin up a subprocess so we don't have to
+/// import the command, and by extension parts of Anthem.
+class _EngineIntegrationTestCommand extends Command<dynamic> {
+  @override
+  String get name => 'integration-test';
+
+  @override
+  String get description => 'Runs integration tests for the Anthem engine.';
+
+  _EngineIntegrationTestCommand() {
+    addIntegrationTestOptions(argParser);
+  }
+
+  @override
+  Future<void> run() async {
+    final packageRootPath = getPackageRootPath();
+    final script =
+        packageRootPath.resolve('bin/commands/engine_integration_test.dart');
+
+    final process = await Process.start(
+      'dart',
+      [
+        'run',
+        script.toFilePath(windows: Platform.isWindows),
+        ...argResults!.arguments,
+      ],
+      mode: ProcessStartMode.inheritStdio,
+    );
+
+    await process.exitCode;
+  }
 }
