@@ -359,6 +359,6 @@ class _EngineIntegrationTestCommand extends Command<dynamic> {
       mode: ProcessStartMode.inheritStdio,
     );
 
-    await process.exitCode;
+    exit(await process.exitCode);
   }
 }
