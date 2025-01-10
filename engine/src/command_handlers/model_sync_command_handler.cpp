@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -78,10 +78,17 @@ std::optional<Response> handleModelSyncCommand(Request& request) {
 
     juce::Logger::writeToLog("Model update applied.");
   }
-  else if (rfl::holds_alternative<ModelDebugPrintRequest>(request.variant())) {
-    std::cout << rfl::json::write(
-      anthem.project.get()
-    ) << std::endl;
+  else if (rfl::holds_alternative<GetSerializedModelFromEngineRequest>(request.variant())) {
+    auto& getSerializedModelFromEngineRequest = rfl::get<GetSerializedModelFromEngineRequest>(request.variant());
+
+    return std::optional(GetSerializedModelFromEngineResponse {
+      .serializedModel = rfl::json::write(
+        anthem.project.get()
+      ),
+      .responseBase = ResponseBase {
+        .id = getSerializedModelFromEngineRequest.requestBase.get().id
+      }
+    });
   }
 
   return std::nullopt;
