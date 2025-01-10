@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -89,10 +89,24 @@ class ModelInitRequest extends Request {
   }
 }
 
-class ModelDebugPrintRequest extends Request {
-  ModelDebugPrintRequest.uninitialized();
+/// Request to get the model JSON from the engine. This is not used by the UI,
+/// as updates always go one way. However, it is used by the integration tests
+/// to validate that the engine has received the correct updates.
+class GetSerializedModelFromEngineRequest extends Request {
+  GetSerializedModelFromEngineRequest.uninitialized();
 
-  ModelDebugPrintRequest({required int id}) {
+  GetSerializedModelFromEngineRequest({required int id}) {
+    super.id = id;
+  }
+}
+
+class GetSerializedModelFromEngineResponse extends Response {
+  String serializedModel = '';
+
+  GetSerializedModelFromEngineResponse.uninitialized();
+
+  GetSerializedModelFromEngineResponse(
+      {required int id, required this.serializedModel}) {
     super.id = id;
   }
 }
