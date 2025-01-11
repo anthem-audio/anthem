@@ -126,6 +126,9 @@ abstract class _GeneratorModel extends Hydratable with Store, AnthemModelBase {
   }
 
   Future<void> createInEngine(Engine engine) async {
+    return;
+    // TODO: This is definitely not correct anymore, and should be cleaned up.
+    // ignore: dead_code
     await processor.createInEngine(engine);
 
     await gainNode.createInEngine(engine);
