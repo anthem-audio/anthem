@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2024 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -58,7 +58,7 @@ class AddGeneratorCommand extends Command {
   });
 
   @override
-  void execute(ProjectModel project) async {
+  void execute(ProjectModel project) {
     final processor = ProcessorModel(processorKey: processorId);
     final generator = GeneratorModel.create(
       id: generatorId,
@@ -69,13 +69,12 @@ class AddGeneratorCommand extends Command {
       project: project,
     );
 
-    if (generatorType == GeneratorType.instrument) {
-      await generator.createInEngine(project.engine);
-      await project.engine.processingGraphApi.compile();
-    }
-
     project.generatorList.add(generatorId);
     project.generators[generatorId] = generator;
+
+    if (generatorType == GeneratorType.instrument) {
+      generator.createInEngine(project.engine);
+    }
   }
 
   @override
@@ -101,12 +100,12 @@ class RemoveGeneratorCommand extends Command {
   }
 
   @override
-  void rollback(ProjectModel project) async {
+  void rollback(ProjectModel project) {
     project.generators[generator.id] = generator;
     project.generatorList.insert(index, generator.id);
 
     if (generator.generatorType == GeneratorType.instrument) {
-      await generator.createInEngine(project.engine);
+      generator.createInEngine(project.engine);
     }
   }
 }
