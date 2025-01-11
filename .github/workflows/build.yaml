@@ -65,10 +65,10 @@ jobs:
         run: flutter build windows --verbose --release
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: anthem-windows
-          path: ${{ github.workspace }}/build/windows/runner/Release
+          path: ${{ github.workspace }}/build/windows/x64/runner/Release
 
   build-linux:
     runs-on: [ubuntu-latest]
@@ -139,7 +139,7 @@ jobs:
         run: flutter build linux --verbose --release
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: anthem-linux
           path: ${{ github.workspace }}/build/linux/x64/release/bundle
