@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -219,11 +219,14 @@ String _createConverterForPrimitive({
   return accessor;
 }
 
+/// Converts a Color object at [accessor] to a map of ARGB values.
+///
+/// Each value is stored as an integer between 0 and 255.
 String _createConverterForColor({
   required String accessor,
 }) {
   return '''
-{'a': $accessor.a, 'r': $accessor.r, 'g': $accessor.g, 'b': $accessor.b}
+{'a': ($accessor.a * 255).round(), 'r': $accessor.r.round(), 'g': $accessor.g.round(), 'b': $accessor.b.round()}
 ''';
 }
 

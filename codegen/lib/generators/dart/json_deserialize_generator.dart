@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -164,10 +164,10 @@ String _createGetterForField({
     BoolModelType() => '$getter as bool$q',
     ColorModelType() =>
       '''${type.isNullable ? '$getter == null ? null : ' : ''}Color.fromARGB(
-  $getter['a'] as int$q,
-  $getter['r'] as int$q,
-  $getter['g'] as int$q,
-  $getter['b'] as int$q,
+  $getter['a'] as int,
+  $getter['r'] as int,
+  $getter['g'] as int,
+  $getter['b'] as int,
 )''',
     EnumModelType(enumName: var enumName) =>
       '${type.isNullable ? '$getter == null ? null : ' : ''}$enumName.values.firstWhere((e) => e.name == $getter)',
