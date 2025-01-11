@@ -26,13 +26,6 @@ import 'package:anthem/engine_api/engine_socket_server.dart';
 import 'package:anthem/engine_api/memory_block.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 
-/// Set this to override the path to the engine. Should be a full path.
-///
-/// This will allow you to stop the engine from Anthem, compile a new engine,
-/// and start the new engine, all without re-building the Anthem UI.
-// ignore: unnecessary_nullable_for_final_variable_declarations
-const String? _enginePathOverride = null;
-
 final mainExecutablePath = File(Platform.resolvedExecutable);
 
 /// Provides a way to communicate with the engine process.
@@ -119,7 +112,7 @@ class EngineConnector {
       void Function(Response)? onReply,
       void Function()? onExit,
       this.noHeartbeat = false,
-      this.enginePathOverride = _enginePathOverride})
+      this.enginePathOverride})
       : _onExit = onExit,
         _onReply = onReply {
     onInit = _init();
@@ -151,10 +144,39 @@ class EngineConnector {
       () => engineConnectCompleter.complete(),
     );
 
+    String? developmentEnginePath;
+
+    // If we're in debug mode, we look for the engine as compiled in the repo
+    if (kDebugMode) {
+      var projectRoot = Platform.script;
+
+      // Don't use the repo engine if Dart is running in AOT compiled mode
+      if (projectRoot.pathSegments.last.endsWith('.dart')) {
+        while (projectRoot.path.length > 1 &&
+            !(await File.fromUri(projectRoot.resolve('./pubspec.yaml'))
+                .exists())) {
+          projectRoot = projectRoot.resolve('../');
+        }
+
+        var enginePath = projectRoot.resolve(
+            './engine/build/AnthemEngine_artefacts/Debug/AnthemEngine${Platform.isWindows ? '.exe' : ''}');
+        if (await File.fromUri(enginePath).exists()) {
+          developmentEnginePath =
+              enginePath.toFilePath(windows: Platform.isWindows);
+        }
+      }
+    }
+
     final anthemPathStr = enginePathOverride ??
-        (Platform.isWindows
-            ? '${mainExecutablePath.parent.path}/data/flutter_assets/assets/engine/AnthemEngine.exe'
-            : '${mainExecutablePath.parent.path}/data/flutter_assets/assets/engine/AnthemEngine');
+        (developmentEnginePath ??
+            mainExecutablePath.parent.uri
+                .resolve(
+                    './data/flutter_assets/assets/engine/AnthemEngine${Platform.isWindows ? '.exe' : ''}')
+                .toFilePath(windows: Platform.isWindows));
+
+    if (!await File(anthemPathStr).exists()) {
+      return false;
+    }
 
     // If we're in debug mode, start with a command line window so we can see logging
     if (kDebugMode) {

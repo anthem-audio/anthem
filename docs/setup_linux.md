@@ -29,15 +29,7 @@ In addition to Flutter, Anthem needs the following:
         export CXX=clang++
         export CMAKE_MAKE_PROGRAM=make
         ```
-6. When debugging on Linux, you must override the path that Anthem uses to look for the engine executable. This is because Flutter removes the executable permission when copying the engine executable to the build output directory.
-
-    You can override this by modifying `(repo root)/lib/engine_api/engine_connector.dart`:
-    ```dart
-    const String? enginePathOverride = "(full path to repo)/engine/build/AnthemEngine_artefacts/Debug/AnthemEngine";
-    ```
-
-    If you're compiling the engine in release mode, the path will be `.../AnthemEngine_artefacts/AnthemEngine`.
-7. (Optional) Open the project in your preferred IDE, such as Visual Studio Code.
-8. Open a new terminal session and run `dart run anthem:cli codegen generate --watch`. This will run Dart-related code generation, and keep the generated files up-to-date as you develop.
+6. (Optional) Open the project in your preferred IDE, such as Visual Studio Code.
+7. Open a new terminal session and run `dart run anthem:cli codegen generate --watch`. This will run Dart-related code generation, and keep the generated files up-to-date as you develop.
    - Note: you may need to clean and re-run code generation in order to re-generate the files for the IPC messages if they are changed, since they sometimes don't re-generate automatically. There is a note that prints when running the codegen command above which has more info about this.
-9. Use `flutter run` to run Anthem, or start Anthem via your IDE.
+8. Use `flutter run` to run Anthem, or start Anthem via your IDE.
