@@ -33,9 +33,6 @@ jobs:
         run: |
           mkdir assets\engine
           dart analyze --fatal-infos
-      
-      - name: Test Flutter code
-        run: flutter test .
 
       # Build engine
       - name: Build engine
@@ -59,9 +56,9 @@ jobs:
 
       - name: Run engine unit tests
         run: dart run anthem:cli engine unit-test
-      
-      - name: Run engine integration tests
-        run: dart run anthem:cli engine integration-test --release --no-debug
+
+      - name: Run Flutter unit tests and whole-app integration tests
+        run: flutter test .
 
       # Build Flutter project
       - name: Build Flutter project
@@ -110,9 +107,6 @@ jobs:
         run: |
           mkdir -p assets/engine
           dart analyze --fatal-infos
-      
-      - name: Test Flutter code
-        run: flutter test .
 
       # Build engine
       - name: Build engine
@@ -137,8 +131,8 @@ jobs:
       - name: Run engine unit tests
         run: dart run anthem:cli engine unit-test
 
-      - name: Run engine integration tests
-        run: dart run anthem:cli engine integration-test --release --no-debug
+      - name: Run Flutter unit tests and whole-app integration tests
+        run: flutter test .
 
       # Build Flutter project
       - name: Build Flutter project
