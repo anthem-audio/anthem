@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/processing_graph/processors/master_output.dart';
@@ -41,22 +40,6 @@ class ProcessingGraphModel extends _ProcessingGraphModel
         MasterOutputProcessorModel.createNode('masterOutput');
     addNode(masterOutputNode);
     masterOutput = MasterOutputProcessorModel(nodeId: masterOutputNode.id);
-
-    // For testing purposes, connect a tone generator to the master output
-    final toneGeneratorNode = ToneGeneratorProcessorModel.createNode();
-    addNode(toneGeneratorNode);
-    toneGenerator = ToneGeneratorProcessorModel(nodeId: toneGeneratorNode.id);
-
-    final connectionId = getId();
-    addConnection(
-      NodeConnectionModel(
-        id: connectionId,
-        sourceNodeId: toneGeneratorNode.id,
-        sourcePortId: toneGeneratorNode.audioOutputPorts[0].id,
-        destinationNodeId: masterOutputNode.id,
-        destinationPortId: masterOutputNode.audioInputPorts[0].id,
-      ),
-    );
 
     // Send a message to compile the processing graph after the model has been
     // sent to the engine
@@ -129,4 +112,7 @@ abstract class _ProcessingGraphModel with Store, AnthemModelBase {
 
   @AnthemObservable()
   late ToneGeneratorProcessorModel toneGenerator;
+
+  @AnthemObservable()
+  late ToneGeneratorProcessorModel toneGenerator2;
 }
