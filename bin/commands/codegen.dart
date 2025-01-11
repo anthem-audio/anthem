@@ -61,6 +61,8 @@ class _CodegenCleanCommand extends Command<dynamic> {
       print('  - codegen/**/*.g.dart');
       print('  - codegen/**/*.g.part');
       print('  - engine/src/generated');
+      print('This will also run');
+      print('    dart run build_runner clean');
       print('Are you sure you want to delete all generated files? (y/n)');
 
       final response = stdin.readLineSync();
@@ -110,6 +112,44 @@ class _CodegenCleanCommand extends Command<dynamic> {
     } on PathNotFoundException catch (_) {}
 
     print('Deleted $deleteCount files.');
+
+    print('Running dart run build_runner clean...');
+    final processInRoot = await Process.start(
+      'dart',
+      ['run', 'build_runner', 'clean'],
+      workingDirectory:
+          getPackageRootPath().toFilePath(windows: Platform.isWindows),
+      mode: ProcessStartMode.inheritStdio,
+    );
+
+    final exitCode = await processInRoot.exitCode;
+
+    if (exitCode != 0) {
+      print(Colorize(
+              '\n\nError: Code cleanup failed. Could not run build_runner clean in root package.')
+          .red());
+      exit(exitCode);
+    }
+
+    final processInCodegen = await Process.start(
+      'dart',
+      ['run', 'build_runner', 'clean'],
+      workingDirectory: getPackageRootPath()
+          .resolve('codegen/')
+          .toFilePath(windows: Platform.isWindows),
+      mode: ProcessStartMode.inheritStdio,
+    );
+
+    final exitCode2 = await processInCodegen.exitCode;
+
+    if (exitCode2 != 0) {
+      print(Colorize(
+              '\n\nError: Code cleanup failed. Could not run build_runner clean in codegen package.')
+          .red());
+      exit(exitCode2);
+    }
+
+    print(Colorize('\n\nCode cleanup complete.').lightGreen());
   }
 }
 
