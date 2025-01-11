@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -28,6 +28,7 @@ import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/main_window/main_window_controller.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -98,43 +99,49 @@ class ProjectHeader extends StatelessWidget {
                     },
                   ),
                   Separator(),
-                  AnthemMenuItem(
-                    text: 'Debug',
-                    submenu: MenuDef(
-                      children: [
-                        AnthemMenuItem(
-                          text: 'Print project JSON',
-                          hint:
-                              'Print the project as JSON to the engine console',
-                          onSelected: () {
-                            AnthemStore
-                                .instance
-                                .projects[AnthemStore.instance.activeProjectID]!
-                                .engine
-                                .modelSyncApi
-                                .debugPrintModel();
-                          },
-                        ),
-                        AnthemMenuItem(
-                          text: 'Randomize frequency',
-                          hint:
-                              'Randomizes the frequency of the tone generator',
-                          onSelected: () {
-                            AnthemStore
+                  if (kDebugMode)
+                    AnthemMenuItem(
+                      text: 'Debug',
+                      submenu: MenuDef(
+                        children: [
+                          AnthemMenuItem(
+                            text: 'Print project JSON',
+                            hint:
+                                'Print the project as JSON to the engine console',
+                            onSelected: () async {
+                              // ignore: avoid_print
+                              print(
+                                await AnthemStore
                                     .instance
-                                    .projects[AnthemStore.instance.activeProjectID]!
-                                    .processingGraph
-                                    .toneGenerator
-                                    .node
-                                    .getPortById(ToneGeneratorProcessorModel
-                                        .frequencyPortId)
-                                    .parameterValue =
-                                440 + (Random().nextDouble() * (440 + 880));
-                          },
-                        ),
-                      ],
+                                    .projects[
+                                        AnthemStore.instance.activeProjectID]!
+                                    .engine
+                                    .modelSyncApi
+                                    .debugGetEngineJson(),
+                              );
+                            },
+                          ),
+                          AnthemMenuItem(
+                            text: 'Randomize frequency',
+                            hint:
+                                'Randomizes the frequency of the tone generator',
+                            onSelected: () {
+                              AnthemStore
+                                      .instance
+                                      .projects[
+                                          AnthemStore.instance.activeProjectID]!
+                                      .processingGraph
+                                      .toneGenerator
+                                      .node
+                                      .getPortById(ToneGeneratorProcessorModel
+                                          .frequencyPortId)
+                                      .parameterValue =
+                                  440 + (Random().nextDouble() * (440 + 880));
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
                 ],
               ),
               child: Button(
