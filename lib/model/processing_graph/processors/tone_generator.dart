@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -105,14 +105,13 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
     );
   }
 
-  // TODO: Find a better way to do this...
-  static const int audioOutputPortId =
+  static int get audioOutputPortId =>
       _ToneGeneratorProcessorModel.audioOutputPortId;
-  static const int frequencyPortId =
+  static int get frequencyPortId =>
       _ToneGeneratorProcessorModel.frequencyPortId;
-  static const int amplitudePortId =
+  static int get amplitudePortId =>
       _ToneGeneratorProcessorModel.amplitudePortId;
-  static const int midiInputPortId =
+  static int get midiInputPortId =>
       _ToneGeneratorProcessorModel.midiInputPortId;
 }
 
