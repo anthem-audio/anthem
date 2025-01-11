@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -227,7 +227,7 @@ class EngineConnector {
   }
 
   /// Sends the given bytes to the engine.
-  Future<void> send(Uint8List bytes) async {
+  void send(Uint8List bytes) {
     if (!_initialized) {
       _bufferedRequests.add(bytes);
       return;
