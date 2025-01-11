@@ -23,7 +23,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/model/model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:anthem/engine_api/engine_connector.dart';
@@ -54,7 +56,7 @@ void main() {
   });
 
   group('Heartbeat tests', () {
-    test('No heartbeat', skip: true, () async {
+    test('No heartbeat', () async {
       final exitStreamController = StreamController<void>.broadcast();
 
       var exitCalled = false;
@@ -93,7 +95,7 @@ void main() {
           reason: 'The engine should exit if it does not receive a heartbeat.');
     });
 
-    test('Heartbeat', skip: true, () async {
+    test('Heartbeat', () async {
       final exitStreamController = StreamController<void>.broadcast();
 
       var exitCalled = false;
@@ -137,7 +139,9 @@ void main() {
   group('Model sync tests', () {
     late ProjectModel project;
 
-    setUp(() async {
+    setUpAll(() async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+
       project = ProjectModel.create(
           enginePath.toFilePath(windows: Platform.isWindows));
       await project.engine.start();
@@ -162,6 +166,37 @@ void main() {
       expect(initialState['isSaved'], isNotNull,
           reason:
               'The initial state should contain isSaved - this is not in the project file.');
+    });
+
+    test('Add a bunch of patterns', () async {
+      final engine = project.engine;
+
+      final patternCount = 100;
+
+      for (var i = 0; i < patternCount; i++) {
+        final command = AddPatternCommand(
+            pattern: PatternModel.create(name: 'Pattern $i'), index: i);
+        project.execute(command);
+      }
+
+      final state = jsonDecode(await engine.modelSyncApi.debugGetEngineJson())
+          as Map<String, dynamic>;
+
+      final patternMap = state['song']!['patterns'] as Map<String, dynamic>;
+      final patternIdList =
+          (state['song']!['patternOrder'] as List<dynamic>).cast<String>();
+
+      expect(patternMap.length, equals(patternCount),
+          reason: 'The pattern map should contain $patternCount patterns.');
+      expect(patternIdList.length, equals(patternCount),
+          reason: 'The pattern order should contain $patternCount patterns.');
+
+      for (var i = 0; i < patternCount; i++) {
+        final id = patternIdList[i];
+        final pattern = patternMap[id] as Map<String, dynamic>;
+        expect(pattern['name'], equals('Pattern $i'),
+            reason: 'Pattern $i should have the correct name.');
+      }
     });
   });
 }
