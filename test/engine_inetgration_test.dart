@@ -22,14 +22,16 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:anthem/commands/pattern_commands.dart';
+import 'package:anthem/commands/pattern_note_commands.dart';
+import 'package:anthem/commands/project_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/model/model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:anthem/engine_api/engine_connector.dart';
-import 'package:anthem/model/project.dart';
 
 var id = 0;
 int getId() => id++;
@@ -150,13 +152,15 @@ void main() {
       }
     });
 
-    test('Test initial state', () async {
-      final engine = project.engine;
+    tearDownAll(() async {
+      await project.engine.stop();
+    });
 
-      engine.modelSyncApi.initModel(jsonEncode(project.toJson()));
+    test('Test initial state', () async {
+      project.engine.modelSyncApi.initModel(jsonEncode(project.toJson()));
 
       final initialState =
-          jsonDecode(await engine.modelSyncApi.debugGetEngineJson())
+          jsonDecode(await project.engine.modelSyncApi.debugGetEngineJson())
               as Map<String, dynamic>;
 
       expect(initialState['song'], isNotNull,
@@ -169,8 +173,6 @@ void main() {
     });
 
     test('Add a bunch of patterns', () async {
-      final engine = project.engine;
-
       final patternCount = 100;
 
       for (var i = 0; i < patternCount; i++) {
@@ -179,8 +181,9 @@ void main() {
         project.execute(command);
       }
 
-      final state = jsonDecode(await engine.modelSyncApi.debugGetEngineJson())
-          as Map<String, dynamic>;
+      final state =
+          jsonDecode(await project.engine.modelSyncApi.debugGetEngineJson())
+              as Map<String, dynamic>;
 
       final patternMap = state['song']!['patterns'] as Map<String, dynamic>;
       final patternIdList =
@@ -197,6 +200,130 @@ void main() {
         expect(pattern['name'], equals('Pattern $i'),
             reason: 'Pattern $i should have the correct name.');
       }
+    });
+
+    test('Delete every even pattern', () async {
+      final originalPatternListSize = project.song.patternOrder.length;
+
+      for (var i = originalPatternListSize - 1; i >= 0; i--) {
+        if (i.isEven) {
+          final command = DeletePatternCommand(
+              pattern: project.song.patterns[project.song.patternOrder[i]]!,
+              index: i);
+          project.execute(command);
+        }
+      }
+
+      final state =
+          jsonDecode(await project.engine.modelSyncApi.debugGetEngineJson())
+              as Map<String, dynamic>;
+
+      final patternMap = state['song']!['patterns'] as Map<String, dynamic>;
+      final patternIdList =
+          (state['song']!['patternOrder'] as List<dynamic>).cast<String>();
+
+      expect(patternMap.length, equals(originalPatternListSize ~/ 2),
+          reason:
+              'The pattern map should contain ${originalPatternListSize ~/ 2} patterns.');
+
+      for (var i = 0; i < patternIdList.length; i++) {
+        final id = patternIdList[i];
+        final pattern = patternMap[id] as Map<String, dynamic>;
+        expect(pattern['name'], equals('Pattern ${i * 2 + 1}'),
+            reason: 'Pattern ${i * 2 + 1} should have the correct name.');
+      }
+    });
+
+    test('Add a generator and some notes', () async {
+      project.execute(AddGeneratorCommand(
+        generatorId: 'generator1',
+        processorId: null,
+        name: 'Genrator name',
+        generatorType: GeneratorType.instrument,
+        color: const Color(0xFF000000),
+      ));
+
+      final generator = project.generators['generator1']!;
+
+      final command = AddNoteCommand(
+        generatorID: generator.id,
+        patternID: project.song.patternOrder[0],
+        note: NoteModel(
+          key: 64,
+          velocity: 127,
+          length: 256,
+          offset: 123,
+          pan: 0,
+        ),
+      );
+
+      project.execute(command);
+
+      final state =
+          jsonDecode(await project.engine.modelSyncApi.debugGetEngineJson())
+              as Map<String, dynamic>;
+
+      final generatorMap = state['generators'] as Map<String, dynamic>;
+      expect(generatorMap['generator1'], isNotNull,
+          reason: 'The generator should be in the state.');
+
+      final pattern = state['song']!['patterns'][project.song.patternOrder[0]]
+          as Map<String, dynamic>;
+      final notes = pattern['notes']!['generator1'] as List<dynamic>;
+      expect(notes.length, equals(1),
+          reason: 'The pattern should contain 1 note.');
+
+      final note = notes[0] as Map<String, dynamic>;
+      expect(note['key'], equals(64),
+          reason: 'The note should have the correct key.');
+      expect(note['velocity'], equals(127),
+          reason: 'The note should have the correct velocity.');
+      expect(note['length'], equals(256),
+          reason: 'The note should have the correct length.');
+      expect(note['offset'], equals(123),
+          reason: 'The note should have the correct offset.');
+      expect(note['pan'], equals(0),
+          reason: 'The note should have the correct pan.');
+    });
+
+    test('Change all the note properties', () async {
+      final patternId = project.song.patternOrder[0];
+      final note = project
+          .song.patterns[project.song.patternOrder[0]]!.notes['generator1']![0];
+
+      project.execute(SetNoteAttributeCommand(
+        patternID: patternId,
+        generatorID: 'generator1',
+        noteID: note.id,
+        attribute: NoteAttribute.key,
+        oldValue: note.key,
+        newValue: 65,
+      ));
+
+      project.execute(SetNoteAttributeCommand(
+        patternID: patternId,
+        generatorID: 'generator1',
+        noteID: note.id,
+        attribute: NoteAttribute.velocity,
+        oldValue: note.velocity,
+        newValue: 126,
+      ));
+
+      final state =
+          jsonDecode(await project.engine.modelSyncApi.debugGetEngineJson())
+              as Map<String, dynamic>;
+
+      final pattern =
+          state['song']!['patterns'][patternId] as Map<String, dynamic>;
+      final notes = pattern['notes']!['generator1'] as List<dynamic>;
+      expect(notes.length, equals(1),
+          reason: 'The pattern should contain 1 note.');
+
+      final updatedNote = notes[0] as Map<String, dynamic>;
+      expect(updatedNote['key'], equals(65),
+          reason: 'The note should have the correct key.');
+      expect(updatedNote['velocity'], equals(126),
+          reason: 'The note should have the correct velocity.');
     });
   });
 }
