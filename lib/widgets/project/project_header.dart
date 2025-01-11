@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
@@ -105,9 +106,24 @@ class ProjectHeader extends StatelessWidget {
                       submenu: MenuDef(
                         children: [
                           AnthemMenuItem(
-                            text: 'Print project JSON',
+                            text: 'Print project JSON (UI)',
                             hint:
-                                'Print the project as JSON to the engine console',
+                                'Print the project JSON as reported by the UI',
+                            onSelected: () async {
+                              // ignore: avoid_print
+                              print(
+                                jsonEncode(AnthemStore
+                                    .instance
+                                    .projects[
+                                        AnthemStore.instance.activeProjectID]!
+                                    .toJson()),
+                              );
+                            },
+                          ),
+                          AnthemMenuItem(
+                            text: 'Print project JSON (engine)',
+                            hint:
+                                'Print the project as JSON as reported by the engine',
                             onSelected: () async {
                               // ignore: avoid_print
                               print(
