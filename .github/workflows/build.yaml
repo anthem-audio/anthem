@@ -53,8 +53,8 @@ jobs:
             dart run anthem:cli engine build --release
           new_command_on_retry: |
             $ErrorActionPreference = 'Stop'
-            dart run anthem:cli codegen clean -y
-            dart run anthem:cli codegen generate
+            dart run anthem:cli codegen clean -y --root-only
+            dart run anthem:cli codegen generate --root-only
             dart run anthem:cli engine build --release
 
       - name: Run engine unit tests
@@ -130,8 +130,8 @@ jobs:
             dart run anthem:cli engine build --release
           new_command_on_retry: |
             $ErrorActionPreference = 'Stop'
-            dart run anthem:cli codegen clean -y
-            dart run anthem:cli codegen generate
+            dart run anthem:cli codegen clean -y --root-only
+            dart run anthem:cli codegen generate --root-only
             dart run anthem:cli engine build --release
       
       - name: Run engine unit tests

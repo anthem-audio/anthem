@@ -49,6 +49,8 @@ class _CodegenCleanCommand extends Command<dynamic> {
   _CodegenCleanCommand() {
     argParser.addFlag('skip-prompts',
         abbr: 'y', help: 'Skip confirmation prompts.');
+    argParser.addFlag('root-only',
+        help: 'Only clean up generated files in the root package.');
   }
 
   @override
@@ -58,8 +60,10 @@ class _CodegenCleanCommand extends Command<dynamic> {
           'This will delete ALL files/folders matching the following patterns:');
       print('  - lib/**/*.g.dart');
       print('  - lib/**/*.g.part');
-      print('  - codegen/**/*.g.dart');
-      print('  - codegen/**/*.g.part');
+      if (!argResults!['root-only']) {
+        print('  - codegen/**/*.g.dart');
+        print('  - codegen/**/*.g.part');
+      }
       print('  - engine/src/generated');
       print('This will also run');
       print('    dart run build_runner clean');
@@ -89,16 +93,18 @@ class _CodegenCleanCommand extends Command<dynamic> {
       deleteCount++;
     }
 
-    final dartCodegenFilesToDelete =
-        Directory.fromUri(getPackageRootPath().resolve('codegen/'))
-            .listSync(recursive: true)
-            .where((f) {
-      return f.path.endsWith('.g.dart') || f.path.endsWith('.g.part');
-    });
+    if (!argResults!['root-only']) {
+      final dartCodegenFilesToDelete =
+          Directory.fromUri(getPackageRootPath().resolve('codegen/'))
+              .listSync(recursive: true)
+              .where((f) {
+        return f.path.endsWith('.g.dart') || f.path.endsWith('.g.part');
+      });
 
-    for (final file in dartCodegenFilesToDelete) {
-      file.deleteSync();
-      deleteCount++;
+      for (final file in dartCodegenFilesToDelete) {
+        file.deleteSync();
+        deleteCount++;
+      }
     }
 
     try {
@@ -131,22 +137,24 @@ class _CodegenCleanCommand extends Command<dynamic> {
       exit(exitCode);
     }
 
-    final processInCodegen = await Process.start(
-      'dart',
-      ['run', 'build_runner', 'clean'],
-      workingDirectory: getPackageRootPath()
-          .resolve('codegen/')
-          .toFilePath(windows: Platform.isWindows),
-      mode: ProcessStartMode.inheritStdio,
-    );
+    if (!argResults!['root-only']) {
+      final processInCodegen = await Process.start(
+        'dart',
+        ['run', 'build_runner', 'clean'],
+        workingDirectory: getPackageRootPath()
+            .resolve('codegen/')
+            .toFilePath(windows: Platform.isWindows),
+        mode: ProcessStartMode.inheritStdio,
+      );
 
-    final exitCode2 = await processInCodegen.exitCode;
+      final exitCode = await processInCodegen.exitCode;
 
-    if (exitCode2 != 0) {
-      print(Colorize(
-              '\n\nError: Code cleanup failed. Could not run build_runner clean in codegen package.')
-          .red());
-      exit(exitCode2);
+      if (exitCode != 0) {
+        print(Colorize(
+                '\n\nError: Code cleanup failed. Could not run build_runner clean in codegen package.')
+            .red());
+        exit(exitCode);
+      }
     }
 
     print(Colorize('\n\nCode cleanup complete.').lightGreen());
