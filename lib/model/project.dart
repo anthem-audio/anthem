@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2024 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -47,7 +47,7 @@ enum ProjectLayoutKind { arrange, edit, mix }
 class ProjectModel extends _ProjectModel
     with _$ProjectModel, _$ProjectModelAnthemModelMixin {
   ProjectModel() : super();
-  ProjectModel.create() : super.create();
+  ProjectModel.create([super._enginePathOverride]) : super.create();
 
   factory ProjectModel.fromJson(Map<String, dynamic> json) =>
       _$ProjectModelAnthemModelMixin.fromJson(json)..isSaved = true;
@@ -170,14 +170,19 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
 
   // This method is used for deserialization and so doesn't create new child
   // models.
-  _ProjectModel() : super() {
+  _ProjectModel()
+      : _enginePathOverride = null,
+        super() {
     _commandQueue = CommandQueue(this as ProjectModel);
   }
 
   @hide
   void Function(Iterable<FieldAccessor>, FieldOperation)? _fieldChangedListener;
 
-  _ProjectModel.create() : super() {
+  @hide
+  final String? _enginePathOverride;
+
+  _ProjectModel.create([this._enginePathOverride]) : super() {
     _commandQueue = CommandQueue(this as ProjectModel);
 
     song = SongModel.create();
@@ -197,7 +202,9 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// This function is run after deserialization. It allows us to do some setup
   /// that the deserialization step can't do for us.
   void hydrate() {
-    engine = Engine(engineID, this as ProjectModel)..start();
+    engine = Engine(engineID, this as ProjectModel,
+        enginePathOverride: _enginePathOverride)
+      ..start();
 
     engine.engineStateStream.listen((state) {
       (this as ProjectModel).engineState = state;

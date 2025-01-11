@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -63,12 +63,14 @@ class Engine {
   EngineState _engineState = EngineState.stopped;
   EngineState get engineState => _engineState;
 
+  final String? enginePathOverride;
+
   void _setEngineState(EngineState state) {
     _engineState = state;
     _engineStateStreamController.add(state);
   }
 
-  Engine(this.id, this.project) {
+  Engine(this.id, this.project, {this.enginePathOverride}) {
     engineStateStream = _engineStateStreamController.stream;
 
     modelSyncApi = ModelSyncApi(this);
@@ -120,8 +122,13 @@ class Engine {
 
     _setEngineState(EngineState.starting);
 
-    _engineConnector = EngineConnector(id,
-        kDebugMode: kDebugMode, onReply: _onReply, onExit: _onExit);
+    _engineConnector = EngineConnector(
+      id,
+      kDebugMode: kDebugMode,
+      onReply: _onReply,
+      onExit: _onExit,
+      enginePathOverride: enginePathOverride,
+    );
 
     final success = await _engineConnector.onInit;
 
