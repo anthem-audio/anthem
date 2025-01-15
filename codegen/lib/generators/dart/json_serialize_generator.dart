@@ -23,6 +23,7 @@ import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:source_gen/source_gen.dart';
 
 import '../util/model_class_info.dart';
+import 'serialize_generators.dart';
 
 /// Generates JSON serialization for an Anthem model class.
 ///
@@ -173,7 +174,7 @@ String _createSetterForField({
 }) {
   accessor ??= fieldName;
 
-  final converter = _createConverterForField(
+  final converter = createSerializerForField(
     type: type,
     accessor: accessor,
   );
@@ -191,93 +192,4 @@ String _createSetterForField({
   }
 
   return "$mapName['$fieldName'] = $converter;\n";
-}
-
-String _createConverterForField(
-    {required ModelType type, required String accessor}) {
-  return switch (type) {
-    StringModelType() ||
-    IntModelType() ||
-    DoubleModelType() ||
-    NumModelType() ||
-    BoolModelType() =>
-      _createConverterForPrimitive(accessor: accessor),
-    ColorModelType() => _createConverterForColor(accessor: accessor),
-    EnumModelType(isNullable: var isNullable) =>
-      _createConverterForEnum(accessor: accessor, isNullable: isNullable),
-    ListModelType() => _createConverterForList(type: type, accessor: accessor),
-    MapModelType() => _createConverterForMap(type: type, accessor: accessor),
-    CustomModelType() =>
-      _createConverterForCustomType(type: type, accessor: accessor),
-    UnknownModelType() => 'null',
-  };
-}
-
-String _createConverterForPrimitive({
-  required String accessor,
-}) {
-  return accessor;
-}
-
-/// Converts a Color object at [accessor] to a map of ARGB values.
-///
-/// Each value is stored as an integer between 0 and 255.
-String _createConverterForColor({
-  required String accessor,
-}) {
-  return '''
-{'a': ($accessor.a * 255).round(), 'r': $accessor.r.round(), 'g': $accessor.g.round(), 'b': $accessor.b.round()}
-''';
-}
-
-String _createConverterForEnum({
-  required String accessor,
-  required bool isNullable,
-}) {
-  return isNullable ? '$accessor?.name' : '$accessor.name';
-}
-
-String _createConverterForList({
-  required ListModelType type,
-  required String accessor,
-}) {
-  final q = type.isNullable ? '?' : '';
-  final nonObservableInner = type.isObservable ? '.nonObservableInner' : '';
-
-  return '''
-$accessor$q$nonObservableInner.map(
-  (item) {
-    return ${_createConverterForField(type: type.itemType, accessor: 'item')};
-  },
-).toList()
-''';
-}
-
-String _createConverterForMap({
-  required MapModelType type,
-  required String accessor,
-}) {
-  final nullablePrefix = type.isNullable ? '$accessor == null ? null : ' : '';
-  final excl = type.isNullable ? '!' : '';
-  final nonObservableInner = type.isObservable ? '.nonObservableInner' : '';
-
-  return '''
-${nullablePrefix}Map.fromEntries(
-  $accessor$excl$nonObservableInner.entries.map(
-    (entry) {
-      return MapEntry(
-        ${_createConverterForField(type: type.keyType, accessor: 'entry.key')}${type.keyType is StringModelType ? '' : '.toString()'},
-        ${_createConverterForField(type: type.valueType, accessor: 'entry.value')},
-      );
-    },
-  ),
-)
-''';
-}
-
-String _createConverterForCustomType({
-  required CustomModelType type,
-  required String accessor,
-}) {
-  return '$accessor${type.isNullable ? '?' : ''}.toJson(includeFieldsForEngine: includeFieldsForEngine)';
 }

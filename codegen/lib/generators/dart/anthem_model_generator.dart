@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,6 +19,7 @@
 
 import 'dart:async';
 
+import 'package:anthem_codegen/generators/dart/serialize_generators.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:anthem_codegen/generators/dart/json_deserialize_generator.dart';
@@ -154,22 +155,8 @@ super.$fieldName$typeQ.setParentProperties(
 ''';
       }
 
-      final valueGetter = switch (fieldInfo.typeInfo) {
-        StringModelType() ||
-        IntModelType() ||
-        DoubleModelType() ||
-        NumModelType() ||
-        BoolModelType() =>
-          'value',
-        EnumModelType() => 'value$typeQ.name',
-        ColorModelType() =>
-          "{ 'a': value.a, 'r': value.r, 'g': value.g, 'b': value.b }",
-        CustomModelType() ||
-        UnknownModelType() ||
-        ListModelType() ||
-        MapModelType() =>
-          'value$typeQ.toJson(includeFieldsForEngine: true)',
-      };
+      final valueGetter =
+          createSerializerForField(type: fieldInfo.typeInfo, accessor: 'value');
 
       // Regardless of the type, we need to notify that this field was
       // changed.

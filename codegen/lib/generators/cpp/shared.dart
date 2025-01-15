@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -36,6 +36,8 @@ String getCppType(ModelType type, ModelClassInfo context) {
       'std::shared_ptr<${context.annotation?.generateModelSync == true ? 'AnthemModelUnorderedMap' : 'std::unordered_map'}<${getCppType(key, context)}, ${getCppType(value, context)}>>',
     CustomModelType(dartName: final dartName) =>
       'std::shared_ptr<${type.modelClassInfo.annotation?.cppBehaviorClassName != null ? type.modelClassInfo.annotation!.cppBehaviorClassName : dartName}>',
+    UnionModelType() =>
+      'rfl::Variant<${type.subTypes.map((t) => 'rfl::Field<"${type.dartName}", ${getCppType(t, context)}>').join(', ')}>',
     UnknownModelType() => 'TYPE_ERROR_UNKNOWN_TYPE',
   };
 

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -184,6 +184,18 @@ class CustomModelType extends ModelType {
   String get dartName => modelClassInfo.annotatedClass.name;
 }
 
+class UnionModelType extends ModelType {
+  @override
+  final bool canBeMapKey = false;
+
+  @override
+  String get dartName => 'Object';
+
+  final List<ModelType> subTypes;
+
+  UnionModelType(this.subTypes, {required super.isNullable});
+}
+
 /// Represents a type that may or may not be valid, but cannot be parsed for
 /// some reason.
 class UnknownModelType extends ModelType {
@@ -200,7 +212,8 @@ class UnknownModelType extends ModelType {
 
 /// Parses a Dart type into a [ModelType].
 ModelType getModelType(
-    DartType type, LibraryReader libraryReader, ClassElement annotatedClass) {
+    DartType type, LibraryReader libraryReader, ClassElement annotatedClass,
+    {FieldElement? field}) {
   final element = type.element;
   if (element == null) return UnknownModelType.error();
 
@@ -214,6 +227,10 @@ ModelType getModelType(
     'String' => StringModelType(isNullable: isNullable),
     'Color' => ColorModelType(isNullable: isNullable),
     _ => (() {
+        final unionAnnotation = field == null
+            ? null
+            : const TypeChecker.fromRuntime(Union).firstAnnotationOf(field);
+
         // Check if this is a list
         if (element is ClassElement &&
             (element.name == 'List' ||
@@ -269,6 +286,27 @@ ModelType getModelType(
             },
             isNullable: isNullable,
           );
+        }
+
+        // Check for Object with @Union() annotation
+        else if (element is ClassElement && element.name == 'Object') {
+          final types = unionAnnotation
+              ?.getField('types')
+              ?.toListValue()
+              ?.map((e) => e.toTypeValue())
+              .whereType<DartType>()
+              .toList();
+
+          final subTypeModelTypes = types
+              ?.map((e) => getModelType(e, libraryReader, annotatedClass))
+              .toList();
+
+          if (subTypeModelTypes != null) {
+            return UnionModelType(subTypeModelTypes, isNullable: isNullable);
+          }
+        } else if (unionAnnotation != null && field != null) {
+          throw Exception(
+              'Union annotation must be used on Object type, but was used on ${element.name}. The type ${element.name} is used in a field on ${annotatedClass.name}.');
         }
 
         // Check for custom type
