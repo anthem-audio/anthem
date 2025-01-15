@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -308,8 +308,9 @@ class ModelFieldInfo {
     required this.fieldElement,
     required LibraryReader libraryReader,
     required ClassElement annotatedClass,
-  })  : typeInfo =
-            getModelType(fieldElement.type, libraryReader, annotatedClass),
+  })  : typeInfo = getModelType(
+            fieldElement.type, libraryReader, annotatedClass,
+            field: fieldElement),
         isObservable = (() {
           final hideAnnotation = const TypeChecker.fromRuntime(AnthemObservable)
               .firstAnnotationOf(fieldElement);

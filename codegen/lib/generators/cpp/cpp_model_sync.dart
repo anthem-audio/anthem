@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -666,7 +666,7 @@ void _writeUpdate({
       writer.decrementWhitespace();
       writer.writeLine('}');
       break;
-    case CustomModelType() || UnknownModelType():
+    case CustomModelType() || UnionModelType() || UnknownModelType():
       // If this field is a custom model and this is the last accessor in the
       // chain, then we should deserialize the provided JSON into this field.
       writer.writeLine(
@@ -701,14 +701,44 @@ void _writeUpdate({
       // the chain, then we should forward the update to the child.
       writer.writeLine('} else {');
       writer.incrementWhitespace();
+
       var nullable = '';
       if (type.isNullable) {
         writer.writeLine('if ($fieldAccessExpression.has_value()) {');
         writer.incrementWhitespace();
         nullable = '.value()';
       }
-      writer.writeLine(
-          '$fieldAccessExpression$nullable->handleModelUpdate(request, fieldAccessIndex + 1 + $fieldAccessIndexMod);');
+
+      if (type is UnionModelType) {
+        // https://rfl.getml.com/variants_and_tagged_unions/#stdvariant-or-rflvariant-externally-tagged
+        // See the visitor pattern example for how this is being parsed. This is
+        // externally tagged, which is described there as well.
+        writer.writeLine('const auto handle_variant = [](const auto& field) {');
+        writer.incrementWhitespace();
+
+        var isFirst = true;
+        for (final subType in type.subTypes) {
+          writer.writeLine(
+              '${isFirst ? '' : 'else '}if constexpr (std::is_same<Name, rfl::Literal<"${subType.dartName}">>()) {');
+          writer.incrementWhitespace();
+          writer.writeLine(
+              'field.value().handleModelUpdate(request, fieldAccessIndex + 1 + $fieldAccessIndexMod);');
+          writer.decrementWhitespace();
+          writer.writeLine('}');
+
+          isFirst = false;
+        }
+
+        writer.decrementWhitespace();
+        writer.writeLine('};');
+
+        writer.writeLine(
+            'rfl::visit(handle_variant, $fieldAccessExpression$nullable);');
+      } else {
+        writer.writeLine(
+            '$fieldAccessExpression$nullable->handleModelUpdate(request, fieldAccessIndex + 1 + $fieldAccessIndexMod);');
+      }
+
       if (type.isNullable) {
         writer.decrementWhitespace();
         writer.writeLine('} else {');
@@ -718,6 +748,7 @@ void _writeUpdate({
         writer.decrementWhitespace();
         writer.writeLine('}');
       }
+
       writer.decrementWhitespace();
       writer.writeLine('}');
 
@@ -833,7 +864,8 @@ void _writeKeyDeserialize({
           MapModelType() ||
           ColorModelType() ||
           CustomModelType() ||
-          UnknownModelType():
+          UnknownModelType() ||
+          UnionModelType():
       throw Exception(
           'These types should not be marked as map keys, and so should be caught above. This is a bug.');
   }

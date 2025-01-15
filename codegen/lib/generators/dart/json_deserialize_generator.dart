@@ -183,6 +183,11 @@ String _createGetterForField({
       ),
     CustomModelType() =>
       '${type.isNullable ? '$getter == null ? null : ' : ''}${type.modelClassInfo.annotatedClass.name}.fromJson($getter)',
+    UnionModelType() => _generateUnionGetter(
+        type: type,
+        fieldName: fieldName,
+        getter: getter,
+      ),
     UnknownModelType() => 'null',
   };
 }
@@ -267,4 +272,31 @@ String _createGetterForKeyField({
     BoolModelType() => 'bool.parse($getter)',
     _ => 'null',
   };
+}
+
+String _generateUnionGetter({
+  required UnionModelType type,
+  required String fieldName,
+  required String getter,
+}) {
+  return '''
+(() {
+  final keys = $getter${type.isNullable ? '?' : ''}.keys;
+
+  ${type.isNullable ? 'if ($getter == null) return null;' : ''}
+
+  if (keys.length != 1) {
+    throw Exception('Union type must have exactly one key');
+  }
+
+  switch (keys.first) {
+  ${type.subTypes.map((subtype) => '''
+    case '${subtype.dartName}':
+      return ${_createGetterForField(type: subtype, fieldName: fieldName, getter: '$getter[keys.first]')};
+  ''').join('\n')}
+    default:
+      throw Exception('Unknown union type');
+  }
+})()
+''';
 }

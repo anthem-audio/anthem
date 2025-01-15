@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -198,4 +198,23 @@ const anthemObservable = AnthemObservable();
 /// it to generate an equivalent `enum class` in C++.
 class AnthemEnum {
   const AnthemEnum();
+}
+
+/// This annotation is used to mark a field as a union. This allows the correct
+/// serialization and deserialization of dynamic fields, and as such allows for
+/// a crude form of polymorphism in the model.
+///
+/// Note that we support sealed classes for serialization and use it for IPC,
+/// but not for model sync due to the complexity. So, this is the primary way to
+/// do polymorphism in the model.
+///
+/// Unions are defined like so:
+/// ```dart
+/// @Union([FirstType, SecondType])
+/// Object unionField;
+/// ```
+class Union {
+  final List<Type> types;
+
+  const Union(this.types);
 }
