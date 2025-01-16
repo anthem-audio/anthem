@@ -155,8 +155,11 @@ super.$fieldName$typeQ.setParentProperties(
 ''';
       }
 
-      final valueGetter =
-          createSerializerForField(type: fieldInfo.typeInfo, accessor: 'value');
+      final valueGetter = createSerializerForField(
+        type: fieldInfo.typeInfo,
+        accessor: 'value',
+        alwaysIncludeEngineOnlyFields: true,
+      );
 
       // Regardless of the type, we need to notify that this field was
       // changed.
