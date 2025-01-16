@@ -195,6 +195,35 @@ super.$fieldName$typeQ.setParentProperties(
   fieldType: FieldType.raw,
 );
 ''';
+      } else if (fieldInfo.typeInfo case UnionModelType typeInfo) {
+        var first = true;
+        for (final subtype in typeInfo.subTypes) {
+          setter += '''
+var setterReceivedValidType = false;
+${first ? 'else ' : ''}if (value is ${subtype.dartName}) {
+  setterReceivedValidType = true;
+''';
+          if (subtype is CustomModelType ||
+              subtype is UnknownModelType ||
+              subtype is ListModelType ||
+              subtype is MapModelType) {
+            setter += '''
+  (value as ${subtype.dartName}).setParentProperties(
+    parent: this,
+    fieldName: '$fieldName',
+    fieldType: FieldType.raw,
+  );
+''';
+          }
+          setter += '''
+}
+
+if (!setterReceivedValidType) {
+  throw Exception('Invalid type for field $fieldName. Got value of type \${field.runtimeType}, but expected one of: ${typeInfo.subTypes.map((subtype) => subtype.dartName).join(', ')}.');
+}
+''';
+          first = false;
+        }
       }
 
       final valueGetter = createSerializerForField(
