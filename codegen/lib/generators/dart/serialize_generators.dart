@@ -19,8 +19,11 @@
 
 import '../util/model_types.dart';
 
-String createSerializerForField(
-    {required ModelType type, required String accessor}) {
+String createSerializerForField({
+  required ModelType type,
+  required String accessor,
+  bool alwaysIncludeEngineOnlyFields = false,
+}) {
   return switch (type) {
     StringModelType() ||
     IntModelType() ||
@@ -28,15 +31,33 @@ String createSerializerForField(
     NumModelType() ||
     BoolModelType() =>
       createSerializerForPrimitive(accessor: accessor),
-    ColorModelType() => createSerializerForColor(accessor: accessor),
-    EnumModelType(isNullable: var isNullable) =>
-      createSerializerForEnum(accessor: accessor, isNullable: isNullable),
-    ListModelType() => createSerializerForList(type: type, accessor: accessor),
-    MapModelType() => createSerializerForMap(type: type, accessor: accessor),
-    CustomModelType() =>
-      createSerializerForCustomType(type: type, accessor: accessor),
-    UnionModelType() =>
-      createSerializerForUnion(type: type, accessor: accessor),
+    ColorModelType() => createSerializerForColor(
+        accessor: accessor,
+      ),
+    EnumModelType(isNullable: var isNullable) => createSerializerForEnum(
+        accessor: accessor,
+        isNullable: isNullable,
+      ),
+    ListModelType() => createSerializerForList(
+        type: type,
+        accessor: accessor,
+        alwaysIncludeEngineOnlyFields: alwaysIncludeEngineOnlyFields,
+      ),
+    MapModelType() => createSerializerForMap(
+        type: type,
+        accessor: accessor,
+        alwaysIncludeEngineOnlyFields: alwaysIncludeEngineOnlyFields,
+      ),
+    CustomModelType() => createSerializerForCustomType(
+        type: type,
+        accessor: accessor,
+        alwaysIncludeEngineOnlyFields: alwaysIncludeEngineOnlyFields,
+      ),
+    UnionModelType() => createSerializerForUnion(
+        type: type,
+        accessor: accessor,
+        alwaysIncludeEngineOnlyFields: alwaysIncludeEngineOnlyFields,
+      ),
     UnknownModelType() => 'null',
   };
 }
@@ -68,6 +89,7 @@ String createSerializerForEnum({
 String createSerializerForList({
   required ListModelType type,
   required String accessor,
+  bool alwaysIncludeEngineOnlyFields = false,
 }) {
   final q = type.isNullable ? '?' : '';
   final nonObservableInner = type.isObservable ? '.nonObservableInner' : '';
@@ -75,7 +97,7 @@ String createSerializerForList({
   return '''
 $accessor$q$nonObservableInner.map(
   (item) {
-    return ${createSerializerForField(type: type.itemType, accessor: 'item')};
+    return ${createSerializerForField(type: type.itemType, accessor: 'item', alwaysIncludeEngineOnlyFields: alwaysIncludeEngineOnlyFields)};
   },
 ).toList()
 ''';
@@ -84,6 +106,7 @@ $accessor$q$nonObservableInner.map(
 String createSerializerForMap({
   required MapModelType type,
   required String accessor,
+  bool alwaysIncludeEngineOnlyFields = false,
 }) {
   final nullablePrefix = type.isNullable ? '$accessor == null ? null : ' : '';
   final excl = type.isNullable ? '!' : '';
@@ -94,8 +117,8 @@ ${nullablePrefix}Map.fromEntries(
   $accessor$excl$nonObservableInner.entries.map(
     (entry) {
       return MapEntry(
-        ${createSerializerForField(type: type.keyType, accessor: 'entry.key')}${type.keyType is StringModelType ? '' : '.toString()'},
-        ${createSerializerForField(type: type.valueType, accessor: 'entry.value')},
+        ${createSerializerForField(type: type.keyType, accessor: 'entry.key', alwaysIncludeEngineOnlyFields: alwaysIncludeEngineOnlyFields)}${type.keyType is StringModelType ? '' : '.toString()'},
+        ${createSerializerForField(type: type.valueType, accessor: 'entry.value', alwaysIncludeEngineOnlyFields: alwaysIncludeEngineOnlyFields)},
       );
     },
   ),
@@ -106,20 +129,32 @@ ${nullablePrefix}Map.fromEntries(
 String createSerializerForCustomType({
   required CustomModelType type,
   required String accessor,
+  bool alwaysIncludeEngineOnlyFields = false,
 }) {
-  return '$accessor${type.isNullable ? '?' : ''}.toJson(includeFieldsForEngine: includeFieldsForEngine)';
+  // There are two cases for this:
+  // 1. This serializer is being output in the context of a toJson method, in
+  //    which case the parameter includeFieldsForEngine will be provided as an
+  //    argument
+  // 2. This serializer is being output in the context of a generated setter,
+  //    and the serialized value is being sent to the engine as part of a model
+  //    change event. In this case, there will be no includeFieldsForEngine
+  //    parameter, and we need to include the engine-only fields.
+  final includeFieldsForEngine =
+      alwaysIncludeEngineOnlyFields ? 'true' : 'includeFieldsForEngine';
+  return '$accessor${type.isNullable ? '?' : ''}.toJson(includeFieldsForEngine: $includeFieldsForEngine)';
 }
 
 String createSerializerForUnion({
   required UnionModelType type,
   required String accessor,
+  bool alwaysIncludeEngineOnlyFields = false,
 }) {
   var switchCases = '';
 
   for (final subtype in type.subTypes) {
     switchCases += '''
   case ${subtype.dartName} field:
-    return {'${subtype.dartName}': ${createSerializerForField(type: subtype, accessor: 'field')}};
+    return {'${subtype.dartName}': ${createSerializerForField(type: subtype, accessor: 'field', alwaysIncludeEngineOnlyFields: alwaysIncludeEngineOnlyFields)}};
 ''';
   }
 
