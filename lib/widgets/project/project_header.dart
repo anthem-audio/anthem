@@ -18,7 +18,6 @@
 */
 
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/model.dart';
@@ -135,24 +134,6 @@ class ProjectHeader extends StatelessWidget {
                                     .modelSyncApi
                                     .debugGetEngineJson(),
                               );
-                            },
-                          ),
-                          AnthemMenuItem(
-                            text: 'Randomize frequency',
-                            hint:
-                                'Randomizes the frequency of the tone generator',
-                            onSelected: () {
-                              AnthemStore
-                                      .instance
-                                      .projects[
-                                          AnthemStore.instance.activeProjectID]!
-                                      .processingGraph
-                                      .toneGenerator
-                                      .node
-                                      .getPortById(ToneGeneratorProcessorModel
-                                          .frequencyPortId)
-                                      .parameterValue =
-                                  440 + (Random().nextDouble() * (440 + 880));
                             },
                           ),
                         ],

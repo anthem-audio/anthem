@@ -25,7 +25,6 @@ import 'package:mobx/mobx.dart';
 
 import 'node.dart';
 import 'node_connection.dart';
-import 'processors/tone_generator.dart';
 
 part 'processing_graph.g.dart';
 
@@ -109,10 +108,4 @@ abstract class _ProcessingGraphModel with Store, AnthemModelBase {
 
   @anthemObservable
   late MasterOutputProcessorModel masterOutput;
-
-  @AnthemObservable()
-  late ToneGeneratorProcessorModel toneGenerator;
-
-  @AnthemObservable()
-  late ToneGeneratorProcessorModel toneGenerator2;
 }
