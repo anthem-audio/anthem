@@ -185,7 +185,9 @@ String _generateGettersAndSetters(
       // If the field is a custom model type, we need to tell it about its
       // parent.
       if (fieldInfo.typeInfo is CustomModelType ||
-          fieldInfo.typeInfo is UnknownModelType) {
+          fieldInfo.typeInfo is UnknownModelType ||
+          fieldInfo.typeInfo is ListModelType ||
+          fieldInfo.typeInfo is MapModelType) {
         setter += '''
 super.$fieldName$typeQ.setParentProperties(
   parent: this,
