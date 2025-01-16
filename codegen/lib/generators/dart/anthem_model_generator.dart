@@ -123,6 +123,46 @@ String _generateGettersAndSetters(
       continue;
     }
 
+    // If model sync code is being generated, we need to validate that this
+    // field is using the custom collection types.
+    if (shouldGenerateModelSync) {
+      if (fieldInfo.typeInfo case ListModelType typeInfo) {
+        if (typeInfo.collectionType != CollectionType.anthemObservable) {
+          throw Exception(
+              'Synced models must use AnthemObservableList, but $fieldName is using ${typeInfo.collectionType} instead.');
+        }
+      }
+
+      if (fieldInfo.typeInfo case MapModelType typeInfo) {
+        if (typeInfo.collectionType != CollectionType.anthemObservable) {
+          throw Exception(
+              'Synced models must use AnthemObservableMap, but $fieldName is using ${typeInfo.collectionType} instead.');
+        }
+      }
+
+      if (fieldInfo.typeInfo case UnionModelType typeInfo) {
+        // This code checks through the possible subtypes to check for lists and
+        // maps as well. Note that a recursive check is not needed, because
+        // union types can only exist as the type of a field, and not as a
+        // template type, such as List<UnionType>.
+        for (final subtype in typeInfo.subTypes) {
+          if (subtype is ListModelType) {
+            if (subtype.collectionType != CollectionType.anthemObservable) {
+              throw Exception(
+                  'Synced models must use AnthemObservableList, but $fieldName is using ${subtype.collectionType} instead.');
+            }
+          }
+
+          if (subtype is MapModelType) {
+            if (subtype.collectionType != CollectionType.anthemObservable) {
+              throw Exception(
+                  'Synced models must use AnthemObservableMap, but $fieldName is using ${subtype.collectionType} instead.');
+            }
+          }
+        }
+      }
+    }
+
     // Getter
 
     final typeQ = fieldInfo.typeInfo.isNullable ? '?' : '';
@@ -193,6 +233,8 @@ notifyFieldChanged(
 }
 
 /// Generates the init function for the model.
+///
+/// This should only be called if the model is a synced model.
 String _generateInitFunction({required ModelClassInfo context}) {
   var result = '@override\n';
 
