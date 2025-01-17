@@ -308,8 +308,7 @@ class ModelFieldInfo {
     required this.fieldElement,
     required LibraryReader libraryReader,
     required ClassElement annotatedClass,
-  })  : typeInfo = getModelType(
-            fieldElement.type, libraryReader, annotatedClass,
+  })  : typeInfo = getModelType(fieldElement.type, annotatedClass,
             field: fieldElement),
         isObservable = (() {
           final hideAnnotation = const TypeChecker.fromRuntime(AnthemObservable)
