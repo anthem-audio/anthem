@@ -211,8 +211,7 @@ class UnknownModelType extends ModelType {
 }
 
 /// Parses a Dart type into a [ModelType].
-ModelType getModelType(
-    DartType type, LibraryReader libraryReader, ClassElement annotatedClass,
+ModelType getModelType(DartType type, ClassElement annotatedClass,
     {FieldElement? field}) {
   final element = type.element;
   if (element == null) return UnknownModelType.error();
@@ -241,8 +240,7 @@ ModelType getModelType(
           final typeParam = type.typeArguments.first;
           if (typeParam.element == null) return UnknownModelType.error();
 
-          final itemType =
-              getModelType(typeParam, libraryReader, annotatedClass);
+          final itemType = getModelType(typeParam, annotatedClass);
           return ListModelType(
             itemType,
             collectionType: switch (element.name) {
@@ -264,8 +262,7 @@ ModelType getModelType(
           final typeParams = type.typeArguments;
           if (typeParams.length != 2) return UnknownModelType.error();
 
-          final keyType =
-              getModelType(typeParams[0], libraryReader, annotatedClass);
+          final keyType = getModelType(typeParams[0], annotatedClass);
           if (!keyType.canBeMapKey) {
             log.warning(
                 'Map key type cannot be used as a map key: ${typeParams[0].element?.name}');
@@ -274,8 +271,7 @@ ModelType getModelType(
             return UnknownModelType.error();
           }
 
-          final valueType =
-              getModelType(typeParams[1], libraryReader, annotatedClass);
+          final valueType = getModelType(typeParams[1], annotatedClass);
           return MapModelType(
             keyType,
             valueType,
@@ -297,9 +293,8 @@ ModelType getModelType(
               .whereType<DartType>()
               .toList();
 
-          final subTypeModelTypes = types
-              ?.map((e) => getModelType(e, libraryReader, annotatedClass))
-              .toList();
+          final subTypeModelTypes =
+              types?.map((e) => getModelType(e, annotatedClass)).toList();
 
           if (subTypeModelTypes != null) {
             return UnionModelType(subTypeModelTypes, isNullable: isNullable);
@@ -321,7 +316,8 @@ ModelType getModelType(
           }
 
           try {
-            final type = ModelClassInfo(libraryReader, element);
+            final type =
+                ModelClassInfo(LibraryReader(element.library), element);
             return CustomModelType(type, isNullable: isNullable);
           } catch (e) {
             log.warning('Error parsing custom type: ${element.name}');
