@@ -285,6 +285,35 @@ super.$fieldName$typeQ.setParentProperties(
   fieldType: FieldType.raw,
 );
 ''';
+    } else if (fieldInfo.typeInfo is UnionModelType) {
+      var first = true;
+      for (final subtype in (fieldInfo.typeInfo as UnionModelType).subTypes) {
+        result += '''
+var setterReceivedValidType = false;
+${first ? 'else ' : ''}if (super.$fieldName is ${subtype.dartName}) {
+  setterReceivedValidType = true;
+''';
+        if (subtype is CustomModelType ||
+            subtype is UnknownModelType ||
+            subtype is ListModelType ||
+            subtype is MapModelType) {
+          result += '''
+  (super.$fieldName as ${subtype.dartName}).setParentProperties(
+    parent: this,
+    fieldName: '$fieldName',
+    fieldType: FieldType.raw,
+  );
+''';
+        }
+        result += '''
+}
+
+if (!setterReceivedValidType) {
+  throw Exception('Invalid type of initial value for union field $fieldName. Got value of type \${field.runtimeType}, but expected one of: ${(fieldInfo.typeInfo as UnionModelType).subTypes.map((subtype) => subtype.dartName).join(', ')}.');
+}
+''';
+        first = false;
+      }
     }
   }
 
