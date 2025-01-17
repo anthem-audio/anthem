@@ -1026,6 +1026,11 @@ Iterable<String> getCppFileImports(ModelClassInfo context) {
         process(type.keyType);
         process(type.valueType);
         break;
+      case UnionModelType type:
+        for (final subType in type.subTypes) {
+          process(subType);
+        }
+        break;
       default:
         break;
     }
