@@ -713,8 +713,11 @@ void _writeUpdate({
         // https://rfl.getml.com/variants_and_tagged_unions/#stdvariant-or-rflvariant-externally-tagged
         // See the visitor pattern example for how this is being parsed. This is
         // externally tagged, which is described there as well.
-        writer.writeLine('const auto handle_variant = [](const auto& field) {');
+        writer
+            .writeLine('const auto handle_variant = [&](const auto& field) {');
         writer.incrementWhitespace();
+        writer.writeLine(
+            'using Name = typename std::decay_t<decltype(field)>::Name;');
 
         var isFirst = true;
         for (final subType in type.subTypes) {
@@ -722,7 +725,7 @@ void _writeUpdate({
               '${isFirst ? '' : 'else '}if constexpr (std::is_same<Name, rfl::Literal<"${subType.dartName}">>()) {');
           writer.incrementWhitespace();
           writer.writeLine(
-              'field.value().handleModelUpdate(request, fieldAccessIndex + 1 + $fieldAccessIndexMod);');
+              'field.value()->handleModelUpdate(request, fieldAccessIndex + 1 + $fieldAccessIndexMod);');
           writer.decrementWhitespace();
           writer.writeLine('}');
 
