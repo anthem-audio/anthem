@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2024 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,16 +18,11 @@
 */
 
 import 'package:anthem/engine_api/engine.dart';
-import 'package:anthem/engine_api/messages/messages.dart'
-    show ProcessorConnectionType;
 import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/model/shared/hydratable.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:flutter/material.dart';
 import 'package:mobx/mobx.dart';
-
-import 'processing_graph/processor.dart';
 
 part 'generator.g.dart';
 
@@ -47,15 +42,13 @@ class GeneratorModel extends _GeneratorModel
             color: Colors.black,
             id: '',
             name: '',
-            generatorType: GeneratorType.instrument,
-            processor: ProcessorModel.uninitialized());
+            generatorType: GeneratorType.instrument);
 
   GeneratorModel({
     required super.id,
     required super.name,
     required super.generatorType,
     required super.color,
-    required super.processor,
   });
 
   GeneratorModel.create({
@@ -63,7 +56,6 @@ class GeneratorModel extends _GeneratorModel
     required super.name,
     required super.generatorType,
     required super.color,
-    required super.processor,
     required super.project,
   }) : super.create();
 
@@ -71,7 +63,7 @@ class GeneratorModel extends _GeneratorModel
       _$GeneratorModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _GeneratorModel extends Hydratable with Store, AnthemModelBase {
+abstract class _GeneratorModel with Store, AnthemModelBase {
   String id;
 
   @anthemObservable
@@ -83,55 +75,28 @@ abstract class _GeneratorModel extends Hydratable with Store, AnthemModelBase {
   @anthemObservable
   Color color;
 
-  @anthemObservable
-  ProcessorModel processor;
-
-  @anthemObservable
-  ProcessorModel gainNode;
-
-  @anthemObservable
-  ProcessorModel midiGeneratorNode;
-
-  @hide
-  ProjectModel? _project;
-
   _GeneratorModel({
     required this.id,
     required this.name,
     required this.generatorType,
     required this.color,
-    required this.processor,
-  })  : gainNode = ProcessorModel(processorKey: 'Gain'),
-        midiGeneratorNode = ProcessorModel(processorKey: 'SimpleMidiGenerator'),
-        super();
+  }) : super();
 
   _GeneratorModel.create({
     required this.id,
     required this.name,
     required this.generatorType,
     required this.color,
-    required this.processor,
     required ProjectModel project,
-  })  : gainNode = ProcessorModel(processorKey: 'Gain'),
-        midiGeneratorNode = ProcessorModel(processorKey: 'SimpleMidiGenerator'),
-        super() {
-    hydrate(project: project);
-  }
-
-  void hydrate({
-    required ProjectModel project,
-  }) {
-    _project = project;
-    isHydrated = true;
-  }
+  }) : super();
 
   Future<void> createInEngine(Engine engine) async {
     return;
     // TODO: This is definitely not correct anymore, and should be cleaned up.
     // ignore: dead_code
-    await processor.createInEngine(engine);
+    // await processor.createInEngine(engine);
 
-    await gainNode.createInEngine(engine);
+    // await gainNode.createInEngine(engine);
     // await midiGeneratorNode.createInEngine(engine);
 
     // await engine.processingGraphApi.connectProcessors(
@@ -142,20 +107,20 @@ abstract class _GeneratorModel extends Hydratable with Store, AnthemModelBase {
     //   destinationPortIndex: 0,
     // );
 
-    await engine.processingGraphApi.connectProcessors(
-      connectionType: ProcessorConnectionType.audio,
-      sourceId: processor.idInEngine!,
-      sourcePortIndex: 0,
-      destinationId: gainNode.idInEngine!,
-      destinationPortIndex: 0,
-    );
+    // await engine.processingGraphApi.connectProcessors(
+    //   connectionType: ProcessorConnectionType.audio,
+    //   sourceId: processor.idInEngine!,
+    //   sourcePortIndex: 0,
+    //   destinationId: gainNode.idInEngine!,
+    //   destinationPortIndex: 0,
+    // );
 
-    await engine.processingGraphApi.connectProcessors(
-      connectionType: ProcessorConnectionType.audio,
-      sourceId: gainNode.idInEngine!,
-      sourcePortIndex: 0,
-      destinationId: _project!.masterOutputNodeId!,
-      destinationPortIndex: 0,
-    );
+    // await engine.processingGraphApi.connectProcessors(
+    //   connectionType: ProcessorConnectionType.audio,
+    //   sourceId: gainNode.idInEngine!,
+    //   sourcePortIndex: 0,
+    //   destinationId: _project!.masterOutputNodeId!,
+    //   destinationPortIndex: 0,
+    // );
   }
 }

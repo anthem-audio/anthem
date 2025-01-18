@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -41,7 +41,6 @@ export 'processing_graph/node.dart';
 export 'processing_graph/parameter_config.dart';
 export 'processing_graph/processing_graph.dart';
 export 'processing_graph/processor_definition.dart';
-export 'processing_graph/processor.dart';
 
 export 'shared/anthem_color.dart';
 export 'shared/hydratable.dart';
@@ -49,7 +48,6 @@ export 'shared/time_signature.dart';
 
 export 'app.dart';
 export 'generator.dart';
-export 'plugin.dart';
 export 'project.dart';
 export 'song.dart';
 export 'store.dart';

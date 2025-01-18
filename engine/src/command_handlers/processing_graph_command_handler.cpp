@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -28,40 +28,7 @@ std::optional<Response>
 handleProcessingGraphCommand(Request& request) {
   auto& anthem = Anthem::getInstance();
 
-  if (rfl::holds_alternative<GetProcessorsRequest>(request.variant())) {
-    // TODO: remove this request
-    return std::nullopt;
-  }
-
-  else if (rfl::holds_alternative<GetProcessorPortsRequest>(request.variant())) {
-    // TODO: remove this request
-    return std::nullopt;
-  }
-
-  else if (rfl::holds_alternative<GetMasterOutputNodeIdRequest>(request.variant())) {
-    // TODO: remove this request
-    return std::nullopt;
-  }
-
-  else if (rfl::holds_alternative<AddProcessorRequest>(request.variant())) {
-    // TODO: remove this request
-    return std::nullopt;
-  } else if (rfl::holds_alternative<RemoveProcessorRequest>(request.variant())) {
-    // TODO: remove this request
-    return std::nullopt;
-  }
-
-  else if (rfl::holds_alternative<ConnectProcessorsRequest>(request.variant())) {
-    // TODO: remove this request
-    return std::nullopt;
-  }
-
-  else if (rfl::holds_alternative<DisconnectProcessorsRequest>(request.variant())) {
-    // TODO: remove this request
-    return std::nullopt;
-  }
-
-  else if (rfl::holds_alternative<CompileProcessingGraphRequest>(request.variant())) {
+  if (rfl::holds_alternative<CompileProcessingGraphRequest>(request.variant())) {
     auto& compileProcessingGraphRequest = rfl::get<CompileProcessingGraphRequest>(request.variant());
 
     juce::Logger::writeToLog("Compiling from UI request...");
