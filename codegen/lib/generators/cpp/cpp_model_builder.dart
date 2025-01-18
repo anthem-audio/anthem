@@ -273,6 +273,12 @@ class CppModelBuilder implements Builder {
               if (annotatedEnums.contains(enumModelType.enumElement)) {
                 return true;
               }
+            } else if (type is UnionModelType) {
+              for (final subType in type.subTypes) {
+                if (typeMatches(subType)) {
+                  return true;
+                }
+              }
             }
 
             return false;
