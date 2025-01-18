@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -24,6 +24,9 @@ import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
+import 'processors/master_output.dart';
+import 'processors/tone_generator.dart';
+
 part 'node.g.dart';
 
 @AnthemModel.syncedModel(
@@ -32,16 +35,17 @@ part 'node.g.dart';
 )
 class NodeModel extends _NodeModel
     with _$NodeModel, _$NodeModelAnthemModelMixin {
-  NodeModel(
-      {required super.id,
-      required super.config,
-      AnthemObservableList<NodePortModel>? audioInputPorts,
-      AnthemObservableList<NodePortModel>? midiInputPorts,
-      AnthemObservableList<NodePortModel>? controlInputPorts,
-      AnthemObservableList<NodePortModel>? audioOutputPorts,
-      AnthemObservableList<NodePortModel>? midiOutputPorts,
-      AnthemObservableList<NodePortModel>? controlOutputPorts})
-      : super(
+  NodeModel({
+    required super.id,
+    required super.config,
+    super.processor,
+    AnthemObservableList<NodePortModel>? audioInputPorts,
+    AnthemObservableList<NodePortModel>? midiInputPorts,
+    AnthemObservableList<NodePortModel>? controlInputPorts,
+    AnthemObservableList<NodePortModel>? audioOutputPorts,
+    AnthemObservableList<NodePortModel>? midiOutputPorts,
+    AnthemObservableList<NodePortModel>? controlOutputPorts,
+  }) : super(
           audioInputPorts: audioInputPorts ?? AnthemObservableList(),
           midiInputPorts: midiInputPorts ?? AnthemObservableList(),
           controlInputPorts: controlInputPorts ?? AnthemObservableList(),
@@ -60,6 +64,7 @@ class NodeModel extends _NodeModel
           audioOutputPorts: AnthemObservableList(),
           midiOutputPorts: AnthemObservableList(),
           controlOutputPorts: AnthemObservableList(),
+          processor: null,
         );
 
   factory NodeModel.fromJson(Map<String, dynamic> json) =>
@@ -101,6 +106,9 @@ abstract class _NodeModel with Store, AnthemModelBase {
   AnthemObservableList<NodePortModel> midiOutputPorts;
   AnthemObservableList<NodePortModel> controlOutputPorts;
 
+  @Union([ToneGeneratorProcessorModel, MasterOutputProcessorModel])
+  Object? processor;
+
   _NodeModel({
     required this.id,
     required this.config,
@@ -110,5 +118,6 @@ abstract class _NodeModel with Store, AnthemModelBase {
     required this.audioOutputPorts,
     required this.midiOutputPorts,
     required this.controlOutputPorts,
+    required this.processor,
   });
 }
