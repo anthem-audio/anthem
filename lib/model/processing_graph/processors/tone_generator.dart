@@ -58,6 +58,7 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
     return NodeModel(
       config: NodeConfigModel(),
       id: id,
+      processor: ToneGeneratorProcessorModel(nodeId: id),
       audioOutputPorts: AnthemObservableList.of([
         NodePortModel(
           nodeId: id,

@@ -56,6 +56,7 @@ class MasterOutputProcessorModel extends _MasterOutputProcessorModel
     return NodeModel(
       config: NodeConfigModel(),
       id: nodeId,
+      processor: MasterOutputProcessorModel(nodeId: nodeId),
       audioInputPorts: AnthemObservableList.of([
         NodePortModel(
           id: _MasterOutputProcessorModel.inputPortId,
