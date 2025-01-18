@@ -23,6 +23,7 @@ import 'package:anthem/commands/project_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/pattern/pattern.dart';
+import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
@@ -166,7 +167,7 @@ class ProjectController {
   }
 
   void addGenerator({
-    required String? processorId,
+    required NodeModel node,
     required String name,
     required GeneratorType generatorType,
     required Color color,
@@ -176,7 +177,7 @@ class ProjectController {
     project.execute(
       AddGeneratorCommand(
         generatorId: id,
-        processorId: processorId,
+        node: node,
         name: name,
         generatorType: generatorType,
         color: color,

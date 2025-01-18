@@ -55,8 +55,18 @@ class ProcessingGraphModel extends _ProcessingGraphModel
     nodes[node.id] = node;
   }
 
+  /// Removes a node from the graph, and removes all connections to and from the
+  /// node.
   void removeNode(String nodeId) {
-    nodes.remove(nodeId);
+    final node = nodes.remove(nodeId);
+
+    if (node == null) return;
+
+    for (final port in node.getAllPorts()) {
+      for (final connectionId in port.connections) {
+        removeConnection(connectionId);
+      }
+    }
   }
 
   void addConnection(NodeConnectionModel connection) {
