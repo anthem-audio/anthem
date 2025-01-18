@@ -289,6 +289,16 @@ super.$fieldName$typeQ.setParentProperties(
     } else if (fieldInfo.typeInfo is UnionModelType) {
       var first = true;
       result += 'var setterReceivedValidType = false;\n';
+
+      if (fieldInfo.typeInfo.isNullable) {
+        result += '''
+if (super.$fieldName == null) {
+  setterReceivedValidType = true;
+}
+''';
+        first = false;
+      }
+
       for (final subtype in (fieldInfo.typeInfo as UnionModelType).subTypes) {
         result += '''
 ${first ? '' : 'else '}if (super.$fieldName is ${subtype.dartName}) {
@@ -312,7 +322,7 @@ ${first ? '' : 'else '}if (super.$fieldName is ${subtype.dartName}) {
 
       result += '''
 if (!setterReceivedValidType) {
-  throw Exception('Invalid type of initial value for union field $fieldName. Got value of type \${super.$fieldName.runtimeType}, but expected one of: ${(fieldInfo.typeInfo as UnionModelType).subTypes.map((subtype) => subtype.dartName).join(', ')}.');
+  throw Exception('Invalid type of initial value for union field "$fieldName". Got value of type \${super.$fieldName.runtimeType}, but expected one of: ${(fieldInfo.typeInfo as UnionModelType).subTypes.map((subtype) => subtype.dartName).join(', ')}.');
 }
 ''';
     }
