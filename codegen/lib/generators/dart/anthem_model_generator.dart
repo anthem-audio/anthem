@@ -197,10 +197,12 @@ super.$fieldName$typeQ.setParentProperties(
 ''';
       } else if (fieldInfo.typeInfo case UnionModelType typeInfo) {
         var first = true;
+        setter += '''
+var setterReceivedValidType = false;
+''';
         for (final subtype in typeInfo.subTypes) {
           setter += '''
-var setterReceivedValidType = false;
-${first ? 'else ' : ''}if (value is ${subtype.dartName}) {
+${first ? '' : 'else '}if (value is ${subtype.dartName}) {
   setterReceivedValidType = true;
 ''';
           if (subtype is CustomModelType ||
@@ -208,22 +210,21 @@ ${first ? 'else ' : ''}if (value is ${subtype.dartName}) {
               subtype is ListModelType ||
               subtype is MapModelType) {
             setter += '''
-  (value as ${subtype.dartName}).setParentProperties(
+  value.setParentProperties(
     parent: this,
     fieldName: '$fieldName',
     fieldType: FieldType.raw,
   );
 ''';
           }
-          setter += '''
-}
-
-if (!setterReceivedValidType) {
-  throw Exception('Invalid type for field $fieldName. Got value of type \${field.runtimeType}, but expected one of: ${typeInfo.subTypes.map((subtype) => subtype.dartName).join(', ')}.');
-}
-''';
+          setter += '}';
           first = false;
         }
+
+        setter += '''if (!setterReceivedValidType) {
+  throw Exception('Invalid type for field $fieldName. Got value of type \${value.runtimeType}, but expected one of: ${typeInfo.subTypes.map((subtype) => subtype.dartName).join(', ')}.');
+}
+''';
       }
 
       final valueGetter = createSerializerForField(
@@ -287,10 +288,10 @@ super.$fieldName$typeQ.setParentProperties(
 ''';
     } else if (fieldInfo.typeInfo is UnionModelType) {
       var first = true;
+      result += 'var setterReceivedValidType = false;\n';
       for (final subtype in (fieldInfo.typeInfo as UnionModelType).subTypes) {
         result += '''
-var setterReceivedValidType = false;
-${first ? 'else ' : ''}if (super.$fieldName is ${subtype.dartName}) {
+${first ? '' : 'else '}if (super.$fieldName is ${subtype.dartName}) {
   setterReceivedValidType = true;
 ''';
         if (subtype is CustomModelType ||
@@ -305,15 +306,15 @@ ${first ? 'else ' : ''}if (super.$fieldName is ${subtype.dartName}) {
   );
 ''';
         }
-        result += '''
-}
-
-if (!setterReceivedValidType) {
-  throw Exception('Invalid type of initial value for union field $fieldName. Got value of type \${field.runtimeType}, but expected one of: ${(fieldInfo.typeInfo as UnionModelType).subTypes.map((subtype) => subtype.dartName).join(', ')}.');
-}
-''';
+        result += '}\n';
         first = false;
       }
+
+      result += '''
+if (!setterReceivedValidType) {
+  throw Exception('Invalid type of initial value for union field $fieldName. Got value of type \${super.$fieldName.runtimeType}, but expected one of: ${(fieldInfo.typeInfo as UnionModelType).subTypes.map((subtype) => subtype.dartName).join(', ')}.');
+}
+''';
     }
   }
 
