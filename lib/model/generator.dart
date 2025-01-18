@@ -17,9 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem/model/project.dart';
+import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:flutter/material.dart';
 import 'package:mobx/mobx.dart';
@@ -27,9 +26,10 @@ import 'package:mobx/mobx.dart';
 part 'generator.g.dart';
 
 // Note: I'm not sure about how we're differentiating generator types here. This
-// deals with the actual audio engine side of things which is not sketched out.
-// For now, we're just marking each generator with an enum saying what kind it
-// is, and we can rethink later.
+// is well-defined in the audio engine, but we need to know what kind of data to
+// feed the node (automation, audio, MIDI, etc) and what port to send it, and
+// that's a sequencer problem. Once the sequencer exists, we should revisit
+// this.
 
 @AnthemEnum()
 enum GeneratorType { instrument, automation }
@@ -39,25 +39,20 @@ class GeneratorModel extends _GeneratorModel
     with _$GeneratorModel, _$GeneratorModelAnthemModelMixin {
   GeneratorModel.uninitialized()
       : super(
-            color: Colors.black,
-            id: '',
-            name: '',
-            generatorType: GeneratorType.instrument);
+          color: Colors.black,
+          id: '',
+          name: '',
+          generatorType: GeneratorType.instrument,
+          plugin: NodeModel.uninitialized(),
+        );
 
   GeneratorModel({
     required super.id,
     required super.name,
     required super.generatorType,
     required super.color,
+    required super.plugin,
   });
-
-  GeneratorModel.create({
-    required super.id,
-    required super.name,
-    required super.generatorType,
-    required super.color,
-    required super.project,
-  }) : super.create();
 
   factory GeneratorModel.fromJson(Map<String, dynamic> json) =>
       _$GeneratorModelAnthemModelMixin.fromJson(json);
@@ -75,52 +70,22 @@ abstract class _GeneratorModel with Store, AnthemModelBase {
   @anthemObservable
   Color color;
 
+  /// The plugin that this generator is using.
+  @anthemObservable
+  NodeModel plugin;
+
+  /// The gain node that this generator outputs to.
+  ///
+  /// The singal flow is as follows:
+  ///     plugin -> gainNode -> (some target)
+  // @anthemObservable
+  // NodeModel gainNode;
+
   _GeneratorModel({
     required this.id,
     required this.name,
     required this.generatorType,
     required this.color,
+    required this.plugin,
   }) : super();
-
-  _GeneratorModel.create({
-    required this.id,
-    required this.name,
-    required this.generatorType,
-    required this.color,
-    required ProjectModel project,
-  }) : super();
-
-  Future<void> createInEngine(Engine engine) async {
-    return;
-    // TODO: This is definitely not correct anymore, and should be cleaned up.
-    // ignore: dead_code
-    // await processor.createInEngine(engine);
-
-    // await gainNode.createInEngine(engine);
-    // await midiGeneratorNode.createInEngine(engine);
-
-    // await engine.processingGraphApi.connectProcessors(
-    //   connectionType: ProcessorConnectionType.NoteEvent,
-    //   sourceId: midiGeneratorNode.idInEngine!,
-    //   sourcePortIndex: 0,
-    //   destinationId: processor.idInEngine!,
-    //   destinationPortIndex: 0,
-    // );
-
-    // await engine.processingGraphApi.connectProcessors(
-    //   connectionType: ProcessorConnectionType.audio,
-    //   sourceId: processor.idInEngine!,
-    //   sourcePortIndex: 0,
-    //   destinationId: gainNode.idInEngine!,
-    //   destinationPortIndex: 0,
-    // );
-
-    // await engine.processingGraphApi.connectProcessors(
-    //   connectionType: ProcessorConnectionType.audio,
-    //   sourceId: gainNode.idInEngine!,
-    //   sourcePortIndex: 0,
-    //   destinationId: _project!.masterOutputNodeId!,
-    //   destinationPortIndex: 0,
-    // );
-  }
 }

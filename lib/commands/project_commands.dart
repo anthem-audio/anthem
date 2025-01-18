@@ -20,28 +20,82 @@
 import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/generator.dart';
-import 'package:anthem/model/project.dart';
+import 'package:anthem/model/model.dart';
 
 import 'command.dart';
 
-Future<void> _removeGenerator(ProjectModel project, Id generatorID) async {
+void _addGenerator(ProjectModel project, GeneratorModel generator,
+    [int? index]) {
+  if (index != null) {
+    project.generatorList.insert(index, generator.id);
+  } else {
+    project.generatorList.add(generator.id);
+  }
+  project.generators[generator.id] = generator;
+
+  // If the node has no processor, treat this as a dummy generator. We use this
+  // for testing so we need this case.
+  if (generator.plugin.processor == null) {
+    return;
+  }
+
+  project.processingGraph.addNode(generator.plugin);
+  project.processingGraph.addConnection(
+    NodeConnectionModel(
+      id: getId(),
+      sourceNodeId: generator.plugin.id,
+      sourcePortId: generator.plugin.audioOutputPorts[0].id,
+      destinationNodeId: project.processingGraph.masterOutput.node.id,
+      destinationPortId:
+          project.processingGraph.masterOutput.node.audioInputPorts[0].id,
+    ),
+  );
+
+  project.engine.processingGraphApi.compile();
+}
+
+void _removeGenerator(ProjectModel project, Id generatorID) {
+  GeneratorModel? generator;
+
   project.generatorList.removeWhere((element) => element == generatorID);
   if (project.generators.containsKey(generatorID)) {
-    project.generators.remove(generatorID);
+    generator = project.generators.remove(generatorID);
   }
+
+  if (generator == null || generator.plugin.processor == null) {
+    return;
+  }
+
+  project.processingGraph.removeNode(generator.plugin.id);
+
+  project.engine.processingGraphApi.compile();
 }
 
 class AddGeneratorCommand extends Command {
   Id generatorId;
-  String? processorId;
+
+  /// A node which holds the plugin for the generator.
+  ///
+  /// Typically this would be created with the `createNode()` method of the
+  /// processor model, e.g.:
+  ///
+  /// ```dart
+  /// final node = ToneGeneratorProcessorModel.createNode();
+  /// ```
+  NodeModel node;
+
+  /// The human-readable name of the generator.
   String name;
+
+  /// The type of generator to add.
   GeneratorType generatorType;
+
+  /// The color to use for the generator.
   Color color;
 
   AddGeneratorCommand({
     required this.generatorId,
-    required this.processorId,
+    required this.node,
     required this.name,
     required this.generatorType,
     required this.color,
@@ -49,22 +103,15 @@ class AddGeneratorCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
-    // final processor = ProcessorModel(processorKey: processorId);
-    final generator = GeneratorModel.create(
+    final generator = GeneratorModel(
       id: generatorId,
       name: name,
       generatorType: generatorType,
       color: color,
-      // processor: processor,
-      project: project,
+      plugin: node,
     );
 
-    project.generatorList.add(generatorId);
-    project.generators[generatorId] = generator;
-
-    if (generatorType == GeneratorType.instrument) {
-      generator.createInEngine(project.engine);
-    }
+    _addGenerator(project, generator);
   }
 
   @override
@@ -91,11 +138,6 @@ class RemoveGeneratorCommand extends Command {
 
   @override
   void rollback(ProjectModel project) {
-    project.generators[generator.id] = generator;
-    project.generatorList.insert(index, generator.id);
-
-    if (generator.generatorType == GeneratorType.instrument) {
-      generator.createInEngine(project.engine);
-    }
+    _addGenerator(project, generator, index);
   }
 }

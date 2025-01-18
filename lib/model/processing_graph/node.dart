@@ -91,6 +91,15 @@ class NodeModel extends _NodeModel
     }
     throw Exception('Port with id $portId not found');
   }
+
+  Iterable<NodePortModel> getAllPorts() {
+    return audioInputPorts
+        .followedBy(audioOutputPorts)
+        .followedBy(midiInputPorts)
+        .followedBy(midiOutputPorts)
+        .followedBy(controlInputPorts)
+        .followedBy(controlOutputPorts);
+  }
 }
 
 abstract class _NodeModel with Store, AnthemModelBase {

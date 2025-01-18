@@ -29,9 +29,9 @@ class ProcessingGraphApi {
 
   /// Compiles the processing graph, and pushes the result to the audio thread.
   ///
-  /// Updates to the topology of the processing graph, e.g. adding or removing
-  /// nodes or modifying connections, are done first on the main thread in the
-  /// engine. When ready, this method can be called to compile an updated set of
+  /// Any updates to the topology of the processing graph, e.g. adding or
+  /// removing nodes or modifying connections, are done first by modifying the
+  /// model. When ready, this method can be called to compile an updated set of
   /// processing instructions and push them to the audio thread.
   Future<void> compile() async {
     final id = _engine._getRequestId();

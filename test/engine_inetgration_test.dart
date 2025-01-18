@@ -237,7 +237,7 @@ void main() {
     test('Add a generator and some notes', () async {
       project.execute(AddGeneratorCommand(
         generatorId: 'generator1',
-        processorId: null,
+        node: NodeModel.uninitialized(),
         name: 'Genrator name',
         generatorType: GeneratorType.instrument,
         color: const Color(0xFF000000),
