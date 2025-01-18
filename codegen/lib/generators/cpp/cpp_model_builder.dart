@@ -30,7 +30,7 @@ import '../util/enum_info.dart';
 import '../util/model_class_info.dart';
 import '../util/model_types.dart';
 import '../util/writer.dart';
-import 'shared.dart';
+import 'get_cpp_type.dart';
 
 /// This builder generates models in C++ to match the `@AnthemModel` classes in
 /// the Dart code.
