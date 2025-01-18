@@ -89,19 +89,19 @@ class _GeneratorRowState extends State<GeneratorRow> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(width: 80),
-              Observer(builder: (context) {
-                return Knob(
-                  value: generator.gainNode.parameterValues[0] ?? 0.0,
-                  min: 0,
-                  max: 10,
-                  width: 20,
-                  height: 20,
-                  stickyPoints: const [1],
-                  onValueChanged: (value) {
-                    generator.gainNode.parameterValues[0] = value;
-                  },
-                );
-              }),
+              // Observer(builder: (context) {
+              //   return Knob(
+              //     value: generator.gainNode.parameterValues[0] ?? 0.0,
+              //     min: 0,
+              //     max: 10,
+              //     width: 20,
+              //     height: 20,
+              //     stickyPoints: const [1],
+              //     onValueChanged: (value) {
+              //       generator.gainNode.parameterValues[0] = value;
+              //     },
+              //   );
+              // }),
               const SizedBox(width: 8),
               const Knob(
                 value: 0,

@@ -21,24 +21,14 @@ import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/generator.dart';
-import 'package:anthem/model/processing_graph/processor.dart';
 import 'package:anthem/model/project.dart';
 
 import 'command.dart';
 
 Future<void> _removeGenerator(ProjectModel project, Id generatorID) async {
-  final generator = project.generators[generatorID];
-
   project.generatorList.removeWhere((element) => element == generatorID);
   if (project.generators.containsKey(generatorID)) {
     project.generators.remove(generatorID);
-  }
-
-  if (generator != null &&
-      generator.generatorType == GeneratorType.instrument &&
-      generator.processor.idInEngine != null) {
-    await project.engine.processingGraphApi
-        .removeProcessor(generator.processor.idInEngine!);
   }
 }
 
@@ -59,13 +49,13 @@ class AddGeneratorCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
-    final processor = ProcessorModel(processorKey: processorId);
+    // final processor = ProcessorModel(processorKey: processorId);
     final generator = GeneratorModel.create(
       id: generatorId,
       name: name,
       generatorType: generatorType,
       color: color,
-      processor: processor,
+      // processor: processor,
       project: project,
     );
 
