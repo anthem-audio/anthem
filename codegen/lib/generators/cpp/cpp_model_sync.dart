@@ -21,7 +21,7 @@ import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:anthem_codegen/generators/util/writer.dart';
 import 'package:anthem_codegen/generators/util/model_class_info.dart';
 
-import 'shared.dart';
+import 'get_cpp_type.dart';
 
 void writeModelSyncFnDeclaration(Writer writer) {
   writer.writeLine(
