@@ -211,6 +211,8 @@ void _writeUpdateTypeInvalidError({
       'std::cout << "Update type \\"$updateKind\\" is not valid for field \\"$fieldAccessExpression\\" of type ${type.toString()}." << std::endl;');
 }
 
+/// Checks the result of the given JSON deserialization, and early returns if
+/// there is one, along with printing the error.
 void _writeJsonResultCheck({
   required Writer writer,
   required String resultVariable,
@@ -278,169 +280,13 @@ void _writeUpdate({
   String parentAccessor = 'self',
 }) {
   switch (type) {
-    case StringModelType():
-      _writeIndexCheckForPrimitive(
-        writer: writer,
-        context: context,
-        type: type,
-        fieldAccessIndexMod: fieldAccessIndexMod,
-        fieldAccessExpression: fieldAccessExpression,
-      );
-      _writeSerializedValueNullCheck(
-        writer: writer,
-        fieldAccessExpression: fieldAccessExpression,
-        context: context,
-      );
-
-      final stringGetter =
-          'request.serializedValue.value().substr(1, request.serializedValue.value().size() - 2)';
-
-      if (type.isNullable) {
-        writer.writeLine('if (request.serializedValue.value() == "null") {');
-        writer.incrementWhitespace();
-        writer.writeLine(createFieldSetter('std::nullopt'));
-        writer.writeLine(observabilityNotifier);
-        writer.decrementWhitespace();
-        writer.writeLine('} else {');
-        writer.incrementWhitespace();
-        writer.writeLine(
-            createFieldSetter('std::optional<std::string>($stringGetter)'));
-        writer.writeLine(observabilityNotifier);
-        writer.decrementWhitespace();
-        writer.writeLine('}');
-      } else {
-        writer.writeLine(createFieldSetter(stringGetter));
-        writer.writeLine(observabilityNotifier);
-      }
-
-      break;
-    case IntModelType():
-      _writeIndexCheckForPrimitive(
-        writer: writer,
-        context: context,
-        type: type,
-        fieldAccessIndexMod: fieldAccessIndexMod,
-        fieldAccessExpression: fieldAccessExpression,
-      );
-      _writeSerializedValueNullCheck(
-        writer: writer,
-        fieldAccessExpression: fieldAccessExpression,
-        context: context,
-      );
-
-      if (type.isNullable) {
-        writer.writeLine('if (request.serializedValue.value() == "null") {');
-        writer.incrementWhitespace();
-        writer.writeLine(createFieldSetter('std::nullopt'));
-        writer.writeLine(observabilityNotifier);
-        writer.decrementWhitespace();
-        writer.writeLine('} else {');
-        writer.incrementWhitespace();
-        writer.writeLine(createFieldSetter(
-            'std::optional<int64_t>(std::stoll(request.serializedValue.value()))'));
-        writer.writeLine(observabilityNotifier);
-        writer.decrementWhitespace();
-        writer.writeLine('}');
-      } else {
-        writer.writeLine(
-            createFieldSetter('std::stoll(request.serializedValue.value())'));
-        writer.writeLine(observabilityNotifier);
-      }
-      break;
-    case DoubleModelType() || NumModelType():
-      _writeIndexCheckForPrimitive(
-        writer: writer,
-        context: context,
-        type: type,
-        fieldAccessIndexMod: fieldAccessIndexMod,
-        fieldAccessExpression: fieldAccessExpression,
-      );
-      _writeSerializedValueNullCheck(
-        writer: writer,
-        fieldAccessExpression: fieldAccessExpression,
-        context: context,
-      );
-
-      if (type.isNullable) {
-        writer.writeLine('if (request.serializedValue.value() == "null") {');
-        writer.incrementWhitespace();
-        writer.writeLine(createFieldSetter('std::nullopt'));
-        writer.writeLine(observabilityNotifier);
-        writer.decrementWhitespace();
-        writer.writeLine('} else {');
-        writer.incrementWhitespace();
-        writer.writeLine(createFieldSetter(
-            'std::optional<double>(std::stod(request.serializedValue.value()))'));
-        writer.writeLine(observabilityNotifier);
-        writer.decrementWhitespace();
-        writer.writeLine('}');
-      } else {
-        writer.writeLine(
-            createFieldSetter('std::stod(request.serializedValue.value())'));
-        writer.writeLine(observabilityNotifier);
-      }
-      break;
-    case BoolModelType():
-      _writeIndexCheckForPrimitive(
-        writer: writer,
-        context: context,
-        type: type,
-        fieldAccessIndexMod: fieldAccessIndexMod,
-        fieldAccessExpression: fieldAccessExpression,
-      );
-      _writeSerializedValueNullCheck(
-        writer: writer,
-        fieldAccessExpression: fieldAccessExpression,
-        context: context,
-      );
-
-      if (type.isNullable) {
-        writer.writeLine('if (request.serializedValue.value() == "null") {');
-        writer.incrementWhitespace();
-        writer.writeLine(createFieldSetter('std::nullopt'));
-        writer.writeLine(observabilityNotifier);
-        writer.decrementWhitespace();
-        writer.writeLine('} else {');
-        writer.incrementWhitespace();
-        writer.writeLine(createFieldSetter(
-            'std::optional<bool>(request.serializedValue.value() == "true")'));
-        writer.writeLine(observabilityNotifier);
-        writer.decrementWhitespace();
-        writer.writeLine('}');
-      } else {
-        writer.writeLine(
-            createFieldSetter('request.serializedValue.value() == "true"'));
-        writer.writeLine(observabilityNotifier);
-      }
-      break;
-    case EnumModelType():
-      _writeIndexCheckForPrimitive(
-        writer: writer,
-        context: context,
-        type: type,
-        fieldAccessIndexMod: fieldAccessIndexMod,
-        fieldAccessExpression: fieldAccessExpression,
-      );
-      _writeSerializedValueNullCheck(
-        writer: writer,
-        fieldAccessExpression: fieldAccessExpression,
-        context: context,
-      );
-
-      // TODO: If this works, replicate this in the other types.
-      writer.writeLine(
-          'auto result = rfl::json::read<${getCppType(type, context)}>(request.serializedValue.value());');
-      _writeJsonResultCheck(
-        writer: writer,
-        resultVariable: 'result',
-        context: context,
-        fieldAccessExpression: fieldAccessExpression,
-      );
-      writer.writeLine(createFieldSetter('result.value()'));
-      writer.writeLine(observabilityNotifier);
-
-      break;
-    case ColorModelType():
+    case StringModelType _ ||
+          IntModelType _ ||
+          DoubleModelType _ ||
+          NumModelType _ ||
+          BoolModelType _ ||
+          EnumModelType _ ||
+          ColorModelType _:
       _writeIndexCheckForPrimitive(
         writer: writer,
         context: context,
