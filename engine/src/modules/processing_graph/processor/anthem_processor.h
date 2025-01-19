@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -42,6 +42,4 @@ public:
   // This method is called by the processing graph to process audio, MIDI and
   // control data. It is called once per processing block.
   virtual void process(AnthemProcessContext& context, int numSamples) = 0;
-
-  static void assignProcessorToNode(std::string nodeId, std::shared_ptr<AnthemProcessor> processor);
 };
