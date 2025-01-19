@@ -33,7 +33,19 @@ handleProcessingGraphCommand(Request& request) {
 
     juce::Logger::writeToLog("Compiling from UI request...");
 
-    anthem.compileProcessingGraph();
+    try {
+      anthem.compileProcessingGraph();
+    } catch (std::runtime_error& e) {
+      juce::Logger::writeToLog("Error compiling: " + std::string(e.what()));
+
+      return std::optional(CompileProcessingGraphResponse {
+        .success = false,
+        .error = std::string(e.what()),
+        .responseBase = ResponseBase {
+          .id = compileProcessingGraphRequest.requestBase.get().id
+        }
+      });
+    }
 
     juce::Logger::writeToLog("Finished compiling.");
 
