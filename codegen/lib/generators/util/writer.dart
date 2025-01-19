@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,7 +22,7 @@
 /// This class is used by the code generators to write code to a string, and has
 /// utility methods for managing whitespace.
 class Writer {
-  var result = '';
+  var result = StringBuffer();
   var whitespace = '';
 
   void incrementWhitespace() {
@@ -35,17 +35,10 @@ class Writer {
 
   void writeLine([String? line]) {
     if (line == '') {
-      result += '\n';
+      result.writeln();
       return;
     }
 
-    result += '$whitespace${line ?? ''}\n';
-  }
-
-  void write(String line) {
-    if (result.isEmpty || result.substring(result.length - 1) == '\n') {
-      result += whitespace;
-    }
-    result += line;
+    result.writeln('$whitespace${line ?? ''}');
   }
 }

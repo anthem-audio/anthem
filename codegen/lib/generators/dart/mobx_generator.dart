@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,18 +23,18 @@ import '../util/model_class_info.dart';
 ///
 /// Note that this does not generate anything for sealed classes.
 String generateMobXAtoms({required ModelClassInfo context}) {
-  var result = '';
+  var result = StringBuffer();
 
   for (final MapEntry(key: fieldName, value: fieldInfo)
       in context.fields.entries) {
     if (!fieldInfo.isObservable) continue;
 
-    result += 'late final _\$${fieldName}Atom = \n';
-    result +=
-        "    Atom(name: '${context.baseClass.name}.$fieldName', context: context);\n";
+    result.write('late final _\$${fieldName}Atom = \n');
+    result.write(
+        "    Atom(name: '${context.baseClass.name}.$fieldName', context: context);\n");
   }
 
-  return result;
+  return result.toString();
 }
 
 String generateMobXGetter(String fieldName, ModelFieldInfo fieldInfo) {

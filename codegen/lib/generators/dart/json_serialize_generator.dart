@@ -34,14 +34,14 @@ import 'serialize_generators.dart';
 String generateJsonSerializationCode({
   required ModelClassInfo context,
 }) {
-  var result = '';
+  var result = StringBuffer();
 
-  result += '''// ignore: duplicate_ignore
+  result.write('''// ignore: duplicate_ignore
 // ignore: non_constant_identifier_names
 ${(context.annotation?.generateModelSync == true) ? '@override' : ''}
 Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
   final map = <String, dynamic>{};
-''';
+''');
 
   for (final entry in context.fields.entries) {
     final name = entry.key;
@@ -58,17 +58,17 @@ Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
     }
 
     if (fieldBehavior == _FieldBehavior.serializeForEngineOnly) {
-      result += 'if (includeFieldsForEngine) {\n';
+      result.write('if (includeFieldsForEngine) {\n');
     }
 
-    result += _createSetterForField(
+    result.write(_createSetterForField(
       type: fieldInfo.typeInfo,
       fieldName: name,
       mapName: 'map',
-    );
+    ));
 
     if (fieldBehavior == _FieldBehavior.serializeForEngineOnly) {
-      result += '}\n';
+      result.write('}\n');
     }
   }
 
@@ -76,17 +76,17 @@ Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
     // For sealed classes, we figure out which subclass we're dealing with and
     // use the name of that subclass to inform a field in the JSON map. This
     // allows us to determine the correct base class when deserializing.
-    result += 'map[\'__type\'] = runtimeType.toString();\n';
+    result.write('map[\'__type\'] = runtimeType.toString();\n');
 
     // Then, we output code to determine which fields to serialize depending on
     // the current subtype
     var isFirst = true;
     for (final subclass in context.sealedSubclasses) {
       if (isFirst) {
-        result += 'if (this is ${subclass.name}) {\n';
+        result.write('if (this is ${subclass.name}) {\n');
         isFirst = false;
       } else {
-        result += 'else if (this is ${subclass.name}) {\n';
+        result.write('else if (this is ${subclass.name}) {\n');
       }
 
       for (final field in subclass.fields.entries) {
@@ -104,33 +104,33 @@ Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
         }
 
         if (fieldBehavior == _FieldBehavior.serializeForEngineOnly) {
-          result += 'if (includeFieldsForEngine) {\n';
+          result.write('if (includeFieldsForEngine) {\n');
         }
 
-        result += _createSetterForField(
+        result.write(_createSetterForField(
           type: fieldInfo.typeInfo,
           fieldName: name,
           accessor: '(this as ${subclass.name}).$name',
           mapName: 'map',
-        );
+        ));
 
         if (fieldBehavior == _FieldBehavior.serializeForEngineOnly) {
-          result += '}\n';
+          result.write('}\n');
         }
       }
 
-      result += '}\n';
+      result.write('}\n');
     }
   }
 
-  result += '''
+  result.write('''
   return map;
 }
-''';
+''');
 
   // Generate deserialization
 
-  return result;
+  return result.toString();
 }
 
 enum _FieldBehavior {

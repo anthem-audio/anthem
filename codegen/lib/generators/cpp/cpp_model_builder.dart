@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -430,7 +430,7 @@ String _generateEnum(EnumInfo enumInfo) {
   writer.writeLine('};');
   writer.writeLine();
 
-  return writer.result;
+  return writer.result.toString();
 }
 
 ({String code, List<String> forwardDeclarations}) _generateEnumsForLibrary(
@@ -439,11 +439,14 @@ String _generateEnum(EnumInfo enumInfo) {
   final writer = Writer();
 
   for (final enumInfo in enums) {
-    writer.write(_generateEnum(enumInfo));
+    writer.writeLine(_generateEnum(enumInfo));
     forwardDeclarations.add('enum class ${enumInfo.name};');
   }
 
-  return (code: writer.result, forwardDeclarations: forwardDeclarations);
+  return (
+    code: writer.result.toString(),
+    forwardDeclarations: forwardDeclarations
+  );
 }
 
 ({
@@ -713,11 +716,11 @@ String _generateEnum(EnumInfo enumInfo) {
 
     usingWriter.writeLine();
 
-    usingDirectives.add(usingWriter.result);
+    usingDirectives.add(usingWriter.result.toString());
   }
 
   return (
-    code: writer.result,
+    code: writer.result.toString(),
     forwardDeclarations: forwardDeclarations,
     usingDirectives: usingDirectives,
     cppFileImports: cppFileImports,
