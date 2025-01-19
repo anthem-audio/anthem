@@ -63,7 +63,9 @@ class ProcessingGraphModel extends _ProcessingGraphModel
     if (node == null) return;
 
     for (final port in node.getAllPorts()) {
-      for (final connectionId in port.connections) {
+      // We copy the list of connections here so we can modify the original
+      // without a concurrent modification error
+      for (final connectionId in [...port.connections]) {
         removeConnection(connectionId);
       }
     }
