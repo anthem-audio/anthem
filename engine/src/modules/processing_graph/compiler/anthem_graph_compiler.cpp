@@ -206,13 +206,13 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
         nodesToRemoveFromProcessing.push_back(node);
         i++;
 
-        AnthemProcessor* processor = node->node->processor.get();
-        if (processor == nullptr) {
+        auto processor = node->node->getProcessor();
+        if (!processor.has_value()) {
           std::cout << "Error: Node " << node->node->id() << " has no processor." << std::endl;
           continue;
         }
 
-        actions->push_back(std::make_unique<ProcessNodeAction>(node->context, processor));
+        actions->push_back(std::make_unique<ProcessNodeAction>(node->context, processor.value().get()));
       }
     }
 

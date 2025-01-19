@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -50,11 +50,6 @@ public:
   void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override {
     MasterOutputProcessorModelBase::initialize(self, parent);
 
-    AnthemProcessor::assignProcessorToNode(
-      this->nodeId(),
-      std::static_pointer_cast<AnthemProcessor>(
-        std::static_pointer_cast<MasterOutputProcessor>(self)
-      )
-    );
+    // Empty for now...
   }
 };

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -50,7 +50,6 @@ public:
   // sent to the audio thread, and the old pointer will not be freed until this
   // happens, so there is no risk of use-after-free.
   std::optional<AnthemProcessContext*> runtimeContext;
-  std::shared_ptr<AnthemProcessor> processor;
 
   Node(const NodeModelImpl& _impl) : NodeModelBase(_impl) {}
   ~Node() {}
@@ -66,4 +65,6 @@ public:
   }
 
   std::optional<std::shared_ptr<NodePort>> getPortById(int32_t id);
+
+  std::optional<std::shared_ptr<AnthemProcessor>> getProcessor();
 };
