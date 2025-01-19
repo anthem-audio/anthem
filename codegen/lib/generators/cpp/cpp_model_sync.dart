@@ -144,7 +144,7 @@ String getModelSyncFn(ModelClassInfo context) {
   writer.decrementWhitespace();
   writer.writeLine('}');
 
-  return writer.result;
+  return writer.result.toString();
 }
 
 void _writeInvalidAccessWarning({
@@ -984,7 +984,7 @@ String getInitializeFn(ModelClassInfo context) {
   writer.decrementWhitespace();
   writer.writeLine('}');
 
-  return writer.result;
+  return writer.result.toString();
 }
 
 /// Returns a list of imports that are needed for the cpp file of the given

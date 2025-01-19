@@ -27,12 +27,12 @@ import 'package:source_gen/source_gen.dart';
 String generateJsonDeserializationCode({
   required ModelClassInfo context,
 }) {
-  var result = '';
+  var result = StringBuffer();
 
-  result += '''// ignore: duplicate_ignore
+  result.write('''// ignore: duplicate_ignore
 // ignore: non_constant_identifier_names
 static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
-''';
+''');
 
   // If the class is not sealed, we can just create an instance of the class
   if (!context.isSealed) {
@@ -40,27 +40,28 @@ static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
     // this constructor does not exist, then there must be a default constructor
     // with no arguments.
     if (context.annotatedClass.getNamedConstructor('uninitialized') != null) {
-      result +=
-          'final result = ${context.annotatedClass.name}.uninitialized();\n';
+      result.write(
+          'final result = ${context.annotatedClass.name}.uninitialized();\n');
     } else {
-      result += 'final result = ${context.annotatedClass.name}();\n';
+      result.write('final result = ${context.annotatedClass.name}();\n');
     }
   } else {
-    result += 'late final ${context.annotatedClass.name} result;';
+    result.write('late final ${context.annotatedClass.name} result;');
 
     bool isFirst = true;
     for (final subclass in context.sealedSubclasses) {
-      result +=
-          '${isFirst ? '' : 'else '}if (json[\'__type\'] == \'${subclass.name}\') {\n';
+      result.write(
+          '${isFirst ? '' : 'else '}if (json[\'__type\'] == \'${subclass.name}\') {\n');
       isFirst = false;
 
       // If the class has a special uninitialized constructor, we use that. If
       // this constructor does not exist, then there must be a default
       // constructor with no arguments.
       if (subclass.subclass.getNamedConstructor('uninitialized') != null) {
-        result += 'final subclassResult = ${subclass.name}.uninitialized();\n';
+        result.write(
+            'final subclassResult = ${subclass.name}.uninitialized();\n');
       } else {
-        result += 'final subclassResult = ${subclass.name}();\n';
+        result.write('final subclassResult = ${subclass.name}();\n');
       }
 
       for (final entry in subclass.fields.entries) {
@@ -75,16 +76,16 @@ static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
           continue;
         }
 
-        result += _createSetterForField(
+        result.write(_createSetterForField(
           type: fieldInfo.typeInfo,
           fieldName: name,
           jsonName: 'json',
           resultName: 'subclassResult',
-        );
+        ));
       }
 
-      result += 'result = subclassResult;\n';
-      result += '}\n';
+      result.write('result = subclassResult;\n');
+      result.write('}\n');
     }
   }
 
@@ -100,20 +101,20 @@ static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
       continue;
     }
 
-    result += _createSetterForField(
+    result.write(_createSetterForField(
       type: fieldInfo.typeInfo,
       fieldName: name,
       jsonName: 'json',
       resultName: 'result',
-    );
+    ));
   }
 
-  result += '''
+  result.write('''
   return result;
 }
-''';
+''');
 
-  return result;
+  return result.toString();
 }
 
 /// Checks if a field should be skipped when generating JSON serialization code,
