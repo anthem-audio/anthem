@@ -73,6 +73,8 @@ public:
   AnthemModelBase(AnthemModelBase&&) noexcept = default;
   AnthemModelBase& operator=(AnthemModelBase&&) noexcept = default;
 
+  virtual ~AnthemModelBase() = default;
+
   // The parent of this model.
   std::weak_ptr<AnthemModelBase> parent;
 
