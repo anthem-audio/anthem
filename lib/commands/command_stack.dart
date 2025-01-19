@@ -21,12 +21,12 @@ import 'package:anthem/model/project.dart';
 
 import 'command.dart';
 
-class CommandQueue {
+class CommandStack {
   ProjectModel project;
   List<Command> commands = [];
   int commandPointer = 0;
 
-  CommandQueue(this.project);
+  CommandStack(this.project);
 
   void push(Command command) {
     commands.removeRange(commandPointer, commands.length);
