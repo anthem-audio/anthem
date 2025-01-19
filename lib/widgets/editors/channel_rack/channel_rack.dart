@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,9 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
-// import 'package:anthem/widgets/instruments/tone_genrator.dart';
+import 'package:anthem/widgets/instruments/tone_genrator.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -108,11 +109,10 @@ class __ProcessorListState extends State<_ProcessorList> {
 }
 
 Widget _buildChild(ProjectModel project, String activeInstrumentId) {
-  // final instrument = project.generators[activeInstrumentId]!;
+  final instrument = project.generators[activeInstrumentId]!;
 
-  // return switch (instrument.processor.processorKey) {
-  //   'ToneGenerator' => ToneGenerator(processor: instrument.processor),
-  //   _ => const Text('Invalid instrument'),
-  // };
-  return const Text('Invalid instrument');
+  return switch (instrument.plugin.processor) {
+    ToneGeneratorProcessorModel _ => ToneGenerator(node: instrument.plugin),
+    _ => const Text('Invalid instrument'),
+  };
 }
