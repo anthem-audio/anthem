@@ -57,5 +57,15 @@ void Anthem::startAudioCallback() {
 
 void Anthem::compileProcessingGraph() {
   auto result = compiler->compile();
+
+  std::cout << "Processing steps: " << result->processContexts.size() << std::endl;
+
+  for (auto& group : result->actionGroups) {
+    juce::Logger::writeToLog("ACTION GROUP");
+    for (auto& action : *group) {
+      action->debugPrint();
+    }
+  }
+
   graphProcessor->setProcessingStepsFromMainThread(result);
 }

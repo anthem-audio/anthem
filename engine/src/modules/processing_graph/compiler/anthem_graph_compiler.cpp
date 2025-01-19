@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -184,8 +184,14 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
     std::cout << "Nodes still left to process: " << std::to_string(nodesToProcess.size()) << std::endl;
     std::cout << "Last size: " << std::to_string(lastSize) << std::endl;
 
-    // This will make it easier to track down infinite loops
-    jassert(lastSize != nodesToProcess.size());
+    // If there's an infinite loop, throw an error, since this should never
+    // happen, and a bug that causes an infinite loop here would prevent the
+    // engine from being shut down. Since the engine is hidden from the user, we
+    // shouldn't risk this.
+    if (lastSize == nodesToProcess.size()) {
+      throw std::runtime_error("Infinite loop detected in graph compiler");
+    }
+
     lastSize = nodesToProcess.size();
 
     std::vector<AnthemGraphCompilerNode*> nodesToRemoveFromProcessing;
