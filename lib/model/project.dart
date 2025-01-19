@@ -21,7 +21,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:anthem/commands/command.dart';
-import 'package:anthem/commands/command_queue.dart';
+import 'package:anthem/commands/command_stack.dart';
 import 'package:anthem/commands/journal_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
@@ -148,7 +148,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   // Undo / redo & etc
 
   @hide
-  late final CommandQueue _commandQueue;
+  late final CommandStack _commandStack;
 
   @hide
   List<Command> _journalPageAccumulator = [];
@@ -173,7 +173,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   _ProjectModel()
       : _enginePathOverride = null,
         super() {
-    _commandQueue = CommandQueue(this as ProjectModel);
+    _commandStack = CommandStack(this as ProjectModel);
   }
 
   @hide
@@ -183,7 +183,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   final String? _enginePathOverride;
 
   _ProjectModel.create([this._enginePathOverride]) : super() {
-    _commandQueue = CommandQueue(this as ProjectModel);
+    _commandStack = CommandStack(this as ProjectModel);
 
     song = SongModel.create();
 
@@ -337,7 +337,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     if (_journalPageActive) {
       _journalPageAccumulator.add(command);
     } else {
-      _commandQueue.push(command);
+      _commandStack.push(command);
     }
   }
 
@@ -351,7 +351,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     if (_journalPageActive) {
       _journalPageAccumulator.add(command);
     } else {
-      _commandQueue.push(command);
+      _commandStack.push(command);
     }
   }
 
@@ -364,13 +364,13 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// Undoes the last command in the undo/redo queue.
   void undo() {
     _assertJournalInactive();
-    _commandQueue.undo();
+    _commandStack.undo();
   }
 
   /// Redoes the next command in the undo/redo queue.
   void redo() {
     _assertJournalInactive();
-    _commandQueue.redo();
+    _commandStack.redo();
   }
 
   void startJournalPage() {
@@ -389,12 +389,12 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     _journalPageActive = false;
 
     if (accumulator.length == 1) {
-      _commandQueue.push(accumulator.first);
+      _commandStack.push(accumulator.first);
       return;
     }
 
     final command = JournalPageCommand(accumulator);
-    _commandQueue.push(command);
+    _commandStack.push(command);
   }
 }
 
