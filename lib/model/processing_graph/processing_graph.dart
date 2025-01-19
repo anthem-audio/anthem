@@ -38,7 +38,7 @@ class ProcessingGraphModel extends _ProcessingGraphModel
     final masterOutputNode =
         MasterOutputProcessorModel.createNode('masterOutput');
     addNode(masterOutputNode);
-    masterOutput = MasterOutputProcessorModel(nodeId: masterOutputNode.id);
+    masterOutputNodeId = masterOutputNode.id;
 
     // Send a message to compile the processing graph after the model has been
     // sent to the engine
@@ -99,6 +99,10 @@ class ProcessingGraphModel extends _ProcessingGraphModel
 
     connections.remove(connectionId);
   }
+
+  NodeModel getMasterOutputNode() {
+    return nodes[masterOutputNodeId]!;
+  }
 }
 
 abstract class _ProcessingGraphModel with Store, AnthemModelBase {
@@ -121,5 +125,5 @@ abstract class _ProcessingGraphModel with Store, AnthemModelBase {
       AnthemObservableMap();
 
   @anthemObservable
-  late MasterOutputProcessorModel masterOutput;
+  late String masterOutputNodeId;
 }

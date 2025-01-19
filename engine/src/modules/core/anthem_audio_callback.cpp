@@ -23,7 +23,10 @@
 AnthemAudioCallback::AnthemAudioCallback(Anthem* anthem) {
   this->anthem = anthem;
 
-  masterOutputProcessorSharedPtr = Anthem::getInstance().project->processingGraph()->masterOutput();
+  auto masterOutputNodeSharedPtr = Anthem::getInstance().project->processingGraph()->nodes()->at(
+    Anthem::getInstance().project->processingGraph()->masterOutputNodeId()
+  );
+  masterOutputProcessorSharedPtr = std::static_pointer_cast<MasterOutputProcessor>(masterOutputNodeSharedPtr->getProcessor().value());
   masterOutputProcessor = masterOutputProcessorSharedPtr.get();
 }
 

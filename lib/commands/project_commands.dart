@@ -45,9 +45,9 @@ void _addGenerator(ProjectModel project, GeneratorModel generator,
       id: getId(),
       sourceNodeId: generator.plugin.id,
       sourcePortId: generator.plugin.audioOutputPorts[0].id,
-      destinationNodeId: project.processingGraph.masterOutput.node.id,
+      destinationNodeId: project.processingGraph.masterOutputNodeId,
       destinationPortId:
-          project.processingGraph.masterOutput.node.audioInputPorts[0].id,
+          project.processingGraph.getMasterOutputNode().audioInputPorts[0].id,
     ),
   );
 
