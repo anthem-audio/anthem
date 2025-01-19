@@ -19,11 +19,6 @@
 
 #include "processing_graph_command_handler.h"
 
-#include "modules/processors/simple_volume_lfo_node.h"
-#include "modules/processors/simple_midi_generator_node.h"
-#include "modules/processors/tone_generator.h"
-#include "modules/processors/gain_node.h"
-
 std::optional<Response>
 handleProcessingGraphCommand(Request& request) {
   auto& anthem = Anthem::getInstance();

@@ -18,7 +18,6 @@
 */
 
 import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:flutter/material.dart';
 import 'package:mobx/mobx.dart';
@@ -43,7 +42,8 @@ class GeneratorModel extends _GeneratorModel
           id: '',
           name: '',
           generatorType: GeneratorType.instrument,
-          plugin: NodeModel.uninitialized(),
+          generatorNodeId: null,
+          volumeLfoNodeId: null,
         );
 
   GeneratorModel({
@@ -51,7 +51,8 @@ class GeneratorModel extends _GeneratorModel
     required super.name,
     required super.generatorType,
     required super.color,
-    required super.plugin,
+    required super.generatorNodeId,
+    required super.volumeLfoNodeId,
   });
 
   factory GeneratorModel.fromJson(Map<String, dynamic> json) =>
@@ -70,22 +71,27 @@ abstract class _GeneratorModel with Store, AnthemModelBase {
   @anthemObservable
   Color color;
 
-  /// The plugin that this generator is using.
+  /// The ID of the node that this generator is using.
   @anthemObservable
-  NodeModel plugin;
+  String? generatorNodeId;
 
-  /// The gain node that this generator outputs to.
+  /// The ID of the gain node that this generator outputs to.
   ///
   /// The singal flow is as follows:
   ///     plugin -> gainNode -> (some target)
+  ///
+  /// The gain node is used for the volume knobs on the generator row.
   // @anthemObservable
-  // NodeModel gainNode;
+  // String gainNodeId;
+
+  String? volumeLfoNodeId;
 
   _GeneratorModel({
     required this.id,
     required this.name,
     required this.generatorType,
     required this.color,
-    required this.plugin,
+    required this.generatorNodeId,
+    required this.volumeLfoNodeId,
   }) : super();
 }

@@ -18,8 +18,6 @@
 */
 
 #include "modules/core/anthem.h"
-#include "modules/processors/tone_generator.h"
-#include "modules/processors/simple_volume_lfo_node.h"
 
 std::unique_ptr<Anthem> Anthem::instance = nullptr;
 

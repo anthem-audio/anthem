@@ -25,7 +25,9 @@ import 'package:anthem/model/model.dart';
 import 'command.dart';
 
 void _addGenerator(ProjectModel project, GeneratorModel generator,
-    [int? index]) {
+    {int? index,
+    required NodeModel generatorNode,
+    required NodeModel volumeLfoNode}) {
   if (index != null) {
     project.generatorList.insert(index, generator.id);
   } else {
@@ -35,16 +37,26 @@ void _addGenerator(ProjectModel project, GeneratorModel generator,
 
   // If the node has no processor, treat this as a dummy generator. We use this
   // for testing so we need this case.
-  if (generator.plugin.processor == null) {
+  if (generatorNode.processor == null) {
     return;
   }
 
-  project.processingGraph.addNode(generator.plugin);
+  project.processingGraph.addNode(generatorNode);
+  project.processingGraph.addNode(volumeLfoNode);
   project.processingGraph.addConnection(
     NodeConnectionModel(
       id: getId(),
-      sourceNodeId: generator.plugin.id,
-      sourcePortId: generator.plugin.audioOutputPorts[0].id,
+      sourceNodeId: generatorNode.id,
+      sourcePortId: generatorNode.audioOutputPorts[0].id,
+      destinationNodeId: volumeLfoNode.id,
+      destinationPortId: volumeLfoNode.audioInputPorts[0].id,
+    ),
+  );
+  project.processingGraph.addConnection(
+    NodeConnectionModel(
+      id: getId(),
+      sourceNodeId: volumeLfoNode.id,
+      sourcePortId: volumeLfoNode.audioOutputPorts[0].id,
       destinationNodeId: project.processingGraph.masterOutputNodeId,
       destinationPortId:
           project.processingGraph.getMasterOutputNode().audioInputPorts[0].id,
@@ -62,11 +74,12 @@ void _removeGenerator(ProjectModel project, Id generatorID) {
     generator = project.generators.remove(generatorID);
   }
 
-  if (generator == null || generator.plugin.processor == null) {
+  if (generator == null || generator.generatorNodeId == null) {
     return;
   }
 
-  project.processingGraph.removeNode(generator.plugin.id);
+  project.processingGraph.removeNode(generator.generatorNodeId!);
+  project.processingGraph.removeNode(generator.volumeLfoNodeId!);
 
   project.engine.processingGraphApi.compile();
 }
@@ -103,15 +116,23 @@ class AddGeneratorCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
+    final volumeLfoNode = SimpleVolumeLfoProcessorModel.createNode();
+
     final generator = GeneratorModel(
       id: generatorId,
       name: name,
       generatorType: generatorType,
       color: color,
-      plugin: node,
+      generatorNodeId: node.id,
+      volumeLfoNodeId: volumeLfoNode.id,
     );
 
-    _addGenerator(project, generator);
+    _addGenerator(
+      project,
+      generator,
+      generatorNode: node,
+      volumeLfoNode: volumeLfoNode,
+    );
   }
 
   @override
@@ -122,12 +143,17 @@ class AddGeneratorCommand extends Command {
 
 class RemoveGeneratorCommand extends Command {
   GeneratorModel generator;
+  NodeModel generatorNode;
+  NodeModel volumeLfoNode;
   late int index;
 
   RemoveGeneratorCommand({
     required ProjectModel project,
     required this.generator,
-  }) {
+  })  : generatorNode =
+            project.processingGraph.nodes[generator.generatorNodeId]!,
+        volumeLfoNode =
+            project.processingGraph.nodes[generator.volumeLfoNodeId]! {
     index = project.generatorList.indexOf(generator.id);
   }
 
@@ -138,6 +164,12 @@ class RemoveGeneratorCommand extends Command {
 
   @override
   void rollback(ProjectModel project) {
-    _addGenerator(project, generator, index);
+    _addGenerator(
+      project,
+      generator,
+      index: index,
+      generatorNode: generatorNode,
+      volumeLfoNode: volumeLfoNode,
+    );
   }
 }

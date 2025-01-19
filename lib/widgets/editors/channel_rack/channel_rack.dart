@@ -109,10 +109,20 @@ class __ProcessorListState extends State<_ProcessorList> {
 }
 
 Widget _buildChild(ProjectModel project, String activeInstrumentId) {
-  final instrument = project.generators[activeInstrumentId]!;
+  final instrument = project.generators[activeInstrumentId];
 
-  return switch (instrument.plugin.processor) {
-    ToneGeneratorProcessorModel _ => ToneGenerator(node: instrument.plugin),
+  if (instrument == null) {
+    return const Text('Invalid instrument');
+  }
+
+  final node = project.processingGraph.nodes[instrument.generatorNodeId];
+
+  if (node == null) {
+    return const Text('Invalid instrument');
+  }
+
+  return switch (node.processor) {
+    ToneGeneratorProcessorModel _ => ToneGenerator(node: node),
     _ => const Text('Invalid instrument'),
   };
 }
