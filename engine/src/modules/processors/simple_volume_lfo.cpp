@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,11 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "simple_volume_lfo_node.h"
+#include "simple_volume_lfo.h"
 
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 
-SimpleVolumeLfoNode::SimpleVolumeLfoNode() : AnthemProcessor("SimpleVolumeLfo") {
+SimpleVolumeLfoProcessor::SimpleVolumeLfoProcessor(const SimpleVolumeLfoProcessorModelImpl& _impl)
+  : AnthemProcessor("SimpleVolumeLfo"), SimpleVolumeLfoProcessorModelBase(_impl) {
   rate = 0.0001f;
   amplitude = 1;
 
@@ -36,11 +37,11 @@ SimpleVolumeLfoNode::SimpleVolumeLfoNode() : AnthemProcessor("SimpleVolumeLfo") 
   // );
 }
 
-SimpleVolumeLfoNode::~SimpleVolumeLfoNode() {}
+SimpleVolumeLfoProcessor::~SimpleVolumeLfoProcessor() {}
 
-void SimpleVolumeLfoNode::process(AnthemProcessContext& context, int numSamples) {
-  auto& inputBuffer = context.getInputAudioBuffer(0);
-  auto& outputBuffer = context.getOutputAudioBuffer(0);
+void SimpleVolumeLfoProcessor::process(AnthemProcessContext& context, int numSamples) {
+  auto& inputBuffer = context.getInputAudioBuffer(SimpleVolumeLfoProcessorModelBase::audioInputPortId);
+  auto& outputBuffer = context.getOutputAudioBuffer(SimpleVolumeLfoProcessorModelBase::audioOutputPortId);
 
   // Generate a sine wave
   for (int sample = 0; sample < numSamples; ++sample) {
