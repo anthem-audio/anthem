@@ -562,7 +562,7 @@ String _generateEnum(EnumInfo enumInfo) {
         '$className$baseSuffix(const ${className}Impl& _impl) : impl(_impl) {}');
     writer.writeLine();
 
-    writer.writeLine('~$className$baseSuffix() = default;');
+    writer.writeLine('virtual ~$className$baseSuffix() = default;');
     writer.writeLine();
 
     // Delete copy constructor and assignment operator
