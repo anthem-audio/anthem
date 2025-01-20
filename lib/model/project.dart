@@ -220,6 +220,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
           // Unhook the model change stream from the engine
           (this as AnthemModelBase)
               .removeFieldChangedListener(_fieldChangedListener!);
+          _fieldChangedListener = null;
         }
         _modelSyncCompleter = Completer();
       }
@@ -251,9 +252,6 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     engine.processingGraphApi.compile();
   }
 
-  @hide
-  bool _isModelChangeListenerAttached = false;
-
   /// Attaches a listener for model state change events, and send them to the
   /// engine.
   ///
@@ -261,8 +259,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// change events are created by generated code, and also processed by
   /// generated code in the engine.
   void _attachModelChangeListener() {
-    if (_isModelChangeListenerAttached) return;
-    _isModelChangeListenerAttached = true;
+    if (_fieldChangedListener != null) return;
 
     _fieldChangedListener = (accesses, operation) {
       String? serializeMapKey(dynamic key) {
