@@ -19,7 +19,6 @@
 
 import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/collections.dart';
-import 'package:anthem/model/processing_graph/node_config.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/processing_graph/processors/simple_volume_lfo.dart';
@@ -39,7 +38,6 @@ class NodeModel extends _NodeModel
     with _$NodeModel, _$NodeModelAnthemModelMixin {
   NodeModel({
     required super.id,
-    required super.config,
     super.processor,
     AnthemObservableList<NodePortModel>? audioInputPorts,
     AnthemObservableList<NodePortModel>? midiInputPorts,
@@ -59,7 +57,6 @@ class NodeModel extends _NodeModel
   NodeModel.uninitialized()
       : super(
           id: '',
-          config: NodeConfigModel.uninitialized(),
           audioInputPorts: AnthemObservableList(),
           midiInputPorts: AnthemObservableList(),
           controlInputPorts: AnthemObservableList(),
@@ -107,8 +104,6 @@ class NodeModel extends _NodeModel
 abstract class _NodeModel with Store, AnthemModelBase {
   String id;
 
-  NodeConfigModel config;
-
   AnthemObservableList<NodePortModel> audioInputPorts;
   AnthemObservableList<NodePortModel> midiInputPorts;
   AnthemObservableList<NodePortModel> controlInputPorts;
@@ -127,7 +122,6 @@ abstract class _NodeModel with Store, AnthemModelBase {
 
   _NodeModel({
     required this.id,
-    required this.config,
     required this.audioInputPorts,
     required this.midiInputPorts,
     required this.controlInputPorts,

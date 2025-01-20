@@ -21,7 +21,6 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/processing_graph/node.dart';
-import 'package:anthem/model/processing_graph/node_config.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem_codegen/include/annotations.dart';
@@ -54,7 +53,6 @@ class SimpleVolumeLfoProcessorModel extends _SimpleVolumeLfoProcessorModel
     final nodeId = 'simple-volume-lfo-${getId()}';
 
     return NodeModel(
-      config: NodeConfigModel(),
       id: nodeId,
       processor: SimpleVolumeLfoProcessorModel(nodeId: nodeId),
       audioInputPorts: AnthemObservableList.of([
