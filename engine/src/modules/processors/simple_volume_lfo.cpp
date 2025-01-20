@@ -25,16 +25,6 @@ SimpleVolumeLfoProcessor::SimpleVolumeLfoProcessor(const SimpleVolumeLfoProcesso
   : AnthemProcessor("SimpleVolumeLfo"), SimpleVolumeLfoProcessorModelBase(_impl) {
   rate = 0.0001f;
   amplitude = 1;
-
-  // // Audio input port
-  // config.addAudioInput(
-  //   std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Audio, 0)
-  // );
-
-  // // Audio output port
-  // config.addAudioOutput(
-  //   std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Audio, 0)
-  // );
 }
 
 SimpleVolumeLfoProcessor::~SimpleVolumeLfoProcessor() {}
