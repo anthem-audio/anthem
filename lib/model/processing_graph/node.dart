@@ -21,6 +21,7 @@ import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/processing_graph/node_config.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
+import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/processing_graph/processors/simple_volume_lfo.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
@@ -117,9 +118,10 @@ abstract class _NodeModel with Store, AnthemModelBase {
   AnthemObservableList<NodePortModel> controlOutputPorts;
 
   @Union([
-    ToneGeneratorProcessorModel,
+    GainProcessorModel,
+    MasterOutputProcessorModel,
     SimpleVolumeLfoProcessorModel,
-    MasterOutputProcessorModel
+    ToneGeneratorProcessorModel,
   ])
   Object? processor;
 

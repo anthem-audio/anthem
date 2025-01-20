@@ -27,7 +27,7 @@ import 'command.dart';
 void _addGenerator(ProjectModel project, GeneratorModel generator,
     {int? index,
     required NodeModel generatorNode,
-    required NodeModel volumeLfoNode}) {
+    required NodeModel gainNode}) {
   if (index != null) {
     project.generatorList.insert(index, generator.id);
   } else {
@@ -42,21 +42,21 @@ void _addGenerator(ProjectModel project, GeneratorModel generator,
   }
 
   project.processingGraph.addNode(generatorNode);
-  project.processingGraph.addNode(volumeLfoNode);
+  project.processingGraph.addNode(gainNode);
   project.processingGraph.addConnection(
     NodeConnectionModel(
       id: getId(),
       sourceNodeId: generatorNode.id,
       sourcePortId: generatorNode.audioOutputPorts[0].id,
-      destinationNodeId: volumeLfoNode.id,
-      destinationPortId: volumeLfoNode.audioInputPorts[0].id,
+      destinationNodeId: gainNode.id,
+      destinationPortId: gainNode.audioInputPorts[0].id,
     ),
   );
   project.processingGraph.addConnection(
     NodeConnectionModel(
       id: getId(),
-      sourceNodeId: volumeLfoNode.id,
-      sourcePortId: volumeLfoNode.audioOutputPorts[0].id,
+      sourceNodeId: gainNode.id,
+      sourcePortId: gainNode.audioOutputPorts[0].id,
       destinationNodeId: project.processingGraph.masterOutputNodeId,
       destinationPortId:
           project.processingGraph.getMasterOutputNode().audioInputPorts[0].id,
@@ -79,7 +79,7 @@ void _removeGenerator(ProjectModel project, Id generatorID) {
   }
 
   project.processingGraph.removeNode(generator.generatorNodeId!);
-  project.processingGraph.removeNode(generator.volumeLfoNodeId!);
+  project.processingGraph.removeNode(generator.gainNodeId!);
 
   project.engine.processingGraphApi.compile();
 }
@@ -116,7 +116,7 @@ class AddGeneratorCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
-    final volumeLfoNode = SimpleVolumeLfoProcessorModel.createNode();
+    final gainNode = GainProcessorModel.createNode();
 
     final generator = GeneratorModel(
       id: generatorId,
@@ -124,14 +124,14 @@ class AddGeneratorCommand extends Command {
       generatorType: generatorType,
       color: color,
       generatorNodeId: node.id,
-      volumeLfoNodeId: volumeLfoNode.id,
+      gainNodeId: gainNode.id,
     );
 
     _addGenerator(
       project,
       generator,
       generatorNode: node,
-      volumeLfoNode: volumeLfoNode,
+      gainNode: gainNode,
     );
   }
 
@@ -144,7 +144,7 @@ class AddGeneratorCommand extends Command {
 class RemoveGeneratorCommand extends Command {
   GeneratorModel generator;
   NodeModel generatorNode;
-  NodeModel volumeLfoNode;
+  NodeModel gainNode;
   late int index;
 
   RemoveGeneratorCommand({
@@ -152,8 +152,7 @@ class RemoveGeneratorCommand extends Command {
     required this.generator,
   })  : generatorNode =
             project.processingGraph.nodes[generator.generatorNodeId]!,
-        volumeLfoNode =
-            project.processingGraph.nodes[generator.volumeLfoNodeId]! {
+        gainNode = project.processingGraph.nodes[generator.gainNodeId]! {
     index = project.generatorList.indexOf(generator.id);
   }
 
@@ -169,7 +168,7 @@ class RemoveGeneratorCommand extends Command {
       generator,
       index: index,
       generatorNode: generatorNode,
-      volumeLfoNode: volumeLfoNode,
+      gainNode: gainNode,
     );
   }
 }

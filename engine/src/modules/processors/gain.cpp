@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,11 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "gain_node.h"
+#include "gain.h"
 
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 
-GainNode::GainNode() : AnthemProcessor("Gain") {
+GainProcessor::GainProcessor(const GainProcessorModelImpl& _impl)
+    : AnthemProcessor("Gain"), GainProcessorModelBase(_impl) {
   // // Audio input port
   // config.addAudioInput(
   //   std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Audio, 0)
@@ -41,13 +42,13 @@ GainNode::GainNode() : AnthemProcessor("Gain") {
   // );
 }
 
-GainNode::~GainNode() {}
+GainProcessor::~GainProcessor() {}
 
-void GainNode::process(AnthemProcessContext& context, int numSamples) {
-  auto& audioInBuffer = context.getInputAudioBuffer(0);
-  auto& audioOutBuffer = context.getOutputAudioBuffer(0);
+void GainProcessor::process(AnthemProcessContext& context, int numSamples) {
+  auto& audioInBuffer = context.getInputAudioBuffer(GainProcessorModelBase::audioInputPortId);
+  auto& audioOutBuffer = context.getOutputAudioBuffer(GainProcessorModelBase::audioOutputPortId);
 
-  auto& amplitudeControlBuffer = context.getInputControlBuffer(0);
+  auto& amplitudeControlBuffer = context.getInputControlBuffer(GainProcessorModelBase::gainPortId);
 
   for (int sample = 0; sample < numSamples; sample++) {
     for (int channel = 0; channel < audioOutBuffer.getNumChannels(); ++channel) {

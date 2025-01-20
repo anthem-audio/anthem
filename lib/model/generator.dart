@@ -43,7 +43,7 @@ class GeneratorModel extends _GeneratorModel
           name: '',
           generatorType: GeneratorType.instrument,
           generatorNodeId: null,
-          volumeLfoNodeId: null,
+          gainNodeId: null,
         );
 
   GeneratorModel({
@@ -52,7 +52,7 @@ class GeneratorModel extends _GeneratorModel
     required super.generatorType,
     required super.color,
     required super.generatorNodeId,
-    required super.volumeLfoNodeId,
+    required super.gainNodeId,
   });
 
   factory GeneratorModel.fromJson(Map<String, dynamic> json) =>
@@ -81,10 +81,8 @@ abstract class _GeneratorModel with Store, AnthemModelBase {
   ///     plugin -> gainNode -> (some target)
   ///
   /// The gain node is used for the volume knobs on the generator row.
-  // @anthemObservable
-  // String gainNodeId;
-
-  String? volumeLfoNodeId;
+  @anthemObservable
+  String? gainNodeId;
 
   _GeneratorModel({
     required this.id,
@@ -92,6 +90,6 @@ abstract class _GeneratorModel with Store, AnthemModelBase {
     required this.generatorType,
     required this.color,
     required this.generatorNodeId,
-    required this.volumeLfoNodeId,
+    required this.gainNodeId,
   }) : super();
 }

@@ -30,6 +30,7 @@ export 'pattern/automation_point.dart';
 export 'pattern/note.dart';
 export 'pattern/pattern.dart';
 
+export 'processing_graph/processors/gain.dart';
 export 'processing_graph/processors/master_output.dart';
 export 'processing_graph/processors/simple_volume_lfo.dart';
 export 'processing_graph/processors/tone_generator.dart';

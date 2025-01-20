@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "generated/lib/model/model.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
 
 // The gain node takes an audio input and multiplies each sample by a control
@@ -36,10 +37,16 @@
 // So, for a decibel change of -3 db, the control value must be roughly 0.7.
 //
 // The input can be anything from from 0 (-inf db) to 10 (+20 db).
-class GainNode : public AnthemProcessor {
+class GainProcessor : public AnthemProcessor, public GainProcessorModelBase {
 public:
-  GainNode();
-  ~GainNode() override;
+  GainProcessor(const GainProcessorModelImpl& _impl);
+  ~GainProcessor() override;
+
+  GainProcessor(const GainProcessor&) = delete;
+  GainProcessor& operator=(const GainProcessor&) = delete;
+
+  GainProcessor(GainProcessor&&) noexcept = default;
+  GainProcessor& operator=(GainProcessor&&) noexcept = default;
 
   void process(AnthemProcessContext& context, int numSamples) override;
 };
