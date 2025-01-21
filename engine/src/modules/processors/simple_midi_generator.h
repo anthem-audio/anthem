@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,9 +19,10 @@
 
 #pragma once
 
+#include "generated/lib/model/model.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
 
-class SimpleMidiGeneratorNode : public AnthemProcessor {
+class SimpleMidiGeneratorProcessor : public AnthemProcessor, public SimpleMidiGeneratorProcessorModelBase {
 private:
   double sampleRate;
   size_t durationSamples;
@@ -32,8 +33,14 @@ private:
   int32_t currentNoteId;
   size_t currentNoteDuration;
 public:
-  SimpleMidiGeneratorNode();
-  ~SimpleMidiGeneratorNode() override;
+  SimpleMidiGeneratorProcessor(const SimpleMidiGeneratorProcessorModelImpl& _impl);
+  ~SimpleMidiGeneratorProcessor() override;
+
+  SimpleMidiGeneratorProcessor(const SimpleMidiGeneratorProcessor&) = delete;
+  SimpleMidiGeneratorProcessor& operator=(const SimpleMidiGeneratorProcessor&) = delete;
+
+  SimpleMidiGeneratorProcessor(SimpleMidiGeneratorProcessor&&) noexcept = default;
+  SimpleMidiGeneratorProcessor& operator=(SimpleMidiGeneratorProcessor&&) noexcept = default;
 
   int getOutputPortIndex() {
     return 0;
