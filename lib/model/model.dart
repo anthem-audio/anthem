@@ -42,7 +42,6 @@ export 'processing_graph/node_port.dart';
 export 'processing_graph/node.dart';
 export 'processing_graph/parameter_config.dart';
 export 'processing_graph/processing_graph.dart';
-export 'processing_graph/processor_definition.dart';
 
 export 'shared/anthem_color.dart';
 export 'shared/hydratable.dart';
