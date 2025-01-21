@@ -74,7 +74,7 @@ String getModelSyncFn(ModelClassInfo context) {
   writer.writeLine('}');
   writer.writeLine('auto self = this->self.lock();');
 
-  var isFirst = true;
+  var noCasesGenerated = true;
 
   writer.writeLine(
       'auto& fieldNameNullable = (*request.fieldAccesses)[fieldAccessIndex]->fieldName;');
@@ -98,8 +98,8 @@ String getModelSyncFn(ModelClassInfo context) {
       continue;
     }
 
-    writer
-        .writeLine('${isFirst ? '' : 'else '}if (fieldName == "$fieldName") {');
+    writer.writeLine(
+        '${noCasesGenerated ? '' : 'else '}if (fieldName == "$fieldName") {');
     writer.incrementWhitespace();
 
     _writeUpdate(
@@ -129,10 +129,10 @@ String getModelSyncFn(ModelClassInfo context) {
     writer.decrementWhitespace();
     writer.writeLine('}');
 
-    isFirst = false;
+    noCasesGenerated = false;
   }
 
-  if (context.fields.entries.isNotEmpty) {
+  if (!noCasesGenerated) {
     writer.writeLine('else {');
     writer.incrementWhitespace();
     writer.writeLine(
