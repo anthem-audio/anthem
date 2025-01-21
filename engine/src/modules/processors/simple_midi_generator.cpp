@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,12 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "simple_midi_generator_node.h"
+#include "simple_midi_generator.h"
 
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 #include "modules/processing_graph/events/anthem_processor_event.h"
 
-SimpleMidiGeneratorNode::SimpleMidiGeneratorNode() : AnthemProcessor("SimpleMidiGenerator") {
+SimpleMidiGeneratorProcessor::SimpleMidiGeneratorProcessor(const SimpleMidiGeneratorProcessorModelImpl& _impl)
+    : AnthemProcessor("SimpleMidiGenerator"), SimpleMidiGeneratorProcessorModelBase(_impl) {
   sampleRate = 44100; // TODO: This should be dynamic - in the context maybe?
   durationSamples = 22050;
   velocity = 80;
@@ -31,18 +32,12 @@ SimpleMidiGeneratorNode::SimpleMidiGeneratorNode() : AnthemProcessor("SimpleMidi
   currentNote = 0;
   currentNoteId = 0;
   currentNoteDuration = 0;
-
-  // Port config
-
-  // config.addMidiOutput(
-  //   std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Midi, 0)
-  // );
 }
 
-SimpleMidiGeneratorNode::~SimpleMidiGeneratorNode() {}
+SimpleMidiGeneratorProcessor::~SimpleMidiGeneratorProcessor() {}
 
-void SimpleMidiGeneratorNode::process(AnthemProcessContext& context, int numSamples) {
-  auto& midiOutBuffer = context.getOutputNoteEventBuffer(0);
+void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int numSamples) {
+  auto& midiOutBuffer = context.getOutputNoteEventBuffer(SimpleMidiGeneratorProcessorModelBase::midiOutputPortId);
 
   if (!noteOn) {
     currentNote = 50;
