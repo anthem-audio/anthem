@@ -40,7 +40,6 @@
 #include "modules/core/anthem.h"
 #include "./command_handlers/model_sync_command_handler.h"
 #include "./command_handlers/processing_graph_command_handler.h"
-#include "./command_handlers/processor_command_handler.h"
 
 #include "messages/messages.h"
 
@@ -143,14 +142,6 @@ public:
         didOverwriteResponse = true;
       }
       response = std::move(handleProcessingGraphCommandResponse);
-    }
-
-    auto handleProcessorCommandResponse = handleProcessorCommand(request);
-    if (handleProcessorCommandResponse.has_value()) {
-      if (response.has_value()) {
-        didOverwriteResponse = true;
-      }
-      response = std::move(handleProcessorCommandResponse);
     }
 
     // Warn if multiple handlers gave back a reply. This would indicate that a
