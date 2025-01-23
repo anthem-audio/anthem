@@ -41,7 +41,7 @@ class ProcessingGraphApi {
     );
 
     final response =
-        (await _engine._request(id, request)) as CompileProcessingGraphResponse;
+        (await _engine._request(request)) as CompileProcessingGraphResponse;
 
     if (response.success) {
       return;
