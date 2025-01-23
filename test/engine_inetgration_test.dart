@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-// ignore_for_file: avoid_print
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -131,8 +129,7 @@ void main() {
           reason: 'The engine should not exit if it receives a heartbeat.');
 
       engineConnector.dispose();
-      // Wait 5s for the engine to exit
-      await Future<void>.delayed(Duration(seconds: 5));
+      await exitStreamController.stream.first;
       expect(exitCalled, isTrue,
           reason: 'The engine should exit when disposed.');
     });
