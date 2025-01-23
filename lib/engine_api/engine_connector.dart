@@ -144,6 +144,8 @@ class EngineConnector {
       () => engineConnectCompleter.complete(),
     );
 
+    EngineSocketServer.instance.onClose(_id, _shutdown);
+
     String? developmentEnginePath;
 
     // If we're in debug mode, we look for the engine as compiled in the repo
