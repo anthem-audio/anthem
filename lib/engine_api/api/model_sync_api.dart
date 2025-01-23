@@ -41,7 +41,7 @@ class ModelSyncApi {
 
     final request = ModelInitRequest(id: id, serializedModel: serializedModel);
 
-    _engine._request(request);
+    _engine._requestNoReply(request);
   }
 
   /// Updates the engine model with the given field update.
@@ -59,7 +59,7 @@ class ModelSyncApi {
       serializedValue: serializedValue,
     );
 
-    _engine._request(request);
+    _engine._requestNoReply(request);
   }
 
   /// Gets the current state of the engine model.

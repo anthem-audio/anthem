@@ -155,4 +155,15 @@ class Engine {
 
     return completer.future;
   }
+
+  /// Sends a request to the engine, but does not wait for a response.
+  void _requestNoReply(Request request) {
+    if (engineState != EngineState.running) {
+      throw AssertionError('Engine must be running to send commands.');
+    }
+
+    final encoder = JsonUtf8Encoder();
+
+    _engineConnector.send(encoder.convert(request.toJson()) as Uint8List);
+  }
 }
