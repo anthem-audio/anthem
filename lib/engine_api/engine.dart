@@ -147,7 +147,7 @@ class Engine {
       completer.complete(response);
     }
 
-    replyFunctions[id] = onResponse;
+    replyFunctions[request.id] = onResponse;
 
     final encoder = JsonUtf8Encoder();
 
