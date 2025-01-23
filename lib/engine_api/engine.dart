@@ -93,7 +93,7 @@ class Engine {
 
     final request = Exit(id: id);
 
-    await _request(id, request);
+    await _request(request);
 
     // This force-kills the engine... Maybe we should give it some time to
     // shut down? Not sure how to tell when the process stops.
@@ -136,7 +136,7 @@ class Engine {
   }
 
   /// Sends a request to the engine, and asynchronously returns the response.
-  Future<Response> _request(int id, Request request) {
+  Future<Response> _request(Request request) {
     if (engineState != EngineState.running) {
       throw AssertionError('Engine must be running to send commands.');
     }
