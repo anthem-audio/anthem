@@ -157,7 +157,8 @@ void main() {
     });
 
     test('Test initial state', () async {
-      project.engine.modelSyncApi.initModel(jsonEncode(project.toJson()));
+      // The initial state should be sent to the engine when it starts via
+      // project.engine.modelSyncApi.initModel().
 
       final initialState =
           jsonDecode(await project.engine.modelSyncApi.debugGetEngineJson())
