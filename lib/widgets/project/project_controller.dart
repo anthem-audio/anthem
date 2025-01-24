@@ -134,7 +134,7 @@ class ProjectController {
     final key = event.logicalKey;
 
     if (viewModel.keyboardPianoEnabled && isTypingPianoKey(key)) {
-      // TODO: Reimplement this
+      // This should be reimplemented once we solidify MIDI
 
       // final note = getMidiNoteFromKeyboardKey(key)!;
 

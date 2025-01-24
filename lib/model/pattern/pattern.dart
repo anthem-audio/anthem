@@ -56,7 +56,8 @@ class PatternModel extends _PatternModel
     _init();
 
     onModelAttached(() {
-      // TODO: remove
+      // I had a todo comment to remove this, but I have no idea why, so I'm
+      // leaving this comment instead. ¯\_(ツ)_/¯
       for (final generator in project.generators.values.where(
           (generator) => generator.generatorType == GeneratorType.automation)) {
         automationLanes[generator.id] = AutomationLaneModel();
