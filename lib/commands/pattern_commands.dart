@@ -35,7 +35,7 @@ void _addPatternToProject({
 
 void _removePatternFromProject({
   required ProjectModel project,
-  required ID patternID,
+  required Id patternID,
 }) {
   project.song.patternOrder.removeWhere((element) => element == patternID);
   project.song.patterns.remove(patternID);
@@ -96,7 +96,7 @@ class DeletePatternCommand extends Command {
 }
 
 class SetPatternNameCommand extends Command {
-  ID patternID;
+  Id patternID;
   late String oldName;
   String newName;
 
@@ -124,7 +124,7 @@ class SetPatternNameCommand extends Command {
 }
 
 class SetPatternColorCommand extends Command {
-  ID patternID;
+  Id patternID;
   late AnthemColor oldColor;
   AnthemColor newColor;
 

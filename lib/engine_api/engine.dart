@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,11 +19,11 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:anthem/engine_api/engine_connector.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/model/project.dart';
+import 'package:flutter/foundation.dart';
 
 part 'api/model_sync_api.dart';
 part 'api/processing_graph_api.dart';
@@ -63,12 +63,14 @@ class Engine {
   EngineState _engineState = EngineState.stopped;
   EngineState get engineState => _engineState;
 
+  final String? enginePathOverride;
+
   void _setEngineState(EngineState state) {
     _engineState = state;
     _engineStateStreamController.add(state);
   }
 
-  Engine(this.id, this.project) {
+  Engine(this.id, this.project, {this.enginePathOverride}) {
     engineStateStream = _engineStateStreamController.stream;
 
     modelSyncApi = ModelSyncApi(this);
@@ -82,7 +84,7 @@ class Engine {
     }
   }
 
-  void _onCrash() {
+  void _onExit() {
     _setEngineState(EngineState.stopped);
   }
 
@@ -91,7 +93,7 @@ class Engine {
 
     final request = Exit(id: id);
 
-    await _request(id, request);
+    await _request(request);
 
     // This force-kills the engine... Maybe we should give it some time to
     // shut down? Not sure how to tell when the process stops.
@@ -120,8 +122,13 @@ class Engine {
 
     _setEngineState(EngineState.starting);
 
-    _engineConnector =
-        EngineConnector(id, onReply: _onReply, onCrash: _onCrash);
+    _engineConnector = EngineConnector(
+      id,
+      kDebugMode: kDebugMode,
+      onReply: _onReply,
+      onExit: _onExit,
+      enginePathOverride: enginePathOverride,
+    );
 
     final success = await _engineConnector.onInit;
 
@@ -129,7 +136,7 @@ class Engine {
   }
 
   /// Sends a request to the engine, and asynchronously returns the response.
-  Future<Response> _request(int id, Request request) {
+  Future<Response> _request(Request request) {
     if (engineState != EngineState.running) {
       throw AssertionError('Engine must be running to send commands.');
     }
@@ -140,12 +147,23 @@ class Engine {
       completer.complete(response);
     }
 
-    replyFunctions[id] = onResponse;
+    replyFunctions[request.id] = onResponse;
 
     final encoder = JsonUtf8Encoder();
 
     _engineConnector.send(encoder.convert(request.toJson()) as Uint8List);
 
     return completer.future;
+  }
+
+  /// Sends a request to the engine, but does not wait for a response.
+  void _requestNoReply(Request request) {
+    if (engineState != EngineState.running) {
+      throw AssertionError('Engine must be running to send commands.');
+    }
+
+    final encoder = JsonUtf8Encoder();
+
+    _engineConnector.send(encoder.convert(request.toJson()) as Uint8List);
   }
 }

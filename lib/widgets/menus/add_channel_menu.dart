@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,9 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/controller/processor_manager/processor_list.dart';
-import 'package:anthem/model/generator.dart';
-import 'package:anthem/model/processing_graph/processor_definition.dart';
+import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
@@ -40,18 +38,13 @@ class AddChannelMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final projectController = Provider.of<ProjectController>(context);
 
-    final availableGenerators = processorList.where(
-      (processorDefinition) =>
-          processorDefinition.type == ProcessorType.generator,
-    );
-
     final menuDef = MenuDef(
       children: [
         AnthemMenuItem(
           text: 'Add automation channel',
           onSelected: () {
             projectController.addGenerator(
-              processorId: null,
+              node: NodeModel.uninitialized(),
               name: 'Blank Automation Channel',
               generatorType: GeneratorType.automation,
               color: getColor(),
@@ -62,20 +55,18 @@ class AddChannelMenu extends StatelessWidget {
           text: 'Add instrument channel',
           submenu: MenuDef(
             children: [
-              ...availableGenerators.map(
-                (entry) => AnthemMenuItem(
-                  text: entry.name,
-                  onSelected: () {
-                    projectController.addGenerator(
-                      processorId: entry.id,
-                      name: entry.name,
-                      generatorType: GeneratorType.instrument,
-                      color: getColor(),
-                    );
-                  },
-                ),
+              AnthemMenuItem(
+                text: 'Tone Generator',
+                onSelected: () {
+                  projectController.addGenerator(
+                    node: ToneGeneratorProcessorModel.createNode(),
+                    name: 'Tone Generator',
+                    generatorType: GeneratorType.instrument,
+                    color: getColor(),
+                  );
+                },
               ),
-              if (availableGenerators.isNotEmpty) Separator(),
+              Separator(),
               AnthemMenuItem(
                 text: 'VST3...',
                 onSelected: () {
@@ -86,7 +77,7 @@ class AddChannelMenu extends StatelessWidget {
                 text: 'Blank',
                 onSelected: () {
                   projectController.addGenerator(
-                    processorId: null,
+                    node: NodeModel.uninitialized(),
                     name: 'Blank Instrument',
                     generatorType: GeneratorType.instrument,
                     color: getColor(),

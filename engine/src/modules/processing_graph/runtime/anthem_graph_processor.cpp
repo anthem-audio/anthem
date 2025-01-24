@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -26,7 +26,7 @@ AnthemGraphProcessor::AnthemGraphProcessor() : clearDeletionQueueTimedCallback(j
       processingStepsDeletionQueue(ThreadSafeQueue<AnthemGraphCompilationResult*>(512)) {
   // Set up a JUCE timer to clear the deletion queue every 1s
   // this->clearDeletionQueueTimedCallback = std::move();
-  this->clearDeletionQueueTimedCallback.startTimer(1000);
+  this->clearDeletionQueueTimedCallback.startTimer(2000);
   this->processingSteps = nullptr;
 }
 
@@ -39,7 +39,9 @@ void AnthemGraphProcessor::clearDeletionQueueFromMainThread() {
 
   while (nextCompilationResult) {
     auto* ptr = nextCompilationResult.value();
+    ptr->cleanup();
     delete ptr;
+
     nextCompilationResult = this->processingStepsDeletionQueue.read();
   }
 }
@@ -48,12 +50,19 @@ void AnthemGraphProcessor::process(int numSamples) {
   auto nextCompilationResult = std::move(this->processingStepsQueue.read());
 
   while (nextCompilationResult) {
+    juce::Logger::writeToLog("Audio thread: New compilation result found, replacing old one");
     if (this->processingSteps != nullptr) {
       this->processingStepsDeletionQueue.add(this->processingSteps);
     }
 
     this->processingSteps = nextCompilationResult.value();
     nextCompilationResult = this->processingStepsQueue.read();
+  }
+
+  // The audio thread can't do anything until it receives the first graph
+  // compilation result.
+  if (this->processingSteps == nullptr) {
+    return;
   }
 
   auto& actionGroups = this->processingSteps->actionGroups;

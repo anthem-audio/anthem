@@ -33,7 +33,7 @@ class Dropdown extends StatefulWidget {
   final double? height;
   final String? selectedID;
   final List<DropdownItem> items;
-  final Function(String?)? onChanged;
+  final void Function(String?)? onChanged;
   final bool showNameOnButton;
   final String? hint;
 
@@ -109,7 +109,7 @@ class _DropdownState extends State<Dropdown> {
                       text: '(none)',
                       onSelected: () => select(null),
                     )
-                  ].whereNotNull().toList()),
+                  ].nonNulls.toList()),
       ),
       child: MouseRegion(
         // No need to setState since we're not reacting to these

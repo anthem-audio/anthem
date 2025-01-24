@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:flutter/foundation.dart';
 
 /// Note (October 2024): This solution was created when 'json_serializable' was
@@ -127,14 +127,6 @@ class Hydratable {
           Error.throwWithStackTrace(
               Exception(_getHydrationError()), stackTrace);
         }
-
-        if (this is AnthemModelBase) {
-          final model = this as AnthemModelBase;
-          if (!model.isInitialized) {
-            Error.throwWithStackTrace(
-                Exception(_getAnthemModelNoInitError()), stackTrace);
-          }
-        }
       }
 
       Future.delayed(const Duration(seconds: 0), check);
@@ -143,7 +135,4 @@ class Hydratable {
 
   String _getHydrationError() =>
       '$runtimeType was not hydrated after being constructed. See lib/model/shared/hydratable.dart for more info.';
-
-  String _getAnthemModelNoInitError() =>
-      '$runtimeType was not initialized. Anthem model codegen defines an _init() function that must be called after the model is constructed.';
 }

@@ -18,22 +18,21 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
-
-import '../shared/hydratable.dart';
 
 part 'clip.g.dart';
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class ClipModel extends _ClipModel
     with _$ClipModel, _$ClipModelAnthemModelMixin {
   ClipModel.uninitialized()
       : super.create(
-          id: getID(),
-          patternID: getID(),
-          trackID: getID(),
+          id: getId(),
+          patternID: getId(),
+          trackID: getId(),
           offset: 0,
         );
 
@@ -45,18 +44,18 @@ class ClipModel extends _ClipModel
       required super.offset});
 
   ClipModel.create({
-    ID? id,
+    Id? id,
     super.timeView,
     required super.patternID,
     required super.trackID,
     required super.offset,
   }) : super.create(
-          id: id ?? getID(),
+          id: id ?? getId(),
         );
 
   factory ClipModel.fromClipModel(ClipModel other) {
     return ClipModel.create(
-      id: getID(),
+      id: getId(),
       patternID: other.patternID,
       trackID: other.trackID,
       offset: other.offset,
@@ -73,17 +72,17 @@ class ClipModel extends _ClipModel
       _$ClipModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _ClipModel extends Hydratable with Store, AnthemModelBase {
-  ID id;
+abstract class _ClipModel with Store, AnthemModelBase {
+  Id id;
 
   @anthemObservable
   TimeViewModel? timeView; // If null, we snap to content
 
   @anthemObservable
-  ID patternID;
+  Id patternID;
 
   @anthemObservable
-  ID trackID;
+  Id trackID;
 
   @anthemObservable
   int offset;
@@ -95,9 +94,7 @@ abstract class _ClipModel extends Hydratable with Store, AnthemModelBase {
     required this.patternID,
     required this.trackID,
     required this.offset,
-  }) : super() {
-    hydrate();
-  }
+  }) : super();
 
   _ClipModel.create({
     required this.id,
@@ -105,14 +102,7 @@ abstract class _ClipModel extends Hydratable with Store, AnthemModelBase {
     required this.patternID,
     required this.trackID,
     required this.offset,
-  }) : super() {
-    hydrate();
-  }
-
-  void hydrate() {
-    (this as _$ClipModelAnthemModelMixin).init();
-    isHydrated = true;
-  }
+  }) : super();
 
   int getWidth(ProjectModel project) {
     if (timeView != null) {
@@ -123,7 +113,7 @@ abstract class _ClipModel extends Hydratable with Store, AnthemModelBase {
   }
 }
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class TimeViewModel extends _TimeViewModel
     with _$TimeViewModel, _$TimeViewModelAnthemModelMixin {
   TimeViewModel({required super.start, required super.end});

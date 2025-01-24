@@ -23,20 +23,27 @@
 
 #include <juce_audio_devices/juce_audio_devices.h>
 
-#include "modules/processing_graph/anthem_graph.h"
 #include "modules/core/constants.h"
-#include "modules/processors/master_output_node.h"
+#include "modules/processors/master_output.h"
+
+class Anthem;
 
 class AnthemAudioCallback : public juce::AudioIODeviceCallback
 {
 private:
-  std::shared_ptr<AnthemGraph> processingGraph;
-  std::shared_ptr<AnthemGraphNode> masterOutputNode;
+  // There is a shared_ptr reference to the processor here to ensure that it is
+  // not deleted, but it should never be accessed from the callback, since
+  // shared_ptr is not real-time safe.
+  std::shared_ptr<MasterOutputProcessor> masterOutputProcessorSharedPtr;
+
+  MasterOutputProcessor* masterOutputProcessor;
+
+  // We will assume the Anthem application class is always available. This is
+  // normally stored in a shared_ptr, which we can't use from the audio thread
+  // since it's not real-time safe.
+  Anthem* anthem;
 public:
-  AnthemAudioCallback(
-    std::shared_ptr<AnthemGraph> graph,
-    std::shared_ptr<AnthemGraphNode> masterOutputNode
-  ) : processingGraph(graph), masterOutputNode(masterOutputNode) {}
+  AnthemAudioCallback(Anthem* anthem);
 
   void audioDeviceIOCallbackWithContext(const float* const* inputChannelData,
                                                    int numInputChannels,

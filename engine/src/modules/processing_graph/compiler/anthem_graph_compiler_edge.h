@@ -21,30 +21,30 @@
 
 #include <memory>
 
-#include "modules/processing_graph/topology/anthem_graph_node.h"
-#include "modules/processing_graph/topology/anthem_graph_data_type.h"
+#include "generated/lib/model/model.h"
+#include "modules/processing_graph/model/node_connection.h"
 
 class AnthemGraphNodeConnection;
 
 class AnthemGraphCompilerEdge {
 public:
   // The edge in the node graph
-  std::shared_ptr<AnthemGraphNodeConnection> edgeSource;
+  std::shared_ptr<NodeConnection> edgeSource;
 
   AnthemProcessContext* sourceNodeContext;
 
   AnthemProcessContext* destinationNodeContext;
 
   // The type of this edge
-  AnthemGraphDataType type;
+  NodePortDataType type;
 
   // Whether this edge has been processed
   bool processed = false;
 
   AnthemGraphCompilerEdge(
-    std::shared_ptr<AnthemGraphNodeConnection> edge,
+    std::shared_ptr<NodeConnection> edge,
     AnthemProcessContext* sourceNodeContext,
     AnthemProcessContext* destinationNodeContext,
-    AnthemGraphDataType type
+    NodePortDataType type
   ) : edgeSource(edge), sourceNodeContext(sourceNodeContext), destinationNodeContext(destinationNodeContext), type(type) {}
 };

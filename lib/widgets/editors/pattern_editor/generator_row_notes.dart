@@ -24,7 +24,7 @@ import 'package:flutter/widgets.dart';
 
 class GeneratorRowNotes extends StatelessWidget {
   final PatternModel pattern;
-  final ID generatorID;
+  final Id generatorID;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;
@@ -54,7 +54,7 @@ class GeneratorRowNotes extends StatelessWidget {
 
 class _GeneratorRowNotesPainter extends CustomPainterObserver {
   final PatternModel pattern;
-  final ID? generatorID;
+  final Id? generatorID;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;

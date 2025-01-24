@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,12 +19,18 @@
 
 #include "anthem_graph_compiler.h"
 
+#include "modules/core/anthem.h"
+
+#include "generated/lib/model/model.h"
+
 #include <iostream>
 
 // See the header file for an overview of the graph processing algorithm. Each
 // step in the algorithm is annotated here.
 
-AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& topology) {
+AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
+  auto& processingGraphModel = Anthem::getInstance().project->processingGraph();
+
   AnthemGraphCompilationResult* result = new AnthemGraphCompilationResult();
 
   // We store these in a vector so that when it goes out of scope, the nodes
@@ -34,31 +40,32 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
 
   std::set<AnthemGraphCompilerNode*> nodesToProcess;
 
-  std::map<AnthemGraphNode*, std::shared_ptr<AnthemGraphCompilerNode>> nodeToCompilerNode;
-  std::map<AnthemGraphNodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>> connectionToCompilerEdge;
+  std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>> nodeToCompilerNode;
+  std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>> connectionToCompilerEdge;
 
   std::cout
     << "\033[32m"
     << "AnthemGraphCompiler::compile(): Compiling graph with "
-    << topology.getNodes().size()
-    << (topology.getNodes().size() > 1 ? " nodes" : " node")
+    << processingGraphModel->nodes()->size()
+    << (processingGraphModel->nodes()->size() > 1 ? " nodes" : " node")
     << " and "
-    << topology.getConnections().size()
-    << (topology.getConnections().size() > 1 ? " connections" : " connection")
+    << processingGraphModel->connections()->size()
+    << (processingGraphModel->connections()->size() > 1 ? " connections" : " connection")
     << "\033[0m"
     << std::endl;
 
   size_t totalEventPorts = 0;
 
   // Get the total number of event ports in the graph.
-  for (auto& node : topology.getNodes()) {
-    totalEventPorts += node->noteEventInputs.size();
-    totalEventPorts += node->noteEventOutputs.size();
+  for (auto& nodePair : *processingGraphModel->nodes()) {
+    auto& node = nodePair.second;
+    totalEventPorts += node->midiInputPorts()->size();
+    totalEventPorts += node->midiOutputPorts()->size();
   }
 
   // Create a buffer allocator for events, and allocate double the size of the
-  // buffer for each port. This is because, if any port buffer overflows, it
-  // will reallocate, so we need some free space.
+  // buffer for each port. This is because if any port buffer overflows, it will
+  // reallocate, so we need some free space.
   //
   // This is probably way too much free space, but I won't try to tweak it
   // unless it becomes a problem.
@@ -68,7 +75,9 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
     );
 
   // Create contexts for each node
-  for (auto& node : topology.getNodes()) {
+  for (auto& pair : *processingGraphModel->nodes()) {
+    auto& node = pair.second;
+
     auto context = new AnthemProcessContext(node, result->eventAllocator.get());
     result->processContexts.push_back(std::unique_ptr<AnthemProcessContext>(context));
 
@@ -90,9 +99,10 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
     node->assignEdges(nodeToCompilerNode, connectionToCompilerEdge);
   }
 
-  std::unique_ptr<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>> actions = std::make_unique<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>();
+  std::unique_ptr<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>> actions =
+        std::make_unique<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>();
 
-  std::cout << "Step 1: Zero input buffers" << std::endl;
+  juce::Logger::writeToLog("Step 1: Zero input buffers");
 
   // Step 1 (part 1): Clear buffers
   //
@@ -161,7 +171,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
     }
   }
 
-  std::cout << "Step 2: Found " << i << " nodes with no inputs" << std::endl;
+  juce::Logger::writeToLog("Step 2: Found " + std::to_string(i) + " nodes with no inputs");
   std::cout << std::endl;
 
   auto lastSize = SIZE_MAX;
@@ -170,12 +180,18 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
 
   while (!nodesToProcess.empty()) {
     j++;
-    std::cout << "\033[32mLoop iteration " << j << "\033[0m" << std::endl;
-    std::cout << "Nodes still left to process: " << nodesToProcess.size() << std::endl;
-    std::cout << "Last size: " << lastSize << std::endl;
+    juce::Logger::writeToLog("\033[32mLoop iteration " + std::to_string(j) + "\033[0m");
+    std::cout << "Nodes still left to process: " << std::to_string(nodesToProcess.size()) << std::endl;
+    std::cout << "Last size: " << std::to_string(lastSize) << std::endl;
 
-    // This will make it easier to track down infinite loops
-    jassert(lastSize != nodesToProcess.size());
+    // If there's an infinite loop, throw an error, since this should never
+    // happen, and a bug that causes an infinite loop here would prevent the
+    // engine from being shut down. Since the engine is hidden from the user, we
+    // shouldn't risk this.
+    if (lastSize == nodesToProcess.size()) {
+      throw std::runtime_error("Infinite loop detected in graph compiler");
+    }
+
     lastSize = nodesToProcess.size();
 
     std::vector<AnthemGraphCompilerNode*> nodesToRemoveFromProcessing;
@@ -185,14 +201,22 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
     // Step 3: Process nodes that are ready to process
     for (auto& node : nodesToProcess) {
       if (node->readyToProcess) {
-        std::cout << "Processing node " << node->node->processor->config.getId() << std::endl;
-        actions->push_back(std::make_unique<ProcessNodeAction>(node->context, node->node.get()));
+        std::cout << "Processing node " << node->node->id() << std::endl;
+
         nodesToRemoveFromProcessing.push_back(node);
         i++;
+
+        auto processor = node->node->getProcessor();
+        if (!processor.has_value()) {
+          std::cout << "Error: Node " << node->node->id() << " has no processor." << std::endl;
+          continue;
+        }
+
+        actions->push_back(std::make_unique<ProcessNodeAction>(node->context, processor.value().get()));
       }
     }
 
-    std::cout << "Step 3: Added process actions for " << i << " nodes" << std::endl;
+    juce::Logger::writeToLog("Step 3: Added process actions for " + std::to_string(i) + " nodes");
 
     result->actionGroups.push_back(std::move(actions));
 
@@ -208,7 +232,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
       nodesToProcess.erase(node);
     }
 
-    std::cout << "Step 3: Removed " << i << " nodes from processing" << std::endl;
+    juce::Logger::writeToLog("Step 3: Removed " + std::to_string(i) + " nodes from processing");
     std::cout << std::endl;
 
     i = 0;
@@ -216,50 +240,70 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
     // Step 4: Process connections
     for (auto& node : nodesToRemoveFromProcessing) {
       for (auto& edge : node->outputEdges) {
-        auto sourcePort = edge->edgeSource->source;
-        auto destinationPort = edge->edgeSource->destination;
+        auto& sourceNodeId = edge->edgeSource->sourceNodeId();
+        auto& destinationNodeId = edge->edgeSource->destinationNodeId();
+        auto& sourcePortId = edge->edgeSource->sourcePortId();
+        auto& destinationPortId = edge->edgeSource->destinationPortId();
+
+        auto& sourceNode = processingGraphModel->nodes()->at(sourceNodeId);
+        auto& destinationNode = processingGraphModel->nodes()->at(destinationNodeId);
+
+        auto sourcePortResult = sourceNode->getPortById(sourcePortId);
+        auto destinationPortResult = destinationNode->getPortById(destinationPortId);
+
+        if (!sourcePortResult.has_value() || !destinationPortResult.has_value()) {
+          std::cout << "Error: Could not find source or destination port" << std::endl;
+          continue;
+        }
+
+        auto& sourcePort = sourcePortResult.value();
+        auto& destinationPort = destinationPortResult.value();
 
         switch (edge->type) {
-          case AnthemGraphDataType::Audio:
+          case NodePortDataType::audio:
             actions->push_back(
               std::make_unique<CopyAudioBufferAction>(
                 edge->sourceNodeContext,
-                sourcePort.lock()->index,
+                sourcePort->id(),
                 edge->destinationNodeContext,
-                destinationPort.lock()->index
+                destinationPort->id()
               )
             );
             break;
-          case AnthemGraphDataType::Midi:
+          case NodePortDataType::midi:
             actions->push_back(
               std::make_unique<CopyNoteEventsAction>(
                 edge->sourceNodeContext,
-                sourcePort.lock()->index,
+                sourcePort->id(),
                 edge->destinationNodeContext,
-                destinationPort.lock()->index
+                destinationPort->id()
               )
             );
             break;
-          case AnthemGraphDataType::Control:
+          case NodePortDataType::control:
+            auto& portParameterConfig = sourcePort->config()->parameterConfig().value();
+            auto minParameterValue = (float) portParameterConfig->minimumValue();
+            auto maxParameterValue = (float) portParameterConfig->maximumValue();
+
             actions->push_back(
               std::make_unique<CopyControlBufferAction>(
                 edge->sourceNodeContext,
-                sourcePort.lock()->index,
+                sourcePort->id(),
                 edge->destinationNodeContext,
-                destinationPort.lock()->index
+                destinationPort->id(),
+                minParameterValue,
+                maxParameterValue
               )
             );
             break;
         }
 
         edge->processed = true;
-        std::cout << "Marked edge with pointer " << std::hex << edge.get() << std::dec << " as processed" << std::endl;
-        std::cout << "This compiler edge represents a real edge with pointer " << std::hex << edge->edgeSource.get() << std::dec << std::endl;
         i++;
       }
     }
 
-    std::cout << "Step 4: Added " << i << " connection actions" << std::endl;
+    juce::Logger::writeToLog("Step 4: Added " + std::to_string(i) + " connection actions");
     std::cout << std::endl;
 
     result->actionGroups.push_back(std::move(actions));
@@ -273,7 +317,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
     for (auto& node : nodesToProcess) {
       bool allInputsProcessed = true;
 
-      std::cout << "Checking node " << node->node->processor->config.getId() << std::endl;
+      std::cout << "Checking node " << node->node->id() << std::endl;
 
       for (auto& edge : node->inputEdges) {
         if (!edge->processed) {
@@ -292,9 +336,9 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(AnthemGraphTopology& 
       }
     }
 
-    std::cout << "Step 5: Found " << i << " nodes with no unprocessed input connections" << std::endl;
+    juce::Logger::writeToLog("Step 5: Found " + std::to_string(i) + " nodes with no unprocessed input connections");
 
-    std::cout << "Restarting loop..." << std::endl;
+    juce::Logger::writeToLog("Restarting loop...");
     std::cout << std::endl;
   }
 

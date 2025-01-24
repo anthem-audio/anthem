@@ -23,6 +23,7 @@ import 'package:anthem/commands/project_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/pattern/pattern.dart';
+import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
@@ -58,11 +59,11 @@ class ProjectController {
     project.isDetailViewSelected = isVisible;
   }
 
-  void setActiveGeneratorID(ID id) {
+  void setActiveGeneratorID(Id id) {
     project.activeInstrumentID = id;
   }
 
-  ID addPattern([String? name]) {
+  Id addPattern([String? name]) {
     if (name == null) {
       final patterns = project.song.patterns.nonObservableInner;
       var patternNumber = patterns.length;
@@ -75,7 +76,7 @@ class ProjectController {
       } while (existingNames.contains(name));
     }
 
-    final patternModel = PatternModel.create(name: name, project: project);
+    final patternModel = PatternModel.create(name: name);
 
     project.execute(
       AddPatternCommand(
@@ -166,17 +167,17 @@ class ProjectController {
   }
 
   void addGenerator({
-    required String? processorId,
+    required NodeModel node,
     required String name,
     required GeneratorType generatorType,
     required Color color,
   }) {
-    final id = getID();
+    final id = getId();
 
     project.execute(
       AddGeneratorCommand(
         generatorId: id,
-        processorId: processorId,
+        node: node,
         name: name,
         generatorType: generatorType,
         color: color,
@@ -209,7 +210,7 @@ class ProjectController {
     // );
   }
 
-  void removeGenerator(ID generatorID) {
+  void removeGenerator(Id generatorID) {
     project.execute(
       RemoveGeneratorCommand(
         project: project,

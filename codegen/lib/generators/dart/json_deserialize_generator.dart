@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,7 +18,7 @@
 */
 
 import 'package:analyzer/dart/element/element.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:anthem_codegen/generators/util/model_class_info.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:source_gen/source_gen.dart';
@@ -27,12 +27,12 @@ import 'package:source_gen/source_gen.dart';
 String generateJsonDeserializationCode({
   required ModelClassInfo context,
 }) {
-  var result = '';
+  var result = StringBuffer();
 
-  result += '''// ignore: duplicate_ignore
+  result.write('''// ignore: duplicate_ignore
 // ignore: non_constant_identifier_names
 static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
-''';
+''');
 
   // If the class is not sealed, we can just create an instance of the class
   if (!context.isSealed) {
@@ -40,47 +40,52 @@ static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
     // this constructor does not exist, then there must be a default constructor
     // with no arguments.
     if (context.annotatedClass.getNamedConstructor('uninitialized') != null) {
-      result +=
-          'final result = ${context.annotatedClass.name}.uninitialized();\n';
+      result.write(
+          'final result = ${context.annotatedClass.name}.uninitialized();\n');
     } else {
-      result += 'final result = ${context.annotatedClass.name}();\n';
+      result.write('final result = ${context.annotatedClass.name}();\n');
     }
   } else {
-    result += 'late final ${context.annotatedClass.name} result;';
+    result.write('late final ${context.annotatedClass.name} result;');
 
     bool isFirst = true;
     for (final subclass in context.sealedSubclasses) {
-      result +=
-          '${isFirst ? '' : 'else '}if (json[\'__type\'] == \'${subclass.name}\') {\n';
+      result.write(
+          '${isFirst ? '' : 'else '}if (json[\'__type\'] == \'${subclass.name}\') {\n');
       isFirst = false;
 
       // If the class has a special uninitialized constructor, we use that. If
       // this constructor does not exist, then there must be a default
       // constructor with no arguments.
       if (subclass.subclass.getNamedConstructor('uninitialized') != null) {
-        result += 'final subclassResult = ${subclass.name}.uninitialized();\n';
+        result.write(
+            'final subclassResult = ${subclass.name}.uninitialized();\n');
       } else {
-        result += 'final subclassResult = ${subclass.name}();\n';
+        result.write('final subclassResult = ${subclass.name}();\n');
       }
 
       for (final entry in subclass.fields.entries) {
         final name = entry.key;
         final fieldInfo = entry.value;
 
+        if (fieldInfo.isModelConstant) {
+          continue;
+        }
+
         if (_shouldSkip(fieldInfo.fieldElement)) {
           continue;
         }
 
-        result += _createSetterForField(
+        result.write(_createSetterForField(
           type: fieldInfo.typeInfo,
           fieldName: name,
           jsonName: 'json',
           resultName: 'subclassResult',
-        );
+        ));
       }
 
-      result += 'result = subclassResult;\n';
-      result += '}\n';
+      result.write('result = subclassResult;\n');
+      result.write('}\n');
     }
   }
 
@@ -88,24 +93,28 @@ static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
     final name = entry.key;
     final fieldInfo = entry.value;
 
+    if (fieldInfo.isModelConstant) {
+      continue;
+    }
+
     if (_shouldSkip(fieldInfo.fieldElement)) {
       continue;
     }
 
-    result += _createSetterForField(
+    result.write(_createSetterForField(
       type: fieldInfo.typeInfo,
       fieldName: name,
       jsonName: 'json',
       resultName: 'result',
-    );
+    ));
   }
 
-  result += '''
+  result.write('''
   return result;
 }
-''';
+''');
 
-  return result;
+  return result.toString();
 }
 
 /// Checks if a field should be skipped when generating JSON serialization code,
@@ -156,10 +165,10 @@ String _createGetterForField({
     BoolModelType() => '$getter as bool$q',
     ColorModelType() =>
       '''${type.isNullable ? '$getter == null ? null : ' : ''}Color.fromARGB(
-  $getter['a'] as int$q,
-  $getter['r'] as int$q,
-  $getter['g'] as int$q,
-  $getter['b'] as int$q,
+  $getter['a'] as int,
+  $getter['r'] as int,
+  $getter['g'] as int,
+  $getter['b'] as int,
 )''',
     EnumModelType(enumName: var enumName) =>
       '${type.isNullable ? '$getter == null ? null : ' : ''}$enumName.values.firstWhere((e) => e.name == $getter)',
@@ -174,7 +183,12 @@ String _createGetterForField({
         getter: getter,
       ),
     CustomModelType() =>
-      '${type.isNullable ? '$getter == null ? null : ' : ''}${type.type.annotatedClass.name}.fromJson($getter)',
+      '${type.isNullable ? '$getter == null ? null : ' : ''}${type.modelClassInfo.annotatedClass.name}.fromJson($getter)',
+    UnionModelType() => _generateUnionGetter(
+        type: type,
+        fieldName: fieldName,
+        getter: getter,
+      ),
     UnknownModelType() => 'null',
   };
 }
@@ -189,7 +203,7 @@ String _generateListGetter({
 
   final result = '''($getter as List$q)$q.map((e) {
   return ${_createGetterForField(type: type.itemType, fieldName: fieldName, getter: 'e')};
-}).cast<${type.itemType.name}$listParameterTypeQ>().toList()''';
+}).cast<${type.itemType.dartName}$listParameterTypeQ>().toList()''';
 
   switch (type.collectionType) {
     case CollectionType.raw:
@@ -214,7 +228,7 @@ String _generateMapGetter({
   final valueFromJson = $getter as Map<String, dynamic>$q;
   ${type.isNullable ? 'if (valueFromJson == null) return null;' : ''}
 
-  final map = <${type.keyType.name}$keyTypeQ, ${type.valueType.name}$valueTypeQ>{};
+  final map = <${type.keyType.dartName}$keyTypeQ, ${type.valueType.dartName}$valueTypeQ>{};
 
   for (final entry in valueFromJson.entries) {
     map[${_createGetterForKeyField(type: type.keyType, fieldName: fieldName, getter: 'entry.key')}]
@@ -259,4 +273,31 @@ String _createGetterForKeyField({
     BoolModelType() => 'bool.parse($getter)',
     _ => 'null',
   };
+}
+
+String _generateUnionGetter({
+  required UnionModelType type,
+  required String fieldName,
+  required String getter,
+}) {
+  return '''
+(() {
+  final keys = $getter${type.isNullable ? '?' : ''}.keys;
+
+  ${type.isNullable ? 'if ($getter == null) return null;' : ''}
+
+  if (keys.length != 1) {
+    throw Exception('Union type must have exactly one key');
+  }
+
+  switch (keys.first) {
+  ${type.subTypes.map((subtype) => '''
+    case '${subtype.dartName}':
+      return ${_createGetterForField(type: subtype, fieldName: fieldName, getter: '$getter[keys.first]')};
+  ''').join('\n')}
+    default:
+      throw Exception('Unknown union type');
+  }
+})()
+''';
 }

@@ -115,7 +115,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
     widget.onVerticalPanStart?.call(pointerPos.dy);
   }
 
-  handleMiddlePointerMove({
+  void handleMiddlePointerMove({
     required PointerMoveEvent event,
     required Offset pointerPos,
     required Size pianoRollSize,

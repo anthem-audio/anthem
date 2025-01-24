@@ -36,7 +36,7 @@ class ShortcutConsumer extends StatefulWidget {
   final Widget? child;
 
   /// This function will be called when this consumer receives a shortcut.
-  final Function(LogicalKeySet shortcut)? shortcutHandler;
+  final void Function(LogicalKeySet shortcut)? shortcutHandler;
 
   /// This function will be called when this consumer receives a shortcut.
   final bool Function(KeyEvent event)? rawKeyHandler;
@@ -61,7 +61,7 @@ class _ShortcutConsumerState extends State<ShortcutConsumer> {
   var registered = false;
   ShortcutProviderController? controller;
 
-  String getID() {
+  String getId() {
     final project = Provider.of<ProjectModel>(context, listen: false);
     return '${project.id}-${widget.id}';
   }
@@ -69,7 +69,7 @@ class _ShortcutConsumerState extends State<ShortcutConsumer> {
   late String id;
 
   void register() {
-    id = getID();
+    id = getId();
     controller!.registerRawKeyHandler(
         id: id,
         handler: (event) {

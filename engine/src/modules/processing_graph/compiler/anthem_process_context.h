@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,36 +21,41 @@
 
 #include <memory>
 #include <vector>
+#include <unordered_map>
 
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_events/juce_events.h>
 
 #include "modules/processing_graph/processor/anthem_event_buffer.h"
-#include "modules/processing_graph/topology/anthem_graph_node.h"
+#include "generated/lib/model/model.h"
 #include "modules/util/linear_parameter_smoother.h"
+#include "modules/processing_graph/model/node.h"
 
 // This class acts as a context for node graph processors. It is passed to the
 // `process()` method of each `AnthemProcessor`, and provides a way to query
 // the inputs and outputs of the node associated with that processor.
 class AnthemProcessContext {
 private:
-  std::vector<juce::AudioSampleBuffer> inputAudioBuffers;
-  std::vector<juce::AudioSampleBuffer> outputAudioBuffers;
+  std::unordered_map<int32_t, juce::AudioSampleBuffer> inputAudioBuffers;
+  std::unordered_map<int32_t, juce::AudioSampleBuffer> outputAudioBuffers;
 
-  std::vector<juce::AudioSampleBuffer> inputControlBuffers;
-  std::vector<juce::AudioSampleBuffer> outputControlBuffers;
+  std::unordered_map<int32_t, juce::AudioSampleBuffer> inputControlBuffers;
+  std::unordered_map<int32_t, juce::AudioSampleBuffer> outputControlBuffers;
 
-  std::vector<AnthemEventBuffer> inputNoteEventBuffers;
-  std::vector<AnthemEventBuffer> outputNoteEventBuffers;
+  std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>> inputNoteEventBuffers;
+  std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>> outputNoteEventBuffers;
 
-  std::vector<std::atomic<float>> parameterValues;
-  std::vector<std::unique_ptr<LinearParameterSmoother>> parameterSmoothers;
+  std::unordered_map<int32_t, std::atomic<float>*> parameterValues;
+  std::unordered_map<int32_t, std::unique_ptr<LinearParameterSmoother>> parameterSmoothers;
 
-  std::weak_ptr<AnthemGraphNode> graphNode;
+  std::weak_ptr<Node> graphNode;
 public:
-  AnthemProcessContext(std::shared_ptr<AnthemGraphNode> graphNode, ArenaBufferAllocator<AnthemProcessorEvent>* eventAllocator);
+  AnthemProcessContext(std::shared_ptr<Node>& graphNode, ArenaBufferAllocator<AnthemProcessorEvent>* eventAllocator);
 
-  std::shared_ptr<AnthemGraphNode> getGraphNode() {
+  // Clean up the context. This must be called before the context is deallocated.
+  void cleanup();
+
+  std::shared_ptr<Node> getGraphNode() {
     // This function is for debugging. The graph node is mutated on the JUCE
     // message thread without any concern for thread safety, so we throw if
     // we're not on that thread.
@@ -61,41 +66,41 @@ public:
     return graphNode.lock();
   }
 
-  void setParameterValue(size_t index, float value);
-  float getParameterValue(size_t index);
+  void setParameterValue(int32_t id, float value);
+  float getParameterValue(int32_t id);
 
-  void setAllInputAudioBuffers(const std::vector<juce::AudioSampleBuffer>& buffers);
-  void setAllOutputAudioBuffers(const std::vector<juce::AudioSampleBuffer>& buffers);
+  void setAllInputAudioBuffers(std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers);
+  void setAllOutputAudioBuffers(std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers);
 
-  juce::AudioSampleBuffer& getInputAudioBuffer(size_t index);
-  juce::AudioSampleBuffer& getOutputAudioBuffer(size_t index);
+  std::unordered_map<int32_t, juce::AudioSampleBuffer>& getAllInputAudioBuffers();
+  std::unordered_map<int32_t, juce::AudioSampleBuffer>& getAllOutputAudioBuffers();
 
-  size_t getNumInputAudioBuffers();
-  size_t getNumOutputAudioBuffers();
+  juce::AudioSampleBuffer& getInputAudioBuffer(int32_t id);
+  juce::AudioSampleBuffer& getOutputAudioBuffer(int32_t id);
 
-  void setAllInputControlBuffers(const std::vector<juce::AudioSampleBuffer>& buffers);
-  void setAllOutputControlBuffers(const std::vector<juce::AudioSampleBuffer>& buffers);
+  void setAllInputControlBuffers(std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers);
+  void setAllOutputControlBuffers(std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers);
 
-  juce::AudioSampleBuffer& getInputControlBuffer(size_t index);
-  juce::AudioSampleBuffer& getOutputControlBuffer(size_t index);
+  std::unordered_map<int32_t, juce::AudioSampleBuffer>& getAllInputControlBuffers();
+  std::unordered_map<int32_t, juce::AudioSampleBuffer>& getAllOutputControlBuffers();
 
-  size_t getNumInputControlBuffers();
-  size_t getNumOutputControlBuffers();
+  juce::AudioSampleBuffer& getInputControlBuffer(int32_t id);
+  juce::AudioSampleBuffer& getOutputControlBuffer(int32_t id);
 
-  void setAllInputNoteEventBuffers(const std::vector<AnthemEventBuffer>& buffers);
-  void setAllOutputNoteEventBuffers(const std::vector<AnthemEventBuffer>& buffers);
+  void setAllInputNoteEventBuffers(std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& buffers);
+  void setAllOutputNoteEventBuffers(std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& buffers);
 
-  AnthemEventBuffer& getInputNoteEventBuffer(size_t index);
-  AnthemEventBuffer& getOutputNoteEventBuffer(size_t index);
+  std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& getAllInputNoteEventBuffers();
+  std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& getAllOutputNoteEventBuffers();
 
-  size_t getNumInputNoteEventBuffers();
-  size_t getNumOutputNoteEventBuffers();
+  std::unique_ptr<AnthemEventBuffer>& getInputNoteEventBuffer(int32_t id);
+  std::unique_ptr<AnthemEventBuffer>& getOutputNoteEventBuffer(int32_t id);
 
-  std::vector<std::atomic<float>>& getParameterValues() {
+  std::unordered_map<int32_t, std::atomic<float>*>& getParameterValues() {
     return parameterValues;
   }
 
-  std::vector<std::unique_ptr<LinearParameterSmoother>>& getParameterSmoothers() {
+  std::unordered_map<int32_t, std::unique_ptr<LinearParameterSmoother>>& getParameterSmoothers() {
     return parameterSmoothers;
   }
 };

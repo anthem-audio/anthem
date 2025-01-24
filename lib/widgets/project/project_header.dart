@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,7 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:convert';
+
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/model.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
@@ -25,6 +28,7 @@ import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/main_window/main_window_controller.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -32,7 +36,7 @@ import 'package:provider/provider.dart';
 import '../basic/icon.dart';
 
 class ProjectHeader extends StatelessWidget {
-  final ID projectID;
+  final Id projectID;
 
   const ProjectHeader({super.key, required this.projectID});
 
@@ -94,6 +98,47 @@ class ProjectHeader extends StatelessWidget {
                       mainWindowController.saveProject(projectID, true);
                     },
                   ),
+                  Separator(),
+                  if (kDebugMode)
+                    AnthemMenuItem(
+                      text: 'Debug',
+                      submenu: MenuDef(
+                        children: [
+                          AnthemMenuItem(
+                            text: 'Print project JSON (UI)',
+                            hint:
+                                'Print the project JSON as reported by the UI',
+                            onSelected: () async {
+                              // ignore: avoid_print
+                              print(
+                                jsonEncode(AnthemStore
+                                    .instance
+                                    .projects[
+                                        AnthemStore.instance.activeProjectID]!
+                                    .toJson()),
+                              );
+                            },
+                          ),
+                          AnthemMenuItem(
+                            text: 'Print project JSON (engine)',
+                            hint:
+                                'Print the project as JSON as reported by the engine',
+                            onSelected: () async {
+                              // ignore: avoid_print
+                              print(
+                                await AnthemStore
+                                    .instance
+                                    .projects[
+                                        AnthemStore.instance.activeProjectID]!
+                                    .engine
+                                    .modelSyncApi
+                                    .debugGetEngineJson(),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
               child: Button(

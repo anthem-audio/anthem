@@ -17,8 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/shared/hydratable.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
 part 'parameter_config.g.dart';
@@ -39,7 +39,7 @@ part 'parameter_config.g.dart';
 /// the processing graph. This includes the default value of the parameter, the
 /// minimum and maximum values of the parameter, and the duration over which the
 /// parameter value will be smoothed.
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class ParameterConfigModel extends _ParameterConfigModel
     with _$ParameterConfigModel, _$ParameterConfigModelAnthemModelMixin {
   ParameterConfigModel({
@@ -63,8 +63,7 @@ class ParameterConfigModel extends _ParameterConfigModel
       _$ParameterConfigModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _ParameterConfigModel extends Hydratable
-    with Store, AnthemModelBase {
+abstract class _ParameterConfigModel with Store, AnthemModelBase {
   /// The ID associated with this parameter.
   ///
   /// This must be unique within a plugin. This is analogous to the VST3
@@ -90,8 +89,5 @@ abstract class _ParameterConfigModel extends Hydratable
     required this.minimumValue,
     required this.maximumValue,
     required this.smoothingDurationSeconds,
-  }) {
-    isHydrated = true;
-    (this as _$ParameterConfigModelAnthemModelMixin).init();
-  }
+  });
 }

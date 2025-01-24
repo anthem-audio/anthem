@@ -66,13 +66,13 @@ abstract class _PianoRollViewModel with Store {
   Rectangle<double>? selectionBox;
 
   @observable
-  ObservableSet<ID> selectedNotes = ObservableSet();
+  ObservableSet<Id> selectedNotes = ObservableSet();
 
   @observable
-  ID? pressedNote;
+  Id? pressedNote;
 
   @observable
-  ID? hoveredNote;
+  Id? hoveredNote;
 
   @observable
   ActiveNoteAttribute activeNoteAttribute = ActiveNoteAttribute.velocity;
@@ -80,8 +80,8 @@ abstract class _PianoRollViewModel with Store {
   @observable
   EditorTool tool = EditorTool.pencil;
 
-  final visibleNotes = CanvasAnnotationSet<({ID id})>();
-  final visibleResizeAreas = CanvasAnnotationSet<({ID id})>();
+  final visibleNotes = CanvasAnnotationSet<({Id id})>();
+  final visibleResizeAreas = CanvasAnnotationSet<({Id id})>();
 
   // These don't need to be observable, since they're just used during event
   // handling.
@@ -91,8 +91,8 @@ abstract class _PianoRollViewModel with Store {
 
   /// Calculates the note and resize handle under the cursor, if there is one.
   ({
-    CanvasAnnotation<({ID id})>? note,
-    CanvasAnnotation<({ID id})>? resizeHandle,
+    CanvasAnnotation<({Id id})>? note,
+    CanvasAnnotation<({Id id})>? resizeHandle,
   }) getContentUnderCursor(Offset pos) {
     final noteUnderCursor = visibleNotes.hitTest(pos);
     final resizeHandleUnderCursor = visibleResizeAreas

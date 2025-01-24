@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,135 +19,145 @@
 
 #include "anthem_process_context.h"
 
-#include "modules/processing_graph/topology/anthem_graph_node.h"
 #include "modules/core/constants.h"
 
-AnthemProcessContext::AnthemProcessContext(std::shared_ptr<AnthemGraphNode> graphNode, ArenaBufferAllocator<AnthemProcessorEvent>* eventAllocator) : graphNode(graphNode) {
-  for (int i = 0; i < graphNode->audioInputs.size(); i++) {
-    inputAudioBuffers.push_back(juce::AudioSampleBuffer(2, MAX_AUDIO_BUFFER_SIZE));
+AnthemProcessContext::AnthemProcessContext(std::shared_ptr<Node>& graphNode, ArenaBufferAllocator<AnthemProcessorEvent>* eventAllocator) : graphNode(graphNode) {
+  for (auto& port : *graphNode->audioInputPorts()) {
+    inputAudioBuffers[port->id()] = juce::AudioSampleBuffer(2, MAX_AUDIO_BUFFER_SIZE);
   }
 
-  for (int i = 0; i < graphNode->audioOutputs.size(); i++) {
-    outputAudioBuffers.push_back(juce::AudioSampleBuffer(2, MAX_AUDIO_BUFFER_SIZE));
+  for (auto& port : *graphNode->audioOutputPorts()) {
+    outputAudioBuffers[port->id()] = juce::AudioSampleBuffer(2, MAX_AUDIO_BUFFER_SIZE);
   }
 
-  for (int i = 0; i < graphNode->controlInputs.size(); i++) {
-    inputControlBuffers.push_back(juce::AudioSampleBuffer(1, MAX_AUDIO_BUFFER_SIZE));
+  for (auto& port : *graphNode->controlInputPorts()) {
+    inputControlBuffers[port->id()] = juce::AudioSampleBuffer(1, MAX_AUDIO_BUFFER_SIZE);
   }
 
-  for (int i = 0; i < graphNode->controlOutputs.size(); i++) {
-    outputControlBuffers.push_back(juce::AudioSampleBuffer(1, MAX_AUDIO_BUFFER_SIZE));
+  for (auto& port : *graphNode->controlOutputPorts()) {
+    outputControlBuffers[port->id()] = juce::AudioSampleBuffer(1, MAX_AUDIO_BUFFER_SIZE);
   }
 
-  for (int i = 0; i < graphNode->noteEventInputs.size(); i++) {
-    inputNoteEventBuffers.push_back(AnthemEventBuffer(eventAllocator, 1024));
+  for (auto& port : *graphNode->midiInputPorts()) {
+    inputNoteEventBuffers[port->id()] = std::move(std::make_unique<AnthemEventBuffer>(eventAllocator, 1024));
   }
 
-  for (int i = 0; i < graphNode->noteEventOutputs.size(); i++) {
-    outputNoteEventBuffers.push_back(AnthemEventBuffer(eventAllocator, 1024));
+  for (auto& port : *graphNode->midiOutputPorts()) {
+    outputNoteEventBuffers[port->id()] = std::move(std::make_unique<AnthemEventBuffer>(eventAllocator, 1024));
   }
 
-  // Because parameter values use std::atomic, we need to initialize them in an odd way
-
-  parameterValues = std::vector<std::atomic<float>>(graphNode->controlInputs.size());
-
-  for (int i = 0; i < graphNode->controlInputs.size(); i++) {
-    std::atomic<float> value(graphNode->parameters[i]);
-    parameterValues[i] = value.load();
+  for (auto& port : *graphNode->controlInputPorts()) {
+    parameterValues[port->id()] = new std::atomic<float>(port->parameterValue().value_or(0.0f));
   }
 
-  parameterSmoothers = std::vector<std::unique_ptr<LinearParameterSmoother>>();
+  for (auto& port : *graphNode->controlInputPorts()) {
+    auto parameterValue = port->parameterValue().value_or(0.0f);
+    auto& parameterConfig = port->config()->parameterConfig();
 
-  for (int i = 0; i < graphNode->controlInputs.size(); i++) {
-    auto parameterValue = graphNode->parameters[i];
-    auto& parameterConfig = graphNode->processor->config.getParameterByIndex(i);
+    auto smoother = std::make_unique<LinearParameterSmoother>(parameterValue, parameterConfig.value()->smoothingDurationSeconds());
+    parameterSmoothers[port->id()] = std::move(smoother);
+  }
 
-    auto smoother = std::make_unique<LinearParameterSmoother>(parameterValue, parameterConfig->smoothingDurationSeconds);
-    parameterSmoothers.push_back(std::move(smoother));
+  this->graphNode = graphNode;
+}
+
+void AnthemProcessContext::cleanup() {
+  // Delete the atomic floats
+  for (auto& [id, value] : parameterValues) {
+    delete value;
+  }
+
+  // Cleanup the event buffers
+  for (auto& [id, buffer] : inputNoteEventBuffers) {
+    buffer->cleanup();
+  }
+
+  for (auto& [id, buffer] : outputNoteEventBuffers) {
+    buffer->cleanup();
   }
 }
 
-void AnthemProcessContext::setParameterValue(size_t index, float value) {
+void AnthemProcessContext::setParameterValue(int32_t id, float value) {
   // Throw if not on the JUCE message thread
   if (!juce::MessageManager::getInstance()->isThisTheMessageThread()) {
     throw std::runtime_error("AnthemProcessContext::setParameterValue() must be called on the JUCE message thread.");
   }
 
-  parameterValues[index].store(value);
+  parameterValues[id]->store(value);
 }
 
-float AnthemProcessContext::getParameterValue(size_t index) {
-  return parameterValues[index].load();
+float AnthemProcessContext::getParameterValue(int32_t id) {
+  return parameterValues[id]->load();
 }
 
-void AnthemProcessContext::setAllInputAudioBuffers(const std::vector<juce::AudioSampleBuffer>& buffers) {
-  inputAudioBuffers = buffers;
+void AnthemProcessContext::setAllInputAudioBuffers(std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers) {
+  inputAudioBuffers = std::move(buffers);
 }
 
-void AnthemProcessContext::setAllOutputAudioBuffers(const std::vector<juce::AudioSampleBuffer>& buffers) {
-  outputAudioBuffers = buffers;
+void AnthemProcessContext::setAllOutputAudioBuffers(std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers) {
+  outputAudioBuffers = std::move(buffers);
 }
 
-juce::AudioSampleBuffer& AnthemProcessContext::getInputAudioBuffer(size_t index) {
-  return inputAudioBuffers[index];
+std::unordered_map<int32_t, juce::AudioSampleBuffer>& AnthemProcessContext::getAllInputAudioBuffers() {
+  return inputAudioBuffers;
 }
 
-juce::AudioSampleBuffer& AnthemProcessContext::getOutputAudioBuffer(size_t index) {
-  return outputAudioBuffers[index];
+std::unordered_map<int32_t, juce::AudioSampleBuffer>& AnthemProcessContext::getAllOutputAudioBuffers() {
+  return outputAudioBuffers;
 }
 
-size_t AnthemProcessContext::getNumInputAudioBuffers() {
-  return inputAudioBuffers.size();
+juce::AudioSampleBuffer& AnthemProcessContext::getInputAudioBuffer(int32_t id) {
+  return inputAudioBuffers[id];
 }
 
-size_t AnthemProcessContext::getNumOutputAudioBuffers() {
-  return outputAudioBuffers.size();
+juce::AudioSampleBuffer& AnthemProcessContext::getOutputAudioBuffer(int32_t id) {
+  return outputAudioBuffers[id];
 }
 
-void AnthemProcessContext::setAllInputControlBuffers(const std::vector<juce::AudioSampleBuffer>& buffers) {
-  inputControlBuffers = buffers;
+void AnthemProcessContext::setAllInputControlBuffers(std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers) {
+  inputControlBuffers = std::move(buffers);
 }
 
-void AnthemProcessContext::setAllOutputControlBuffers(const std::vector<juce::AudioSampleBuffer>& buffers) {
-  outputControlBuffers = buffers;
+void AnthemProcessContext::setAllOutputControlBuffers(std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers) {
+  outputControlBuffers = std::move(buffers);
 }
 
-juce::AudioSampleBuffer& AnthemProcessContext::getInputControlBuffer(size_t index) {
-  return inputControlBuffers[index];
+std::unordered_map<int32_t, juce::AudioSampleBuffer>& AnthemProcessContext::getAllInputControlBuffers() {
+  return inputControlBuffers;
 }
 
-juce::AudioSampleBuffer& AnthemProcessContext::getOutputControlBuffer(size_t index) {
-  return outputControlBuffers[index];
+std::unordered_map<int32_t, juce::AudioSampleBuffer>& AnthemProcessContext::getAllOutputControlBuffers() {
+  return outputControlBuffers;
 }
 
-size_t AnthemProcessContext::getNumInputControlBuffers() {
-  return inputControlBuffers.size();
+juce::AudioSampleBuffer& AnthemProcessContext::getInputControlBuffer(int32_t id) {
+  return inputControlBuffers[id];
 }
 
-size_t AnthemProcessContext::getNumOutputControlBuffers() {
-  return outputControlBuffers.size();
+juce::AudioSampleBuffer& AnthemProcessContext::getOutputControlBuffer(int32_t id) {
+  return outputControlBuffers[id];
 }
 
-void AnthemProcessContext::setAllInputNoteEventBuffers(const std::vector<AnthemEventBuffer>& buffers) {
-  inputNoteEventBuffers = buffers;
+void AnthemProcessContext::setAllInputNoteEventBuffers(std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& buffers) {
+  inputNoteEventBuffers = std::move(buffers);
 }
 
-void AnthemProcessContext::setAllOutputNoteEventBuffers(const std::vector<AnthemEventBuffer>& buffers) {
-  outputNoteEventBuffers = buffers;
+void AnthemProcessContext::setAllOutputNoteEventBuffers(std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& buffers) {
+  outputNoteEventBuffers = std::move(buffers);
 }
 
-AnthemEventBuffer& AnthemProcessContext::getInputNoteEventBuffer(size_t index) {
-  return inputNoteEventBuffers[index];
+std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& AnthemProcessContext::getAllInputNoteEventBuffers() {
+  return inputNoteEventBuffers;
 }
 
-AnthemEventBuffer& AnthemProcessContext::getOutputNoteEventBuffer(size_t index) {
-  return outputNoteEventBuffers[index];
+std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& AnthemProcessContext::getAllOutputNoteEventBuffers() {
+  return outputNoteEventBuffers;
 }
 
-size_t AnthemProcessContext::getNumInputNoteEventBuffers() {
-  return inputNoteEventBuffers.size();
+std::unique_ptr<AnthemEventBuffer>& AnthemProcessContext::getInputNoteEventBuffer(int32_t id) {
+  return inputNoteEventBuffers[id];
 }
 
-size_t AnthemProcessContext::getNumOutputNoteEventBuffers() {
-  return outputNoteEventBuffers.size();
+std::unique_ptr<AnthemEventBuffer>& AnthemProcessContext::getOutputNoteEventBuffer(int32_t id) {
+  return outputNoteEventBuffers[id];
 }

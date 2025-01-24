@@ -17,40 +17,54 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/shared/hydratable.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
 part 'node_connection.g.dart';
 
-@AnthemModel.all()
+@AnthemModel.syncedModel(
+  cppBehaviorClassName: 'NodeConnection',
+  cppBehaviorClassIncludePath:
+      'modules/processing_graph/model/node_connection.h',
+)
 class NodeConnectionModel extends _NodeConnectionModel
     with _$NodeConnectionModel, _$NodeConnectionModelAnthemModelMixin {
   NodeConnectionModel({
     required super.id,
+    required super.sourceNodeId,
     required super.sourcePortId,
-    required super.targetPortId,
+    required super.destinationNodeId,
+    required super.destinationPortId,
   });
 
   NodeConnectionModel.uninitialized()
-      : super(id: '', sourcePortId: '', targetPortId: '');
+      : super(
+          id: '',
+          sourceNodeId: '',
+          sourcePortId: 0,
+          destinationNodeId: '',
+          destinationPortId: 0,
+        );
 
   factory NodeConnectionModel.fromJson(Map<String, dynamic> json) =>
       _$NodeConnectionModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _NodeConnectionModel extends Hydratable
-    with Store, AnthemModelBase {
+abstract class _NodeConnectionModel with Store, AnthemModelBase {
   String id;
 
-  String sourcePortId;
-  String targetPortId;
+  String sourceNodeId;
+  int sourcePortId;
 
-  _NodeConnectionModel(
-      {required this.id,
-      required this.sourcePortId,
-      required this.targetPortId}) {
-    isHydrated = true;
-    (this as _$NodeConnectionModelAnthemModelMixin).init();
-  }
+  String destinationNodeId;
+  int destinationPortId;
+
+  _NodeConnectionModel({
+    required this.id,
+    required this.sourceNodeId,
+    required this.sourcePortId,
+    required this.destinationNodeId,
+    required this.destinationPortId,
+  });
 }

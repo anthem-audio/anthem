@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,7 +20,7 @@
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
@@ -29,7 +29,7 @@ import 'model_class_info.dart';
 /// Represents a type in the model.
 sealed class ModelType {
   abstract final bool canBeMapKey;
-  abstract final String name;
+  abstract final String dartName;
   final bool isNullable;
 
   ModelType({required this.isNullable});
@@ -40,7 +40,7 @@ class StringModelType extends ModelType {
   final bool canBeMapKey = true;
 
   @override
-  String get name => 'String';
+  String get dartName => 'String';
 
   StringModelType({required super.isNullable});
 }
@@ -50,7 +50,7 @@ class IntModelType extends ModelType {
   final bool canBeMapKey = true;
 
   @override
-  String get name => 'int';
+  String get dartName => 'int';
 
   IntModelType({required super.isNullable});
 }
@@ -60,7 +60,7 @@ class DoubleModelType extends ModelType {
   final bool canBeMapKey = true;
 
   @override
-  String get name => 'double';
+  String get dartName => 'double';
 
   DoubleModelType({required super.isNullable});
 }
@@ -70,7 +70,7 @@ class NumModelType extends ModelType {
   final bool canBeMapKey = true;
 
   @override
-  String get name => 'num';
+  String get dartName => 'num';
 
   NumModelType({required super.isNullable});
 }
@@ -80,7 +80,7 @@ class BoolModelType extends ModelType {
   final bool canBeMapKey = true;
 
   @override
-  String get name => 'bool';
+  String get dartName => 'bool';
 
   BoolModelType({required super.isNullable});
 }
@@ -97,7 +97,7 @@ class EnumModelType extends ModelType {
       {required super.isNullable, required this.enumElement});
 
   @override
-  String get name => enumName;
+  String get dartName => enumName;
 }
 
 enum CollectionType {
@@ -122,14 +122,14 @@ class ListModelType extends ModelType {
       {this.collectionType = CollectionType.raw, required super.isNullable});
 
   @override
-  String get name {
+  String get dartName {
     final collectionTypeName = switch (collectionType) {
       CollectionType.raw => 'List',
       CollectionType.mobXObservable => 'ObservableList',
       CollectionType.anthemObservable => 'AnthemObservableList',
     };
 
-    return '$collectionTypeName<${itemType.name}${itemType.isNullable ? '?' : ''}>';
+    return '$collectionTypeName<${itemType.dartName}${itemType.isNullable ? '?' : ''}>';
   }
 }
 
@@ -150,14 +150,14 @@ class MapModelType extends ModelType {
       {this.collectionType = CollectionType.raw, required super.isNullable});
 
   @override
-  String get name {
+  String get dartName {
     final collectionTypeName = switch (collectionType) {
       CollectionType.raw => 'Map',
       CollectionType.mobXObservable => 'ObservableMap',
       CollectionType.anthemObservable => 'AnthemObservableMap',
     };
 
-    return '$collectionTypeName<${keyType.name}${keyType.isNullable ? '?' : ''}, ${valueType.name}${valueType.isNullable ? '?' : ''}>';
+    return '$collectionTypeName<${keyType.dartName}${keyType.isNullable ? '?' : ''}, ${valueType.dartName}${valueType.isNullable ? '?' : ''}>';
   }
 }
 
@@ -166,7 +166,7 @@ class ColorModelType extends ModelType {
   final bool canBeMapKey = false;
 
   @override
-  String get name => 'Color';
+  String get dartName => 'Color';
 
   ColorModelType({required super.isNullable});
 }
@@ -176,12 +176,24 @@ class CustomModelType extends ModelType {
   @override
   final bool canBeMapKey = false;
 
-  final ModelClassInfo type;
+  final ModelClassInfo modelClassInfo;
 
-  CustomModelType(this.type, {required super.isNullable});
+  CustomModelType(this.modelClassInfo, {required super.isNullable});
 
   @override
-  String get name => type.annotatedClass.name;
+  String get dartName => modelClassInfo.annotatedClass.name;
+}
+
+class UnionModelType extends ModelType {
+  @override
+  final bool canBeMapKey = false;
+
+  @override
+  String get dartName => 'Object';
+
+  final List<ModelType> subTypes;
+
+  UnionModelType(this.subTypes, {required super.isNullable});
 }
 
 /// Represents a type that may or may not be valid, but cannot be parsed for
@@ -191,15 +203,16 @@ class UnknownModelType extends ModelType {
   final bool canBeMapKey = false;
 
   @override
-  final String name;
+  final String dartName;
 
-  UnknownModelType({required this.name, required super.isNullable});
-  UnknownModelType.error({this.name = 'ErrorType', super.isNullable = false});
+  UnknownModelType({required this.dartName, required super.isNullable});
+  UnknownModelType.error(
+      {this.dartName = 'ErrorType', super.isNullable = false});
 }
 
 /// Parses a Dart type into a [ModelType].
-ModelType getModelType(
-    DartType type, LibraryReader libraryReader, ClassElement annotatedClass) {
+ModelType getModelType(DartType type, ClassElement annotatedClass,
+    {FieldElement? field}) {
   final element = type.element;
   if (element == null) return UnknownModelType.error();
 
@@ -213,6 +226,10 @@ ModelType getModelType(
     'String' => StringModelType(isNullable: isNullable),
     'Color' => ColorModelType(isNullable: isNullable),
     _ => (() {
+        final unionAnnotation = field == null
+            ? null
+            : const TypeChecker.fromRuntime(Union).firstAnnotationOf(field);
+
         // Check if this is a list
         if (element is ClassElement &&
             (element.name == 'List' ||
@@ -223,8 +240,7 @@ ModelType getModelType(
           final typeParam = type.typeArguments.first;
           if (typeParam.element == null) return UnknownModelType.error();
 
-          final itemType =
-              getModelType(typeParam, libraryReader, annotatedClass);
+          final itemType = getModelType(typeParam, annotatedClass);
           return ListModelType(
             itemType,
             collectionType: switch (element.name) {
@@ -246,8 +262,7 @@ ModelType getModelType(
           final typeParams = type.typeArguments;
           if (typeParams.length != 2) return UnknownModelType.error();
 
-          final keyType =
-              getModelType(typeParams[0], libraryReader, annotatedClass);
+          final keyType = getModelType(typeParams[0], annotatedClass);
           if (!keyType.canBeMapKey) {
             log.warning(
                 'Map key type cannot be used as a map key: ${typeParams[0].element?.name}');
@@ -256,8 +271,7 @@ ModelType getModelType(
             return UnknownModelType.error();
           }
 
-          final valueType =
-              getModelType(typeParams[1], libraryReader, annotatedClass);
+          final valueType = getModelType(typeParams[1], annotatedClass);
           return MapModelType(
             keyType,
             valueType,
@@ -270,6 +284,26 @@ ModelType getModelType(
           );
         }
 
+        // Check for Object with @Union() annotation
+        else if (element is ClassElement && element.name == 'Object') {
+          final types = unionAnnotation
+              ?.getField('types')
+              ?.toListValue()
+              ?.map((e) => e.toTypeValue())
+              .whereType<DartType>()
+              .toList();
+
+          final subTypeModelTypes =
+              types?.map((e) => getModelType(e, annotatedClass)).toList();
+
+          if (subTypeModelTypes != null) {
+            return UnionModelType(subTypeModelTypes, isNullable: isNullable);
+          }
+        } else if (unionAnnotation != null && field != null) {
+          throw Exception(
+              'Union annotation must be used on Object type, but was used on ${element.name}. The type ${element.name} is used in a field on ${annotatedClass.name}.');
+        }
+
         // Check for custom type
         else if (element is ClassElement) {
           // If this is a custom type, it should be annotated as an Anthem model
@@ -277,11 +311,13 @@ ModelType getModelType(
               const TypeChecker.fromRuntime(AnthemModel)
                   .firstAnnotationOf(element);
           if (anthemModelAnnotation == null) {
-            return UnknownModelType(name: element.name, isNullable: isNullable);
+            return UnknownModelType(
+                dartName: element.name, isNullable: isNullable);
           }
 
           try {
-            final type = ModelClassInfo(libraryReader, element);
+            final type =
+                ModelClassInfo(LibraryReader(element.library), element);
             return CustomModelType(type, isNullable: isNullable);
           } catch (e) {
             log.warning('Error parsing custom type: ${element.name}');
@@ -289,7 +325,8 @@ ModelType getModelType(
                 'This may be because the type is not formed correctly.');
             log.warning(
                 '${element.name} is a field on ${annotatedClass.name}.');
-            return UnknownModelType(name: element.name, isNullable: isNullable);
+            return UnknownModelType(
+                dartName: element.name, isNullable: isNullable);
           }
         }
 

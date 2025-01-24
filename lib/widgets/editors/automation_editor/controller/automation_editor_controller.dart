@@ -65,7 +65,7 @@ class _AutomationEditorController {
       viewModel.hoveredPointAnnotation;
       viewModel.pressedPointAnnotation;
 
-      final visitedPointIds = <ID>{};
+      final visitedPointIds = <Id>{};
 
       // We don't need to observe the whole list - we just care when the hovered
       // and pressed point values change.

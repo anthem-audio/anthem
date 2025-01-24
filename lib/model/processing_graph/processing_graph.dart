@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,32 +17,113 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/collections.dart';
+import 'package:anthem/model/processing_graph/processors/master_output.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
 import 'node.dart';
 import 'node_connection.dart';
-import 'node_port.dart';
 
 part 'processing_graph.g.dart';
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class ProcessingGraphModel extends _ProcessingGraphModel
     with _$ProcessingGraphModel, _$ProcessingGraphModelAnthemModelMixin {
-  ProcessingGraphModel();
+  ProcessingGraphModel.uninitialized();
+
+  ProcessingGraphModel() {
+    // Set up the master output node
+    final masterOutputNode =
+        MasterOutputProcessorModel.createNode('masterOutput');
+    addNode(masterOutputNode);
+    masterOutputNodeId = masterOutputNode.id;
+
+    // Send a message to compile the processing graph after the model has been
+    // sent to the engine
+    onModelAttached(() async {
+      await project.waitForFirstSync();
+      await project.engine.processingGraphApi.compile();
+    });
+  }
 
   factory ProcessingGraphModel.fromJson(Map<String, dynamic> json) =>
       _$ProcessingGraphModelAnthemModelMixin.fromJson(json);
+
+  void addNode(NodeModel node) {
+    nodes[node.id] = node;
+  }
+
+  /// Removes a node from the graph, and removes all connections to and from the
+  /// node.
+  void removeNode(String nodeId) {
+    final node = nodes[nodeId];
+
+    if (node == null) return;
+
+    for (final port in node.getAllPorts()) {
+      // We copy the list of connections here so we can modify the original
+      // without a concurrent modification error
+      for (final connectionId in [...port.connections]) {
+        removeConnection(connectionId);
+      }
+    }
+
+    nodes.remove(nodeId);
+  }
+
+  void addConnection(NodeConnectionModel connection) {
+    connections[connection.id] = connection;
+
+    final sourceNode = nodes[connection.sourceNodeId]!;
+    final sourceNodePort = sourceNode.getPortById(connection.sourcePortId);
+    sourceNodePort.connections.add(connection.id);
+
+    final destinationNode = nodes[connection.destinationNodeId];
+    final destinationNodePort =
+        destinationNode!.getPortById(connection.destinationPortId);
+    destinationNodePort.connections.add(connection.id);
+  }
+
+  void removeConnection(String connectionId) {
+    final connection = connections[connectionId]!;
+    final sourceNode = nodes[connection.sourceNodeId]!;
+    final sourceNodePort = sourceNode.getPortById(connection.sourcePortId);
+    sourceNodePort.connections.removeWhere((e) => e == connectionId);
+
+    final destinationNode = nodes[connection.destinationNodeId]!;
+    final destinationNodePort =
+        destinationNode.getPortById(connection.destinationPortId);
+    destinationNodePort.connections.removeWhere((e) => e == connectionId);
+
+    connections.remove(connectionId);
+  }
+
+  NodeModel getMasterOutputNode() {
+    return nodes[masterOutputNodeId]!;
+  }
 }
 
 abstract class _ProcessingGraphModel with Store, AnthemModelBase {
+  /// A map of nodes in the graph.
+  ///
+  /// The key is the node ID.
+  ///
+  /// This should not be modified directly. Use [addNode] and [removeNode].
   @anthemObservable
   AnthemObservableMap<String, NodeModel> nodes = AnthemObservableMap();
 
-  @anthemObservable
-  AnthemObservableMap<String, NodePortModel> ports = AnthemObservableMap();
-
+  /// A map of connections between nodes in the graph.
+  ///
+  /// The key is the connection ID.
+  ///
+  /// This should not be modified directly. Use [addConnection] and
+  /// [removeConnection].
   @anthemObservable
   AnthemObservableMap<String, NodeConnectionModel> connections =
       AnthemObservableMap();
+
+  @anthemObservable
+  late String masterOutputNodeId;
 }

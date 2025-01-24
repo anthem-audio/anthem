@@ -21,18 +21,18 @@
 
 #include <memory>
 
-#include "modules/processing_graph/topology/anthem_graph_node.h"
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 #include "modules/processing_graph/compiler/actions/anthem_graph_compiler_action.h"
+#include "modules/processing_graph/processor/anthem_processor.h"
 
 class ProcessNodeAction : public AnthemGraphCompilerAction {
 public:
   AnthemProcessContext* context;
-  AnthemGraphNode* node;
+  AnthemProcessor* processor;
 
   void execute(int numSamples) override;
 
-  ProcessNodeAction(AnthemProcessContext* context, AnthemGraphNode* node) : context(context), node(node) {}
+  ProcessNodeAction(AnthemProcessContext* context, AnthemProcessor* processor) : context(context), processor(processor) {}
 
   void debugPrint() override;
 };

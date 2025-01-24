@@ -28,7 +28,7 @@ class NoteLabelImageCache {
   List<Image>? _cache;
   bool initialized = false;
 
-  init(double devicePixelRatio) async {
+  void init(double devicePixelRatio) async {
     initialized = true;
     final cache = <Image>[];
 

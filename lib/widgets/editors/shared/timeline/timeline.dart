@@ -31,8 +31,8 @@ import '../helpers/time_helpers.dart';
 import '../helpers/types.dart';
 
 class Timeline extends StatefulWidget {
-  final ID? arrangementID;
-  final ID? patternID;
+  final Id? arrangementID;
+  final Id? patternID;
 
   final AnimationController timeViewAnimationController;
   final Animation<double> timeViewStartAnimation;
@@ -206,7 +206,7 @@ const _labelHandleMouseAreaPadding = 5.0;
 
 class TimelineLabel extends StatefulWidget {
   final String text;
-  final ID id;
+  final Id id;
   final Time offset;
   final double timelineWidth;
   // We need to pass in the parent's build context, since our build context
@@ -279,13 +279,13 @@ class _TimelineLabelState extends State<TimelineLabel> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                color: const Color(0xFFFFFFFF).withOpacity(0.6),
+                color: const Color(0xFFFFFFFF).withValues(alpha: 0.6),
                 width: _labelHandleWidth,
                 height: 21,
               ),
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFFFFF).withOpacity(0.08),
+                  color: const Color(0xFFFFFFFF).withValues(alpha: 0.08),
                   borderRadius: const BorderRadius.only(
                     topRight: Radius.circular(3),
                   ),

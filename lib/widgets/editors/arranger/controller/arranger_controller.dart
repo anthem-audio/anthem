@@ -93,7 +93,9 @@ abstract class _ArrangerController {
 
   void deleteSelected() {
     if (viewModel.selectedClips.isEmpty ||
-        project.song.activeArrangementID == null) return;
+        project.song.activeArrangementID == null) {
+      return;
+    }
 
     final arrangement =
         project.song.arrangements[project.song.activeArrangementID]!;

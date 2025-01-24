@@ -25,4 +25,4 @@
 #include "messages/messages.h"
 
 std::optional<Response>
-handleProcessingGraphCommand(Request& request, Anthem* anthem);
+handleProcessingGraphCommand(Request& request);

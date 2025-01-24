@@ -22,7 +22,7 @@ part of 'package:anthem/model/pattern/pattern.dart';
 mixin _ClipNotesRenderCacheMixin on _PatternModel {
   // When generators can be removed, removing a generator should clear the
   // associated item in this map.
-  final clipNotesRenderCache = <ID, ClipNotesRenderCache>{};
+  final clipNotesRenderCache = <Id, ClipNotesRenderCache>{};
 
   /// This is crude, but it allows us to signal changes in the
   /// ClipNotesRenderCache without needing to tangle MobX with that object.

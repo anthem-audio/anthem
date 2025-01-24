@@ -17,7 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
 import 'parameter_config.dart';
@@ -31,7 +32,7 @@ enum NodePortDataType {
   control,
 }
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class NodePortConfigModel extends _NodePortConfigModel
     with _$NodePortConfigModel, _$NodePortConfigModelAnthemModelMixin {
   NodePortConfigModel({

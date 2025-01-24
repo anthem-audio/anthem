@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -25,7 +25,6 @@
 
 #include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
 #include "modules/processing_graph/compiler/anthem_process_context.h"
-#include "modules/processing_graph/topology/anthem_graph_node.h"
 
 // This class is used to represent the result of compiling a processing graph.
 class AnthemGraphCompilationResult {
@@ -79,7 +78,7 @@ public:
   //       the node, which results in a use-after-free.
   std::vector<
     std::shared_ptr<
-      AnthemGraphNode
+      Node
     >
   > graphNodes;
 
@@ -98,7 +97,7 @@ public:
   > eventAllocator;
 
   void debugPrint() {
-    std::cout << "AnthemGraphCompilationResult" << std::endl;
+    juce::Logger::writeToLog("AnthemGraphCompilationResult");
     std::cout << actionGroups.size() << " action groups" << std::endl;
     for (auto& group : actionGroups) {
       std::cout << "  ActionGroup" << std::endl << "  ";
@@ -107,4 +106,8 @@ public:
       }
     }
   }
+
+  // Clean up the compilation result. This must be called before the compilation
+  // result is deallocated.
+  void cleanup();
 };

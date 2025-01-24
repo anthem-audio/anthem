@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,11 +18,12 @@
 */
 
 import 'package:analyzer/dart/element/element.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:source_gen/source_gen.dart';
 
 import '../util/model_class_info.dart';
+import 'serialize_generators.dart';
 
 /// Generates JSON serialization for an Anthem model class.
 ///
@@ -33,18 +34,22 @@ import '../util/model_class_info.dart';
 String generateJsonSerializationCode({
   required ModelClassInfo context,
 }) {
-  var result = '';
+  var result = StringBuffer();
 
-  result += '''// ignore: duplicate_ignore
+  result.write('''// ignore: duplicate_ignore
 // ignore: non_constant_identifier_names
 ${(context.annotation?.generateModelSync == true) ? '@override' : ''}
 Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
   final map = <String, dynamic>{};
-''';
+''');
 
   for (final entry in context.fields.entries) {
     final name = entry.key;
     final fieldInfo = entry.value;
+
+    if (fieldInfo.isModelConstant) {
+      continue;
+    }
 
     final fieldBehavior = _getFieldBehavior(fieldInfo.fieldElement);
 
@@ -53,17 +58,17 @@ Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
     }
 
     if (fieldBehavior == _FieldBehavior.serializeForEngineOnly) {
-      result += 'if (includeFieldsForEngine) {\n';
+      result.write('if (includeFieldsForEngine) {\n');
     }
 
-    result += _createSetterForField(
+    result.write(_createSetterForField(
       type: fieldInfo.typeInfo,
       fieldName: name,
       mapName: 'map',
-    );
+    ));
 
     if (fieldBehavior == _FieldBehavior.serializeForEngineOnly) {
-      result += '}\n';
+      result.write('}\n');
     }
   }
 
@@ -71,22 +76,26 @@ Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
     // For sealed classes, we figure out which subclass we're dealing with and
     // use the name of that subclass to inform a field in the JSON map. This
     // allows us to determine the correct base class when deserializing.
-    result += 'map[\'__type\'] = runtimeType.toString();\n';
+    result.write('map[\'__type\'] = runtimeType.toString();\n');
 
     // Then, we output code to determine which fields to serialize depending on
     // the current subtype
     var isFirst = true;
     for (final subclass in context.sealedSubclasses) {
       if (isFirst) {
-        result += 'if (this is ${subclass.name}) {\n';
+        result.write('if (this is ${subclass.name}) {\n');
         isFirst = false;
       } else {
-        result += 'else if (this is ${subclass.name}) {\n';
+        result.write('else if (this is ${subclass.name}) {\n');
       }
 
       for (final field in subclass.fields.entries) {
         final name = field.key;
         final fieldInfo = field.value;
+
+        if (fieldInfo.isModelConstant) {
+          continue;
+        }
 
         final fieldBehavior = _getFieldBehavior(fieldInfo.fieldElement);
 
@@ -95,33 +104,33 @@ Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
         }
 
         if (fieldBehavior == _FieldBehavior.serializeForEngineOnly) {
-          result += 'if (includeFieldsForEngine) {\n';
+          result.write('if (includeFieldsForEngine) {\n');
         }
 
-        result += _createSetterForField(
+        result.write(_createSetterForField(
           type: fieldInfo.typeInfo,
           fieldName: name,
           accessor: '(this as ${subclass.name}).$name',
           mapName: 'map',
-        );
+        ));
 
         if (fieldBehavior == _FieldBehavior.serializeForEngineOnly) {
-          result += '}\n';
+          result.write('}\n');
         }
       }
 
-      result += '}\n';
+      result.write('}\n');
     }
   }
 
-  result += '''
+  result.write('''
   return map;
 }
-''';
+''');
 
   // Generate deserialization
 
-  return result;
+  return result.toString();
 }
 
 enum _FieldBehavior {
@@ -165,7 +174,7 @@ String _createSetterForField({
 }) {
   accessor ??= fieldName;
 
-  final converter = _createConverterForField(
+  final converter = createSerializerForField(
     type: type,
     accessor: accessor,
   );
@@ -183,90 +192,4 @@ String _createSetterForField({
   }
 
   return "$mapName['$fieldName'] = $converter;\n";
-}
-
-String _createConverterForField(
-    {required ModelType type, required String accessor}) {
-  return switch (type) {
-    StringModelType() ||
-    IntModelType() ||
-    DoubleModelType() ||
-    NumModelType() ||
-    BoolModelType() =>
-      _createConverterForPrimitive(accessor: accessor),
-    ColorModelType() => _createConverterForColor(accessor: accessor),
-    EnumModelType(isNullable: var isNullable) =>
-      _createConverterForEnum(accessor: accessor, isNullable: isNullable),
-    ListModelType() => _createConverterForList(type: type, accessor: accessor),
-    MapModelType() => _createConverterForMap(type: type, accessor: accessor),
-    CustomModelType() =>
-      _createConverterForCustomType(type: type, accessor: accessor),
-    UnknownModelType() => 'null',
-  };
-}
-
-String _createConverterForPrimitive({
-  required String accessor,
-}) {
-  return accessor;
-}
-
-String _createConverterForColor({
-  required String accessor,
-}) {
-  return '''
-{'a': $accessor.alpha, 'r': $accessor.red, 'g': $accessor.green, 'b': $accessor.blue}
-''';
-}
-
-String _createConverterForEnum({
-  required String accessor,
-  required bool isNullable,
-}) {
-  return isNullable ? '$accessor?.name' : '$accessor.name';
-}
-
-String _createConverterForList({
-  required ListModelType type,
-  required String accessor,
-}) {
-  final q = type.isNullable ? '?' : '';
-  final nonObservableInner = type.isObservable ? '.nonObservableInner' : '';
-
-  return '''
-$accessor$q$nonObservableInner.map(
-  (item) {
-    return ${_createConverterForField(type: type.itemType, accessor: 'item')};
-  },
-).toList()
-''';
-}
-
-String _createConverterForMap({
-  required MapModelType type,
-  required String accessor,
-}) {
-  final nullablePrefix = type.isNullable ? '$accessor == null ? null : ' : '';
-  final excl = type.isNullable ? '!' : '';
-  final nonObservableInner = type.isObservable ? '.nonObservableInner' : '';
-
-  return '''
-${nullablePrefix}Map.fromEntries(
-  $accessor$excl$nonObservableInner.entries.map(
-    (entry) {
-      return MapEntry(
-        ${_createConverterForField(type: type.keyType, accessor: 'entry.key')}${type.keyType is StringModelType ? '' : '.toString()'},
-        ${_createConverterForField(type: type.valueType, accessor: 'entry.value')},
-      );
-    },
-  ),
-)
-''';
-}
-
-String _createConverterForCustomType({
-  required CustomModelType type,
-  required String accessor,
-}) {
-  return '$accessor${type.isNullable ? '?' : ''}.toJson(includeFieldsForEngine: includeFieldsForEngine)';
 }

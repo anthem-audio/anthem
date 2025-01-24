@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2024 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,60 +17,49 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/engine_api/engine.dart';
-import 'package:anthem/engine_api/messages/messages.dart'
-    show ProcessorConnectionType;
-import 'package:anthem/model/project.dart';
-import 'package:anthem/model/shared/hydratable.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:flutter/material.dart';
 import 'package:mobx/mobx.dart';
-
-import 'processing_graph/processor.dart';
 
 part 'generator.g.dart';
 
 // Note: I'm not sure about how we're differentiating generator types here. This
-// deals with the actual audio engine side of things which is not sketched out.
-// For now, we're just marking each generator with an enum saying what kind it
-// is, and we can rethink later.
+// is well-defined in the audio engine, but we need to know what kind of data to
+// feed the node (automation, audio, MIDI, etc) and what port to send it, and
+// that's a sequencer problem. Once the sequencer exists, we should revisit
+// this.
 
 @AnthemEnum()
 enum GeneratorType { instrument, automation }
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class GeneratorModel extends _GeneratorModel
     with _$GeneratorModel, _$GeneratorModelAnthemModelMixin {
   GeneratorModel.uninitialized()
       : super(
-            color: Colors.black,
-            id: '',
-            name: '',
-            generatorType: GeneratorType.instrument,
-            processor: ProcessorModel.uninitialized());
+          color: Colors.black,
+          id: '',
+          name: '',
+          generatorType: GeneratorType.instrument,
+          generatorNodeId: null,
+          gainNodeId: null,
+        );
 
   GeneratorModel({
     required super.id,
     required super.name,
     required super.generatorType,
     required super.color,
-    required super.processor,
+    required super.generatorNodeId,
+    required super.gainNodeId,
   });
-
-  GeneratorModel.create({
-    required super.id,
-    required super.name,
-    required super.generatorType,
-    required super.color,
-    required super.processor,
-    required super.project,
-  }) : super.create();
 
   factory GeneratorModel.fromJson(Map<String, dynamic> json) =>
       _$GeneratorModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _GeneratorModel extends Hydratable with Store, AnthemModelBase {
+abstract class _GeneratorModel with Store, AnthemModelBase {
   String id;
 
   @anthemObservable
@@ -82,77 +71,25 @@ abstract class _GeneratorModel extends Hydratable with Store, AnthemModelBase {
   @anthemObservable
   Color color;
 
+  /// The ID of the node that this generator is using.
   @anthemObservable
-  ProcessorModel processor;
+  String? generatorNodeId;
 
+  /// The ID of the gain node that this generator outputs to.
+  ///
+  /// The singal flow is as follows:
+  ///     plugin -> gainNode -> (some target)
+  ///
+  /// The gain node is used for the volume knobs on the generator row.
   @anthemObservable
-  ProcessorModel gainNode;
-
-  @anthemObservable
-  ProcessorModel midiGeneratorNode;
-
-  @hide
-  ProjectModel? _project;
+  String? gainNodeId;
 
   _GeneratorModel({
     required this.id,
     required this.name,
     required this.generatorType,
     required this.color,
-    required this.processor,
-  })  : gainNode = ProcessorModel(processorKey: 'Gain'),
-        midiGeneratorNode = ProcessorModel(processorKey: 'SimpleMidiGenerator'),
-        super();
-
-  _GeneratorModel.create({
-    required this.id,
-    required this.name,
-    required this.generatorType,
-    required this.color,
-    required this.processor,
-    required ProjectModel project,
-  })  : gainNode = ProcessorModel(processorKey: 'Gain'),
-        midiGeneratorNode = ProcessorModel(processorKey: 'SimpleMidiGenerator'),
-        super() {
-    hydrate(project: project);
-  }
-
-  void hydrate({
-    required ProjectModel project,
-  }) {
-    (this as _$GeneratorModelAnthemModelMixin).init();
-    _project = project;
-    isHydrated = true;
-  }
-
-  Future<void> createInEngine(Engine engine) async {
-    await processor.createInEngine(engine);
-
-    await gainNode.createInEngine(engine);
-    // await midiGeneratorNode.createInEngine(engine);
-
-    // await engine.processingGraphApi.connectProcessors(
-    //   connectionType: ProcessorConnectionType.NoteEvent,
-    //   sourceId: midiGeneratorNode.idInEngine!,
-    //   sourcePortIndex: 0,
-    //   destinationId: processor.idInEngine!,
-    //   destinationPortIndex: 0,
-    // );
-
-    await engine.processingGraphApi.connectProcessors(
-      connectionType: ProcessorConnectionType.audio,
-      sourceId: processor.idInEngine!,
-      sourcePortIndex: 0,
-      destinationId: gainNode.idInEngine!,
-      destinationPortIndex: 0,
-    );
-
-    await engine.processingGraphApi.connectProcessors(
-      connectionType: ProcessorConnectionType.audio,
-      sourceId: gainNode.idInEngine!,
-      sourcePortIndex: 0,
-      destinationId: _project!.masterOutputNodeId!,
-      destinationPortIndex: 0,
-    );
-  }
+    required this.generatorNodeId,
+    required this.gainNodeId,
+  }) : super();
 }

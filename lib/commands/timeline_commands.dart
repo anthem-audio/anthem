@@ -31,7 +31,7 @@ enum TimelineKind { pattern, arrangement }
 
 void _addTimeSignatureChangeToPattern({
   required ProjectModel project,
-  required ID patternID,
+  required Id patternID,
   required TimeSignatureChangeModel change,
 }) {
   final pattern = project.song.patterns[patternID]!;
@@ -41,8 +41,8 @@ void _addTimeSignatureChangeToPattern({
 
 void _removeTimeSignatureChangeFromPattern({
   required ProjectModel project,
-  required ID patternID,
-  required ID changeID,
+  required Id patternID,
+  required Id changeID,
 }) {
   final pattern = project.song.patterns[patternID]!;
   final change = pattern.timeSignatureChanges
@@ -57,8 +57,8 @@ void _sortTimeSignatureChanges(List<TimeSignatureChangeModel> changes) {
 
 class AddTimeSignatureChangeCommand extends Command {
   TimelineKind timelineKind;
-  ID? patternID;
-  ID? arrangementID;
+  Id? patternID;
+  Id? arrangementID;
   TimeSignatureChangeModel change;
 
   AddTimeSignatureChangeCommand({
@@ -101,8 +101,8 @@ class AddTimeSignatureChangeCommand extends Command {
 
 class RemoveTimeSignatureChangeCommand extends Command {
   TimelineKind timelineKind;
-  ID? patternID;
-  ID? arrangementID;
+  Id? patternID;
+  Id? arrangementID;
   late TimeSignatureChangeModel change;
 
   RemoveTimeSignatureChangeCommand({
@@ -110,7 +110,7 @@ class RemoveTimeSignatureChangeCommand extends Command {
     required ProjectModel project,
     this.patternID,
     this.arrangementID,
-    required ID changeID,
+    required Id changeID,
   }) {
     if (timelineKind == TimelineKind.pattern) {
       change = project.song.patterns[patternID]!.timeSignatureChanges
@@ -155,8 +155,8 @@ class RemoveTimeSignatureChangeCommand extends Command {
 
 class MoveTimeSignatureChangeCommand extends Command {
   TimelineKind timelineKind;
-  ID? patternID;
-  ID? arrangementID;
+  Id? patternID;
+  Id? arrangementID;
   late List<TimeSignatureChangeModel> changeList;
   late TimeSignatureChangeModel change;
   late Time oldOffset;
@@ -167,7 +167,7 @@ class MoveTimeSignatureChangeCommand extends Command {
     required this.timelineKind,
     this.patternID,
     this.arrangementID,
-    required ID changeID,
+    required Id changeID,
     Time? oldOffset,
     required this.newOffset,
   }) {
@@ -199,8 +199,8 @@ class MoveTimeSignatureChangeCommand extends Command {
 
 class SetTimeSignatureNumeratorCommand extends Command {
   late TimelineKind timelineKind;
-  ID? patternID;
-  ID? arrangementID;
+  Id? patternID;
+  Id? arrangementID;
   late TimeSignatureChangeModel change;
   late int oldNumerator;
   int numerator;
@@ -209,7 +209,7 @@ class SetTimeSignatureNumeratorCommand extends Command {
     required ProjectModel project,
     this.patternID,
     this.arrangementID,
-    required ID changeID,
+    required Id changeID,
     required this.numerator,
   }) {
     if (patternID != null) {
@@ -240,8 +240,8 @@ class SetTimeSignatureNumeratorCommand extends Command {
 
 class SetTimeSignatureDenominatorCommand extends Command {
   late TimelineKind timelineKind;
-  ID? patternID;
-  ID? arrangementID;
+  Id? patternID;
+  Id? arrangementID;
   late TimeSignatureChangeModel change;
   late int oldDenominator;
   int denominator;
@@ -250,7 +250,7 @@ class SetTimeSignatureDenominatorCommand extends Command {
     required ProjectModel project,
     this.patternID,
     this.arrangementID,
-    required ID changeID,
+    required Id changeID,
     required this.denominator,
   }) {
     if (patternID != null) {

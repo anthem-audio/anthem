@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -31,6 +31,12 @@ mixin _ClipTitleRenderCacheMixin on _PatternModel {
   Image? renderedTitle;
 
   Future<void> updateClipTitleCache() async {
+    // This will happen in unit tests that are using the model. This should
+    // never happen when running the app; if it does, something is wrong.
+    if (mainWindowKey.currentContext == null) {
+      return;
+    }
+
     final recorder = PictureRecorder();
     final canvas = Canvas(recorder);
 

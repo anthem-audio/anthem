@@ -17,36 +17,54 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/shared/hydratable.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/collections.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
 import 'node_port_config.dart';
 
 part 'node_port.g.dart';
 
-@AnthemModel.all()
+@AnthemModel.syncedModel(
+  cppBehaviorClassName: 'NodePort',
+  cppBehaviorClassIncludePath: 'modules/processing_graph/model/node_port.h',
+)
 class NodePortModel extends _NodePortModel
     with _$NodePortModel, _$NodePortModelAnthemModelMixin {
   NodePortModel({
     required super.id,
     required super.nodeId,
     required super.config,
-  });
+  }) : super(connections: AnthemObservableList()) {
+    if (config.parameterConfig != null) {
+      parameterValue = config.parameterConfig!.defaultValue;
+    }
+  }
 
   NodePortModel.uninitialized()
-      : super(id: '', nodeId: '', config: NodePortConfigModel.uninitialized());
+      : super(
+            id: -1,
+            nodeId: '',
+            config: NodePortConfigModel.uninitialized(),
+            connections: AnthemObservableList());
 
   factory NodePortModel.fromJson(Map<String, dynamic> json) =>
       _$NodePortModelAnthemModelMixin.fromJson(json);
+
+  NodePortDataType get type => config.dataType;
 }
 
-abstract class _NodePortModel extends Hydratable with Store, AnthemModelBase {
-  String id;
+abstract class _NodePortModel with Store, AnthemModelBase {
+  // This will map to the 32-bit parameter ID from the VST standard if this is a
+  // control input port.
+  int id;
 
   String nodeId;
 
   NodePortConfigModel config;
+
+  AnthemObservableList<String> connections;
 
   /// The value of the parameter, if this port is a control input port.
   @anthemObservable
@@ -56,8 +74,6 @@ abstract class _NodePortModel extends Hydratable with Store, AnthemModelBase {
     required this.id,
     required this.nodeId,
     required this.config,
-  }) {
-    isHydrated = true;
-    (this as _$NodePortModelAnthemModelMixin).init();
-  }
+    required this.connections,
+  });
 }

@@ -31,7 +31,7 @@ class AutomationPointAnimationValue {
   double start;
   late double current;
   double target;
-  ID pointId;
+  Id pointId;
   HandleKind handleKind;
   double restPos;
 
@@ -63,14 +63,14 @@ class AutomationPointAnimationValue {
     current = start;
   }
 
-  /// Updates the animation value with the given elapesd time.
+  /// Updates the animation value with the given elapsed time.
   void update(DateTime currentTime) {
     final delta = currentTime.difference(lastUpdated);
-    // High framerates don't cause this to break, since we use a time duration
+    // High frame rates don't cause this to break, since we use a time duration
     // to determine how much to animate. This is just a way for me to reason
     // about the math for this algorithm. If there's a high framerate (> 60),
-    // framesElapsed will be equal to less than 1 on average, and low framerates
-    // will mean framesElapsed is greater than 1 on average.
+    // framesElapsed will be equal to less than 1 on average, and low frame
+    // rates will mean framesElapsed is greater than 1 on average.
     const millisecondsPerFrame = 1000.0 / 60.0;
     final framesElapsed = delta.inMilliseconds / millisecondsPerFrame;
 
@@ -93,11 +93,11 @@ class AutomationPointAnimationValue {
 /// automation editor or the arranger.
 class AutomationPointAnimationTracker {
   final values =
-      <({ID id, HandleKind handleKind}), AutomationPointAnimationValue>{};
+      <({Id id, HandleKind handleKind}), AutomationPointAnimationValue>{};
 
   /// Adds a value to be tracked.
   void addValue({
-    required ID id,
+    required Id id,
     required HandleKind handleKind,
     required AutomationPointAnimationValue value,
   }) =>

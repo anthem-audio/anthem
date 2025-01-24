@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,7 +19,8 @@
 
 #pragma once
 
-#include "anthem_processor_config.h"
+#include <string>
+#include <memory>
 
 class AnthemGraphNode;
 class AnthemProcessContext;
@@ -31,9 +32,10 @@ class AnthemProcessContext;
 // several internal processing modules that interact with the processing graph.
 class AnthemProcessor {
 public:
-  AnthemProcessorConfig config;
+  // The name of the processor.
+  std::string name;
 
-  AnthemProcessor(std::string name) : config(AnthemProcessorConfig(name)) {}
+  AnthemProcessor(std::string name) : name(name) {}
 
   virtual ~AnthemProcessor() = default;
 

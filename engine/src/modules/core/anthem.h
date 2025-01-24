@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -25,67 +25,69 @@
 #include <juce_audio_devices/juce_audio_devices.h>
 
 #include "modules/core/anthem_audio_callback.h"
-#include "modules/processing_graph/anthem_graph.h"
-#include "modules/processors/master_output_node.h"
+#include "modules/processing_graph/runtime/anthem_graph_processor.h"
+#include "modules/processing_graph/compiler/anthem_graph_compiler.h"
 
 #include "modules/util/id_generator.h"
 
-#include "generated/lib/model/model.h"
+#include "project.h"
 
 class Anthem {
 private:
+  bool isAudioCallbackRunning;
+
+  // Singleton shared pointer instance
+  static std::unique_ptr<Anthem> instance;
+
   juce::AudioDeviceManager deviceManager;
+
   std::unique_ptr<AnthemAudioCallback> audioCallback;
 
-  std::shared_ptr<AnthemGraph> processingGraph;
-
-  std::shared_ptr<AnthemGraphNode> masterOutputNode;
-  uint64_t masterOutputNodeId;
-
-  std::map<uint64_t, std::shared_ptr<AnthemGraphNode>> nodes;
-
-  // Initializes the engine
-  void init();
 public:
-    std::unique_ptr<ProjectModel> projectModel;
+  // The project model.
+  //
+  // This is mostly code-generated, and is based on the project model defined in
+  // Dart. It is automatically synced with the Dart model, and is used to store
+  // the state of the project.
+  std::shared_ptr<Project> project;
+
+  // The graph compiler, which turns the graph topology from the model into
+  // processing steps
+  std::unique_ptr<AnthemGraphCompiler> compiler;
+
+  // The graph processor, which takes the compilation result from the compiler
+  // and uses it on the audio thread to process data in the graph
+  std::unique_ptr<AnthemGraphProcessor> graphProcessor;
 
   Anthem();
 
-  std::shared_ptr<AnthemGraph> getProcessingGraph() {
-    return processingGraph;
-  }
+  void initialize();
 
-  std::shared_ptr<AnthemGraphNode> getMasterOutputNode() {
-    return masterOutputNode;
-  }
-
-  std::shared_ptr<AnthemGraphNode> getNode(uint64_t nodeId) {
-    return nodes[nodeId];
-  }
-
-  bool hasNode(uint64_t nodeId) {
-    return nodes.find(nodeId) != nodes.end();
-  }
-
-  uint64_t getMasterOutputNodeId() {
-    return masterOutputNodeId;
-  }
-
-  uint64_t addNode(std::unique_ptr<AnthemProcessor> processor) {
-    auto id = GlobalIDGenerator::generateID();
-    auto node = this->processingGraph->addNode(std::move(processor));
-    nodes[id] = node;
-    return id;
-  }
-
-  bool removeNode(uint64_t nodeId) {
-    if (!hasNode(nodeId)) {
-      return false;
+  // Singleton instance getter
+  static Anthem& getInstance() {
+    if (!instance) {
+      instance = std::make_unique<Anthem>();
     }
-
-    auto node = getNode(nodeId);
-    this->processingGraph->removeNode(node);
-    nodes.erase(nodeId);
-    return true;
+    return *instance;
   }
+
+  static bool hasInstance() {
+    return instance != nullptr;
+  }
+
+  static void cleanup() {
+    instance.reset();
+  }
+
+  void shutdown();
+
+  // Sets up the audio callback
+  void startAudioCallback();
+
+  void compileProcessingGraph();
+
+  // TODO: These generic config items should be settable, which means they
+  // should live in the actual synced model.
+  static const int SAMPLE_RATE = 44100;
+  static const int NUM_CHANNELS = 2;
 };

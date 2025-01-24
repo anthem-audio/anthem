@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,57 +19,76 @@
 
 #include "model_sync_command_handler.h"
 
+// I have absolutely no idea why this import is required, but reflect-cpp won't
+// compile the deserialization call without it.
+#include "modules/processors/tone_generator.h"
+
 #include <string>
 
-#include "modules/processors/tone_generator_node.h"
-#include "modules/processors/simple_volume_lfo_node.h"
+std::optional<Response> handleModelSyncCommand(Request& request) {
+  auto& anthem = Anthem::getInstance();
 
-std::optional<Response> handleModelSyncCommand(
-  Request& request,
-  Anthem* anthem
-) {
   if (rfl::holds_alternative<ModelInitRequest>(request.variant())) {
-    std::cout << "Loading project model..." << std::endl;
+    juce::Logger::writeToLog("Loading project model...");
 
     auto& modelInitRequest = rfl::get<ModelInitRequest>(request.variant());
 
     // std::cout << modelInitRequest.serializedModel << std::endl;
 
-    auto result = rfl::json::read<std::unique_ptr<ProjectModel>>(
+    auto result = rfl::json::read<std::shared_ptr<Project>>(
       modelInitRequest.serializedModel
     );
+
+    // auto result = Project::fromJson(modelInitRequest.serializedModel);
 
     auto err = result.error();
 
     if (err.has_value()) {
-      std::cout << "Error during deserialize:" << std::endl;
+      juce::Logger::writeToLog("Error during deserialize:");
       std::cout << err.value().what() << std::endl;
     }
     else {
-      anthem->projectModel = std::move(
+      anthem.project = std::move(
         result.value()
       );
 
-      std::cout << "Loaded project model" << std::endl;
-      std::cout << "id: " << anthem->projectModel->id << std::endl;
+      anthem.project->initialize(
+        anthem.project,
+        nullptr
+      );
+
+      juce::Logger::writeToLog("Loaded project model");
+      std::cout << "id: " << anthem.project->id() << std::endl;
+
+      // We could probably move this action to a command, but for now we always
+      // want to start as soon as we have a valid project anyway, so this is
+      // probably fine.
+      anthem.startAudioCallback();
     }
   }
   else if (rfl::holds_alternative<ModelUpdateRequest>(request.variant())) {
-    std::cout << "Model update received. Applying..." << std::endl;
+    juce::Logger::writeToLog("Model update received. Applying...");
 
     auto& modelUpdateRequest = rfl::get<ModelUpdateRequest>(request.variant());
 
-    anthem->projectModel->handleModelUpdate(
+    anthem.project->handleModelUpdate(
       modelUpdateRequest,
       0
     );
 
-    std::cout << "Model update applied." << std::endl;
+    juce::Logger::writeToLog("Model update applied.");
   }
-  else if (rfl::holds_alternative<ModelDebugPrintRequest>(request.variant())) {
-    std::cout << rfl::json::write(
-      anthem->projectModel.get()
-    ) << std::endl;
+  else if (rfl::holds_alternative<GetSerializedModelFromEngineRequest>(request.variant())) {
+    auto& getSerializedModelFromEngineRequest = rfl::get<GetSerializedModelFromEngineRequest>(request.variant());
+
+    return std::optional(GetSerializedModelFromEngineResponse {
+      .serializedModel = rfl::json::write(
+        anthem.project.get()
+      ),
+      .responseBase = ResponseBase {
+        .id = getSerializedModelFromEngineRequest.requestBase.get().id
+      }
+    });
   }
 
   return std::nullopt;

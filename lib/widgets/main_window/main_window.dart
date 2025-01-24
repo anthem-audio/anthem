@@ -69,13 +69,13 @@ class _MainWindowState extends State<MainWindow> {
               return Column(
                 children: [
                   WindowHeader(
-                    selectedTabID: store.activeProjectID,
+                    selectedTabId: store.activeProjectID,
                     tabs: tabs,
                   ),
                   Expanded(
                     child: TabContentSwitcher(
                       tabs: tabs,
-                      selectedTabID: store.activeProjectID,
+                      selectedTabId: store.activeProjectID,
                     ),
                   ),
                 ],

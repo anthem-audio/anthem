@@ -28,7 +28,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 class TrackHeader extends StatelessWidget {
-  final ID trackID;
+  final Id trackID;
 
   const TrackHeader({super.key, required this.trackID});
 

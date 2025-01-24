@@ -190,7 +190,7 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
 }
 
 TreeViewItemModel getMarkersItem(
-    {PatternModel? pattern, required void Function(ID key) onClick}) {
+    {PatternModel? pattern, required void Function(Id key) onClick}) {
   final timeSignatureChanges = pattern!.timeSignatureChanges;
 
   return TreeViewItemModel(

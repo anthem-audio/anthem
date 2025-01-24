@@ -19,11 +19,10 @@
 
 // ignore_for_file: non_constant_identifier_names
 
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 
 part 'model_sync.dart';
 part 'processing_graph.dart';
-part 'processors.dart';
 
 part 'messages.g.dart';
 
@@ -59,7 +58,7 @@ class HeartbeatReply extends Response {
   }
 }
 
-@AnthemModel(serializable: true, generateCpp: true)
+@AnthemModel.ipc()
 sealed class Request extends _Request with _$RequestAnthemModelMixin {
   Request();
 
@@ -71,7 +70,7 @@ class _Request {
   late int id;
 }
 
-@AnthemModel(serializable: true, generateCpp: true)
+@AnthemModel.ipc()
 sealed class Response extends _Response with _$ResponseAnthemModelMixin {
   Response();
 

@@ -24,7 +24,8 @@
 #include <vector>
 
 #include "modules/processing_graph/compiler/anthem_graph_compiler_edge.h"
-#include "modules/processing_graph/topology/anthem_graph_node.h"
+
+#include "generated/lib/model/model.h"
 
 class AnthemGraphNode;
 class AnthemProcessContext;
@@ -34,7 +35,7 @@ class AnthemProcessContext;
 class AnthemGraphCompilerNode {
 public:
   // The node that this compiled node represents
-  std::shared_ptr<AnthemGraphNode> node;
+  std::shared_ptr<Node> node;
 
   std::vector<std::shared_ptr<AnthemGraphCompilerEdge>> inputEdges;
   std::vector<std::shared_ptr<AnthemGraphCompilerEdge>> outputEdges;
@@ -45,74 +46,18 @@ public:
   // Whether this node is ready to process
   bool readyToProcess = false;
 
-  AnthemGraphCompilerNode(std::shared_ptr<AnthemGraphNode> node, AnthemProcessContext* context) : node(node), context(context) {}
+  AnthemGraphCompilerNode(std::shared_ptr<Node> node, AnthemProcessContext* context) : node(node), context(context) {}
 
   // Populate the input and output edges for this node
   void assignEdges(
-    std::map<AnthemGraphNode*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
-    std::map<AnthemGraphNodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>& connectionToCompilerEdge
-  ) {
-    for (auto& port : node->audioInputs) {
-      for (auto connection : port->connections) {
-        assignEdge(nodeToCompilerNode, connectionToCompilerEdge, inputEdges, connection);
-      }
-    }
-
-    for (auto& port : node->controlInputs) {
-      for (auto connection : port->connections) {
-        assignEdge(nodeToCompilerNode, connectionToCompilerEdge, inputEdges, connection);
-      }
-    }
-
-    for (auto& port : node->noteEventInputs) {
-      for (auto connection : port->connections) {
-        assignEdge(nodeToCompilerNode, connectionToCompilerEdge, inputEdges, connection);
-      }
-    }
-
-    for (auto& port : node->audioOutputs) {
-      for (auto connection : port->connections) {
-        assignEdge(nodeToCompilerNode, connectionToCompilerEdge, outputEdges, connection);
-      }
-    }
-
-    for (auto& port : node->controlOutputs) {
-      for (auto connection : port->connections) {
-        assignEdge(nodeToCompilerNode, connectionToCompilerEdge, outputEdges, connection);
-      }
-    }
-
-    for (auto& port : node->noteEventOutputs) {
-      for (auto connection : port->connections) {
-        assignEdge(nodeToCompilerNode, connectionToCompilerEdge, outputEdges, connection);
-      }
-    }
-  }
+    std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
+    std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>& connectionToCompilerEdge
+  );
 private:
   void assignEdge(
-    std::map<AnthemGraphNode*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
-    std::map<AnthemGraphNodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>& connectionToCompilerEdge,
+    std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
+    std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>& connectionToCompilerEdge,
     std::vector<std::shared_ptr<AnthemGraphCompilerEdge>>& edgeContainer,
-    std::shared_ptr<AnthemGraphNodeConnection> connection
-  ) {
-    auto sourceNodeContext = nodeToCompilerNode[connection->source.lock()->node.lock().get()]->context;
-    auto destinationNodeContext = nodeToCompilerNode[connection->destination.lock()->node.lock().get()]->context;
-    auto portType = connection->source.lock()->config->portType;
-
-    // If we've already created a compiler edge for this connection, use it
-    if (connectionToCompilerEdge.find(connection.get()) != connectionToCompilerEdge.end()) {
-      edgeContainer.push_back(connectionToCompilerEdge[connection.get()]);
-    } else {
-      auto edge = std::make_shared<AnthemGraphCompilerEdge>(
-        connection,
-        sourceNodeContext,
-        destinationNodeContext,
-        portType
-      );
-
-      connectionToCompilerEdge[connection.get()] = edge;
-
-      edgeContainer.push_back(edge);
-    }
-  }
+    std::shared_ptr<NodeConnection>& connection
+  );
 };
