@@ -1,10 +1,8 @@
 # Communication Between UI and Engine
 
-Anthem has two primary components: a UI written in Dart with Flutter, and an engine written in C++ with JUCE. These two components run in separate processes and communicate with each other over a local TCP socket using JSON messages.
+Anthem’s UI and engine each run in their own process—Flutter/Dart for the interface, and C++/JUCE for audio processing—and communicate over a local TCP socket. Mmessages use a request–response pattern with unique IDs, so a “request” (from UI to engine) pairs with a matching “response” (from engine to UI), though some requests have no response.
 
-Anthem’s UI and engine each run in their own process—Flutter/Dart for the interface, and C++/JUCE for audio processing—and communicate over a local TCP socket. Most messages use a request–response pattern with unique IDs, so a “request” (from UI to engine) typically pairs with a matching “response” (from engine to UI), though some requests have no response.
-
-The messages are defined as classes in Dart. Anthem’s code generator inspects these Dart classes to automatically generate the corresponding C++ structs and serialization code from a single source of truth, ensuring type-safe, two-way data flow without requiring manual boilerplate and synchronization.
+The messages are defined as classes in Dart. Anthem’s code generator inspects these Dart classes to automatically generate the corresponding C++ structs and serialization code, ensuring type-safe, two-way data flow from a single source of truth and with minimal boilerplate.
 
 The example below walks through adding a new request and response to show how Anthem's IPC system works.
 
@@ -140,7 +138,7 @@ class ExampleApi {
 }
 ```
 
-And we will add a matching `part of` declaration in `lib/engine_api/engine.dart`:
+And we will add a matching `part of` declaration in `lib/engine_api/engine.dart`, along with instancing the API as a field in `Engine`:
 
 ```dart
 import 'dart:async';
@@ -156,6 +154,24 @@ part 'api/model_sync_api.dart';
 part 'api/processing_graph_api.dart';
 
 // ...
+
+class Engine {
+  // ...
+
+  late ExampleApi exampleApi; // <-- here
+  late ModelSyncApi modelSyncApi;
+  late ProcessingGraphApi processingGraphApi;
+
+  // ...
+
+  Engine(this.id, this.project, {this.enginePathOverride}) {
+    engineStateStream = _engineStateStreamController.stream;
+
+    exampleApi = ExampleApi(this); // <-- here
+    modelSyncApi = ModelSyncApi(this);
+    processingGraphApi = ProcessingGraphApi(this);
+  }
+}
 ```
 
 `Engine._request()` does the following:
@@ -200,10 +216,10 @@ std::optional<Response> handleExampleCommand(Request& request) {
     // this reads well, the order of the fields is dependent on the order that
     // they are declared in the code-generated AddResponse struct.
     auto addResponse = AddResponse {
+      .result = result,
       .responseBase = ResponseBase {
         .id = requestAsAdd.requestBase.get().id
-      },
-      .result = result
+      }
     };
 
     // We return the response. The caller will serialize this and send it back
@@ -249,10 +265,70 @@ public:
 };
 ```
 
-Finally, once you run code generation and compile the engine, you will be able to call `await engine.exampleApi.add(1, 2)`, and the engine will add the two numbers and give back the result. Since we modified the messages, we will need to clean the engine first, then codegen and build:
+Finally, we will run the code generator and compile the engine:
+
+```bash
+# "dart run :cli" runs the script in bin/cli.dart. You can learn more about the
+# script with:
+dart run :cli -h
+
+# Or:
+dart run :cli codegen -h
+dart run :cli engine -h
+
+# We need to clean the codegen output. This is because the code generator is
+# currently unable to detect when the codegen for messages.dart needs to be
+# rebuilt, and cleaning the codegen output forces these files to be
+# regenerated. These files take an additional 20 to 30 seconds to produce, so
+# it's good to skip them if possible.
+dart run :cli codegen clean --root-only -y
+
+# This runs the code generator. The --root-only option prevents code generation
+# for the tests in the codegen folder, which aren't needed to build or run
+# Anthem.
+dart run :cli codegen generate --root-only
+
+# This builds the engine using CMake.
+dart run :cli engine build --debug
+```
+
+Now, we can use our new API. As an example, here's a modification to `project.dart` that fires off this request as soon as the engine is started:
+
+```dart
+@AnthemModel.syncedModel(
+  cppBehaviorClassName: 'Project',
+  cppBehaviorClassIncludePath: 'modules/core/project.h',
+)
+class ProjectModel extends _ProjectModel
+    with _$ProjectModel, _$ProjectModelAnthemModelMixin {
+  // ...
+
+  void hydrate() {
+    // ...
+
+    engine.engineStateStream.listen((state) async { // <-- This wasn't async originally
+      // ...
+
+      // Send model state change messages to the engine
+      if (state == EngineState.running) {
+        _initializeEngine();
+        _attachModelChangeListener();
+
+        // Note that the engine for each project lives in the project model. If
+        // you need the engine from a different file, you would need to first get
+        // the project, then access it via:
+        //    (some ProjectModel).engine
+
+        final result = await engine.exampleApi.add(1, 2);
+        print('1 + 2: $result');
+      }
+    });
+  }
+}
+```
+
+This will produce the following output when the engine is started:
 
 ```
-dart run :cli codegen clean --root-only -y
-dart run :cli codegen generate --root-only
-dart run :cli engine build --debug
+flutter: 1 + 2: 3
 ```
