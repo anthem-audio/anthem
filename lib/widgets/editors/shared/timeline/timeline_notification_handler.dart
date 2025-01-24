@@ -58,15 +58,15 @@ class _TimelineNotificationHandlerState
       onNotification: (notification) {
         if (notification is TimelineLabelPointerNotification) {
           final timeView = Provider.of<TimeRange>(context, listen: false);
-          final pattern = project
-              .song.patterns.nonObservableInner[project.song.activePatternID];
+          final pattern = project.sequence.patterns
+              .nonObservableInner[project.sequence.activePatternID];
 
           final divisionChanges = getDivisionChanges(
             viewWidthInPixels: notification.viewWidthInPixels,
             snap: AutoSnap(),
-            defaultTimeSignature: project.song.defaultTimeSignature,
+            defaultTimeSignature: project.sequence.defaultTimeSignature,
             timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
-            ticksPerQuarter: project.song.ticksPerQuarter,
+            ticksPerQuarter: project.sequence.ticksPerQuarter,
             timeViewStart: timeView.start,
             timeViewEnd: timeView.end,
           );

@@ -65,9 +65,9 @@ class Clip extends StatelessWidget {
   Widget build(BuildContext context) {
     final projectModel = Provider.of<ProjectModel>(context);
     final clipModel =
-        projectModel.song.arrangements[arrangementID]?.clips[clipID];
+        projectModel.sequence.arrangements[arrangementID]?.clips[clipID];
     final patternModel =
-        projectModel.song.patterns[clipModel?.patternID ?? patternID!]!;
+        projectModel.sequence.patterns[clipModel?.patternID ?? patternID!]!;
 
     return ShaderBuilder(
       assetKey: 'assets/shaders/automation_curve.frag',

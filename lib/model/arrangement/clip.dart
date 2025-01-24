@@ -109,7 +109,7 @@ abstract class _ClipModel with Store, AnthemModelBase {
       return timeView!.width;
     }
 
-    return project.song.patterns[patternID]!.getWidth();
+    return project.sequence.patterns[patternID]!.getWidth();
   }
 }
 

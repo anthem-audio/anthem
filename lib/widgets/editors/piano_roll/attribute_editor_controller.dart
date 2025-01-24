@@ -62,7 +62,7 @@ class AttributeEditorController {
 
     final store = AnthemStore.instance;
     final project = store.projects[store.activeProjectID]!;
-    final pattern = project.song.patterns[project.song.activePatternID];
+    final pattern = project.sequence.patterns[project.sequence.activePatternID];
 
     if (pattern == null) return;
 
@@ -170,7 +170,7 @@ class AttributeEditorController {
 
     final store = AnthemStore.instance;
     final project = store.projects[store.activeProjectID]!;
-    final pattern = project.song.patterns[project.song.activePatternID];
+    final pattern = project.sequence.patterns[project.sequence.activePatternID];
 
     if (pattern == null) return;
     if (project.activeInstrumentID == null) return;

@@ -27,7 +27,7 @@ import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/collections.dart';
-import 'package:anthem/model/song.dart';
+import 'package:anthem/model/sequence.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:anthem/engine_api/messages/messages.dart' as message_api;
 import 'package:mobx/mobx.dart';
@@ -56,7 +56,7 @@ class ProjectModel extends _ProjectModel
 abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// Represents information about the sequenced content in the project, such as
   /// arrangements and patterns, and their content.
-  late SongModel song;
+  late SequenceModel sequence;
 
   /// Represents the processing graph for the project. This is used to route
   /// audio, control and notes between processors, and to eventually route the
@@ -185,7 +185,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   _ProjectModel.create([this._enginePathOverride]) : super() {
     _commandStack = CommandStack(this as ProjectModel);
 
-    song = SongModel.create();
+    sequence = SequenceModel.create();
 
     processingGraph = ProcessingGraphModel();
 

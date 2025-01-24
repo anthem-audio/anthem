@@ -28,8 +28,8 @@ class PatternEditorController {
 
   void deletePattern(Id patternID) {
     project.execute(DeletePatternCommand(
-      pattern: project.song.patterns[patternID]!,
-      index: project.song.patternOrder.indexOf(patternID),
+      pattern: project.sequence.patterns[patternID]!,
+      index: project.sequence.patternOrder.indexOf(patternID),
     ));
   }
 }

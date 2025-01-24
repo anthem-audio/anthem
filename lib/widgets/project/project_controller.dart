@@ -65,7 +65,7 @@ class ProjectController {
 
   Id addPattern([String? name]) {
     if (name == null) {
-      final patterns = project.song.patterns.nonObservableInner;
+      final patterns = project.sequence.patterns.nonObservableInner;
       var patternNumber = patterns.length;
 
       final existingNames = patterns.values.map((pattern) => pattern.name);
@@ -81,18 +81,18 @@ class ProjectController {
     project.execute(
       AddPatternCommand(
         pattern: patternModel,
-        index: project.song.patternOrder.length,
+        index: project.sequence.patternOrder.length,
       ),
     );
 
-    project.song.setActivePattern(patternModel.id);
+    project.sequence.setActivePattern(patternModel.id);
 
     return patternModel.id;
   }
 
   void addArrangement([String? name]) {
     if (name == null) {
-      final arrangements = project.song.arrangements.nonObservableInner;
+      final arrangements = project.sequence.arrangements.nonObservableInner;
       var arrangementNumber = arrangements.length;
 
       final existingNames = arrangements.values.map((pattern) => pattern.name);
@@ -110,7 +110,7 @@ class ProjectController {
 
     project.execute(command);
 
-    project.song.setActiveArrangement(command.arrangementID);
+    project.sequence.setActiveArrangement(command.arrangementID);
   }
 
   void onShortcut(LogicalKeySet shortcut) {
@@ -142,13 +142,13 @@ class ProjectController {
       //   project.engine.projectApi.noteOn(
       //     note: note,
       //     editId: project
-      //         .song.arrangements[project.song.activeArrangementID]!.editPointer,
+      //         .sequence.arrangements[project.sequence.activeArrangementID]!.editPointer,
       //   );
       // } else {
       //   project.engine.projectApi.noteOff(
       //     note: note,
       //     editId: project
-      //         .song.arrangements[project.song.activeArrangementID]!.editPointer,
+      //         .sequence.arrangements[project.sequence.activeArrangementID]!.editPointer,
       //   );
       // }
 

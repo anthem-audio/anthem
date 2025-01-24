@@ -130,14 +130,15 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
 
     // Vertical lines
 
-    final activePattern = project.song.patterns[project.song.activePatternID];
+    final activePattern =
+        project.sequence.patterns[project.sequence.activePatternID];
 
     paintTimeGrid(
       canvas: canvas,
       size: size,
-      ticksPerQuarter: project.song.ticksPerQuarter,
+      ticksPerQuarter: project.sequence.ticksPerQuarter,
       snap: AutoSnap(),
-      baseTimeSignature: project.song.defaultTimeSignature,
+      baseTimeSignature: project.sequence.defaultTimeSignature,
       timeSignatureChanges: activePattern?.timeSignatureChanges ?? [],
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,

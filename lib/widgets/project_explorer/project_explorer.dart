@@ -69,11 +69,11 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
     TreeViewItemModel getArrangementsTree() => TreeViewItemModel(
           key: 'projectArrangementsFolder',
           label: 'Arrangements',
-          children: project.song.arrangementOrder
+          children: project.sequence.arrangementOrder
               .map(
                 (id) => TreeViewItemModel(
                   key: 'arrangement-$id',
-                  label: project.song.arrangements[id]!.name,
+                  label: project.sequence.arrangements[id]!.name,
                   onClick: () => projectController.setActiveDetailView(
                     true,
                     ArrangementDetailViewKind(id),
@@ -86,18 +86,18 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
     TreeViewItemModel getPatternsTree() => TreeViewItemModel(
           key: 'projectPatternsFolder',
           label: 'Patterns',
-          children: project.song.patternOrder
+          children: project.sequence.patternOrder
               .map(
                 (patternID) => TreeViewItemModel(
                   key: 'pattern-$patternID',
-                  label: project.song.patterns[patternID]!.name,
+                  label: project.sequence.patterns[patternID]!.name,
                   onClick: () => projectController.setActiveDetailView(
                     true,
                     PatternDetailViewKind(patternID),
                   ),
                   children: [
                     getMarkersItem(
-                      pattern: project.song.patterns[patternID],
+                      pattern: project.sequence.patterns[patternID],
                       onClick: (changeID) {
                         projectController.setActiveDetailView(
                           true,

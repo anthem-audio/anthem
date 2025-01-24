@@ -39,7 +39,7 @@ class _ArrangementDetailViewState extends State<ArrangementDetailView> {
     final arrangementID =
         (project.getSelectedDetailView() as ArrangementDetailViewKind)
             .arrangementID;
-    final arrangement = project.song.arrangements[arrangementID]!;
+    final arrangement = project.sequence.arrangements[arrangementID]!;
 
     return Column(
       children: [

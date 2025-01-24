@@ -40,7 +40,8 @@ class AddAutomationPointCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
-    final automationLanes = project.song.patterns[patternID]!.automationLanes;
+    final automationLanes =
+        project.sequence.patterns[patternID]!.automationLanes;
 
     if (createAutomationLane) {
       automationLanes[automationGeneratorID] = AutomationLaneModel();
@@ -51,7 +52,8 @@ class AddAutomationPointCommand extends Command {
 
   @override
   void rollback(ProjectModel project) {
-    final automationLanes = project.song.patterns[patternID]!.automationLanes;
+    final automationLanes =
+        project.sequence.patterns[patternID]!.automationLanes;
 
     automationLanes[automationGeneratorID]!.points.removeAt(index);
 
@@ -76,15 +78,15 @@ class DeleteAutomationPointCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
-    project.song.patterns[patternID]!.automationLanes[automationGeneratorID]!
-        .points
+    project.sequence.patterns[patternID]!
+        .automationLanes[automationGeneratorID]!.points
         .removeAt(index);
   }
 
   @override
   void rollback(ProjectModel project) {
-    project.song.patterns[patternID]!.automationLanes[automationGeneratorID]!
-        .points
+    project.sequence.patterns[patternID]!
+        .automationLanes[automationGeneratorID]!.points
         .insert(index, point);
   }
 }
@@ -106,14 +108,22 @@ class SetAutomationPointValueCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
-    project.song.patterns[patternID]!.automationLanes[automationGeneratorID]!
-        .points[pointIndex].value = newValue;
+    project
+        .sequence
+        .patterns[patternID]!
+        .automationLanes[automationGeneratorID]!
+        .points[pointIndex]
+        .value = newValue;
   }
 
   @override
   void rollback(ProjectModel project) {
-    project.song.patterns[patternID]!.automationLanes[automationGeneratorID]!
-        .points[pointIndex].value = oldValue;
+    project
+        .sequence
+        .patterns[patternID]!
+        .automationLanes[automationGeneratorID]!
+        .points[pointIndex]
+        .value = oldValue;
   }
 }
 
@@ -134,14 +144,22 @@ class SetAutomationPointOffsetCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
-    project.song.patterns[patternID]!.automationLanes[automationGeneratorID]!
-        .points[pointIndex].offset = newOffset;
+    project
+        .sequence
+        .patterns[patternID]!
+        .automationLanes[automationGeneratorID]!
+        .points[pointIndex]
+        .offset = newOffset;
   }
 
   @override
   void rollback(ProjectModel project) {
-    project.song.patterns[patternID]!.automationLanes[automationGeneratorID]!
-        .points[pointIndex].offset = oldOffset;
+    project
+        .sequence
+        .patterns[patternID]!
+        .automationLanes[automationGeneratorID]!
+        .points[pointIndex]
+        .offset = oldOffset;
   }
 }
 
@@ -162,13 +180,21 @@ class SetAutomationPointTensionCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
-    project.song.patterns[patternID]!.automationLanes[automationGeneratorID]!
-        .points[pointIndex].tension = newTension;
+    project
+        .sequence
+        .patterns[patternID]!
+        .automationLanes[automationGeneratorID]!
+        .points[pointIndex]
+        .tension = newTension;
   }
 
   @override
   void rollback(ProjectModel project) {
-    project.song.patterns[patternID]!.automationLanes[automationGeneratorID]!
-        .points[pointIndex].tension = oldTension;
+    project
+        .sequence
+        .patterns[patternID]!
+        .automationLanes[automationGeneratorID]!
+        .points[pointIndex]
+        .tension = oldTension;
   }
 }

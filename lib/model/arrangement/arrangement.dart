@@ -72,7 +72,7 @@ abstract class _ArrangementModel with Store, AnthemModelBase {
     int barMultiple = 4,
     int minPaddingInBarMultiples = 4,
   }) {
-    final ticksPerBar = project.song.ticksPerQuarter ~/
+    final ticksPerBar = project.sequence.ticksPerQuarter ~/
         (defaultTimeSignature.denominator ~/ 4) *
         defaultTimeSignature.numerator;
     final lastContent = clips.values.fold<int>(
