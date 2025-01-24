@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,12 +22,12 @@
 /// Usage:
 ///
 /// ```dart
-/// @AnthemModel.all()
+/// @AnthemModel()
 /// class MyModel {
 ///   // ...
 /// }
 ///
-/// @AnthemModel(generateCpp: true, serializable: true)
+/// @AnthemModel.ipc()
 /// class MyIpcMessage {
 ///   // ...
 /// }
@@ -50,6 +50,9 @@ class AnthemModel {
   final bool serializable;
   final bool generateCpp;
   final bool generateModelSync;
+  final bool generateCppWrapperClass;
+  final String? cppBehaviorClassName;
+  final String? cppBehaviorClassIncludePath;
 
   /// Constructor for [AnthemModel].
   ///
@@ -57,13 +60,36 @@ class AnthemModel {
   const AnthemModel(
       {this.serializable = false,
       this.generateCpp = false,
-      this.generateModelSync = false});
+      this.generateModelSync = false,
+      this.generateCppWrapperClass = false,
+      this.cppBehaviorClassName,
+      this.cppBehaviorClassIncludePath});
 
-  /// Constructor for [AnthemModel], which enables all options.
+  /// Constructor for [AnthemModel], which enables options necessary for model
+  /// generation and syncing with C++.
   ///
   /// See the documentation above for more info.
-  const AnthemModel.all()
-      : this(serializable: true, generateCpp: true, generateModelSync: true);
+  const AnthemModel.syncedModel({
+    String? cppBehaviorClassName,
+    String? cppBehaviorClassIncludePath,
+  }) : this(
+            serializable: true,
+            generateCpp: true,
+            generateModelSync: true,
+            generateCppWrapperClass: true,
+            cppBehaviorClassName: cppBehaviorClassName,
+            cppBehaviorClassIncludePath: cppBehaviorClassIncludePath);
+
+  /// Constructor for [AnthemModel], which enables options necessary for IPC
+  /// messages.
+  ///
+  /// See the documentation above for more info.
+  const AnthemModel.ipc()
+      : this(
+            serializable: true,
+            generateCpp: true,
+            generateModelSync: false,
+            generateCppWrapperClass: false);
 }
 
 /// An annotation that triggers the Anthem code generator to create a module
@@ -172,4 +198,23 @@ const anthemObservable = AnthemObservable();
 /// it to generate an equivalent `enum class` in C++.
 class AnthemEnum {
   const AnthemEnum();
+}
+
+/// This annotation is used to mark a field as a union. This allows the correct
+/// serialization and deserialization of dynamic fields, and as such allows for
+/// a crude form of polymorphism in the model.
+///
+/// Note that we support sealed classes for serialization and use it for IPC,
+/// but not for model sync due to the complexity. So, this is the primary way to
+/// do polymorphism in the model.
+///
+/// Unions are defined like so:
+/// ```dart
+/// @Union([FirstType, SecondType])
+/// Object unionField;
+/// ```
+class Union {
+  final List<Type> types;
+
+  const Union(this.types);
 }

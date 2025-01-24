@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,7 +18,7 @@
 */
 
 import 'package:analyzer/dart/element/element.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
@@ -79,9 +79,9 @@ class ModelClassInfo {
   /// File being parsed:
   ///
   /// ```dart
-  /// @AnthemModel.all()
+  /// @AnthemModel.syncedModel()
   /// class SomeClass extends _SomeClass with _$SomeClassAnthemModelMixin {
-  ///   ...
+  ///   // ...
   /// }
   ///
   /// // We can *always* find this, because it's in the file currently being
@@ -89,23 +89,23 @@ class ModelClassInfo {
   /// class _SomeClass {
   ///   // We will try to parse this into a ModelClassInfo as well
   ///   SomeOtherClass otherClass;
-  ///   ...
+  ///   // ...
   /// }
   /// ```
   ///
   /// Some file that is imported by the file being parsed:
   ///
   /// ```dart
-  /// @AnthemModel.all()
+  /// @AnthemModel.syncedModel()
   /// class SomeOtherClass extends _SomeOtherClass with _$SomeOtherClassAnthemModelMixin {
-  ///   ...
+  ///   // ...
   /// }
   ///
   /// // Randomly, the analyzer will fail to find this class. This is fine,
   /// // because when the build package is processing this file, it will always
   /// // find this class.
   /// class _SomeOtherClass {
-  ///   ...
+  ///   // ...
   /// }
   /// ```
   ClassElement get baseClass {
@@ -156,7 +156,23 @@ class _MyModel {
         generateModelSync:
             annotationElement.getField('generateModelSync')?.toBoolValue() ??
                 false,
+        generateCppWrapperClass: annotationElement
+                .getField('generateCppWrapperClass')
+                ?.toBoolValue() ??
+            false,
+        cppBehaviorClassName:
+            annotationElement.getField('cppBehaviorClassName')?.toStringValue(),
+        cppBehaviorClassIncludePath: annotationElement
+            .getField('cppBehaviorClassIncludePath')
+            ?.toStringValue(),
       );
+
+      assert(
+          (annotation?.cppBehaviorClassName == null &&
+                  annotation?.cppBehaviorClassIncludePath == null) ||
+              (annotation?.cppBehaviorClassName != null &&
+                  annotation?.cppBehaviorClassIncludePath != null),
+          'If you provide a cppBehaviorClassName, you must also provide a cppBehaviorClassIncludePath, and vice versa.');
     }
 
     // Find matching base class for the library class
@@ -186,12 +202,31 @@ class _MyModel {
     //   continue;
     // }
 
-    for (final field in _baseClass?.fields ?? []) {
+    for (final field in _baseClass?.fields ?? <FieldElement>[]) {
       // If the field doesn't have a setter, it's not something we can
       // deserialize, so we won't include it. This can happen if the field is
       // final, or if the field is a getter.
-      if (field.setter == null) continue;
+      //
+      // The only exception to this is if the field is a static const field, in
+      // which case we will include it as a constant.
+      if (field.setter == null) {
+        // We treat static const fields as constants, if they are primitive types
+        // (e.g. string, number, bool). If the field is static and/or const but
+        // not both, or if it's not a primitive type, we will just skip over it.
+        if (field.isStatic && field.isConst) {
+          if (!field.type.isDartCoreString &&
+              !field.type.isDartCoreInt &&
+              !field.type.isDartCoreDouble &&
+              !field.type.isDartCoreNum &&
+              !field.type.isDartCoreBool) {
+            continue;
+          }
+        } else {
+          continue;
+        }
+      }
 
+      // Check for skip annotation
       if (_skipAll(field)) continue;
 
       fields[field.name] = ModelFieldInfo(
@@ -244,18 +279,37 @@ class SealedSubclassInfo {
 
 /// Represents a parsed field in an Anthem model.
 class ModelFieldInfo {
+  /// The field element for this field.
   final FieldElement fieldElement;
+
+  /// The parsed type info for this field.
   final ModelType typeInfo;
+
+  /// Whether this field is observable, as defined by the MobX @observable
+  /// annotation.
   final bool isObservable;
 
+  /// Whether this field represents a constant for the model.
+  ///
+  /// Constants are defined as static and const fields that are primitive types.
+  /// E.g.:
+  ///
+  /// ```dart
+  /// static const String myString = 'Hello, world!';
+  /// ```
+  final bool isModelConstant;
+
+  final String? constantValue;
+
+  /// The @Hide annotation for this field, if there is one.
   final Hide? hideAnnotation;
 
   ModelFieldInfo({
     required this.fieldElement,
     required LibraryReader libraryReader,
     required ClassElement annotatedClass,
-  })  : typeInfo =
-            getModelType(fieldElement.type, libraryReader, annotatedClass),
+  })  : typeInfo = getModelType(fieldElement.type, annotatedClass,
+            field: fieldElement),
         isObservable = (() {
           final hideAnnotation = const TypeChecker.fromRuntime(AnthemObservable)
               .firstAnnotationOf(fieldElement);
@@ -276,6 +330,27 @@ class ModelFieldInfo {
                     false,
             cpp: hideAnnotation.getField('cpp')?.toBoolValue() ?? false,
           );
+        })(),
+        isModelConstant = fieldElement.isStatic && fieldElement.isConst,
+        constantValue = (() {
+          if (!(fieldElement.isStatic && fieldElement.isConst)) return null;
+
+          final value = fieldElement.computeConstantValue();
+
+          if (value == null) return null;
+
+          // If the value is a string, return it as a string
+          if (value.type?.isDartCoreString == true) {
+            return '"${value.toString()}"';
+          } else if (value.type?.isDartCoreInt == true) {
+            return value.toIntValue()?.toString();
+          } else if (value.type?.isDartCoreDouble == true) {
+            return value.toDoubleValue()?.toString();
+          } else if (value.type?.isDartCoreBool == true) {
+            return value.toBoolValue()?.toString();
+          }
+
+          return null;
         })();
 }
 

@@ -23,13 +23,13 @@ import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/main.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/generator.dart';
-import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
-import 'package:anthem/model/shared/hydratable.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes_render_cache.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:flutter/widgets.dart' as widgets;
 import 'package:mobx/mobx.dart';
 
@@ -41,7 +41,7 @@ part 'pattern.g.dart';
 part 'package:anthem/widgets/basic/clip/clip_title_render_cache_mixin.dart';
 part 'package:anthem/widgets/basic/clip/clip_notes_render_cache_mixin.dart';
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class PatternModel extends _PatternModel
     with
         _$PatternModel,
@@ -52,15 +52,16 @@ class PatternModel extends _PatternModel
     _init();
   }
 
-  PatternModel.create({required super.name, required ProjectModel project})
-      : super.create(project: project) {
+  PatternModel.create({required super.name}) : super.create() {
     _init();
-    // TODO: remove
-    for (final generator in project.generators.values.where(
-        (generator) => generator.generatorType == GeneratorType.automation)) {
-      automationLanes[generator.id] = AutomationLaneModel();
-    }
-    super.hydrate(project: project);
+
+    onModelAttached(() {
+      // TODO: remove
+      for (final generator in project.generators.values.where(
+          (generator) => generator.generatorType == GeneratorType.automation)) {
+        automationLanes[generator.id] = AutomationLaneModel();
+      }
+    });
   }
 
   factory PatternModel.fromJson(Map<String, dynamic> json) {
@@ -70,24 +71,19 @@ class PatternModel extends _PatternModel
   }
 
   void _init() {
-    if (isHydrated) throw Exception('Should always init before hydrate');
-
-    super._onHydrateAction = () {
+    onModelAttached(() {
       incrementClipUpdateSignal = Action(() {
         clipNotesUpdateSignal.value =
             (clipNotesUpdateSignal.value + 1) % 0xFFFFFFFF;
       });
       updateClipTitleCache();
       updateClipNotesRenderCache();
-    };
+    });
   }
 }
 
-abstract class _PatternModel extends Hydratable with Store, AnthemModelBase {
-  @hide
-  void Function()? _onHydrateAction;
-
-  ID id = getID();
+abstract class _PatternModel with Store, AnthemModelBase {
+  Id id = getId();
 
   @anthemObservable
   String name = '';
@@ -97,48 +93,29 @@ abstract class _PatternModel extends Hydratable with Store, AnthemModelBase {
 
   /// The ID here is channel ID `Map<ChannelID, List<NoteModel>>`
   @anthemObservable
-  AnthemObservableMap<ID, AnthemObservableList<NoteModel>> notes =
+  AnthemObservableMap<Id, AnthemObservableList<NoteModel>> notes =
       AnthemObservableMap();
 
   /// The ID here is channel ID
   @anthemObservable
-  AnthemObservableMap<ID, AutomationLaneModel> automationLanes =
+  AnthemObservableMap<Id, AutomationLaneModel> automationLanes =
       AnthemObservableMap();
 
   @anthemObservable
   AnthemObservableList<TimeSignatureChangeModel> timeSignatureChanges =
       AnthemObservableList();
 
-  @hide
-  ProjectModel? _project;
-
-  ProjectModel get project {
-    return _project!;
-  }
-
   /// For deserialization. Use `PatternModel.create()` instead.
   _PatternModel();
 
   _PatternModel.create({
     required this.name,
-    required ProjectModel project,
   }) {
     color = AnthemColor(
       hue: 0,
       saturationMultiplier: 0,
     );
     timeSignatureChanges = AnthemObservableList();
-  }
-
-  void hydrate({required ProjectModel project}) {
-    (this as _$PatternModelAnthemModelMixin).init();
-
-    _project = project;
-
-    _onHydrateAction?.call();
-    _onHydrateAction = null;
-
-    isHydrated = true;
   }
 
   /// Gets the time position of the end of the last item in this pattern
@@ -149,8 +126,8 @@ abstract class _PatternModel extends Hydratable with Store, AnthemModelBase {
     int minPaddingInBarMultiples = 1,
   }) {
     final ticksPerBar = project.song.ticksPerQuarter ~/
-        (_project!.song.defaultTimeSignature.denominator ~/ 4) *
-        _project!.song.defaultTimeSignature.numerator;
+        (project.song.defaultTimeSignature.denominator ~/ 4) *
+        project.song.defaultTimeSignature.numerator;
 
     final lastNoteContent = notes.values.expand((e) => e).fold<int>(
         ticksPerBar * barMultiple * minPaddingInBarMultiples,

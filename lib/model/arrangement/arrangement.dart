@@ -20,50 +20,41 @@
 import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/project.dart';
-import 'package:anthem/model/shared/hydratable.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/shared/time_signature.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
 import 'clip.dart';
 
 part 'arrangement.g.dart';
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class ArrangementModel extends _ArrangementModel
     with _$ArrangementModel, _$ArrangementModelAnthemModelMixin {
   ArrangementModel({required super.name, required super.id});
 
   ArrangementModel.uninitialized() : super(name: '', id: '');
 
-  ArrangementModel.create(
-      {required super.name, required super.id, required super.project})
+  ArrangementModel.create({required super.name, required super.id})
       : super.create();
 
   factory ArrangementModel.fromJson(Map<String, dynamic> json) =>
       _$ArrangementModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _ArrangementModel extends Hydratable
-    with Store, AnthemModelBase {
-  ID id;
+abstract class _ArrangementModel with Store, AnthemModelBase {
+  Id id;
 
   @anthemObservable
   String name;
 
   @anthemObservable
-  AnthemObservableMap<ID, ClipModel> clips = AnthemObservableMap();
+  AnthemObservableMap<Id, ClipModel> clips = AnthemObservableMap();
 
   @anthemObservable
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
-
-  @hide
-  ProjectModel? _project;
-
-  ProjectModel get project {
-    return _project!;
-  }
 
   _ArrangementModel({
     required this.name,
@@ -73,18 +64,7 @@ abstract class _ArrangementModel extends Hydratable
   _ArrangementModel.create({
     required this.name,
     required this.id,
-    required ProjectModel project,
-  }) : super() {
-    hydrate(project: project);
-  }
-
-  void hydrate({
-    required ProjectModel project,
-  }) {
-    (this as _$ArrangementModelAnthemModelMixin).init();
-    _project = project;
-    isHydrated = true;
-  }
+  }) : super();
 
   /// Gets the time position of the end of the last clip in this arrangement,
   /// rounded upward to the nearest `barMultiple` bars.

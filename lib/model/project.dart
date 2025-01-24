@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2024 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,37 +17,51 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:anthem/commands/command.dart';
-import 'package:anthem/commands/command_queue.dart';
+import 'package:anthem/commands/command_stack.dart';
 import 'package:anthem/commands/journal_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/song.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:anthem/engine_api/messages/messages.dart' as message_api;
 import 'package:mobx/mobx.dart';
 
 import 'generator.dart';
+import 'processing_graph/processing_graph.dart';
 import 'shared/hydratable.dart';
 
 part 'project.g.dart';
 
 enum ProjectLayoutKind { arrange, edit, mix }
 
-@AnthemModel.all()
+@AnthemModel.syncedModel(
+  cppBehaviorClassName: 'Project',
+  cppBehaviorClassIncludePath: 'modules/core/project.h',
+)
 class ProjectModel extends _ProjectModel
     with _$ProjectModel, _$ProjectModelAnthemModelMixin {
   ProjectModel() : super();
-  ProjectModel.create() : super.create();
+  ProjectModel.create([super._enginePathOverride]) : super.create();
 
   factory ProjectModel.fromJson(Map<String, dynamic> json) =>
       _$ProjectModelAnthemModelMixin.fromJson(json)..isSaved = true;
 }
 
 abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
+  /// Represents information about the sequenced content in the project, such as
+  /// arrangements and patterns, and their content.
   late SongModel song;
+
+  /// Represents the processing graph for the project. This is used to route
+  /// audio, control and notes between processors, and to eventually route the
+  /// resulting audio to the audio output device.
+  late ProcessingGraphModel processingGraph;
 
   /// ID of the master output node in the processing graph. Audio that is routed
   /// to this node is sent to the audio output device.
@@ -57,27 +71,27 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
 
   /// Map of generators in the project.
   @anthemObservable
-  AnthemObservableMap<ID, GeneratorModel> generators = AnthemObservableMap();
+  AnthemObservableMap<Id, GeneratorModel> generators = AnthemObservableMap();
 
   /// List of generator IDs in the project (to preserve order).
   @anthemObservable
-  AnthemObservableList<ID> generatorList = AnthemObservableList();
+  AnthemObservableList<Id> generatorList = AnthemObservableList();
 
   /// ID of the active instrument, used to determine which instrument is shown
   /// in the channel rack, which is used for piano roll, etc.
   @anthemObservable
   @hideFromSerialization
-  ID? activeInstrumentID;
+  Id? activeInstrumentID;
 
   /// ID of the active automation generator, used to determine which automation
   /// generator is being written to using the automation editor.
   @anthemObservable
   @hideFromSerialization
-  ID? activeAutomationGeneratorID;
+  Id? activeAutomationGeneratorID;
 
   /// The ID of the project.
   @hideFromSerialization
-  ID id = getID();
+  Id id = getId();
 
   /// The file path of the project.
   @anthemObservable
@@ -134,7 +148,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   // Undo / redo & etc
 
   @hide
-  late final CommandQueue _commandQueue;
+  late final CommandStack _commandStack;
 
   @hide
   List<Command> _journalPageAccumulator = [];
@@ -156,100 +170,49 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
 
   // This method is used for deserialization and so doesn't create new child
   // models.
-  _ProjectModel() : super() {
-    _commandQueue = CommandQueue(this as ProjectModel);
-
-    _init();
+  _ProjectModel()
+      : _enginePathOverride = null,
+        super() {
+    _commandStack = CommandStack(this as ProjectModel);
   }
 
   @hide
   void Function(Iterable<FieldAccessor>, FieldOperation)? _fieldChangedListener;
 
-  _ProjectModel.create() : super() {
-    _commandQueue = CommandQueue(this as ProjectModel);
+  @hide
+  final String? _enginePathOverride;
 
-    song = SongModel.create(
-      project: this as ProjectModel,
-    );
+  _ProjectModel.create([this._enginePathOverride]) : super() {
+    _commandStack = CommandStack(this as ProjectModel);
 
-    engine = Engine(engineID, this as ProjectModel)..start();
+    song = SongModel.create();
+
+    processingGraph = ProcessingGraphModel();
+
+    hydrate();
+  }
+
+  @hide
+  var _modelSyncCompleter = Completer<void>();
+
+  /// Waits for the model to be synced with the engine. If the model is already
+  /// synced, this will return immediately.
+  Future<void> waitForFirstSync() => _modelSyncCompleter.future;
+
+  /// This function is run after deserialization. It allows us to do some setup
+  /// that the deserialization step can't do for us.
+  void hydrate() {
+    engine = Engine(engineID, this as ProjectModel,
+        enginePathOverride: _enginePathOverride)
+      ..start();
 
     engine.engineStateStream.listen((state) {
       (this as ProjectModel).engineState = state;
 
       // Send model state change messages to the engine
       if (state == EngineState.running) {
-        // Any time the engine starts, we send the entire current model state to the engine
-        engine.modelSyncApi.initModel(
-          jsonEncode((this as _$ProjectModelAnthemModelMixin)
-              .toJson(includeFieldsForEngine: true)),
-        );
-
-        _fieldChangedListener = (accesses, operation) {
-          String? serializeMapKey(dynamic key) {
-            return switch (key) {
-              null => null,
-              int i => '$i',
-              double d => '$d',
-              String s => '"$s"',
-              bool b => '$b',
-              _ => throw AssertionError('Invalid map key type'),
-            };
-          }
-
-          // Values will already be in JSON format, but we need to convert to
-          // string. This is just like the above but with the addition of
-          // Map<String, dynamic> and List<dynamic>.
-          String serializeValue(dynamic value) {
-            return switch (value) {
-              null => 'null',
-              int i => '$i',
-              double d => '$d',
-              String s => '"$s"',
-              bool b => '$b',
-              Map<String, dynamic> m => jsonEncode(m),
-              List<dynamic> l => jsonEncode(l),
-              _ => throw AssertionError(
-                  'Invalid value type: ${value.runtimeType}'),
-            };
-          }
-
-          final convertedAccesses = accesses.map((access) {
-            return message_api.FieldAccess(
-              fieldName: access.fieldName,
-              fieldType: switch (access.fieldType) {
-                FieldType.raw => message_api.FieldType.raw,
-                FieldType.list => message_api.FieldType.list,
-                FieldType.map => message_api.FieldType.map,
-              },
-              listIndex: access.index,
-              serializedMapKey: serializeMapKey(access.key),
-            );
-          }).toList();
-
-          engine.modelSyncApi.updateModel(
-            updateKind: switch (operation) {
-              RawFieldUpdate() ||
-              ListUpdate() ||
-              MapPut() =>
-                message_api.FieldUpdateKind.set,
-              ListInsert() => message_api.FieldUpdateKind.add,
-              ListRemove() || MapRemove() => message_api.FieldUpdateKind.remove,
-            },
-            fieldAccesses: convertedAccesses,
-            serializedValue: switch (operation) {
-              RawFieldUpdate() => serializeValue(operation.newValue),
-              ListInsert() => serializeValue(operation.value),
-              ListUpdate() => serializeValue(operation.value),
-              MapPut() => serializeValue(operation.value),
-              _ => null,
-            },
-          );
-        };
-
-        // Hook up the model change stream to the engine
-        (this as AnthemModelBase)
-            .addFieldChangedListener(_fieldChangedListener!);
+        _initializeEngine();
+        _attachModelChangeListener();
       }
 
       if (state == EngineState.stopped) {
@@ -257,31 +220,110 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
           // Unhook the model change stream from the engine
           (this as AnthemModelBase)
               .removeFieldChangedListener(_fieldChangedListener!);
+          _fieldChangedListener = null;
         }
+        _modelSyncCompleter = Completer();
       }
     });
 
-    // We don't need to hydrate here. All `SomeModel.Create()` functions should
-    // call hydrate().
+    // Normally we rely on the fact that this will always be put in the field of
+    // another model, which will call setParentPropertiesOnChildren. Since this
+    // is the top level, we need to call it ourselves.
+    setParentPropertiesOnChildren();
+
     isHydrated = true;
-
-    _init();
   }
 
-  void _init() {
-    (this as _$ProjectModelAnthemModelMixin).init();
-  }
-
-  /// This function is run after deserialization. It allows us to do some setup
-  /// that the deserialization step can't do for us.
-  void hydrate() {
-    song.hydrate(
-      project: this as ProjectModel,
+  /// Initializes the engine. This is called when the engine is started.
+  void _initializeEngine() {
+    // Any time the engine starts, we send the entire current model state to the engine
+    engine.modelSyncApi.initModel(
+      jsonEncode((this as _$ProjectModelAnthemModelMixin)
+          .toJson(includeFieldsForEngine: true)),
     );
+    // We won't wait for the engine to acknowledge this before saying that
+    // we're synced, since any subsequent messages will be processed after
+    // the engine has finished processing the init request.
+    _modelSyncCompleter.complete();
 
-    engine = Engine(engineID, this as ProjectModel)..start();
+    // The engine will receive the processing graph when we sync the model,
+    // but it still needs to be compiled by the engine for use on the audio
+    // thread, so we do that here.
+    engine.processingGraphApi.compile();
+  }
 
-    isHydrated = true;
+  /// Attaches a listener for model state change events, and send them to the
+  /// engine.
+  ///
+  /// This is used to keep the engine in sync with the UI model state. The state
+  /// change events are created by generated code, and also processed by
+  /// generated code in the engine.
+  void _attachModelChangeListener() {
+    if (_fieldChangedListener != null) return;
+
+    _fieldChangedListener = (accesses, operation) {
+      String? serializeMapKey(dynamic key) {
+        return switch (key) {
+          null => null,
+          int i => '$i',
+          double d => '$d',
+          String s => '"$s"',
+          bool b => '$b',
+          _ => throw AssertionError('Invalid map key type'),
+        };
+      }
+
+      // Values will already be in JSON format, but we need to convert to
+      // string. This is just like the above but with the addition of
+      // Map<String, dynamic> and List<dynamic>.
+      String serializeValue(dynamic value) {
+        return switch (value) {
+          null => 'null',
+          int i => '$i',
+          double d => '$d',
+          String s => '"$s"',
+          bool b => '$b',
+          Map<String, dynamic> m => jsonEncode(m),
+          List<dynamic> l => jsonEncode(l),
+          _ => throw AssertionError('Invalid value type: ${value.runtimeType}'),
+        };
+      }
+
+      final convertedAccesses = accesses.map((access) {
+        return message_api.FieldAccess(
+          fieldName: access.fieldName,
+          fieldType: switch (access.fieldType) {
+            FieldType.raw => message_api.FieldType.raw,
+            FieldType.list => message_api.FieldType.list,
+            FieldType.map => message_api.FieldType.map,
+          },
+          listIndex: access.index,
+          serializedMapKey: serializeMapKey(access.key),
+        );
+      }).toList();
+
+      engine.modelSyncApi.updateModel(
+        updateKind: switch (operation) {
+          RawFieldUpdate() ||
+          ListUpdate() ||
+          MapPut() =>
+            message_api.FieldUpdateKind.set,
+          ListInsert() => message_api.FieldUpdateKind.add,
+          ListRemove() || MapRemove() => message_api.FieldUpdateKind.remove,
+        },
+        fieldAccesses: convertedAccesses,
+        serializedValue: switch (operation) {
+          RawFieldUpdate() => serializeValue(operation.newValue),
+          ListInsert() => serializeValue(operation.value),
+          ListUpdate() => serializeValue(operation.value),
+          MapPut() => serializeValue(operation.value),
+          _ => null,
+        },
+      );
+    };
+
+    // Hook up the model change stream to the engine
+    (this as AnthemModelBase).addFieldChangedListener(_fieldChangedListener!);
   }
 
   /// Executes the given command on the project and pushes it to the undo/redo
@@ -292,7 +334,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     if (_journalPageActive) {
       _journalPageAccumulator.add(command);
     } else {
-      _commandQueue.push(command);
+      _commandStack.push(command);
     }
   }
 
@@ -306,7 +348,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     if (_journalPageActive) {
       _journalPageAccumulator.add(command);
     } else {
-      _commandQueue.push(command);
+      _commandStack.push(command);
     }
   }
 
@@ -319,13 +361,13 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// Undoes the last command in the undo/redo queue.
   void undo() {
     _assertJournalInactive();
-    _commandQueue.undo();
+    _commandStack.undo();
   }
 
   /// Redoes the next command in the undo/redo queue.
   void redo() {
     _assertJournalInactive();
-    _commandQueue.redo();
+    _commandStack.redo();
   }
 
   void startJournalPage() {
@@ -344,12 +386,12 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     _journalPageActive = false;
 
     if (accumulator.length == 1) {
-      _commandQueue.push(accumulator.first);
+      _commandStack.push(accumulator.first);
       return;
     }
 
     final command = JournalPageCommand(accumulator);
-    _commandQueue.push(command);
+    _commandStack.push(command);
   }
 }
 
@@ -357,19 +399,19 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
 abstract class DetailViewKind {}
 
 class PatternDetailViewKind extends DetailViewKind {
-  ID patternID;
+  Id patternID;
   PatternDetailViewKind(this.patternID);
 }
 
 class ArrangementDetailViewKind extends DetailViewKind {
-  ID arrangementID;
+  Id arrangementID;
   ArrangementDetailViewKind(this.arrangementID);
 }
 
 class TimeSignatureChangeDetailViewKind extends DetailViewKind {
-  ID? arrangementID;
-  ID? patternID;
-  ID changeID;
+  Id? arrangementID;
+  Id? patternID;
+  Id changeID;
   TimeSignatureChangeDetailViewKind({
     this.arrangementID,
     this.patternID,

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2024 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,9 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/generator.dart';
-import 'package:anthem/model/pattern/pattern.dart';
-import 'package:anthem/model/project.dart';
+import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/knob.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
@@ -37,7 +35,7 @@ import 'package:provider/provider.dart';
 import '../../../theme.dart';
 
 class GeneratorRow extends StatefulWidget {
-  final ID generatorID;
+  final Id generatorID;
 
   const GeneratorRow({
     super.key,
@@ -90,15 +88,27 @@ class _GeneratorRowState extends State<GeneratorRow> {
             children: [
               const SizedBox(width: 80),
               Observer(builder: (context) {
+                final nodeId = generator.gainNodeId;
+                final node = project.processingGraph.nodes[nodeId];
+
+                final value = node
+                        ?.getPortById(GainProcessorModel.gainPortId)
+                        .parameterValue ??
+                    0.5;
+
                 return Knob(
-                  value: generator.gainNode.parameterValues[0] ?? 0.0,
+                  value: value,
                   min: 0,
                   max: 10,
                   width: 20,
                   height: 20,
                   stickyPoints: const [1],
                   onValueChanged: (value) {
-                    generator.gainNode.parameterValues[0] = value;
+                    if (node == null) return;
+
+                    node
+                        .getPortById(GainProcessorModel.gainPortId)
+                        .parameterValue = value;
                   },
                 );
               }),

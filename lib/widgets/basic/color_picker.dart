@@ -26,7 +26,7 @@ const squareMargin = 1.0;
 const padding = 4.0;
 
 class ColorPicker extends StatefulWidget {
-  final Function(AnthemColor)? onChange;
+  final void Function(AnthemColor)? onChange;
 
   const ColorPicker({super.key, this.onChange});
 

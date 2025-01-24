@@ -17,7 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/collections.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
 import 'automation_point.dart';
@@ -25,7 +27,7 @@ import 'automation_point.dart';
 part 'automation_lane.g.dart';
 
 /// Represents a set of automation points for a particular channel.
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class AutomationLaneModel extends _AutomationLaneModel
     with _$AutomationLaneModel, _$AutomationLaneModelAnthemModelMixin {
   AutomationLaneModel() : super();

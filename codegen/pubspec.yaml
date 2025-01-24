@@ -4,11 +4,11 @@ publish_to: 'none'
 version: 0.0.1
 
 environment:
-  sdk: ">=3.5.0 <4.0.0"
+  sdk: ">=3.6.0 <4.0.0"
 
 dependencies:
   analyzer: ^6.7.0
-  build: ^2.4.1
+  build: ^2.4.2
   source_gen: ^1.5.0
   flutter_test:
     sdk: flutter

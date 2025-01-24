@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,7 +20,7 @@
 @GenerateCppModuleFile()
 library;
 
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 
 export 'arrangement/arrangement.dart';
 export 'arrangement/clip.dart';
@@ -30,8 +30,18 @@ export 'pattern/automation_point.dart';
 export 'pattern/note.dart';
 export 'pattern/pattern.dart';
 
-export 'processing_graph/processor.dart';
-export 'processing_graph/processor_definition.dart';
+export 'processing_graph/processors/gain.dart';
+export 'processing_graph/processors/master_output.dart';
+export 'processing_graph/processors/simple_midi_generator.dart';
+export 'processing_graph/processors/simple_volume_lfo.dart';
+export 'processing_graph/processors/tone_generator.dart';
+
+export 'processing_graph/node_connection.dart';
+export 'processing_graph/node_port_config.dart';
+export 'processing_graph/node_port.dart';
+export 'processing_graph/node.dart';
+export 'processing_graph/parameter_config.dart';
+export 'processing_graph/processing_graph.dart';
 
 export 'shared/anthem_color.dart';
 export 'shared/hydratable.dart';
@@ -39,7 +49,6 @@ export 'shared/time_signature.dart';
 
 export 'app.dart';
 export 'generator.dart';
-export 'plugin.dart';
 export 'project.dart';
 export 'song.dart';
 export 'store.dart';

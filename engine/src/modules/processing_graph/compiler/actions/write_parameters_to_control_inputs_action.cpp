@@ -23,28 +23,22 @@ void WriteParametersToControlInputsAction::execute(int numSamples) {
   auto& parameterValues = processContext->getParameterValues();
   auto& parameterSmoothers = processContext->getParameterSmoothers();
 
-  // Set smoother targets to current parameter values
-  for (int i = 0; i < parameterSmoothers.size(); i++) {
-    auto& smoother = parameterSmoothers[i];
-    auto value = parameterValues[i].load();
+  for (auto& [id, valueAtomic] : parameterValues) {
+    auto& smoother = parameterSmoothers[id];
+    auto value = valueAtomic->load();
 
     if (smoother->getTargetValue() != value) {
       smoother->setTargetValue(value);
     }
-  }
-
-  // Write smoothed values to control inputs
-  for (int i = 0; i < parameterSmoothers.size(); i++) {
-    auto& smoother = parameterSmoothers[i];
 
     for (int j = 0; j < numSamples; j++) {
       smoother->process(1.0f / sampleRate);
       auto currentValue = smoother->getCurrentValue();
-      processContext->getInputControlBuffer(i).setSample(0, j, currentValue);
+      processContext->getInputControlBuffer(id).setSample(0, j, currentValue);
     }
   }
 }
 
 void WriteParametersToControlInputsAction::debugPrint() {
-  std::cout << "WriteParametersToControlInputsAction: " << processContext->getGraphNode()->processor->config.getId() << std::endl;
+  std::cout << "WriteParametersToControlInputsAction: " << processContext->getGraphNode()->id() << std::endl;
 }

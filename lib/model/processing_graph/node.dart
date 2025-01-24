@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,32 +17,119 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/processing_graph/node_config.dart';
-import 'package:anthem/model/shared/hydratable.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/collections.dart';
+import 'package:anthem/model/processing_graph/node_port.dart';
+import 'package:anthem/model/processing_graph/processors/gain.dart';
+import 'package:anthem/model/processing_graph/processors/simple_midi_generator.dart';
+import 'package:anthem/model/processing_graph/processors/simple_volume_lfo.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
+
+import 'processors/master_output.dart';
+import 'processors/tone_generator.dart';
 
 part 'node.g.dart';
 
-@AnthemModel.all()
+@AnthemModel.syncedModel(
+  cppBehaviorClassName: 'Node',
+  cppBehaviorClassIncludePath: 'modules/processing_graph/model/node.h',
+)
 class NodeModel extends _NodeModel
     with _$NodeModel, _$NodeModelAnthemModelMixin {
-  NodeModel({required super.id, required super.config});
+  NodeModel({
+    required super.id,
+    super.processor,
+    AnthemObservableList<NodePortModel>? audioInputPorts,
+    AnthemObservableList<NodePortModel>? midiInputPorts,
+    AnthemObservableList<NodePortModel>? controlInputPorts,
+    AnthemObservableList<NodePortModel>? audioOutputPorts,
+    AnthemObservableList<NodePortModel>? midiOutputPorts,
+    AnthemObservableList<NodePortModel>? controlOutputPorts,
+  }) : super(
+          audioInputPorts: audioInputPorts ?? AnthemObservableList(),
+          midiInputPorts: midiInputPorts ?? AnthemObservableList(),
+          controlInputPorts: controlInputPorts ?? AnthemObservableList(),
+          audioOutputPorts: audioOutputPorts ?? AnthemObservableList(),
+          midiOutputPorts: midiOutputPorts ?? AnthemObservableList(),
+          controlOutputPorts: controlOutputPorts ?? AnthemObservableList(),
+        );
 
   NodeModel.uninitialized()
-      : super(id: '', config: NodeConfigModel.uninitialized());
+      : super(
+          id: '',
+          audioInputPorts: AnthemObservableList(),
+          midiInputPorts: AnthemObservableList(),
+          controlInputPorts: AnthemObservableList(),
+          audioOutputPorts: AnthemObservableList(),
+          midiOutputPorts: AnthemObservableList(),
+          controlOutputPorts: AnthemObservableList(),
+          processor: null,
+        );
 
   factory NodeModel.fromJson(Map<String, dynamic> json) =>
       _$NodeModelAnthemModelMixin.fromJson(json);
+
+  NodePortModel getPortById(int portId) {
+    for (final port in audioInputPorts) {
+      if (port.id == portId) return port;
+    }
+    for (final port in midiInputPorts) {
+      if (port.id == portId) return port;
+    }
+    for (final port in controlInputPorts) {
+      if (port.id == portId) return port;
+    }
+    for (final port in audioOutputPorts) {
+      if (port.id == portId) return port;
+    }
+    for (final port in midiOutputPorts) {
+      if (port.id == portId) return port;
+    }
+    for (final port in controlOutputPorts) {
+      if (port.id == portId) return port;
+    }
+    throw Exception('Port with id $portId not found');
+  }
+
+  Iterable<NodePortModel> getAllPorts() {
+    return audioInputPorts
+        .followedBy(audioOutputPorts)
+        .followedBy(midiInputPorts)
+        .followedBy(midiOutputPorts)
+        .followedBy(controlInputPorts)
+        .followedBy(controlOutputPorts);
+  }
 }
 
-abstract class _NodeModel extends Hydratable with Store, AnthemModelBase {
+abstract class _NodeModel with Store, AnthemModelBase {
   String id;
 
-  NodeConfigModel config;
+  AnthemObservableList<NodePortModel> audioInputPorts;
+  AnthemObservableList<NodePortModel> midiInputPorts;
+  AnthemObservableList<NodePortModel> controlInputPorts;
 
-  _NodeModel({required this.id, required this.config}) {
-    isHydrated = true;
-    (this as _$NodeModelAnthemModelMixin).init();
-  }
+  AnthemObservableList<NodePortModel> audioOutputPorts;
+  AnthemObservableList<NodePortModel> midiOutputPorts;
+  AnthemObservableList<NodePortModel> controlOutputPorts;
+
+  @Union([
+    GainProcessorModel,
+    MasterOutputProcessorModel,
+    SimpleMidiGeneratorProcessorModel,
+    SimpleVolumeLfoProcessorModel,
+    ToneGeneratorProcessorModel,
+  ])
+  Object? processor;
+
+  _NodeModel({
+    required this.id,
+    required this.audioInputPorts,
+    required this.midiInputPorts,
+    required this.controlInputPorts,
+    required this.audioOutputPorts,
+    required this.midiOutputPorts,
+    required this.controlOutputPorts,
+    required this.processor,
+  });
 }

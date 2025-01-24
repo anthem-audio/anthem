@@ -68,7 +68,7 @@ class _DeleteActionData {
 
 class _SelectionBoxActionData {
   Point<double> start;
-  Set<ID> originalSelection;
+  Set<Id> originalSelection;
 
   _SelectionBoxActionData({
     required this.start,
@@ -78,9 +78,9 @@ class _SelectionBoxActionData {
 
 class _NoteResizeActionData {
   double pointerStartOffset;
-  Map<ID, Time> startLengths;
+  Map<Id, Time> startLengths;
   Time smallestStartLength;
-  ID smallestNote;
+  Id smallestNote;
   NoteModel pressedNote;
 
   _NoteResizeActionData({
@@ -98,8 +98,8 @@ class _NoteMoveActionData {
       timeOffset; // difference between the start of the pressed note and the cursor X, in time
   double
       noteOffset; // difference between the start of the pressed note and the cursor Y, in notes
-  Map<ID, Time> startTimes;
-  Map<ID, int> startKeys;
+  Map<Id, Time> startTimes;
+  Map<Id, int> startKeys;
   Time
       startOfFirstNote; // Start offset of the earliest note. Used to ensure none of the notes are moved to before the start of the pattern.
   int keyOfTopNote;
@@ -272,7 +272,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         if (event.keyboardModifiers.shift) {
           project.startJournalPage();
 
-          final newSelectedNotes = ObservableSet<ID>();
+          final newSelectedNotes = ObservableSet<Id>();
 
           for (final note in notes
               .where((note) =>
@@ -392,7 +392,9 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
   void pointerDown(PianoRollPointerDownEvent event) {
     if (project.song.activePatternID == null ||
-        project.activeInstrumentID == null) return;
+        project.activeInstrumentID == null) {
+      return;
+    }
 
     if (event.pointerEvent.buttons & kPrimaryMouseButton ==
             kPrimaryMouseButton &&

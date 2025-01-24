@@ -4,18 +4,34 @@ project(AnthemEngine)
 
 set(CMAKE_CXX_STANDARD 20)
 
+if(MSVC)
+  # Disables a couple warnings about struct alignment (C4324, C4820), which
+  # don't seem to indicate anything, though I may be wrong.
+  #
+  # https://learn.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-4-c4324?view=msvc-170
+  add_definitions("/wd4324")
+  add_definitions("/wd4820")
+
+  # Disables "relative include path contains '..'" warning, which shows up in
+  # reflect-cpp.
+  add_definitions("/wd4464")
+
+  # I guess reflect-cpp just chucks GNU preprocessor macros into the void on
+  # MSVC, and it makes the compiler unhappy.
+  add_definitions("/wd4668")
+endif()
+
 # JUCE is having trouble finding GTK
 if (LINUX)
   find_package(PkgConfig REQUIRED)
   find_package(CURL REQUIRED)
   pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
-  pkg_check_modules(WEBKIT2GTK REQUIRED webkit2gtk-4.0)
+  pkg_check_modules(WEBKIT2GTK REQUIRED webkit2gtk-4.1)
 endif()
 
 add_subdirectory(include)
 
 include_directories(${CMAKE_SOURCE_DIR})
-include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # Add JUCE
 
@@ -85,4 +101,32 @@ if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     PUBLIC
     juce::juce_recommended_warning_flags
   )
+endif()
+
+
+
+# Unit tests
+
+add_executable(AnthemTest test/test.cpp)
+
+target_link_libraries(AnthemTest
+  PRIVATE
+    juce::juce_audio_basics
+    juce::juce_audio_processors
+    reflectcpp
+)
+
+target_compile_definitions(AnthemTest PRIVATE JUCE_PLUGINHOST_VST3=1)
+
+if (LINUX)
+  target_include_directories(AnthemTest PRIVATE ${GTK3_INCLUDE_DIRS})
+  target_link_directories(AnthemTest PRIVATE ${GTK3_LIBRARY_DIRS})
+  target_link_libraries(AnthemTest PRIVATE ${GTK3_LIBRARIES})
+
+  target_include_directories(AnthemTest PRIVATE ${WEBKIT2GTK_INCLUDE_DIRS})
+  target_link_directories(AnthemTest PRIVATE ${WEBKIT2GTK_LIBRARY_DIRS})
+  target_link_libraries(AnthemTest PRIVATE ${WEBKIT2GTK_LIBRARIES})
+
+  target_link_libraries(AnthemTest PRIVATE CURL::libcurl)
+  target_link_libraries(AnthemTest PRIVATE atomic)
 endif()

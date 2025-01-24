@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,16 +17,17 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/processing_graph/processor.dart';
+import 'package:anthem/model/processing_graph/node.dart';
+import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/knob.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 
 class ToneGenerator extends StatefulWidget {
-  final ProcessorModel processor;
+  final NodeModel node;
 
-  const ToneGenerator({super.key, required this.processor});
+  const ToneGenerator({super.key, required this.node});
 
   @override
   State<ToneGenerator> createState() => _ToneGeneratorState();
@@ -51,14 +52,23 @@ class _ToneGeneratorState extends State<ToneGenerator> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Observer(builder: (context) {
+                final value = widget.node
+                        .getPortById(
+                            ToneGeneratorProcessorModel.frequencyPortId)
+                        .parameterValue ??
+                    440;
+
                 return Knob(
-                  value: widget.processor.parameterValues[0] ?? 440,
+                  value: value,
                   min: 20,
                   max: 1200,
                   width: 26,
                   height: 26,
-                  onValueChanged: (value) {
-                    widget.processor.parameterValues[0] = value;
+                  onValueChanged: (newValue) {
+                    widget.node
+                        .getPortById(
+                            ToneGeneratorProcessorModel.frequencyPortId)
+                        .parameterValue = newValue;
                   },
                 );
               }),
@@ -69,14 +79,23 @@ class _ToneGeneratorState extends State<ToneGenerator> {
                 ),
               ),
               Observer(builder: (context) {
+                final value = widget.node
+                        .getPortById(
+                            ToneGeneratorProcessorModel.amplitudePortId)
+                        .parameterValue ??
+                    0.125;
+
                 return Knob(
-                  value: widget.processor.parameterValues[1] ?? 0.125,
+                  value: value,
                   min: 0,
                   max: 1,
                   width: 26,
                   height: 26,
                   onValueChanged: (value) {
-                    widget.processor.parameterValues[1] = value;
+                    widget.node
+                        .getPortById(
+                            ToneGeneratorProcessorModel.amplitudePortId)
+                        .parameterValue = value;
                   },
                 );
               }),

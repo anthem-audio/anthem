@@ -28,13 +28,13 @@ class AppModel = _AppModel with _$AppModel;
 
 abstract class _AppModel with Store {
   @observable
-  ObservableMap<ID, ProjectModel> projects;
+  ObservableMap<Id, ProjectModel> projects;
 
   @observable
-  ObservableList<ID> projectOrder;
+  ObservableList<Id> projectOrder;
 
   @observable
-  ID activeProjectID;
+  Id activeProjectID;
 
   _AppModel()
       : projects = ObservableMap.of({}),

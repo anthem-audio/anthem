@@ -25,11 +25,11 @@ class ScreenOverlayController {
 
   ScreenOverlayController({required this.viewModel});
 
-  void add(ID id, ScreenOverlayEntry entry) {
+  void add(Id id, ScreenOverlayEntry entry) {
     viewModel.entries[id] = entry;
   }
 
-  void remove(ID id) {
+  void remove(Id id) {
     final entry = viewModel.entries.remove(id);
     entry?.onClose?.call();
   }

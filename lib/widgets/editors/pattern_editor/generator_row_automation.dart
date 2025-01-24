@@ -29,7 +29,7 @@ import 'package:flutter_shaders/flutter_shaders.dart';
 
 class GeneratorRowAutomation extends StatelessWidget {
   final PatternModel pattern;
-  final ID generatorID;
+  final Id generatorID;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;
@@ -67,7 +67,7 @@ class GeneratorRowAutomation extends StatelessWidget {
 class _GeneratorRowAutomationPainter extends CustomPainterObserver {
   final FragmentShader shader;
   final PatternModel pattern;
-  final ID generatorID;
+  final Id generatorID;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;

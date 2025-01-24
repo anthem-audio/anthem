@@ -18,12 +18,13 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
 part 'note.g.dart';
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class NoteModel extends _NoteModel
     with _$NoteModel, _$NoteModelAnthemModelMixin {
   NoteModel({
@@ -74,5 +75,5 @@ abstract class _NoteModel with Store, AnthemModelBase {
     required this.length,
     required this.offset,
     required this.pan,
-  }) : id = getID();
+  }) : id = getId();
 }

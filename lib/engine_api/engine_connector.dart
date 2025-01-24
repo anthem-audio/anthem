@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -25,14 +25,6 @@ import 'dart:typed_data';
 import 'package:anthem/engine_api/engine_socket_server.dart';
 import 'package:anthem/engine_api/memory_block.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
-import 'package:flutter/foundation.dart';
-
-/// Set this to override the path to the engine. Should be a full path.
-///
-/// This will allow you to stop the engine from Anthem, compile a new engine,
-/// and start the new engine, all without re-building the Anthem UI.
-// ignore: unnecessary_nullable_for_final_variable_declarations
-const String? enginePathOverride = null;
 
 final mainExecutablePath = File(Platform.resolvedExecutable);
 
@@ -45,7 +37,7 @@ final mainExecutablePath = File(Platform.resolvedExecutable);
 /// be sent like so:
 ///
 /// ```dart
-/// final engineConnectorID = getID();
+/// final engineConnectorID = getId();
 /// final engineConnector = EngineConnector(
 ///   engineConnectorID,
 ///   (Response response) {
@@ -83,7 +75,7 @@ class EngineConnector {
   Process? _engineProcess;
 
   final void Function(Response reply)? _onReply;
-  final void Function()? _onCrash;
+  final void Function()? _onExit;
 
   late final Future<bool> onInit;
   bool _initialized = false;
@@ -103,9 +95,25 @@ class EngineConnector {
   /// Stream subscription for socket messages from the engine.
   StreamSubscription<Uint8List>? _engineReplySub;
 
+  /// Should be set to kDebugMode from Flutter, or false if not running in a
+  /// Flutter environment.
+  ///
+  /// kDebugMode comes from Flutter, and we can't import anything from Flutter
+  /// into our engine integration tests. Since we use this class to talk to the
+  /// engine in our engine integration tests, we need to pass this in.
+  final bool kDebugMode;
+
+  final bool noHeartbeat;
+
+  final String? enginePathOverride;
+
   EngineConnector(this._id,
-      {void Function(Response)? onReply, void Function()? onCrash})
-      : _onCrash = onCrash,
+      {required this.kDebugMode,
+      void Function(Response)? onReply,
+      void Function()? onExit,
+      this.noHeartbeat = false,
+      this.enginePathOverride})
+      : _onExit = onExit,
         _onReply = onReply {
     onInit = _init();
 
@@ -125,10 +133,6 @@ class EngineConnector {
     // connect to. This will only cause a wait when the app is first launched.
     await EngineSocketServer.instance.init;
 
-    if (kDebugMode) {
-      print('Starting engine with ID: $_id');
-    }
-
     EngineSocketServer.instance.onMessage(_id, (message) {
       _onReceive(message);
     });
@@ -140,73 +144,100 @@ class EngineConnector {
       () => engineConnectCompleter.complete(),
     );
 
+    EngineSocketServer.instance.onClose(_id, _shutdown);
+
+    String? developmentEnginePath;
+
+    // If we're in debug mode, we look for the engine as compiled in the repo
+    if (kDebugMode) {
+      var projectRoot = Platform.script;
+
+      // Don't use the repo engine if Dart is running in AOT compiled mode
+      if (projectRoot.pathSegments.last.endsWith('.dart')) {
+        while (projectRoot.path.length > 1 &&
+            !(await File.fromUri(projectRoot.resolve('./pubspec.yaml'))
+                .exists())) {
+          projectRoot = projectRoot.resolve('../');
+        }
+
+        var enginePath = projectRoot.resolve(
+            './engine/build/AnthemEngine_artefacts/Debug/AnthemEngine${Platform.isWindows ? '.exe' : ''}');
+        if (await File.fromUri(enginePath).exists()) {
+          developmentEnginePath =
+              enginePath.toFilePath(windows: Platform.isWindows);
+        }
+      }
+    }
+
     final anthemPathStr = enginePathOverride ??
-        (Platform.isWindows
-            ? '${mainExecutablePath.parent.path}/data/flutter_assets/assets/engine/AnthemEngine.exe'
-            : '${mainExecutablePath.parent.path}/data/flutter_assets/assets/engine/AnthemEngine');
+        (developmentEnginePath ??
+            mainExecutablePath.parent.uri
+                .resolve(
+                    './data/flutter_assets/assets/engine/AnthemEngine${Platform.isWindows ? '.exe' : ''}')
+                .toFilePath(windows: Platform.isWindows));
+
+    if (!await File(anthemPathStr).exists()) {
+      return false;
+    }
 
     // If we're in debug mode, start with a command line window so we can see logging
     if (kDebugMode) {
       if (Platform.isWindows) {
-        _engineProcess = await Process.start(
-          'powershell',
-          [
-            '-Command',
-            '& {Start-Process -FilePath "$anthemPathStr" -ArgumentList "${EngineSocketServer.instance.port} $_id" -Wait}'
-          ],
+        _setEngineProcess(
+          await Process.start(
+            'powershell',
+            [
+              '-Command',
+              '& {Start-Process -FilePath "$anthemPathStr" -ArgumentList "${EngineSocketServer.instance.port} $_id" -Wait}'
+            ],
+          ),
         );
       } else if (Platform.isLinux) {
-        // Can't figure out a good way to start in a shell window on Linux, so
-        // this mirrors the engine output to our standard out.
-        _engineProcess = await Process.start(
-          anthemPathStr,
-          [EngineSocketServer.instance.port.toString(), _id.toString()],
+        _setEngineProcess(
+          await Process.start(
+            anthemPathStr,
+            [EngineSocketServer.instance.port.toString(), _id.toString()],
+            // There's no singular way to start in a shell window on Linux, so
+            // this mirrors the engine output to our standard out.
+            mode: ProcessStartMode.inheritStdio,
+          ),
         );
-        _engineProcess!.stdout.listen((msg) {
-          for (final line in String.fromCharCodes(msg).split('\n')) {
-            // ignore: avoid_print
-            print('[Engine $_id] $line');
-          }
-        });
-        _engineProcess!.stderr.listen((msg) {
-          for (final line in String.fromCharCodes(msg).split('\n')) {
-            // ignore: avoid_print
-            print('[Engine $_id stderr] $line');
-          }
-        });
       }
     } else {
-      _engineProcess = await Process.start(
-        anthemPathStr,
-        [EngineSocketServer.instance.port.toString(), _id.toString()],
+      _setEngineProcess(
+        await Process.start(
+          anthemPathStr,
+          [EngineSocketServer.instance.port.toString(), _id.toString()],
+        ),
       );
     }
 
-    _heartbeatCheckTimer = Timer.periodic(
-      // Maybe a bit long if this is our only way to tell if the engine died
-      const Duration(seconds: 10),
-      (_) {
-        if (!_heartbeatReceived) {
-          _onCrash?.call();
-          _shutdown();
-        }
+    if (!noHeartbeat) {
+      _heartbeatCheckTimer = Timer.periodic(
+        // Maybe a bit long if this is our only way to tell if the engine died
+        const Duration(seconds: 10),
+        (_) {
+          if (!_heartbeatReceived) {
+            _shutdown();
+          }
 
-        _heartbeatReceived = false;
-      },
-    );
+          _heartbeatReceived = false;
+        },
+      );
 
-    _engineHeartbeatTimer = Timer.periodic(
-      const Duration(seconds: 5),
-      (timer) {
-        final id = getRequestId();
+      _engineHeartbeatTimer = Timer.periodic(
+        const Duration(seconds: 5),
+        (timer) {
+          final id = getRequestId();
 
-        final heartbeat = Heartbeat(id: id);
+          final heartbeat = Heartbeat(id: id);
 
-        final encoder = JsonUtf8Encoder();
+          final encoder = JsonUtf8Encoder();
 
-        send(encoder.convert(heartbeat.toJson()) as Uint8List);
-      },
-    );
+          send(encoder.convert(heartbeat.toJson()) as Uint8List);
+        },
+      );
+    }
 
     // Wait for the engine to connect before setting our initialized state to
     // true, since we can't send messages until the engine has actually
@@ -220,7 +251,7 @@ class EngineConnector {
   }
 
   /// Sends the given bytes to the engine.
-  Future<void> send(Uint8List bytes) async {
+  void send(Uint8List bytes) {
     if (!_initialized) {
       _bufferedRequests.add(bytes);
       return;
@@ -296,5 +327,14 @@ class EngineConnector {
   /// Stops the engine process, and cleans up the messaging infrastructure.
   void dispose() {
     _shutdown();
+  }
+
+  /// Sets the engine process, and attaches a listener when it stops.
+  void _setEngineProcess(Process process) {
+    _engineProcess = process;
+
+    _engineProcess!.exitCode.then((exitCode) {
+      _onExit?.call();
+    });
   }
 }

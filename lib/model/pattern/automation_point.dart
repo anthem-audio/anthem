@@ -18,7 +18,8 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
 part 'automation_point.g.dart';
@@ -26,7 +27,7 @@ part 'automation_point.g.dart';
 @AnthemEnum()
 enum AutomationCurveType { smooth, stairs, wave, hold }
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class AutomationPointModel extends _AutomationPointModel
     with _$AutomationPointModel, _$AutomationPointModelAnthemModelMixin {
   AutomationPointModel.uninitialized()
@@ -45,7 +46,7 @@ class AutomationPointModel extends _AutomationPointModel
 }
 
 abstract class _AutomationPointModel with Store, AnthemModelBase {
-  late final ID id;
+  late final Id id;
 
   @anthemObservable
   int offset;
@@ -65,6 +66,6 @@ abstract class _AutomationPointModel with Store, AnthemModelBase {
     required this.tension,
     required this.curve,
   }) {
-    id = getID();
+    id = getId();
   }
 }

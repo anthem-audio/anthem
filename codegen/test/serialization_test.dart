@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,7 +19,7 @@
 
 // ignore_for_file: non_constant_identifier_names
 
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 part 'serialization_test.g.dart';
@@ -115,6 +115,61 @@ class _WithNullable {
   List<int>? nullableList;
   Map<String, List<int?>?>? nullableMap;
   WithPrimitives? nullableModel;
+}
+
+@AnthemModel(serializable: true)
+class WithUnion extends _WithUnion with _$WithUnionAnthemModelMixin {
+  WithUnion();
+
+  factory WithUnion.fromJson(Map<String, dynamic> json) =>
+      _$WithUnionAnthemModelMixin.fromJson(json);
+}
+
+class _WithUnion {
+  @Union([UnionSubTypeOne, UnionSubTypeTwo, UnionSubTypeThree, String])
+  late Object unionField;
+
+  @Union([String, int])
+  late Object? unionFieldNullable;
+}
+
+@AnthemModel(serializable: true)
+class UnionSubTypeOne extends _UnionSubTypeOne
+    with _$UnionSubTypeOneAnthemModelMixin {
+  UnionSubTypeOne();
+
+  factory UnionSubTypeOne.fromJson(Map<String, dynamic> json) =>
+      _$UnionSubTypeOneAnthemModelMixin.fromJson(json);
+}
+
+class _UnionSubTypeOne {
+  late String field;
+}
+
+@AnthemModel(serializable: true)
+class UnionSubTypeTwo extends _UnionSubTypeTwo
+    with _$UnionSubTypeTwoAnthemModelMixin {
+  UnionSubTypeTwo();
+
+  factory UnionSubTypeTwo.fromJson(Map<String, dynamic> json) =>
+      _$UnionSubTypeTwoAnthemModelMixin.fromJson(json);
+}
+
+class _UnionSubTypeTwo {
+  late int field;
+}
+
+@AnthemModel(serializable: true)
+class UnionSubTypeThree extends _UnionSubTypeThree
+    with _$UnionSubTypeThreeAnthemModelMixin {
+  UnionSubTypeThree();
+
+  factory UnionSubTypeThree.fromJson(Map<String, dynamic> json) =>
+      _$UnionSubTypeThreeAnthemModelMixin.fromJson(json);
+}
+
+class _UnionSubTypeThree {
+  late bool field;
 }
 
 void main() {
@@ -274,5 +329,33 @@ void main() {
     expect(emptyDeserializedModel.nullableList, null);
     expect(emptyDeserializedModel.nullableMap, null);
     expect(emptyDeserializedModel.nullableModel, null);
+  });
+
+  test('Union types', () {
+    final model = WithUnion()
+      ..unionField = (UnionSubTypeOne()..field = 'a')
+      ..unionFieldNullable = 1;
+
+    final json = model.toJson();
+    expect(json['unionField'], {
+      'UnionSubTypeOne': {'field': 'a'}
+    });
+    expect(json['unionFieldNullable'], {'int': 1});
+
+    final deserializedModel = WithUnion.fromJson(json);
+    expect((deserializedModel.unionField as UnionSubTypeOne).field, 'a');
+    expect(deserializedModel.unionFieldNullable, 1);
+
+    final model2 = WithUnion()
+      ..unionField = 'test'
+      ..unionFieldNullable = null;
+
+    final json2 = model2.toJson();
+    expect(json2['unionField'], {'String': 'test'});
+    expect(json2['unionFieldNullable'], null);
+
+    final deserializedModel2 = WithUnion.fromJson(json2);
+    expect(deserializedModel2.unionField, 'test');
+    expect(deserializedModel2.unionFieldNullable, null);
   });
 }

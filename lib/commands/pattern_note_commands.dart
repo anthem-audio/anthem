@@ -19,14 +19,14 @@
 
 import 'package:anthem/commands/command.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem_codegen/include/collections.dart';
 
 void _addNote(
   PatternModel pattern,
-  ID generatorID,
+  Id generatorID,
   NoteModel note,
 ) {
   if (!pattern.notes.containsKey(generatorID)) {
@@ -39,8 +39,8 @@ void _addNote(
 
 void _removeNote(
   PatternModel pattern,
-  ID generatorID,
-  ID noteID,
+  Id generatorID,
+  Id noteID,
 ) {
   pattern.notes[generatorID]!.removeWhere((element) => element.id == noteID);
   pattern.scheduleClipNotesRenderCacheUpdate();
@@ -48,16 +48,16 @@ void _removeNote(
 
 NoteModel _getNote(
   PatternModel pattern,
-  ID generatorID,
-  ID noteID,
+  Id generatorID,
+  Id noteID,
 ) {
   return pattern.notes[generatorID]!
       .firstWhere((element) => element.id == noteID);
 }
 
 class AddNoteCommand extends Command {
-  ID patternID;
-  ID generatorID;
+  Id patternID;
+  Id generatorID;
   NoteModel note;
 
   AddNoteCommand({
@@ -90,8 +90,8 @@ class AddNoteCommand extends Command {
 }
 
 class DeleteNoteCommand extends Command {
-  ID patternID;
-  ID generatorID;
+  Id patternID;
+  Id generatorID;
   NoteModel note;
 
   DeleteNoteCommand({
@@ -126,9 +126,9 @@ class DeleteNoteCommand extends Command {
 enum NoteAttribute { key, offset, length, velocity, pan }
 
 class SetNoteAttributeCommand extends Command {
-  ID patternID;
-  ID generatorID;
-  ID noteID;
+  Id patternID;
+  Id generatorID;
+  Id noteID;
   NoteAttribute attribute;
   int oldValue;
   int newValue;

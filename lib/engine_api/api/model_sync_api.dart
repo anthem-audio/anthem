@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -41,7 +41,7 @@ class ModelSyncApi {
 
     final request = ModelInitRequest(id: id, serializedModel: serializedModel);
 
-    _engine._request(id, request);
+    _engine._requestNoReply(request);
   }
 
   /// Updates the engine model with the given field update.
@@ -59,15 +59,21 @@ class ModelSyncApi {
       serializedValue: serializedValue,
     );
 
-    _engine._request(id, request);
+    _engine._requestNoReply(request);
   }
 
-  /// Prints the current state of the engine model to the engine's stdout.
-  void debugPrintModel() {
+  /// Gets the current state of the engine model.
+  ///
+  /// This is not used for syncing the model - model state only ever flows from
+  /// UI to engine - but it can be useful for debugging purposes, and is used in
+  /// the engine integration tests.
+  Future<String> debugGetEngineJson() async {
     final id = _engine._getRequestId();
 
-    final request = ModelDebugPrintRequest(id: id);
+    final request = GetSerializedModelFromEngineRequest(id: id);
 
-    _engine._request(id, request);
+    final response = await _engine._request(request);
+
+    return (response as GetSerializedModelFromEngineResponse).serializedModel;
   }
 }

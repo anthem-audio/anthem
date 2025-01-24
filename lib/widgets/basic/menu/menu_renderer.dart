@@ -51,7 +51,7 @@ double getMenuItemHeight(GenericMenuItem menuItem) {
 
 class MenuRenderer extends StatefulWidget {
   final MenuDef menu;
-  final ID id;
+  final Id id;
   final ProjectController projectController;
 
   const MenuRenderer({
@@ -163,7 +163,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
   }
 
   // If there's no open submenu, this is null
-  ID? submenuKey;
+  Id? submenuKey;
 
   // This will be defined if the user has hovered an item with a submenu but
   // the submenu hasn't opened yet
@@ -338,7 +338,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
     );
     final size = context.size!;
 
-    submenuKey = getID();
+    submenuKey = getId();
 
     screenOverlayController.add(submenuKey!, ScreenOverlayEntry(
       builder: (screenOverlayContext, id) {

@@ -18,90 +18,82 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/model/track.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
 import 'arrangement/arrangement.dart';
-import 'shared/hydratable.dart';
 
 part 'song.g.dart';
 
-@AnthemModel.all()
+@AnthemModel.syncedModel(
+  cppBehaviorClassName: 'Song',
+  cppBehaviorClassIncludePath: 'modules/core/song.h',
+)
 class SongModel extends _SongModel
     with _$SongModel, _$SongModelAnthemModelMixin {
   SongModel() : super();
   SongModel.uninitialized() : super();
-  SongModel.create({
-    required super.project,
-  }) : super.create();
+  SongModel.create() : super.create();
 
   factory SongModel.fromJson(Map<String, dynamic> json) =>
       _$SongModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _SongModel extends Hydratable with Store, AnthemModelBase {
-  ID id = getID();
+abstract class _SongModel with Store, AnthemModelBase {
+  Id id = getId();
 
   @anthemObservable
   int ticksPerQuarter = 96;
 
   @anthemObservable
-  AnthemObservableMap<ID, PatternModel> patterns = AnthemObservableMap();
+  AnthemObservableMap<Id, PatternModel> patterns = AnthemObservableMap();
 
   @anthemObservable
-  AnthemObservableList<ID> patternOrder = AnthemObservableList();
+  AnthemObservableList<Id> patternOrder = AnthemObservableList();
 
   @anthemObservable
   @hideFromSerialization
-  ID? activePatternID;
+  Id? activePatternID;
 
   @anthemObservable
-  AnthemObservableMap<ID, ArrangementModel> arrangements =
+  AnthemObservableMap<Id, ArrangementModel> arrangements =
       AnthemObservableMap();
 
   @anthemObservable
-  AnthemObservableList<ID> arrangementOrder = AnthemObservableList();
+  AnthemObservableList<Id> arrangementOrder = AnthemObservableList();
 
   @anthemObservable
   @hideFromSerialization
-  ID? activeArrangementID;
+  Id? activeArrangementID;
 
   @anthemObservable
-  AnthemObservableMap<ID, TrackModel> tracks = AnthemObservableMap();
+  AnthemObservableMap<Id, TrackModel> tracks = AnthemObservableMap();
 
   @anthemObservable
-  AnthemObservableList<ID> trackOrder = AnthemObservableList();
+  AnthemObservableList<Id> trackOrder = AnthemObservableList();
 
   @anthemObservable
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
 
-  @hide
-  ProjectModel? _project;
-
-  ProjectModel get project {
-    return _project!;
-  }
-
   _SongModel() : super();
 
-  _SongModel.create({
-    required ProjectModel project,
-  }) : super() {
+  _SongModel.create() : super() {
     final arrangement = ArrangementModel.create(
       name: 'Arrangement 1',
-      id: getID(),
-      project: project,
+      id: getId(),
     );
     arrangements = AnthemObservableMap.of({arrangement.id: arrangement});
     arrangementOrder = AnthemObservableList.of([arrangement.id]);
     activeArrangementID = arrangement.id;
 
-    final Map<ID, TrackModel> initTracks = {};
-    final List<ID> initTrackOrder = [];
+    final Map<Id, TrackModel> initTracks = {};
+    final List<Id> initTrackOrder = [];
 
     for (var i = 1; i <= 200; i++) {
       final track = TrackModel(name: 'Track $i');
@@ -111,30 +103,9 @@ abstract class _SongModel extends Hydratable with Store, AnthemModelBase {
 
     tracks = AnthemObservableMap.of(initTracks);
     trackOrder = AnthemObservableList.of(initTrackOrder);
-
-    hydrate(
-      project: project,
-    );
   }
 
-  void hydrate({
-    required ProjectModel project,
-  }) {
-    _project = project;
-
-    for (final arrangement in arrangements.values) {
-      arrangement.hydrate(project: project);
-    }
-
-    for (final pattern in patterns.values) {
-      pattern.hydrate(project: project);
-    }
-
-    isHydrated = true;
-    (this as _$SongModelAnthemModelMixin).init();
-  }
-
-  void setActivePattern(ID? patternID) {
+  void setActivePattern(Id? patternID) {
     activePatternID = patternID;
 
     if (patternID != null) {
@@ -142,7 +113,7 @@ abstract class _SongModel extends Hydratable with Store, AnthemModelBase {
     }
   }
 
-  void setActiveArrangement(ID? arrangementID) {
+  void setActiveArrangement(Id? arrangementID) {
     activeArrangementID = arrangementID;
 
     if (arrangementID != null) {

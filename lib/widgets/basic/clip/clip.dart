@@ -31,9 +31,9 @@ import 'package:flutter_shaders/flutter_shaders.dart';
 import 'package:provider/provider.dart';
 
 class Clip extends StatelessWidget {
-  final ID? clipID;
-  final ID? patternID;
-  final ID? arrangementID;
+  final Id? clipID;
+  final Id? patternID;
+  final Id? arrangementID;
   final double ticksPerPixel;
   final bool selected;
   final bool hasResizeHandles;

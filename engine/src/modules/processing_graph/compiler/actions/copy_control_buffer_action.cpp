@@ -20,9 +20,8 @@
 #include "copy_control_buffer_action.h"
 
 void CopyControlBufferAction::execute(int numSamples) {
-  auto& sourceBuffer = source->getOutputControlBuffer(sourcePort);
-  auto& destinationBuffer = destination->getInputControlBuffer(destinationPort);
-  auto& destinationParameter = destination->getGraphNode()->processor->config.getParameterByIndex(destinationPort);
+  auto& sourceBuffer = source->getOutputControlBuffer(sourcePortId);
+  auto& destinationBuffer = destination->getInputControlBuffer(destinationPortId);
 
   // Ensure the buffers have the same number of channels and the same size
   jassert(sourceBuffer.getNumChannels() == destinationBuffer.getNumChannels());
@@ -36,9 +35,7 @@ void CopyControlBufferAction::execute(int numSamples) {
       if (!std::isnan(sourceSample)) {
         // Scale the incoming value based on the min/max values defined by the
         // parameter definition
-        auto max = destinationParameter->maxValue;
-        auto min = destinationParameter->minValue;
-        auto scaledSample = sourceSample * (max - min) + min;
+        auto scaledSample = sourceSample * (maxParameterValue - minParameterValue) + minParameterValue;
 
         destinationBuffer.setSample(channel, sample, scaledSample);
       }
@@ -49,9 +46,9 @@ void CopyControlBufferAction::execute(int numSamples) {
 void CopyControlBufferAction::debugPrint() {
   std::cout 
     << "CopyControlBufferAction: "
-    << this->source->getGraphNode()->processor->config.getId()
+    << this->source->getGraphNode()->id()
     << " -> "
-    << this->destination->getGraphNode()->processor->config.getId()
+    << this->destination->getGraphNode()->id()
     << std::endl;
 }
 

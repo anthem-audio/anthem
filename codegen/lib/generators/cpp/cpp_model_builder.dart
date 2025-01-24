@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,9 +19,10 @@
 
 import 'dart:async';
 
+import 'package:analyzer/dart/constant/value.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:anthem_codegen/generators/cpp/cpp_model_sync.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
@@ -29,7 +30,7 @@ import '../util/enum_info.dart';
 import '../util/model_class_info.dart';
 import '../util/model_types.dart';
 import '../util/writer.dart';
-import 'shared.dart';
+import 'get_cpp_type.dart';
 
 /// This builder generates models in C++ to match the `@AnthemModel` classes in
 /// the Dart code.
@@ -55,11 +56,15 @@ class CppModelBuilder implements Builder {
 
     final libraryReader = LibraryReader(library);
 
-    final imports = <String>[];
+    // Header file definitions
+    final headerImports = <String>[];
     final forwardDeclarations = <String>[];
     final usingDirectives = <String>[];
     final moduleFileImports = <String>[]; // See note below
     final codeBlocks = <String>[];
+
+    // C++ file definitions
+    final cppFileImports = <String>[];
     final functionDefinitions = <String>[];
 
     // Note that module file imports are only used for module files. There is a
@@ -70,7 +75,7 @@ class CppModelBuilder implements Builder {
     final libraryAnnotation = library.metadata
         .where(
           (annotation) =>
-              annotation.element?.enclosingElement?.name ==
+              annotation.element?.enclosingElement3?.name ==
               'GenerateCppModuleFile',
         )
         .firstOrNull;
@@ -165,7 +170,12 @@ class CppModelBuilder implements Builder {
       if (modelClassInfo.annotation!.generateModelSync) {
         // The model sync code needs ModelUpdateRequest, which comes from the
         // messaging model
-        imports.add('#include "messages/messages.h"');
+        headerImports.add('#include "messages/messages.h"');
+
+        // If the model is being synced, then we will generate observability
+        // code for it. This requires including the observability header.
+        headerImports
+            .add('#include "modules/codegen_helpers/observability_helpers.h"');
       }
 
       codeBlocks.add('// ${modelClassInfo.annotatedClass.name}\n\n');
@@ -175,12 +185,14 @@ class CppModelBuilder implements Builder {
         code: structsCode,
         forwardDeclarations: structsForwardDeclarations,
         usingDirectives: structUsingDirectives,
+        cppFileImports: structCppFileImports,
         functionDefinitions: structFunctionDefinitions,
       ) = _generateStructsForModel(modelClassInfo);
 
       codeBlocks.add(structsCode);
       forwardDeclarations.addAll(structsForwardDeclarations);
       usingDirectives.addAll(structUsingDirectives);
+      cppFileImports.addAll(structCppFileImports);
       functionDefinitions.addAll(structFunctionDefinitions);
 
       codeBlocks.add('\n\n\n');
@@ -188,7 +200,8 @@ class CppModelBuilder implements Builder {
 
     // Checks the imports of this library for any that themselves contain Anthem
     // models, and generates the appropriate imports for the C++ module file.
-    for (final importElement in library.libraryImports) {
+    for (final importElement
+        in library.definingCompilationUnit.libraryImports) {
       final importLibrary = importElement.importedLibrary;
 
       if (importLibrary == null) {
@@ -251,13 +264,20 @@ class CppModelBuilder implements Builder {
             } else if (type is MapModelType) {
               return typeMatches(type.keyType) || typeMatches(type.valueType);
             } else if (type is CustomModelType) {
-              if (annotatedClasses.contains(type.type.annotatedClass)) {
+              if (annotatedClasses
+                  .contains(type.modelClassInfo.annotatedClass)) {
                 return true;
               }
             } else if (type is EnumModelType) {
               final enumModelType = type;
               if (annotatedEnums.contains(enumModelType.enumElement)) {
                 return true;
+              }
+            } else if (type is UnionModelType) {
+              for (final subType in type.subTypes) {
+                if (typeMatches(subType)) {
+                  return true;
+                }
               }
             }
 
@@ -281,7 +301,7 @@ class CppModelBuilder implements Builder {
             .toString()
             .replaceFirst('.dart', '.h')
             .replaceFirst('package:anthem/', 'generated/lib/');
-        imports.add('#include "$pathStr"');
+        headerImports.add('#include "$pathStr"');
       }
     }
 
@@ -295,6 +315,7 @@ class CppModelBuilder implements Builder {
         usingDirectives.isEmpty &&
         moduleFileImports.isEmpty &&
         codeBlocks.isEmpty &&
+        cppFileImports.isEmpty &&
         functionDefinitions.isEmpty) {
       return;
     }
@@ -308,6 +329,10 @@ class CppModelBuilder implements Builder {
 #include <rfl/json.hpp>
 #include <rfl.hpp>
 
+#include "modules/codegen_helpers/anthem_model_base.h"
+#include "modules/codegen_helpers/anthem_model_vector.h"
+#include "modules/codegen_helpers/anthem_model_unordered_map.h"
+
 ''';
 
     var cppCodeToWrite = '''/*
@@ -318,12 +343,19 @@ class CppModelBuilder implements Builder {
 
 ''';
 
-    for (final import in imports) {
+    for (final import in headerImports) {
       headerCodeToWrite += import;
       headerCodeToWrite += '\n';
     }
 
     headerCodeToWrite += '\n';
+
+    for (final import in cppFileImports) {
+      cppCodeToWrite += import;
+      cppCodeToWrite += '\n';
+    }
+
+    cppCodeToWrite += '\n';
 
     // We forward declare all enums and structs at the top of the file, to
     // ensure that order doesn't matter when actually defining the structs and
@@ -398,7 +430,7 @@ String _generateEnum(EnumInfo enumInfo) {
   writer.writeLine('};');
   writer.writeLine();
 
-  return writer.result;
+  return writer.result.toString();
 }
 
 ({String code, List<String> forwardDeclarations}) _generateEnumsForLibrary(
@@ -407,28 +439,49 @@ String _generateEnum(EnumInfo enumInfo) {
   final writer = Writer();
 
   for (final enumInfo in enums) {
-    writer.write(_generateEnum(enumInfo));
+    writer.writeLine(_generateEnum(enumInfo));
     forwardDeclarations.add('enum class ${enumInfo.name};');
   }
 
-  return (code: writer.result, forwardDeclarations: forwardDeclarations);
+  return (
+    code: writer.result.toString(),
+    forwardDeclarations: forwardDeclarations
+  );
 }
 
 ({
   String code,
   List<String> forwardDeclarations,
   List<String> usingDirectives,
-  List<String> functionDefinitions
+  List<String> cppFileImports,
+  List<String> functionDefinitions,
 }) _generateStructsForModel(ModelClassInfo modelClassInfo) {
   final forwardDeclarations = <String>[];
   final usingDirectives = <String>[];
+  final cppFileImports = <String>[];
   final functionDefinitions = <String>[];
   final writer = Writer();
+
+  final generateModelSync =
+      modelClassInfo.annotation?.generateModelSync == true;
+  final generateWrapper =
+      modelClassInfo.annotation?.generateCppWrapperClass == true;
 
   var baseText = '';
 
   if (modelClassInfo.isSealed) {
+    if (generateWrapper) {
+      // Sealed classes are generated with tagged unions, and that complicates
+      // the story for a wrapper class, so we won't handle it for now.
+      throw ArgumentError(
+          'Cannot generate a wrapper class for a sealed class.');
+    }
+
     baseText = 'Base';
+  }
+
+  if (generateWrapper) {
+    baseText = 'Impl'; // Convention borrowed from reflect-cpp docs
   }
 
   // Generate the main struct. If the class is sealed, this will be the "base
@@ -446,20 +499,166 @@ String _generateEnum(EnumInfo enumInfo) {
       continue;
     }
 
-    final type = getCppType(fieldInfo.typeInfo);
-    writer.writeLine('$type $fieldName;');
+    if (fieldInfo.isModelConstant) {
+      if (!generateWrapper) {
+        final type = getCppType(fieldInfo.typeInfo, modelClassInfo);
+        writer.writeLine(
+            'static const $type $fieldName = ${fieldInfo.constantValue};');
+      }
+    } else {
+      final type = getCppType(fieldInfo.typeInfo, modelClassInfo);
+      writer.writeLine('$type $fieldName;');
+    }
   }
 
   writer.writeLine();
 
-  if (modelClassInfo.annotation?.generateModelSync == true) {
+  if (generateModelSync && !generateWrapper) {
+    cppFileImports.addAll(getCppFileImports(modelClassInfo));
+
     writeModelSyncFnDeclaration(writer);
+    functionDefinitions.add(getInitializeFn(modelClassInfo));
     functionDefinitions.add(getModelSyncFn(modelClassInfo));
   }
 
   writer.decrementWhitespace();
   writer.writeLine('};');
   writer.writeLine();
+
+  // If we need to generate a wrapper class for this model, do so now.
+
+  if (generateWrapper) {
+    final className = modelClassInfo.annotatedClass.name;
+    final baseSuffix =
+        modelClassInfo.annotation?.cppBehaviorClassName != null ? 'Base' : '';
+
+    forwardDeclarations.add('class $className$baseSuffix;');
+
+    var outwardFacingClassName = '$className$baseSuffix';
+    if (baseSuffix.isNotEmpty) {
+      outwardFacingClassName = modelClassInfo.annotation!.cppBehaviorClassName!;
+      forwardDeclarations.add('class $outwardFacingClassName;');
+    }
+
+    writer.writeLine('class $className$baseSuffix : public AnthemModelBase {');
+    writer.writeLine('public:');
+    writer.incrementWhitespace();
+
+    // Serialize any constants
+    for (final field in modelClassInfo.fields.values) {
+      if (!field.isModelConstant) {
+        continue;
+      }
+
+      final type = getCppType(field.typeInfo, modelClassInfo);
+      writer.writeLine(
+          'static const $type ${field.fieldElement.name} = ${field.constantValue};');
+    }
+
+    writer.writeLine('using ReflectionType = ${className}Impl;');
+    writer.writeLine();
+
+    writer.writeLine(
+        '$className$baseSuffix(const ${className}Impl& _impl) : impl(_impl) {}');
+    writer.writeLine();
+
+    writer.writeLine('virtual ~$className$baseSuffix() = default;');
+    writer.writeLine();
+
+    // Delete copy constructor and assignment operator
+    writer.writeLine(
+        '$className$baseSuffix(const $className$baseSuffix&) = delete;');
+    writer.writeLine(
+        '$className$baseSuffix& operator=(const $className$baseSuffix&) = delete;');
+    writer.writeLine();
+
+    // Create a move constructor and assignment operator
+    writer.writeLine(
+        '$className$baseSuffix($className$baseSuffix&&) noexcept = default;');
+    writer.writeLine(
+        '$className$baseSuffix& operator=($className$baseSuffix&&) noexcept = default;');
+    writer.writeLine();
+
+    writer
+        .writeLine('const ReflectionType& reflection() const { return impl; }');
+    writer.writeLine();
+
+    writer.writeLine(
+        'void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override;');
+    writer.writeLine();
+
+    if (generateModelSync) {
+      cppFileImports.addAll(getCppFileImports(modelClassInfo));
+
+      writeModelSyncFnDeclaration(writer);
+      writer.writeLine();
+
+      functionDefinitions.add(getInitializeFn(modelClassInfo));
+      functionDefinitions.add(getModelSyncFn(modelClassInfo));
+    }
+
+    writer.writeLine('// Reference getters');
+
+    List<String> privateObserverCollections = [];
+
+    /// Writes a set of methods that can be used to get references to the fields
+    /// in the impl struct. These can be used to get:
+    /// ```
+    /// auto& field = model.field();
+    /// ```
+    ///
+    /// Or to set:
+    /// ```
+    /// model.field() = value;
+    /// ```
+    for (final MapEntry(key: fieldName, value: fieldInfo)
+        in modelClassInfo.fields.entries) {
+      if (_shouldSkip(fieldInfo.fieldElement) || fieldInfo.isModelConstant) {
+        continue;
+      }
+
+      final type = getCppType(fieldInfo.typeInfo, modelClassInfo);
+      writer.writeLine('$type& $fieldName() { return impl.$fieldName; }');
+
+      if (generateModelSync) {
+        final upperCamelCaseFieldName =
+            fieldName[0].toUpperCase() + fieldName.substring(1);
+        writer.writeLine(
+            'ObserverHandle add${upperCamelCaseFieldName}Observer(std::function<void($type)> callback) {');
+        writer.incrementWhitespace();
+        writer.writeLine('return ${fieldName}Observers.addObserver(callback);');
+        writer.decrementWhitespace();
+        writer.writeLine('}');
+
+        writer.writeLine(
+            'void remove${upperCamelCaseFieldName}Observer(ObserverHandle handle) {');
+        writer.incrementWhitespace();
+        writer.writeLine('${fieldName}Observers.removeObserver(handle);');
+        writer.decrementWhitespace();
+        writer.writeLine('}');
+
+        privateObserverCollections
+            .add('FieldObservers<$type> ${fieldName}Observers;');
+      }
+    }
+
+    writer.writeLine();
+
+    writer.decrementWhitespace();
+    writer.writeLine('private:');
+    writer.incrementWhitespace();
+
+    writer.writeLine('${className}Impl impl;');
+    writer.writeLine();
+
+    for (final observerCollection in privateObserverCollections) {
+      writer.writeLine(observerCollection);
+    }
+
+    writer.decrementWhitespace();
+    writer.writeLine('};');
+    writer.writeLine();
+  }
 
   // If there are any sealed subclasses, generate structs for them as well.
 
@@ -477,7 +676,7 @@ String _generateEnum(EnumInfo enumInfo) {
         continue;
       }
 
-      final type = getCppType(fieldInfo.typeInfo);
+      final type = getCppType(fieldInfo.typeInfo, modelClassInfo);
       writer.writeLine('$type $fieldName;');
     }
 
@@ -517,13 +716,14 @@ String _generateEnum(EnumInfo enumInfo) {
 
     usingWriter.writeLine();
 
-    usingDirectives.add(usingWriter.result);
+    usingDirectives.add(usingWriter.result.toString());
   }
 
   return (
-    code: writer.result,
+    code: writer.result.toString(),
     forwardDeclarations: forwardDeclarations,
     usingDirectives: usingDirectives,
+    cppFileImports: cppFileImports,
     functionDefinitions: functionDefinitions,
   );
 }
@@ -538,7 +738,7 @@ String _generateEnum(EnumInfo enumInfo) {
 
   final library = libraryReader.element;
 
-  for (final export in library.libraryExports
+  for (final export in library.definingCompilationUnit.libraryExports
       .where((export) => export.uri is DirectiveUriWithRelativeUriString)) {
     final uri = export.uri as DirectiveUriWithRelativeUriString;
 
@@ -557,6 +757,7 @@ String _generateEnum(EnumInfo enumInfo) {
     // If the exported library doesn't have any Anthem model classes, then we
     // don't generate an import for it
     bool hasAnyAnthemModel = false;
+    List<DartObject> annotatedClasses = [];
 
     for (final classElement in exportLibraryReader.classes) {
       final annotation = const TypeChecker.fromRuntime(AnthemModel)
@@ -570,14 +771,14 @@ String _generateEnum(EnumInfo enumInfo) {
           annotation.getField('generateCpp')?.toBoolValue() ?? false;
 
       if (generateCpp) {
+        annotatedClasses.add(annotation);
         hasAnyAnthemModel = true;
-
-        // Add forward declaration
-        forwardDeclarations.add('struct ${classElement.name};');
       }
     }
 
     for (final enumElement in exportLibraryReader.enums) {
+      if (hasAnyAnthemModel) break;
+
       final annotation = const TypeChecker.fromRuntime(AnthemEnum)
           .firstAnnotationOf(enumElement);
 
@@ -586,9 +787,6 @@ String _generateEnum(EnumInfo enumInfo) {
       }
 
       hasAnyAnthemModel = true;
-
-      // Add forward declaration
-      forwardDeclarations.add('enum class ${enumElement.name};');
     }
 
     if (!hasAnyAnthemModel) {
@@ -599,6 +797,16 @@ String _generateEnum(EnumInfo enumInfo) {
         uri.relativeUriString.substring(0, uri.relativeUriString.length - 5);
 
     imports.add('#include "$cppFile.h"');
+
+    for (final classAnnotation in annotatedClasses) {
+      final cppBehaviorClassIncludePath = classAnnotation
+          .getField('cppBehaviorClassIncludePath')
+          ?.toStringValue();
+
+      if (cppBehaviorClassIncludePath != null) {
+        imports.add('#include "$cppBehaviorClassIncludePath"');
+      }
+    }
   }
 
   return (forwardDeclarations: forwardDeclarations, imports: imports);

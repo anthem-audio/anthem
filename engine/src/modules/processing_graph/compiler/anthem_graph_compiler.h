@@ -41,9 +41,11 @@
 #include <memory>
 
 #include "modules/core/constants.h"
+#include "modules/processing_graph/model/node.h"
+#include "modules/processing_graph/model/node_connection.h"
 #include "modules/processing_graph/events/anthem_processor_event.h"
-#include "modules/processing_graph/topology/anthem_graph_topology.h"
 #include "modules/util/arena_allocator.h"
+#include "generated/lib/model/model.h"
 
 #include "anthem_graph_compilation_result.h"
 #include "anthem_graph_compiler_node.h"
@@ -59,5 +61,5 @@
 // instructions that can be executed in a real-time context.
 class AnthemGraphCompiler {
 public:
-  static AnthemGraphCompilationResult* compile(AnthemGraphTopology& topology);
+  static AnthemGraphCompilationResult* compile();
 };

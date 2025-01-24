@@ -26,7 +26,7 @@ import 'icon.dart';
 class ButtonTabs<T> extends StatefulWidget {
   final List<ButtonTabDef<T>> tabs;
   final T? selected;
-  final Function(T id)? onChange;
+  final void Function(T id)? onChange;
 
   const ButtonTabs({
     super.key,

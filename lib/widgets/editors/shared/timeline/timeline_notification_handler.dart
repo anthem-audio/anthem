@@ -28,7 +28,7 @@ import 'package:provider/provider.dart';
 
 class TimelineNotificationHandler extends StatefulWidget {
   final TimelineKind timelineKind;
-  final ID? patternID;
+  final Id? patternID;
   final Widget child;
 
   const TimelineNotificationHandler({

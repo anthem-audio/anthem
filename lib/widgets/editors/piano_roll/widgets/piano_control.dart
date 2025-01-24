@@ -176,7 +176,7 @@ class _WhiteKey extends StatelessWidget {
       height: widgetHeight - 1,
       decoration: BoxDecoration(
         borderRadius: const BorderRadius.horizontal(right: Radius.circular(1)),
-        color: const Color(0xFFAAB7C0).withOpacity(opacity),
+        color: const Color(0xFFAAB7C0).withValues(alpha: opacity),
       ),
       child: showKeyText
           ? Center(

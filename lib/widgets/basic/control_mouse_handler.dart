@@ -41,9 +41,9 @@ enum _JumpDirection { positive, negative }
 
 class ControlMouseHandler extends StatefulWidget {
   final Widget? child;
-  final Function()? onStart;
-  final Function(ControlMouseEvent event)? onEnd;
-  final Function(ControlMouseEvent event)? onChange;
+  final void Function()? onStart;
+  final void Function(ControlMouseEvent event)? onEnd;
+  final void Function(ControlMouseEvent event)? onChange;
 
   final bool allowHorizontalJump;
   final bool allowVerticalJump;

@@ -17,16 +17,15 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
 import 'package:anthem/helpers/id.dart';
 
-import 'shared/hydratable.dart';
-
 part 'track.g.dart';
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class TrackModel extends _TrackModel
     with _$TrackModel, _$TrackModelAnthemModelMixin {
   TrackModel({required super.name});
@@ -37,16 +36,13 @@ class TrackModel extends _TrackModel
       _$TrackModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _TrackModel extends Hydratable with Store, AnthemModelBase {
-  ID id;
+abstract class _TrackModel with Store, AnthemModelBase {
+  Id id;
 
   @anthemObservable
   String name;
 
   _TrackModel({required this.name})
-      : id = getID(),
-        super() {
-    (this as _$TrackModelAnthemModelMixin).init();
-    isHydrated = true;
-  }
+      : id = getId(),
+        super();
 }

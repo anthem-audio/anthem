@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,8 +19,9 @@
 
 import 'dart:async';
 
+import 'package:anthem_codegen/generators/dart/serialize_generators.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:anthem_codegen/generators/dart/json_deserialize_generator.dart';
 import 'package:anthem_codegen/generators/dart/mobx_generator.dart';
 import 'package:anthem_codegen/generators/util/model_class_info.dart';
@@ -38,7 +39,7 @@ import 'json_serialize_generator.dart';
 ///
 /// part 'my_model.g.dart'
 ///
-/// @AnthemModel.all()
+/// @AnthemModel.syncedModel()
 /// class MyModel extends _MyModel with _$MyModelAnthemModelMixin;
 ///
 /// class _MyModel {
@@ -52,7 +53,7 @@ class AnthemModelGenerator extends Generator {
 
   @override
   Future<String> generate(LibraryReader library, BuildStep buildStep) async {
-    var result = '';
+    var result = StringBuffer();
 
     // Looks for @AnthemModel on each class in the file, and generates the
     // appropriate code
@@ -67,40 +68,40 @@ class AnthemModelGenerator extends Generator {
 
       final context = ModelClassInfo(library, libraryClass);
 
-      result +=
-          'mixin _\$${libraryClass.name}AnthemModelMixin on ${context.baseClass.name}${context.annotation!.generateModelSync ? ', AnthemModelBase' : ''} {\n';
+      result.write(
+          'mixin _\$${libraryClass.name}AnthemModelMixin on ${context.baseClass.name}${context.annotation!.generateModelSync ? ', AnthemModelBase' : ''} {\n');
 
       if (context.annotation!.serializable) {
-        result += '\n  // JSON serialization\n';
-        result += '\n';
-        result += generateJsonSerializationCode(context: context);
-        result += '\n  // JSON deserialization\n';
-        result += '\n';
-        result += generateJsonDeserializationCode(context: context);
+        result.write('\n  // JSON serialization\n');
+        result.write('\n');
+        result.write(generateJsonSerializationCode(context: context));
+        result.write('\n  // JSON deserialization\n');
+        result.write('\n');
+        result.write(generateJsonDeserializationCode(context: context));
       }
-      result += '\n  // MobX atoms\n';
-      result += '\n';
-      result += generateMobXAtoms(context: context);
-      result += '\n  // Getters and setters\n';
-      result += '\n';
-      result += _generateGettersAndSetters(
+      result.write('\n  // MobX atoms\n');
+      result.write('\n');
+      result.write(generateMobXAtoms(context: context));
+      result.write('\n  // Getters and setters\n');
+      result.write('\n');
+      result.write(_generateGettersAndSetters(
         context: context,
         classHasModelSyncCode: context.annotation!.generateModelSync,
-      );
+      ));
       if (context.annotation!.generateModelSync) {
-        result += '\n  // Init function\n';
-        result += '\n';
-        result += _generateInitFunction(context: context);
+        result.write('\n  // Init function\n');
+        result.write('\n');
+        result.write(_generateInitFunction(context: context));
       }
 
-      result += '}\n';
+      result.write('}\n');
     }
 
     // The cache for parsed classes persists across files, so we need to clear
     // it for each file.
     cleanModelClassInfoCache();
 
-    return result;
+    return result.toString();
   }
 }
 
@@ -109,7 +110,7 @@ class AnthemModelGenerator extends Generator {
 /// Note that this will not generate anything for fields in sealed classes.
 String _generateGettersAndSetters(
     {required ModelClassInfo context, required bool classHasModelSyncCode}) {
-  var result = '';
+  var result = StringBuffer();
 
   for (final MapEntry(key: fieldName, value: fieldInfo)
       in context.fields.entries) {
@@ -117,62 +118,125 @@ String _generateGettersAndSetters(
         classHasModelSyncCode && fieldInfo.hideAnnotation?.cpp != true;
 
     // Skip if this field doesn't need a getter/setter
-    if (!fieldInfo.isObservable && !shouldGenerateModelSync) {
+    if (fieldInfo.isModelConstant ||
+        (!fieldInfo.isObservable && !shouldGenerateModelSync)) {
       continue;
+    }
+
+    // If model sync code is being generated, we need to validate that this
+    // field is using the custom collection types.
+    if (shouldGenerateModelSync) {
+      if (fieldInfo.typeInfo case ListModelType typeInfo) {
+        if (typeInfo.collectionType != CollectionType.anthemObservable) {
+          throw Exception(
+              'Synced models must use AnthemObservableList, but $fieldName is using ${typeInfo.collectionType} instead.');
+        }
+      }
+
+      if (fieldInfo.typeInfo case MapModelType typeInfo) {
+        if (typeInfo.collectionType != CollectionType.anthemObservable) {
+          throw Exception(
+              'Synced models must use AnthemObservableMap, but $fieldName is using ${typeInfo.collectionType} instead.');
+        }
+      }
+
+      if (fieldInfo.typeInfo case UnionModelType typeInfo) {
+        // This code checks through the possible subtypes to check for lists and
+        // maps as well. Note that a recursive check is not needed, because
+        // union types can only exist as the type of a field, and not as a
+        // template type, such as List<UnionType>.
+        for (final subtype in typeInfo.subTypes) {
+          if (subtype is ListModelType) {
+            if (subtype.collectionType != CollectionType.anthemObservable) {
+              throw Exception(
+                  'Synced models must use AnthemObservableList, but $fieldName is using ${subtype.collectionType} instead.');
+            }
+          }
+
+          if (subtype is MapModelType) {
+            if (subtype.collectionType != CollectionType.anthemObservable) {
+              throw Exception(
+                  'Synced models must use AnthemObservableMap, but $fieldName is using ${subtype.collectionType} instead.');
+            }
+          }
+        }
+      }
     }
 
     // Getter
 
     final typeQ = fieldInfo.typeInfo.isNullable ? '?' : '';
 
-    result += '@override\n';
-    result += '// ignore: duplicate_ignore\n';
-    result += '// ignore: unnecessary_overrides\n';
-    result += '${fieldInfo.typeInfo.name}$typeQ get $fieldName {\n';
+    result.write('@override\n');
+    result.write('// ignore: duplicate_ignore\n');
+    result.write('// ignore: unnecessary_overrides\n');
+    result.write('${fieldInfo.typeInfo.dartName}$typeQ get $fieldName {\n');
     if (fieldInfo.isObservable) {
-      result += generateMobXGetter(fieldName, fieldInfo);
+      result.write(generateMobXGetter(fieldName, fieldInfo));
     }
-    result += 'return super.$fieldName;\n';
-    result += '}\n\n';
+    result.write('return super.$fieldName;\n');
+    result.write('}\n\n');
 
     // Setter
 
-    var setter = 'super.$fieldName = value;\n';
+    var setter = StringBuffer();
+    setter.write('super.$fieldName = value;\n');
 
     if (shouldGenerateModelSync) {
       // If the field is a custom model type, we need to tell it about its
       // parent.
       if (fieldInfo.typeInfo is CustomModelType ||
-          fieldInfo.typeInfo is UnknownModelType) {
-        setter += '''
+          fieldInfo.typeInfo is UnknownModelType ||
+          fieldInfo.typeInfo is ListModelType ||
+          fieldInfo.typeInfo is MapModelType) {
+        setter.write('''
 super.$fieldName$typeQ.setParentProperties(
   parent: this,
   fieldName: '$fieldName',
   fieldType: FieldType.raw,
 );
-''';
+''');
+      } else if (fieldInfo.typeInfo case UnionModelType typeInfo) {
+        var first = true;
+        setter.write('''
+var setterReceivedValidType = false;
+''');
+        for (final subtype in typeInfo.subTypes) {
+          setter.write('''
+${first ? '' : 'else '}if (value is ${subtype.dartName}) {
+  setterReceivedValidType = true;
+''');
+          if (subtype is CustomModelType ||
+              subtype is UnknownModelType ||
+              subtype is ListModelType ||
+              subtype is MapModelType) {
+            setter.write('''
+  value.setParentProperties(
+    parent: this,
+    fieldName: '$fieldName',
+    fieldType: FieldType.raw,
+  );
+''');
+          }
+          setter.write('}');
+          first = false;
+        }
+
+        setter.write('''if (!setterReceivedValidType) {
+  throw Exception('Invalid type for field $fieldName. Got value of type \${value.runtimeType}, but expected one of: ${typeInfo.subTypes.map((subtype) => subtype.dartName).join(', ')}.');
+}
+''');
       }
 
-      final valueGetter = switch (fieldInfo.typeInfo) {
-        StringModelType() ||
-        IntModelType() ||
-        DoubleModelType() ||
-        NumModelType() ||
-        BoolModelType() =>
-          'value',
-        EnumModelType() => 'value$typeQ.name',
-        ColorModelType() =>
-          "{ 'a': value.alpha, 'r': value.red, 'g': value.green, 'b': value.blue }",
-        CustomModelType() ||
-        UnknownModelType() ||
-        ListModelType() ||
-        MapModelType() =>
-          'value$typeQ.toJson(includeFieldsForEngine: true)',
-      };
+      final valueGetter = createSerializerForField(
+        type: fieldInfo.typeInfo,
+        accessor: 'value',
+        alwaysIncludeEngineOnlyFields: true,
+      );
 
       // Regardless of the type, we need to notify that this field was
       // changed.
-      setter += '''
+      setter.write('''
 notifyFieldChanged(
   operation: RawFieldUpdate(
     newValue: $valueGetter,
@@ -184,28 +248,33 @@ notifyFieldChanged(
     ),
   ],
 );
-''';
+''');
     }
 
-    result += '@override\n';
-    result += 'set $fieldName(${fieldInfo.typeInfo.name}$typeQ value) {\n';
+    result.write('@override\n');
+    result.write(
+        'set $fieldName(${fieldInfo.typeInfo.dartName}$typeQ value) {\n');
     if (fieldInfo.isObservable) {
-      result += wrapCodeWithMobXSetter(fieldName, fieldInfo, setter);
+      result.write(
+          wrapCodeWithMobXSetter(fieldName, fieldInfo, setter.toString()));
     } else {
-      result += setter;
+      result.write(setter);
     }
 
-    result += '}\n\n';
+    result.write('}\n\n');
   }
 
-  return result;
+  return result.toString();
 }
 
 /// Generates the init function for the model.
+///
+/// This should only be called if the model is a synced model.
 String _generateInitFunction({required ModelClassInfo context}) {
-  var result = '';
+  var result = StringBuffer();
+  result.write('@override\n');
 
-  result += 'void init() {\n';
+  result.write('void setParentPropertiesOnChildren() {\n');
 
   for (final MapEntry(key: fieldName, value: fieldInfo)
       in context.fields.entries) {
@@ -214,19 +283,56 @@ String _generateInitFunction({required ModelClassInfo context}) {
     if (fieldInfo.typeInfo is ListModelType ||
         fieldInfo.typeInfo is MapModelType ||
         fieldInfo.typeInfo is CustomModelType) {
-      result += '''
+      result.write('''
 super.$fieldName$typeQ.setParentProperties(
   parent: this,
   fieldName: '$fieldName',
   fieldType: FieldType.raw,
 );
-''';
+''');
+    } else if (fieldInfo.typeInfo is UnionModelType) {
+      var first = true;
+      result.write('var setterReceivedValidType = false;\n');
+
+      if (fieldInfo.typeInfo.isNullable) {
+        result.write('''
+if (super.$fieldName == null) {
+  setterReceivedValidType = true;
+}
+''');
+        first = false;
+      }
+
+      for (final subtype in (fieldInfo.typeInfo as UnionModelType).subTypes) {
+        result.write('''
+${first ? '' : 'else '}if (super.$fieldName is ${subtype.dartName}) {
+  setterReceivedValidType = true;
+''');
+        if (subtype is CustomModelType ||
+            subtype is UnknownModelType ||
+            subtype is ListModelType ||
+            subtype is MapModelType) {
+          result.write('''
+  (super.$fieldName as ${subtype.dartName}).setParentProperties(
+    parent: this,
+    fieldName: '$fieldName',
+    fieldType: FieldType.raw,
+  );
+''');
+        }
+        result.write('}\n');
+        first = false;
+      }
+
+      result.write('''
+if (!setterReceivedValidType) {
+  throw Exception('Invalid type of initial value for union field "$fieldName". Got value of type \${super.$fieldName.runtimeType}, but expected one of: ${(fieldInfo.typeInfo as UnionModelType).subTypes.map((subtype) => subtype.dartName).join(', ')}.');
+}
+''');
     }
   }
 
-  result += 'isInitialized = true;';
+  result.write('}\n');
 
-  result += '}\n';
-
-  return result;
+  return result.toString();
 }

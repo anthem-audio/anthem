@@ -28,12 +28,12 @@ import 'package:anthem/widgets/project/project.dart';
 /// active project based on it.
 class TabContentSwitcher extends StatelessWidget {
   final List<TabDef> tabs;
-  final ID selectedTabID;
+  final Id selectedTabId;
 
   const TabContentSwitcher({
     super.key,
     required this.tabs,
-    required this.selectedTabID,
+    required this.selectedTabId,
   });
 
   @override
@@ -41,7 +41,7 @@ class TabContentSwitcher extends StatelessWidget {
     return Stack(
       children: tabs.map(
         (tab) {
-          final active = tab.id == selectedTabID;
+          final active = tab.id == selectedTabId;
           return Positioned.fill(
             child: ShortcutProvider(
               active: active,

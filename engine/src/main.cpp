@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -35,14 +35,13 @@
 #include <rfl/json.hpp>
 #include <rfl.hpp>
 
+#include "console_logger.h"
+
 #include "modules/core/anthem.h"
 #include "./command_handlers/model_sync_command_handler.h"
 #include "./command_handlers/processing_graph_command_handler.h"
-#include "./command_handlers/processor_command_handler.h"
 
 #include "messages/messages.h"
-
-Anthem* anthem;
 
 juce::StreamingSocket socketToUi;
 
@@ -56,7 +55,7 @@ void heartbeat() {
   while (true) {
     if (!heartbeatOccurred) {
       juce::MessageManager::callAsync([]() {
-        juce::JUCEApplication::getInstance()->systemRequestedQuit();
+        juce::JUCEApplication::quit();
       });
     }
 
@@ -129,7 +128,7 @@ public:
 
     bool didOverwriteResponse = false;
     
-    auto handleModelSyncCommandResponse = handleModelSyncCommand(request, anthem);
+    auto handleModelSyncCommandResponse = handleModelSyncCommand(request);
     if (handleModelSyncCommandResponse.has_value()) {
       if (response.has_value()) {
         didOverwriteResponse = true;
@@ -137,7 +136,7 @@ public:
       response = std::move(handleModelSyncCommandResponse);
     }
 
-    auto handleProcessingGraphCommandResponse = handleProcessingGraphCommand(request, anthem);
+    auto handleProcessingGraphCommandResponse = handleProcessingGraphCommand(request);
     if (handleProcessingGraphCommandResponse.has_value()) {
       if (response.has_value()) {
         didOverwriteResponse = true;
@@ -145,19 +144,11 @@ public:
       response = std::move(handleProcessingGraphCommandResponse);
     }
 
-    auto handleProcessorCommandResponse = handleProcessorCommand(request, anthem);
-    if (handleProcessorCommandResponse.has_value()) {
-      if (response.has_value()) {
-        didOverwriteResponse = true;
-      }
-      response = std::move(handleProcessorCommandResponse);
-    }
-
     // Warn if multiple handlers gave back a reply. This would indicate that a
     // command is being handled multiple times, which is probably a bug.
 
     if (didOverwriteResponse) {
-      std::cout << "Warning: Multiple command handlers tried to reply to a single command. Only the last reply will be sent back. This is probably a bug." << std::endl;
+      juce::Logger::writeToLog("Warning: Multiple command handlers tried to reply to a single command. Only the last reply will be sent back. This is probably a bug.");
     }
 
     if (response.has_value()) {
@@ -187,7 +178,7 @@ public:
     }
 
     if (isExit) {
-      std::cout << "Engine received exit message. Shutting down..." << std::endl;
+      juce::Logger::writeToLog("Engine received exit message. Shutting down...");
       juce::JUCEApplication::quit();
     } else {
       canWriteToBuffer = true;
@@ -225,16 +216,16 @@ void messageLoop(CommandMessageListener& messageListener) {
     return;
   }
 
-  std::cout << "Opening socket connection to UI at port " << portStr << "..." << std::endl;
+  juce::Logger::writeToLog("Opening socket connection to UI at port " + portStr + "...");
   auto success = socketToUi.connect("::1", std::stoi(portStr.toStdString()));
   if (!success) {
     std::cerr << "Socket failed to start. Exiting..." << std::endl;
     juce::JUCEApplication::quit();
     return;
   }
-  std::cout << "Opened successfully." << std::endl;
+  juce::Logger::writeToLog("Opened successfully.");
 
-  std::cout << "Sending ID back to UI as first message..." << std::endl;
+  juce::Logger::writeToLog("Sending ID back to UI as first message...");
 
   std::this_thread::sleep_for(std::chrono::seconds(1));
 
@@ -253,15 +244,15 @@ void messageLoop(CommandMessageListener& messageListener) {
     return;
   }
 
-  std::cout << "Done." << std::endl;
+  juce::Logger::writeToLog("Done.");
 
-  std::cout << "Starting heartbeat thread..." << std::endl;
+  juce::Logger::writeToLog("Starting heartbeat thread...");
   std::thread heartbeat_thread(heartbeat);
 
   uint8_t tempBuffer[4096];
   juce::MemoryBlock messageBuffer;
 
-  std::cout << "Anthem engine started successfully. Listening for messages from UI..." << std::endl;
+  juce::Logger::writeToLog("Anthem engine started successfully. Listening for messages from UI...");
   while (true) {
     std::unique_lock<std::mutex> socketLock(socketInUseMutex);
 
@@ -290,6 +281,8 @@ void messageLoop(CommandMessageListener& messageListener) {
 
         // Convert message to a string
         std::string messageStr(reinterpret_cast<const char*>(messagePtr), messageLength);
+
+        std::cout << std::endl << "Received message: " << std::endl << messageStr << std::endl;
 
         // Convert to a Request object
         auto requestWrapped = rfl::json::read<Request>(messageStr);
@@ -329,7 +322,7 @@ private:
 
   void changeListenerCallback(juce::ChangeBroadcaster */*source*/) override
   {
-    std::cout << "change detected" << std::endl;
+    // juce::Logger::writeToLog("change detected");
   }
 
 public:
@@ -343,7 +336,13 @@ public:
   void anotherInstanceStarted(const juce::String &/*commandLineParameters*/) override {}
   void suspended() override {}
   void resumed() override {}
-  void shutdown() override {}
+  void shutdown() override {
+    // Destruct Anthem instance
+    if (Anthem::hasInstance()) {
+      Anthem::getInstance().shutdown();
+      Anthem::cleanup();
+    }
+  }
 
   void systemRequestedQuit() override
   {
@@ -357,8 +356,11 @@ public:
     // This might not work
   }
 
-  void initialise(const juce::String &/*commandLineParameters*/) override
+  void initialise(const juce::String &commandLineParameters) override
   {
+    // Remove this line to disable logging
+    juce::Logger::setCurrentLogger(new ConsoleLogger());
+
                                 // wow, C++ sure is weird
     const char * anthemSplash = R"V0G0N(
            ,++,
@@ -378,11 +380,15 @@ public:
 
     std::cout << anthemSplash;
 
-    std::cout << "If you want to attach a debugger, you can do it now. Press enter to continue." << std::endl;
-    std::cin.get();
+    // #ifndef NDEBUG
 
-    std::cout << "Starting Anthem engine..." << std::endl;
-    anthem = new Anthem();
+    // juce::Logger::writeToLog("If you want to attach a debugger, you can do it now. Press enter to continue.");
+    // std::cin.get();
+
+    // #endif
+
+    juce::Logger::writeToLog("Starting Anthem engine...");
+    Anthem::getInstance().initialize();
 
     // This starts the message loop in a thread. The message loop thread
     // communicates back to the main thread every time it receives a

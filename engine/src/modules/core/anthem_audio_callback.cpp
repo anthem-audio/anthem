@@ -18,6 +18,17 @@
 */
 
 #include "anthem_audio_callback.h"
+#include "modules/core/anthem.h"
+
+AnthemAudioCallback::AnthemAudioCallback(Anthem* anthem) {
+  this->anthem = anthem;
+
+  auto masterOutputNodeSharedPtr = Anthem::getInstance().project->processingGraph()->nodes()->at(
+    Anthem::getInstance().project->processingGraph()->masterOutputNodeId()
+  );
+  masterOutputProcessorSharedPtr = std::static_pointer_cast<MasterOutputProcessor>(masterOutputNodeSharedPtr->getProcessor().value());
+  masterOutputProcessor = masterOutputProcessorSharedPtr.get();
+}
 
 void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
   [[maybe_unused]] const float* const* inputChannelData,
@@ -29,10 +40,9 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
 ) {
   jassert(numSamples <= MAX_AUDIO_BUFFER_SIZE);
 
-  processingGraph->getProcessor().process(numSamples);
+  anthem->graphProcessor->process(numSamples);
 
-  auto& outputNode = static_cast<MasterOutputNode&>(*masterOutputNode->processor);
-  auto& outputBuffer = outputNode.buffer;
+  auto& outputBuffer = masterOutputProcessor->buffer;
   
   for (int channel = 0; channel < numOutputChannels; ++channel) {
     if (outputChannelData[channel] != nullptr) {

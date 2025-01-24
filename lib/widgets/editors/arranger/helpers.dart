@@ -31,7 +31,7 @@ double getTrackHeight(double baseTrackHeight, double trackHeightModifier) {
 
 double getScrollAreaHeight(
   double baseTrackHeight,
-  Map<ID, double> trackHeightModifiers,
+  Map<Id, double> trackHeightModifiers,
 ) {
   return trackHeightModifiers.entries.fold(
     0,
@@ -46,8 +46,8 @@ double getScrollAreaHeight(
 double posToTrackIndex({
   required double yOffset,
   required double baseTrackHeight,
-  required List<ID> trackOrder,
-  required Map<ID, double> trackHeightModifiers,
+  required List<Id> trackOrder,
+  required Map<Id, double> trackHeightModifiers,
   required double scrollPosition,
 }) {
   // yOffset relative to scroll area start
@@ -85,8 +85,8 @@ double posToTrackIndex({
 double trackIndexToPos({
   required double trackIndex,
   required double baseTrackHeight,
-  required List<ID> trackOrder,
-  required Map<ID, double> trackHeightModifiers,
+  required List<Id> trackOrder,
+  required Map<Id, double> trackHeightModifiers,
   required double scrollPosition,
 }) {
   double yPixelPointer = -scrollPosition;

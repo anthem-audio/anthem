@@ -17,14 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem_codegen/include.dart';
+import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
-
-import '../shared/hydratable.dart';
 
 part 'anthem_color.g.dart';
 
-@AnthemModel.all()
+@AnthemModel.syncedModel()
 class AnthemColor extends _AnthemColor
     with _$AnthemColor, _$AnthemColorAnthemModelMixin {
   AnthemColor({
@@ -44,7 +43,7 @@ class AnthemColor extends _AnthemColor
       _$AnthemColorAnthemModelMixin.fromJson(json);
 }
 
-abstract class _AnthemColor extends Hydratable with Store, AnthemModelBase {
+abstract class _AnthemColor with Store, AnthemModelBase {
   @anthemObservable
   double hue;
 
@@ -58,8 +57,5 @@ abstract class _AnthemColor extends Hydratable with Store, AnthemModelBase {
     required this.hue,
     required this.lightnessMultiplier,
     required this.saturationMultiplier,
-  }) : super() {
-    (this as _$AnthemColorAnthemModelMixin).init();
-    isHydrated = true;
-  }
+  }) : super();
 }

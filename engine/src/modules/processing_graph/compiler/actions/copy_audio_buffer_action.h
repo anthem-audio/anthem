@@ -21,8 +21,6 @@
 
 #include <memory>
 
-#include "modules/processing_graph/topology/anthem_graph_node.h"
-#include "modules/processing_graph/topology/anthem_graph_node_connection.h"
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 #include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
 
@@ -30,17 +28,17 @@
 class CopyAudioBufferAction : public AnthemGraphCompilerAction {
 public:
   AnthemProcessContext* source;
-  int sourcePort;
+  int32_t sourcePortId;
 
   AnthemProcessContext* destination;
-  int destinationPort;
+  int32_t destinationPortId;
 
   CopyAudioBufferAction(
     AnthemProcessContext* source,
-    int sourcePort,
+    int32_t sourcePortId,
     AnthemProcessContext* destination,
-    int destinationPort
-  ) : source(source), sourcePort(sourcePort), destination(destination), destinationPort(destinationPort) {}
+    int32_t destinationPortId
+  ) : source(source), sourcePortId(sourcePortId), destination(destination), destinationPortId(destinationPortId) {}
 
   void execute(int numSamples) override;
 
