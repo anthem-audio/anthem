@@ -58,7 +58,7 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
 
     final baseTrackHeight = viewModel.baseTrackHeight;
 
-    for (final trackID in project.song.trackOrder) {
+    for (final trackID in project.sequence.trackOrder) {
       final trackHeight = getTrackHeight(
         baseTrackHeight,
         viewModel.trackHeightModifiers[trackID]!,
@@ -83,7 +83,7 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
       snap: AutoSnap(),
       baseTimeSignature: TimeSignatureModel(4, 4),
       timeSignatureChanges: [],
-      ticksPerQuarter: project.song.ticksPerQuarter,
+      ticksPerQuarter: project.sequence.ticksPerQuarter,
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
     );

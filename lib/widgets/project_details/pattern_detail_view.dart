@@ -41,7 +41,7 @@ class PatternDetailView extends StatelessObserverWidget {
 
     final patternID =
         (project.getSelectedDetailView() as PatternDetailViewKind).patternID;
-    final pattern = project.song.patterns[patternID]!;
+    final pattern = project.sequence.patterns[patternID]!;
 
     return Column(
       children: [

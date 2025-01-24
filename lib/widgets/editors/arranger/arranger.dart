@@ -81,7 +81,7 @@ class _ArrangerState extends State<Arranger> {
     viewModel ??= ArrangerViewModel(
       baseTrackHeight: 45,
       trackHeightModifiers: mobx.ObservableMap.of(
-        project.song.tracks.nonObservableInner.map(
+        project.sequence.tracks.nonObservableInner.map(
           (key, value) => MapEntry(key, 1),
         ),
       ),
@@ -94,9 +94,10 @@ class _ArrangerState extends State<Arranger> {
     );
 
     ArrangementModel? getModel() =>
-        project.song.arrangements[project.song.activeArrangementID];
+        project.sequence.arrangements[project.sequence.activeArrangementID];
     double getHorizontalScrollRegionEnd() =>
-        getModel()?.width.toDouble() ?? project.song.ticksPerQuarter * 4 * 4;
+        getModel()?.width.toDouble() ??
+        project.sequence.ticksPerQuarter * 4 * 4;
 
     final menuController = MenuController();
 
@@ -221,11 +222,11 @@ class _ArrangerState extends State<Arranger> {
                                     return Dropdown(
                                       hint: 'Change the active arrangement',
                                       selectedID:
-                                          project.song.activeArrangementID,
-                                      items: project.song.arrangementOrder
+                                          project.sequence.activeArrangementID,
+                                      items: project.sequence.arrangementOrder
                                           .map<DropdownItem>((id) {
-                                        final name =
-                                            project.song.arrangements[id]!.name;
+                                        final name = project
+                                            .sequence.arrangements[id]!.name;
                                         return DropdownItem(
                                           id: id.toString(),
                                           name: name,
@@ -233,7 +234,7 @@ class _ArrangerState extends State<Arranger> {
                                         );
                                       }).toList(),
                                       onChanged: (selectedID) {
-                                        project.song.activeArrangementID =
+                                        project.sequence.activeArrangementID =
                                             selectedID;
                                       },
                                     );
@@ -458,7 +459,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
                             timeViewEndAnimItem.animationController,
                         timeViewStartAnimation: timeViewStartAnimItem.animation,
                         timeViewEndAnimation: timeViewEndAnimItem.animation,
-                        arrangementID: project.song.activeArrangementID,
+                        arrangementID: project.sequence.activeArrangementID,
                       );
                     }),
                   ),
@@ -544,8 +545,8 @@ class _ArrangerCanvas extends StatelessWidget {
                       return CustomPaintObserver(
                         painterBuilder: () => ArrangerBackgroundPainter(
                           viewModel: viewModel,
-                          activeArrangement: project.song
-                              .arrangements[project.song.activeArrangementID],
+                          activeArrangement: project.sequence.arrangements[
+                              project.sequence.activeArrangementID],
                           project: project,
                           verticalScrollPosition:
                               verticalScrollPositionAnimation.value,
@@ -581,7 +582,7 @@ class _ArrangerCanvas extends StatelessWidget {
               }
 
               return Positioned.fill(
-                child: project.song.activeArrangementID == null
+                child: project.sequence.activeArrangementID == null
                     ? const SizedBox()
                     : clips(),
               );
@@ -613,7 +614,7 @@ class _ArrangerCanvas extends StatelessWidget {
                   baseTrackHeight: viewModel.baseTrackHeight,
                   scrollPosition: viewModel.verticalScrollPosition,
                   trackHeightModifiers: viewModel.trackHeightModifiers,
-                  trackOrder: project.song.trackOrder,
+                  trackOrder: project.sequence.trackOrder,
                   trackIndex: selectionBox.top,
                 );
 
@@ -621,7 +622,7 @@ class _ArrangerCanvas extends StatelessWidget {
                   baseTrackHeight: viewModel.baseTrackHeight,
                   scrollPosition: viewModel.verticalScrollPosition,
                   trackHeightModifiers: viewModel.trackHeightModifiers,
-                  trackOrder: project.song.trackOrder,
+                  trackOrder: project.sequence.trackOrder,
                   trackIndex: selectionBox.top + selectionBox.height,
                 );
 
@@ -726,7 +727,7 @@ class _TrackHeadersState extends State<_TrackHeaders> {
 
           var trackPositionPointer = -widget.verticalScrollPosition;
 
-          for (final trackID in project.song.trackOrder) {
+          for (final trackID in project.sequence.trackOrder) {
             final heightModifier = viewModel.trackHeightModifiers[trackID];
 
             if (heightModifier == null) continue;

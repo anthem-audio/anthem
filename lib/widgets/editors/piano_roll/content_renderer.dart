@@ -89,7 +89,7 @@ class PianoRollPainter extends CustomPainterObserver {
     viewModel.visibleNotes.clear();
     viewModel.visibleResizeAreas.clear();
 
-    final pattern = project.song.patterns[project.song.activePatternID];
+    final pattern = project.sequence.patterns[project.sequence.activePatternID];
     if (pattern == null) return;
 
     final notes = pattern.notes[project.activeInstrumentID];

@@ -59,7 +59,7 @@ class ArrangerContentRenderer extends StatelessObserverWidget {
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     final arrangement =
-        project.song.arrangements[project.song.activeArrangementID];
+        project.sequence.arrangements[project.sequence.activeArrangementID];
 
     if (arrangement == null) return const SizedBox();
 
@@ -125,7 +125,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     arrangement.clips.forEach((key, clip) {
-      final pattern = project.song.patterns[clip.patternID]!;
+      final pattern = project.sequence.patterns[clip.patternID]!;
 
       final x = timeToPixels(
         timeViewStart: timeViewStart,
@@ -145,11 +145,11 @@ class ArrangerContentPainter extends CustomPainterObserver {
       if (x > size.width || x + width < 0) return;
 
       final y = trackIndexToPos(
-            trackIndex: project.song.trackOrder
+            trackIndex: project.sequence.trackOrder
                 .indexWhere((trackID) => trackID == clip.trackID)
                 .toDouble(),
             baseTrackHeight: viewModel.baseTrackHeight,
-            trackOrder: project.song.trackOrder,
+            trackOrder: project.sequence.trackOrder,
             trackHeightModifiers: viewModel.trackHeightModifiers,
             scrollPosition: verticalScrollPosition,
           ) -

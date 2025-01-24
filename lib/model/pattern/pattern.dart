@@ -126,9 +126,9 @@ abstract class _PatternModel with Store, AnthemModelBase {
     int barMultiple = 1,
     int minPaddingInBarMultiples = 1,
   }) {
-    final ticksPerBar = project.song.ticksPerQuarter ~/
-        (project.song.defaultTimeSignature.denominator ~/ 4) *
-        project.song.defaultTimeSignature.numerator;
+    final ticksPerBar = project.sequence.ticksPerQuarter ~/
+        (project.sequence.defaultTimeSignature.denominator ~/ 4) *
+        project.sequence.defaultTimeSignature.numerator;
 
     final lastNoteContent = notes.values.expand((e) => e).fold<int>(
         ticksPerBar * barMultiple * minPaddingInBarMultiples,

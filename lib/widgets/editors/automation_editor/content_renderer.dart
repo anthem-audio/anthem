@@ -59,7 +59,7 @@ class _AutomationEditorContentRendererState
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
-    final pattern = project.song.patterns[project.song.activePatternID];
+    final pattern = project.sequence.patterns[project.sequence.activePatternID];
     final viewModel = Provider.of<AutomationEditorViewModel>(context);
 
     // Rebuild when these two change
@@ -79,7 +79,7 @@ class _AutomationEditorContentRendererState
         painterBuilder: () => AutomationEditorPainter(
           timeViewStart: widget.timeViewStart,
           timeViewEnd: widget.timeViewEnd,
-          ticksPerQuarter: project.song.ticksPerQuarter,
+          ticksPerQuarter: project.sequence.ticksPerQuarter,
           project: project,
           pattern: pattern,
           shader: shader,
@@ -139,7 +139,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
       size: size,
       ticksPerQuarter: ticksPerQuarter,
       snap: AutoSnap(),
-      baseTimeSignature: project.song.defaultTimeSignature,
+      baseTimeSignature: project.sequence.defaultTimeSignature,
       timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,

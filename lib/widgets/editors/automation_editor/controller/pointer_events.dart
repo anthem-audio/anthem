@@ -88,7 +88,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
   }
 
   void pointerDown(AutomationEditorPointerDownEvent event) {
-    final pattern = project.song.patterns[project.song.activePatternID];
+    final pattern = project.sequence.patterns[project.sequence.activePatternID];
     if (pattern == null) return;
 
     if (project.activeAutomationGeneratorID == null) return;
@@ -130,9 +130,9 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
           final divisionChanges = getDivisionChanges(
             viewWidthInPixels: event.viewSize.width,
             snap: AutoSnap(),
-            defaultTimeSignature: project.song.defaultTimeSignature,
+            defaultTimeSignature: project.sequence.defaultTimeSignature,
             timeSignatureChanges: pattern.timeSignatureChanges,
-            ticksPerQuarter: project.song.ticksPerQuarter,
+            ticksPerQuarter: project.sequence.ticksPerQuarter,
             timeViewStart: viewModel.timeView.start,
             timeViewEnd: viewModel.timeView.end,
           );
@@ -178,7 +178,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
             onSelected: () {
               project.execute(
                 DeleteAutomationPointCommand(
-                  patternID: project.song.activePatternID!,
+                  patternID: project.sequence.activePatternID!,
                   automationGeneratorID: project.activeAutomationGeneratorID!,
                   point: automationLane.points[pressed!.metadata.pointIndex],
                   index: pressed.metadata.pointIndex,
@@ -223,7 +223,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
       if (event.buttons & kSecondaryButton > 0) {
         project.execute(
           SetAutomationPointTensionCommand(
-            patternID: project.song.activePatternID!,
+            patternID: project.sequence.activePatternID!,
             automationGeneratorID: project.activeAutomationGeneratorID!,
             pointIndex: pressed.metadata.pointIndex,
             oldTension: point.tension,
@@ -256,7 +256,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
   }
 
   void pointerMove(AutomationEditorPointerMoveEvent event) {
-    final pattern = project.song.patterns[project.song.activePatternID];
+    final pattern = project.sequence.patterns[project.sequence.activePatternID];
     if (pattern == null) return;
     final automationLane =
         pattern.automationLanes[project.activeAutomationGeneratorID];
@@ -289,9 +289,9 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
         final divisionChanges = getDivisionChanges(
           viewWidthInPixels: event.viewSize.width,
           snap: AutoSnap(),
-          defaultTimeSignature: project.song.defaultTimeSignature,
+          defaultTimeSignature: project.sequence.defaultTimeSignature,
           timeSignatureChanges: pattern.timeSignatureChanges,
-          ticksPerQuarter: project.song.ticksPerQuarter,
+          ticksPerQuarter: project.sequence.ticksPerQuarter,
           timeViewStart: viewModel.timeView.start,
           timeViewEnd: viewModel.timeView.end,
         );
@@ -346,14 +346,14 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
   }
 
   void pointerUp() {
-    if (project.song.activePatternID == null) return;
+    if (project.sequence.activePatternID == null) return;
     if (project.activeAutomationGeneratorID == null) return;
 
     switch (_eventHandlingState) {
       case EventHandlingState.movingPoint:
         final point = project
-            .song
-            .patterns[project.song.activePatternID]!
+            .sequence
+            .patterns[project.sequence.activePatternID]!
             .automationLanes[project.activeAutomationGeneratorID]!
             .points[_pointMoveActionData!.pointIndex];
 
@@ -362,7 +362,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
         if (_pointMoveActionData!.insertedPointIndex != null) {
           project.push(
             AddAutomationPointCommand(
-              patternID: project.song.activePatternID!,
+              patternID: project.sequence.activePatternID!,
               automationGeneratorID: project.activeAutomationGeneratorID!,
               point: point,
               index: _pointMoveActionData!.insertedPointIndex!,
@@ -375,7 +375,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
         if (_pointMoveActionData!.startValue != point.value) {
           project.push(
             SetAutomationPointValueCommand(
-              patternID: project.song.activePatternID!,
+              patternID: project.sequence.activePatternID!,
               automationGeneratorID: project.activeAutomationGeneratorID!,
               pointIndex: _pointMoveActionData!.pointIndex,
               oldValue: _pointMoveActionData!.startValue,
@@ -391,7 +391,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
           for (final pointToMove in _pointMoveActionData!.pointsToMoveInTime) {
             project.push(
               SetAutomationPointOffsetCommand(
-                patternID: project.song.activePatternID!,
+                patternID: project.sequence.activePatternID!,
                 automationGeneratorID: project.activeAutomationGeneratorID!,
                 pointIndex: _pointMoveActionData!.pointIndex + i,
                 oldOffset: pointToMove.startTime,
@@ -407,8 +407,8 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
         break;
       case EventHandlingState.changingTension:
         final point = project
-            .song
-            .patterns[project.song.activePatternID]!
+            .sequence
+            .patterns[project.sequence.activePatternID]!
             .automationLanes[project.activeAutomationGeneratorID]!
             .points[_tensionChangeActionData!.pointIndex];
 
@@ -418,7 +418,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
 
         project.push(
           SetAutomationPointTensionCommand(
-            patternID: project.song.activePatternID!,
+            patternID: project.sequence.activePatternID!,
             automationGeneratorID: project.activeAutomationGeneratorID!,
             pointIndex: _tensionChangeActionData!.pointIndex,
             oldTension: _tensionChangeActionData!.startTension,

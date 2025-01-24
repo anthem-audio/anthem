@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2024 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -29,23 +29,23 @@ import 'package:mobx/mobx.dart';
 
 import 'arrangement/arrangement.dart';
 
-part 'song.g.dart';
+part 'sequence.g.dart';
 
 @AnthemModel.syncedModel(
-  cppBehaviorClassName: 'Song',
-  cppBehaviorClassIncludePath: 'modules/core/song.h',
+  cppBehaviorClassName: 'Sequence',
+  cppBehaviorClassIncludePath: 'modules/core/sequence.h',
 )
-class SongModel extends _SongModel
-    with _$SongModel, _$SongModelAnthemModelMixin {
-  SongModel() : super();
-  SongModel.uninitialized() : super();
-  SongModel.create() : super.create();
+class SequenceModel extends _SequenceModel
+    with _$SequenceModel, _$SequenceModelAnthemModelMixin {
+  SequenceModel() : super();
+  SequenceModel.uninitialized() : super();
+  SequenceModel.create() : super.create();
 
-  factory SongModel.fromJson(Map<String, dynamic> json) =>
-      _$SongModelAnthemModelMixin.fromJson(json);
+  factory SequenceModel.fromJson(Map<String, dynamic> json) =>
+      _$SequenceModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _SongModel with Store, AnthemModelBase {
+abstract class _SequenceModel with Store, AnthemModelBase {
   Id id = getId();
 
   @anthemObservable
@@ -81,9 +81,9 @@ abstract class _SongModel with Store, AnthemModelBase {
   @anthemObservable
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
 
-  _SongModel() : super();
+  _SequenceModel() : super();
 
-  _SongModel.create() : super() {
+  _SequenceModel.create() : super() {
     final arrangement = ArrangementModel.create(
       name: 'Arrangement 1',
       id: getId(),

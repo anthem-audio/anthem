@@ -68,7 +68,7 @@ class AddNoteCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
-    final pattern = project.song.patterns[patternID];
+    final pattern = project.sequence.patterns[patternID];
 
     if (pattern == null) {
       return;
@@ -79,7 +79,7 @@ class AddNoteCommand extends Command {
 
   @override
   void rollback(ProjectModel project) {
-    final pattern = project.song.patterns[patternID];
+    final pattern = project.sequence.patterns[patternID];
 
     if (pattern == null) {
       return;
@@ -102,7 +102,7 @@ class DeleteNoteCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
-    final pattern = project.song.patterns[patternID];
+    final pattern = project.sequence.patterns[patternID];
 
     if (pattern == null) {
       return;
@@ -113,7 +113,7 @@ class DeleteNoteCommand extends Command {
 
   @override
   void rollback(ProjectModel project) {
-    final pattern = project.song.patterns[patternID];
+    final pattern = project.sequence.patterns[patternID];
 
     if (pattern == null) {
       return;
@@ -175,7 +175,7 @@ class SetNoteAttributeCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
-    final pattern = project.song.patterns[patternID];
+    final pattern = project.sequence.patterns[patternID];
 
     if (pattern == null) {
       return;
@@ -189,7 +189,7 @@ class SetNoteAttributeCommand extends Command {
 
   @override
   void rollback(ProjectModel project) {
-    final pattern = project.song.patterns[patternID];
+    final pattern = project.sequence.patterns[patternID];
 
     if (pattern == null) {
       return;

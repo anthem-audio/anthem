@@ -59,7 +59,7 @@ class _GeneratorRowState extends State<GeneratorRow> {
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     PatternModel? getPattern() =>
-        project.song.patterns[project.song.activePatternID];
+        project.sequence.patterns[project.sequence.activePatternID];
     final generator = project.generators[widget.generatorID]!;
     final projectViewModel = Provider.of<ProjectViewModel>(context);
 
@@ -220,7 +220,7 @@ class _GeneratorRowState extends State<GeneratorRow> {
                           timeViewStart: 0,
                           // 1 bar is 100 pixels, can be tweaked (and should probably be set above?)
                           ticksPerPixel:
-                              (project.song.ticksPerQuarter * 4) / 100,
+                              (project.sequence.ticksPerQuarter * 4) / 100,
                           color: generator.color,
                         );
                       } else if (generator.generatorType ==
@@ -231,7 +231,7 @@ class _GeneratorRowState extends State<GeneratorRow> {
                           timeViewStart: 0,
                           // 1 bar is 100 pixels, can be tweaked (and should probably be set above?)
                           ticksPerPixel:
-                              (project.song.ticksPerQuarter * 4) / 100,
+                              (project.sequence.ticksPerQuarter * 4) / 100,
                           color: generator.color,
                         );
                       } else {

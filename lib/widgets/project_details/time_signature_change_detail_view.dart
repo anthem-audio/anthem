@@ -44,7 +44,7 @@ class TimeSignatureChangeDetailView extends StatelessObserverWidget {
           'Time signature changes in arrangements are not supported yet.');
     } else if (detailView.patternID != null) {
       timeSignatureChange = project
-          .song.patterns[detailView.patternID]!.timeSignatureChanges
+          .sequence.patterns[detailView.patternID]!.timeSignatureChanges
           .firstWhere((change) => change.id == detailView.changeID);
     } else {
       throw Exception(
