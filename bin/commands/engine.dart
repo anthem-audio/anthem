@@ -179,25 +179,25 @@ Future<bool> _isIpcOutdated() async {
   final messagesFiles = Directory.fromUri(
     packageRootPath.resolve('lib/engine_api/messages/'),
   ).listSync(recursive: true);
+  final generatedFile = File.fromUri(packageRootPath
+      .resolve('./engine/src/generated/lib/engine_api/messages/messages.h'));
+  if (!await generatedFile.exists()) {
+    // The generated file doesn't exist, so it can't be outdated.
+    return false;
+  }
 
-  final generatedFiles = messagesFiles.where((file) {
-    return file.path.endsWith('.g.dart');
-  });
   final sourceFiles = messagesFiles.where((file) {
     return file.path.endsWith('.dart') && !file.path.endsWith('.g.dart');
   });
 
-  final newestGeneratedFileDateFuture = Future.wait(generatedFiles.map((file) {
-    return file.stat().then((f) => f.modified);
-  })).then((dates) => dates.reduce((a, b) => a.isAfter(b) ? a : b));
-  final newestGeneratedFileDate = await newestGeneratedFileDateFuture;
+  final generatedFileModifiedDate = (await generatedFile.stat()).modified;
 
   final newestSourceFileDateFuture = Future.wait(sourceFiles.map((file) {
     return file.stat().then((f) => f.modified);
   })).then((dates) => dates.reduce((a, b) => a.isAfter(b) ? a : b));
   final newestSourceFileDate = await newestSourceFileDateFuture;
 
-  return newestGeneratedFileDate.isBefore(newestSourceFileDate);
+  return generatedFileModifiedDate.isBefore(newestSourceFileDate);
 }
 
 class _CleanEngineCommand extends Command<dynamic> {
