@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -34,10 +34,6 @@ class ProjectViewModel = _ProjectViewModel with _$ProjectViewModel;
 abstract class _ProjectViewModel with Store {
   @observable
   String hintText = '';
-
-  // We should probably persist this between sessions
-  @observable
-  bool keyboardPianoEnabled = false;
 
   @observable
   EditorKind selectedEditor = EditorKind.detail;
