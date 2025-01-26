@@ -87,40 +87,46 @@ class _GeneratorRowState extends State<GeneratorRow> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(width: 80),
-              Observer(builder: (context) {
-                final nodeId = generator.gainNodeId;
-                final node = project.processingGraph.nodes[nodeId];
+              if (generator.generatorType == GeneratorType.instrument)
+                Observer(builder: (context) {
+                  final nodeId = generator.gainNodeId;
+                  final node = project.processingGraph.nodes[nodeId];
 
-                final value = node
-                        ?.getPortById(GainProcessorModel.gainPortId)
-                        .parameterValue ??
-                    0.5;
+                  final value = node
+                          ?.getPortById(GainProcessorModel.gainPortId)
+                          .parameterValue ??
+                      0.5;
 
-                return Knob(
-                  value: value,
-                  min: 0,
-                  max: 10,
+                  return Knob(
+                    value: value,
+                    min: 0,
+                    max: 10,
+                    width: 20,
+                    height: 20,
+                    stickyPoints: const [1],
+                    onValueChanged: (value) {
+                      if (node == null) return;
+
+                      node
+                          .getPortById(GainProcessorModel.gainPortId)
+                          .parameterValue = value;
+                    },
+                  );
+                }),
+              if (generator.generatorType != GeneratorType.instrument)
+                const SizedBox(width: 20),
+              const SizedBox(width: 8),
+              if (generator.generatorType == GeneratorType.instrument)
+                const Knob(
+                  value: 0,
+                  min: -100,
+                  max: 100,
                   width: 20,
                   height: 20,
-                  stickyPoints: const [1],
-                  onValueChanged: (value) {
-                    if (node == null) return;
-
-                    node
-                        .getPortById(GainProcessorModel.gainPortId)
-                        .parameterValue = value;
-                  },
-                );
-              }),
-              const SizedBox(width: 8),
-              const Knob(
-                value: 0,
-                min: -100,
-                max: 100,
-                width: 20,
-                height: 20,
-                type: KnobType.pan,
-              ),
+                  type: KnobType.pan,
+                ),
+              if (generator.generatorType != GeneratorType.instrument)
+                const SizedBox(width: 20),
               const SizedBox(width: 8),
               // Generator name
               GestureDetector(
