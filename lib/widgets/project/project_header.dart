@@ -42,7 +42,6 @@ class ProjectHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final menuController = MenuController();
     final mainWindowController = context.read<MainWindowController>();
     final projectController = context.read<ProjectController>();
     final projectViewModel = context.read<ProjectViewModel>();
@@ -60,96 +59,7 @@ class ProjectHeader extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Menu(
-              menuController: menuController,
-              menuDef: MenuDef(
-                children: [
-                  AnthemMenuItem(
-                    text: 'New project',
-                    hint: 'Create a new project',
-                    onSelected: () async {
-                      final projectID = await mainWindowController.newProject();
-                      mainWindowController.switchTab(projectID);
-                    },
-                  ),
-                  AnthemMenuItem(
-                    text: 'Load project...',
-                    hint: 'Load a project',
-                    onSelected: () {
-                      mainWindowController.loadProject().then((projectID) {
-                        if (projectID != null) {
-                          mainWindowController.switchTab(projectID);
-                        }
-                      });
-                    },
-                  ),
-                  Separator(),
-                  AnthemMenuItem(
-                    text: 'Save',
-                    hint: 'Save the active project',
-                    onSelected: () {
-                      mainWindowController.saveProject(projectID, false);
-                    },
-                  ),
-                  AnthemMenuItem(
-                    text: 'Save as...',
-                    hint: 'Save the active project to a new location',
-                    onSelected: () {
-                      mainWindowController.saveProject(projectID, true);
-                    },
-                  ),
-                  Separator(),
-                  if (kDebugMode)
-                    AnthemMenuItem(
-                      text: 'Debug',
-                      submenu: MenuDef(
-                        children: [
-                          AnthemMenuItem(
-                            text: 'Print project JSON (UI)',
-                            hint:
-                                'Print the project JSON as reported by the UI',
-                            onSelected: () async {
-                              // ignore: avoid_print
-                              print(
-                                jsonEncode(AnthemStore
-                                    .instance
-                                    .projects[
-                                        AnthemStore.instance.activeProjectID]!
-                                    .toJson()),
-                              );
-                            },
-                          ),
-                          AnthemMenuItem(
-                            text: 'Print project JSON (engine)',
-                            hint:
-                                'Print the project as JSON as reported by the engine',
-                            onSelected: () async {
-                              // ignore: avoid_print
-                              print(
-                                await AnthemStore
-                                    .instance
-                                    .projects[
-                                        AnthemStore.instance.activeProjectID]!
-                                    .engine
-                                    .modelSyncApi
-                                    .debugGetEngineJson(),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-              child: Button(
-                icon: Icons.hamburger,
-                showMenuIndicator: true,
-                onPress: () {
-                  menuController.open();
-                },
-                hint: 'File...',
-              ),
-            ),
+            _ProjectMenu(projectId: projectID),
             const SizedBox(width: 4),
             Button(
               icon: Icons.save,
@@ -191,6 +101,105 @@ class ProjectHeader extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ProjectMenu extends StatelessWidget {
+  final Id projectId;
+
+  const _ProjectMenu({required this.projectId});
+
+  @override
+  Widget build(BuildContext context) {
+    final menuController = MenuController();
+
+    final mainWindowController = context.read<MainWindowController>();
+
+    return Menu(
+      menuController: menuController,
+      menuDef: MenuDef(
+        children: [
+          AnthemMenuItem(
+            text: 'New project',
+            hint: 'Create a new project',
+            onSelected: () async {
+              final projectID = await mainWindowController.newProject();
+              mainWindowController.switchTab(projectID);
+            },
+          ),
+          AnthemMenuItem(
+            text: 'Load project...',
+            hint: 'Load a project',
+            onSelected: () {
+              mainWindowController.loadProject().then((projectID) {
+                if (projectID != null) {
+                  mainWindowController.switchTab(projectID);
+                }
+              });
+            },
+          ),
+          Separator(),
+          AnthemMenuItem(
+            text: 'Save',
+            hint: 'Save the active project',
+            onSelected: () {
+              mainWindowController.saveProject(projectId, false);
+            },
+          ),
+          AnthemMenuItem(
+            text: 'Save as...',
+            hint: 'Save the active project to a new location',
+            onSelected: () {
+              mainWindowController.saveProject(projectId, true);
+            },
+          ),
+          Separator(),
+          if (kDebugMode)
+            AnthemMenuItem(
+              text: 'Debug',
+              submenu: MenuDef(
+                children: [
+                  AnthemMenuItem(
+                    text: 'Print project JSON (UI)',
+                    hint: 'Print the project JSON as reported by the UI',
+                    onSelected: () async {
+                      // ignore: avoid_print
+                      print(
+                        jsonEncode(AnthemStore.instance
+                            .projects[AnthemStore.instance.activeProjectID]!
+                            .toJson()),
+                      );
+                    },
+                  ),
+                  AnthemMenuItem(
+                    text: 'Print project JSON (engine)',
+                    hint: 'Print the project as JSON as reported by the engine',
+                    onSelected: () async {
+                      // ignore: avoid_print
+                      print(
+                        await AnthemStore
+                            .instance
+                            .projects[AnthemStore.instance.activeProjectID]!
+                            .engine
+                            .modelSyncApi
+                            .debugGetEngineJson(),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+      child: Button(
+        icon: Icons.hamburger,
+        showMenuIndicator: true,
+        onPress: () {
+          menuController.open();
+        },
+        hint: 'File...',
       ),
     );
   }
