@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -27,7 +27,6 @@ import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
-import 'package:anthem/widgets/project/typing_keyboard_piano_handler.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -126,36 +125,6 @@ class ProjectController {
             LogicalKeyboardKey.shift, LogicalKeyboardKey.keyZ))) {
       redo();
     }
-  }
-
-  bool onKey(KeyEvent event) {
-    if (event is KeyRepeatEvent) return false;
-
-    final key = event.logicalKey;
-
-    if (viewModel.keyboardPianoEnabled && isTypingPianoKey(key)) {
-      // This should be reimplemented once we solidify MIDI
-
-      // final note = getMidiNoteFromKeyboardKey(key)!;
-
-      // if (event is KeyDownEvent) {
-      //   project.engine.projectApi.noteOn(
-      //     note: note,
-      //     editId: project
-      //         .sequence.arrangements[project.sequence.activeArrangementID]!.editPointer,
-      //   );
-      // } else {
-      //   project.engine.projectApi.noteOff(
-      //     note: note,
-      //     editId: project
-      //         .sequence.arrangements[project.sequence.activeArrangementID]!.editPointer,
-      //   );
-      // }
-
-      return true;
-    }
-
-    return false;
   }
 
   void setHintText(String text) {

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -72,7 +72,6 @@ class _ProjectState extends State<Project> {
         id: 'project',
         global: true,
         shortcutHandler: controller.onShortcut,
-        rawKeyHandler: controller.onKey,
         child: Column(
           children: [
             ProjectHeader(
