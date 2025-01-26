@@ -165,6 +165,21 @@ class _GeneratorRowState extends State<GeneratorRow> {
                         backgroundColor: generator.color,
                         backgroundHoverColor: backgroundHoverColor,
                         backgroundPressColor: backgroundHoverColor,
+                        contentBuilder: (context, color) {
+                          return Center(
+                            child: Text(
+                              generator.name,
+                              style: TextStyle(
+                                color: HSLColor.fromColor(generator.color)
+                                    .withSaturation(0.5)
+                                    .withLightness(0.8)
+                                    .toColor(),
+                                fontSize: 11,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     );
                   },
