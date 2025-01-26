@@ -61,7 +61,7 @@ class AttributeEditorController {
     // decides it's worth looking into later.
 
     final store = AnthemStore.instance;
-    final project = store.projects[store.activeProjectID]!;
+    final project = store.projects[store.activeProjectId]!;
     final pattern = project.sequence.patterns[project.sequence.activePatternID];
 
     if (pattern == null) return;
@@ -169,7 +169,7 @@ class AttributeEditorController {
     if (oldValues.isEmpty && newValues.isEmpty) return;
 
     final store = AnthemStore.instance;
-    final project = store.projects[store.activeProjectID]!;
+    final project = store.projects[store.activeProjectId]!;
     final pattern = project.sequence.patterns[project.sequence.activePatternID];
 
     if (pattern == null) return;

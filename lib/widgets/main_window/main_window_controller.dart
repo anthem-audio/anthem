@@ -34,7 +34,7 @@ class MainWindowController {
 
     store.projects[project.id] = project;
     store.projectOrder.add(project.id);
-    store.activeProjectID = project.id;
+    store.activeProjectId = project.id;
   }
 
   // Returns the ID of the new tab
@@ -50,22 +50,22 @@ class MainWindowController {
   }
 
   void switchTab(Id newTabID) {
-    AnthemStore.instance.activeProjectID = newTabID;
+    AnthemStore.instance.activeProjectId = newTabID;
   }
 
-  void closeProject(Id projectID) {
+  void closeProject(Id projectId) {
     final store = AnthemStore.instance;
 
     // Stop engine
-    store.projects[projectID]!.engine.dispose();
+    store.projects[projectId]!.engine.dispose();
 
     // Remove project from model
-    store.projects.remove(projectID);
-    store.projectOrder.removeWhere((element) => element == projectID);
+    store.projects.remove(projectId);
+    store.projectOrder.removeWhere((element) => element == projectId);
 
     // If the active project was closed, set it to the first open project
-    if (store.activeProjectID == projectID && store.projectOrder.isNotEmpty) {
-      store.activeProjectID = store.projectOrder[0];
+    if (store.activeProjectId == projectId && store.projectOrder.isNotEmpty) {
+      store.activeProjectId = store.projectOrder[0];
     }
   }
 
@@ -87,9 +87,9 @@ class MainWindowController {
     return project.id;
   }
 
-  Future<void> saveProject(Id projectID, bool alwaysUseFilePicker) async {
+  Future<void> saveProject(Id projectId, bool alwaysUseFilePicker) async {
     try {
-      final project = AnthemStore.instance.projects[projectID]!;
+      final project = AnthemStore.instance.projects[projectId]!;
 
       String? path;
       if (alwaysUseFilePicker || !project.isSaved) {
