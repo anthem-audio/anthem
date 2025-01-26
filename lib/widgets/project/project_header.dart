@@ -36,9 +36,9 @@ import 'package:provider/provider.dart';
 import '../basic/icon.dart';
 
 class ProjectHeader extends StatelessWidget {
-  final Id projectID;
+  final Id projectId;
 
-  const ProjectHeader({super.key, required this.projectID});
+  const ProjectHeader({super.key, required this.projectId});
 
   @override
   Widget build(BuildContext context) {
@@ -59,12 +59,12 @@ class ProjectHeader extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _ProjectMenu(projectId: projectID),
+            _ProjectMenu(projectId: projectId),
             const SizedBox(width: 4),
             Button(
               icon: Icons.save,
               onPress: () {
-                mainWindowController.saveProject(projectID, false);
+                mainWindowController.saveProject(projectId, false);
               },
               hint: 'Save',
             ),
@@ -125,17 +125,17 @@ class _ProjectMenu extends StatelessWidget {
             text: 'New project',
             hint: 'Create a new project',
             onSelected: () async {
-              final projectID = await mainWindowController.newProject();
-              mainWindowController.switchTab(projectID);
+              final projectId = await mainWindowController.newProject();
+              mainWindowController.switchTab(projectId);
             },
           ),
           AnthemMenuItem(
             text: 'Load project...',
             hint: 'Load a project',
             onSelected: () {
-              mainWindowController.loadProject().then((projectID) {
-                if (projectID != null) {
-                  mainWindowController.switchTab(projectID);
+              mainWindowController.loadProject().then((projectId) {
+                if (projectId != null) {
+                  mainWindowController.switchTab(projectId);
                 }
               });
             },
@@ -168,7 +168,7 @@ class _ProjectMenu extends StatelessWidget {
                       // ignore: avoid_print
                       print(
                         jsonEncode(AnthemStore.instance
-                            .projects[AnthemStore.instance.activeProjectID]!
+                            .projects[AnthemStore.instance.activeProjectId]!
                             .toJson()),
                       );
                     },
@@ -181,7 +181,7 @@ class _ProjectMenu extends StatelessWidget {
                       print(
                         await AnthemStore
                             .instance
-                            .projects[AnthemStore.instance.activeProjectID]!
+                            .projects[AnthemStore.instance.activeProjectId]!
                             .engine
                             .modelSyncApi
                             .debugGetEngineJson(),

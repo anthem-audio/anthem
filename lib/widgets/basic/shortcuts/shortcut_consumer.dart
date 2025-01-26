@@ -82,7 +82,7 @@ class _ShortcutConsumerState extends State<ShortcutConsumer> {
         final project = Provider.of<ProjectModel>(context, listen: false);
 
         // Don't process shortcuts if this tab is not selected
-        if (project.id != AnthemStore.instance.activeProjectID) return;
+        if (project.id != AnthemStore.instance.activeProjectId) return;
 
         onShortcut(event);
       },

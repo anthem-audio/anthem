@@ -76,7 +76,7 @@ class _ProjectState extends State<Project> {
         child: Column(
           children: [
             ProjectHeader(
-              projectID: widget.id,
+              projectId: widget.id,
             ),
             const SizedBox(
               height: 3,

@@ -77,7 +77,7 @@ void main() async {
 
   store.projects[projectModel.id] = projectModel;
   store.projectOrder.add(projectModel.id);
-  store.activeProjectID = projectModel.id;
+  store.activeProjectId = projectModel.id;
 }
 
 class MyApp extends StatelessWidget {
