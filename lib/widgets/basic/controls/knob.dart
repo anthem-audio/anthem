@@ -23,7 +23,7 @@ import 'package:anthem/widgets/util/lazy_follower.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
-import '../control_mouse_handler.dart';
+import 'control_mouse_handler.dart';
 
 const _stickyTrapSize = 0.08;
 

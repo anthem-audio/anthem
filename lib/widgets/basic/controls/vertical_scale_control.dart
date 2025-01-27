@@ -18,7 +18,7 @@
 */
 
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/control_mouse_handler.dart';
+import 'package:anthem/widgets/basic/controls/control_mouse_handler.dart';
 import 'package:flutter/widgets.dart';
 
 // The user will need to drag the mouse this many pixels to get from

@@ -19,7 +19,7 @@
 
 import 'dart:math';
 
-import 'package:anthem/widgets/basic/control_mouse_handler.dart';
+import 'package:anthem/widgets/basic/controls/control_mouse_handler.dart';
 import 'package:anthem/widgets/basic/digit_display.dart';
 import 'package:flutter/widgets.dart';
 
