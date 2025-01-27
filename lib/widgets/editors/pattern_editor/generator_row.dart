@@ -20,7 +20,7 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/basic/button.dart';
-import 'package:anthem/widgets/basic/knob.dart';
+import 'package:anthem/widgets/basic/controls/knob.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/editors/pattern_editor/generator_row_automation.dart';
