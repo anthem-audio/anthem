@@ -74,9 +74,7 @@ class _ProjectState extends State<Project> {
         shortcutHandler: controller.onShortcut,
         child: Column(
           children: [
-            ProjectHeader(
-              projectId: widget.id,
-            ),
+            const ProjectHeader(),
             const SizedBox(
               height: 3,
             ),

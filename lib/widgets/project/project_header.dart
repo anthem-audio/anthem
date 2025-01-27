@@ -19,7 +19,6 @@
 
 import 'dart:convert';
 
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
@@ -34,14 +33,10 @@ import 'package:provider/provider.dart';
 import '../basic/icon.dart';
 
 class ProjectHeader extends StatelessWidget {
-  final Id projectId;
-
-  const ProjectHeader({super.key, required this.projectId});
+  const ProjectHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final projectController = context.read<ProjectController>();
-
     return Container(
       height: 40,
       decoration: BoxDecoration(
@@ -53,24 +48,23 @@ class ProjectHeader extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(7),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _ProjectMenu(projectId: projectId),
-            const SizedBox(width: 4),
-            Button(
-              icon: Icons.undo,
-              onPress: () {
-                projectController.undo();
-              },
-              hint: 'Undo (Ctrl+Z)',
+            Expanded(
+              flex: 1,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _LeftGroup(),
+              ),
             ),
-            const SizedBox(width: 4),
-            Button(
-              icon: Icons.redo,
-              onPress: () {
-                projectController.redo();
-              },
-              hint: 'Redo (Ctrl+Shift+Z)',
+            Center(
+              child: _MiddleGroup(),
+            ),
+            Expanded(
+              flex: 1,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _RightGroup(),
+              ),
             ),
           ],
         ),
@@ -79,16 +73,65 @@ class ProjectHeader extends StatelessWidget {
   }
 }
 
-class _ProjectMenu extends StatelessWidget {
-  final Id projectId;
+class _LeftGroup extends StatelessWidget {
+  const _LeftGroup();
 
-  const _ProjectMenu({required this.projectId});
+  @override
+  Widget build(BuildContext context) {
+    final projectController = context.read<ProjectController>();
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ProjectMenu(),
+        const SizedBox(width: 4),
+        Button(
+          icon: Icons.undo,
+          onPress: () {
+            projectController.undo();
+          },
+          hint: 'Undo (Ctrl+Z)',
+        ),
+        const SizedBox(width: 4),
+        Button(
+          icon: Icons.redo,
+          onPress: () {
+            projectController.redo();
+          },
+          hint: 'Redo (Ctrl+Shift+Z)',
+        ),
+      ],
+    );
+  }
+}
+
+class _MiddleGroup extends StatelessWidget {
+  const _MiddleGroup();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container();
+  }
+}
+
+class _RightGroup extends StatelessWidget {
+  const _RightGroup();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container();
+  }
+}
+
+class _ProjectMenu extends StatelessWidget {
+  const _ProjectMenu();
 
   @override
   Widget build(BuildContext context) {
     final menuController = MenuController();
-
     final mainWindowController = context.read<MainWindowController>();
+
+    final project = Provider.of<ProjectModel>(context);
 
     return Menu(
       menuController: menuController,
@@ -118,14 +161,14 @@ class _ProjectMenu extends StatelessWidget {
             text: 'Save',
             hint: 'Save the active project',
             onSelected: () {
-              mainWindowController.saveProject(projectId, false);
+              mainWindowController.saveProject(project.id, false);
             },
           ),
           AnthemMenuItem(
             text: 'Save as...',
             hint: 'Save the active project to a new location',
             onSelected: () {
-              mainWindowController.saveProject(projectId, true);
+              mainWindowController.saveProject(project.id, true);
             },
           ),
           Separator(),
