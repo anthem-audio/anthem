@@ -17,24 +17,32 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/widgets/basic/controls/digit_control.dart';
+import 'package:anthem/widgets/basic/digit_display.dart';
 import 'package:flutter/widgets.dart';
 
-class WidgetTestArea extends StatelessWidget {
-  const WidgetTestArea({super.key});
+export 'package:anthem/widgets/basic/digit_display.dart' show DigitDisplaySize;
+
+class DigitControl extends StatefulWidget {
+  final DigitDisplaySize size;
+  final int? width;
+
+  const DigitControl({
+    super.key,
+    this.size = DigitDisplaySize.normal,
+    this.width,
+  });
 
   @override
+  State<DigitControl> createState() => _DigitControlState();
+}
+
+class _DigitControlState extends State<DigitControl> {
+  @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        spacing: 3,
-        children: [
-          DigitControl(width: 80, size: DigitDisplaySize.large),
-          DigitControl(width: 80),
-        ],
-      ),
+    return DigitDisplay(
+      text: '128.00',
+      width: widget.width,
+      size: widget.size,
     );
   }
 }
