@@ -30,7 +30,7 @@ class DigitControl extends StatefulWidget {
   final int? width;
   final bool monospace;
   final int decimalPlaces;
-  final int? minDigitCount;
+  final int? minCharacterCount;
 
   final double value;
   final void Function(double value)? onChanged;
@@ -42,7 +42,7 @@ class DigitControl extends StatefulWidget {
     this.width,
     this.monospace = true,
     this.decimalPlaces = 2,
-    this.minDigitCount,
+    this.minCharacterCount,
     required this.value,
     this.onChanged,
     this.onEnd,
@@ -97,7 +97,7 @@ class _DigitControlState extends State<DigitControl> {
 
     final text = widget.value
         .toStringAsFixed(widget.decimalPlaces)
-        .padLeft(widget.minDigitCount ?? 0);
+        .padLeft(widget.minCharacterCount ?? 0);
 
     return DigitDisplay(
       text: text,
