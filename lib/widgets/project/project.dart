@@ -216,7 +216,11 @@ class _PanelOverlay extends StatelessWidget {
     return Stack(
       children: [
         // Original content
-        child,
+        Visibility(
+          visible: builder == null,
+          maintainState: true,
+          child: child,
+        ),
 
         // Background, if overlay is present
         if (builder != null)
