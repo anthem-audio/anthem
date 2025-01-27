@@ -23,52 +23,70 @@ import 'package:flutter/widgets.dart';
 enum DigitDisplaySize { normal, large }
 
 class DigitDisplay extends StatelessWidget {
+  static double calculateHeight(DigitDisplaySize size) {
+    return switch (size) {
+      DigitDisplaySize.normal => 20,
+      DigitDisplaySize.large => 24,
+    };
+  }
+
+  static double calculateFontSize(DigitDisplaySize size) {
+    return switch (size) {
+      DigitDisplaySize.normal => 11,
+      DigitDisplaySize.large => 14,
+    };
+  }
+
   final int? width;
   final DigitDisplaySize size;
+  final bool monospace;
 
   final String text;
+
+  final Widget? overlay;
 
   const DigitDisplay({
     super.key,
     this.width,
     this.size = DigitDisplaySize.normal,
     required this.text,
+    this.monospace = false,
+    this.overlay,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: switch (size) {
-        DigitDisplaySize.normal => 20,
-        DigitDisplaySize.large => 24,
-      },
+      height: calculateHeight(size),
       width: width?.toDouble(),
       decoration: BoxDecoration(
         border: Border.all(color: Theme.separator),
         borderRadius: BorderRadius.circular(3),
         color: Theme.control.background,
       ),
-      child: Padding(
-        padding: const EdgeInsets.only(left: 8, right: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Text(
+      child: Stack(
+        children: [
+          Container(
+            padding: const EdgeInsets.only(left: 8, right: 8),
+            // If we set the alignnment when the width is not defined, then it
+            // tries to take all the available space, so we only set it when
+            // the width is defined.
+            alignment: width != null ? Alignment.centerRight : null,
+            child: Text(
               text,
               style: TextStyle(
-                fontFamily: 'Roboto',
-                fontSize: switch (size) {
-                  DigitDisplaySize.normal => 11,
-                  DigitDisplaySize.large => 14,
-                },
+                fontFamily: monospace ? 'RobotoMono' : null,
+                fontSize: calculateFontSize(size),
                 fontWeight: FontWeight.w700,
                 color: Theme.primary.main,
               ),
             ),
-          ],
-        ),
+          ),
+          if (overlay != null)
+            Positioned.fill(
+              child: overlay!,
+            ),
+        ],
       ),
     );
   }

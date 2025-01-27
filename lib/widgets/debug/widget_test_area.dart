@@ -20,8 +20,15 @@
 import 'package:anthem/widgets/basic/controls/digit_control.dart';
 import 'package:flutter/widgets.dart';
 
-class WidgetTestArea extends StatelessWidget {
+class WidgetTestArea extends StatefulWidget {
   const WidgetTestArea({super.key});
+
+  @override
+  State<WidgetTestArea> createState() => _WidgetTestAreaState();
+}
+
+class _WidgetTestAreaState extends State<WidgetTestArea> {
+  double digitControlValue = 128;
 
   @override
   Widget build(BuildContext context) {
@@ -31,8 +38,34 @@ class WidgetTestArea extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         spacing: 3,
         children: [
-          DigitControl(width: 80, size: DigitDisplaySize.large),
-          DigitControl(width: 80),
+          DigitControl(
+            size: DigitDisplaySize.large,
+            value: digitControlValue,
+            onChanged: (v) => setState(() => digitControlValue = v),
+          ),
+          DigitControl(
+            width: 80,
+            size: DigitDisplaySize.large,
+            value: digitControlValue,
+            onChanged: (v) => setState(() => digitControlValue = v),
+          ),
+          DigitControl(
+            width: 80,
+            value: digitControlValue,
+            onChanged: (v) => setState(() => digitControlValue = v),
+          ),
+          DigitControl(
+            width: 80,
+            value: digitControlValue,
+            decimalPlaces: 3,
+            onChanged: (v) => setState(() => digitControlValue = v),
+          ),
+          DigitControl(
+            width: 80,
+            value: digitControlValue,
+            decimalPlaces: 0,
+            onChanged: (v) => setState(() => digitControlValue = v),
+          ),
         ],
       ),
     );
