@@ -24,8 +24,10 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/debug/widget_test_area.dart';
 import 'package:anthem/widgets/main_window/main_window_controller.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
+import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
@@ -110,7 +112,11 @@ class _MiddleGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container();
+    final projectModel = Provider.of<ProjectModel>(context);
+
+    return Text(
+      projectModel.id,
+    );
   }
 }
 
@@ -202,6 +208,17 @@ class _ProjectMenu extends StatelessWidget {
                             .modelSyncApi
                             .debugGetEngineJson(),
                       );
+                    },
+                  ),
+                  Separator(),
+                  AnthemMenuItem(
+                    text: 'Open widget test area',
+                    onSelected: () {
+                      final projectViewModel =
+                          Provider.of<ProjectViewModel>(context, listen: false);
+
+                      projectViewModel.topPanelOverlayContentBuilder =
+                          (context) => const WidgetTestArea();
                     },
                   ),
                 ],
