@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2024 Joshua Wade
+  Copyright (C) 2022 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -276,6 +276,7 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
   @override
   Widget build(BuildContext context) {
     final child = Listener(
+      behavior: HitTestBehavior.opaque,
       onPointerDown: onPointerDown,
       onPointerMove: onPointerMove,
       onPointerUp: onPointerUp,
