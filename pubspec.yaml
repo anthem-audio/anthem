@@ -46,6 +46,11 @@ flutter:
   shaders:
   - assets/shaders/automation_curve.frag
 
+  fonts:
+  - family: RobotoMono
+    fonts:
+    - asset: assets/fonts/RobotoMono.ttf
+
   assets:
   - assets/engine/
   - assets/icons/
