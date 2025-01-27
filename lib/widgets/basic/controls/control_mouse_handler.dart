@@ -31,14 +31,6 @@ class ControlMouseEvent {
   ControlMouseEvent({required this.delta, required this.absolute});
 }
 
-enum _AxisHandlerStatus {
-  idle,
-  waitingForNegativeJump,
-  waitingForPositiveJump,
-}
-
-enum _JumpDirection { positive, negative }
-
 class ControlMouseHandler extends StatefulWidget {
   final Widget? child;
   final void Function()? onStart;
@@ -82,10 +74,6 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
   // When we jump, we jump to (screen edge) + jumpMouseAreaSize + jumpPadding
   double jumpPadding = 20;
 
-  // State machine for managing mouse jumps
-  _AxisHandlerStatus horizontalAxisState = _AxisHandlerStatus.idle;
-  _AxisHandlerStatus verticalAxisState = _AxisHandlerStatus.idle;
-
   MouseCursor cursor = MouseCursor.defer;
 
   MouseCursorManager manager = MouseCursorManager(
@@ -121,105 +109,12 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
     final dx = (mouseX - mostRecentMouseX);
     final dy = (mouseY - mostRecentMouseY);
 
-    final isInLeftJumpDetectZone = mouseX - windowRect.left < jumpMouseAreaSize;
-    final isInTopJumpDetectZone = mouseY - windowRect.top < jumpMouseAreaSize;
-    final isInRightJumpDetectZone =
-        windowRect.right - mouseX < jumpMouseAreaSize;
-    final isInBottomJumpDetectZone =
-        windowRect.bottom - mouseY < jumpMouseAreaSize;
-
-    _JumpDirection? xJumpDirection;
-    _JumpDirection? yJumpDirection;
-
-    final isWaitingForHorizontalJump =
-        horizontalAxisState == _AxisHandlerStatus.waitingForNegativeJump ||
-            horizontalAxisState == _AxisHandlerStatus.waitingForPositiveJump;
-    final isWaitingForVerticalJump =
-        verticalAxisState == _AxisHandlerStatus.waitingForNegativeJump ||
-            verticalAxisState == _AxisHandlerStatus.waitingForPositiveJump;
-
-    // Horizontal axis jump detection
-    if (widget.allowHorizontalJump) {
-      if (horizontalAxisState == _AxisHandlerStatus.waitingForNegativeJump ||
-          horizontalAxisState == _AxisHandlerStatus.waitingForPositiveJump) {
-        if (horizontalAxisState == _AxisHandlerStatus.waitingForNegativeJump &&
-            !isInRightJumpDetectZone) {
-          horizontalAxisState = _AxisHandlerStatus.idle;
-        }
-        if (horizontalAxisState == _AxisHandlerStatus.waitingForPositiveJump &&
-            !isInLeftJumpDetectZone) {
-          horizontalAxisState = _AxisHandlerStatus.idle;
-        }
-      } else if (horizontalAxisState == _AxisHandlerStatus.idle) {
-        accumulatorX += dx;
-
-        if (isInLeftJumpDetectZone) {
-          horizontalAxisState = _AxisHandlerStatus.waitingForPositiveJump;
-          xJumpDirection = _JumpDirection.positive;
-        } else if (isInRightJumpDetectZone) {
-          horizontalAxisState = _AxisHandlerStatus.waitingForNegativeJump;
-          xJumpDirection = _JumpDirection.negative;
-        }
-      }
-    }
-
-    // Vertical axis jump detection
-    if (widget.allowVerticalJump) {
-      if (verticalAxisState == _AxisHandlerStatus.waitingForNegativeJump ||
-          verticalAxisState == _AxisHandlerStatus.waitingForPositiveJump) {
-        if (verticalAxisState == _AxisHandlerStatus.waitingForNegativeJump &&
-            !isInBottomJumpDetectZone) {
-          verticalAxisState = _AxisHandlerStatus.idle;
-        }
-        if (verticalAxisState == _AxisHandlerStatus.waitingForPositiveJump &&
-            !isInTopJumpDetectZone) {
-          verticalAxisState = _AxisHandlerStatus.idle;
-        }
-      } else if (verticalAxisState == _AxisHandlerStatus.idle) {
-        accumulatorY += dy;
-
-        if (isInTopJumpDetectZone) {
-          verticalAxisState = _AxisHandlerStatus.waitingForPositiveJump;
-          yJumpDirection = _JumpDirection.positive;
-        } else if (isInBottomJumpDetectZone) {
-          verticalAxisState = _AxisHandlerStatus.waitingForNegativeJump;
-          yJumpDirection = _JumpDirection.negative;
-        }
-      }
-    }
-
-    if (xJumpDirection != null || yJumpDirection != null) {
-      // Since we abandoned the Rust backend, we need a new way to set the
-      // mouse cursor.
-
-      // var x = mouseX;
-      // var y = mouseY;
-
-      // if (xJumpDirection == _JumpDirection.positive) {
-      //   x = windowRect.right - jumpMouseAreaSize - jumpPadding;
-      // } else if (xJumpDirection == _JumpDirection.negative) {
-      //   x = windowRect.left + jumpMouseAreaSize + jumpPadding;
-      // }
-
-      // if (yJumpDirection == _JumpDirection.positive) {
-      //   y = windowRect.bottom - jumpMouseAreaSize - jumpPadding;
-      // } else if (yJumpDirection == _JumpDirection.negative) {
-      //   y = windowRect.top + jumpMouseAreaSize + jumpPadding;
-      // }
-
-      // x *= devicePixelRatio;
-      // y *= devicePixelRatio;
-
-      // plugin to do this, or something similar
-      // api.setMousePos(x: x.round(), y: y.round());
-    }
+    accumulatorX += dx;
+    accumulatorY += dy;
 
     widget.onChange?.call(
       ControlMouseEvent(
-        delta: Offset(
-          isWaitingForHorizontalJump ? 0 : dx,
-          isWaitingForVerticalJump ? 0 : -dy,
-        ),
+        delta: Offset(dx, -dy),
         absolute: Offset(accumulatorX, -accumulatorY),
       ),
     );
@@ -246,9 +141,6 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
 
     accumulatorX = 0;
     accumulatorY = 0;
-
-    horizontalAxisState = _AxisHandlerStatus.idle;
-    verticalAxisState = _AxisHandlerStatus.idle;
   }
 
   void onPointerSignal(PointerEvent e) {
