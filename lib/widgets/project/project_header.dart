@@ -19,9 +19,11 @@
 
 import 'dart:convert';
 
+import 'package:anthem/commands/sequence_commands.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/controls/digit_control.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/debug/widget_test_area.dart';
@@ -30,6 +32,7 @@ import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 import '../basic/icon.dart';
@@ -107,15 +110,42 @@ class _LeftGroup extends StatelessWidget {
   }
 }
 
-class _MiddleGroup extends StatelessWidget {
+class _MiddleGroup extends StatefulObserverWidget {
   const _MiddleGroup();
+
+  @override
+  State<_MiddleGroup> createState() => _MiddleGroupState();
+}
+
+class _MiddleGroupState extends State<_MiddleGroup> {
+  var originalTempo = 0.0;
 
   @override
   Widget build(BuildContext context) {
     final projectModel = Provider.of<ProjectModel>(context);
 
-    return Text(
-      projectModel.id,
+    return Row(
+      children: [
+        DigitControl(
+          decimalPlaces: 2,
+          minCharacterCount: 6,
+          value: projectModel.sequence.beatsPerMinute,
+          onStart: () {
+            originalTempo = projectModel.sequence.beatsPerMinute;
+          },
+          onChanged: (value) {
+            projectModel.sequence.beatsPerMinute = value.clamp(1, 999);
+          },
+          onEnd: () {
+            projectModel.push(
+              SetTempoCommand(
+                oldTempo: originalTempo,
+                newTempo: projectModel.sequence.beatsPerMinute,
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }
