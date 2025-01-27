@@ -52,6 +52,9 @@ abstract class _SequenceModel with Store, AnthemModelBase {
   int ticksPerQuarter = 96;
 
   @anthemObservable
+  double beatsPerMinute = 128;
+
+  @anthemObservable
   AnthemObservableMap<Id, PatternModel> patterns = AnthemObservableMap();
 
   @anthemObservable

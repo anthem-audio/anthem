@@ -33,6 +33,7 @@ class DigitControl extends StatefulWidget {
   final int? minCharacterCount;
 
   final double value;
+  final void Function()? onStart;
   final void Function(double value)? onChanged;
   final void Function()? onEnd;
 
@@ -44,6 +45,7 @@ class DigitControl extends StatefulWidget {
     this.decimalPlaces = 2,
     this.minCharacterCount,
     required this.value,
+    this.onStart,
     this.onChanged,
     this.onEnd,
   });
@@ -83,6 +85,7 @@ class _DigitControlState extends State<DigitControl> {
         onStart: () {
           startValue = widget.value;
           incrementSize = 1 / pow(10, i);
+          widget.onStart?.call();
         },
         onChange: (e) {
           increment(e.absolute.dy);
