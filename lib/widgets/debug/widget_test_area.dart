@@ -41,6 +41,7 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
           DigitControl(
             size: DigitDisplaySize.large,
             value: digitControlValue,
+            minDigitCount: 6,
             onChanged: (v) => setState(() => digitControlValue = v),
           ),
           DigitControl(

@@ -30,6 +30,7 @@ class DigitControl extends StatefulWidget {
   final int? width;
   final bool monospace;
   final int decimalPlaces;
+  final int? minDigitCount;
 
   final double value;
   final void Function(double value)? onChanged;
@@ -41,6 +42,7 @@ class DigitControl extends StatefulWidget {
     this.width,
     this.monospace = true,
     this.decimalPlaces = 2,
+    this.minDigitCount,
     required this.value,
     this.onChanged,
     this.onEnd,
@@ -93,8 +95,12 @@ class _DigitControlState extends State<DigitControl> {
       return i == 0 ? Expanded(child: mouseHandlerRegion) : mouseHandlerRegion;
     });
 
+    final text = widget.value
+        .toStringAsFixed(widget.decimalPlaces)
+        .padLeft(widget.minDigitCount ?? 0);
+
     return DigitDisplay(
-      text: widget.value.toStringAsFixed(widget.decimalPlaces),
+      text: text,
       width: widget.width,
       size: widget.size,
       monospace: widget.monospace,
