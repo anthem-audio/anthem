@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/icon.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
@@ -118,7 +120,7 @@ class _ProjectState extends State<Project> {
                   sizeBehavior: PanelSizeBehavior.pixels,
                   panelStartSize: 200,
                   panelMinSize: 200,
-                  // Left panel
+                  // Left side-panel content
                   panelContent: Stack(
                     children: [
                       Positioned.fill(
@@ -156,26 +158,31 @@ class _ProjectState extends State<Project> {
                     orientation: PanelOrientation.right,
                     sizeBehavior: PanelSizeBehavior.pixels,
                     panelStartSize: 200,
-                    // Right panel
+                    // Right side-panel content
                     panelContent: Container(color: Theme.panel.main),
 
                     child: Panel(
                       orientation: PanelOrientation.bottom,
                       panelMinSize: 300,
                       contentMinSize: 300,
-                      // Bottom panel
+                      // Bottom panel content (selected editor)
                       panelContent: RepaintBoundary(child: selectedEditor),
-                      child: Panel(
-                        hidden: !projectModel.isPatternEditorVisible,
-                        orientation: PanelOrientation.left,
-                        panelStartSize: 500,
-                        panelMinSize: 500,
-                        contentMinSize: 500,
-                        sizeBehavior: PanelSizeBehavior.pixels,
-                        // Pattern editor
-                        panelContent:
-                            const RepaintBoundary(child: PatternEditor()),
-                        child: const RepaintBoundary(child: Arranger()),
+                      child: _PanelOverlay(
+                        builder: viewModel.topPanelOverlayContentBuilder,
+                        close: () => viewModel.clearTopPanelOverlay(),
+                        child: Panel(
+                          hidden: !projectModel.isPatternEditorVisible,
+                          orientation: PanelOrientation.left,
+                          panelStartSize: 500,
+                          panelMinSize: 500,
+                          contentMinSize: 500,
+                          sizeBehavior: PanelSizeBehavior.pixels,
+                          // Pattern editor
+                          panelContent:
+                              const RepaintBoundary(child: PatternEditor()),
+                          // Arranger
+                          child: const RepaintBoundary(child: Arranger()),
+                        ),
                       ),
                     ),
                   ),
@@ -189,6 +196,59 @@ class _ProjectState extends State<Project> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _PanelOverlay extends StatelessWidget {
+  final Widget Function(BuildContext context)? builder;
+  final void Function() close;
+  final Widget child;
+
+  const _PanelOverlay({
+    this.builder,
+    required this.close,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Original content
+        child,
+
+        // Background, if overlay is present
+        if (builder != null)
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(3),
+                color: Theme.panel.main,
+              ),
+            ),
+          ),
+
+        // Close button, if overlay is present
+        if (builder != null)
+          Positioned(
+            top: 3,
+            right: 3,
+            width: 26,
+            height: 26,
+            child: Button(
+              icon: Icons.close,
+              variant: ButtonVariant.label,
+              onPress: close,
+            ),
+          ),
+
+        // Overlay content
+        if (builder != null)
+          Positioned.fill(
+            child: builder!(context),
+          ),
+      ],
     );
   }
 }

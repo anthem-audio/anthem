@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart';
 
 part 'project_view_model.g.dart';
@@ -37,4 +38,17 @@ abstract class _ProjectViewModel with Store {
 
   @observable
   EditorKind selectedEditor = EditorKind.detail;
+
+  // As of writing, MobX generates invalid codegen for the valid type here, which is:
+  // Widget Function(BuildContext context)?
+  @observable
+  dynamic topPanelOverlayContentBuilder;
+
+  void setTopPanelOverlay(Widget Function(BuildContext context)? overlay) {
+    topPanelOverlayContentBuilder = overlay;
+  }
+
+  void clearTopPanelOverlay() {
+    topPanelOverlayContentBuilder = null;
+  }
 }
