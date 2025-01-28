@@ -21,7 +21,9 @@ import 'dart:math';
 
 import 'package:anthem/widgets/basic/controls/control_mouse_handler.dart';
 import 'package:anthem/widgets/basic/digit_display.dart';
+import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/widgets.dart';
+import 'package:provider/provider.dart';
 
 export 'package:anthem/widgets/basic/digit_display.dart' show DigitDisplaySize;
 
@@ -31,6 +33,9 @@ class DigitControl extends StatefulWidget {
   final bool monospace;
   final int decimalPlaces;
   final int? minCharacterCount;
+
+  final String? hint;
+  final String? hintUnits;
 
   final double value;
   final void Function()? onStart;
@@ -44,6 +49,8 @@ class DigitControl extends StatefulWidget {
     this.monospace = true,
     this.decimalPlaces = 2,
     this.minCharacterCount,
+    this.hint,
+    this.hintUnits,
     required this.value,
     this.onStart,
     this.onChanged,
@@ -58,12 +65,30 @@ class _DigitControlState extends State<DigitControl> {
   double startValue = 0;
   double incrementSize = 0;
 
-  void increment(double pixelDelta) {
+  void increment(double pixelDelta, int minimumHintPrecision) {
     var valueDelta = pixelDelta * 0.05 * incrementSize;
     valueDelta = (valueDelta / incrementSize).round() * incrementSize;
 
     final newValue = startValue + valueDelta;
     widget.onChanged?.call(newValue);
+
+    var valueText = widget.value.toStringAsFixed(widget.decimalPlaces);
+
+    final decimalIndex = valueText.indexOf('.');
+
+    if (decimalIndex != -1) {
+      while (valueText.endsWith('0') &&
+          valueText.length > decimalIndex + 1 + minimumHintPrecision) {
+        valueText = valueText.substring(0, valueText.length - 1);
+      }
+    }
+
+    if (valueText.endsWith('.')) {
+      valueText = valueText.substring(0, valueText.length - 1);
+    }
+
+    Provider.of<ProjectViewModel>(context, listen: false).hintText =
+        '$valueText ${widget.hintUnits ?? ''}';
   }
 
   @override
@@ -78,21 +103,26 @@ class _DigitControlState extends State<DigitControl> {
     final mouseHandlerRegions =
         Iterable.generate(widget.decimalPlaces + 1, (i) {
       final mouseHandlerRegion = ControlMouseHandler(
-        child: Container(
-          width: i == 0 ? null : digitWidth,
-          // color: i % 2 == 0 ? Color(0xFFFF0000).withAlpha(20) : Color(0xFF00FF00).withAlpha(20),
-        ),
+        cursor: SystemMouseCursors.resizeUpDown,
         onStart: () {
           startValue = widget.value;
           incrementSize = 1 / pow(10, i);
           widget.onStart?.call();
         },
         onChange: (e) {
-          increment(e.absolute.dy);
+          increment(e.absolute.dy, i);
         },
         onEnd: (e) {
           widget.onEnd?.call();
+
+          // If there is hint text, we should reset back to it
+          Provider.of<ProjectViewModel>(context, listen: false).hintText =
+              widget.hint ?? '';
         },
+        child: Container(
+          width: i == 0 ? null : digitWidth,
+          // color: i % 2 == 0 ? Color(0xFFFF0000).withAlpha(20) : Color(0xFF00FF00).withAlpha(20),
+        ),
       );
 
       return i == 0 ? Expanded(child: mouseHandlerRegion) : mouseHandlerRegion;
@@ -102,7 +132,7 @@ class _DigitControlState extends State<DigitControl> {
         .toStringAsFixed(widget.decimalPlaces)
         .padLeft(widget.minCharacterCount ?? 0);
 
-    return DigitDisplay(
+    final digitDisplay = DigitDisplay(
       text: text,
       width: widget.width,
       size: widget.size,
@@ -114,6 +144,21 @@ class _DigitControlState extends State<DigitControl> {
           SizedBox(width: 8),
         ],
       ),
+    );
+
+    if (widget.hint == null) {
+      return digitDisplay;
+    }
+
+    return MouseRegion(
+      onEnter: (e) {
+        Provider.of<ProjectViewModel>(context, listen: false).hintText =
+            widget.hint!;
+      },
+      onExit: (e) {
+        Provider.of<ProjectViewModel>(context, listen: false).hintText = '';
+      },
+      child: digitDisplay,
     );
   }
 }
