@@ -129,12 +129,14 @@ class _MiddleGroupState extends State<_MiddleGroup> {
         DigitControl(
           decimalPlaces: 2,
           minCharacterCount: 6,
+          hint: 'Set the tempo',
+          hintUnits: 'beats per minute',
           value: projectModel.sequence.beatsPerMinute,
           onStart: () {
             originalTempo = projectModel.sequence.beatsPerMinute;
           },
           onChanged: (value) {
-            projectModel.sequence.beatsPerMinute = value.clamp(1, 999);
+            projectModel.sequence.beatsPerMinute = value.clamp(10, 999);
           },
           onEnd: () {
             projectModel.push(

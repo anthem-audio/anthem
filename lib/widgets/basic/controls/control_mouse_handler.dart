@@ -38,6 +38,8 @@ class ControlMouseHandler extends StatefulWidget {
   final void Function(ControlMouseEvent event)? onEnd;
   final void Function(ControlMouseEvent event)? onChange;
 
+  final MouseCursor cursor;
+
   final bool allowHorizontalJump;
   final bool allowVerticalJump;
 
@@ -47,6 +49,7 @@ class ControlMouseHandler extends StatefulWidget {
     this.onStart,
     this.onEnd,
     this.onChange,
+    this.cursor = MouseCursor.defer,
     this.allowHorizontalJump = true,
     this.allowVerticalJump = true,
   });
@@ -68,8 +71,6 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
 
   double accumulatorX = 0;
   double accumulatorY = 0;
-
-  MouseCursor cursor = MouseCursor.defer;
 
   MouseCursorManager manager = MouseCursorManager(
     SystemMouseCursors.basic,
@@ -166,11 +167,9 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
       child: listener,
     );
 
-    return cursor == SystemMouseCursors.none
-        ? MouseRegion(
-            cursor: cursor,
-            child: lock,
-          )
-        : lock;
+    return MouseRegion(
+      cursor: widget.cursor,
+      child: lock,
+    );
   }
 }
