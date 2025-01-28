@@ -51,8 +51,14 @@ abstract class _SequenceModel with Store, AnthemModelBase {
   @anthemObservable
   int ticksPerQuarter = 96;
 
+  /// The project BPM, stored as a fixed point number with 2 decimal places.
+  ///
+  /// For example, 120 BPM would be stored as 12000.
   @anthemObservable
-  double beatsPerMinute = 128;
+  int beatsPerMinuteRaw = 12800;
+
+  /// Gets the BPM as a double.
+  double get beatsPerMinute => beatsPerMinuteRaw / 100;
 
   @anthemObservable
   AnthemObservableMap<Id, PatternModel> patterns = AnthemObservableMap();
