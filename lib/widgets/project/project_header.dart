@@ -118,7 +118,7 @@ class _MiddleGroup extends StatefulObserverWidget {
 }
 
 class _MiddleGroupState extends State<_MiddleGroup> {
-  var originalTempo = 0.0;
+  var originalTempo = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -133,16 +133,17 @@ class _MiddleGroupState extends State<_MiddleGroup> {
           hintUnits: 'beats per minute',
           value: projectModel.sequence.beatsPerMinute,
           onStart: () {
-            originalTempo = projectModel.sequence.beatsPerMinute;
+            originalTempo = projectModel.sequence.beatsPerMinuteRaw;
           },
           onChanged: (value) {
-            projectModel.sequence.beatsPerMinute = value.clamp(10, 999);
+            projectModel.sequence.beatsPerMinuteRaw =
+                (value.clamp(10, 999) * 100).round();
           },
           onEnd: () {
             projectModel.push(
               SetTempoCommand(
-                oldTempo: originalTempo,
-                newTempo: projectModel.sequence.beatsPerMinute,
+                oldRawTempo: originalTempo,
+                newRawTempo: projectModel.sequence.beatsPerMinuteRaw,
               ),
             );
           },

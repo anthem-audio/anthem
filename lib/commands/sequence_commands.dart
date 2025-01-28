@@ -20,22 +20,26 @@
 import 'package:anthem/commands/command.dart';
 import 'package:anthem/model/project.dart';
 
+/// A command to set the tempo of a sequence.
+///
+/// newRawTempo and oldRawTempo are stored as fixed point numbers with 2 decimal
+/// places. For example, 120 BPM would be stored as 12000.
 class SetTempoCommand extends Command {
-  final double newTempo;
-  final double oldTempo;
+  final int newRawTempo;
+  final int oldRawTempo;
 
   SetTempoCommand({
-    required this.newTempo,
-    required this.oldTempo,
+    required this.newRawTempo,
+    required this.oldRawTempo,
   });
 
   @override
   void execute(ProjectModel project) {
-    project.sequence.beatsPerMinute = newTempo;
+    project.sequence.beatsPerMinuteRaw = newRawTempo;
   }
 
   @override
   void rollback(ProjectModel project) {
-    project.sequence.beatsPerMinute = oldTempo;
+    project.sequence.beatsPerMinuteRaw = oldRawTempo;
   }
 }
