@@ -110,45 +110,61 @@ class _LeftGroup extends StatelessWidget {
   }
 }
 
-class _MiddleGroup extends StatefulObserverWidget {
+class _MiddleGroup extends StatelessWidget {
   const _MiddleGroup();
 
   @override
-  State<_MiddleGroup> createState() => _MiddleGroupState();
+  Widget build(BuildContext context) {
+    return Row(
+      spacing: 4,
+      children: [
+        _TempoControl(),
+      ],
+    );
+  }
 }
 
-class _MiddleGroupState extends State<_MiddleGroup> {
-  var originalTempo = 0;
+class _TempoControl extends StatefulObserverWidget {
+  const _TempoControl();
+
+  @override
+  State<_TempoControl> createState() => _TempoControlState();
+}
+
+class _TempoControlState extends State<_TempoControl> {
+  int originalTempo = 0;
 
   @override
   Widget build(BuildContext context) {
     final projectModel = Provider.of<ProjectModel>(context);
 
-    return Row(
-      children: [
-        DigitControl(
-          decimalPlaces: 2,
-          minCharacterCount: 6,
-          hint: 'Set the tempo',
-          hintUnits: 'beats per minute',
-          value: projectModel.sequence.beatsPerMinute,
-          onStart: () {
-            originalTempo = projectModel.sequence.beatsPerMinuteRaw;
-          },
-          onChanged: (value) {
-            projectModel.sequence.beatsPerMinuteRaw =
-                (value.clamp(10, 999) * 100).round();
-          },
-          onEnd: () {
-            projectModel.push(
-              SetTempoCommand(
-                oldRawTempo: originalTempo,
-                newRawTempo: projectModel.sequence.beatsPerMinuteRaw,
-              ),
-            );
-          },
-        ),
-      ],
+    return DigitControl(
+      decimalPlaces: 2,
+      minCharacterCount: 6,
+      hint: 'Set the tempo',
+      hintUnits: 'beats per minute',
+      value: projectModel.sequence.beatsPerMinute,
+      onStart: () {
+        originalTempo = projectModel.sequence.beatsPerMinuteRaw;
+      },
+      onChanged: (value) {
+        projectModel.sequence.beatsPerMinuteRaw =
+            (value.clamp(10, 999) * 100).round();
+      },
+      onEnd: () {
+        final newTempo = projectModel.sequence.beatsPerMinuteRaw;
+
+        if (newTempo == originalTempo) {
+          return;
+        }
+
+        projectModel.push(
+          SetTempoCommand(
+            oldRawTempo: originalTempo,
+            newRawTempo: newTempo,
+          ),
+        );
+      },
     );
   }
 }
