@@ -595,6 +595,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.8"
+  pointer_lock:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: fc8b626
+      resolved-ref: fc8b626c3642979478bd88ef61816bf1a024da49
+      url: "https://github.com/helgoboss/pointer_lock.git"
+    source: git
+    version: "0.0.2"
   pool:
     dependency: transitive
     description:

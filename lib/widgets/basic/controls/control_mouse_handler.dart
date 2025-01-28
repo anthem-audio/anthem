@@ -23,6 +23,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
+import 'package:pointer_lock/pointer_lock.dart';
 
 class ControlMouseEvent {
   Offset delta;
@@ -68,12 +69,6 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
   double accumulatorX = 0;
   double accumulatorY = 0;
 
-  // If the mouse is less than this far from the edge of the window, we jump
-  double jumpMouseAreaSize = 30;
-
-  // When we jump, we jump to (screen edge) + jumpMouseAreaSize + jumpPadding
-  double jumpPadding = 20;
-
   MouseCursor cursor = MouseCursor.defer;
 
   MouseCursorManager manager = MouseCursorManager(
@@ -100,38 +95,19 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
     widget.onStart?.call();
   }
 
-  void onPointerMove(PointerEvent e) {
-    final mousePos =
-        Offset(e.position.dx + windowRect.left, e.position.dy + windowRect.top);
-    final mouseX = mousePos.dx;
-    final mouseY = mousePos.dy;
-
-    final dx = (mouseX - mostRecentMouseX);
-    final dy = (mouseY - mostRecentMouseY);
-
-    accumulatorX += dx;
-    accumulatorY += dy;
+  void onPointerMove(PointerLockMoveEvent e) {
+    accumulatorX += e.delta.dx;
+    accumulatorY += e.delta.dy;
 
     widget.onChange?.call(
       ControlMouseEvent(
-        delta: Offset(dx, -dy),
+        delta: Offset(e.delta.dx, -e.delta.dy),
         absolute: Offset(accumulatorX, -accumulatorY),
       ),
     );
-
-    mostRecentMouseX = mouseX;
-    mostRecentMouseY = mouseY;
   }
 
   void onPointerUp(PointerEvent e) {
-    // We'll skip this for now, until we can figure out a way to make the
-    // mouse cursor disappear.
-
-    // api.setMousePos(
-    //   x: (originalMouseX * devicePixelRatio).round(),
-    //   y: (originalMouseY * devicePixelRatio).round(),
-    // );
-
     widget.onEnd?.call(
       ControlMouseEvent(
         delta: const Offset(0, 0),
@@ -167,21 +143,34 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
 
   @override
   Widget build(BuildContext context) {
-    final child = Listener(
-      behavior: HitTestBehavior.opaque,
-      onPointerDown: onPointerDown,
-      onPointerMove: onPointerMove,
+    final listener = Listener(
+      behavior: HitTestBehavior.translucent,
       onPointerUp: onPointerUp,
-      onPointerCancel: onPointerUp,
       onPointerSignal: onPointerSignal,
       child: widget.child,
+    );
+
+    final lock = PointerLockDragArea(
+      windowsMode: PointerLockWindowsMode.capture,
+      onLock: (e) {
+        onPointerDown(e.trigger);
+      },
+      onMove: (e) {
+        onPointerMove(e.move);
+      },
+      onUnlock: (e) {
+        onPointerUp(e.trigger);
+        setState(() {});
+      },
+      cursor: PointerLockCursor.hidden,
+      child: listener,
     );
 
     return cursor == SystemMouseCursors.none
         ? MouseRegion(
             cursor: cursor,
-            child: child,
+            child: lock,
           )
-        : child;
+        : lock;
   }
 }
