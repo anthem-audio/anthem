@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,7 +23,7 @@ import 'package:flutter/widgets.dart';
 
 // The user will need to drag the mouse this many pixels to get from
 // VerticalScaleControl.min to VerticalScaleControl.max
-const mouseMoveAreaHeight = 250;
+const mouseMoveAreaHeight = 500;
 
 class VerticalScaleControl extends StatefulWidget {
   final double min;
@@ -89,7 +89,7 @@ class _VerticalScaleControlState extends State<VerticalScaleControl> {
           onChange: (event) {
             rawValue += (event.delta.dy / mouseMoveAreaHeight) *
                 (widget.max - widget.min);
-            widget.onChange((rawValue).clamp(widget.min, widget.max));
+            widget.onChange(rawValue.clamp(widget.min, widget.max));
           },
           child: SizedBox(
             width: 17,

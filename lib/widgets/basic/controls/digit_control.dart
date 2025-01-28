@@ -59,7 +59,7 @@ class _DigitControlState extends State<DigitControl> {
   double incrementSize = 0;
 
   void increment(double pixelDelta) {
-    var valueDelta = pixelDelta * 0.2 * incrementSize;
+    var valueDelta = pixelDelta * 0.05 * incrementSize;
     valueDelta = (valueDelta / incrementSize).round() * incrementSize;
 
     final newValue = startValue + valueDelta;
