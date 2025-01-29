@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -310,6 +310,20 @@ mixin AnthemModelBase {
     }
 
     throw Exception('Could not find project model');
+  }
+
+  /// Gets the first ancestor of this model that is of type [T].
+  T getFirstAncestorOfType<T extends AnthemModelBase>() {
+    var model = parent;
+    while (model != null) {
+      if (model is T) {
+        return model;
+      }
+
+      model = model.parent;
+    }
+
+    throw Exception('Could not find ancestor model of type $T');
   }
 
   final List<void Function()> _onAttachActions = [];
