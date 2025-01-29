@@ -74,7 +74,6 @@ class _VerticalScaleControlState extends State<VerticalScaleControl> {
           });
         },
         child: ControlMouseHandler(
-          allowHorizontalJump: false,
           onStart: () {
             rawValue = widget.value;
             setState(() {

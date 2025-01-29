@@ -40,9 +40,6 @@ class ControlMouseHandler extends StatefulWidget {
 
   final MouseCursor cursor;
 
-  final bool allowHorizontalJump;
-  final bool allowVerticalJump;
-
   const ControlMouseHandler({
     super.key,
     this.child,
@@ -50,8 +47,6 @@ class ControlMouseHandler extends StatefulWidget {
     this.onEnd,
     this.onChange,
     this.cursor = MouseCursor.defer,
-    this.allowHorizontalJump = true,
-    this.allowVerticalJump = true,
   });
 
   @override
