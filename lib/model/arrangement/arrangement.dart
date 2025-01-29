@@ -72,9 +72,18 @@ abstract class _ArrangementModel with Store, AnthemModelBase {
     final defaultTimeSignature =
         getFirstAncestorOfType<SequenceModel>().defaultTimeSignature;
 
-    final ticksPerBar = project.sequence.ticksPerQuarter ~/
-        (defaultTimeSignature.denominator ~/ 4) *
+    final ticksPerBarDouble = project.sequence.ticksPerQuarter /
+        (defaultTimeSignature.denominator / 4) *
         defaultTimeSignature.numerator;
+
+    final ticksPerBar = ticksPerBarDouble.round();
+
+    // It should not be possible for ticksPerBar to be fractional.
+    // ticksPerQuarter must be divisible by every possible value of
+    // (denominator / 4). Denominator can be [1, 2, 4, 8, 16, 32]. Therefore,
+    // ticksPerQuarter must be divisible by [0.25, 0.5, 1, 2, 4, 8].
+    assert(ticksPerBar == ticksPerBarDouble);
+
     final lastContent = clips.values.fold<int>(
       ticksPerBar * barMultiple * minPaddingInBarMultiples,
       (previousValue, clip) =>

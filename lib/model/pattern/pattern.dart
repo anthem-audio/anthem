@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2024 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -126,9 +126,16 @@ abstract class _PatternModel with Store, AnthemModelBase {
     int barMultiple = 1,
     int minPaddingInBarMultiples = 1,
   }) {
-    final ticksPerBar = project.sequence.ticksPerQuarter ~/
-        (project.sequence.defaultTimeSignature.denominator ~/ 4) *
-        project.sequence.defaultTimeSignature.numerator;
+    final ticksPerBarDouble = project.sequence.ticksPerQuarter /
+            (project.sequence.defaultTimeSignature.denominator / 4) *
+            project.sequence.defaultTimeSignature.numerator;
+    final ticksPerBar = ticksPerBarDouble.round();
+
+    // It should not be possible for ticksPerBar to be fractional.
+    // ticksPerQuarter must be divisible by every possible value of
+    // (denominator / 4). Denominator can be [1, 2, 4, 8, 16, 32]. Therefore,
+    // ticksPerQuarter must be divisible by [0.25, 0.5, 1, 2, 4, 8].
+    assert(ticksPerBarDouble == ticksPerBar);
 
     final lastNoteContent = notes.values.expand((e) => e).fold<int>(
         ticksPerBar * barMultiple * minPaddingInBarMultiples,
