@@ -24,6 +24,7 @@ import 'package:anthem/model/model.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/controls/digit_control.dart';
+import 'package:anthem/widgets/basic/controls/time_signature_control.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/debug/widget_test_area.dart';
@@ -119,6 +120,7 @@ class _MiddleGroup extends StatelessWidget {
       spacing: 4,
       children: [
         _TempoControl(),
+        TimeSignatureControl(),
       ],
     );
   }
