@@ -22,6 +22,11 @@ import 'package:flutter/widgets.dart';
 
 enum DigitDisplaySize { normal, large }
 
+/// A digital-style display.
+///
+/// This is used to display a string in a digital control style. Note that this
+/// just displays the text, and multiple controls use this; see [DigitControl]
+/// and [TimeSignatureControl] for controls that use this.
 class DigitDisplay extends StatelessWidget {
   static double calculateHeight(DigitDisplaySize size) {
     return switch (size) {

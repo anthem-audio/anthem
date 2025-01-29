@@ -20,7 +20,7 @@
 import 'package:anthem/commands/command.dart';
 import 'package:anthem/model/project.dart';
 
-/// A command to set the tempo of a sequence.
+/// A command to set the tempo of the project sequence.
 ///
 /// newRawTempo and oldRawTempo are stored as fixed point numbers with 2 decimal
 /// places. For example, 120 BPM would be stored as 12000.
@@ -41,5 +41,36 @@ class SetTempoCommand extends Command {
   @override
   void rollback(ProjectModel project) {
     project.sequence.beatsPerMinuteRaw = oldRawTempo;
+  }
+}
+
+/// A command to set the time signature of the project sequence.
+///
+/// Numerator and denominator are the numerator and denominator of the time
+/// signature.
+class SetTimeSignatureCommand extends Command {
+  final int newNumerator;
+  final int newDenominator;
+
+  final int oldNumerator;
+  final int oldDenominator;
+
+  SetTimeSignatureCommand({
+    required this.newNumerator,
+    required this.newDenominator,
+    required this.oldNumerator,
+    required this.oldDenominator,
+  });
+
+  @override
+  void execute(ProjectModel project) {
+    project.sequence.defaultTimeSignature.numerator = newNumerator;
+    project.sequence.defaultTimeSignature.denominator = newDenominator;
+  }
+
+  @override
+  void rollback(ProjectModel project) {
+    project.sequence.defaultTimeSignature.numerator = oldNumerator;
+    project.sequence.defaultTimeSignature.denominator = oldDenominator;
   }
 }

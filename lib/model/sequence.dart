@@ -87,6 +87,11 @@ abstract class _SequenceModel with Store, AnthemModelBase {
   @anthemObservable
   AnthemObservableList<Id> trackOrder = AnthemObservableList();
 
+  /// The global time signature for the project.
+  ///
+  /// "Default" is in reference to the fact that time signatures can be changed
+  /// midway through an arrangement or pattern. This is the time signature that
+  /// is used if there are no time signature changes.
   @anthemObservable
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
 
