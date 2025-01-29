@@ -121,6 +121,23 @@ class _MiddleGroup extends StatelessWidget {
       children: [
         _TempoControl(),
         TimeSignatureControl(),
+
+        // The goal is a spacer of width 16, which is 8 plus two spacers of 4
+        // provided by the Row
+        SizedBox(width: 8),
+
+        Button(
+          icon: Icons.play,
+          height: 24,
+          width: 24,
+          contentPadding: EdgeInsets.all(3),
+        ),
+        Button(
+          icon: Icons.stop,
+          height: 24,
+          width: 24,
+          contentPadding: EdgeInsets.all(3),
+        ),
       ],
     );
   }
