@@ -26,7 +26,6 @@
 
 #include "modules/core/anthem_audio_callback.h"
 #include "modules/processing_graph/runtime/anthem_graph_processor.h"
-#include "modules/processing_graph/compiler/anthem_graph_compiler.h"
 
 #include "modules/util/id_generator.h"
 
@@ -51,9 +50,9 @@ public:
   // the state of the project.
   std::shared_ptr<Project> project;
 
-  // The graph compiler, which turns the graph topology from the model into
-  // processing steps
-  std::unique_ptr<AnthemGraphCompiler> compiler;
+  // The graph compiler turns the graph topology from the model into processing
+  // steps. The compile method on AnthemGraphCompiler is static, so we don't need
+  // an instance of AnthemGraphCompiler.
 
   // The graph processor, which takes the compilation result from the compiler
   // and uses it on the audio thread to process data in the graph
