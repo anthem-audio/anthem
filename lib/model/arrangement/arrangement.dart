@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2024 Joshua Wade
+  Copyright (C) 2022 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,7 +22,7 @@ import 'dart:math';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/collections.dart';
-import 'package:anthem/model/shared/time_signature.dart';
+import 'package:anthem/model/sequence.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
@@ -53,9 +53,6 @@ abstract class _ArrangementModel with Store, AnthemModelBase {
   @anthemObservable
   AnthemObservableMap<Id, ClipModel> clips = AnthemObservableMap();
 
-  @anthemObservable
-  TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
-
   _ArrangementModel({
     required this.name,
     required this.id,
@@ -72,6 +69,9 @@ abstract class _ArrangementModel with Store, AnthemModelBase {
     int barMultiple = 4,
     int minPaddingInBarMultiples = 4,
   }) {
+    final defaultTimeSignature =
+        getFirstAncestorOfType<SequenceModel>().defaultTimeSignature;
+
     final ticksPerBar = project.sequence.ticksPerQuarter ~/
         (defaultTimeSignature.denominator ~/ 4) *
         defaultTimeSignature.numerator;
