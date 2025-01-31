@@ -127,8 +127,8 @@ abstract class _PatternModel with Store, AnthemModelBase {
     int minPaddingInBarMultiples = 1,
   }) {
     final ticksPerBarDouble = project.sequence.ticksPerQuarter /
-            (project.sequence.defaultTimeSignature.denominator / 4) *
-            project.sequence.defaultTimeSignature.numerator;
+        (project.sequence.defaultTimeSignature.denominator / 4) *
+        project.sequence.defaultTimeSignature.numerator;
     final ticksPerBar = ticksPerBarDouble.round();
 
     // It should not be possible for ticksPerBar to be fractional.
