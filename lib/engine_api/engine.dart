@@ -22,11 +22,13 @@ import 'dart:convert';
 
 import 'package:anthem/engine_api/engine_connector.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:flutter/foundation.dart';
 
 part 'api/model_sync_api.dart';
 part 'api/processing_graph_api.dart';
+part 'api/sequencer_api.dart';
 
 enum EngineState {
   stopped,
