@@ -20,7 +20,7 @@
 #include "simple_midi_generator.h"
 
 #include "modules/processing_graph/compiler/anthem_process_context.h"
-#include "modules/processing_graph/events/anthem_processor_event.h"
+#include "modules/sequencer/events/event.h"
 
 SimpleMidiGeneratorProcessor::SimpleMidiGeneratorProcessor(const SimpleMidiGeneratorProcessorModelImpl& _impl)
     : AnthemProcessor("SimpleMidiGenerator"), SimpleMidiGeneratorProcessorModelBase(_impl) {

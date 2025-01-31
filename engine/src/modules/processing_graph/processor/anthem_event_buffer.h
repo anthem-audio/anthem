@@ -22,7 +22,7 @@
 #include <stdexcept>
 
 #include "modules/util/arena_allocator.h"
-#include "modules/processing_graph/events/anthem_processor_event.h"
+#include "modules/sequencer/events/event.h"
 
 class AnthemEventBuffer {
   // ALlocator for this buffer. This allocator maintains a huge buffer of memory
