@@ -55,7 +55,10 @@ jobs:
           path: ${{ github.workspace }}/build/windows/x64/runner/Release
 
   build-linux:
-    runs-on: [ubuntu-latest, ubuntu-24.04-arm]
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Check out Anthem
         uses: actions/checkout@v3
