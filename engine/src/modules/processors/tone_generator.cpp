@@ -47,12 +47,18 @@ void ToneGeneratorProcessor::process(AnthemProcessContext& context, int numSampl
   auto& midiInBuffer = context.getInputNoteEventBuffer(ToneGeneratorProcessorModelBase::midiInputPortId);
 
   for (size_t i = 0; i < midiInBuffer->getNumEvents(); ++i) {
-    auto& event = midiInBuffer->getEvent(i);
+    auto& liveEvent = midiInBuffer->getEvent(i);
 
-    if (event.type == AnthemProcessorEventType::NoteOn) {
+    if (liveEvent.event.type == AnthemEventType::NoteOn) {
       hasNoteOverride = true;
-      noteOverride = event.noteOn.pitch;
-    } else if (event.type == AnthemProcessorEventType::NoteOff) {
+      noteOverride = liveEvent.event.noteOn.pitch;
+
+      // We're deliberately ignoring the live timing information here for
+      // simplicity. This would not be correct for a real device - we should be
+      // reading liveEvent.time, which represents the time since the start of
+      // the processing block.
+
+    } else if (liveEvent.event.type == AnthemEventType::NoteOff) {
       hasNoteOverride = false;
     }
   }
