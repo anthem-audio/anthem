@@ -30,7 +30,7 @@ struct AnthemProcessorEvent {
   AnthemProcessorEventType type;
   
   union {
-    NoteOnEvent noteOn;
-    NoteOffEvent noteOff;
+    AnthemNoteOnEvent noteOn;
+    AnthemNoteOffEvent noteOff;
   };
 };
