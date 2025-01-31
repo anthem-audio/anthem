@@ -21,16 +21,61 @@
 
 #include "note_events.h"
 
-enum AnthemProcessorEventType {
+enum AnthemEventType {
   NoteOn,
   NoteOff
 };
 
-struct AnthemProcessorEvent {
-  AnthemProcessorEventType type;
+// An event that can occur in Anthem.
+//
+// This should always be absent of absolute time information, though it may
+// contain durations. The time information is provided in two different
+// contexts:
+// - AnthemSequenceEvent: In the context of a sequence, the time is the absolute
+//   time of the event in ticks, along with a fractional component.
+// - AnthemLiveEvent: In the context of the processing graph, the time is the
+//   time in samples since the start of the processing block; note that this
+//   value can be negative.
+struct AnthemEvent {
+  AnthemEventType type;
   
   union {
     AnthemNoteOnEvent noteOn;
     AnthemNoteOffEvent noteOff;
   };
+};
+
+// A time for a sequence event.
+struct AnthemSequenceTime {
+  // The number of ticks since the start of the sequence.
+  //
+  // This should be a uint64_t; however, Dart only supports signed integers, and
+  // since this data comes directly from the Dart model, we can't take advantage
+  // of the full range of uint64_t.
+  int64_t ticks;
+
+  // A normalized fraction of a tick, in the range [0, 1).
+  double fraction;
+};
+
+struct AnthemSequenceEvent {
+  // The time of the event, relative to the start of the sequence.
+  AnthemSequenceTime time;
+
+  // The event itself.
+  AnthemEvent event;
+};
+
+// A time for a processing graph event.
+struct AnthemLiveTime {
+  // The number of samples since the start of the processing block.
+  int64_t offset;
+};
+
+struct AnthemLiveEvent {
+  // The time of the event, relative to the start of the processing block.
+  AnthemLiveTime time;
+
+  // The event itself.
+  AnthemEvent event;
 };

@@ -93,7 +93,7 @@ public:
   // it. When this class is deallocated, the buffer is deallocated.
   std::unique_ptr<
     ArenaBufferAllocator<
-      AnthemProcessorEvent
+      AnthemLiveEvent
     >
   > eventAllocator;
 
