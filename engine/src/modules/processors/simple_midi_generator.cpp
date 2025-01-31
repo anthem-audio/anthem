@@ -45,7 +45,7 @@ void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int nu
     currentNoteDuration = 0;
     midiOutBuffer->addEvent({
       AnthemProcessorEventType::NoteOn,
-      NoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f, currentNoteId)
+      AnthemNoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f, currentNoteId)
     });
 
     noteOn = true;
@@ -66,7 +66,7 @@ void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int nu
       AnthemProcessorEvent noteOffEvent = {
         AnthemProcessorEventType::NoteOff
       };
-      noteOffEvent.noteOff = NoteOffEvent(currentNote, 0, 0.0f, currentNoteId);
+      noteOffEvent.noteOff = AnthemNoteOffEvent(currentNote, 0, 0.0f, currentNoteId);
 
       midiOutBuffer->addEvent(noteOffEvent);
 
@@ -82,7 +82,7 @@ void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int nu
       AnthemProcessorEvent noteOnEvent = {
         AnthemProcessorEventType::NoteOn
       };
-      noteOnEvent.noteOn = NoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f, currentNoteId);
+      noteOnEvent.noteOn = AnthemNoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f, currentNoteId);
 
       midiOutBuffer->addEvent(noteOnEvent);
     }

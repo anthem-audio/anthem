@@ -22,8 +22,8 @@
 #include <cstdint>
 
 // Event type for note on events.
-struct NoteOnEvent {
-  // The pitch of the note, in the range [0, 127] <-> [C-2, G8].
+struct AnthemNoteOnEvent {
+  // The pitch of the note, in the range [0, 127] <-> [C(-2), G8].
   int16_t pitch;
 
   // The channel of the note. 0 is the first channel.
@@ -40,14 +40,14 @@ struct NoteOnEvent {
   int32_t id;
 
   // Constructor
-  NoteOnEvent(int16_t pitch, int16_t channel, float velocity, float detune, int32_t id) : pitch(pitch), channel(channel), velocity(velocity), detune(detune), id(id) {}
+  AnthemNoteOnEvent(int16_t pitch, int16_t channel, float velocity, float detune, int32_t id) : pitch(pitch), channel(channel), velocity(velocity), detune(detune), id(id) {}
 
   // Default constructor
-  NoteOnEvent() : pitch(0), channel(0), velocity(0.0f), detune(0.0f), id(0) {}
+  AnthemNoteOnEvent() : pitch(0), channel(0), velocity(0.0f), detune(0.0f), id(0) {}
 };
 
 // Event type for note off events.
-struct NoteOffEvent {
+struct AnthemNoteOffEvent {
   // The pitch of the note, in the range [0, 127] <-> [C-2, G8].
   int16_t pitch;
 
@@ -62,8 +62,8 @@ struct NoteOffEvent {
   int32_t id;
 
   // Constructor
-  NoteOffEvent(int16_t pitch, int16_t channel, float velocity, int32_t id) : pitch(pitch), channel(channel), velocity(velocity), id(id) {}
+  AnthemNoteOffEvent(int16_t pitch, int16_t channel, float velocity, int32_t id) : pitch(pitch), channel(channel), velocity(velocity), id(id) {}
 
   // Default constructor
-  NoteOffEvent() : pitch(0), channel(0), velocity(0.0f), id(0) {}
+  AnthemNoteOffEvent() : pitch(0), channel(0), velocity(0.0f), id(0) {}
 };
