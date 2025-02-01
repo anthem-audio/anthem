@@ -214,6 +214,7 @@ class _PanelOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Stack(
+      fit: StackFit.passthrough,
       children: [
         // Original content
         Visibility(
