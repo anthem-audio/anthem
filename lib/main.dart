@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2024 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -89,31 +89,27 @@ class MyApp extends StatelessWidget {
       title: 'Anthem',
       color: anthem_theme.Theme.primary.main,
       builder: (context, widget) {
-        return Navigator(
-          onGenerateRoute: (_) => MaterialPageRoute(
-            builder: (_) => GestureDetector(
-              // Un-focus text boxes when clicking elsewhere
-              onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-              child: Scaffold(
-                body: MultiProvider(
-                  providers: [
-                    ChangeNotifierProvider(
-                        create: (context) => KeyboardModifiers()),
-                    Provider(create: (context) => BackgroundType.dark)
-                  ],
-                  child: ScrollConfiguration(
-                    behavior: ScrollConfiguration.of(context)
-                        .copyWith(scrollbars: false),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Container(
-                          color: anthem_theme.Theme.panel.border,
-                        ),
-                        MainWindow(key: mainWindowKey),
-                      ],
+        return GestureDetector(
+          // Un-focus text boxes when clicking elsewhere
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          child: Scaffold(
+            body: MultiProvider(
+              providers: [
+                ChangeNotifierProvider(
+                    create: (context) => KeyboardModifiers()),
+                Provider(create: (context) => BackgroundType.dark)
+              ],
+              child: ScrollConfiguration(
+                behavior:
+                    ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Container(
+                      color: anthem_theme.Theme.panel.border,
                     ),
-                  ),
+                    MainWindow(key: mainWindowKey),
+                  ],
                 ),
               ),
             ),
