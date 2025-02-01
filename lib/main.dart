@@ -88,6 +88,11 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Anthem',
       color: anthem_theme.Theme.primary.main,
+      theme: ThemeData(
+        textSelectionTheme: TextSelectionThemeData(
+          selectionColor: anthem_theme.Theme.primary.subtleBorder.withAlpha(50),
+        ),
+      ),
       builder: (context, widget) {
         return GestureDetector(
           // Un-focus text boxes when clicking elsewhere
