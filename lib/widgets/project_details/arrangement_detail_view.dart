@@ -61,20 +61,18 @@ class _ArrangementDetailViewState extends State<ArrangementDetailView> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 6),
-              SizedBox(
+              ControlledTextBox(
                 height: 26,
-                child: ControlledTextBox(
-                  text: arrangement.name,
-                  onChange: (text) {
-                    project.execute(
-                      SetArrangementNameCommand(
-                        project: project,
-                        arrangementID: arrangementID,
-                        newName: text,
-                      ),
-                    );
-                  },
-                ),
+                text: arrangement.name,
+                onChange: (text) {
+                  project.execute(
+                    SetArrangementNameCommand(
+                      project: project,
+                      arrangementID: arrangementID,
+                      newName: text,
+                    ),
+                  );
+                },
               ),
             ],
           ),

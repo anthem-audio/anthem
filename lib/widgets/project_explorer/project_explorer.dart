@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -143,11 +143,9 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
               ),
             ),
             const SizedBox(height: 4),
-            SizedBox(
-              height: 24,
-              child: TextBox(
-                controller: searchBoxController,
-              ),
+            TextBox(
+              height: 26,
+              controller: searchBoxController,
             ),
             const SizedBox(height: 4),
             Expanded(

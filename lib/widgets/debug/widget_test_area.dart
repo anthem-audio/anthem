@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/widgets/basic/controls/digit_control.dart';
+import 'package:anthem/widgets/basic/text_box.dart';
 import 'package:flutter/widgets.dart';
 
 class WidgetTestArea extends StatefulWidget {
@@ -66,6 +67,10 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
             value: digitControlValue,
             decimalPlaces: 0,
             onChanged: (v) => setState(() => digitControlValue = v),
+          ),
+          TextBox(
+            width: 100,
+            height: 26,
           ),
         ],
       ),

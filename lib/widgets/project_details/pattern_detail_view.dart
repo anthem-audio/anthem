@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -48,20 +48,18 @@ class PatternDetailView extends StatelessObserverWidget {
         Section(
           title: 'PATTERN',
           children: [
-            SizedBox(
+            ControlledTextBox(
               height: 26,
-              child: ControlledTextBox(
-                text: pattern.name,
-                onChange: (newName) {
-                  project.execute(
-                    SetPatternNameCommand(
-                      project: project,
-                      patternID: patternID,
-                      newName: newName,
-                    ),
-                  );
-                },
-              ),
+              text: pattern.name,
+              onChange: (newName) {
+                project.execute(
+                  SetPatternNameCommand(
+                    project: project,
+                    patternID: patternID,
+                    newName: newName,
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 6),
             ColorPicker(

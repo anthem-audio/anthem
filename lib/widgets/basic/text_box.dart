@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -24,7 +24,16 @@ class TextBox extends StatefulWidget {
   final TextEditingController? controller;
   final FocusNode? focusNode;
 
-  const TextBox({super.key, this.controller, this.focusNode});
+  final double? width;
+  final double? height;
+
+  const TextBox({
+    super.key,
+    this.controller,
+    this.focusNode,
+    this.width,
+    this.height,
+  });
 
   @override
   State<TextBox> createState() => _TextBoxState();
@@ -39,17 +48,24 @@ class _TextBoxState extends State<TextBox> {
         borderRadius: BorderRadius.circular(4),
         color: anthem_theme.Theme.panel.accentDark,
       ),
-      padding: const EdgeInsets.all(8),
-      child: TextField(
-        controller: widget.controller,
-        focusNode: widget.focusNode,
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          fillColor: anthem_theme.Theme.panel.accentDark,
+      padding: const EdgeInsets.only(left: 8, right: 8),
+      height: widget.height,
+      width: widget.width,
+      child: Center(
+        child: TextField(
+          controller: widget.controller,
+          focusNode: widget.focusNode,
+          decoration: InputDecoration(
+            border: InputBorder.none,
+            isDense: true,
+          ),
+          maxLines: 1,
+          cursorColor: anthem_theme.Theme.text.main,
+          style: TextStyle(
+            color: anthem_theme.Theme.text.main,
+            fontSize: 11,
+          ),
         ),
-        cursorColor: anthem_theme.Theme.text.main,
-        style: TextStyle(color: anthem_theme.Theme.text.main, fontSize: 11),
-        textAlignVertical: TextAlignVertical.center,
       ),
     );
   }
