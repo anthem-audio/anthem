@@ -65,7 +65,7 @@ class _TimeSignatureControlState extends State<TimeSignatureControl> {
                   },
                   onChange: (event) {
                     final newNumerator =
-                        (startNumerator + event.absolute.dy / 15)
+                        (startNumerator + event.absolute.dy / 50)
                             .round()
                             .clamp(1, 32);
 
@@ -96,7 +96,7 @@ class _TimeSignatureControlState extends State<TimeSignatureControl> {
                   },
                   onChange: (event) {
                     final newDenominatorIndex =
-                        (startDenominatorIndex + event.absolute.dy / 15)
+                        (startDenominatorIndex + event.absolute.dy / 50)
                             .round()
                             .clamp(0, validDenominators.length - 1);
 
