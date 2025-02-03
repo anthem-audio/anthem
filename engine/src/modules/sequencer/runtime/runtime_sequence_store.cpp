@@ -139,7 +139,7 @@ void AnthemRuntimeSequenceStore::registerDeletionTimer() {
   clearDeletionQueueTimedCallback.startTimer(500);
 }
 
-void AnthemRuntimeSequenceStore::addOrUpdateSequence(const std::string& sequenceId, SequenceEventListCollection& sequence) {
+void AnthemRuntimeSequenceStore::addOrUpdateSequence(const std::string& sequenceId, SequenceEventListCollection sequence) {
   auto newMap = new std::unordered_map<std::string, SequenceEventListCollection>(*eventLists);
   auto it = newMap->find(sequenceId);
 
@@ -176,7 +176,7 @@ void AnthemRuntimeSequenceStore::removeSequence(const std::string& sequenceId) {
   }
 }
 
-void AnthemRuntimeSequenceStore::addOrUpdateChannelInSequence(const std::string& sequenceId, const std::string& channelId, SequenceEventList& channel) {
+void AnthemRuntimeSequenceStore::addOrUpdateChannelInSequence(const std::string& sequenceId, const std::string& channelId, SequenceEventList channel) {
   auto newSequenceMap = new std::unordered_map<std::string, SequenceEventListCollection>(*eventLists);
   auto sequenceMapIt = newSequenceMap->find(sequenceId);
 
