@@ -21,6 +21,7 @@
 
 #include "console_logger.h"
 
+#include "modules/sequencer/runtime/runtime_sequence_store_test.h"
 #include "modules/util/arena_allocator_test.h"
 
 int main(int argc, char** argv) {
