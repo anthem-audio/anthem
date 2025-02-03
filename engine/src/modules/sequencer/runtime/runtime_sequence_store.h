@@ -112,6 +112,8 @@ struct SequenceEventListCollection {
 // we don't recompile the entire sequence. Instead, we just update the event
 // lists for the relevant channel.
 class AnthemRuntimeSequenceStore {
+friend class RuntimeSequenceStoreTest;
+
 private:
   typedef std::unordered_map<std::string, SequenceEventListCollection> SequenceIdToEventsMap;
 
@@ -189,7 +191,7 @@ public:
   // the current map, add the new sequence, and push the new map to the
   // mapUpdateQueue. If the sequence already exists, it will be replaced, and
   // the old sequence will be added to the pendingSequenceDeletions map.
-  void addOrUpdateSequence(const std::string& sequenceId, SequenceEventListCollection& sequence);
+  void addOrUpdateSequence(const std::string& sequenceId, SequenceEventListCollection sequence);
 
   // Removes a sequence from the event lists map.
   void removeSequence(const std::string& sequenceId);
@@ -201,7 +203,7 @@ public:
   // channel, and push the new map to the mapUpdateQueue. If the channel already
   // exists, it will be replaced, and the old channel will be added to the
   // pendingSequenceChannelDeletions map.
-  void addOrUpdateChannelInSequence(const std::string& sequenceId, const std::string& channelId, SequenceEventList& channel);
+  void addOrUpdateChannelInSequence(const std::string& sequenceId, const std::string& channelId, SequenceEventList channel);
 
   // Removes a channel from a sequence in the event lists map.
   void removeChannelFromSequence(const std::string& sequenceId, const std::string& channelId);
