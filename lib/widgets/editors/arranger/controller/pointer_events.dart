@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -198,13 +198,13 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
             viewModel.selectedClips.map((id) => arrangement.clips[id]!);
 
         var smallestClip = selectedClips.first;
-        var smallestClipWidth = smallestClip.getWidth(project);
+        var smallestClipWidth = smallestClip.width;
         startWidths = {};
         startOffsets = {};
         startTimeViewStarts = {};
 
         for (final clip in selectedClips) {
-          final clipWidth = clip.getWidth(project);
+          final clipWidth = clip.width;
 
           startWidths[clip.id] = clipWidth;
           startOffsets[clip.id] = clip.offset;
@@ -225,7 +225,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         _eventHandlingState = EventHandlingState.resizingSingleClip;
         viewModel.selectedClips.clear();
 
-        final clipWidth = pressedClip.getWidth(project);
+        final clipWidth = pressedClip.width;
 
         startWidths = {pressedClip.id: clipWidth};
         startOffsets = {pressedClip.id: pressedClip.offset};
@@ -428,7 +428,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         final remove = clip.id == event.clipUnderCursor &&
             // Ignore events that come from the resize handle but aren't over
             // the clip.
-            clip.offset + clip.getWidth(project) > event.offset;
+            clip.offset + clip.width > event.offset;
 
         if (remove) {
           _deleteActionData!.clipsDeleted.add(clip);
@@ -545,7 +545,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
                     .toDouble();
 
                 return viewModel.selectionBox!.intersects(
-                  Rectangle(clip.offset, trackTop, clip.getWidth(project), 1),
+                  Rectangle(clip.offset, trackTop, clip.width, 1),
                 );
               },
             )
@@ -582,7 +582,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
           final clipTopLeft = Point(clip.offset, clipTrack);
           final clipBottomRight =
-              Point(clip.offset + clip.getWidth(project), clipTrack + 1);
+              Point(clip.offset + clip.width, clipTrack + 1);
 
           return rectanglesIntersect(
                 Rectangle.fromPoints(
@@ -827,7 +827,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
           newTimeView: clip.timeView?.clone() ??
               TimeViewModel(
                 start: 0,
-                end: clip.getWidth(project),
+                end: clip.width,
               ),
         );
       }).toList();

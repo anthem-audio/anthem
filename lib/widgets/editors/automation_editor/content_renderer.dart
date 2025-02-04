@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,6 +21,8 @@ import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/anthem_model_mobx_helpers.dart';
+import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -145,11 +147,25 @@ class AutomationEditorPainter extends CustomPainterObserver {
       timeViewEnd: timeViewEnd,
     );
 
-    const strokeWidth = 2.0;
-
     final points =
-        pattern?.automationLanes[project.activeAutomationGeneratorID]?.points ??
-            <AutomationPointModel>[];
+        pattern?.automationLanes[project.activeAutomationGeneratorID]?.points;
+
+    if (points != null) {
+      points.observeAllChanges();
+
+      blockObservation(
+        modelItems: [points],
+        block: () => _paintAutomationEditor(canvas, size, points),
+      );
+    }
+  }
+
+  void _paintAutomationEditor(
+    Canvas canvas,
+    Size size,
+    AnthemObservableList<AutomationPointModel> points,
+  ) {
+    const strokeWidth = 2.0;
 
     // This section draws each curve section one at a time.
 

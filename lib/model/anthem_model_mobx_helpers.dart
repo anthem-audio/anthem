@@ -84,19 +84,21 @@ Widget? blockObservationBuilder({
 ///   },
 /// );
 /// ```
-void blockObservation({
+T blockObservation<T>({
   required List<AnthemModelBase> modelItems,
-  required void Function() block,
+  required T Function() block,
 }) {
   for (final modelItem in modelItems) {
     modelItem.observationBlockDepth++;
     incrementBlockObservationBuilderDepth();
   }
 
-  block();
+  final result = block();
 
   for (final modelItem in modelItems) {
     modelItem.observationBlockDepth--;
     decrementBlockObservationBuilderDepth();
   }
+
+  return result;
 }

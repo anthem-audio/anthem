@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,6 +19,7 @@
 
 import 'dart:ui';
 
+import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
@@ -119,6 +120,15 @@ class ArrangerContentPainter extends CustomPainterObserver {
 
   @override
   void observablePaint(Canvas canvas, Size size) {
+    arrangement.clips.observeAllChanges();
+
+    blockObservation(
+      modelItems: [arrangement.clips],
+      block: () => _paintClips(canvas, size),
+    );
+  }
+
+  void _paintClips(Canvas canvas, Size size) {
     viewModel.visibleClips.clear();
     viewModel.visibleResizeAreas.clear();
 
@@ -137,7 +147,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
             timeViewStart: timeViewStart,
             timeViewEnd: timeViewEnd,
             viewPixelWidth: size.width,
-            time: clip.offset.toDouble() + clip.getWidth(project),
+            time: clip.offset.toDouble() + clip.width,
           ) -
           x +
           1;
