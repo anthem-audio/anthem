@@ -38,7 +38,23 @@ String generateMobXAtoms({required ModelClassInfo context}) {
 }
 
 String generateMobXGetter(String fieldName, ModelFieldInfo fieldInfo) {
-  return '_\$${fieldName}Atom.reportRead();\n';
+  return '''var blockObservation = false;
+
+if (isBlockObservationBuilderActive) {
+  var model = this as AnthemModelBase?;
+  while (model != null) {
+    if (model.blockDescendantObservations) {
+      blockObservation = true;
+      break;
+    }
+    model = model.parent;
+  }
+}
+
+if (!blockObservation) {
+  _\$${fieldName}Atom.reportRead();
+}
+''';
 }
 
 String wrapCodeWithMobXSetter(

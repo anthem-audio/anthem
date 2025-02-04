@@ -201,10 +201,70 @@ mixin AnthemModelBase {
   /// The key of this model, if it's in a map.
   dynamic parentMapKey;
 
-  /// The field that this model is in. If this model is in a collection, this
-  /// will be the name of the field that the collection is in.
-
+  /// The name of the field in the parent model that holds this model. If the
+  /// parent model is a collection, this will be null.
   String? parentFieldName;
+
+  /// A write will be reported to tihs atom when this model or any descendant
+  /// model is changed.
+  final Atom _allChangesAtom = Atom();
+
+  /// If called during a MobX observation, this will cause the widget to rebuild
+  /// when any field in this model or any descendant model is changed.
+  ///
+  /// This observes all updates to the model item and its descendants, but it
+  /// does so in a way that is very efficient when the alternative is to observe
+  /// a large number of fields (250+).
+  ///
+  /// Instead of observing every field in every descendant model, it simply
+  /// listens for the state change stream that is already filtering up to the
+  /// root model item. This state change stream is used for syncing the UI and
+  /// engine models, and since it's already there, we get it nearly for free.
+  ///
+  /// This function should be used in conjunction with [blockObservationBuilder]
+  /// to prevent ordinary MobX observables from being observed while building a
+  /// given widget tree.
+  ///
+  /// This is typically less efficient than using MobX like normal, because
+  /// Flutter's rebuilds are not free, and so MobX's approach has some runtime
+  /// overhead. This overhead is usually less than building large widget trees
+  /// often, so it's usually worth it to use MobX to observe individual fields.
+  ///
+  /// However, when you have a very large number of fields to observe, the
+  /// overhead of observing each field becomes much higher than the overhead of
+  /// rebuilding an entire widget. As an example, in a naive implementation of
+  /// our piano roll using MobX, the piano roll slows down massively when trying
+  /// to move around more than a hundred or so notes, and this is directly due
+  /// to the overhead of having so many observables. Since we want to redraw the
+  /// piano roll when the vast majority of note attributes change, and since our
+  /// rebuild is already very efficient, we can afford to observe the entire
+  /// notes collection all at once, and it is actually much more efficient to do
+  /// so.
+  ///
+  /// As an example:
+  ///
+  /// ```dart
+  /// @override
+  /// Widget build(BuildContext context) {
+  ///   someModelItem.observeAllChanges();
+  ///
+  ///   return blockObservationBuilder(
+  ///     modelItem: someModelItem,
+  ///     builder: () {
+  ///       return Text(someModelItem.someObservableValue.toString());
+  ///     },
+  ///   );
+  /// }
+  /// ```
+  void observeAllChanges() {
+    _allChangesAtom.reportRead();
+  }
+
+  int observationBlockDepth = 0;
+
+  /// If this is true, then this model and all descendants will not report
+  /// changes to MobX. This is set by [blockObservationBuilder].
+  bool get blockDescendantObservations => observationBlockDepth > 0;
 
   /// Listeners that are notified when a field is changed.
   final List<
@@ -248,6 +308,9 @@ mixin AnthemModelBase {
         accessorChain: accessorChainNotNull,
       );
     }
+
+    // Notify _allChangesAtom that a change has occurred
+    _allChangesAtom.reportChanged();
   }
 
   /// Adds a listener that is notified when a field is changed.
@@ -336,4 +399,25 @@ mixin AnthemModelBase {
 
     _onAttachActions.add(onModelAttached);
   }
+}
+
+// This section allows us to short-circuit the check for whether there is an
+// active blockObservationBuilder(). There could be nested
+// blockObservationBuilders, and if at least one is active, every model
+// observation must check if it is within a blocked model. Because of this, we
+// globally track whether a blockObservationBuilder is even active, so we can
+// avoid the check if it's not.
+
+int _blockObservationBuilderDepth = 0;
+
+void incrementBlockObservationBuilderDepth() {
+  _blockObservationBuilderDepth++;
+}
+
+void decrementBlockObservationBuilderDepth() {
+  _blockObservationBuilderDepth--;
+}
+
+bool get isBlockObservationBuilderActive {
+  return _blockObservationBuilderDepth > 0;
 }
