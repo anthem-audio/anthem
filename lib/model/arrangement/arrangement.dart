@@ -21,6 +21,7 @@ import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/sequence.dart';
 import 'package:anthem_codegen/include/annotations.dart';
@@ -86,8 +87,7 @@ abstract class _ArrangementModel with Store, AnthemModelBase {
 
     final lastContent = clips.values.fold<int>(
       ticksPerBar * barMultiple * minPaddingInBarMultiples,
-      (previousValue, clip) =>
-          max(previousValue, clip.offset + clip.getWidth(project)),
+      (previousValue, clip) => max(previousValue, clip.offset + clip.width),
     );
 
     return (max(lastContent, 1) / (ticksPerBar * barMultiple)).ceil() *
@@ -96,5 +96,15 @@ abstract class _ArrangementModel with Store, AnthemModelBase {
   }
 
   @computed
-  int get width => getWidth();
+  int get width {
+    // Observing this operation is incredibly expensive for some reason, so we
+    // prevent detailed observation and just observe the whole thing.
+
+    clips.observeAllChanges();
+
+    return blockObservation(
+      modelItems: [clips],
+      block: () => getWidth(),
+    );
+  }
 }

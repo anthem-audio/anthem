@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2024 Joshua Wade
+  Copyright (C) 2022 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,7 +19,6 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem/model/project.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
@@ -104,12 +103,12 @@ abstract class _ClipModel with Store, AnthemModelBase {
     required this.offset,
   }) : super();
 
-  int getWidth(ProjectModel project) {
+  int get width {
     if (timeView != null) {
       return timeView!.width;
     }
 
-    return project.sequence.patterns[patternID]!.getWidth();
+    return project.sequence.patterns[patternID]!.clipAutoWidth;
   }
 }
 

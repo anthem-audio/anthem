@@ -24,6 +24,7 @@ import 'dart:ui';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/main.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
@@ -157,7 +158,30 @@ abstract class _PatternModel with Store, AnthemModelBase {
 
   @computed
   int get lastContent {
-    return getWidth(barMultiple: 4, minPaddingInBarMultiples: 4);
+    // Observing this operation is incredibly expensive for some reason, so we
+    // prevent detailed observation and just observe the whole thing.
+
+    notes.observeAllChanges();
+    automationLanes.observeAllChanges();
+
+    return blockObservation(
+      modelItems: [notes, automationLanes],
+      block: () => getWidth(barMultiple: 4, minPaddingInBarMultiples: 4),
+    );
+  }
+
+  @computed
+  int get clipAutoWidth {
+    // Observing this operation is incredibly expensive for some reason, so we
+    // prevent detailed observation and just observe the whole thing.
+
+    notes.observeAllChanges();
+    automationLanes.observeAllChanges();
+
+    return blockObservation(
+      modelItems: [notes, automationLanes],
+      block: () => getWidth(),
+    );
   }
 
   @computed

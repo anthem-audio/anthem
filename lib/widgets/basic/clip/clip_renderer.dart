@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -181,8 +181,7 @@ void paintClip({
       // pixel coordnates.
 
       final clipScaleFactor = (width - 1) /
-          (clip?.getWidth(pattern.project).toDouble() ??
-              pattern.getWidth().toDouble());
+          (clip?.width.toDouble() ?? pattern.getWidth().toDouble());
 
       canvas.translate(
           -(clip?.timeView?.start.toDouble() ?? 0.0) * clipScaleFactor, 0);
