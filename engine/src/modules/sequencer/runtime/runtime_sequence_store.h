@@ -29,17 +29,20 @@
 #include "modules/util/thread_safe_queue.h"
 
 /*
-  Anthem compiles the project sequence model into lists of events for each
-  channel. To be more specific, each pattern and arrangement is compiled into a
-  list of events for each channel. When that pattern or arrangement is updated
-  and sent to the audio thread, its event lists can be updated as well. The
-  entire pattern can be updated, or a specific channel can be surgically
-  replaced.
+  Anthem compiles each pattern and arrangement into a list of events for each
+  channel. When that pattern or arrangement is updated, its event lists are
+  updated as well. The entire pattern can be updated, or a specific channel can
+  be surgically replaced.
 
   The goal of this file is to provide a way to:
     1. Store compiled sequences, either patterns or arrangements
     2. Allow these compiled sequences to be replaced, either in full or in part,
        in a real-time safe way
+
+  The main class in this file is AnthemRuntimeSequenceStore. This class contains
+  the API that other modules are expected to use. It is responsible for storing
+  the compiled sequences, and managing the process of sending new sequences to
+  the audio thread.
 */
 
 // Stores a list of events for a given channel.
