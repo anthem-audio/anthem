@@ -26,6 +26,9 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:flutter/foundation.dart';
 
+export 'package:anthem/engine_api/messages/messages.dart'
+    show InvalidationRange, FieldAccess, FieldUpdateKind;
+
 part 'api/model_sync_api.dart';
 part 'api/processing_graph_api.dart';
 part 'api/sequencer_api.dart';
