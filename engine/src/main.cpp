@@ -291,7 +291,7 @@ void messageLoop(CommandMessageListener& messageListener) {
         // Convert message to a string
         std::string messageStr(reinterpret_cast<const char*>(messagePtr), messageLength);
 
-        std::cout << std::endl << "Received message: " << std::endl << messageStr << std::endl;
+        // std::cout << std::endl << "Received message: " << std::endl << messageStr << std::endl;
 
         // Convert to a Request object
         auto requestWrapped = rfl::json::read<Request>(messageStr);
