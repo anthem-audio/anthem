@@ -67,16 +67,12 @@ std::optional<Response> handleModelSyncCommand(Request& request) {
     }
   }
   else if (rfl::holds_alternative<ModelUpdateRequest>(request.variant())) {
-    juce::Logger::writeToLog("Model update received. Applying...");
-
     auto& modelUpdateRequest = rfl::get<ModelUpdateRequest>(request.variant());
 
     anthem.project->handleModelUpdate(
       modelUpdateRequest,
       0
     );
-
-    juce::Logger::writeToLog("Model update applied.");
   }
   else if (rfl::holds_alternative<GetSerializedModelFromEngineRequest>(request.variant())) {
     auto& getSerializedModelFromEngineRequest = rfl::get<GetSerializedModelFromEngineRequest>(request.variant());
