@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -252,10 +252,10 @@ class PianoRollAttributePainter extends CustomPainterObserver {
 
       switch (selectedAttribute) {
         case ActiveNoteAttribute.velocity:
-          attribute = note.velocity.toDouble();
+          attribute = note.velocity;
           break;
         case ActiveNoteAttribute.pan:
-          attribute = note.pan.toDouble();
+          attribute = note.pan;
           break;
       }
 

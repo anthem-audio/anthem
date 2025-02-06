@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -61,10 +61,10 @@ class _PianoRollController {
 
   NoteModel _addNote({
     required int key,
-    required int velocity,
+    required double velocity,
     required int length,
     required int offset,
-    required int pan,
+    required double pan,
   }) {
     if (project.sequence.activePatternID == null ||
         project.activeInstrumentID == null) {

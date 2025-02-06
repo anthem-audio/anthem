@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -130,8 +130,8 @@ class SetNoteAttributeCommand extends Command {
   Id generatorID;
   Id noteID;
   NoteAttribute attribute;
-  int oldValue;
-  int newValue;
+  num oldValue;
+  num newValue;
 
   SetNoteAttributeCommand({
     required this.patternID,
@@ -142,22 +142,22 @@ class SetNoteAttributeCommand extends Command {
     required this.newValue,
   });
 
-  void setAttribute(NoteModel note, int value) {
+  void setAttribute(NoteModel note, num value) {
     switch (attribute) {
       case NoteAttribute.key:
-        note.key = value;
+        note.key = value.toInt();
         break;
       case NoteAttribute.offset:
-        note.offset = value;
+        note.offset = value.toInt();
         break;
       case NoteAttribute.length:
-        note.length = value;
+        note.length = value.toInt();
         break;
       case NoteAttribute.velocity:
-        note.velocity = value;
+        note.velocity = value.toDouble();
         break;
       case NoteAttribute.pan:
-        note.pan = value;
+        note.pan = value.toDouble();
         break;
     }
   }
