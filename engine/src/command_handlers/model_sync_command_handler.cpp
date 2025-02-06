@@ -46,6 +46,9 @@ std::optional<Response> handleModelSyncCommand(Request& request) {
     if (err.has_value()) {
       juce::Logger::writeToLog("Error during deserialize:");
       std::cout << err.value().what() << std::endl;
+      jassertfalse;
+      // This shouldn't be possible if the UI loaded the project successfully,
+      // but if it does happen, we should probably handle it better.
     }
     else {
       anthem.project = std::move(
