@@ -19,6 +19,8 @@
 
 #include "sequence_compiler.h"
 
+#include <algorithm>
+
 void AnthemSequenceCompiler::getChannelEventsForArrangement(std::string channelId, std::string arrangementId, std::vector<AnthemSequenceEvent>& events) {}
 
 void AnthemSequenceCompiler::getChannelEventsForPattern(std::string channelId, std::string patternId, std::vector<AnthemSequenceEvent>& events) {}
