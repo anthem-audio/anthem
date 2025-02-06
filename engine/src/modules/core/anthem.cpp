@@ -29,6 +29,7 @@ Anthem::Anthem() {
 
 void Anthem::initialize() {
   graphProcessor = std::make_unique<AnthemGraphProcessor>();
+  sequenceStore = std::make_unique<AnthemRuntimeSequenceStore>();
 }
 
 void Anthem::shutdown() {
@@ -42,8 +43,6 @@ void Anthem::startAudioCallback() {
     std::cout << "Tried to start audio callback when it was already running. This probably doesn't break anything, but it's definitely a bug." << std::endl;
     return;
   }
-
-  sequenceStore = std::make_unique<AnthemRuntimeSequenceStore>();
 
   audioCallback = std::make_unique<AnthemAudioCallback>(this);
 
