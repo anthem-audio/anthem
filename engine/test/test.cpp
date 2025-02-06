@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,6 +21,7 @@
 
 #include "console_logger.h"
 
+#include "modules/sequencer/compiler/sequence_compiler_test.h"
 #include "modules/sequencer/runtime/runtime_sequence_store_test.h"
 #include "modules/util/arena_allocator_test.h"
 
