@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -45,8 +45,8 @@ class AttributeEditorPointerEvent {
 
 class AttributeEditorController {
   PianoRollViewModel viewModel;
-  final oldValues = <Id, int>{};
-  final newValues = <Id, int>{};
+  final oldValues = <Id, double>{};
+  final newValues = <Id, double>{};
 
   AttributeEditorController({required this.viewModel});
 
@@ -145,7 +145,7 @@ class AttributeEditorController {
         break;
     }
 
-    final newValue = ((top - bottom) * event.normalizedY + bottom).round();
+    final newValue = (top - bottom) * event.normalizedY + bottom;
 
     for (final note in affectedNotes) {
       switch (viewModel.activeNoteAttribute) {

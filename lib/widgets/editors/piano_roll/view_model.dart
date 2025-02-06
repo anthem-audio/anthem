@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -29,8 +29,8 @@ import 'package:mobx/mobx.dart';
 part 'view_model.g.dart';
 
 enum ActiveNoteAttribute {
-  velocity(bottom: 0, baseline: 0, top: 127),
-  pan(bottom: -127, baseline: 0, top: 127);
+  velocity(bottom: 0, baseline: 0, top: 1),
+  pan(bottom: -1, baseline: 0, top: 1);
 
   const ActiveNoteAttribute({
     required this.bottom,
@@ -86,8 +86,8 @@ abstract class _PianoRollViewModel with Store {
   // These don't need to be observable, since they're just used during event
   // handling.
   Time cursorNoteLength = 96;
-  int cursorNoteVelocity = 128 * 3 ~/ 4;
-  int cursorNotePan = 0;
+  double cursorNoteVelocity = 0.75;
+  double cursorNotePan = 0;
 
   /// Calculates the note and resize handle under the cursor, if there is one.
   ({
