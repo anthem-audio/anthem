@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,10 +19,8 @@
 
 #pragma once
 
-#include "../plugin_window.h"
 #include "modules/core/anthem.h"
 
 #include "messages/messages.h"
 
-std::optional<Response>
-handleProcessingGraphCommand(Request& request);
+std::optional<Response> handleProcessingGraphCommand(Request& request);
