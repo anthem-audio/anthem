@@ -26,6 +26,7 @@
 
 #include "modules/core/anthem_audio_callback.h"
 #include "modules/processing_graph/runtime/anthem_graph_processor.h"
+#include "modules/sequencer/runtime/runtime_sequence_store.h"
 
 #include "modules/util/id_generator.h"
 
@@ -49,6 +50,14 @@ public:
   // Dart. It is automatically synced with the Dart model, and is used to store
   // the state of the project.
   std::shared_ptr<Project> project;
+
+  // The sequence compiler turns the sequence model from the project into a set
+  // of sorted event lists. The compile method on AnthemSequenceCompiler is
+  // static, so we don't need an instance of AnthemSequenceCompiler.
+
+  // The sequence store stores the compiled sequences. It is used by the
+  // sequencer to get the compiled sequences for playback.
+  std::unique_ptr<AnthemRuntimeSequenceStore> sequenceStore;
 
   // The graph compiler turns the graph topology from the model into processing
   // steps. The compile method on AnthemGraphCompiler is static, so we don't need
