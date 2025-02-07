@@ -56,6 +56,26 @@ struct AnthemSequenceTime {
 
   // A normalized fraction of a tick, in the range [0, 1).
   double fraction;
+
+  bool operator<(const AnthemSequenceTime& other) const {
+    return ticks < other.ticks || (ticks == other.ticks && fraction < other.fraction);
+  }
+
+  bool operator==(const AnthemSequenceTime& other) const {
+    return ticks == other.ticks && fraction == other.fraction;
+  }
+
+  bool operator>(const AnthemSequenceTime& other) const {
+    return ticks > other.ticks || (ticks == other.ticks && fraction > other.fraction);
+  }
+
+  bool operator<=(const AnthemSequenceTime& other) const {
+    return *this < other || *this == other;
+  }
+
+  bool operator>=(const AnthemSequenceTime& other) const {
+    return *this > other || *this == other;
+  }
 };
 
 struct AnthemSequenceEvent {
@@ -64,6 +84,26 @@ struct AnthemSequenceEvent {
 
   // The event itself.
   AnthemEvent event;
+
+  bool operator<(const AnthemSequenceEvent& other) const {
+    return time < other.time;
+  }
+
+  bool operator==(const AnthemSequenceEvent& other) const {
+    return time == other.time;
+  }
+
+  bool operator>(const AnthemSequenceEvent& other) const {
+    return time > other.time;
+  }
+
+  bool operator<=(const AnthemSequenceEvent& other) const {
+    return time <= other.time;
+  }
+
+  bool operator>=(const AnthemSequenceEvent& other) const {
+    return time >= other.time;
+  }
 };
 
 // A time for a processing graph event.
