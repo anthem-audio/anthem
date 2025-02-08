@@ -76,6 +76,41 @@ struct AnthemSequenceTime {
   bool operator>=(const AnthemSequenceTime& other) const {
     return *this > other || *this == other;
   }
+
+  bool operator!=(const AnthemSequenceTime& other) const {
+    return !(*this == other);
+  }
+
+  AnthemSequenceTime operator+(const AnthemSequenceTime& other) const {
+    // Calculate the sum of the fractional components.
+    double newFraction = fraction + other.fraction;
+
+    // Calculate the carry from the fractional component.
+    int64_t carry = newFraction >= 1.0 ? 1 : 0;
+
+    // Calculate the sum of the tick components.
+    int64_t newTicks = ticks + other.ticks + carry;
+
+    // If we carried, subtract 1 from the fractional component.
+    newFraction -= carry;
+
+    return AnthemSequenceTime { .ticks = newTicks, .fraction = newFraction };
+  }
+
+  AnthemSequenceTime operator-(const AnthemSequenceTime& other) const {
+    // Calculate the difference of the fractional components.
+    double newFraction = fraction - other.fraction;
+
+    // Calculate the borrow from the fractional component.
+    int64_t borrow = newFraction < 0.0 ? 1 : 0;
+
+    // Calculate the difference of the tick components.
+    int64_t newTicks = ticks - other.ticks - borrow;
+
+    newFraction += borrow;
+
+    return AnthemSequenceTime { .ticks = newTicks, .fraction = newFraction };
+  }
 };
 
 struct AnthemSequenceEvent {
@@ -103,6 +138,10 @@ struct AnthemSequenceEvent {
 
   bool operator>=(const AnthemSequenceEvent& other) const {
     return time >= other.time;
+  }
+
+  bool operator!=(const AnthemSequenceEvent& other) const {
+    return time != other.time;
   }
 };
 
