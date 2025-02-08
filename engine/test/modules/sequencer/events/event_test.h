@@ -76,6 +76,12 @@ private:
     expect (!(time4 >= time1), "operator>=: !(time4 >= time1) - smaller ticks");
     expect (!(time1 >= time5), "operator>=: !(time1 >= time5) - equal ticks, smaller fraction");
     expect (time2 >= time2, "operator>=: time2 >= time2 - self");
+
+		expect (time1 + time2 == AnthemSequenceTime { .ticks = 30, .fraction = 0.5 }, "operator+: time1 + time2");
+		expect ((time1 + time5).ticks == 21, "operator+: time1 + time5 ticks");
+		expect (std::abs((time1 + time5).fraction - 0.3) < 0.0001, "operator+: time1 + time5 fraction");
+		expect ((time2 - time1).ticks == 9, "operator-: time1 - time2 ticks");
+		expect (std::abs((time2 - time1).fraction - 0.5) < 0.0001, "operator-: time1 - time2 fraction");
   }
 
   void testAnthemSequenceEventOperators() {
