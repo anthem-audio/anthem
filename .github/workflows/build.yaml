@@ -63,6 +63,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm]
+        build-output-path: [build/linux/x64/release/bundle, build/linux/arm64/release/bundle]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out Anthem
@@ -123,4 +124,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: anthem-linux
-          path: ${{ github.workspace }}/build/linux/x64/release/bundle
+          path: ${{ github.workspace }}/${{ matrix.build-output-path }}
