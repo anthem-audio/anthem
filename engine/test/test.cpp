@@ -46,6 +46,7 @@ int main(int argc, char** argv) {
   juce::Logger::writeToLog("\n\n");
   if (failureCount > 0) {
     juce::Logger::writeToLog(juce::String(failureCount) + " tests failed.");
+    return 1;
   } else {
     juce::Logger::writeToLog("All tests passed.");
   }
