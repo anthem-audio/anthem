@@ -147,7 +147,7 @@ class _PatternEditorState extends State<PatternEditor> {
                                 child: SizeChangedLayoutNotifier(
                                   child: Observer(builder: (context) {
                                     return Column(
-                                      children: project.generatorList
+                                      children: project.generatorOrder
                                           .map<Widget>((id) {
                                         return Padding(
                                           padding:
