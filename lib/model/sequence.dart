@@ -46,8 +46,6 @@ class SequenceModel extends _SequenceModel
 }
 
 abstract class _SequenceModel with Store, AnthemModelBase {
-  Id id = getId();
-
   @anthemObservable
   int ticksPerQuarter = 96;
 
