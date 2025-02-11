@@ -23,6 +23,7 @@
 
 #include <string>
 #include <vector>
+#include <optional>
 
 // This class is used to compile a sequence into a set of sorted event lists.
 //
@@ -40,7 +41,56 @@ class AnthemSequenceCompiler {
 friend class SequenceCompilerTest;
 private:
   static void getChannelEventsForArrangement(std::string channelId, std::string arrangementId, std::vector<AnthemSequenceEvent>& events);
-  static void getChannelEventsForPattern(std::string channelId, std::string patternId, std::vector<AnthemSequenceEvent>& events);
+
+  static void getChannelEventsForPattern(
+    std::string channelId,
+    std::string patternId,
+    std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> range,
+    std::optional<AnthemSequenceTime> offset,
+    std::vector<AnthemSequenceEvent>& events
+  );
+
+  // Gets the note events on a given channel for the given pattern.
+  //
+  // If a range is provided, the events will be clamped to that range.
+  //
+  // If an offset is provided, the events will be offset by that amount. This is
+  // used, for example, when creating the event list for a pattern clip in an
+  // arrangement. The clip has its own offset, so we need to offset the events
+  // in that case. If we are just generating event lists for a pattern, the
+  // offset will be nullopt.
+  //
+  // The events will not be sorted. In the case of compiling an arrangement, a
+  // given channel may have notes from many clips, so we call this method
+  // multiple times and sort at the end.
+  static void getChannelNoteEventsForPattern(
+    std::string channelId,
+    std::string patternId,
+    std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> range,
+    std::optional<AnthemSequenceTime> offset,
+    std::vector<AnthemSequenceEvent>& events
+  );
+
   static void sortEventList(std::vector<AnthemSequenceEvent>& events);
+
+  // Clamps a time range to the start and end times of a clip. The intent here
+  // is for events with durations (e.g. note, audio) to be clamped to the start
+  // and end times of a pattern clip.
+  //
+  // If std::nullopt is passed for range, this is effectively a no-op.
+  //
+  // If std::nullopt is returned, it means the event was entirely outside the
+  // range.
+  static std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> clampStartAndEndToRange(
+    AnthemSequenceTime start,
+    AnthemSequenceTime end,
+    std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> range
+  );
+
+  // Clamps a given timestamp to the given range.
+  static AnthemSequenceTime clampTimeToRange(
+    AnthemSequenceTime time,
+    std::tuple<AnthemSequenceTime, AnthemSequenceTime> range
+  );
 public:
 };
