@@ -62,8 +62,11 @@ jobs:
   build-linux:
     strategy:
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm]
-        build-output-path: [build/linux/x64/release/bundle, build/linux/arm64/release/bundle]
+        include:
+          - os: ubuntu-latest
+            build-output-path: build/linux/x64/release/bundle
+          - os: ubuntu-24.04-arm
+            build-output-path: build/linux/arm64/release/bundle
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out Anthem
