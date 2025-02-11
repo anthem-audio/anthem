@@ -242,12 +242,22 @@ class _EngineUnitTestCommand extends Command<dynamic> {
     final testProcess = await Process.start(
       testExecutableLocation.toFilePath(windows: Platform.isWindows),
       [],
-      mode: ProcessStartMode.inheritStdio,
+      mode: ProcessStartMode.normal,
     );
+
+    var hasError = false;
+    testProcess.stdout.listen(stdout.add);
+    testProcess.stderr.listen((e) {
+      stderr.add(e);
+      hasError = true;
+    });
 
     final testExitCode = await testProcess.exitCode;
 
-    if (testExitCode == 0xFFFF_FFFF_C000_0005) {
+    if (hasError) {
+      print(Colorize('\n\nError: Tests failed (stderr was not empty).').red());
+      exit(exitCode);
+    } else if (testExitCode == 0xFFFF_FFFF_C000_0005) {
       // The leak detector isn't happy with a couple items in Anthem right now.
       // So far these are due to missing cleanup of objects whose lifetime is
       // equal to the lifetime of the application, and so they don't represent a
@@ -260,10 +270,6 @@ class _EngineUnitTestCommand extends Command<dynamic> {
       print(Colorize(
               '\n\nTests passed, but the JUCE leak detector reported a leak. This is due to us just not cleaning up some things; however, this should be fixed and promoted to an error.')
           .yellow());
-    } else if (testExitCode != 0) {
-      print(
-          Colorize('\n\nError: Tests failed (exit code $testExitCode).').red());
-      exit(exitCode);
     }
 
     print(Colorize('Testing complete.').lightGreen());
