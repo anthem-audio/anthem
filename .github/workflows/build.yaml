@@ -56,18 +56,14 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: anthem-windows
+          name: anthem-windows-x64
           path: ${{ github.workspace }}/build/windows/x64/runner/Release
 
   build-linux:
     strategy:
       matrix:
-        include:
-          - os: ubuntu-latest
-            build-output-path: build/linux/x64/release/bundle
-          - os: ubuntu-24.04-arm
-            build-output-path: build/linux/arm64/release/bundle
-    runs-on: ${{ matrix.os }}
+        arch: [x86, arm]
+    runs-on: ${{ matrix.arch == 'x86' && 'ubuntu-latest' || 'ubuntu-24.04-arm' }}
     steps:
       - name: Check out Anthem
         uses: actions/checkout@v4
@@ -126,5 +122,5 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: anthem-linux
-          path: ${{ github.workspace }}/${{ matrix.build-output-path }}
+          name: anthem-linux-${{ matrix.arch == 'x86' && 'x64' || 'arm64' }}
+          path: ${{ github.workspace }}/${{ matrix.arch == 'x86' && 'build/linux/x64/release/bundle' || 'build/linux/arm64/release/bundle' }}
