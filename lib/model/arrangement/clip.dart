@@ -30,23 +30,23 @@ class ClipModel extends _ClipModel
   ClipModel.uninitialized()
       : super.create(
           id: getId(),
-          patternID: getId(),
-          trackID: getId(),
+          patternId: getId(),
+          trackId: getId(),
           offset: 0,
         );
 
   ClipModel(
       {required super.id,
       super.timeView,
-      required super.patternID,
-      required super.trackID,
+      required super.patternId,
+      required super.trackId,
       required super.offset});
 
   ClipModel.create({
     Id? id,
     super.timeView,
-    required super.patternID,
-    required super.trackID,
+    required super.patternId,
+    required super.trackId,
     required super.offset,
   }) : super.create(
           id: id ?? getId(),
@@ -55,8 +55,8 @@ class ClipModel extends _ClipModel
   factory ClipModel.fromClipModel(ClipModel other) {
     return ClipModel.create(
       id: getId(),
-      patternID: other.patternID,
-      trackID: other.trackID,
+      patternId: other.patternId,
+      trackId: other.trackId,
       offset: other.offset,
       timeView: other.timeView != null
           ? TimeViewModel(
@@ -78,10 +78,10 @@ abstract class _ClipModel with Store, AnthemModelBase {
   TimeViewModel? timeView; // If null, we snap to content
 
   @anthemObservable
-  Id patternID;
+  Id patternId;
 
   @anthemObservable
-  Id trackID;
+  Id trackId;
 
   @anthemObservable
   int offset;
@@ -90,16 +90,16 @@ abstract class _ClipModel with Store, AnthemModelBase {
   _ClipModel({
     required this.id,
     this.timeView,
-    required this.patternID,
-    required this.trackID,
+    required this.patternId,
+    required this.trackId,
     required this.offset,
   }) : super();
 
   _ClipModel.create({
     required this.id,
     this.timeView,
-    required this.patternID,
-    required this.trackID,
+    required this.patternId,
+    required this.trackId,
     required this.offset,
   }) : super();
 
@@ -108,7 +108,7 @@ abstract class _ClipModel with Store, AnthemModelBase {
       return timeView!.width;
     }
 
-    return project.sequence.patterns[patternID]!.clipAutoWidth;
+    return project.sequence.patterns[patternId]!.clipAutoWidth;
   }
 }
 

@@ -144,7 +144,7 @@ class MoveClipCommand extends ArrangementCommand {
     final clip = arrangement.clips[clipID]!;
 
     clip.offset = newOffset;
-    clip.trackID = newTrack;
+    clip.trackId = newTrack;
   }
 
   @override
@@ -153,7 +153,7 @@ class MoveClipCommand extends ArrangementCommand {
     final clip = arrangement.clips[clipID]!;
 
     clip.offset = oldOffset;
-    clip.trackID = oldTrack;
+    clip.trackId = oldTrack;
   }
 }
 
