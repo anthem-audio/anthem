@@ -22,7 +22,7 @@
 #include <stdexcept>
 
 #include "modules/util/arena_allocator.h"
-#include "modules/processing_graph/events/anthem_processor_event.h"
+#include "modules/sequencer/events/event.h"
 
 class AnthemEventBuffer {
   // ALlocator for this buffer. This allocator maintains a huge buffer of memory
@@ -32,14 +32,14 @@ class AnthemEventBuffer {
   //
   // This allocator is owned by the graph compilation result, and so should be
   // deallocated there.
-  ArenaBufferAllocator<AnthemProcessorEvent>* allocator;
+  ArenaBufferAllocator<AnthemLiveEvent>* allocator;
 
   // Deallocation pointer for the buffer. This is used to deallocate the buffer
   // when the buffer is no longer needed.
   void* deallocatePtr;
 
   // The buffer of events.
-  AnthemProcessorEvent* buffer;
+  AnthemLiveEvent* buffer;
 
   // The size of the buffer.
   size_t size;
@@ -49,7 +49,7 @@ class AnthemEventBuffer {
 
 public:
   // Constructor
-  AnthemEventBuffer(ArenaBufferAllocator<AnthemProcessorEvent>* allocator, size_t size) : allocator(allocator), size(size), numEvents(0), deallocatePtr(nullptr) {
+  AnthemEventBuffer(ArenaBufferAllocator<AnthemLiveEvent>* allocator, size_t size) : allocator(allocator), size(size), numEvents(0), deallocatePtr(nullptr) {
     auto result = allocator->allocate(size);
 
     if (!result.success) {
@@ -90,7 +90,7 @@ public:
   }
 
   // Adds an event to the buffer.
-  void addEvent(AnthemProcessorEvent event) {
+  void addEvent(AnthemLiveEvent event) {
     if (numEvents >= size) {
       reallocate(size * 2);
     }
@@ -105,7 +105,7 @@ public:
   }
 
   // Returns the event at the given index.
-  AnthemProcessorEvent& getEvent(size_t index) {
+  AnthemLiveEvent& getEvent(size_t index) {
     return buffer[index];
   }
 

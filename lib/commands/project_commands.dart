@@ -27,11 +27,12 @@ import 'command.dart';
 void _addGenerator(ProjectModel project, GeneratorModel generator,
     {int? index,
     required NodeModel generatorNode,
-    required NodeModel gainNode}) {
+    required NodeModel gainNode,
+    required NodeModel midiGenNode}) {
   if (index != null) {
-    project.generatorList.insert(index, generator.id);
+    project.generatorOrder.insert(index, generator.id);
   } else {
-    project.generatorList.add(generator.id);
+    project.generatorOrder.add(generator.id);
   }
   project.generators[generator.id] = generator;
 
@@ -43,6 +44,17 @@ void _addGenerator(ProjectModel project, GeneratorModel generator,
 
   project.processingGraph.addNode(generatorNode);
   project.processingGraph.addNode(gainNode);
+  project.processingGraph.addNode(midiGenNode);
+
+  project.processingGraph.addConnection(
+    NodeConnectionModel(
+      id: getId(),
+      sourceNodeId: midiGenNode.id,
+      sourcePortId: midiGenNode.midiOutputPorts[0].id,
+      destinationNodeId: generatorNode.id,
+      destinationPortId: generatorNode.midiInputPorts[0].id,
+    ),
+  );
   project.processingGraph.addConnection(
     NodeConnectionModel(
       id: getId(),
@@ -69,7 +81,7 @@ void _addGenerator(ProjectModel project, GeneratorModel generator,
 void _removeGenerator(ProjectModel project, Id generatorID) {
   GeneratorModel? generator;
 
-  project.generatorList.removeWhere((element) => element == generatorID);
+  project.generatorOrder.removeWhere((element) => element == generatorID);
   if (project.generators.containsKey(generatorID)) {
     generator = project.generators.remove(generatorID);
   }
@@ -80,6 +92,7 @@ void _removeGenerator(ProjectModel project, Id generatorID) {
 
   project.processingGraph.removeNode(generator.generatorNodeId!);
   project.processingGraph.removeNode(generator.gainNodeId!);
+  project.processingGraph.removeNode(generator.midiGenNodeId!);
 
   project.engine.processingGraphApi.compile();
 }
@@ -117,6 +130,7 @@ class AddGeneratorCommand extends Command {
   @override
   void execute(ProjectModel project) {
     final gainNode = GainProcessorModel.createNode();
+    final midiGenNode = SimpleMidiGeneratorProcessorModel.createNode();
 
     final generator = GeneratorModel(
       id: generatorId,
@@ -125,6 +139,7 @@ class AddGeneratorCommand extends Command {
       color: color,
       generatorNodeId: node.id,
       gainNodeId: gainNode.id,
+      midiGenNodeId: midiGenNode.id,
     );
 
     _addGenerator(
@@ -132,6 +147,7 @@ class AddGeneratorCommand extends Command {
       generator,
       generatorNode: node,
       gainNode: gainNode,
+      midiGenNode: midiGenNode,
     );
   }
 
@@ -145,6 +161,7 @@ class RemoveGeneratorCommand extends Command {
   GeneratorModel generator;
   NodeModel generatorNode;
   NodeModel gainNode;
+  NodeModel midiGenNode;
   late int index;
 
   RemoveGeneratorCommand({
@@ -152,8 +169,9 @@ class RemoveGeneratorCommand extends Command {
     required this.generator,
   })  : generatorNode =
             project.processingGraph.nodes[generator.generatorNodeId]!,
-        gainNode = project.processingGraph.nodes[generator.gainNodeId]! {
-    index = project.generatorList.indexOf(generator.id);
+        gainNode = project.processingGraph.nodes[generator.gainNodeId]!,
+        midiGenNode = project.processingGraph.nodes[generator.midiGenNodeId]! {
+    index = project.generatorOrder.indexOf(generator.id);
   }
 
   @override
@@ -169,6 +187,7 @@ class RemoveGeneratorCommand extends Command {
       index: index,
       generatorNode: generatorNode,
       gainNode: gainNode,
+      midiGenNode: midiGenNode,
     );
   }
 }

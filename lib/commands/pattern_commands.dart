@@ -29,16 +29,16 @@ void _addPatternToProject({
   required PatternModel pattern,
   required int index,
 }) {
-  project.song.patternOrder.insert(index, pattern.id);
-  project.song.patterns[pattern.id] = pattern;
+  project.sequence.patternOrder.insert(index, pattern.id);
+  project.sequence.patterns[pattern.id] = pattern;
 }
 
 void _removePatternFromProject({
   required ProjectModel project,
   required Id patternID,
 }) {
-  project.song.patternOrder.removeWhere((element) => element == patternID);
-  project.song.patterns.remove(patternID);
+  project.sequence.patternOrder.removeWhere((element) => element == patternID);
+  project.sequence.patterns.remove(patternID);
 }
 
 class AddPatternCommand extends Command {
@@ -105,19 +105,19 @@ class SetPatternNameCommand extends Command {
     required this.patternID,
     required this.newName,
   }) {
-    oldName = project.song.patterns[patternID]!.name;
+    oldName = project.sequence.patterns[patternID]!.name;
   }
 
   @override
   void execute(ProjectModel project) {
-    final pattern = project.song.patterns[patternID]!;
+    final pattern = project.sequence.patterns[patternID]!;
     pattern.name = newName;
     pattern.updateClipTitleCache();
   }
 
   @override
   void rollback(ProjectModel project) {
-    final pattern = project.song.patterns[patternID]!;
+    final pattern = project.sequence.patterns[patternID]!;
     pattern.name = oldName;
     pattern.updateClipTitleCache();
   }
@@ -133,16 +133,16 @@ class SetPatternColorCommand extends Command {
     required this.patternID,
     required this.newColor,
   }) {
-    oldColor = project.song.patterns[patternID]!.color;
+    oldColor = project.sequence.patterns[patternID]!.color;
   }
 
   @override
   void execute(ProjectModel project) {
-    project.song.patterns[patternID]!.color = newColor;
+    project.sequence.patterns[patternID]!.color = newColor;
   }
 
   @override
   void rollback(ProjectModel project) {
-    project.song.patterns[patternID]!.color = oldColor;
+    project.sequence.patterns[patternID]!.color = oldColor;
   }
 }

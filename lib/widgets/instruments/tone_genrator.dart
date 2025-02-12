@@ -20,7 +20,7 @@
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/knob.dart';
+import 'package:anthem/widgets/basic/controls/knob.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 

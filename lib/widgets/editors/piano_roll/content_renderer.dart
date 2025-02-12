@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,6 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/anthem_model_mobx_helpers.dart';
+import 'package:anthem/model/collections.dart';
+import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
@@ -89,12 +92,24 @@ class PianoRollPainter extends CustomPainterObserver {
     viewModel.visibleNotes.clear();
     viewModel.visibleResizeAreas.clear();
 
-    final pattern = project.song.patterns[project.song.activePatternID];
+    final pattern = project.sequence.patterns[project.sequence.activePatternID];
     if (pattern == null) return;
 
     final notes = pattern.notes[project.activeInstrumentID];
     if (notes == null) return;
 
+    notes.observeAllChanges();
+
+    blockObservation(
+      modelItems: [notes],
+      block: () {
+        _drawNotes(canvas, size, notes);
+      },
+    );
+  }
+
+  void _drawNotes(
+      Canvas canvas, Size size, AnthemObservableList<NoteModel> notes) {
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     for (final note in notes) {

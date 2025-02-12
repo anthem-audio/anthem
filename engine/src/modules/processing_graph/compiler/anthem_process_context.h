@@ -50,7 +50,7 @@ private:
 
   std::weak_ptr<Node> graphNode;
 public:
-  AnthemProcessContext(std::shared_ptr<Node>& graphNode, ArenaBufferAllocator<AnthemProcessorEvent>* eventAllocator);
+  AnthemProcessContext(std::shared_ptr<Node>& graphNode, ArenaBufferAllocator<AnthemLiveEvent>* eventAllocator);
 
   // Clean up the context. This must be called before the context is deallocated.
   void cleanup();

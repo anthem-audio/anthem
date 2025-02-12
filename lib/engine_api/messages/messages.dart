@@ -23,6 +23,7 @@ import 'package:anthem_codegen/include/annotations.dart';
 
 part 'model_sync.dart';
 part 'processing_graph.dart';
+part 'sequencer.dart';
 
 part 'messages.g.dart';
 

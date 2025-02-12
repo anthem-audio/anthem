@@ -19,12 +19,15 @@
 
 import 'dart:convert';
 
-import 'package:anthem/helpers/id.dart';
+import 'package:anthem/commands/sequence_commands.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/controls/digit_control.dart';
+import 'package:anthem/widgets/basic/controls/time_signature_control.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/debug/widget_test_area.dart';
 import 'package:anthem/widgets/main_window/main_window_controller.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
@@ -36,17 +39,10 @@ import 'package:provider/provider.dart';
 import '../basic/icon.dart';
 
 class ProjectHeader extends StatelessWidget {
-  final Id projectID;
-
-  const ProjectHeader({super.key, required this.projectID});
+  const ProjectHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final menuController = MenuController();
-    final mainWindowController = context.read<MainWindowController>();
-    final projectController = context.read<ProjectController>();
-    final projectViewModel = context.read<ProjectViewModel>();
-
     return Container(
       height: 40,
       decoration: BoxDecoration(
@@ -58,139 +54,253 @@ class ProjectHeader extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(7),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Menu(
-              menuController: menuController,
-              menuDef: MenuDef(
-                children: [
-                  AnthemMenuItem(
-                    text: 'New project',
-                    hint: 'Create a new project',
-                    onSelected: () async {
-                      final projectID = await mainWindowController.newProject();
-                      mainWindowController.switchTab(projectID);
-                    },
-                  ),
-                  AnthemMenuItem(
-                    text: 'Load project...',
-                    hint: 'Load a project',
-                    onSelected: () {
-                      mainWindowController.loadProject().then((projectID) {
-                        if (projectID != null) {
-                          mainWindowController.switchTab(projectID);
-                        }
-                      });
-                    },
-                  ),
-                  Separator(),
-                  AnthemMenuItem(
-                    text: 'Save',
-                    hint: 'Save the active project',
-                    onSelected: () {
-                      mainWindowController.saveProject(projectID, false);
-                    },
-                  ),
-                  AnthemMenuItem(
-                    text: 'Save as...',
-                    hint: 'Save the active project to a new location',
-                    onSelected: () {
-                      mainWindowController.saveProject(projectID, true);
-                    },
-                  ),
-                  Separator(),
-                  if (kDebugMode)
-                    AnthemMenuItem(
-                      text: 'Debug',
-                      submenu: MenuDef(
-                        children: [
-                          AnthemMenuItem(
-                            text: 'Print project JSON (UI)',
-                            hint:
-                                'Print the project JSON as reported by the UI',
-                            onSelected: () async {
-                              // ignore: avoid_print
-                              print(
-                                jsonEncode(AnthemStore
-                                    .instance
-                                    .projects[
-                                        AnthemStore.instance.activeProjectID]!
-                                    .toJson()),
-                              );
-                            },
-                          ),
-                          AnthemMenuItem(
-                            text: 'Print project JSON (engine)',
-                            hint:
-                                'Print the project as JSON as reported by the engine',
-                            onSelected: () async {
-                              // ignore: avoid_print
-                              print(
-                                await AnthemStore
-                                    .instance
-                                    .projects[
-                                        AnthemStore.instance.activeProjectID]!
-                                    .engine
-                                    .modelSyncApi
-                                    .debugGetEngineJson(),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-              child: Button(
-                icon: Icons.hamburger,
-                showMenuIndicator: true,
-                onPress: () {
-                  menuController.open();
-                },
-                hint: 'File...',
+            Expanded(
+              flex: 1,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _LeftGroup(),
               ),
             ),
-            const SizedBox(width: 4),
-            Button(
-              icon: Icons.save,
-              onPress: () {
-                mainWindowController.saveProject(projectID, false);
-              },
-              hint: 'Save',
+            Center(
+              child: _MiddleGroup(),
             ),
-            const SizedBox(width: 4),
-            Button(
-              icon: Icons.undo,
-              onPress: () {
-                projectController.undo();
-              },
-              hint: 'Undo (Ctrl+Z)',
-            ),
-            const SizedBox(width: 4),
-            Button(
-              icon: Icons.redo,
-              onPress: () {
-                projectController.redo();
-              },
-              hint: 'Redo (Ctrl+Shift+Z)',
-            ),
-            const SizedBox(width: 4),
-            Observer(
-              builder: (context) {
-                return Button(
-                  toggleState: projectViewModel.keyboardPianoEnabled,
-                  icon: Icons.mainToolbar.typingKeyboardToPianoKeyboard,
-                  onPress: () {
-                    projectViewModel.keyboardPianoEnabled =
-                        !projectViewModel.keyboardPianoEnabled;
-                  },
-                  hint:
-                      'Send notes to the active instrument with the typing keyboard',
-                );
-              },
+            Expanded(
+              flex: 1,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _RightGroup(),
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _LeftGroup extends StatelessWidget {
+  const _LeftGroup();
+
+  @override
+  Widget build(BuildContext context) {
+    final projectController = context.read<ProjectController>();
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ProjectMenu(),
+        const SizedBox(width: 4),
+        Button(
+          icon: Icons.undo,
+          onPress: () {
+            projectController.undo();
+          },
+          hint: 'Undo (Ctrl+Z)',
+        ),
+        const SizedBox(width: 4),
+        Button(
+          icon: Icons.redo,
+          onPress: () {
+            projectController.redo();
+          },
+          hint: 'Redo (Ctrl+Shift+Z)',
+        ),
+      ],
+    );
+  }
+}
+
+class _MiddleGroup extends StatelessWidget {
+  const _MiddleGroup();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      spacing: 4,
+      children: [
+        _TempoControl(),
+        TimeSignatureControl(),
+
+        // The goal is a spacer of width 16, which is 8 plus two spacers of 4
+        // provided by the Row
+        SizedBox(width: 8),
+
+        Button(
+          icon: Icons.play,
+          height: 24,
+          width: 24,
+          contentPadding: EdgeInsets.all(3),
+        ),
+        Button(
+          icon: Icons.stop,
+          height: 24,
+          width: 24,
+          contentPadding: EdgeInsets.all(3),
+        ),
+      ],
+    );
+  }
+}
+
+class _TempoControl extends StatefulObserverWidget {
+  const _TempoControl();
+
+  @override
+  State<_TempoControl> createState() => _TempoControlState();
+}
+
+class _TempoControlState extends State<_TempoControl> {
+  int originalTempo = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final projectModel = Provider.of<ProjectModel>(context);
+
+    return DigitControl(
+      decimalPlaces: 2,
+      minCharacterCount: 6,
+      hint: 'Set the tempo',
+      hintUnits: 'beats per minute',
+      value: projectModel.sequence.beatsPerMinute,
+      onStart: () {
+        originalTempo = projectModel.sequence.beatsPerMinuteRaw;
+      },
+      onChanged: (value) {
+        projectModel.sequence.beatsPerMinuteRaw =
+            (value.clamp(10, 999) * 100).round();
+      },
+      onEnd: () {
+        final newTempo = projectModel.sequence.beatsPerMinuteRaw;
+
+        if (newTempo == originalTempo) {
+          return;
+        }
+
+        projectModel.push(
+          SetTempoCommand(
+            oldRawTempo: originalTempo,
+            newRawTempo: newTempo,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _RightGroup extends StatelessWidget {
+  const _RightGroup();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container();
+  }
+}
+
+class _ProjectMenu extends StatelessWidget {
+  const _ProjectMenu();
+
+  @override
+  Widget build(BuildContext context) {
+    final menuController = MenuController();
+    final mainWindowController = context.read<MainWindowController>();
+
+    final project = Provider.of<ProjectModel>(context);
+
+    return Menu(
+      menuController: menuController,
+      menuDef: MenuDef(
+        children: [
+          AnthemMenuItem(
+            text: 'New project',
+            hint: 'Create a new project',
+            onSelected: () async {
+              final projectId = await mainWindowController.newProject();
+              mainWindowController.switchTab(projectId);
+            },
+          ),
+          AnthemMenuItem(
+            text: 'Load project...',
+            hint: 'Load a project',
+            onSelected: () {
+              mainWindowController.loadProject().then((projectId) {
+                if (projectId != null) {
+                  mainWindowController.switchTab(projectId);
+                }
+              });
+            },
+          ),
+          Separator(),
+          AnthemMenuItem(
+            text: 'Save',
+            hint: 'Save the active project',
+            onSelected: () {
+              mainWindowController.saveProject(project.id, false);
+            },
+          ),
+          AnthemMenuItem(
+            text: 'Save as...',
+            hint: 'Save the active project to a new location',
+            onSelected: () {
+              mainWindowController.saveProject(project.id, true);
+            },
+          ),
+          Separator(),
+          if (kDebugMode)
+            AnthemMenuItem(
+              text: 'Debug',
+              submenu: MenuDef(
+                children: [
+                  AnthemMenuItem(
+                    text: 'Print project JSON (UI)',
+                    hint: 'Print the project JSON as reported by the UI',
+                    onSelected: () async {
+                      // ignore: avoid_print
+                      print(
+                        jsonEncode(AnthemStore.instance
+                            .projects[AnthemStore.instance.activeProjectId]!
+                            .toJson()),
+                      );
+                    },
+                  ),
+                  AnthemMenuItem(
+                    text: 'Print project JSON (engine)',
+                    hint: 'Print the project as JSON as reported by the engine',
+                    onSelected: () async {
+                      // ignore: avoid_print
+                      print(
+                        await AnthemStore
+                            .instance
+                            .projects[AnthemStore.instance.activeProjectId]!
+                            .engine
+                            .modelSyncApi
+                            .debugGetEngineJson(),
+                      );
+                    },
+                  ),
+                  Separator(),
+                  AnthemMenuItem(
+                    text: 'Open widget test area',
+                    onSelected: () {
+                      final projectViewModel =
+                          Provider.of<ProjectViewModel>(context, listen: false);
+
+                      projectViewModel.topPanelOverlayContentBuilder =
+                          (context) => const WidgetTestArea();
+                    },
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+      child: Button(
+        icon: Icons.hamburger,
+        showMenuIndicator: true,
+        onPress: () {
+          menuController.open();
+        },
+        hint: 'File...',
       ),
     );
   }

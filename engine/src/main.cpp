@@ -40,6 +40,7 @@
 #include "modules/core/anthem.h"
 #include "./command_handlers/model_sync_command_handler.h"
 #include "./command_handlers/processing_graph_command_handler.h"
+#include "./command_handlers/sequencer_command_handler.h"
 
 #include "messages/messages.h"
 
@@ -142,6 +143,14 @@ public:
         didOverwriteResponse = true;
       }
       response = std::move(handleProcessingGraphCommandResponse);
+    }
+
+    auto handleSequencerCommandResponse = handleSequencerCommand(request);
+    if (handleSequencerCommandResponse.has_value()) {
+      if (response.has_value()) {
+        didOverwriteResponse = true;
+      }
+      response = std::move(handleSequencerCommandResponse);
     }
 
     // Warn if multiple handlers gave back a reply. This would indicate that a
@@ -282,7 +291,7 @@ void messageLoop(CommandMessageListener& messageListener) {
         // Convert message to a string
         std::string messageStr(reinterpret_cast<const char*>(messagePtr), messageLength);
 
-        std::cout << std::endl << "Received message: " << std::endl << messageStr << std::endl;
+        // std::cout << std::endl << "Received message: " << std::endl << messageStr << std::endl;
 
         // Convert to a Request object
         auto requestWrapped = rfl::json::read<Request>(messageStr);
@@ -380,12 +389,12 @@ public:
 
     std::cout << anthemSplash;
 
-    // #ifndef NDEBUG
+    #ifndef NDEBUG
 
-    // juce::Logger::writeToLog("If you want to attach a debugger, you can do it now. Press enter to continue.");
-    // std::cin.get();
+    juce::Logger::writeToLog("If you want to attach a debugger, you can do it now. Press enter to continue.");
+    std::cin.get();
 
-    // #endif
+    #endif
 
     juce::Logger::writeToLog("Starting Anthem engine...");
     Anthem::getInstance().initialize();

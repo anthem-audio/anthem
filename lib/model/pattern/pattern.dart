@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2024 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -24,6 +24,7 @@ import 'dart:ui';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/main.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
@@ -56,7 +57,8 @@ class PatternModel extends _PatternModel
     _init();
 
     onModelAttached(() {
-      // TODO: remove
+      // I had a todo comment to remove this, but I have no idea why, so I'm
+      // leaving this comment instead. ¯\_(ツ)_/¯
       for (final generator in project.generators.values.where(
           (generator) => generator.generatorType == GeneratorType.automation)) {
         automationLanes[generator.id] = AutomationLaneModel();
@@ -125,9 +127,16 @@ abstract class _PatternModel with Store, AnthemModelBase {
     int barMultiple = 1,
     int minPaddingInBarMultiples = 1,
   }) {
-    final ticksPerBar = project.song.ticksPerQuarter ~/
-        (project.song.defaultTimeSignature.denominator ~/ 4) *
-        project.song.defaultTimeSignature.numerator;
+    final ticksPerBarDouble = project.sequence.ticksPerQuarter /
+        (project.sequence.defaultTimeSignature.denominator / 4) *
+        project.sequence.defaultTimeSignature.numerator;
+    final ticksPerBar = ticksPerBarDouble.round();
+
+    // It should not be possible for ticksPerBar to be fractional.
+    // ticksPerQuarter must be divisible by every possible value of
+    // (denominator / 4). Denominator can be [1, 2, 4, 8, 16, 32]. Therefore,
+    // ticksPerQuarter must be divisible by [0.25, 0.5, 1, 2, 4, 8].
+    assert(ticksPerBarDouble == ticksPerBar);
 
     final lastNoteContent = notes.values.expand((e) => e).fold<int>(
         ticksPerBar * barMultiple * minPaddingInBarMultiples,
@@ -149,7 +158,30 @@ abstract class _PatternModel with Store, AnthemModelBase {
 
   @computed
   int get lastContent {
-    return getWidth(barMultiple: 4, minPaddingInBarMultiples: 4);
+    // Observing this operation is incredibly expensive for some reason, so we
+    // prevent detailed observation and just observe the whole thing.
+
+    notes.observeAllChanges();
+    automationLanes.observeAllChanges();
+
+    return blockObservation(
+      modelItems: [notes, automationLanes],
+      block: () => getWidth(barMultiple: 4, minPaddingInBarMultiples: 4),
+    );
+  }
+
+  @computed
+  int get clipAutoWidth {
+    // Observing this operation is incredibly expensive for some reason, so we
+    // prevent detailed observation and just observe the whole thing.
+
+    notes.observeAllChanges();
+    automationLanes.observeAllChanges();
+
+    return blockObservation(
+      modelItems: [notes, automationLanes],
+      block: () => getWidth(),
+    );
   }
 
   @computed

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -27,7 +27,6 @@ import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
-import 'package:anthem/widgets/project/typing_keyboard_piano_handler.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -65,7 +64,7 @@ class ProjectController {
 
   Id addPattern([String? name]) {
     if (name == null) {
-      final patterns = project.song.patterns.nonObservableInner;
+      final patterns = project.sequence.patterns.nonObservableInner;
       var patternNumber = patterns.length;
 
       final existingNames = patterns.values.map((pattern) => pattern.name);
@@ -81,18 +80,18 @@ class ProjectController {
     project.execute(
       AddPatternCommand(
         pattern: patternModel,
-        index: project.song.patternOrder.length,
+        index: project.sequence.patternOrder.length,
       ),
     );
 
-    project.song.setActivePattern(patternModel.id);
+    project.sequence.setActivePattern(patternModel.id);
 
     return patternModel.id;
   }
 
   void addArrangement([String? name]) {
     if (name == null) {
-      final arrangements = project.song.arrangements.nonObservableInner;
+      final arrangements = project.sequence.arrangements.nonObservableInner;
       var arrangementNumber = arrangements.length;
 
       final existingNames = arrangements.values.map((pattern) => pattern.name);
@@ -110,7 +109,7 @@ class ProjectController {
 
     project.execute(command);
 
-    project.song.setActiveArrangement(command.arrangementID);
+    project.sequence.setActiveArrangement(command.arrangementID);
   }
 
   void onShortcut(LogicalKeySet shortcut) {
@@ -126,36 +125,6 @@ class ProjectController {
             LogicalKeyboardKey.shift, LogicalKeyboardKey.keyZ))) {
       redo();
     }
-  }
-
-  bool onKey(KeyEvent event) {
-    if (event is KeyRepeatEvent) return false;
-
-    final key = event.logicalKey;
-
-    if (viewModel.keyboardPianoEnabled && isTypingPianoKey(key)) {
-      // TODO: Reimplement this
-
-      // final note = getMidiNoteFromKeyboardKey(key)!;
-
-      // if (event is KeyDownEvent) {
-      //   project.engine.projectApi.noteOn(
-      //     note: note,
-      //     editId: project
-      //         .song.arrangements[project.song.activeArrangementID]!.editPointer,
-      //   );
-      // } else {
-      //   project.engine.projectApi.noteOff(
-      //     note: note,
-      //     editId: project
-      //         .song.arrangements[project.song.activeArrangementID]!.editPointer,
-      //   );
-      // }
-
-      return true;
-    }
-
-    return false;
   }
 
   void setHintText(String text) {

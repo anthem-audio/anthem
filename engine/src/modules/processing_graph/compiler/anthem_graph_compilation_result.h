@@ -25,6 +25,7 @@
 
 #include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
 #include "modules/processing_graph/compiler/anthem_process_context.h"
+#include "modules/sequencer/events/event.h"
 
 // This class is used to represent the result of compiling a processing graph.
 class AnthemGraphCompilationResult {
@@ -92,7 +93,7 @@ public:
   // it. When this class is deallocated, the buffer is deallocated.
   std::unique_ptr<
     ArenaBufferAllocator<
-      AnthemProcessorEvent
+      AnthemLiveEvent
     >
   > eventAllocator;
 

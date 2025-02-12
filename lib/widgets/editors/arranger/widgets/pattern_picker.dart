@@ -121,14 +121,14 @@ class _PatternPickerState extends State<PatternPicker> {
                           child: Observer(builder: (context) {
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: project.song.patternOrder
+                              children: project.sequence.patternOrder
                                   .map(
                                     (patternID) => Padding(
                                       padding: const EdgeInsets.only(bottom: 1),
                                       child: SizedBox(
                                         height: patternHeight,
                                         child: Clip.fromPattern(
-                                          patternID: patternID,
+                                          patternId: patternID,
                                           ticksPerPixel: 5,
                                         ),
                                       ),

@@ -41,12 +41,12 @@ class AddClipCommand extends ArrangementCommand {
 
   @override
   void execute(ProjectModel project) {
-    project.song.arrangements[arrangementID]!.clips[clip.id] = clip;
+    project.sequence.arrangements[arrangementID]!.clips[clip.id] = clip;
   }
 
   @override
   void rollback(ProjectModel project) {
-    project.song.arrangements[arrangementID]!.clips.remove(clip.id);
+    project.sequence.arrangements[arrangementID]!.clips.remove(clip.id);
   }
 }
 
@@ -66,13 +66,13 @@ class AddArrangementCommand extends Command {
       id: arrangementID,
     );
 
-    project.song.arrangements[arrangementID] = arrangement;
-    project.song.arrangementOrder.add(arrangementID);
+    project.sequence.arrangements[arrangementID] = arrangement;
+    project.sequence.arrangementOrder.add(arrangementID);
   }
 
   @override
   void rollback(ProjectModel project) {
-    project.song.arrangementOrder.removeLast();
+    project.sequence.arrangementOrder.removeLast();
   }
 }
 
@@ -87,15 +87,15 @@ class DeleteArrangementCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
-    project.song.arrangements.remove(arrangement.id);
-    index = project.song.arrangementOrder.indexOf(arrangement.id);
-    project.song.arrangementOrder.removeAt(index);
+    project.sequence.arrangements.remove(arrangement.id);
+    index = project.sequence.arrangementOrder.indexOf(arrangement.id);
+    project.sequence.arrangementOrder.removeAt(index);
   }
 
   @override
   void rollback(ProjectModel project) {
-    project.song.arrangements[arrangement.id] = arrangement;
-    project.song.arrangementOrder.insert(index, arrangement.id);
+    project.sequence.arrangements[arrangement.id] = arrangement;
+    project.sequence.arrangementOrder.insert(index, arrangement.id);
   }
 }
 
@@ -108,17 +108,17 @@ class SetArrangementNameCommand extends ArrangementCommand {
     required Id arrangementID,
     required this.newName,
   }) : super(arrangementID) {
-    oldName = project.song.arrangements[arrangementID]!.name;
+    oldName = project.sequence.arrangements[arrangementID]!.name;
   }
 
   @override
   void execute(ProjectModel project) {
-    project.song.arrangements[arrangementID]!.name = newName;
+    project.sequence.arrangements[arrangementID]!.name = newName;
   }
 
   @override
   void rollback(ProjectModel project) {
-    project.song.arrangements[arrangementID]!.name = oldName;
+    project.sequence.arrangements[arrangementID]!.name = oldName;
   }
 }
 
@@ -140,20 +140,20 @@ class MoveClipCommand extends ArrangementCommand {
 
   @override
   void execute(ProjectModel project) {
-    final arrangement = project.song.arrangements[arrangementID]!;
+    final arrangement = project.sequence.arrangements[arrangementID]!;
     final clip = arrangement.clips[clipID]!;
 
     clip.offset = newOffset;
-    clip.trackID = newTrack;
+    clip.trackId = newTrack;
   }
 
   @override
   void rollback(ProjectModel project) {
-    final arrangement = project.song.arrangements[arrangementID]!;
+    final arrangement = project.sequence.arrangements[arrangementID]!;
     final clip = arrangement.clips[clipID]!;
 
     clip.offset = oldOffset;
-    clip.trackID = oldTrack;
+    clip.trackId = oldTrack;
   }
 }
 
@@ -167,13 +167,13 @@ class DeleteClipCommand extends ArrangementCommand {
 
   @override
   void execute(ProjectModel project) {
-    final arrangement = project.song.arrangements[arrangementID]!;
+    final arrangement = project.sequence.arrangements[arrangementID]!;
     arrangement.clips.remove(clip.id);
   }
 
   @override
   void rollback(ProjectModel project) {
-    final arrangement = project.song.arrangements[arrangementID]!;
+    final arrangement = project.sequence.arrangements[arrangementID]!;
     arrangement.clips[clip.id] = clip;
   }
 }
@@ -196,7 +196,7 @@ class ResizeClipCommand extends ArrangementCommand {
 
   @override
   void execute(ProjectModel project) {
-    final arrangement = project.song.arrangements[arrangementID]!;
+    final arrangement = project.sequence.arrangements[arrangementID]!;
     final clip = arrangement.clips[clipID]!;
 
     clip.offset = newOffset;
@@ -205,7 +205,7 @@ class ResizeClipCommand extends ArrangementCommand {
 
   @override
   void rollback(ProjectModel project) {
-    final arrangement = project.song.arrangements[arrangementID]!;
+    final arrangement = project.sequence.arrangements[arrangementID]!;
     final clip = arrangement.clips[clipID]!;
 
     clip.offset = oldOffset;

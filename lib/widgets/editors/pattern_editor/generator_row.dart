@@ -20,7 +20,7 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/basic/button.dart';
-import 'package:anthem/widgets/basic/knob.dart';
+import 'package:anthem/widgets/basic/controls/knob.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/editors/pattern_editor/generator_row_automation.dart';
@@ -59,7 +59,7 @@ class _GeneratorRowState extends State<GeneratorRow> {
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     PatternModel? getPattern() =>
-        project.song.patterns[project.song.activePatternID];
+        project.sequence.patterns[project.sequence.activePatternID];
     final generator = project.generators[widget.generatorID]!;
     final projectViewModel = Provider.of<ProjectViewModel>(context);
 
@@ -87,40 +87,46 @@ class _GeneratorRowState extends State<GeneratorRow> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(width: 80),
-              Observer(builder: (context) {
-                final nodeId = generator.gainNodeId;
-                final node = project.processingGraph.nodes[nodeId];
+              if (generator.generatorType == GeneratorType.instrument)
+                Observer(builder: (context) {
+                  final nodeId = generator.gainNodeId;
+                  final node = project.processingGraph.nodes[nodeId];
 
-                final value = node
-                        ?.getPortById(GainProcessorModel.gainPortId)
-                        .parameterValue ??
-                    0.5;
+                  final value = node
+                          ?.getPortById(GainProcessorModel.gainPortId)
+                          .parameterValue ??
+                      0.5;
 
-                return Knob(
-                  value: value,
-                  min: 0,
-                  max: 10,
+                  return Knob(
+                    value: value,
+                    min: 0,
+                    max: 10,
+                    width: 20,
+                    height: 20,
+                    stickyPoints: const [1],
+                    onValueChanged: (value) {
+                      if (node == null) return;
+
+                      node
+                          .getPortById(GainProcessorModel.gainPortId)
+                          .parameterValue = value;
+                    },
+                  );
+                }),
+              if (generator.generatorType != GeneratorType.instrument)
+                const SizedBox(width: 20),
+              const SizedBox(width: 8),
+              if (generator.generatorType == GeneratorType.instrument)
+                const Knob(
+                  value: 0,
+                  min: -100,
+                  max: 100,
                   width: 20,
                   height: 20,
-                  stickyPoints: const [1],
-                  onValueChanged: (value) {
-                    if (node == null) return;
-
-                    node
-                        .getPortById(GainProcessorModel.gainPortId)
-                        .parameterValue = value;
-                  },
-                );
-              }),
-              const SizedBox(width: 8),
-              const Knob(
-                value: 0,
-                min: -100,
-                max: 100,
-                width: 20,
-                height: 20,
-                type: KnobType.pan,
-              ),
+                  type: KnobType.pan,
+                ),
+              if (generator.generatorType != GeneratorType.instrument)
+                const SizedBox(width: 20),
               const SizedBox(width: 8),
               // Generator name
               GestureDetector(
@@ -165,6 +171,21 @@ class _GeneratorRowState extends State<GeneratorRow> {
                         backgroundColor: generator.color,
                         backgroundHoverColor: backgroundHoverColor,
                         backgroundPressColor: backgroundHoverColor,
+                        contentBuilder: (context, color) {
+                          return Center(
+                            child: Text(
+                              generator.name,
+                              style: TextStyle(
+                                color: HSLColor.fromColor(generator.color)
+                                    .withSaturation(0.5)
+                                    .withLightness(0.8)
+                                    .toColor(),
+                                fontSize: 11,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     );
                   },
@@ -220,7 +241,7 @@ class _GeneratorRowState extends State<GeneratorRow> {
                           timeViewStart: 0,
                           // 1 bar is 100 pixels, can be tweaked (and should probably be set above?)
                           ticksPerPixel:
-                              (project.song.ticksPerQuarter * 4) / 100,
+                              (project.sequence.ticksPerQuarter * 4) / 100,
                           color: generator.color,
                         );
                       } else if (generator.generatorType ==
@@ -231,7 +252,7 @@ class _GeneratorRowState extends State<GeneratorRow> {
                           timeViewStart: 0,
                           // 1 bar is 100 pixels, can be tweaked (and should probably be set above?)
                           ticksPerPixel:
-                              (project.song.ticksPerQuarter * 4) / 100,
+                              (project.sequence.ticksPerQuarter * 4) / 100,
                           color: generator.color,
                         );
                       } else {

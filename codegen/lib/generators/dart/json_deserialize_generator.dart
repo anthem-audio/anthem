@@ -201,9 +201,10 @@ String _generateListGetter({
   final q = type.isNullable ? '?' : '';
   final listParameterTypeQ = type.itemType.isNullable ? '?' : '';
 
-  final result = '''($getter as List$q)$q.map((e) {
+  final result =
+      '''($getter as List$q)$q.map<${type.itemType.dartName}$listParameterTypeQ>((e) {
   return ${_createGetterForField(type: type.itemType, fieldName: fieldName, getter: 'e')};
-}).cast<${type.itemType.dartName}$listParameterTypeQ>().toList()''';
+}).toList()''';
 
   switch (type.collectionType) {
     case CollectionType.raw:
