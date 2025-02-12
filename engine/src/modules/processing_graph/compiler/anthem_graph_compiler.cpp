@@ -70,8 +70,8 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
   // This is probably way too much free space, but I won't try to tweak it
   // unless it becomes a problem.
   result->eventAllocator = 
-    std::make_unique<ArenaBufferAllocator<AnthemProcessorEvent>>(
-      totalEventPorts * DEFAULT_EVENT_BUFFER_SIZE * sizeof(AnthemProcessorEvent) * 2
+    std::make_unique<ArenaBufferAllocator<AnthemLiveEvent>>(
+      totalEventPorts * DEFAULT_EVENT_BUFFER_SIZE * sizeof(AnthemLiveEvent) * 2
     );
 
   // Create contexts for each node

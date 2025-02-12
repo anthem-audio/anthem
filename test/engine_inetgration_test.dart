@@ -161,8 +161,8 @@ void main() {
           jsonDecode(await project.engine.modelSyncApi.debugGetEngineJson())
               as Map<String, dynamic>;
 
-      expect(initialState['song'], isNotNull,
-          reason: 'The initial state should contain a song.');
+      expect(initialState['sequence'], isNotNull,
+          reason: 'The initial state should contain a sequence.');
       expect(initialState['processingGraph'], isNotNull,
           reason: 'The initial state should contain a processing graph.');
       expect(initialState['isSaved'], isNotNull,
@@ -183,9 +183,9 @@ void main() {
           jsonDecode(await project.engine.modelSyncApi.debugGetEngineJson())
               as Map<String, dynamic>;
 
-      final patternMap = state['song']!['patterns'] as Map<String, dynamic>;
+      final patternMap = state['sequence']!['patterns'] as Map<String, dynamic>;
       final patternIdList =
-          (state['song']!['patternOrder'] as List<dynamic>).cast<String>();
+          (state['sequence']!['patternOrder'] as List<dynamic>).cast<String>();
 
       expect(patternMap.length, equals(patternCount),
           reason: 'The pattern map should contain $patternCount patterns.');
@@ -201,12 +201,13 @@ void main() {
     });
 
     test('Delete every even pattern', () async {
-      final originalPatternListSize = project.song.patternOrder.length;
+      final originalPatternListSize = project.sequence.patternOrder.length;
 
       for (var i = originalPatternListSize - 1; i >= 0; i--) {
         if (i.isEven) {
           final command = DeletePatternCommand(
-              pattern: project.song.patterns[project.song.patternOrder[i]]!,
+              pattern:
+                  project.sequence.patterns[project.sequence.patternOrder[i]]!,
               index: i);
           project.execute(command);
         }
@@ -216,9 +217,9 @@ void main() {
           jsonDecode(await project.engine.modelSyncApi.debugGetEngineJson())
               as Map<String, dynamic>;
 
-      final patternMap = state['song']!['patterns'] as Map<String, dynamic>;
+      final patternMap = state['sequence']!['patterns'] as Map<String, dynamic>;
       final patternIdList =
-          (state['song']!['patternOrder'] as List<dynamic>).cast<String>();
+          (state['sequence']!['patternOrder'] as List<dynamic>).cast<String>();
 
       expect(patternMap.length, equals(originalPatternListSize ~/ 2),
           reason:
@@ -245,7 +246,7 @@ void main() {
 
       final command = AddNoteCommand(
         generatorID: generator.id,
-        patternID: project.song.patternOrder[0],
+        patternID: project.sequence.patternOrder[0],
         note: NoteModel(
           key: 64,
           velocity: 127,
@@ -265,8 +266,8 @@ void main() {
       expect(generatorMap['generator1'], isNotNull,
           reason: 'The generator should be in the state.');
 
-      final pattern = state['song']!['patterns'][project.song.patternOrder[0]]
-          as Map<String, dynamic>;
+      final pattern = state['sequence']!['patterns']
+          [project.sequence.patternOrder[0]] as Map<String, dynamic>;
       final notes = pattern['notes']!['generator1'] as List<dynamic>;
       expect(notes.length, equals(1),
           reason: 'The pattern should contain 1 note.');
@@ -285,9 +286,9 @@ void main() {
     });
 
     test('Change all the note properties', () async {
-      final patternId = project.song.patternOrder[0];
-      final note = project
-          .song.patterns[project.song.patternOrder[0]]!.notes['generator1']![0];
+      final patternId = project.sequence.patternOrder[0];
+      final note = project.sequence.patterns[project.sequence.patternOrder[0]]!
+          .notes['generator1']![0];
 
       project.execute(SetNoteAttributeCommand(
         patternID: patternId,
@@ -312,7 +313,7 @@ void main() {
               as Map<String, dynamic>;
 
       final pattern =
-          state['song']!['patterns'][patternId] as Map<String, dynamic>;
+          state['sequence']!['patterns'][patternId] as Map<String, dynamic>;
       final notes = pattern['notes']!['generator1'] as List<dynamic>;
       expect(notes.length, equals(1),
           reason: 'The pattern should contain 1 note.');

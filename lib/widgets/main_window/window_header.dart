@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -50,95 +50,106 @@ class _WindowHeaderState extends State<WindowHeader> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-              const Padding(
-                padding: EdgeInsets.only(bottom: 1),
-                child: EngineIndicator(),
-              ),
-              const SizedBox(width: 1),
-            ] +
-            widget.tabs
-                .map<Widget>(
-                  (tab) => _Tab(
-                    isSelected: tab.id == widget.selectedTabId,
-                    id: tab.id,
-                    title: tab.title,
-                  ),
-                )
-                .toList() +
-            [
-              Expanded(
-                child: MoveWindow(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 1),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Theme.panel.main,
-                        borderRadius: const BorderRadius.only(
-                          topRight: Radius.circular(4),
-                          topLeft: Radius.circular(2),
-                          bottomLeft: Radius.circular(1),
-                          bottomRight: Radius.circular(1),
-                        ),
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: Row(
-                          children: [
-                            const Expanded(child: SizedBox()),
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                  top: 4, right: 4, bottom: 4),
-                              child: Button(
-                                width: 20,
-                                height: 20,
-                                contentPadding: const EdgeInsets.all(2),
-                                variant: ButtonVariant.ghost,
-                                hideBorder: true,
-                                icon: Icons.minimize,
-                                onPress: () {
-                                  appWindow.minimize();
-                                },
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                  top: 4, right: 4, bottom: 4),
-                              child: Button(
-                                width: 20,
-                                height: 20,
-                                contentPadding: const EdgeInsets.all(2),
-                                variant: ButtonVariant.ghost,
-                                hideBorder: true,
-                                icon: Icons.maximize,
-                                onPress: () {
-                                  appWindow.maximizeOrRestore();
-                                },
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                  top: 4, right: 4, bottom: 4),
-                              child: Button(
-                                width: 20,
-                                height: 20,
-                                contentPadding: const EdgeInsets.all(2),
-                                variant: ButtonVariant.ghost,
-                                hideBorder: true,
-                                icon: Icons.close,
-                                onPress: () {
-                                  appWindow.close();
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          const Padding(
+            padding: EdgeInsets.only(bottom: 1),
+            child: EngineIndicator(),
+          ),
+          const SizedBox(width: 1),
+          ...widget.tabs.map<Widget>(
+            (tab) => _Tab(
+              isSelected: tab.id == widget.selectedTabId,
+              id: tab.id,
+              title: tab.title,
+            ),
+          ),
+          Expanded(
+            child: MoveWindow(
+              child: _WindowHandleAndControls(),
+            ),
+          ),
+        ],
       ),
+    );
+  }
+}
+
+class _WindowHandleAndControls extends StatelessWidget {
+  const _WindowHandleAndControls();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 1),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.panel.main,
+          borderRadius: const BorderRadius.only(
+            topRight: Radius.circular(4),
+            topLeft: Radius.circular(2),
+            bottomLeft: Radius.circular(1),
+            bottomRight: Radius.circular(1),
+          ),
+        ),
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: _WindowButtons(),
+        ),
+      ),
+    );
+  }
+}
+
+class _WindowButtons extends StatelessWidget {
+  const _WindowButtons();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Expanded(child: SizedBox()),
+        Padding(
+          padding: const EdgeInsets.only(top: 4, right: 4, bottom: 4),
+          child: Button(
+            width: 20,
+            height: 20,
+            contentPadding: const EdgeInsets.all(2),
+            variant: ButtonVariant.ghost,
+            hideBorder: true,
+            icon: Icons.minimize,
+            onPress: () {
+              appWindow.minimize();
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 4, right: 4, bottom: 4),
+          child: Button(
+            width: 20,
+            height: 20,
+            contentPadding: const EdgeInsets.all(2),
+            variant: ButtonVariant.ghost,
+            hideBorder: true,
+            icon: Icons.maximize,
+            onPress: () {
+              appWindow.maximizeOrRestore();
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 4, right: 4, bottom: 4),
+          child: Button(
+            width: 20,
+            height: 20,
+            contentPadding: const EdgeInsets.all(2),
+            variant: ButtonVariant.ghost,
+            hideBorder: true,
+            icon: Icons.close,
+            onPress: () {
+              appWindow.close();
+            },
+          ),
+        ),
+      ],
     );
   }
 }

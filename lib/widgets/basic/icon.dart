@@ -54,11 +54,13 @@ class Icons {
   static IconDef mute = const IconDef('assets/icons/power.svg');
   static IconDef patternEditor =
       const IconDef('assets/icons/bottom_bar/pattern_editor.svg');
+  static IconDef play = const IconDef('assets/icons/main_toolbar/play.svg');
   static IconDef plugin = const IconDef('assets/icons/plugin.svg');
   static IconDef projectPanel =
       const IconDef('assets/icons/bottom_bar/project_panel_2.svg');
   static IconDef redo = const IconDef('assets/icons/edit/redo.svg');
   static IconDef save = const IconDef('assets/icons/edit/save.svg');
+  static IconDef stop = const IconDef('assets/icons/main_toolbar/stop.svg');
   static IconDef undo = const IconDef('assets/icons/edit/undo.svg');
   static _ScrollbarIcons scrollbar = _ScrollbarIcons();
   static _ToolIcons tools = _ToolIcons();

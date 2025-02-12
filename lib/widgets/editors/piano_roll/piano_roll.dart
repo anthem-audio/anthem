@@ -326,7 +326,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
     // This is a function because observers need to be able to observe this
     // call into the MobX store
     PatternModel? getPattern() =>
-        project.song.patterns[project.song.activePatternID];
+        project.sequence.patterns[project.sequence.activePatternID];
 
     final timeline = Observer(builder: (context) {
       final timelineHeight =
@@ -501,12 +501,14 @@ class _PianoRollContentState extends State<_PianoRollContent>
                       return ScrollbarRenderer(
                         scrollRegionStart: 0,
                         scrollRegionEnd: getPattern()?.lastContent.toDouble() ??
-                            (project.song.ticksPerQuarter * 4 * noContentBars)
+                            (project.sequence.ticksPerQuarter *
+                                    4 *
+                                    noContentBars)
                                 .toDouble(),
                         handleStart: viewModel.timeView.start,
                         handleEnd: viewModel.timeView.end,
                         canScrollPastEnd: true,
-                        minHandleSize: project.song.ticksPerQuarter * 4,
+                        minHandleSize: project.sequence.ticksPerQuarter * 4,
                         disableAtFullSize: false,
                         onChange: (event) {
                           viewModel.timeView.start = event.handleStart;

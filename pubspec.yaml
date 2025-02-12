@@ -32,6 +32,11 @@ dependencies:
   provider: ^6.0.2
   vector_math: ^2.1.2
 
+  pointer_lock:
+    git:
+      url: https://github.com/helgoboss/pointer_lock.git
+      ref: fc8b626
+
 dev_dependencies:
   analyzer: ^6.11.0
   build_runner: ^2.4.14
@@ -45,6 +50,11 @@ flutter:
 
   shaders:
   - assets/shaders/automation_curve.frag
+
+  fonts:
+  - family: RobotoMono
+    fonts:
+    - asset: assets/fonts/RobotoMono.ttf
 
   assets:
   - assets/engine/

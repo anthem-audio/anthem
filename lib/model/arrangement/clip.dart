@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2024 Joshua Wade
+  Copyright (C) 2022 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,7 +19,6 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem/model/project.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
@@ -31,23 +30,23 @@ class ClipModel extends _ClipModel
   ClipModel.uninitialized()
       : super.create(
           id: getId(),
-          patternID: getId(),
-          trackID: getId(),
+          patternId: getId(),
+          trackId: getId(),
           offset: 0,
         );
 
   ClipModel(
       {required super.id,
       super.timeView,
-      required super.patternID,
-      required super.trackID,
+      required super.patternId,
+      required super.trackId,
       required super.offset});
 
   ClipModel.create({
     Id? id,
     super.timeView,
-    required super.patternID,
-    required super.trackID,
+    required super.patternId,
+    required super.trackId,
     required super.offset,
   }) : super.create(
           id: id ?? getId(),
@@ -56,8 +55,8 @@ class ClipModel extends _ClipModel
   factory ClipModel.fromClipModel(ClipModel other) {
     return ClipModel.create(
       id: getId(),
-      patternID: other.patternID,
-      trackID: other.trackID,
+      patternId: other.patternId,
+      trackId: other.trackId,
       offset: other.offset,
       timeView: other.timeView != null
           ? TimeViewModel(
@@ -79,10 +78,10 @@ abstract class _ClipModel with Store, AnthemModelBase {
   TimeViewModel? timeView; // If null, we snap to content
 
   @anthemObservable
-  Id patternID;
+  Id patternId;
 
   @anthemObservable
-  Id trackID;
+  Id trackId;
 
   @anthemObservable
   int offset;
@@ -91,25 +90,25 @@ abstract class _ClipModel with Store, AnthemModelBase {
   _ClipModel({
     required this.id,
     this.timeView,
-    required this.patternID,
-    required this.trackID,
+    required this.patternId,
+    required this.trackId,
     required this.offset,
   }) : super();
 
   _ClipModel.create({
     required this.id,
     this.timeView,
-    required this.patternID,
-    required this.trackID,
+    required this.patternId,
+    required this.trackId,
     required this.offset,
   }) : super();
 
-  int getWidth(ProjectModel project) {
+  int get width {
     if (timeView != null) {
       return timeView!.width;
     }
 
-    return project.song.patterns[patternID]!.getWidth();
+    return project.sequence.patterns[patternId]!.clipAutoWidth;
   }
 }
 

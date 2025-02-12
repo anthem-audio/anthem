@@ -108,9 +108,9 @@ class _PatternEditorState extends State<PatternEditor> {
                           width: 169,
                           height: 26,
                           hint: 'Change the active pattern',
-                          items: project.song.patternOrder.map(
+                          items: project.sequence.patternOrder.map(
                             (id) {
-                              final pattern = project.song.patterns[id]!;
+                              final pattern = project.sequence.patterns[id]!;
                               return DropdownItem(
                                 id: id,
                                 name: pattern.name,
@@ -118,9 +118,10 @@ class _PatternEditorState extends State<PatternEditor> {
                               );
                             },
                           ).toList(),
-                          selectedID: project.song.activePatternID?.toString(),
+                          selectedID:
+                              project.sequence.activePatternID?.toString(),
                           onChanged: (id) {
-                            project.song.activePatternID = id;
+                            project.sequence.activePatternID = id;
                           },
                         );
                       }),
@@ -146,7 +147,7 @@ class _PatternEditorState extends State<PatternEditor> {
                                 child: SizeChangedLayoutNotifier(
                                   child: Observer(builder: (context) {
                                     return Column(
-                                      children: project.generatorList
+                                      children: project.generatorOrder
                                           .map<Widget>((id) {
                                         return Padding(
                                           padding:

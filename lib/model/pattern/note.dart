@@ -58,7 +58,7 @@ abstract class _NoteModel with Store, AnthemModelBase {
   int key;
 
   @anthemObservable
-  int velocity;
+  double velocity;
 
   @anthemObservable
   int length;
@@ -67,7 +67,7 @@ abstract class _NoteModel with Store, AnthemModelBase {
   int offset;
 
   @anthemObservable
-  int pan;
+  double pan;
 
   _NoteModel({
     required this.key,

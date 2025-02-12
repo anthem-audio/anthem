@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -45,8 +45,8 @@ class AttributeEditorPointerEvent {
 
 class AttributeEditorController {
   PianoRollViewModel viewModel;
-  final oldValues = <Id, int>{};
-  final newValues = <Id, int>{};
+  final oldValues = <Id, double>{};
+  final newValues = <Id, double>{};
 
   AttributeEditorController({required this.viewModel});
 
@@ -61,8 +61,8 @@ class AttributeEditorController {
     // decides it's worth looking into later.
 
     final store = AnthemStore.instance;
-    final project = store.projects[store.activeProjectID]!;
-    final pattern = project.song.patterns[project.song.activePatternID];
+    final project = store.projects[store.activeProjectId]!;
+    final pattern = project.sequence.patterns[project.sequence.activePatternID];
 
     if (pattern == null) return;
 
@@ -145,7 +145,7 @@ class AttributeEditorController {
         break;
     }
 
-    final newValue = ((top - bottom) * event.normalizedY + bottom).round();
+    final newValue = (top - bottom) * event.normalizedY + bottom;
 
     for (final note in affectedNotes) {
       switch (viewModel.activeNoteAttribute) {
@@ -169,8 +169,8 @@ class AttributeEditorController {
     if (oldValues.isEmpty && newValues.isEmpty) return;
 
     final store = AnthemStore.instance;
-    final project = store.projects[store.activeProjectID]!;
-    final pattern = project.song.patterns[project.song.activePatternID];
+    final project = store.projects[store.activeProjectId]!;
+    final pattern = project.sequence.patterns[project.sequence.activePatternID];
 
     if (pattern == null) return;
     if (project.activeInstrumentID == null) return;

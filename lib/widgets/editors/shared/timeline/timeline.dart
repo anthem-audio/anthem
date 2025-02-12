@@ -70,7 +70,8 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
       final project = Provider.of<ProjectModel>(context);
 
       List<TimeSignatureChangeModel> getTimeSignatureChanges() =>
-          project.song.patterns[widget.patternID]?.timeSignatureChanges ?? [];
+          project.sequence.patterns[widget.patternID]?.timeSignatureChanges ??
+          [];
 
       void handleScroll(double delta, double mouseX) {
         zoomTimeView(
@@ -106,9 +107,9 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                           painter: TimelinePainter(
                             timeViewStart: widget.timeViewStartAnimation.value,
                             timeViewEnd: widget.timeViewEndAnimation.value,
-                            ticksPerQuarter: project.song.ticksPerQuarter,
+                            ticksPerQuarter: project.sequence.ticksPerQuarter,
                             defaultTimeSignature:
-                                project.song.defaultTimeSignature,
+                                project.sequence.defaultTimeSignature,
                             timeSignatureChanges: getTimeSignatureChanges(),
                           ),
                         );
@@ -118,8 +119,8 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                 ),
               ),
               Observer(builder: (context) {
-                final timelineLabels = project
-                        .song.patterns[widget.patternID]?.timeSignatureChanges
+                final timelineLabels = project.sequence
+                        .patterns[widget.patternID]?.timeSignatureChanges
                         .map<Widget>(
                           (change) => LayoutId(
                             id: change.offset,

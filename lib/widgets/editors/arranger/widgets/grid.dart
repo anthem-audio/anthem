@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,7 +19,6 @@
 
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
@@ -58,7 +57,7 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
 
     final baseTrackHeight = viewModel.baseTrackHeight;
 
-    for (final trackID in project.song.trackOrder) {
+    for (final trackID in project.sequence.trackOrder) {
       final trackHeight = getTrackHeight(
         baseTrackHeight,
         viewModel.trackHeightModifiers[trackID]!,
@@ -81,9 +80,9 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
       canvas: canvas,
       size: size,
       snap: AutoSnap(),
-      baseTimeSignature: TimeSignatureModel(4, 4),
+      baseTimeSignature: project.sequence.defaultTimeSignature,
       timeSignatureChanges: [],
-      ticksPerQuarter: project.song.ticksPerQuarter,
+      ticksPerQuarter: project.sequence.ticksPerQuarter,
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
     );

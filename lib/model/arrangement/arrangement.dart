@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2024 Joshua Wade
+  Copyright (C) 2022 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,8 +21,9 @@ import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/collections.dart';
-import 'package:anthem/model/shared/time_signature.dart';
+import 'package:anthem/model/sequence.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
@@ -53,9 +54,6 @@ abstract class _ArrangementModel with Store, AnthemModelBase {
   @anthemObservable
   AnthemObservableMap<Id, ClipModel> clips = AnthemObservableMap();
 
-  @anthemObservable
-  TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
-
   _ArrangementModel({
     required this.name,
     required this.id,
@@ -72,13 +70,24 @@ abstract class _ArrangementModel with Store, AnthemModelBase {
     int barMultiple = 4,
     int minPaddingInBarMultiples = 4,
   }) {
-    final ticksPerBar = project.song.ticksPerQuarter ~/
-        (defaultTimeSignature.denominator ~/ 4) *
+    final defaultTimeSignature =
+        getFirstAncestorOfType<SequenceModel>().defaultTimeSignature;
+
+    final ticksPerBarDouble = project.sequence.ticksPerQuarter /
+        (defaultTimeSignature.denominator / 4) *
         defaultTimeSignature.numerator;
+
+    final ticksPerBar = ticksPerBarDouble.round();
+
+    // It should not be possible for ticksPerBar to be fractional.
+    // ticksPerQuarter must be divisible by every possible value of
+    // (denominator / 4). Denominator can be [1, 2, 4, 8, 16, 32]. Therefore,
+    // ticksPerQuarter must be divisible by [0.25, 0.5, 1, 2, 4, 8].
+    assert(ticksPerBar == ticksPerBarDouble);
+
     final lastContent = clips.values.fold<int>(
       ticksPerBar * barMultiple * minPaddingInBarMultiples,
-      (previousValue, clip) =>
-          max(previousValue, clip.offset + clip.getWidth(project)),
+      (previousValue, clip) => max(previousValue, clip.offset + clip.width),
     );
 
     return (max(lastContent, 1) / (ticksPerBar * barMultiple)).ceil() *
@@ -87,5 +96,15 @@ abstract class _ArrangementModel with Store, AnthemModelBase {
   }
 
   @computed
-  int get width => getWidth();
+  int get width {
+    // Observing this operation is incredibly expensive for some reason, so we
+    // prevent detailed observation and just observe the whole thing.
+
+    clips.observeAllChanges();
+
+    return blockObservation(
+      modelItems: [clips],
+      block: () => getWidth(),
+    );
+  }
 }

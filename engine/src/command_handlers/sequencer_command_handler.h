@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,24 +19,6 @@
 
 #pragma once
 
-#include "generated/lib/model/song.h"
+#include "messages/messages.h"
 
-class Song : public SongModelBase {
-public:
-  Song(const SongModelImpl& _impl) : SongModelBase(_impl) {}
-  ~Song() {}
-
-  Song(const Song&) = delete;
-  Song& operator=(const Song&) = delete;
-  
-  Song(Song&&) noexcept = default;
-  Song& operator=(Song&&) noexcept = default;
-
-  void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override {
-    SongModelBase::initialize(self, parent);
-  }
-
-  // void handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {
-  //   SongModelBase::handleModelUpdate(request, fieldAccessIndex);
-  // }
-};
+std::optional<Response> handleSequencerCommand(Request& request);

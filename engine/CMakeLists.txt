@@ -107,12 +107,13 @@ endif()
 
 # Unit tests
 
-add_executable(AnthemTest test/test.cpp)
+add_executable(AnthemTest test/test.cpp ${ANTHEM_ENGINE_SOURCES})
 
 target_link_libraries(AnthemTest
   PRIVATE
     juce::juce_audio_basics
     juce::juce_audio_processors
+    juce::juce_audio_devices
     reflectcpp
 )
 

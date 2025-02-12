@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,6 +21,9 @@
 
 #include "console_logger.h"
 
+#include "modules/sequencer/compiler/sequence_compiler_test.h"
+#include "modules/sequencer/events/event_test.h"
+#include "modules/sequencer/runtime/runtime_sequence_store_test.h"
 #include "modules/util/arena_allocator_test.h"
 
 int main(int argc, char** argv) {
@@ -42,7 +45,8 @@ int main(int argc, char** argv) {
 
   juce::Logger::writeToLog("\n\n");
   if (failureCount > 0) {
-    juce::Logger::writeToLog(juce::String(failureCount) + " tests failed.");
+    std::cerr << failureCount << " tests failed." << std::endl;
+    return 1;
   } else {
     juce::Logger::writeToLog("All tests passed.");
   }

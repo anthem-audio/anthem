@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade, Budislav Stepanov
+  Copyright (C) 2021 - 2025 Joshua Wade, Budislav Stepanov
 
   This file is part of Anthem.
 
@@ -57,6 +57,9 @@ class _Control {
   );
   Color active = const Color(0xFF25C29D);
   Color border = const Color(0xFF293136);
+
+  // Not from the original theme
+  Color background = const Color.fromARGB(255, 46, 53, 58);
 }
 
 const _textMain = Color(0xFF9DB9CC);

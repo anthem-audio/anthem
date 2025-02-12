@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -69,11 +69,11 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
     TreeViewItemModel getArrangementsTree() => TreeViewItemModel(
           key: 'projectArrangementsFolder',
           label: 'Arrangements',
-          children: project.song.arrangementOrder
+          children: project.sequence.arrangementOrder
               .map(
                 (id) => TreeViewItemModel(
                   key: 'arrangement-$id',
-                  label: project.song.arrangements[id]!.name,
+                  label: project.sequence.arrangements[id]!.name,
                   onClick: () => projectController.setActiveDetailView(
                     true,
                     ArrangementDetailViewKind(id),
@@ -86,18 +86,18 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
     TreeViewItemModel getPatternsTree() => TreeViewItemModel(
           key: 'projectPatternsFolder',
           label: 'Patterns',
-          children: project.song.patternOrder
+          children: project.sequence.patternOrder
               .map(
                 (patternID) => TreeViewItemModel(
                   key: 'pattern-$patternID',
-                  label: project.song.patterns[patternID]!.name,
+                  label: project.sequence.patterns[patternID]!.name,
                   onClick: () => projectController.setActiveDetailView(
                     true,
                     PatternDetailViewKind(patternID),
                   ),
                   children: [
                     getMarkersItem(
-                      pattern: project.song.patterns[patternID],
+                      pattern: project.sequence.patterns[patternID],
                       onClick: (changeID) {
                         projectController.setActiveDetailView(
                           true,
@@ -143,11 +143,9 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
               ),
             ),
             const SizedBox(height: 4),
-            SizedBox(
-              height: 24,
-              child: TextBox(
-                controller: searchBoxController,
-              ),
+            TextBox(
+              height: 26,
+              controller: searchBoxController,
             ),
             const SizedBox(height: 4),
             Expanded(

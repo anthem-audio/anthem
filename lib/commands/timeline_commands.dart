@@ -34,7 +34,7 @@ void _addTimeSignatureChangeToPattern({
   required Id patternID,
   required TimeSignatureChangeModel change,
 }) {
-  final pattern = project.song.patterns[patternID]!;
+  final pattern = project.sequence.patterns[patternID]!;
   pattern.timeSignatureChanges.add(change);
   _sortTimeSignatureChanges(pattern.timeSignatureChanges);
 }
@@ -44,7 +44,7 @@ void _removeTimeSignatureChangeFromPattern({
   required Id patternID,
   required Id changeID,
 }) {
-  final pattern = project.song.patterns[patternID]!;
+  final pattern = project.sequence.patterns[patternID]!;
   final change = pattern.timeSignatureChanges
       .firstWhere((change) => change.id == changeID);
   pattern.timeSignatureChanges.remove(change);
@@ -113,7 +113,7 @@ class RemoveTimeSignatureChangeCommand extends Command {
     required Id changeID,
   }) {
     if (timelineKind == TimelineKind.pattern) {
-      change = project.song.patterns[patternID]!.timeSignatureChanges
+      change = project.sequence.patterns[patternID]!.timeSignatureChanges
           .firstWhere((change) => change.id == changeID);
     } else {
       throw Exception(
@@ -171,7 +171,7 @@ class MoveTimeSignatureChangeCommand extends Command {
     Time? oldOffset,
     required this.newOffset,
   }) {
-    changeList = project.song.patterns[patternID]!.timeSignatureChanges;
+    changeList = project.sequence.patterns[patternID]!.timeSignatureChanges;
     change = changeList.firstWhere((change) => change.id == changeID);
     this.oldOffset = oldOffset ?? change.offset;
   }
@@ -221,7 +221,7 @@ class SetTimeSignatureNumeratorCommand extends Command {
           'Arguments should specify a pattern ID or arrangement ID, but neither was specified.');
     }
 
-    change = project.song.patterns[patternID]!.timeSignatureChanges
+    change = project.sequence.patterns[patternID]!.timeSignatureChanges
         .firstWhere((change) => change.id == changeID);
 
     oldNumerator = change.timeSignature.numerator;
@@ -262,7 +262,7 @@ class SetTimeSignatureDenominatorCommand extends Command {
           'Arguments should specify a pattern ID or arrangement ID, but neither was specified.');
     }
 
-    change = project.song.patterns[patternID]!.timeSignatureChanges
+    change = project.sequence.patterns[patternID]!.timeSignatureChanges
         .firstWhere((change) => change.id == changeID);
 
     oldDenominator = change.timeSignature.denominator;

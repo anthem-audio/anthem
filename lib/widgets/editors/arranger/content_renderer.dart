@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,6 +19,7 @@
 
 import 'dart:ui';
 
+import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
@@ -59,7 +60,7 @@ class ArrangerContentRenderer extends StatelessObserverWidget {
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     final arrangement =
-        project.song.arrangements[project.song.activeArrangementID];
+        project.sequence.arrangements[project.sequence.activeArrangementID];
 
     if (arrangement == null) return const SizedBox();
 
@@ -119,13 +120,22 @@ class ArrangerContentPainter extends CustomPainterObserver {
 
   @override
   void observablePaint(Canvas canvas, Size size) {
+    arrangement.clips.observeAllChanges();
+
+    blockObservation(
+      modelItems: [arrangement.clips],
+      block: () => _paintClips(canvas, size),
+    );
+  }
+
+  void _paintClips(Canvas canvas, Size size) {
     viewModel.visibleClips.clear();
     viewModel.visibleResizeAreas.clear();
 
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     arrangement.clips.forEach((key, clip) {
-      final pattern = project.song.patterns[clip.patternID]!;
+      final pattern = project.sequence.patterns[clip.patternId]!;
 
       final x = timeToPixels(
         timeViewStart: timeViewStart,
@@ -137,7 +147,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
             timeViewStart: timeViewStart,
             timeViewEnd: timeViewEnd,
             viewPixelWidth: size.width,
-            time: clip.offset.toDouble() + clip.getWidth(project),
+            time: clip.offset.toDouble() + clip.width,
           ) -
           x +
           1;
@@ -145,18 +155,18 @@ class ArrangerContentPainter extends CustomPainterObserver {
       if (x > size.width || x + width < 0) return;
 
       final y = trackIndexToPos(
-            trackIndex: project.song.trackOrder
-                .indexWhere((trackID) => trackID == clip.trackID)
+            trackIndex: project.sequence.trackOrder
+                .indexWhere((trackID) => trackID == clip.trackId)
                 .toDouble(),
             baseTrackHeight: viewModel.baseTrackHeight,
-            trackOrder: project.song.trackOrder,
+            trackOrder: project.sequence.trackOrder,
             trackHeightModifiers: viewModel.trackHeightModifiers,
             scrollPosition: verticalScrollPosition,
           ) -
           1;
       final trackHeight = getTrackHeight(
             viewModel.baseTrackHeight,
-            viewModel.trackHeightModifiers[clip.trackID]!,
+            viewModel.trackHeightModifiers[clip.trackId]!,
           ) +
           1;
 

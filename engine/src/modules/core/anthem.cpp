@@ -19,6 +19,8 @@
 
 #include "modules/core/anthem.h"
 
+#include "modules/processing_graph/compiler/anthem_graph_compiler.h"
+
 std::unique_ptr<Anthem> Anthem::instance = nullptr;
 
 Anthem::Anthem() {
@@ -26,8 +28,8 @@ Anthem::Anthem() {
 }
 
 void Anthem::initialize() {
-  compiler = std::make_unique<AnthemGraphCompiler>();
   graphProcessor = std::make_unique<AnthemGraphProcessor>();
+  sequenceStore = std::make_unique<AnthemRuntimeSequenceStore>();
 }
 
 void Anthem::shutdown() {
@@ -54,7 +56,7 @@ void Anthem::startAudioCallback() {
 }
 
 void Anthem::compileProcessingGraph() {
-  auto result = compiler->compile();
+  auto result = AnthemGraphCompiler::compile();
 
   std::cout << "Processing steps: " << result->processContexts.size() << std::endl;
 

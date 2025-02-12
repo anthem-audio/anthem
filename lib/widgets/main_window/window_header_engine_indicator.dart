@@ -32,7 +32,7 @@ class EngineIndicator extends StatelessObserverWidget {
   @override
   Widget build(BuildContext context) {
     final store = AnthemStore.instance;
-    final activeProject = store.projects[store.activeProjectID];
+    final activeProject = store.projects[store.activeProjectId];
     final engineState = activeProject?.engineState;
 
     return Button(

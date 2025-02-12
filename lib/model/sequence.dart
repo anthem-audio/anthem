@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2024 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -29,27 +29,34 @@ import 'package:mobx/mobx.dart';
 
 import 'arrangement/arrangement.dart';
 
-part 'song.g.dart';
+part 'sequence.g.dart';
 
 @AnthemModel.syncedModel(
-  cppBehaviorClassName: 'Song',
-  cppBehaviorClassIncludePath: 'modules/core/song.h',
+  cppBehaviorClassName: 'Sequence',
+  cppBehaviorClassIncludePath: 'modules/core/sequence.h',
 )
-class SongModel extends _SongModel
-    with _$SongModel, _$SongModelAnthemModelMixin {
-  SongModel() : super();
-  SongModel.uninitialized() : super();
-  SongModel.create() : super.create();
+class SequenceModel extends _SequenceModel
+    with _$SequenceModel, _$SequenceModelAnthemModelMixin {
+  SequenceModel() : super();
+  SequenceModel.uninitialized() : super();
+  SequenceModel.create() : super.create();
 
-  factory SongModel.fromJson(Map<String, dynamic> json) =>
-      _$SongModelAnthemModelMixin.fromJson(json);
+  factory SequenceModel.fromJson(Map<String, dynamic> json) =>
+      _$SequenceModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _SongModel with Store, AnthemModelBase {
-  Id id = getId();
-
+abstract class _SequenceModel with Store, AnthemModelBase {
   @anthemObservable
   int ticksPerQuarter = 96;
+
+  /// The project BPM, stored as a fixed point number with 2 decimal places.
+  ///
+  /// For example, 120 BPM would be stored as 12000.
+  @anthemObservable
+  int beatsPerMinuteRaw = 12800;
+
+  /// Gets the BPM as a double.
+  double get beatsPerMinute => beatsPerMinuteRaw / 100;
 
   @anthemObservable
   AnthemObservableMap<Id, PatternModel> patterns = AnthemObservableMap();
@@ -78,12 +85,17 @@ abstract class _SongModel with Store, AnthemModelBase {
   @anthemObservable
   AnthemObservableList<Id> trackOrder = AnthemObservableList();
 
+  /// The global time signature for the project.
+  ///
+  /// "Default" is in reference to the fact that time signatures can be changed
+  /// midway through an arrangement or pattern. This is the time signature that
+  /// is used if there are no time signature changes.
   @anthemObservable
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
 
-  _SongModel() : super();
+  _SequenceModel() : super();
 
-  _SongModel.create() : super() {
+  _SequenceModel.create() : super() {
     final arrangement = ArrangementModel.create(
       name: 'Arrangement 1',
       id: getId(),

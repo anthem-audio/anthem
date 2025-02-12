@@ -34,10 +34,10 @@ abstract class _AppModel with Store {
   ObservableList<Id> projectOrder;
 
   @observable
-  Id activeProjectID;
+  Id activeProjectId;
 
   _AppModel()
       : projects = ObservableMap.of({}),
         projectOrder = ObservableList.of([]),
-        activeProjectID = '';
+        activeProjectId = '';
 }

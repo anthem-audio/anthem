@@ -37,7 +37,7 @@ class TrackHeader extends StatelessWidget {
     final project = Provider.of<ProjectModel>(context);
 
     // Allows Observer widgets to track changes from MobX
-    TrackModel getTrack() => project.song.tracks[trackID]!;
+    TrackModel getTrack() => project.sequence.tracks[trackID]!;
 
     return LayoutBuilder(builder: (context, constraints) {
       final height = constraints.maxHeight;

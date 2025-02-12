@@ -31,7 +31,7 @@ mixin _ClipNotesRenderCacheMixin on _PatternModel {
   late final Action incrementClipUpdateSignal;
 
   void updateClipNotesRenderCache() {
-    for (final generatorID in project.generatorList) {
+    for (final generatorID in project.generatorOrder) {
       clipNotesRenderCache[generatorID] ??= ClipNotesRenderCache(
         pattern: this as PatternModel,
         generatorID: generatorID,

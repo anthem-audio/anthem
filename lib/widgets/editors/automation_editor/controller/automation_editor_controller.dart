@@ -53,7 +53,8 @@ class _AutomationEditorController {
     // This autorun updates the animation targets for automation points based on
     // the current hovered item.
     pointAnimationAutorunDisposer = autorun((_) {
-      final pattern = project.song.patterns[project.song.activePatternID];
+      final pattern =
+          project.sequence.patterns[project.sequence.activePatternID];
       if (pattern == null) return;
 
       final automationLane =

@@ -65,7 +65,7 @@ abstract class _ArrangerController {
     // Set up an autorun to update the current cursor pattern if the selected
     // pattern changes
     patternCursorAutorunDispose = autorun((_) {
-      viewModel.cursorPattern = project.song.activePatternID;
+      viewModel.cursorPattern = project.sequence.activePatternID;
       viewModel.cursorTimeRange = null;
     });
   }
@@ -93,18 +93,18 @@ abstract class _ArrangerController {
 
   void deleteSelected() {
     if (viewModel.selectedClips.isEmpty ||
-        project.song.activeArrangementID == null) {
+        project.sequence.activeArrangementID == null) {
       return;
     }
 
     final arrangement =
-        project.song.arrangements[project.song.activeArrangementID]!;
+        project.sequence.arrangements[project.sequence.activeArrangementID]!;
 
     project.startJournalPage();
 
     for (final clipID in viewModel.selectedClips) {
       project.execute(DeleteClipCommand(
-        arrangementID: project.song.activeArrangementID!,
+        arrangementID: project.sequence.activeArrangementID!,
         clip: arrangement.clips[clipID]!,
       ));
     }
@@ -113,10 +113,10 @@ abstract class _ArrangerController {
   }
 
   void selectAll() {
-    if (project.song.activeArrangementID == null) return;
+    if (project.sequence.activeArrangementID == null) return;
 
     final arrangement =
-        project.song.arrangements[project.song.activeArrangementID]!;
+        project.sequence.arrangements[project.sequence.activeArrangementID]!;
 
     viewModel.selectedClips.clear();
 

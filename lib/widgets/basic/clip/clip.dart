@@ -31,9 +31,9 @@ import 'package:flutter_shaders/flutter_shaders.dart';
 import 'package:provider/provider.dart';
 
 class Clip extends StatelessWidget {
-  final Id? clipID;
-  final Id? patternID;
-  final Id? arrangementID;
+  final Id? clipId;
+  final Id? patternId;
+  final Id? arrangementId;
   final double ticksPerPixel;
   final bool selected;
   final bool hasResizeHandles;
@@ -42,32 +42,32 @@ class Clip extends StatelessWidget {
   /// Creates a Clip widget tied to a ClipModel
   const Clip({
     super.key,
-    required this.clipID,
-    required this.arrangementID,
+    required this.clipId,
+    required this.arrangementId,
     required this.ticksPerPixel,
     this.selected = false,
     this.hasResizeHandles = true,
     this.pressed = false,
-  }) : patternID = null;
+  }) : patternId = null;
 
   /// Creates a Clip widget tied to a PatternModel
   const Clip.fromPattern({
     super.key,
-    required this.patternID,
+    required this.patternId,
     required this.ticksPerPixel,
     this.hasResizeHandles = false,
     this.pressed = false,
   })  : selected = false,
-        clipID = null,
-        arrangementID = null;
+        clipId = null,
+        arrangementId = null;
 
   @override
   Widget build(BuildContext context) {
     final projectModel = Provider.of<ProjectModel>(context);
     final clipModel =
-        projectModel.song.arrangements[arrangementID]?.clips[clipID];
+        projectModel.sequence.arrangements[arrangementId]?.clips[clipId];
     final patternModel =
-        projectModel.song.patterns[clipModel?.patternID ?? patternID!]!;
+        projectModel.sequence.patterns[clipModel?.patternId ?? patternId!]!;
 
     return ShaderBuilder(
       assetKey: 'assets/shaders/automation_curve.frag',

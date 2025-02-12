@@ -148,8 +148,8 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
       setState(() {});
     });
 
-    final activePatternID = project.song.activePatternID;
-    final pattern = project.song.patterns[activePatternID];
+    final activePatternID = project.sequence.activePatternID;
+    final pattern = project.sequence.patterns[activePatternID];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -161,10 +161,11 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
             handleEnd: viewModel.timeView.end,
             scrollRegionStart: 0,
             scrollRegionEnd: pattern?.lastContent.toDouble() ??
-                (project.song.ticksPerQuarter * 4 * noContentBars).toDouble(),
+                (project.sequence.ticksPerQuarter * 4 * noContentBars)
+                    .toDouble(),
             canScrollPastEnd: true,
             disableAtFullSize: false,
-            minHandleSize: project.song.ticksPerQuarter * 4,
+            minHandleSize: project.sequence.ticksPerQuarter * 4,
             onChange: (event) {
               viewModel.timeView.start = event.handleStart;
               viewModel.timeView.end = event.handleEnd;

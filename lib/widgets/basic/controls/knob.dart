@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -143,7 +143,7 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
           if (widget.onValueChanged == null) return;
 
           final rawPixelChange = e.delta.dy;
-          final valueChange = rawPixelChange / 100;
+          final valueChange = rawPixelChange / 300;
 
           final newValueRaw =
               (getRawValue(lastValue) + valueChange).clamp(0.0, 1.0);

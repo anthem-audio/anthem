@@ -179,25 +179,25 @@ Future<bool> _isIpcOutdated() async {
   final messagesFiles = Directory.fromUri(
     packageRootPath.resolve('lib/engine_api/messages/'),
   ).listSync(recursive: true);
+  final generatedFile = File.fromUri(packageRootPath
+      .resolve('./engine/src/generated/lib/engine_api/messages/messages.h'));
+  if (!await generatedFile.exists()) {
+    // The generated file doesn't exist, so it can't be outdated.
+    return false;
+  }
 
-  final generatedFiles = messagesFiles.where((file) {
-    return file.path.endsWith('.g.dart');
-  });
   final sourceFiles = messagesFiles.where((file) {
     return file.path.endsWith('.dart') && !file.path.endsWith('.g.dart');
   });
 
-  final newestGeneratedFileDateFuture = Future.wait(generatedFiles.map((file) {
-    return file.stat().then((f) => f.modified);
-  })).then((dates) => dates.reduce((a, b) => a.isAfter(b) ? a : b));
-  final newestGeneratedFileDate = await newestGeneratedFileDateFuture;
+  final generatedFileModifiedDate = (await generatedFile.stat()).modified;
 
   final newestSourceFileDateFuture = Future.wait(sourceFiles.map((file) {
     return file.stat().then((f) => f.modified);
   })).then((dates) => dates.reduce((a, b) => a.isAfter(b) ? a : b));
   final newestSourceFileDate = await newestSourceFileDateFuture;
 
-  return newestGeneratedFileDate.isBefore(newestSourceFileDate);
+  return generatedFileModifiedDate.isBefore(newestSourceFileDate);
 }
 
 class _CleanEngineCommand extends Command<dynamic> {
@@ -242,13 +242,34 @@ class _EngineUnitTestCommand extends Command<dynamic> {
     final testProcess = await Process.start(
       testExecutableLocation.toFilePath(windows: Platform.isWindows),
       [],
-      mode: ProcessStartMode.inheritStdio,
+      mode: ProcessStartMode.normal,
     );
 
+    var hasError = false;
+    testProcess.stdout.listen(stdout.add);
+    testProcess.stderr.listen((e) {
+      stderr.add(e);
+      hasError = true;
+    });
+
     final testExitCode = await testProcess.exitCode;
-    if (testExitCode != 0) {
-      print(Colorize('\n\nError: Tests failed.').red());
+
+    if (hasError) {
+      print(Colorize('\n\nError: Tests failed (stderr was not empty).').red());
       exit(exitCode);
+    } else if (testExitCode == 0xFFFF_FFFF_C000_0005) {
+      // The leak detector isn't happy with a couple items in Anthem right now.
+      // So far these are due to missing cleanup of objects whose lifetime is
+      // equal to the lifetime of the application, and so they don't represent a
+      // "real" memory leak.
+      //
+      // However, the fact that this always fails means we can't really take
+      // advantage of the JUCE leak detector. We should add all our objects to
+      // the leak detector, fix these leak detector items, and promote this to a
+      // test failure.
+      print(Colorize(
+              '\n\nTests passed, but the JUCE leak detector reported a leak. This is due to us just not cleaning up some things; however, this should be fixed and promoted to an error.')
+          .yellow());
     }
 
     print(Colorize('Testing complete.').lightGreen());

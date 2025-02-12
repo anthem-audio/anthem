@@ -135,7 +135,8 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
   _SelectionBoxActionData? _selectionBoxActionData;
 
   void leftPointerDown(PianoRollPointerDownEvent event) {
-    final pattern = project.song.patterns[project.song.activePatternID]!;
+    final pattern =
+        project.sequence.patterns[project.sequence.activePatternID]!;
     final notes =
         pattern.notes[project.activeInstrumentID]?.nonObservableInner ??
             <NoteModel>[];
@@ -281,7 +282,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
             final newNote = NoteModel.fromNoteModel(note);
 
             project.execute(AddNoteCommand(
-              patternID: project.song.activePatternID!,
+              patternID: project.sequence.activePatternID!,
               generatorID: project.activeInstrumentID!,
               note: newNote,
             ));
@@ -303,7 +304,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
           final newNote = NoteModel.fromNoteModel(pressedNote);
 
           project.execute(AddNoteCommand(
-            patternID: project.song.activePatternID!,
+            patternID: project.sequence.activePatternID!,
             generatorID: project.activeInstrumentID!,
             note: newNote,
           ));
@@ -328,9 +329,9 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
     final divisionChanges = getDivisionChanges(
       viewWidthInPixels: event.pianoRollSize.width,
       snap: AutoSnap(),
-      defaultTimeSignature: project.song.defaultTimeSignature,
+      defaultTimeSignature: project.sequence.defaultTimeSignature,
       timeSignatureChanges: pattern.timeSignatureChanges,
-      ticksPerQuarter: project.song.ticksPerQuarter,
+      ticksPerQuarter: project.sequence.ticksPerQuarter,
       timeViewStart: viewModel.timeView.start,
       timeViewEnd: viewModel.timeView.end,
     );
@@ -362,7 +363,8 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
     project.startJournalPage();
 
-    final pattern = project.song.patterns[project.song.activePatternID]!;
+    final pattern =
+        project.sequence.patterns[project.sequence.activePatternID]!;
     final notes = pattern.notes[project.activeInstrumentID]!;
 
     _deleteActionData = _DeleteActionData(
@@ -391,7 +393,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
   }
 
   void pointerDown(PianoRollPointerDownEvent event) {
-    if (project.song.activePatternID == null ||
+    if (project.sequence.activePatternID == null ||
         project.activeInstrumentID == null) {
       return;
     }
@@ -419,7 +421,8 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         final key = event.key - _noteMoveActionData!.noteOffset;
         final offset = event.offset - _noteMoveActionData!.timeOffset;
 
-        final pattern = project.song.patterns[project.song.activePatternID]!;
+        final pattern =
+            project.sequence.patterns[project.sequence.activePatternID]!;
 
         final notes = isSelectionMove
             ? pattern.notes[project.activeInstrumentID]!
@@ -433,9 +436,9 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         final divisionChanges = getDivisionChanges(
           viewWidthInPixels: event.pianoRollSize.width,
           snap: AutoSnap(),
-          defaultTimeSignature: project.song.defaultTimeSignature,
+          defaultTimeSignature: project.sequence.defaultTimeSignature,
           timeSignatureChanges: pattern.timeSignatureChanges,
-          ticksPerQuarter: project.song.ticksPerQuarter,
+          ticksPerQuarter: project.sequence.ticksPerQuarter,
           timeViewStart: viewModel.timeView.start,
           timeViewEnd: viewModel.timeView.end,
         );
@@ -491,7 +494,8 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         break;
       case EventHandlingState.creatingAdditiveSelectionBox:
       case EventHandlingState.creatingSubtractiveSelectionBox:
-        final pattern = project.song.patterns[project.song.activePatternID]!;
+        final pattern =
+            project.sequence.patterns[project.sequence.activePatternID]!;
         final notes = pattern.notes[project.activeInstrumentID]!;
 
         final isSubtractive = _eventHandlingState ==
@@ -525,7 +529,8 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
         break;
       case EventHandlingState.deleting:
-        final pattern = project.song.patterns[project.song.activePatternID]!;
+        final pattern =
+            project.sequence.patterns[project.sequence.activePatternID]!;
         final notes = pattern.notes[project.activeInstrumentID]!;
 
         final thisPoint = Point(event.offset, event.key);
@@ -588,7 +593,8 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         break;
       case EventHandlingState.resizingSingleNote:
       case EventHandlingState.resizingSelection:
-        final pattern = project.song.patterns[project.song.activePatternID]!;
+        final pattern =
+            project.sequence.patterns[project.sequence.activePatternID]!;
         final notes = pattern.notes[project.activeInstrumentID]!;
 
         var snappedOriginalTime =
@@ -598,9 +604,9 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         final divisionChanges = getDivisionChanges(
           viewWidthInPixels: event.pianoRollSize.width,
           snap: AutoSnap(),
-          defaultTimeSignature: project.song.defaultTimeSignature,
+          defaultTimeSignature: project.sequence.defaultTimeSignature,
           timeSignatureChanges: pattern.timeSignatureChanges,
-          ticksPerQuarter: project.song.ticksPerQuarter,
+          ticksPerQuarter: project.sequence.ticksPerQuarter,
           timeViewStart: viewModel.timeView.start,
           timeViewEnd: viewModel.timeView.end,
         );
@@ -677,7 +683,8 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
   void pointerUp(PianoRollPointerUpEvent event) {
     if (_eventHandlingState == EventHandlingState.movingSingleNote ||
         _eventHandlingState == EventHandlingState.movingSelection) {
-      final pattern = project.song.patterns[project.song.activePatternID]!;
+      final pattern =
+          project.sequence.patterns[project.sequence.activePatternID]!;
       final notes = pattern.notes[project.activeInstrumentID]!;
 
       final isSingleNote =
@@ -725,7 +732,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
       // collect these manually.
       for (final note in _deleteActionData!.notesDeleted) {
         final command = DeleteNoteCommand(
-          patternID: project.song.activePatternID!,
+          patternID: project.sequence.activePatternID!,
           generatorID: project.activeInstrumentID!,
           note: note,
         );
@@ -745,7 +752,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
       final commands = _noteResizeActionData!.startLengths.entries.map((entry) {
         return SetNoteAttributeCommand(
-          patternID: project.song.activePatternID!,
+          patternID: project.sequence.activePatternID!,
           generatorID: project.activeInstrumentID!,
           noteID: entry.key,
           attribute: NoteAttribute.length,
@@ -759,7 +766,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
       project.push(command);
     }
 
-    project.song.patterns[project.song.activePatternID]
+    project.sequence.patterns[project.sequence.activePatternID]
         ?.scheduleClipNotesRenderCacheUpdate();
 
     project.commitJournalPage();

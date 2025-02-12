@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -24,10 +24,15 @@ class ControlledTextBox extends StatefulWidget {
   final String text;
   final void Function(String newText)? onChange;
 
+  final double? width;
+  final double? height;
+
   const ControlledTextBox({
     super.key,
     required this.text,
     this.onChange,
+    this.width,
+    this.height,
   });
 
   @override
@@ -75,6 +80,8 @@ class ControlledTextBoxState extends State<ControlledTextBox> {
     return TextBox(
       controller: controller,
       focusNode: focusNode,
+      width: widget.width,
+      height: widget.height,
     );
   }
 }

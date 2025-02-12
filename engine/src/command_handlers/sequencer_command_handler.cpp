@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,20 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#pragma once
+#include "sequencer_command_handler.h"
 
-#include "anthem_processor_note_events.h"
-
-enum AnthemProcessorEventType {
-  NoteOn,
-  NoteOff
-};
-
-struct AnthemProcessorEvent {
-  AnthemProcessorEventType type;
-  
-  union {
-    NoteOnEvent noteOn;
-    NoteOffEvent noteOff;
-  };
-};
+std::optional<Response> handleSequencerCommand(Request& request) {
+  return std::nullopt;
+}

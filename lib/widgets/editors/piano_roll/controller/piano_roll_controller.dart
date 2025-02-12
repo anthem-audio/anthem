@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -61,12 +61,12 @@ class _PianoRollController {
 
   NoteModel _addNote({
     required int key,
-    required int velocity,
+    required double velocity,
     required int length,
     required int offset,
-    required int pan,
+    required double pan,
   }) {
-    if (project.song.activePatternID == null ||
+    if (project.sequence.activePatternID == null ||
         project.activeInstrumentID == null) {
       throw Exception('Active pattern and/or active generator are not set');
     }
@@ -80,7 +80,7 @@ class _PianoRollController {
     );
 
     project.execute(AddNoteCommand(
-      patternID: project.song.activePatternID!,
+      patternID: project.sequence.activePatternID!,
       generatorID: project.activeInstrumentID!,
       note: note,
     ));
@@ -95,19 +95,20 @@ class _PianoRollController {
     bool snap = true,
     required double pianoRollWidth,
   }) {
-    if (project.song.activePatternID == null) return;
+    if (project.sequence.activePatternID == null) return;
 
     var snappedOffset = offset;
 
     if (snap) {
-      final pattern = project.song.patterns[project.song.activePatternID]!;
+      final pattern =
+          project.sequence.patterns[project.sequence.activePatternID]!;
 
       final divisionChanges = getDivisionChanges(
         viewWidthInPixels: pianoRollWidth,
         snap: AutoSnap(),
-        defaultTimeSignature: project.song.defaultTimeSignature,
+        defaultTimeSignature: project.sequence.defaultTimeSignature,
         timeSignatureChanges: pattern.timeSignatureChanges,
-        ticksPerQuarter: project.song.ticksPerQuarter,
+        ticksPerQuarter: project.sequence.ticksPerQuarter,
         timeViewStart: viewModel.timeView.start,
         timeViewEnd: viewModel.timeView.end,
       );
@@ -122,7 +123,7 @@ class _PianoRollController {
     project.execute(
       AddTimeSignatureChangeCommand(
         timelineKind: TimelineKind.pattern,
-        patternID: project.song.activePatternID!,
+        patternID: project.sequence.activePatternID!,
         change: TimeSignatureChangeModel(
           offset: snappedOffset,
           timeSignature: timeSignature,
@@ -142,17 +143,19 @@ class _PianoRollController {
   /// Deletes notes in the selectedNotes set from the view model.
   void deleteSelected() {
     if (viewModel.selectedNotes.isEmpty ||
-        project.song.activePatternID == null ||
+        project.sequence.activePatternID == null ||
         project.activeInstrumentID == null) {
       return;
     }
 
-    final commands = project.song.patterns[project.song.activePatternID]!
+    final commands = project
+        .sequence
+        .patterns[project.sequence.activePatternID]!
         .notes[project.activeInstrumentID]!
         .where((note) => viewModel.selectedNotes.contains(note.id))
         .map((note) {
       return DeleteNoteCommand(
-        patternID: project.song.activePatternID!,
+        patternID: project.sequence.activePatternID!,
         generatorID: project.activeInstrumentID!,
         note: note,
       );
@@ -167,13 +170,13 @@ class _PianoRollController {
 
   /// Adds all notes to the selection set in the view model.
   void selectAll() {
-    if (project.song.activePatternID == null ||
+    if (project.sequence.activePatternID == null ||
         project.activeInstrumentID == null) {
       return;
     }
 
     viewModel.selectedNotes = ObservableSet.of(
-      project.song.patterns[project.song.activePatternID]!
+      project.sequence.patterns[project.sequence.activePatternID]!
           .notes[project.activeInstrumentID]!
           .map((note) => note.id)
           .toSet(),

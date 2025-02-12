@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,6 +22,7 @@
 #include <juce_core/juce_core.h>
 #include <optional>
 
+// A thread- and realtime-safe queue for storing items of type T
 template <typename T>
 class ThreadSafeQueue
 {

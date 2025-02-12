@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart';
 
 part 'project_view_model.g.dart';
@@ -35,10 +36,19 @@ abstract class _ProjectViewModel with Store {
   @observable
   String hintText = '';
 
-  // We should probably persist this between sessions
-  @observable
-  bool keyboardPianoEnabled = false;
-
   @observable
   EditorKind selectedEditor = EditorKind.detail;
+
+  // As of writing, MobX generates invalid codegen for the valid type here, which is:
+  // Widget Function(BuildContext context)?
+  @observable
+  dynamic topPanelOverlayContentBuilder;
+
+  void setTopPanelOverlay(Widget Function(BuildContext context)? overlay) {
+    topPanelOverlayContentBuilder = overlay;
+  }
+
+  void clearTopPanelOverlay() {
+    topPanelOverlayContentBuilder = null;
+  }
 }

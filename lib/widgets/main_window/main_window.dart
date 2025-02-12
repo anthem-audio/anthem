@@ -59,9 +59,9 @@ class _MainWindowState extends State<MainWindow> {
             child: Observer(builder: (context) {
               final tabs = store.projectOrder
                   .map<TabDef>(
-                    (projectID) => TabDef(
-                      id: projectID,
-                      title: store.projects[projectID]!.id,
+                    (projectId) => TabDef(
+                      id: projectId,
+                      title: store.projects[projectId]!.id,
                     ),
                   )
                   .toList();
@@ -69,13 +69,13 @@ class _MainWindowState extends State<MainWindow> {
               return Column(
                 children: [
                   WindowHeader(
-                    selectedTabId: store.activeProjectID,
+                    selectedTabId: store.activeProjectId,
                     tabs: tabs,
                   ),
                   Expanded(
                     child: TabContentSwitcher(
                       tabs: tabs,
-                      selectedTabId: store.activeProjectID,
+                      selectedTabId: store.activeProjectId,
                     ),
                   ),
                 ],

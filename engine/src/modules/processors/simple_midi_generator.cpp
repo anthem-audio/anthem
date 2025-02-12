@@ -20,7 +20,7 @@
 #include "simple_midi_generator.h"
 
 #include "modules/processing_graph/compiler/anthem_process_context.h"
-#include "modules/processing_graph/events/anthem_processor_event.h"
+#include "modules/sequencer/events/event.h"
 
 SimpleMidiGeneratorProcessor::SimpleMidiGeneratorProcessor(const SimpleMidiGeneratorProcessorModelImpl& _impl)
     : AnthemProcessor("SimpleMidiGenerator"), SimpleMidiGeneratorProcessorModelBase(_impl) {
@@ -43,10 +43,17 @@ void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int nu
     currentNote = 50;
     currentNoteId = 0;
     currentNoteDuration = 0;
-    midiOutBuffer->addEvent({
-      AnthemProcessorEventType::NoteOn,
-      NoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f, currentNoteId)
-    });
+    midiOutBuffer->addEvent(
+      AnthemLiveEvent {
+        .time = AnthemLiveTime {
+          .offset = 0
+        },
+        .event = AnthemEvent {
+          .type = AnthemEventType::NoteOn,
+          .noteOn = AnthemNoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f, currentNoteId)
+        }
+      }
+    );
 
     noteOn = true;
   }
@@ -63,10 +70,15 @@ void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int nu
     samplesLeft -= samplesToProcess;
 
     if (currentNoteDuration >= durationSamples) {
-      AnthemProcessorEvent noteOffEvent = {
-        AnthemProcessorEventType::NoteOff
+      AnthemLiveEvent noteOffEvent = AnthemLiveEvent {
+        .time = AnthemLiveTime {
+          .offset = 0
+        },
+        .event = AnthemEvent {
+          .type = AnthemEventType::NoteOff,
+          .noteOff = AnthemNoteOffEvent(currentNote, 0, 0.0f, currentNoteId)
+        }
       };
-      noteOffEvent.noteOff = NoteOffEvent(currentNote, 0, 0.0f, currentNoteId);
 
       midiOutBuffer->addEvent(noteOffEvent);
 
@@ -79,10 +91,15 @@ void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int nu
         currentNote = 50;
       }
 
-      AnthemProcessorEvent noteOnEvent = {
-        AnthemProcessorEventType::NoteOn
+      AnthemLiveEvent noteOnEvent = AnthemLiveEvent {
+        .time = AnthemLiveTime {
+          .offset = 0
+        },
+        .event = AnthemEvent {
+          .type = AnthemEventType::NoteOn,
+          .noteOn = AnthemNoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f, currentNoteId)
+        }
       };
-      noteOnEvent.noteOn = NoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f, currentNoteId);
 
       midiOutBuffer->addEvent(noteOnEvent);
     }

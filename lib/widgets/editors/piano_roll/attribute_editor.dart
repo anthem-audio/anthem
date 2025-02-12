@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -202,7 +202,8 @@ class PianoRollAttributePainter extends CustomPainterObserver {
       ..color = selectedNoteCircleColor.toColor();
     final noteCirclePaint = Paint()..color = noteCircleColor.toColor();
 
-    final activePattern = project.song.patterns[project.song.activePatternID];
+    final activePattern =
+        project.sequence.patterns[project.sequence.activePatternID];
     final selectedAttribute = viewModel.activeNoteAttribute;
 
     int bottom;
@@ -225,9 +226,9 @@ class PianoRollAttributePainter extends CustomPainterObserver {
     paintTimeGrid(
       canvas: canvas,
       size: size,
-      ticksPerQuarter: project.song.ticksPerQuarter,
+      ticksPerQuarter: project.sequence.ticksPerQuarter,
       snap: AutoSnap(),
-      baseTimeSignature: project.song.defaultTimeSignature,
+      baseTimeSignature: project.sequence.defaultTimeSignature,
       timeSignatureChanges: activePattern?.timeSignatureChanges ?? [],
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
@@ -251,10 +252,10 @@ class PianoRollAttributePainter extends CustomPainterObserver {
 
       switch (selectedAttribute) {
         case ActiveNoteAttribute.velocity:
-          attribute = note.velocity.toDouble();
+          attribute = note.velocity;
           break;
         case ActiveNoteAttribute.pan:
-          attribute = note.pan.toDouble();
+          attribute = note.pan;
           break;
       }
 
