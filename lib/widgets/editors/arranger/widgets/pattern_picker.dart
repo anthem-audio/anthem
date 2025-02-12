@@ -128,7 +128,7 @@ class _PatternPickerState extends State<PatternPicker> {
                                       child: SizedBox(
                                         height: patternHeight,
                                         child: Clip.fromPattern(
-                                          patternID: patternID,
+                                          patternId: patternID,
                                           ticksPerPixel: 5,
                                         ),
                                       ),

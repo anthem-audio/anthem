@@ -135,7 +135,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     arrangement.clips.forEach((key, clip) {
-      final pattern = project.sequence.patterns[clip.patternID]!;
+      final pattern = project.sequence.patterns[clip.patternId]!;
 
       final x = timeToPixels(
         timeViewStart: timeViewStart,
@@ -156,7 +156,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
 
       final y = trackIndexToPos(
             trackIndex: project.sequence.trackOrder
-                .indexWhere((trackID) => trackID == clip.trackID)
+                .indexWhere((trackID) => trackID == clip.trackId)
                 .toDouble(),
             baseTrackHeight: viewModel.baseTrackHeight,
             trackOrder: project.sequence.trackOrder,
@@ -166,7 +166,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
           1;
       final trackHeight = getTrackHeight(
             viewModel.baseTrackHeight,
-            viewModel.trackHeightModifiers[clip.trackID]!,
+            viewModel.trackHeightModifiers[clip.trackId]!,
           ) +
           1;
 
