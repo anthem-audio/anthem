@@ -22,17 +22,40 @@
 
 #include <algorithm>
 
-void AnthemSequenceCompiler::getChannelEventsForArrangement(std::string channelId, std::string arrangementId, std::vector<AnthemSequenceEvent>& events) {}
-
-void AnthemSequenceCompiler::getChannelEventsForPattern(
+void AnthemSequenceCompiler::getChannelNoteEventsForArrangement(
   std::string channelId,
-  std::string patternId,
-  std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> range,
-  std::optional<AnthemSequenceTime> offset,
+  std::string arrangementId,
   std::vector<AnthemSequenceEvent>& events
 ) {
-  getChannelNoteEventsForPattern(channelId, patternId, range, offset, events);
-  sortEventList(events);
+  auto& anthem = Anthem::getInstance();
+
+  auto arrangementIter = anthem.project->sequence()->arrangements()->find(arrangementId);
+  if (arrangementIter == anthem.project->sequence()->arrangements()->end()) {
+    return;
+  }
+
+  auto& arrangement = arrangementIter->second;
+
+  auto& clips = arrangement->clips();
+
+  for (auto& clipPair : *clips) {
+    auto clip = clipPair.second;
+
+    getChannelNoteEventsForPattern(
+      channelId,
+      clip->patternId(),
+      clip->timeView().has_value()
+          ? std::make_optional(
+              std::make_tuple(
+                AnthemSequenceTime { .ticks = clip->timeView().value()->start(), .fraction = 0. },
+                AnthemSequenceTime { .ticks = clip->timeView().value()->end(), .fraction = 0. }
+              )
+            )
+          : std::nullopt,
+      AnthemSequenceTime { .ticks = clip->offset(), .fraction = 0. },
+      events
+    );
+  }
 }
 
 void AnthemSequenceCompiler::getChannelNoteEventsForPattern(

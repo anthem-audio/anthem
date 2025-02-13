@@ -56,6 +56,7 @@ public:
     testClampTimeToRangeFractional();
     testClampStartAndEndToRange();
     testPatternNoteCompiler();
+    testArrangementNoteCompiler();
   }
 
   void testEventSorting() {
@@ -405,6 +406,131 @@ public:
     );
 
     expect(events.size() == 0, "Case 5: No events");
+    
+    events.clear();
+
+    // Clean up
+    anthem.project.reset();
+  }
+
+  void testArrangementNoteCompiler() {
+    beginTest("Test compiling arrangement notes for a channel");
+
+    rfl::Result<std::shared_ptr<Project>> projectResult = rfl::json::read<std::shared_ptr<Project>>(TestConstants::getEmptyProjectJson());
+
+    expect(!projectResult.error().has_value(), "Project is valid");
+
+    auto& anthem = Anthem::getInstance();
+    anthem.project = std::move(projectResult.value());
+
+    rfl::Result<std::shared_ptr<PatternModel>> patternResult = rfl::json::read<std::shared_ptr<PatternModel>>(
+      TestConstants::getEmptyPatternJson("patternId1")
+    );
+
+    expect(!patternResult.error().has_value(), "Pattern is valid");
+
+    anthem.project->sequence()->patterns()->insert_or_assign("patternId1", patternResult.value());
+
+    auto& pattern = anthem.project->sequence()->patterns()->at("patternId1");
+
+    // notes() is a map of channel ID to a vector of notes
+    pattern->notes()->insert_or_assign(
+      "channelId1",
+      std::make_shared<AnthemModelVector<std::shared_ptr<NoteModel>>>()
+    );
+
+    pattern->notes()->at("channelId1")->emplace_back(std::make_shared<NoteModel>(NoteModelImpl {
+      .id = "noteId1",
+      .key = 60,
+      .velocity = 0.5,
+      .length = 10,
+      .offset = 10,
+      .pan = 0.0
+    }));
+
+    anthem.project->sequence()->arrangements()->insert_or_assign(
+      "arrangementId1",
+      std::make_shared<ArrangementModel>(ArrangementModelImpl {
+        .id = "arrangementId1",
+        .name = "Arrangement 1",
+        .clips = std::make_shared<AnthemModelUnorderedMap<std::string, std::shared_ptr<ClipModel>>>()
+      })
+    );
+
+    auto& arrangement = anthem.project->sequence()->arrangements()->at("arrangementId1");
+
+    arrangement->clips()->insert_or_assign(
+      "clipId1",
+      std::make_shared<ClipModel>(ClipModelImpl {
+        .id = "clipId1",
+        .timeView = std::nullopt,
+        .patternId = "patternId1",
+        .trackId = "trackId1",
+        .offset = 0
+      })
+    );
+
+    arrangement->clips()->insert_or_assign(
+      "clipId2",
+      std::make_shared<ClipModel>(ClipModelImpl {
+        .id = "clipId2",
+        .timeView = std::make_shared<TimeViewModel>(TimeViewModelImpl {
+          .start = 0,
+          .end = 15
+        }),
+        .patternId = "patternId1",
+        .trackId = "trackId1",
+        .offset = 50
+      })
+    );
+
+    // We're mimicing the behavior of the generated model sync code here, so we
+    // need to initialize models that we create.
+    //
+    // This is a cheap way to make sure that the whole model is initialized,
+    // since this is recursive. However, doing this repeatedly in the test
+    // meaans we are going to double-initialize the model. Maybe this is fine,
+    // but it's not what would happen in the application, so if something needs
+    // to rely on only initializing once, then we'll need to change this.
+    anthem.project->initialize(
+      anthem.project,
+      nullptr
+    );
+
+    std::vector<AnthemSequenceEvent> events;
+
+    AnthemSequenceCompiler::getChannelNoteEventsForArrangement(
+      "channelId1",
+      "arrangementId1",
+      events
+    );
+
+    AnthemSequenceCompiler::sortEventList(events);
+
+    expect(events.size() == 4, "There are four events");
+
+    expect(events.at(0).time.ticks == 10, "Note on event ticks");
+    expect(events.at(0).event.type == AnthemEventType::NoteOn, "Note on event type");
+    expect(events.at(0).event.noteOn.pitch == 60, "Note on event key");
+    expect(fabs(events.at(0).event.noteOn.velocity - 0.5) < 0.001, "Note on event velocity");
+
+    expect(events.at(1).time.ticks == 20, "Note off event ticks");
+    expect(events.at(1).event.type == AnthemEventType::NoteOff, "Note off event type");
+    expect(events.at(1).event.noteOff.pitch == 60, "Note off event key");
+    expect(fabs(events.at(1).event.noteOff.velocity - 0.0) < 0.001, "Note off event velocity");
+
+    expect(events.at(2).time.ticks == 60, "Note on event ticks");
+    expect(events.at(2).event.type == AnthemEventType::NoteOn, "Note on event type");
+    expect(events.at(2).event.noteOn.pitch == 60, "Note on event key");
+    expect(fabs(events.at(2).event.noteOn.velocity - 0.5) < 0.001, "Note on event velocity");
+
+    expect(events.at(3).time.ticks == 65, "Note off event ticks");
+    expect(events.at(3).event.type == AnthemEventType::NoteOff, "Note off event type");
+    expect(events.at(3).event.noteOff.pitch == 60, "Note off event key");
+    expect(fabs(events.at(3).event.noteOff.velocity - 0.0) < 0.001, "Note off event velocity");
+
+    // Clean up
+    anthem.project.reset();
   }
 };
 
