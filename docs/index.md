@@ -25,14 +25,6 @@ Anthem is developed with cross-platform technologies, and is designed to run on 
 
 [Setup instructions for Linux](./setup_linux.md)
 
-### Tips for developing
-
-#### Quick reloading of engine executable
-
-In order to see changes when iterating on the engine, you will need to recompile it and load it into the UI. Ordinarily this would require stopping the UI, compiling the engine, then re-compiling the UI.
-
-However, there's a quicker way. By editing [engine_connector.dart](../lib/engine_api/engine_connector.dart), you can override the location where Anthem looks for the Engine executable. By hard-coding the `enginePathOverride` variable to the full path of the executable from your engine build, you can speed up the process. After overriding this variable locally, you can now simply stop the engine from within the UI (by clicking the button at the top-left of the screen with the Anthem icon), build the engine, then start the engine again by clicking the same button.
-
 ## Architecture
 
 Anthem has two main components, the UI and the engine, which live in separate processes. The UI process handles most of the logic, while the engine process wraps and controls Tracktion Engine based on commands from the UI. These processes communicate using an IPC channel, with messages encoded using JSON.
