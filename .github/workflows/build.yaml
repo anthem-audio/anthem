@@ -28,7 +28,7 @@ jobs:
 
       # Run code generation
       - name: Run code generation
-        run: dart run anthem:cli codegen generate
+        run: dart run anthem:cli codegen generate --explicit-format-for-ci
 
       # Check for formatting in Flutter project
       - name: Format Flutter code
@@ -95,7 +95,7 @@ jobs:
 
       # Run code generation
       - name: Run code generation
-        run: dart run anthem:cli codegen generate
+        run: dart run anthem:cli codegen generate --explicit-format-for-ci
 
       # Check for formatting in Flutter project
       - name: Format Flutter code

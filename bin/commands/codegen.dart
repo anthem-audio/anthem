@@ -188,6 +188,11 @@ class _CodegenGenerateCommand extends Command<dynamic> {
       'root-only',
       help: 'Only generate code in the root package.',
     );
+    argParser.addFlag(
+      'explicit-format-for-ci',
+      help:
+          'Explicitly formats generated code to work around code generation still applying the old-style formatter.',
+    );
   }
 
   @override
@@ -243,6 +248,38 @@ class _CodegenGenerateCommand extends Command<dynamic> {
       if (exitCode != 0) {
         print(Colorize('\n\nError: Code generation failed.').red());
         exit(exitCode);
+      }
+    }
+
+    // The new Dart 3.7 formatter isn't applied to code generated files for some
+    // resaon, so we have to apply it manually.
+    //
+    // This should be removed later, as this will probably be fixed soon after
+    // the time of writing.
+    if (argResults!['explicit-format-for-ci']) {
+      print('Formatting generated code...');
+      final files = Directory.fromUri(
+        packageRootPath,
+      ).listSync(recursive: true).where((f) {
+        return f.path.endsWith('.g.dart');
+      });
+
+      for (final file in files) {
+        final process = await Process.start(
+          'dart',
+          ['format', file.path],
+          workingDirectory: packageRootPath.toFilePath(
+            windows: Platform.isWindows,
+          ),
+          mode: ProcessStartMode.inheritStdio,
+        );
+
+        final exitCode = await process.exitCode;
+
+        if (exitCode != 0) {
+          print(Colorize('\n\nError: Code formatting failed.').red());
+          exit(exitCode);
+        }
       }
     }
 
