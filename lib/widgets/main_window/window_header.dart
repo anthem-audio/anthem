@@ -62,11 +62,7 @@ class _WindowHeaderState extends State<WindowHeader> {
               title: tab.title,
             ),
           ),
-          Expanded(
-            child: MoveWindow(
-              child: _WindowHandleAndControls(),
-            ),
-          ),
+          Expanded(child: MoveWindow(child: _WindowHandleAndControls())),
         ],
       ),
     );
@@ -90,10 +86,7 @@ class _WindowHandleAndControls extends StatelessWidget {
             bottomRight: Radius.circular(1),
           ),
         ),
-        child: Align(
-          alignment: Alignment.centerRight,
-          child: _WindowButtons(),
-        ),
+        child: Align(alignment: Alignment.centerRight, child: _WindowButtons()),
       ),
     );
   }
@@ -159,11 +152,7 @@ class _Tab extends StatefulWidget {
   final Id id;
   final String title;
 
-  const _Tab({
-    required this.isSelected,
-    required this.id,
-    required this.title,
-  });
+  const _Tab({required this.isSelected, required this.id, required this.title});
 
   @override
   State<_Tab> createState() => _TabState();
@@ -184,30 +173,26 @@ class _TabState extends State<_Tab> {
         closePressed = false;
       },
       child: Padding(
-        padding: EdgeInsets.only(
-          right: 1,
-          bottom: widget.isSelected ? 0 : 1,
-        ),
+        padding: EdgeInsets.only(right: 1, bottom: widget.isSelected ? 0 : 1),
         child: Container(
           width: 115,
           decoration: BoxDecoration(
             color: widget.isSelected ? Theme.panel.accent : Theme.panel.main,
-            borderRadius: widget.isSelected
-                ? const BorderRadius.only(
-                    topLeft: Radius.circular(2),
-                    topRight: Radius.circular(2),
-                  )
-                : const BorderRadius.only(
-                    topLeft: Radius.circular(1),
-                    topRight: Radius.circular(1),
-                    bottomRight: Radius.circular(1),
-                    bottomLeft: Radius.circular(1),
-                  ),
+            borderRadius:
+                widget.isSelected
+                    ? const BorderRadius.only(
+                      topLeft: Radius.circular(2),
+                      topRight: Radius.circular(2),
+                    )
+                    : const BorderRadius.only(
+                      topLeft: Radius.circular(1),
+                      topRight: Radius.circular(1),
+                      bottomRight: Radius.circular(1),
+                      bottomLeft: Radius.circular(1),
+                    ),
           ),
           child: Padding(
-            padding: EdgeInsets.only(
-              bottom: widget.isSelected ? 1 : 0,
-            ),
+            padding: EdgeInsets.only(bottom: widget.isSelected ? 1 : 0),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [

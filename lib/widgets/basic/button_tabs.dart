@@ -69,13 +69,16 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
         }
 
         var rowWidth = tabWidths.fold<double>(
-            0, (previousValue, element) => previousValue + element);
+          0,
+          (previousValue, element) => previousValue + element,
+        );
 
         if (rowWidth < constraints.maxWidth && constraints.maxWidth.isFinite) {
           final correction = constraints.maxWidth - rowWidth;
-          tabWidths = tabWidths
-              .map((size) => size + correction / tabWidths.length)
-              .toList();
+          tabWidths =
+              tabWidths
+                  .map((size) => size + correction / tabWidths.length)
+                  .toList();
           rowWidth += correction;
         }
 
@@ -91,17 +94,23 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
           } else {
             final style = TextStyle(color: color, fontSize: 11);
             content = Center(child: Text(tab.text!, style: style));
-            tabWidths.add(8 +
-                measureText(text: tab.text!, textStyle: style, context: context)
-                    .width +
-                8);
+            tabWidths.add(
+              8 +
+                  measureText(
+                    text: tab.text!,
+                    textStyle: style,
+                    context: context,
+                  ).width +
+                  8,
+            );
           }
 
           rowChildren.add(content);
         }
 
         final selectedItemIndex = widget.tabs.indexWhere(
-            (element) => element.id == (widget.selected ?? selectedFallback!));
+          (element) => element.id == (widget.selected ?? selectedFallback!),
+        );
 
         // Includes one more item than the number of tabs
         final List<double> tabPixelPositions = [0];
@@ -118,13 +127,15 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
             borderRadius: BorderRadius.circular(4),
             child: Stack(
               fit: StackFit.passthrough,
-              children: <Widget>[
+              children:
+                  <Widget>[
                     Positioned.fill(
                       child: Container(
                         decoration: BoxDecoration(
                           border: Border.all(color: Theme.panel.border),
-                          borderRadius:
-                              const BorderRadius.all(Radius.circular(4)),
+                          borderRadius: const BorderRadius.all(
+                            Radius.circular(4),
+                          ),
                         ),
                       ),
                     ),
@@ -157,8 +168,10 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
                       ),
                     ),
                   ] +
-                  List.generate(widget.tabs.length, (index) => index)
-                      .map<Widget>((index) {
+                  List.generate(
+                    widget.tabs.length,
+                    (index) => index,
+                  ).map<Widget>((index) {
                     final tab = widget.tabs[index];
 
                     void onPointerUp(PointerEvent e) {

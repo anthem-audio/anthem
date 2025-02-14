@@ -25,6 +25,6 @@ class EnumInfo {
   final List<String> values;
 
   EnumInfo(EnumElement element)
-      : name = element.name,
-        values = element.fields.map((field) => field.name).toList();
+    : name = element.name,
+      values = element.fields.map((field) => field.name).toList();
 }

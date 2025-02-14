@@ -47,25 +47,25 @@ class NodeModel extends _NodeModel
     AnthemObservableList<NodePortModel>? midiOutputPorts,
     AnthemObservableList<NodePortModel>? controlOutputPorts,
   }) : super(
-          audioInputPorts: audioInputPorts ?? AnthemObservableList(),
-          midiInputPorts: midiInputPorts ?? AnthemObservableList(),
-          controlInputPorts: controlInputPorts ?? AnthemObservableList(),
-          audioOutputPorts: audioOutputPorts ?? AnthemObservableList(),
-          midiOutputPorts: midiOutputPorts ?? AnthemObservableList(),
-          controlOutputPorts: controlOutputPorts ?? AnthemObservableList(),
-        );
+         audioInputPorts: audioInputPorts ?? AnthemObservableList(),
+         midiInputPorts: midiInputPorts ?? AnthemObservableList(),
+         controlInputPorts: controlInputPorts ?? AnthemObservableList(),
+         audioOutputPorts: audioOutputPorts ?? AnthemObservableList(),
+         midiOutputPorts: midiOutputPorts ?? AnthemObservableList(),
+         controlOutputPorts: controlOutputPorts ?? AnthemObservableList(),
+       );
 
   NodeModel.uninitialized()
-      : super(
-          id: '',
-          audioInputPorts: AnthemObservableList(),
-          midiInputPorts: AnthemObservableList(),
-          controlInputPorts: AnthemObservableList(),
-          audioOutputPorts: AnthemObservableList(),
-          midiOutputPorts: AnthemObservableList(),
-          controlOutputPorts: AnthemObservableList(),
-          processor: null,
-        );
+    : super(
+        id: '',
+        audioInputPorts: AnthemObservableList(),
+        midiInputPorts: AnthemObservableList(),
+        controlInputPorts: AnthemObservableList(),
+        audioOutputPorts: AnthemObservableList(),
+        midiOutputPorts: AnthemObservableList(),
+        controlOutputPorts: AnthemObservableList(),
+        processor: null,
+      );
 
   factory NodeModel.fromJson(Map<String, dynamic> json) =>
       _$NodeModelAnthemModelMixin.fromJson(json);

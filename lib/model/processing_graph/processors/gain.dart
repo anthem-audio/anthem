@@ -35,9 +35,7 @@ part 'gain.g.dart';
 )
 class GainProcessorModel extends _GainProcessorModel
     with _$GainProcessorModel, _$GainProcessorModelAnthemModelMixin {
-  GainProcessorModel({
-    required super.nodeId,
-  });
+  GainProcessorModel({required super.nodeId});
 
   GainProcessorModel.uninitialized() : super(nodeId: '');
 
@@ -97,7 +95,5 @@ abstract class _GainProcessorModel with Store, AnthemModelBase {
 
   String nodeId;
 
-  _GainProcessorModel({
-    required this.nodeId,
-  });
+  _GainProcessorModel({required this.nodeId});
 }

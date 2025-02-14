@@ -80,7 +80,7 @@ String keyToString(int key) {
     'F',
     'F♯',
     'G',
-    'A♭'
+    'A♭',
   ];
   return notes[key % notes.length] + (key ~/ notes.length).toString();
 }

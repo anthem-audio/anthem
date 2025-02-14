@@ -37,15 +37,15 @@ enum GeneratorType { instrument, automation }
 class GeneratorModel extends _GeneratorModel
     with _$GeneratorModel, _$GeneratorModelAnthemModelMixin {
   GeneratorModel.uninitialized()
-      : super(
-          color: Colors.black,
-          id: '',
-          name: '',
-          generatorType: GeneratorType.instrument,
-          generatorNodeId: null,
-          gainNodeId: null,
-          midiGenNodeId: null,
-        );
+    : super(
+        color: Colors.black,
+        id: '',
+        name: '',
+        generatorType: GeneratorType.instrument,
+        generatorNodeId: null,
+        gainNodeId: null,
+        midiGenNodeId: null,
+      );
 
   GeneratorModel({
     required super.id,

@@ -31,8 +31,7 @@ enum AutomationCurveType { smooth, stairs, wave, hold }
 class AutomationPointModel extends _AutomationPointModel
     with _$AutomationPointModel, _$AutomationPointModelAnthemModelMixin {
   AutomationPointModel.uninitialized()
-      : super(
-            offset: 0, value: 0, tension: 0, curve: AutomationCurveType.smooth);
+    : super(offset: 0, value: 0, tension: 0, curve: AutomationCurveType.smooth);
 
   AutomationPointModel({
     required super.offset,

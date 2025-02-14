@@ -39,13 +39,13 @@ class NodeConnectionModel extends _NodeConnectionModel
   });
 
   NodeConnectionModel.uninitialized()
-      : super(
-          id: '',
-          sourceNodeId: '',
-          sourcePortId: 0,
-          destinationNodeId: '',
-          destinationPortId: 0,
-        );
+    : super(
+        id: '',
+        sourceNodeId: '',
+        sourcePortId: 0,
+        destinationNodeId: '',
+        destinationPortId: 0,
+      );
 
   factory NodeConnectionModel.fromJson(Map<String, dynamic> json) =>
       _$NodeConnectionModelAnthemModelMixin.fromJson(json);

@@ -67,9 +67,7 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
   double accumulatorX = 0;
   double accumulatorY = 0;
 
-  MouseCursorManager manager = MouseCursorManager(
-    SystemMouseCursors.basic,
-  );
+  MouseCursorManager manager = MouseCursorManager(SystemMouseCursors.basic);
 
   void onPointerDown(PointerEvent e) {
     final mediaQuery = MediaQuery.of(context);
@@ -81,8 +79,10 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
       appWindow.rect.bottom / devicePixelRatio,
     );
 
-    final mousePos =
-        Offset(e.position.dx + windowRect.left, e.position.dy + windowRect.top);
+    final mousePos = Offset(
+      e.position.dx + windowRect.left,
+      e.position.dy + windowRect.top,
+    );
     originalMouseX = mousePos.dx;
     originalMouseY = mousePos.dy;
     mostRecentMouseX = mousePos.dx;
@@ -117,8 +117,10 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
 
   void onPointerSignal(PointerEvent e) {
     if (e is PointerScrollEvent) {
-      final keyboardModifiers =
-          Provider.of<KeyboardModifiers>(context, listen: false);
+      final keyboardModifiers = Provider.of<KeyboardModifiers>(
+        context,
+        listen: false,
+      );
 
       final dxRaw = -e.scrollDelta.dx * 0.35;
       final dyRaw = -e.scrollDelta.dy * 0.35;
@@ -162,9 +164,6 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
       child: listener,
     );
 
-    return MouseRegion(
-      cursor: widget.cursor,
-      child: lock,
-    );
+    return MouseRegion(cursor: widget.cursor, child: lock);
   }
 }

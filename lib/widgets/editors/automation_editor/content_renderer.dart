@@ -78,17 +78,18 @@ class _AutomationEditorContentRendererState
     return ShaderBuilder(
       assetKey: 'assets/shaders/automation_curve.frag',
       (context, shader, child) => CustomPaintObserver(
-        painterBuilder: () => AutomationEditorPainter(
-          timeViewStart: widget.timeViewStart,
-          timeViewEnd: widget.timeViewEnd,
-          ticksPerQuarter: project.sequence.ticksPerQuarter,
-          project: project,
-          pattern: pattern,
-          shader: shader,
-          devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
-          visiblePoints: viewModel.visiblePoints,
-          viewModel: viewModel,
-        ),
+        painterBuilder:
+            () => AutomationEditorPainter(
+              timeViewStart: widget.timeViewStart,
+              timeViewEnd: widget.timeViewEnd,
+              ticksPerQuarter: project.sequence.ticksPerQuarter,
+              project: project,
+              pattern: pattern,
+              shader: shader,
+              devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
+              visiblePoints: viewModel.visiblePoints,
+              viewModel: viewModel,
+            ),
         isComplex: true,
       ),
     );
@@ -202,12 +203,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
       drawCurve(
         canvas,
         shader,
-        drawArea: Rectangle(
-          xOffset,
-          yOffset,
-          pointX - lastPointX,
-          size.height,
-        ),
+        drawArea: Rectangle(xOffset, yOffset, pointX - lastPointX, size.height),
         devicePixelRatio: devicePixelRatio,
         firstPointValue: lastPoint.value,
         secondPointValue: point.value,
@@ -277,7 +273,8 @@ class AutomationEditorPainter extends CustomPainterObserver {
       // Tension handle
       if (lastPoint != null) {
         const normalizedX = 0.5;
-        final normalizedY = evaluateSmooth(normalizedX, point.tension) *
+        final normalizedY =
+            evaluateSmooth(normalizedX, point.tension) *
                 (point.value - lastPoint.value) +
             lastPoint.value;
 
@@ -285,7 +282,8 @@ class AutomationEditorPainter extends CustomPainterObserver {
           timeViewStart: timeViewStart,
           timeViewEnd: timeViewEnd,
           viewPixelWidth: size.width,
-          time: normalizedX * (point.offset - lastPoint.offset) +
+          time:
+              normalizedX * (point.offset - lastPoint.offset) +
               lastPoint.offset,
         );
         final y = (1 - normalizedY) * size.height;

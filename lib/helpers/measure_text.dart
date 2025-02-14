@@ -19,10 +19,11 @@
 
 import 'package:flutter/widgets.dart';
 
-Size measureText(
-    {required String text,
-    required TextStyle textStyle,
-    required BuildContext context}) {
+Size measureText({
+  required String text,
+  required TextStyle textStyle,
+  required BuildContext context,
+}) {
   final textPainter = TextPainter(
     text: TextSpan(text: text, style: textStyle),
     maxLines: 1,

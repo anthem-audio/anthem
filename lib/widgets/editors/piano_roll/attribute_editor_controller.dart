@@ -186,16 +186,19 @@ class AttributeEditorController {
         break;
     }
 
-    final commands = oldValues.keys
-        .map((noteID) => SetNoteAttributeCommand(
-              patternID: pattern.id,
-              generatorID: project.activeInstrumentID!,
-              noteID: noteID,
-              attribute: attribute,
-              oldValue: oldValues[noteID]!,
-              newValue: newValues[noteID]!,
-            ))
-        .toList();
+    final commands =
+        oldValues.keys
+            .map(
+              (noteID) => SetNoteAttributeCommand(
+                patternID: pattern.id,
+                generatorID: project.activeInstrumentID!,
+                noteID: noteID,
+                attribute: attribute,
+                oldValue: oldValues[noteID]!,
+                newValue: newValues[noteID]!,
+              ),
+            )
+            .toList();
 
     final journalPageCommand = JournalPageCommand(commands);
 

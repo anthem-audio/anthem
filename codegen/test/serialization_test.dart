@@ -179,11 +179,12 @@ void main() {
   });
 
   test('WithPrimitives model', () {
-    final model = WithPrimitives()
-      ..intField = 1
-      ..doubleField = 2.0
-      ..stringField = '3'
-      ..boolField = true;
+    final model =
+        WithPrimitives()
+          ..intField = 1
+          ..doubleField = 2.0
+          ..stringField = '3'
+          ..boolField = true;
 
     final json = model.toJson();
     expect(json['intField'], 1);
@@ -199,11 +200,12 @@ void main() {
   });
 
   test('WithList model', () {
-    final model = WithList()
-      ..intList = [
-        [1, 2, 3],
-        [4, 5, 6],
-      ];
+    final model =
+        WithList()
+          ..intList = [
+            [1, 2, 3],
+            [4, 5, 6],
+          ];
 
     final json = model.toJson();
     expect(json['intList'], [
@@ -219,11 +221,12 @@ void main() {
   });
 
   test('WithMap model', () {
-    final model = WithMap()
-      ..stringIntMap = {
-        'a': {1: 2},
-        'b': {3: 4},
-      };
+    final model =
+        WithMap()
+          ..stringIntMap = {
+            'a': {1: 2},
+            'b': {3: 4},
+          };
 
     final json = model.toJson();
     expect(json['stringIntMap'], {
@@ -239,12 +242,13 @@ void main() {
   });
 
   test('Nested model', () {
-    final model = NestedModel()
-      ..withPrimitives = WithPrimitives()
-      ..withPrimitives.intField = 1
-      ..withPrimitives.doubleField = 2.0
-      ..withPrimitives.stringField = '3'
-      ..withPrimitives.boolField = true;
+    final model =
+        NestedModel()
+          ..withPrimitives = WithPrimitives()
+          ..withPrimitives.intField = 1
+          ..withPrimitives.doubleField = 2.0
+          ..withPrimitives.stringField = '3'
+          ..withPrimitives.boolField = true;
 
     final json = model.toJson();
     expect(json['withPrimitives'], {
@@ -259,9 +263,10 @@ void main() {
   });
 
   test('WithEnum model', () {
-    final model = WithEnum()
-      ..testEnum1 = TestEnum.a
-      ..testEnum2 = TestEnum.b;
+    final model =
+        WithEnum()
+          ..testEnum1 = TestEnum.a
+          ..testEnum2 = TestEnum.b;
 
     final json = model.toJson();
     expect(json['testEnum1'], 'a');
@@ -273,19 +278,21 @@ void main() {
   });
 
   test('Nullable types', () {
-    final model = WithNullable()
-      ..nullableInt = 1
-      ..nullableList = [1, 2, 3]
-      ..nullableMap = {
-        'a': [1, 2, 3],
-        'b': [4, 5, null],
-        'c': null,
-      }
-      ..nullableModel = (WithPrimitives()
-        ..intField = 1
-        ..doubleField = 2.0
-        ..stringField = '3'
-        ..boolField = true);
+    final model =
+        WithNullable()
+          ..nullableInt = 1
+          ..nullableList = [1, 2, 3]
+          ..nullableMap = {
+            'a': [1, 2, 3],
+            'b': [4, 5, null],
+            'c': null,
+          }
+          ..nullableModel =
+              (WithPrimitives()
+                ..intField = 1
+                ..doubleField = 2.0
+                ..stringField = '3'
+                ..boolField = true);
 
     final json = model.toJson();
     expect(json['nullableInt'], 1);
@@ -332,13 +339,14 @@ void main() {
   });
 
   test('Union types', () {
-    final model = WithUnion()
-      ..unionField = (UnionSubTypeOne()..field = 'a')
-      ..unionFieldNullable = 1;
+    final model =
+        WithUnion()
+          ..unionField = (UnionSubTypeOne()..field = 'a')
+          ..unionFieldNullable = 1;
 
     final json = model.toJson();
     expect(json['unionField'], {
-      'UnionSubTypeOne': {'field': 'a'}
+      'UnionSubTypeOne': {'field': 'a'},
     });
     expect(json['unionFieldNullable'], {'int': 1});
 
@@ -346,9 +354,10 @@ void main() {
     expect((deserializedModel.unionField as UnionSubTypeOne).field, 'a');
     expect(deserializedModel.unionFieldNullable, 1);
 
-    final model2 = WithUnion()
-      ..unionField = 'test'
-      ..unionFieldNullable = null;
+    final model2 =
+        WithUnion()
+          ..unionField = 'test'
+          ..unionFieldNullable = null;
 
     final json2 = model2.toJson();
     expect(json2['unionField'], {'String': 'test'});

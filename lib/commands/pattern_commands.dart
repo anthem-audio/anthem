@@ -45,26 +45,16 @@ class AddPatternCommand extends Command {
   PatternModel pattern;
   int index;
 
-  AddPatternCommand({
-    required this.pattern,
-    required this.index,
-  });
+  AddPatternCommand({required this.pattern, required this.index});
 
   @override
   void execute(ProjectModel project) {
-    _addPatternToProject(
-      project: project,
-      pattern: pattern,
-      index: index,
-    );
+    _addPatternToProject(project: project, pattern: pattern, index: index);
   }
 
   @override
   void rollback(ProjectModel project) {
-    _removePatternFromProject(
-      project: project,
-      patternID: pattern.id,
-    );
+    _removePatternFromProject(project: project, patternID: pattern.id);
   }
 }
 
@@ -72,26 +62,16 @@ class DeletePatternCommand extends Command {
   PatternModel pattern;
   int index;
 
-  DeletePatternCommand({
-    required this.pattern,
-    required this.index,
-  });
+  DeletePatternCommand({required this.pattern, required this.index});
 
   @override
   void execute(ProjectModel project) {
-    _removePatternFromProject(
-      project: project,
-      patternID: pattern.id,
-    );
+    _removePatternFromProject(project: project, patternID: pattern.id);
   }
 
   @override
   void rollback(ProjectModel project) {
-    _addPatternToProject(
-      project: project,
-      pattern: pattern,
-      index: index,
-    );
+    _addPatternToProject(project: project, pattern: pattern, index: index);
   }
 }
 

@@ -36,16 +36,16 @@ class NoteModel extends _NoteModel
   });
 
   NoteModel.uninitialized()
-      : super(key: 0, velocity: 0, length: 0, offset: 0, pan: 0);
+    : super(key: 0, velocity: 0, length: 0, offset: 0, pan: 0);
 
   NoteModel.fromNoteModel(NoteModel model)
-      : super(
-          key: model.key,
-          length: model.length,
-          offset: model.offset,
-          velocity: model.velocity,
-          pan: model.pan,
-        );
+    : super(
+        key: model.key,
+        length: model.length,
+        offset: model.offset,
+        velocity: model.velocity,
+        pan: model.pan,
+      );
 
   factory NoteModel.fromJson(Map<String, dynamic> json) =>
       _$NoteModelAnthemModelMixin.fromJson(json);

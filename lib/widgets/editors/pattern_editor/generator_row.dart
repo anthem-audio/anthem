@@ -37,10 +37,7 @@ import '../../../theme.dart';
 class GeneratorRow extends StatefulWidget {
   final Id generatorID;
 
-  const GeneratorRow({
-    super.key,
-    required this.generatorID,
-  });
+  const GeneratorRow({super.key, required this.generatorID});
 
   @override
   State<GeneratorRow> createState() => _GeneratorRowState();
@@ -71,8 +68,10 @@ class _GeneratorRowState extends State<GeneratorRow> {
           AnthemMenuItem(
             text: 'Delete',
             onSelected: () {
-              final projectController =
-                  Provider.of<ProjectController>(context, listen: false);
+              final projectController = Provider.of<ProjectController>(
+                context,
+                listen: false,
+              );
 
               projectController.removeGenerator(widget.generatorID);
             },
@@ -88,31 +87,34 @@ class _GeneratorRowState extends State<GeneratorRow> {
             children: [
               const SizedBox(width: 80),
               if (generator.generatorType == GeneratorType.instrument)
-                Observer(builder: (context) {
-                  final nodeId = generator.gainNodeId;
-                  final node = project.processingGraph.nodes[nodeId];
+                Observer(
+                  builder: (context) {
+                    final nodeId = generator.gainNodeId;
+                    final node = project.processingGraph.nodes[nodeId];
 
-                  final value = node
-                          ?.getPortById(GainProcessorModel.gainPortId)
-                          .parameterValue ??
-                      0.5;
+                    final value =
+                        node
+                            ?.getPortById(GainProcessorModel.gainPortId)
+                            .parameterValue ??
+                        0.5;
 
-                  return Knob(
-                    value: value,
-                    min: 0,
-                    max: 10,
-                    width: 20,
-                    height: 20,
-                    stickyPoints: const [1],
-                    onValueChanged: (value) {
-                      if (node == null) return;
+                    return Knob(
+                      value: value,
+                      min: 0,
+                      max: 10,
+                      width: 20,
+                      height: 20,
+                      stickyPoints: const [1],
+                      onValueChanged: (value) {
+                        if (node == null) return;
 
-                      node
-                          .getPortById(GainProcessorModel.gainPortId)
-                          .parameterValue = value;
-                    },
-                  );
-                }),
+                        node
+                            .getPortById(GainProcessorModel.gainPortId)
+                            .parameterValue = value;
+                      },
+                    );
+                  },
+                ),
               if (generator.generatorType != GeneratorType.instrument)
                 const SizedBox(width: 20),
               const SizedBox(width: 8),
@@ -149,9 +151,9 @@ class _GeneratorRowState extends State<GeneratorRow> {
                 child: Observer(
                   builder: (context) {
                     final backgroundHoverColor =
-                        HSLColor.fromColor(generator.color)
-                            .withLightness(0.56)
-                            .toColor();
+                        HSLColor.fromColor(
+                          generator.color,
+                        ).withLightness(0.56).toColor();
 
                     return Listener(
                       onPointerDown: (e) {
@@ -176,10 +178,11 @@ class _GeneratorRowState extends State<GeneratorRow> {
                             child: Text(
                               generator.name,
                               style: TextStyle(
-                                color: HSLColor.fromColor(generator.color)
-                                    .withSaturation(0.5)
-                                    .withLightness(0.8)
-                                    .toColor(),
+                                color:
+                                    HSLColor.fromColor(generator.color)
+                                        .withSaturation(0.5)
+                                        .withLightness(0.8)
+                                        .toColor(),
                                 fontSize: 11,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -208,8 +211,8 @@ class _GeneratorRowState extends State<GeneratorRow> {
                   onTap: () {
                     final generator = project.generators[widget.generatorID]!;
 
-                    projectViewModel.selectedEditor =
-                        switch (generator.generatorType) {
+                    projectViewModel.selectedEditor = switch (generator
+                        .generatorType) {
                       GeneratorType.instrument => EditorKind.detail,
                       GeneratorType.automation => EditorKind.automation,
                     };
@@ -221,44 +224,48 @@ class _GeneratorRowState extends State<GeneratorRow> {
                       borderRadius: const BorderRadius.all(Radius.circular(1)),
                       color: Theme.panel.main,
                     ),
-                    child: Observer(builder: (context) {
-                      final pattern = getPattern();
+                    child: Observer(
+                      builder: (context) {
+                        final pattern = getPattern();
 
-                      if (pattern == null) {
-                        return const SizedBox();
-                      }
+                        if (pattern == null) {
+                          return const SizedBox();
+                        }
 
-                      final generator = project.generators[widget.generatorID];
+                        final generator =
+                            project.generators[widget.generatorID];
 
-                      if (generator == null) {
-                        return const SizedBox();
-                      }
+                        if (generator == null) {
+                          return const SizedBox();
+                        }
 
-                      if (generator.generatorType == GeneratorType.instrument) {
-                        return GeneratorRowNotes(
-                          pattern: pattern,
-                          generatorID: widget.generatorID,
-                          timeViewStart: 0,
-                          // 1 bar is 100 pixels, can be tweaked (and should probably be set above?)
-                          ticksPerPixel:
-                              (project.sequence.ticksPerQuarter * 4) / 100,
-                          color: generator.color,
-                        );
-                      } else if (generator.generatorType ==
-                          GeneratorType.automation) {
-                        return GeneratorRowAutomation(
-                          pattern: pattern,
-                          generatorID: widget.generatorID,
-                          timeViewStart: 0,
-                          // 1 bar is 100 pixels, can be tweaked (and should probably be set above?)
-                          ticksPerPixel:
-                              (project.sequence.ticksPerQuarter * 4) / 100,
-                          color: generator.color,
-                        );
-                      } else {
-                        throw Exception('Unsupported generator type');
-                      }
-                    }),
+                        if (generator.generatorType ==
+                            GeneratorType.instrument) {
+                          return GeneratorRowNotes(
+                            pattern: pattern,
+                            generatorID: widget.generatorID,
+                            timeViewStart: 0,
+                            // 1 bar is 100 pixels, can be tweaked (and should probably be set above?)
+                            ticksPerPixel:
+                                (project.sequence.ticksPerQuarter * 4) / 100,
+                            color: generator.color,
+                          );
+                        } else if (generator.generatorType ==
+                            GeneratorType.automation) {
+                          return GeneratorRowAutomation(
+                            pattern: pattern,
+                            generatorID: widget.generatorID,
+                            timeViewStart: 0,
+                            // 1 bar is 100 pixels, can be tweaked (and should probably be set above?)
+                            ticksPerPixel:
+                                (project.sequence.ticksPerQuarter * 4) / 100,
+                            color: generator.color,
+                          );
+                        } else {
+                          throw Exception('Unsupported generator type');
+                        }
+                      },
+                    ),
                   ),
                 ),
               ),

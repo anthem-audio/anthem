@@ -31,19 +31,24 @@ class IconDef {
 class Icons {
   static IconDef add = const IconDef('assets/icons/scrollbar/add.svg');
   static IconDef anthem = const IconDef('assets/icons/main/anthem.svg');
-  static IconDef arrowDown =
-      const IconDef('assets/icons/misc/dropdown_arrow___down.svg');
+  static IconDef arrowDown = const IconDef(
+    'assets/icons/misc/dropdown_arrow___down.svg',
+  );
   static IconDef audio = const IconDef('assets/icons/audio.svg');
   static IconDef automation = const IconDef('assets/icons/automation.svg');
-  static IconDef automationMatrixPanel =
-      const IconDef('assets/icons/bottom_bar/automation_panel.svg');
-  static IconDef browserPanel =
-      const IconDef('assets/icons/bottom_bar/browser_panel.svg');
-  static IconDef channelRack =
-      const IconDef('assets/icons/bottom_bar/instruments_effects_panel.svg');
+  static IconDef automationMatrixPanel = const IconDef(
+    'assets/icons/bottom_bar/automation_panel.svg',
+  );
+  static IconDef browserPanel = const IconDef(
+    'assets/icons/bottom_bar/browser_panel.svg',
+  );
+  static IconDef channelRack = const IconDef(
+    'assets/icons/bottom_bar/instruments_effects_panel.svg',
+  );
   static IconDef close = const IconDef('assets/icons/small/close.svg');
-  static IconDef detailEditor =
-      const IconDef('assets/icons/bottom_bar/detail_editor.svg');
+  static IconDef detailEditor = const IconDef(
+    'assets/icons/bottom_bar/detail_editor.svg',
+  );
   static IconDef hamburger = const IconDef('assets/icons/misc/hamburgner.svg');
   static IconDef file = const IconDef('assets/icons/file.svg');
   static IconDef kebab = const IconDef('assets/icons/misc.svg');
@@ -52,12 +57,14 @@ class Icons {
   static IconDef minimize = const IconDef('assets/icons/small/minimize.svg');
   static IconDef mixer = const IconDef('assets/icons/bottom_bar/mixer.svg');
   static IconDef mute = const IconDef('assets/icons/power.svg');
-  static IconDef patternEditor =
-      const IconDef('assets/icons/bottom_bar/pattern_editor.svg');
+  static IconDef patternEditor = const IconDef(
+    'assets/icons/bottom_bar/pattern_editor.svg',
+  );
   static IconDef play = const IconDef('assets/icons/main_toolbar/play.svg');
   static IconDef plugin = const IconDef('assets/icons/plugin.svg');
-  static IconDef projectPanel =
-      const IconDef('assets/icons/bottom_bar/project_panel_2.svg');
+  static IconDef projectPanel = const IconDef(
+    'assets/icons/bottom_bar/project_panel_2.svg',
+  );
   static IconDef redo = const IconDef('assets/icons/edit/redo.svg');
   static IconDef save = const IconDef('assets/icons/edit/save.svg');
   static IconDef stop = const IconDef('assets/icons/main_toolbar/stop.svg');
@@ -83,7 +90,8 @@ class _ToolIcons {
 
 class _MainToolbarIcons {
   IconDef typingKeyboardToPianoKeyboard = const IconDef(
-      'assets/icons/main_toolbar/typing_keyboard_to_piano_keyboard.svg');
+    'assets/icons/main_toolbar/typing_keyboard_to_piano_keyboard.svg',
+  );
 }
 
 class SvgIcon extends StatelessWidget {

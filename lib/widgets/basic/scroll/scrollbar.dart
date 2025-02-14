@@ -92,8 +92,8 @@ class _ScrollbarState extends State<Scrollbar> {
     final scrollAreaSize = scrollAreaEnd - scrollAreaStart;
     final targetPos =
         normalizedDelta * (scrollAreaSize * (1 / (1 - normalizedThumbSize))) +
-            _scrollAreaStartPos +
-            scrollAreaStart;
+        _scrollAreaStartPos +
+        scrollAreaStart;
     widget.controller.jumpTo(targetPos.clamp(scrollAreaStart, scrollAreaEnd));
   }
 
@@ -104,9 +104,7 @@ class _ScrollbarState extends State<Scrollbar> {
 
     final flexChildren = <Widget>[];
     if (before > 0) {
-      flexChildren.add(Spacer(
-        flex: before,
-      ));
+      flexChildren.add(Spacer(flex: before));
     }
 
     final border = Container(
@@ -119,28 +117,21 @@ class _ScrollbarState extends State<Scrollbar> {
       border,
       Flexible(
         flex: inside,
-        child: const Button(
-          hideBorder: true,
-          expand: true,
-        ),
+        child: const Button(hideBorder: true, expand: true),
         // child: Container(color: Color(0xFFFFFFFF)),
       ),
       border,
     ]);
 
     if (after > 0) {
-      flexChildren.add(
-        Spacer(flex: after),
-      );
+      flexChildren.add(Spacer(flex: after));
     }
 
     return Container(
       width: isVertical ? widget.crossAxisSize : null,
       height: isHorizontal ? widget.crossAxisSize : null,
       decoration: BoxDecoration(
-        border: Border.all(
-          color: Theme.panel.border,
-        ),
+        border: Border.all(color: Theme.panel.border),
         borderRadius: const BorderRadius.all(Radius.circular(1)),
       ),
       child: Stack(
@@ -199,12 +190,16 @@ class _ScrollbarState extends State<Scrollbar> {
               onVerticalDragDown: (details) {
                 if (!_isVertical()) return;
                 _handleDown(
-                    details.localPosition.dy, context.size?.height ?? 1);
+                  details.localPosition.dy,
+                  context.size?.height ?? 1,
+                );
               },
               onVerticalDragUpdate: (details) {
                 if (!_isVertical()) return;
                 _handleMove(
-                    details.localPosition.dy, context.size?.height ?? 1);
+                  details.localPosition.dy,
+                  context.size?.height ?? 1,
+                );
               },
               onHorizontalDragDown: (details) {
                 if (!_isHorizontal()) return;
@@ -214,15 +209,16 @@ class _ScrollbarState extends State<Scrollbar> {
                 if (!_isHorizontal()) return;
                 _handleMove(details.localPosition.dx, context.size?.width ?? 1);
               },
-              child: isHorizontal
-                  ? Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: flexChildren,
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: flexChildren,
-                    ),
+              child:
+                  isHorizontal
+                      ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: flexChildren,
+                      )
+                      : Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: flexChildren,
+                      ),
             ),
           ),
         ],

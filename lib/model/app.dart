@@ -37,7 +37,7 @@ abstract class _AppModel with Store {
   Id activeProjectId;
 
   _AppModel()
-      : projects = ObservableMap.of({}),
-        projectOrder = ObservableList.of([]),
-        activeProjectId = '';
+    : projects = ObservableMap.of({}),
+      projectOrder = ObservableList.of([]),
+      activeProjectId = '';
 }

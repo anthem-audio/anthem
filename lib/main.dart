@@ -101,18 +101,18 @@ class MyApp extends StatelessWidget {
             body: MultiProvider(
               providers: [
                 ChangeNotifierProvider(
-                    create: (context) => KeyboardModifiers()),
-                Provider(create: (context) => BackgroundType.dark)
+                  create: (context) => KeyboardModifiers(),
+                ),
+                Provider(create: (context) => BackgroundType.dark),
               ],
               child: ScrollConfiguration(
-                behavior:
-                    ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                behavior: ScrollConfiguration.of(
+                  context,
+                ).copyWith(scrollbars: false),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Container(
-                      color: anthem_theme.Theme.panel.border,
-                    ),
+                    Container(color: anthem_theme.Theme.panel.border),
                     MainWindow(key: mainWindowKey),
                   ],
                 ),

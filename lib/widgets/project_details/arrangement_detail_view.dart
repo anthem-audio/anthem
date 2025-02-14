@@ -54,10 +54,7 @@ class _ArrangementDetailViewState extends State<ArrangementDetailView> {
             children: [
               Text(
                 'ARRANGEMENT',
-                style: TextStyle(
-                  color: Theme.text.main,
-                  fontSize: 10,
-                ),
+                style: TextStyle(color: Theme.text.main, fontSize: 10),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 6),

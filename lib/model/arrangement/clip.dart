@@ -28,19 +28,20 @@ part 'clip.g.dart';
 class ClipModel extends _ClipModel
     with _$ClipModel, _$ClipModelAnthemModelMixin {
   ClipModel.uninitialized()
-      : super.create(
-          id: getId(),
-          patternId: getId(),
-          trackId: getId(),
-          offset: 0,
-        );
+    : super.create(
+        id: getId(),
+        patternId: getId(),
+        trackId: getId(),
+        offset: 0,
+      );
 
-  ClipModel(
-      {required super.id,
-      super.timeView,
-      required super.patternId,
-      required super.trackId,
-      required super.offset});
+  ClipModel({
+    required super.id,
+    super.timeView,
+    required super.patternId,
+    required super.trackId,
+    required super.offset,
+  });
 
   ClipModel.create({
     Id? id,
@@ -48,9 +49,7 @@ class ClipModel extends _ClipModel
     required super.patternId,
     required super.trackId,
     required super.offset,
-  }) : super.create(
-          id: id ?? getId(),
-        );
+  }) : super.create(id: id ?? getId());
 
   factory ClipModel.fromClipModel(ClipModel other) {
     return ClipModel.create(
@@ -58,12 +57,13 @@ class ClipModel extends _ClipModel
       patternId: other.patternId,
       trackId: other.trackId,
       offset: other.offset,
-      timeView: other.timeView != null
-          ? TimeViewModel(
-              start: other.timeView!.start,
-              end: other.timeView!.end,
-            )
-          : null,
+      timeView:
+          other.timeView != null
+              ? TimeViewModel(
+                start: other.timeView!.start,
+                end: other.timeView!.end,
+              )
+              : null,
     );
   }
 

@@ -103,15 +103,19 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
     var handleEnd = startHandleEnd + handleDelta;
 
     if (!widget.canScrollPastStart) {
-      final startOvershoot =
-          (widget.scrollRegionStart - handleStart).clamp(0, double.infinity);
+      final startOvershoot = (widget.scrollRegionStart - handleStart).clamp(
+        0,
+        double.infinity,
+      );
       handleStart += startOvershoot;
       handleEnd += startOvershoot;
     }
 
     if (!widget.canScrollPastEnd) {
-      final endOvershoot =
-          (handleEnd - widget.scrollRegionEnd).clamp(0, double.infinity);
+      final endOvershoot = (handleEnd - widget.scrollRegionEnd).clamp(
+        0,
+        double.infinity,
+      );
       handleStart -= endOvershoot;
       handleEnd -= endOvershoot;
     }
@@ -120,10 +124,9 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
       return;
     }
 
-    widget.onChange?.call(ScrollbarChangeEvent(
-      handleStart: handleStart,
-      handleEnd: handleEnd,
-    ));
+    widget.onChange?.call(
+      ScrollbarChangeEvent(handleStart: handleStart, handleEnd: handleEnd),
+    );
   }
 
   @override
@@ -188,7 +191,8 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
           color: Theme.panel.border,
         );
 
-        final isDisabled = widget.disableAtFullSize &&
+        final isDisabled =
+            widget.disableAtFullSize &&
             (widget.handleStart <= widget.scrollRegionStart &&
                 widget.handleEnd >= widget.scrollRegionEnd);
 
@@ -218,9 +222,7 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
                 bottom: 0,
                 child: Container(
                   decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Theme.panel.border,
-                    ),
+                    border: Border.all(color: Theme.panel.border),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -236,30 +238,33 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
                   width: isHorizontal ? _mainAxisButtonSize : null,
                   height: isVertical ? _mainAxisButtonSize : null,
                   decoration: BoxDecoration(
-                    border: isHorizontal
-                        ? Border(
-                            right: BorderSide(color: Theme.panel.border),
-                          )
-                        : Border(
-                            bottom: BorderSide(color: Theme.panel.border),
-                          ),
+                    border:
+                        isHorizontal
+                            ? Border(
+                              right: BorderSide(color: Theme.panel.border),
+                            )
+                            : Border(
+                              bottom: BorderSide(color: Theme.panel.border),
+                            ),
                   ),
                   child: Button(
                     hideBorder: true,
                     variant: ButtonVariant.ghost,
-                    icon: isHorizontal
-                        ? Icons.scrollbar.arrowLeft
-                        : Icons.scrollbar.arrowUp,
+                    icon:
+                        isHorizontal
+                            ? Icons.scrollbar.arrowLeft
+                            : Icons.scrollbar.arrowUp,
                     contentPadding: EdgeInsets.zero,
-                    borderRadius: isHorizontal
-                        ? const BorderRadius.horizontal(
-                            left: Radius.circular(4),
-                            right: Radius.circular(1),
-                          )
-                        : const BorderRadius.vertical(
-                            top: Radius.circular(4),
-                            bottom: Radius.circular(1),
-                          ),
+                    borderRadius:
+                        isHorizontal
+                            ? const BorderRadius.horizontal(
+                              left: Radius.circular(4),
+                              right: Radius.circular(1),
+                            )
+                            : const BorderRadius.vertical(
+                              top: Radius.circular(4),
+                              bottom: Radius.circular(1),
+                            ),
                   ),
                 ),
               ),
@@ -274,30 +279,33 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
                   width: isHorizontal ? _mainAxisButtonSize : null,
                   height: isVertical ? _mainAxisButtonSize : null,
                   decoration: BoxDecoration(
-                    border: isHorizontal
-                        ? Border(
-                            left: BorderSide(color: Theme.panel.border),
-                          )
-                        : Border(
-                            top: BorderSide(color: Theme.panel.border),
-                          ),
+                    border:
+                        isHorizontal
+                            ? Border(
+                              left: BorderSide(color: Theme.panel.border),
+                            )
+                            : Border(
+                              top: BorderSide(color: Theme.panel.border),
+                            ),
                   ),
                   child: Button(
                     hideBorder: true,
                     variant: ButtonVariant.ghost,
-                    icon: isHorizontal
-                        ? Icons.scrollbar.arrowRight
-                        : Icons.scrollbar.arrowDown,
+                    icon:
+                        isHorizontal
+                            ? Icons.scrollbar.arrowRight
+                            : Icons.scrollbar.arrowDown,
                     contentPadding: EdgeInsets.zero,
-                    borderRadius: isHorizontal
-                        ? const BorderRadius.horizontal(
-                            left: Radius.circular(1),
-                            right: Radius.circular(4),
-                          )
-                        : const BorderRadius.vertical(
-                            top: Radius.circular(1),
-                            bottom: Radius.circular(4),
-                          ),
+                    borderRadius:
+                        isHorizontal
+                            ? const BorderRadius.horizontal(
+                              left: Radius.circular(1),
+                              right: Radius.circular(4),
+                            )
+                            : const BorderRadius.vertical(
+                              top: Radius.circular(1),
+                              bottom: Radius.circular(4),
+                            ),
                   ),
                 ),
               ),
@@ -310,26 +318,30 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
                 bottom: isHorizontal ? 1 : mainAxisSize - handleEnd,
                 child: Listener(
                   onPointerDown: (event) {
-                    _handleDown(isHorizontal
-                        ? event.localPosition.dx
-                        : event.localPosition.dy);
+                    _handleDown(
+                      isHorizontal
+                          ? event.localPosition.dx
+                          : event.localPosition.dy,
+                    );
                   },
                   onPointerMove: (event) {
                     _handleMove(
-                        isHorizontal
-                            ? event.localPosition.dx
-                            : event.localPosition.dy,
-                        trackSize);
+                      isHorizontal
+                          ? event.localPosition.dx
+                          : event.localPosition.dy,
+                      trackSize,
+                    );
                   },
-                  child: isHorizontal
-                      ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: flexChildren,
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: flexChildren,
-                        ),
+                  child:
+                      isHorizontal
+                          ? Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: flexChildren,
+                          )
+                          : Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: flexChildren,
+                          ),
                 ),
               ),
             ],

@@ -58,8 +58,10 @@ class _TimelineNotificationHandlerState
       onNotification: (notification) {
         if (notification is TimelineLabelPointerNotification) {
           final timeView = Provider.of<TimeRange>(context, listen: false);
-          final pattern = project.sequence.patterns
-              .nonObservableInner[project.sequence.activePatternID];
+          final pattern =
+              project.sequence.patterns.nonObservableInner[project
+                  .sequence
+                  .activePatternID];
 
           final divisionChanges = getDivisionChanges(
             viewWidthInPixels: notification.viewWidthInPixels,
@@ -72,7 +74,8 @@ class _TimelineNotificationHandlerState
           );
 
           final snappedPos = getSnappedTime(
-            rawTime: notification.time.floor() +
+            rawTime:
+                notification.time.floor() +
                 ((notification is TimelineLabelPointerDownNotification)
                     ? 0
                     : startTime.floor()),

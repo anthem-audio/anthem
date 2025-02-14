@@ -45,8 +45,9 @@ void _removeTimeSignatureChangeFromPattern({
   required Id changeID,
 }) {
   final pattern = project.sequence.patterns[patternID]!;
-  final change = pattern.timeSignatureChanges
-      .firstWhere((change) => change.id == changeID);
+  final change = pattern.timeSignatureChanges.firstWhere(
+    (change) => change.id == changeID,
+  );
   pattern.timeSignatureChanges.remove(change);
   // Should still be sorted, so no need to sort here
 }
@@ -218,7 +219,8 @@ class SetTimeSignatureNumeratorCommand extends Command {
       timelineKind = TimelineKind.arrangement;
     } else {
       throw ArgumentError(
-          'Arguments should specify a pattern ID or arrangement ID, but neither was specified.');
+        'Arguments should specify a pattern ID or arrangement ID, but neither was specified.',
+      );
     }
 
     change = project.sequence.patterns[patternID]!.timeSignatureChanges
@@ -259,7 +261,8 @@ class SetTimeSignatureDenominatorCommand extends Command {
       timelineKind = TimelineKind.arrangement;
     } else {
       throw ArgumentError(
-          'Arguments should specify a pattern ID or arrangement ID, but neither was specified.');
+        'Arguments should specify a pattern ID or arrangement ID, but neither was specified.',
+      );
     }
 
     change = project.sequence.patterns[patternID]!.timeSignatureChanges

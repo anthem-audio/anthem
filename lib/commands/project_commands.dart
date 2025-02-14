@@ -24,11 +24,14 @@ import 'package:anthem/model/model.dart';
 
 import 'command.dart';
 
-void _addGenerator(ProjectModel project, GeneratorModel generator,
-    {int? index,
-    required NodeModel generatorNode,
-    required NodeModel gainNode,
-    required NodeModel midiGenNode}) {
+void _addGenerator(
+  ProjectModel project,
+  GeneratorModel generator, {
+  int? index,
+  required NodeModel generatorNode,
+  required NodeModel gainNode,
+  required NodeModel midiGenNode,
+}) {
   if (index != null) {
     project.generatorOrder.insert(index, generator.id);
   } else {
@@ -167,10 +170,10 @@ class RemoveGeneratorCommand extends Command {
   RemoveGeneratorCommand({
     required ProjectModel project,
     required this.generator,
-  })  : generatorNode =
-            project.processingGraph.nodes[generator.generatorNodeId]!,
-        gainNode = project.processingGraph.nodes[generator.gainNodeId]!,
-        midiGenNode = project.processingGraph.nodes[generator.midiGenNodeId]! {
+  }) : generatorNode =
+           project.processingGraph.nodes[generator.generatorNodeId]!,
+       gainNode = project.processingGraph.nodes[generator.gainNodeId]!,
+       midiGenNode = project.processingGraph.nodes[generator.midiGenNodeId]! {
     index = project.generatorOrder.indexOf(generator.id);
   }
 

@@ -126,7 +126,7 @@ void paintVerticalLines({
   // first time signature change, if its position is 0).
   var timePtr =
       (timeViewStart / divisionChanges[0].divisionRenderSize).floor() *
-          divisionChanges[0].divisionRenderSize;
+      divisionChanges[0].divisionRenderSize;
 
   while (timePtr < timeViewEnd) {
     // This shouldn't happen, but safety first
@@ -153,10 +153,7 @@ void paintVerticalLines({
         time: timePtr.toDouble(),
       );
 
-      canvas.drawRect(
-        Rect.fromLTWH(x, 0, 1, size.height),
-        paint,
-      );
+      canvas.drawRect(Rect.fromLTWH(x, 0, 1, size.height), paint);
 
       timePtr += thisDivision.divisionRenderSize;
 
@@ -187,17 +184,20 @@ void paintPhraseShading({
   var timeSignatures =
       timeSignatureChanges.isEmpty || timeSignatureChanges[0].offset > 0
           ? [
-              TimeSignatureChangeModel(
-                  timeSignature: defaultTimeSignature, offset: 0),
-              ...timeSignatureChanges
-            ]
+            TimeSignatureChangeModel(
+              timeSignature: defaultTimeSignature,
+              offset: 0,
+            ),
+            ...timeSignatureChanges,
+          ]
           : timeSignatureChanges;
 
   while (tick < timeViewEnd) {
     final timeSignatureChange = timeSignatures[timeSignatureIndex];
     final timeSignature = timeSignatureChange.timeSignature;
 
-    final barSize = timeSignature.numerator *
+    final barSize =
+        timeSignature.numerator *
         (ticksPerQuarter * 4) ~/
         timeSignature.denominator;
 

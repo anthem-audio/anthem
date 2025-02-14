@@ -170,9 +170,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
 
   // This method is used for deserialization and so doesn't create new child
   // models.
-  _ProjectModel()
-      : _enginePathOverride = null,
-        super() {
+  _ProjectModel() : _enginePathOverride = null, super() {
     _commandStack = CommandStack(this as ProjectModel);
   }
 
@@ -202,9 +200,11 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// This function is run after deserialization. It allows us to do some setup
   /// that the deserialization step can't do for us.
   void hydrate() {
-    engine = Engine(engineID, this as ProjectModel,
-        enginePathOverride: _enginePathOverride)
-      ..start();
+    engine = Engine(
+      engineID,
+      this as ProjectModel,
+      enginePathOverride: _enginePathOverride,
+    )..start();
 
     engine.engineStateStream.listen((state) {
       (this as ProjectModel).engineState = state;
@@ -218,8 +218,9 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
       if (state == EngineState.stopped) {
         if (_fieldChangedListener != null) {
           // Unhook the model change stream from the engine
-          (this as AnthemModelBase)
-              .removeFieldChangedListener(_fieldChangedListener!);
+          (this as AnthemModelBase).removeFieldChangedListener(
+            _fieldChangedListener!,
+          );
           _fieldChangedListener = null;
         }
         _modelSyncCompleter = Completer();
@@ -238,8 +239,11 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   void _initializeEngine() {
     // Any time the engine starts, we send the entire current model state to the engine
     engine.modelSyncApi.initModel(
-      jsonEncode((this as _$ProjectModelAnthemModelMixin)
-          .toJson(includeFieldsForEngine: true)),
+      jsonEncode(
+        (this as _$ProjectModelAnthemModelMixin).toJson(
+          includeFieldsForEngine: true,
+        ),
+      ),
     );
     // We won't wait for the engine to acknowledge this before saying that
     // we're synced, since any subsequent messages will be processed after
@@ -289,25 +293,25 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
         };
       }
 
-      final convertedAccesses = accesses.map((access) {
-        return message_api.FieldAccess(
-          fieldName: access.fieldName,
-          fieldType: switch (access.fieldType) {
-            FieldType.raw => message_api.FieldType.raw,
-            FieldType.list => message_api.FieldType.list,
-            FieldType.map => message_api.FieldType.map,
-          },
-          listIndex: access.index,
-          serializedMapKey: serializeMapKey(access.key),
-        );
-      }).toList();
+      final convertedAccesses =
+          accesses.map((access) {
+            return message_api.FieldAccess(
+              fieldName: access.fieldName,
+              fieldType: switch (access.fieldType) {
+                FieldType.raw => message_api.FieldType.raw,
+                FieldType.list => message_api.FieldType.list,
+                FieldType.map => message_api.FieldType.map,
+              },
+              listIndex: access.index,
+              serializedMapKey: serializeMapKey(access.key),
+            );
+          }).toList();
 
       engine.modelSyncApi.updateModel(
         updateKind: switch (operation) {
           RawFieldUpdate() ||
           ListUpdate() ||
-          MapPut() =>
-            message_api.FieldUpdateKind.set,
+          MapPut() => message_api.FieldUpdateKind.set,
           ListInsert() => message_api.FieldUpdateKind.add,
           ListRemove() || MapRemove() => message_api.FieldUpdateKind.remove,
         },

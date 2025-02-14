@@ -43,17 +43,17 @@ class NoteLabelImageCache {
           fontSize: noteLabelHeight * 0.75 * devicePixelRatio,
         ),
       )..addText(string);
-      final paragraph = builder.build()
-        ..layout(const ParagraphConstraints(width: 1000));
+      final paragraph =
+          builder.build()..layout(const ParagraphConstraints(width: 1000));
 
       final canvas = Canvas(recorder);
 
       canvas.drawParagraph(paragraph, const Offset(0, 0));
 
       final image = await recorder.endRecording().toImage(
-            (noteLabelWidth * devicePixelRatio).toInt(),
-            (noteLabelHeight * devicePixelRatio).toInt(),
-          );
+        (noteLabelWidth * devicePixelRatio).toInt(),
+        (noteLabelHeight * devicePixelRatio).toInt(),
+      );
       cache.add(image);
     }
 

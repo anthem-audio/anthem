@@ -45,22 +45,24 @@ class GeneratorRowAutomation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ShaderBuilder(
-      assetKey: 'assets/shaders/automation_curve.frag',
-      (context, shader, child) {
-        return CustomPaintObserver(
-          painterBuilder: () => _GeneratorRowAutomationPainter(
-            shader: shader,
-            pattern: pattern,
-            generatorID: generatorID,
-            timeViewStart: timeViewStart,
-            ticksPerPixel: ticksPerPixel,
-            color: color,
-            devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
-          ),
-        );
-      },
-    );
+    return ShaderBuilder(assetKey: 'assets/shaders/automation_curve.frag', (
+      context,
+      shader,
+      child,
+    ) {
+      return CustomPaintObserver(
+        painterBuilder:
+            () => _GeneratorRowAutomationPainter(
+              shader: shader,
+              pattern: pattern,
+              generatorID: generatorID,
+              timeViewStart: timeViewStart,
+              ticksPerPixel: ticksPerPixel,
+              color: color,
+              devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
+            ),
+      );
+    });
   }
 }
 
@@ -121,12 +123,7 @@ class _GeneratorRowAutomationPainter extends CustomPainterObserver {
       drawCurve(
         canvas,
         shader,
-        drawArea: Rectangle(
-          xOffset,
-          yOffset,
-          pointX - lastPointX,
-          size.height,
-        ),
+        drawArea: Rectangle(xOffset, yOffset, pointX - lastPointX, size.height),
         devicePixelRatio: devicePixelRatio,
         firstPointValue: previousPoint.value,
         secondPointValue: thisPoint.value,

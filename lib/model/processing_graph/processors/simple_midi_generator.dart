@@ -37,15 +37,13 @@ class SimpleMidiGeneratorProcessorModel
     with
         _$SimpleMidiGeneratorProcessorModel,
         _$SimpleMidiGeneratorProcessorModelAnthemModelMixin {
-  SimpleMidiGeneratorProcessorModel({
-    required super.nodeId,
-  });
+  SimpleMidiGeneratorProcessorModel({required super.nodeId});
 
   SimpleMidiGeneratorProcessorModel.uninitialized() : super(nodeId: '');
 
   factory SimpleMidiGeneratorProcessorModel.fromJson(
-          Map<String, dynamic> json) =>
-      _$SimpleMidiGeneratorProcessorModelAnthemModelMixin.fromJson(json);
+    Map<String, dynamic> json,
+  ) => _$SimpleMidiGeneratorProcessorModelAnthemModelMixin.fromJson(json);
 
   NodeModel get node => (project.processingGraph.nodes[nodeId])!;
 
@@ -74,7 +72,5 @@ abstract class _SimpleMidiGeneratorProcessorModel with Store, AnthemModelBase {
 
   String nodeId;
 
-  _SimpleMidiGeneratorProcessorModel({
-    required this.nodeId,
-  });
+  _SimpleMidiGeneratorProcessorModel({required this.nodeId});
 }

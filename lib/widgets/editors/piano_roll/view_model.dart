@@ -93,7 +93,8 @@ abstract class _PianoRollViewModel with Store {
   ({
     CanvasAnnotation<({Id id})>? note,
     CanvasAnnotation<({Id id})>? resizeHandle,
-  }) getContentUnderCursor(Offset pos) {
+  })
+  getContentUnderCursor(Offset pos) {
     final noteUnderCursor = visibleNotes.hitTest(pos);
     final resizeHandleUnderCursor = visibleResizeAreas
         .hitTestAll(pos)
@@ -102,9 +103,11 @@ abstract class _PianoRollViewModel with Store {
         // behavior for note resizing a bit more predictable, as it then doesn't
         // depend on the Z-ordering of notes for notes that are right next to
         // each other.
-        .firstWhereOrNull((element) =>
-            noteUnderCursor == null ||
-            element.metadata.id == noteUnderCursor.metadata.id);
+        .firstWhereOrNull(
+          (element) =>
+              noteUnderCursor == null ||
+              element.metadata.id == noteUnderCursor.metadata.id,
+        );
     return (note: noteUnderCursor, resizeHandle: resizeHandleUnderCursor);
   }
 }

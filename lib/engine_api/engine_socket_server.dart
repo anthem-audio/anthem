@@ -106,11 +106,13 @@ class EngineSocketServer {
               }
 
               // When the socket is closed, remove the socket from our map.
-              socket.done.then((_) {
-                cleanUpEngine(engineId);
-              }).catchError((_) {
-                cleanUpEngine(engineId);
-              });
+              socket.done
+                  .then((_) {
+                    cleanUpEngine(engineId);
+                  })
+                  .catchError((_) {
+                    cleanUpEngine(engineId);
+                  });
 
               // If there is any extra data in the first message, capture it and
               // send it to the handler.

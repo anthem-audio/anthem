@@ -67,34 +67,38 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
     final project = Provider.of<ProjectModel>(context);
 
     TreeViewItemModel getArrangementsTree() => TreeViewItemModel(
-          key: 'projectArrangementsFolder',
-          label: 'Arrangements',
-          children: project.sequence.arrangementOrder
+      key: 'projectArrangementsFolder',
+      label: 'Arrangements',
+      children:
+          project.sequence.arrangementOrder
               .map(
                 (id) => TreeViewItemModel(
                   key: 'arrangement-$id',
                   label: project.sequence.arrangements[id]!.name,
-                  onClick: () => projectController.setActiveDetailView(
-                    true,
-                    ArrangementDetailViewKind(id),
-                  ),
+                  onClick:
+                      () => projectController.setActiveDetailView(
+                        true,
+                        ArrangementDetailViewKind(id),
+                      ),
                 ),
               )
               .toList(),
-        );
+    );
 
     TreeViewItemModel getPatternsTree() => TreeViewItemModel(
-          key: 'projectPatternsFolder',
-          label: 'Patterns',
-          children: project.sequence.patternOrder
+      key: 'projectPatternsFolder',
+      label: 'Patterns',
+      children:
+          project.sequence.patternOrder
               .map(
                 (patternID) => TreeViewItemModel(
                   key: 'pattern-$patternID',
                   label: project.sequence.patterns[patternID]!.name,
-                  onClick: () => projectController.setActiveDetailView(
-                    true,
-                    PatternDetailViewKind(patternID),
-                  ),
+                  onClick:
+                      () => projectController.setActiveDetailView(
+                        true,
+                        PatternDetailViewKind(patternID),
+                      ),
                   children: [
                     getMarkersItem(
                       pattern: project.sequence.patterns[patternID],
@@ -112,7 +116,7 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
                 ),
               )
               .toList(),
-        );
+    );
 
     return Background(
       type: BackgroundType.dark,
@@ -135,7 +139,9 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
                         ButtonTabDef.withIcon(id: 'project', icon: Icons.audio),
                         ButtonTabDef.withIcon(id: 'files', icon: Icons.file),
                         ButtonTabDef.withIcon(
-                            id: 'plugins', icon: Icons.plugin),
+                          id: 'plugins',
+                          icon: Icons.plugin,
+                        ),
                       ],
                     ),
                   ),
@@ -143,10 +149,7 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
               ),
             ),
             const SizedBox(height: 4),
-            TextBox(
-              height: 26,
-              controller: searchBoxController,
-            ),
+            TextBox(height: 26, controller: searchBoxController),
             const SizedBox(height: 4),
             Expanded(
               child: Row(
@@ -159,22 +162,24 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
                         border: Border.all(color: Theme.panel.border, width: 1),
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: Observer(builder: (context) {
-                        return TreeView(
-                          filterText: searchText == '' ? null : searchText,
-                          scrollController: scrollController,
-                          items: [
-                            TreeViewItemModel(
-                              key: 'currentProject',
-                              label: 'Current project',
-                              children: [
-                                getArrangementsTree(),
-                                getPatternsTree(),
-                              ],
-                            ),
-                          ],
-                        );
-                      }),
+                      child: Observer(
+                        builder: (context) {
+                          return TreeView(
+                            filterText: searchText == '' ? null : searchText,
+                            scrollController: scrollController,
+                            items: [
+                              TreeViewItemModel(
+                                key: 'currentProject',
+                                label: 'Current project',
+                                children: [
+                                  getArrangementsTree(),
+                                  getPatternsTree(),
+                                ],
+                              ),
+                            ],
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ],
@@ -187,23 +192,26 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
   }
 }
 
-TreeViewItemModel getMarkersItem(
-    {PatternModel? pattern, required void Function(Id key) onClick}) {
+TreeViewItemModel getMarkersItem({
+  PatternModel? pattern,
+  required void Function(Id key) onClick,
+}) {
   final timeSignatureChanges = pattern!.timeSignatureChanges;
 
   return TreeViewItemModel(
     key: 'markers',
     label: 'Time markers',
-    children: timeSignatureChanges
-        .map(
-          (change) => TreeViewItemModel(
-            key: change.id,
-            label: change.timeSignature.toDisplayString(),
-            onClick: () {
-              onClick(change.id);
-            },
-          ),
-        )
-        .toList(),
+    children:
+        timeSignatureChanges
+            .map(
+              (change) => TreeViewItemModel(
+                key: change.id,
+                label: change.timeSignature.toDisplayString(),
+                onClick: () {
+                  onClick(change.id);
+                },
+              ),
+            )
+            .toList(),
   );
 }

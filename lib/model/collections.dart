@@ -61,7 +61,7 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
 
   @override
   AnthemObservableList.of(super.elements, {super.context, super.name})
-      : super.of() {
+    : super.of() {
     _init();
   }
 
@@ -87,8 +87,10 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
 
             notifyFieldChanged(
               operation: ListInsert(
-                value: _serializeValue(elementChange.newValue,
-                    includeFieldsForEngine: true),
+                value: _serializeValue(
+                  elementChange.newValue,
+                  includeFieldsForEngine: true,
+                ),
               ),
               accessorChain: accessorChain,
             );
@@ -100,8 +102,10 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
           } else if (elementChange.type == OperationType.update) {
             notifyFieldChanged(
               operation: ListUpdate(
-                value: _serializeValue(elementChange.newValue,
-                    includeFieldsForEngine: true),
+                value: _serializeValue(
+                  elementChange.newValue,
+                  includeFieldsForEngine: true,
+                ),
               ),
               accessorChain: accessorChain,
             );
@@ -152,7 +156,7 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
   }
 
   AnthemObservableMap.of(super.entries, {super.context, super.name})
-      : super.of() {
+    : super.of() {
     _init();
   }
 
@@ -163,18 +167,18 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
 
     observe((change) {
       final accessorChain = [
-        FieldAccessor(
-          fieldType: FieldType.map,
-          key: change.key,
-        ),
+        FieldAccessor(fieldType: FieldType.map, key: change.key),
       ];
 
       if (change.type == OperationType.add ||
           change.type == OperationType.update) {
         notifyFieldChanged(
           operation: MapPut(
-              value: _serializeValue(change.newValue,
-                  includeFieldsForEngine: true)),
+            value: _serializeValue(
+              change.newValue,
+              includeFieldsForEngine: true,
+            ),
+          ),
           accessorChain: accessorChain,
         );
 
@@ -196,11 +200,7 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
       return;
     }
 
-    value.setParentProperties(
-      parent: this,
-      fieldType: FieldType.map,
-      key: key,
-    );
+    value.setParentProperties(parent: this, fieldType: FieldType.map, key: key);
   }
 
   @override

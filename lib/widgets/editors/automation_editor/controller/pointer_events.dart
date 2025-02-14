@@ -79,8 +79,10 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
   void hover(Offset pos) {
     final annotations = viewModel.visiblePoints.hitTestAll(pos);
 
-    final hovered = annotations.firstWhereOrNull(
-            (element) => element.metadata.kind == HandleKind.point) ??
+    final hovered =
+        annotations.firstWhereOrNull(
+          (element) => element.metadata.kind == HandleKind.point,
+        ) ??
         annotations.firstOrNull;
 
     final hoveredAnnotation = hovered?.metadata;
@@ -109,8 +111,10 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
 
     final annotations = viewModel.visiblePoints.hitTestAll(event.pos);
 
-    var pressed = annotations.firstWhereOrNull(
-            (element) => element.metadata.kind == HandleKind.point) ??
+    var pressed =
+        annotations.firstWhereOrNull(
+          (element) => element.metadata.kind == HandleKind.point,
+        ) ??
         annotations.firstOrNull;
 
     int? insertedPointIndex;
@@ -119,12 +123,13 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
       if (event.buttons & kSecondaryButton > 0) {
         int newPointTime;
 
-        newPointTime = pixelsToTime(
-          timeViewStart: viewModel.timeView.start,
-          timeViewEnd: viewModel.timeView.end,
-          viewPixelWidth: event.viewSize.width,
-          pixelOffsetFromLeft: event.pos.dx,
-        ).round();
+        newPointTime =
+            pixelsToTime(
+              timeViewStart: viewModel.timeView.start,
+              timeViewEnd: viewModel.timeView.end,
+              viewPixelWidth: event.viewSize.width,
+              pixelOffsetFromLeft: event.pos.dx,
+            ).round();
 
         if (!event.keyboardModifiers.alt) {
           final divisionChanges = getDivisionChanges(
@@ -144,17 +149,16 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
           );
         }
 
-        insertedPointIndex =
-            _findIndexForNewPoint(automationLane, newPointTime);
+        insertedPointIndex = _findIndexForNewPoint(
+          automationLane,
+          newPointTime,
+        );
         final point = AutomationPointModel(
           offset: newPointTime,
           value: 1 - (event.pos.dy / event.viewSize.height),
           tension: viewModel.lastInteractedTension ?? 0,
         );
-        automationLane.points.insert(
-          insertedPointIndex,
-          point,
-        );
+        automationLane.points.insert(insertedPointIndex, point);
         // Note: we don't calculate a valid center or rect here, since it's not needed
         // after click detection, which has already happened.
         pressed = (
@@ -209,8 +213,10 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
             pressed!;
             return (
               index: index + pressed.metadata.pointIndex,
-              startTime: automationLane
-                  .points[pressed.metadata.pointIndex + index].offset,
+              startTime:
+                  automationLane
+                      .points[pressed.metadata.pointIndex + index]
+                      .offset,
             );
           },
         ),
@@ -241,8 +247,9 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
       _eventHandlingState = EventHandlingState.changingTension;
 
       // The first point doesn't have a tension handle, so this is safe
-      final previousPoint = automationLane
-          .points.nonObservableInner[pressed.metadata.pointIndex - 1];
+      final previousPoint =
+          automationLane.points.nonObservableInner[pressed.metadata.pointIndex -
+              1];
 
       _tensionChangeActionData = _TensionChangeActionData(
         pointIndex: pressed.metadata.pointIndex,
@@ -276,14 +283,15 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
             _pointMoveActionData!.startValue;
       }
 
-      var xDelta = (pixelsToTime(
-                timeViewStart: viewModel.timeView.start,
-                timeViewEnd: viewModel.timeView.end,
-                viewPixelWidth: event.viewSize.width,
-                pixelOffsetFromLeft: deltaFromStart.dx,
-              ) -
-              viewModel.timeView.start)
-          .round();
+      var xDelta =
+          (pixelsToTime(
+                    timeViewStart: viewModel.timeView.start,
+                    timeViewEnd: viewModel.timeView.end,
+                    viewPixelWidth: event.viewSize.width,
+                    pixelOffsetFromLeft: deltaFromStart.dx,
+                  ) -
+                  viewModel.timeView.start)
+              .round();
 
       if (!event.keyboardModifiers.alt) {
         final divisionChanges = getDivisionChanges(
@@ -339,9 +347,9 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
       final deltaTension = -deltaY / 250;
       final invertMult = _tensionChangeActionData!.invert ? -1 : 1;
 
-      point.tension =
-          (_tensionChangeActionData!.startTension + invertMult * deltaTension)
-              .clamp(-1, 1);
+      point.tension = (_tensionChangeActionData!.startTension +
+              invertMult * deltaTension)
+          .clamp(-1, 1);
     }
   }
 
@@ -351,11 +359,12 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
 
     switch (_eventHandlingState) {
       case EventHandlingState.movingPoint:
-        final point = project
-            .sequence
-            .patterns[project.sequence.activePatternID]!
-            .automationLanes[project.activeAutomationGeneratorID]!
-            .points[_pointMoveActionData!.pointIndex];
+        final point =
+            project
+                .sequence
+                .patterns[project.sequence.activePatternID]!
+                .automationLanes[project.activeAutomationGeneratorID]!
+                .points[_pointMoveActionData!.pointIndex];
 
         project.startJournalPage();
 
@@ -406,11 +415,12 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
 
         break;
       case EventHandlingState.changingTension:
-        final point = project
-            .sequence
-            .patterns[project.sequence.activePatternID]!
-            .automationLanes[project.activeAutomationGeneratorID]!
-            .points[_tensionChangeActionData!.pointIndex];
+        final point =
+            project
+                .sequence
+                .patterns[project.sequence.activePatternID]!
+                .automationLanes[project.activeAutomationGeneratorID]!
+                .points[_tensionChangeActionData!.pointIndex];
 
         project.startJournalPage();
 

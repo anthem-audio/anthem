@@ -60,69 +60,77 @@ class _VerticalScaleControlState extends State<VerticalScaleControl> {
       handleColor = Theme.control.hover.light;
     }
 
-    return LayoutBuilder(builder: (context, boxConstraints) {
-      return MouseRegion(
-        cursor: SystemMouseCursors.resizeUpDown,
-        onEnter: (event) {
-          setState(() {
-            isOver = true;
-          });
-        },
-        onExit: (event) {
-          setState(() {
-            isOver = false;
-          });
-        },
-        child: ControlMouseHandler(
-          onStart: () {
-            rawValue = widget.value;
+    return LayoutBuilder(
+      builder: (context, boxConstraints) {
+        return MouseRegion(
+          cursor: SystemMouseCursors.resizeUpDown,
+          onEnter: (event) {
             setState(() {
-              isPressed = true;
+              isOver = true;
             });
           },
-          onEnd: (event) {
+          onExit: (event) {
             setState(() {
-              isPressed = false;
+              isOver = false;
             });
           },
-          onChange: (event) {
-            rawValue += (event.delta.dy / mouseMoveAreaHeight) *
-                (widget.max - widget.min);
-            widget.onChange(rawValue.clamp(widget.min, widget.max));
-          },
-          child: SizedBox(
-            width: 17,
-            child: Stack(
-              children: [
-                Positioned(
-                  top: (1 -
-                          (widget.value - widget.min) /
-                              (widget.max - widget.min)) *
-                      (boxConstraints.maxHeight - handleHeight),
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Theme.control.border),
-                      borderRadius: const BorderRadius.all(Radius.circular(3)),
-                      color: handleColor,
+          child: ControlMouseHandler(
+            onStart: () {
+              rawValue = widget.value;
+              setState(() {
+                isPressed = true;
+              });
+            },
+            onEnd: (event) {
+              setState(() {
+                isPressed = false;
+              });
+            },
+            onChange: (event) {
+              rawValue +=
+                  (event.delta.dy / mouseMoveAreaHeight) *
+                  (widget.max - widget.min);
+              widget.onChange(rawValue.clamp(widget.min, widget.max));
+            },
+            child: SizedBox(
+              width: 17,
+              child: Stack(
+                children: [
+                  Positioned(
+                    top:
+                        (1 -
+                            (widget.value - widget.min) /
+                                (widget.max - widget.min)) *
+                        (boxConstraints.maxHeight - handleHeight),
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Theme.control.border),
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(3),
+                        ),
+                        color: handleColor,
+                      ),
+                      height: handleHeight,
                     ),
-                    height: handleHeight,
                   ),
-                ),
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Theme.control.border),
-                      borderRadius: const BorderRadius.all(Radius.circular(4)),
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Theme.control.border),
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(4),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 }

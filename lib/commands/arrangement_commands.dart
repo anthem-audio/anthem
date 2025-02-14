@@ -34,10 +34,8 @@ abstract class ArrangementCommand extends Command {
 class AddClipCommand extends ArrangementCommand {
   final ClipModel clip;
 
-  AddClipCommand({
-    required Id arrangementID,
-    required this.clip,
-  }) : super(arrangementID);
+  AddClipCommand({required Id arrangementID, required this.clip})
+    : super(arrangementID);
 
   @override
   void execute(ProjectModel project) {
@@ -160,10 +158,8 @@ class MoveClipCommand extends ArrangementCommand {
 class DeleteClipCommand extends ArrangementCommand {
   final ClipModel clip;
 
-  DeleteClipCommand({
-    required Id arrangementID,
-    required this.clip,
-  }) : super(arrangementID);
+  DeleteClipCommand({required Id arrangementID, required this.clip})
+    : super(arrangementID);
 
   @override
   void execute(ProjectModel project) {

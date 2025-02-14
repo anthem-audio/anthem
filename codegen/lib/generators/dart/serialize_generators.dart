@@ -29,51 +29,44 @@ String createSerializerForField({
     IntModelType() ||
     DoubleModelType() ||
     NumModelType() ||
-    BoolModelType() =>
-      createSerializerForPrimitive(accessor: accessor),
-    ColorModelType() => createSerializerForColor(
-        accessor: accessor,
-      ),
+    BoolModelType() => createSerializerForPrimitive(accessor: accessor),
+    ColorModelType() => createSerializerForColor(accessor: accessor),
     EnumModelType(isNullable: var isNullable) => createSerializerForEnum(
-        accessor: accessor,
-        isNullable: isNullable,
-      ),
+      accessor: accessor,
+      isNullable: isNullable,
+    ),
     ListModelType() => createSerializerForList(
-        type: type,
-        accessor: accessor,
-        alwaysIncludeEngineOnlyFields: alwaysIncludeEngineOnlyFields,
-      ),
+      type: type,
+      accessor: accessor,
+      alwaysIncludeEngineOnlyFields: alwaysIncludeEngineOnlyFields,
+    ),
     MapModelType() => createSerializerForMap(
-        type: type,
-        accessor: accessor,
-        alwaysIncludeEngineOnlyFields: alwaysIncludeEngineOnlyFields,
-      ),
+      type: type,
+      accessor: accessor,
+      alwaysIncludeEngineOnlyFields: alwaysIncludeEngineOnlyFields,
+    ),
     CustomModelType() => createSerializerForCustomType(
-        type: type,
-        accessor: accessor,
-        alwaysIncludeEngineOnlyFields: alwaysIncludeEngineOnlyFields,
-      ),
+      type: type,
+      accessor: accessor,
+      alwaysIncludeEngineOnlyFields: alwaysIncludeEngineOnlyFields,
+    ),
     UnionModelType() => createSerializerForUnion(
-        type: type,
-        accessor: accessor,
-        alwaysIncludeEngineOnlyFields: alwaysIncludeEngineOnlyFields,
-      ),
+      type: type,
+      accessor: accessor,
+      alwaysIncludeEngineOnlyFields: alwaysIncludeEngineOnlyFields,
+    ),
     UnknownModelType() => 'null',
   };
 }
 
-String createSerializerForPrimitive({
-  required String accessor,
-}) {
+String createSerializerForPrimitive({required String accessor}) {
   return accessor;
 }
 
 /// Converts a Color object at [accessor] to a map of ARGB values.
 ///
 /// Each value is stored as an integer between 0 and 255.
-String createSerializerForColor({
-  required String accessor,
-}) {
+String createSerializerForColor({required String accessor}) {
   return '''
 {'a': ($accessor.a * 255).round(), 'r': $accessor.r.round(), 'g': $accessor.g.round(), 'b': $accessor.b.round()}
 ''';

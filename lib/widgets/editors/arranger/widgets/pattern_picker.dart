@@ -108,35 +108,37 @@ class _PatternPickerState extends State<PatternPicker> {
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: Theme.panel.border,
-                          width: 1,
-                        ),
+                        border: Border.all(color: Theme.panel.border, width: 1),
                         color: Theme.panel.accentDark,
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: SingleChildScrollView(
                           controller: scrollController,
-                          child: Observer(builder: (context) {
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: project.sequence.patternOrder
-                                  .map(
-                                    (patternID) => Padding(
-                                      padding: const EdgeInsets.only(bottom: 1),
-                                      child: SizedBox(
-                                        height: patternHeight,
-                                        child: Clip.fromPattern(
-                                          patternId: patternID,
-                                          ticksPerPixel: 5,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                            );
-                          }),
+                          child: Observer(
+                            builder: (context) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children:
+                                    project.sequence.patternOrder
+                                        .map(
+                                          (patternID) => Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 1,
+                                            ),
+                                            child: SizedBox(
+                                              height: patternHeight,
+                                              child: Clip.fromPattern(
+                                                patternId: patternID,
+                                                ticksPerPixel: 5,
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ),

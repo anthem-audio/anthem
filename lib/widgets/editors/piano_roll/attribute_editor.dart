@@ -83,92 +83,97 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
                       alignment: Alignment.topCenter,
                       child: SizedBox(
                         height: 20,
-                        child: Observer(builder: (context) {
-                          return Dropdown(
-                            allowNoSelection: false,
-                            items: [
-                              DropdownItem(
-                                id: ActiveNoteAttribute.velocity.name,
-                                name: 'Velocity',
-                              ),
-                              DropdownItem(
-                                id: ActiveNoteAttribute.pan.name,
-                                name: 'Pan',
-                              ),
-                            ],
-                            selectedID: viewModel.activeNoteAttribute.name,
-                            onChanged: (id) {
-                              viewModel.activeNoteAttribute =
-                                  ActiveNoteAttribute.values.firstWhere(
-                                (attribute) => attribute.name == id,
-                              );
-                            },
-                          );
-                        }),
+                        child: Observer(
+                          builder: (context) {
+                            return Dropdown(
+                              allowNoSelection: false,
+                              items: [
+                                DropdownItem(
+                                  id: ActiveNoteAttribute.velocity.name,
+                                  name: 'Velocity',
+                                ),
+                                DropdownItem(
+                                  id: ActiveNoteAttribute.pan.name,
+                                  name: 'Pan',
+                                ),
+                              ],
+                              selectedID: viewModel.activeNoteAttribute.name,
+                              onChanged: (id) {
+                                viewModel.activeNoteAttribute =
+                                    ActiveNoteAttribute.values.firstWhere(
+                                      (attribute) => attribute.name == id,
+                                    );
+                              },
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ),
                 ),
                 Container(width: 1, color: Theme.panel.border),
                 Expanded(
-                  child: LayoutBuilder(builder: (context, constraints) {
-                    AttributeEditorPointerEvent createEditorPointerEvent(
-                        PointerEvent rawEvent) {
-                      return AttributeEditorPointerEvent(
-                        offset: pixelsToTime(
-                          timeViewStart: viewModel.timeView.start,
-                          timeViewEnd: viewModel.timeView.end,
-                          viewPixelWidth: constraints.maxWidth,
-                          pixelOffsetFromLeft: rawEvent.localPosition.dx,
-                        ),
-                        normalizedY: (1 -
-                                (rawEvent.localPosition.dy /
-                                    constraints.maxHeight))
-                            .clamp(0, 1),
-                        viewSize: constraints.biggest,
-                      );
-                    }
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      AttributeEditorPointerEvent createEditorPointerEvent(
+                        PointerEvent rawEvent,
+                      ) {
+                        return AttributeEditorPointerEvent(
+                          offset: pixelsToTime(
+                            timeViewStart: viewModel.timeView.start,
+                            timeViewEnd: viewModel.timeView.end,
+                            viewPixelWidth: constraints.maxWidth,
+                            pixelOffsetFromLeft: rawEvent.localPosition.dx,
+                          ),
+                          normalizedY: (1 -
+                                  (rawEvent.localPosition.dy /
+                                      constraints.maxHeight))
+                              .clamp(0, 1),
+                          viewSize: constraints.biggest,
+                        );
+                      }
 
-                    return Listener(
-                      onPointerDown: (e) {
-                        controller.pointerDown(createEditorPointerEvent(e));
-                      },
-                      onPointerMove: (e) {
-                        controller.pointerMove(createEditorPointerEvent(e));
-                      },
-                      onPointerUp: (e) {
-                        controller.pointerUp(createEditorPointerEvent(e));
-                      },
-                      onPointerCancel: (e) {
-                        controller.pointerUp(createEditorPointerEvent(e));
-                      },
-                      child: AnimatedBuilder(
-                        animation: widget.timeViewAnimationController,
-                        builder: (context, child) {
-                          return ClipRect(
-                            child: CustomPaintObserver(
-                              painterBuilder: () => PianoRollAttributePainter(
-                                viewModel: viewModel,
-                                project: project,
-                                timeViewStart:
-                                    widget.timeViewStartAnimation.value,
-                                timeViewEnd: widget.timeViewEndAnimation.value,
-                              ),
-                            ),
-                          );
+                      return Listener(
+                        onPointerDown: (e) {
+                          controller.pointerDown(createEditorPointerEvent(e));
                         },
-                      ),
-                    );
-                  }),
+                        onPointerMove: (e) {
+                          controller.pointerMove(createEditorPointerEvent(e));
+                        },
+                        onPointerUp: (e) {
+                          controller.pointerUp(createEditorPointerEvent(e));
+                        },
+                        onPointerCancel: (e) {
+                          controller.pointerUp(createEditorPointerEvent(e));
+                        },
+                        child: AnimatedBuilder(
+                          animation: widget.timeViewAnimationController,
+                          builder: (context, child) {
+                            return ClipRect(
+                              child: CustomPaintObserver(
+                                painterBuilder:
+                                    () => PianoRollAttributePainter(
+                                      viewModel: viewModel,
+                                      project: project,
+                                      timeViewStart:
+                                          widget.timeViewStartAnimation.value,
+                                      timeViewEnd:
+                                          widget.timeViewEndAnimation.value,
+                                    ),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
           ),
         ),
         const SizedBox(width: 4),
-        const SizedBox(
-          width: 17,
-        ),
+        const SizedBox(width: 17),
       ],
     );
   }
@@ -198,8 +203,8 @@ class PianoRollAttributePainter extends CustomPainterObserver {
 
     final selectedNotePaint = Paint()..color = selectedNoteColor.toColor();
     final notePaint = Paint()..color = noteColor.toColor();
-    final selectedNoteCirclePaint = Paint()
-      ..color = selectedNoteCircleColor.toColor();
+    final selectedNoteCirclePaint =
+        Paint()..color = selectedNoteCircleColor.toColor();
     final noteCirclePaint = Paint()..color = noteCircleColor.toColor();
 
     final activePattern =
@@ -239,7 +244,11 @@ class PianoRollAttributePainter extends CustomPainterObserver {
     const verticalDivisionCount = 4;
     for (var i = 1; i < verticalDivisionCount; i++) {
       final rect = Rect.fromLTWH(
-          0, size.height * i / verticalDivisionCount, size.width, 1);
+        0,
+        size.height * i / verticalDivisionCount,
+        size.width,
+        1,
+      );
       canvas.drawRect(rect, minorLinePaint);
     }
 
@@ -275,12 +284,14 @@ class PianoRollAttributePainter extends CustomPainterObserver {
 
       if (endX < 0 || startX > size.width) continue;
 
-      final paint = viewModel.selectedNotes.contains(note.id)
-          ? selectedNotePaint
-          : notePaint;
-      final circleCenterPaint = viewModel.selectedNotes.contains(note.id)
-          ? selectedNoteCirclePaint
-          : noteCirclePaint;
+      final paint =
+          viewModel.selectedNotes.contains(note.id)
+              ? selectedNotePaint
+              : notePaint;
+      final circleCenterPaint =
+          viewModel.selectedNotes.contains(note.id)
+              ? selectedNoteCirclePaint
+              : noteCirclePaint;
 
       double valueToPixels(num value) =>
           ((1 - ((value - bottom) / (top - bottom))) * size.height)
@@ -291,17 +302,11 @@ class PianoRollAttributePainter extends CustomPainterObserver {
       final barBottom = valueToPixels(baseline);
 
       canvas.drawRect(
-        Rect.fromPoints(
-          Offset(startX, barTop),
-          Offset(startX + 3, barBottom),
-        ),
+        Rect.fromPoints(Offset(startX, barTop), Offset(startX + 3, barBottom)),
         paint,
       );
 
-      canvas.drawRect(
-        Rect.fromLTWH(startX, barTop, endX - startX, 1),
-        paint,
-      );
+      canvas.drawRect(Rect.fromLTWH(startX, barTop, endX - startX, 1), paint);
 
       final circlePos = Offset(startX + 1.5, barTop + 0.5);
       canvas.drawCircle(circlePos, 3.5, paint);

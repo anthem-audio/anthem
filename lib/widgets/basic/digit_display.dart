@@ -96,10 +96,7 @@ class DigitDisplay extends StatelessWidget {
               ),
             ),
           ),
-          if (overlay != null)
-            Positioned.fill(
-              child: overlay!,
-            ),
+          if (overlay != null) Positioned.fill(child: overlay!),
         ],
       ),
     );

@@ -27,10 +27,7 @@ import 'package:flutter/widgets.dart';
 class ProjectDetails extends StatelessWidget {
   final DetailViewKind? selectedProjectDetails;
 
-  const ProjectDetails({
-    super.key,
-    required this.selectedProjectDetails,
-  });
+  const ProjectDetails({super.key, required this.selectedProjectDetails});
 
   @override
   Widget build(BuildContext context) {
@@ -52,10 +49,7 @@ class ProjectDetails extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: Text(
             'This is the detail view. Click on something to view and edit its details.',
-            style: TextStyle(
-              color: Theme.text.main,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: Theme.text.main, fontSize: 12),
             textAlign: TextAlign.center,
           ),
         ),

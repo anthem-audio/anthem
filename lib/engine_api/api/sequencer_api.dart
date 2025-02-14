@@ -38,12 +38,15 @@ class SequencerApi {
   ///
   /// If [invalidationRanges] is specified, [channelsToRebuild] must also be
   /// specified, and vice versa.
-  void compileArrangement(Id arrangementId,
-      {List<String>? channelsToRebuild,
-      List<InvalidationRange>? invalidationRanges}) {
+  void compileArrangement(
+    Id arrangementId, {
+    List<String>? channelsToRebuild,
+    List<InvalidationRange>? invalidationRanges,
+  }) {
     if ((channelsToRebuild == null) != (invalidationRanges == null)) {
       throw ArgumentError(
-          'channelsToRebuild and invalidationRanges must both be specified or both be null');
+        'channelsToRebuild and invalidationRanges must both be specified or both be null',
+      );
     }
 
     var request = CompileSequenceRequest.arrangement(
@@ -70,12 +73,15 @@ class SequencerApi {
   ///
   /// If [invalidationRanges] is specified, [channelsToRebuild] must also be
   /// specified, and vice versa.
-  void compilePattern(Id patternId,
-      {List<String>? channelsToRebuild,
-      List<InvalidationRange>? invalidationRanges}) {
+  void compilePattern(
+    Id patternId, {
+    List<String>? channelsToRebuild,
+    List<InvalidationRange>? invalidationRanges,
+  }) {
     if ((channelsToRebuild == null) != (invalidationRanges == null)) {
       throw ArgumentError(
-          'channelsToRebuild and invalidationRanges must both be specified or both be null');
+        'channelsToRebuild and invalidationRanges must both be specified or both be null',
+      );
     }
 
     var request = CompileSequenceRequest.pattern(

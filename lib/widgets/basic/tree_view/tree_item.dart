@@ -30,7 +30,6 @@ class _TreeItem extends StatefulWidget {
 
   const _TreeItem({
     // ignore: unused_element
-    super.key,
     required this.model,
     this.hasOpenIndicatorIndent = false,
     required this.filterModel,
@@ -80,7 +79,8 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
         SizedBox(
           child: Visibility(
             maintainState: true,
-            visible: filterModel == null ||
+            visible:
+                filterModel == null ||
                 filterModel.maxScoreOfChildren > widget.filterCutoff,
             child: _TreeItem(
               model: model,
@@ -125,25 +125,29 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
                   widget.model.onClick?.call();
                 }
               },
-              onDoubleTap: widget.model.children.isNotEmpty &&
-                      widget.model.onClick != null
-                  ? () => widget.model.onClick?.call()
-                  : null,
+              onDoubleTap:
+                  widget.model.children.isNotEmpty &&
+                          widget.model.onClick != null
+                      ? () => widget.model.onClick?.call()
+                      : null,
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isHovered || hasHighestScore
-                        ? Theme.primary.subtle
-                        : null,
+                    color:
+                        isHovered || hasHighestScore
+                            ? Theme.primary.subtle
+                            : null,
                     border: Border.all(
-                      color: isHovered
-                          ? Theme.primary.subtleBorder
-                          : const Color(0x00000000),
+                      color:
+                          isHovered
+                              ? Theme.primary.subtleBorder
+                              : const Color(0x00000000),
                     ),
-                    borderRadius: !isHovered && hasHighestScore
-                        ? null
-                        : BorderRadius.circular(4),
+                    borderRadius:
+                        !isHovered && hasHighestScore
+                            ? null
+                            : BorderRadius.circular(4),
                   ),
                   height: itemHeight,
                   child: Row(
@@ -151,21 +155,23 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
                     children: [
                       SizedBox(width: indent),
                       SizedBox(
-                        width: widget.model.children.isNotEmpty ||
-                                widget.hasOpenIndicatorIndent
-                            ? 10
-                            : 0,
+                        width:
+                            widget.model.children.isNotEmpty ||
+                                    widget.hasOpenIndicatorIndent
+                                ? 10
+                                : 0,
                         height: 10,
-                        child: (widget.model.children.isEmpty)
-                            ? null
-                            : Transform.rotate(
-                                angle: isOpen ? 0 : -pi / 2,
-                                alignment: Alignment.center,
-                                child: SvgIcon(
-                                  icon: Icons.arrowDown,
-                                  color: Theme.text.main,
+                        child:
+                            (widget.model.children.isEmpty)
+                                ? null
+                                : Transform.rotate(
+                                  angle: isOpen ? 0 : -pi / 2,
+                                  alignment: Alignment.center,
+                                  child: SvgIcon(
+                                    icon: Icons.arrowDown,
+                                    color: Theme.text.main,
+                                  ),
                                 ),
-                              ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -173,8 +179,10 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
                           widget.model.label,
                           textAlign: TextAlign.left,
                           overflow: TextOverflow.ellipsis,
-                          style:
-                              TextStyle(color: Theme.text.main, fontSize: 11),
+                          style: TextStyle(
+                            color: Theme.text.main,
+                            fontSize: 11,
+                          ),
                         ),
                       ),
                     ],
@@ -186,9 +194,7 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
           Visibility(
             visible: isOpen,
             maintainState: true,
-            child: Column(
-              children: children,
-            ),
+            child: Column(children: children),
           ),
         ],
       ),

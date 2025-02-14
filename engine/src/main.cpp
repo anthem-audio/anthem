@@ -389,12 +389,12 @@ public:
 
     std::cout << anthemSplash;
 
-    #ifndef NDEBUG
+    // #ifndef NDEBUG
 
-    juce::Logger::writeToLog("If you want to attach a debugger, you can do it now. Press enter to continue.");
-    std::cin.get();
+    // juce::Logger::writeToLog("If you want to attach a debugger, you can do it now. Press enter to continue.");
+    // std::cin.get();
 
-    #endif
+    // #endif
 
     juce::Logger::writeToLog("Starting Anthem engine...");
     Anthem::getInstance().initialize();

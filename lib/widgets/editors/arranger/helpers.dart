@@ -25,8 +25,10 @@ const maxTrackHeight = 150.0;
 /// Gets the actual height of a track in pixels, given what we actually store
 /// about the track (base track height & track height modifier)
 double getTrackHeight(double baseTrackHeight, double trackHeightModifier) {
-  return (baseTrackHeight * trackHeightModifier)
-      .clamp(minTrackHeight, maxTrackHeight);
+  return (baseTrackHeight * trackHeightModifier).clamp(
+    minTrackHeight,
+    maxTrackHeight,
+  );
 }
 
 double getScrollAreaHeight(
@@ -55,10 +57,7 @@ double posToTrackIndex({
 
   if (yScrollAreaOffset < 0) {
     return yScrollAreaOffset /
-        baseTrackHeight.clamp(
-          minTrackHeight,
-          maxTrackHeight,
-        );
+        baseTrackHeight.clamp(minTrackHeight, maxTrackHeight);
   }
 
   double yPixelPointer = 0;
@@ -93,8 +92,10 @@ double trackIndexToPos({
   double yIndexPointer = 0;
 
   for (final trackID in trackOrder) {
-    final trackHeight =
-        getTrackHeight(baseTrackHeight, trackHeightModifiers[trackID]!);
+    final trackHeight = getTrackHeight(
+      baseTrackHeight,
+      trackHeightModifiers[trackID]!,
+    );
 
     if (yIndexPointer + 1 > trackIndex) {
       return yPixelPointer + trackHeight * (trackIndex - yIndexPointer);

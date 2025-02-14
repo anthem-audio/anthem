@@ -57,13 +57,14 @@ class PianoRollGrid extends StatelessWidget {
             animation: timeViewAnimationController,
             builder: (context, child) {
               return CustomPaintObserver(
-                painterBuilder: () => PianoRollBackgroundPainter(
-                  project: project,
-                  viewModel: viewModel,
-                  keyValueAtTop: keyValueAtTopAnimation.value,
-                  timeViewStart: timeViewStartAnimation.value,
-                  timeViewEnd: timeViewEndAnimation.value,
-                ),
+                painterBuilder:
+                    () => PianoRollBackgroundPainter(
+                      project: project,
+                      viewModel: viewModel,
+                      keyValueAtTop: keyValueAtTopAnimation.value,
+                      timeViewStart: timeViewStartAnimation.value,
+                      timeViewEnd: timeViewEndAnimation.value,
+                    ),
               );
             },
           );
@@ -107,8 +108,12 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
       if (y > size.height) break;
 
       final keyType = getKeyType(keyNum - 1);
-      final backgroundStripRect =
-          Rect.fromLTWH(0, y, size.width, viewModel.keyHeight);
+      final backgroundStripRect = Rect.fromLTWH(
+        0,
+        y,
+        size.width,
+        viewModel.keyHeight,
+      );
       if (keyType == KeyType.white) {
         canvas.drawRect(backgroundStripRect, lightBackgroundPaint);
       } else {
@@ -124,7 +129,9 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
 
     while (linePointer < size.height) {
       canvas.drawRect(
-          Rect.fromLTWH(0, linePointer, size.width, 1), minorLinePaint);
+        Rect.fromLTWH(0, linePointer, size.width, 1),
+        minorLinePaint,
+      );
       linePointer += viewModel.keyHeight;
     }
 

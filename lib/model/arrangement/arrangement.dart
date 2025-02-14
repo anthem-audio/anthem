@@ -39,7 +39,7 @@ class ArrangementModel extends _ArrangementModel
   ArrangementModel.uninitialized() : super(name: '', id: '');
 
   ArrangementModel.create({required super.name, required super.id})
-      : super.create();
+    : super.create();
 
   factory ArrangementModel.fromJson(Map<String, dynamic> json) =>
       _$ArrangementModelAnthemModelMixin.fromJson(json);
@@ -54,26 +54,18 @@ abstract class _ArrangementModel with Store, AnthemModelBase {
   @anthemObservable
   AnthemObservableMap<Id, ClipModel> clips = AnthemObservableMap();
 
-  _ArrangementModel({
-    required this.name,
-    required this.id,
-  }) : super();
+  _ArrangementModel({required this.name, required this.id}) : super();
 
-  _ArrangementModel.create({
-    required this.name,
-    required this.id,
-  }) : super();
+  _ArrangementModel.create({required this.name, required this.id}) : super();
 
   /// Gets the time position of the end of the last clip in this arrangement,
   /// rounded upward to the nearest `barMultiple` bars.
-  int getWidth({
-    int barMultiple = 4,
-    int minPaddingInBarMultiples = 4,
-  }) {
+  int getWidth({int barMultiple = 4, int minPaddingInBarMultiples = 4}) {
     final defaultTimeSignature =
         getFirstAncestorOfType<SequenceModel>().defaultTimeSignature;
 
-    final ticksPerBarDouble = project.sequence.ticksPerQuarter /
+    final ticksPerBarDouble =
+        project.sequence.ticksPerQuarter /
         (defaultTimeSignature.denominator / 4) *
         defaultTimeSignature.numerator;
 
@@ -102,9 +94,6 @@ abstract class _ArrangementModel with Store, AnthemModelBase {
 
     clips.observeAllChanges();
 
-    return blockObservation(
-      modelItems: [clips],
-      block: () => getWidth(),
-    );
+    return blockObservation(modelItems: [clips], block: () => getWidth());
   }
 }

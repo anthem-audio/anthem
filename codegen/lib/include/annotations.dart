@@ -57,13 +57,14 @@ class AnthemModel {
   /// Constructor for [AnthemModel].
   ///
   /// See the documentation above for more info.
-  const AnthemModel(
-      {this.serializable = false,
-      this.generateCpp = false,
-      this.generateModelSync = false,
-      this.generateCppWrapperClass = false,
-      this.cppBehaviorClassName,
-      this.cppBehaviorClassIncludePath});
+  const AnthemModel({
+    this.serializable = false,
+    this.generateCpp = false,
+    this.generateModelSync = false,
+    this.generateCppWrapperClass = false,
+    this.cppBehaviorClassName,
+    this.cppBehaviorClassIncludePath,
+  });
 
   /// Constructor for [AnthemModel], which enables options necessary for model
   /// generation and syncing with C++.
@@ -73,23 +74,25 @@ class AnthemModel {
     String? cppBehaviorClassName,
     String? cppBehaviorClassIncludePath,
   }) : this(
-            serializable: true,
-            generateCpp: true,
-            generateModelSync: true,
-            generateCppWrapperClass: true,
-            cppBehaviorClassName: cppBehaviorClassName,
-            cppBehaviorClassIncludePath: cppBehaviorClassIncludePath);
+         serializable: true,
+         generateCpp: true,
+         generateModelSync: true,
+         generateCppWrapperClass: true,
+         cppBehaviorClassName: cppBehaviorClassName,
+         cppBehaviorClassIncludePath: cppBehaviorClassIncludePath,
+       );
 
   /// Constructor for [AnthemModel], which enables options necessary for IPC
   /// messages.
   ///
   /// See the documentation above for more info.
   const AnthemModel.ipc()
-      : this(
-            serializable: true,
-            generateCpp: true,
-            generateModelSync: false,
-            generateCppWrapperClass: false);
+    : this(
+        serializable: true,
+        generateCpp: true,
+        generateModelSync: false,
+        generateCppWrapperClass: false,
+      );
 }
 
 /// An annotation that triggers the Anthem code generator to create a module

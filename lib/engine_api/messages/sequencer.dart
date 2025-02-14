@@ -24,10 +24,7 @@ class InvalidationRange extends _InvalidationRange
     with _$InvalidationRangeAnthemModelMixin {
   InvalidationRange.uninitialized() : super(start: 0, end: 0);
 
-  InvalidationRange({
-    required super.start,
-    required super.end,
-  });
+  InvalidationRange({required super.start, required super.end});
 
   factory InvalidationRange.fromJson(Map<String, dynamic> json) =>
       _$InvalidationRangeAnthemModelMixin.fromJson(json);
@@ -37,10 +34,7 @@ abstract class _InvalidationRange {
   int start;
   int end;
 
-  _InvalidationRange({
-    required this.start,
-    required this.end,
-  });
+  _InvalidationRange({required this.start, required this.end});
 }
 
 /// A request to compile either a pattern or an arrangement.
@@ -109,10 +103,7 @@ class RemoveChannelRequest extends Request {
 
   RemoveChannelRequest.uninitialized() : channelId = '';
 
-  RemoveChannelRequest({
-    required int id,
-    required this.channelId,
-  }) {
+  RemoveChannelRequest({required int id, required this.channelId}) {
     super.id = id;
   }
 }

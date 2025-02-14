@@ -39,50 +39,57 @@ class TrackHeader extends StatelessWidget {
     // Allows Observer widgets to track changes from MobX
     TrackModel getTrack() => project.sequence.tracks[trackID]!;
 
-    return LayoutBuilder(builder: (context, constraints) {
-      final height = constraints.maxHeight;
-      const fontSize = 11.0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final height = constraints.maxHeight;
+        const fontSize = 11.0;
 
-      // Hacky way to make sure it's centered when the row is small
-      final double verticalPadding = 8.0.clamp(0, (height - fontSize - 5) / 2);
+        // Hacky way to make sure it's centered when the row is small
+        final double verticalPadding = 8.0.clamp(
+          0,
+          (height - fontSize - 5) / 2,
+        );
 
-      return Container(
-        decoration: BoxDecoration(
-          color: Theme.panel.accent,
-          borderRadius: BorderRadius.circular(1),
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              left: 8,
-              top: verticalPadding,
-              child: Observer(builder: (context) {
-                return Text(
-                  getTrack().name,
-                  style: TextStyle(
-                    color: Theme.text.main,
-                    fontSize: fontSize,
-                  ),
-                );
-              }),
-            ),
-            Positioned(
-              bottom: 0,
-              right: 0,
-              child: Button(
-                variant: ButtonVariant.label,
-                icon: Icons.mute,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: verticalPadding,
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.panel.accent,
+            borderRadius: BorderRadius.circular(1),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                left: 8,
+                top: verticalPadding,
+                child: Observer(
+                  builder: (context) {
+                    return Text(
+                      getTrack().name,
+                      style: TextStyle(
+                        color: Theme.text.main,
+                        fontSize: fontSize,
+                      ),
+                    );
+                  },
                 ),
-                hideBorder: true,
-                toggleState: true,
               ),
-            ),
-          ],
-        ),
-      );
-    });
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Button(
+                  variant: ButtonVariant.label,
+                  icon: Icons.mute,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: verticalPadding,
+                  ),
+                  hideBorder: true,
+                  toggleState: true,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

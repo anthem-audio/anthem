@@ -33,11 +33,7 @@ class AnthemColor extends _AnthemColor
   });
 
   AnthemColor.uninitialized()
-      : super(
-          hue: 0,
-          lightnessMultiplier: 1,
-          saturationMultiplier: 1,
-        );
+    : super(hue: 0, lightnessMultiplier: 1, saturationMultiplier: 1);
 
   factory AnthemColor.fromJson(Map<String, dynamic> json) =>
       _$AnthemColorAnthemModelMixin.fromJson(json);

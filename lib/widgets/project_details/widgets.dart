@@ -29,10 +29,7 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: TextStyle(
-        color: Theme.text.main,
-        fontSize: 10,
-      ),
+      style: TextStyle(color: Theme.text.main, fontSize: 10),
       textAlign: TextAlign.center,
     );
   }
@@ -54,11 +51,7 @@ class Section extends StatelessWidget {
       padding: const EdgeInsets.all(6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-              _Header(title),
-              const SizedBox(height: 6),
-            ] +
-            children,
+        children: [_Header(title), const SizedBox(height: 6)] + children,
       ),
     );
   }

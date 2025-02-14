@@ -23,11 +23,7 @@ import 'package:anthem/model/project.dart';
 import 'package:mobx/mobx.dart';
 
 /// Represents a type of field in the model.
-enum FieldType {
-  raw,
-  list,
-  map,
-}
+enum FieldType { raw, list, map }
 
 String _stringifyValue(dynamic value) {
   if (value is Map<String, dynamic>) {
@@ -71,9 +67,7 @@ class ListInsert extends FieldOperation {
   /// See above for the types that this can be.
   final dynamic value;
 
-  ListInsert({
-    required this.value,
-  });
+  ListInsert({required this.value});
 
   @override
   String toString() {
@@ -98,9 +92,7 @@ class ListUpdate extends FieldOperation {
   /// See above for the types that this can be.
   final dynamic value;
 
-  ListUpdate({
-    required this.value,
-  });
+  ListUpdate({required this.value});
 
   @override
   String toString() {
@@ -115,9 +107,7 @@ class MapPut extends FieldOperation {
   /// See above for the types that this can be.
   final dynamic value;
 
-  MapPut({
-    required this.value,
-  });
+  MapPut({required this.value});
 
   @override
   String toString() {
@@ -158,10 +148,11 @@ class AnthemListChange<T> {
 }
 
 class AnthemElementChange<T> {
-  AnthemElementChange(
-      {required this.index,
-      this.type = OperationType.update,
-      this.newValueSerialized});
+  AnthemElementChange({
+    required this.index,
+    this.type = OperationType.update,
+    this.newValueSerialized,
+  });
 
   final int index;
   final OperationType type;
@@ -169,10 +160,11 @@ class AnthemElementChange<T> {
 }
 
 class AnthemRangeChange<T> {
-  AnthemRangeChange(
-      {required this.index,
-      this.newValuesSerialized,
-      this.numItemsRemoved = 0});
+  AnthemRangeChange({
+    required this.index,
+    this.newValuesSerialized,
+    this.numItemsRemoved = 0,
+  });
 
   final int index;
   final List<T>? newValuesSerialized;
@@ -268,9 +260,9 @@ mixin AnthemModelBase {
 
   /// Listeners that are notified when a field is changed.
   final List<
-          void Function(
-              Iterable<FieldAccessor> accessors, FieldOperation operation)>
-      _listeners = [];
+    void Function(Iterable<FieldAccessor> accessors, FieldOperation operation)
+  >
+  _listeners = [];
 
   /// Serializes the model to a JSON representation.
   dynamic toJson({bool includeFieldsForEngine = false});
@@ -315,15 +307,16 @@ mixin AnthemModelBase {
 
   /// Adds a listener that is notified when a field is changed.
   void addFieldChangedListener(
-      void Function(Iterable<FieldAccessor> accessors, FieldOperation operation)
-          listener) {
+    void Function(Iterable<FieldAccessor> accessors, FieldOperation operation)
+    listener,
+  ) {
     _listeners.add(listener);
   }
 
   /// Removes a listener that is notified when a field is changed.
   void removeFieldChangedListener(
     void Function(Iterable<FieldAccessor> accessors, FieldOperation operation)
-        listener,
+    listener,
   ) {
     _listeners.remove(listener);
   }

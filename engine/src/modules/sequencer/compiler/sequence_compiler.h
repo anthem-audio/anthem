@@ -40,17 +40,34 @@
 class AnthemSequenceCompiler {
 friend class SequenceCompilerTest;
 private:
-  static void getChannelEventsForArrangement(std::string channelId, std::string arrangementId, std::vector<AnthemSequenceEvent>& events);
+  // Compiles the given pattern, and adds or replaces its entry in the sequence
+  // store.
+  static void compilePattern(std::string patternId);
 
-  static void getChannelEventsForPattern(
+  // Compiles the given channels for the given pattern, and replaces them in the
+  // sequence store.
+  static void compilePattern(std::string patternId, std::vector<std::string>& channelIdsToRebuild);
+
+  // Compiles the given arrangement, and adds or replaces its entry in the
+  // sequence store.
+  static void compileArrangement(std::string arrangementId);
+
+  // Compiles the given channels for the given arrangement, and replaces them in
+  // the sequence store.
+  static void compileArrangement(std::string arrangementId, std::vector<std::string>& channelIdsToRebuild);
+
+  // Gets the note events on a given channel for the given arrangement.
+  //
+  // The events will be added to the given `events` vector.
+  static void getChannelNoteEventsForArrangement(
     std::string channelId,
-    std::string patternId,
-    std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> range,
-    std::optional<AnthemSequenceTime> offset,
+    std::string arrangementId,
     std::vector<AnthemSequenceEvent>& events
   );
 
   // Gets the note events on a given channel for the given pattern.
+  //
+  // The events will be added to the given `events` vector.
   //
   // If a range is provided, the events will be clamped to that range.
   //

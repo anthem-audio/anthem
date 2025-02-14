@@ -38,11 +38,8 @@ class _ColorPickerState extends State<ColorPicker> {
   @override
   Widget build(BuildContext context) {
     const hueArrayLength = 10;
-    final hues = [0.0] +
-        List.generate(
-          hueArrayLength,
-          (i) => i * 360 / hueArrayLength,
-        );
+    final hues =
+        [0.0] + List.generate(hueArrayLength, (i) => i * 360 / hueArrayLength);
     final saturations = [0.0] + List.filled(hueArrayLength, 1);
 
     return Container(
@@ -60,41 +57,40 @@ class _ColorPickerState extends State<ColorPicker> {
 
           return Expanded(
             child: Column(
-              children: List.generate(
-                3,
-                (lightnessIndex) {
-                  var lightnessMultiplier = 0.9 + (lightnessIndex - 1) * 0.5;
-                  if (lightnessIndex == 0) lightnessMultiplier += 0.2;
+              children: List.generate(3, (lightnessIndex) {
+                var lightnessMultiplier = 0.9 + (lightnessIndex - 1) * 0.5;
+                if (lightnessIndex == 0) lightnessMultiplier += 0.2;
 
-                  final saturationMultiplier = saturations[colorIndex] +
-                      (lightnessIndex - 1) * 0.5 -
-                      0.2;
+                final saturationMultiplier =
+                    saturations[colorIndex] + (lightnessIndex - 1) * 0.5 - 0.2;
 
-                  void onPointerUp(PointerEvent e) {
-                    widget.onChange?.call(AnthemColor(
+                void onPointerUp(PointerEvent e) {
+                  widget.onChange?.call(
+                    AnthemColor(
                       hue: hue,
                       saturationMultiplier: saturationMultiplier,
                       lightnessMultiplier: lightnessMultiplier,
-                    ));
-                  }
-
-                  return Expanded(
-                    child: Listener(
-                      onPointerUp: onPointerUp,
-                      onPointerCancel: onPointerUp,
-                      child: Container(
-                        margin: const EdgeInsets.all(squareMargin),
-                        color: HSLColor.fromAHSL(
-                          1,
-                          hue,
-                          (saturation * saturationMultiplier).clamp(0, 1),
-                          (0.5 * lightnessMultiplier).clamp(0, 1),
-                        ).toColor(),
-                      ),
                     ),
                   );
-                },
-              ),
+                }
+
+                return Expanded(
+                  child: Listener(
+                    onPointerUp: onPointerUp,
+                    onPointerCancel: onPointerUp,
+                    child: Container(
+                      margin: const EdgeInsets.all(squareMargin),
+                      color:
+                          HSLColor.fromAHSL(
+                            1,
+                            hue,
+                            (saturation * saturationMultiplier).clamp(0, 1),
+                            (0.5 * lightnessMultiplier).clamp(0, 1),
+                          ).toColor(),
+                    ),
+                  ),
+                );
+              }),
             ),
           );
         }),

@@ -28,10 +28,7 @@ class SetTempoCommand extends Command {
   final int newRawTempo;
   final int oldRawTempo;
 
-  SetTempoCommand({
-    required this.newRawTempo,
-    required this.oldRawTempo,
-  });
+  SetTempoCommand({required this.newRawTempo, required this.oldRawTempo});
 
   @override
   void execute(ProjectModel project) {

@@ -90,7 +90,7 @@ class _PatternEditorState extends State<PatternEditor> {
                               onSelected: () {
                                 projectController.addPattern();
                               },
-                            )
+                            ),
                           ],
                         ),
                         child: Button(
@@ -103,28 +103,30 @@ class _PatternEditorState extends State<PatternEditor> {
                         ),
                       ),
                       const SizedBox(width: 4),
-                      Observer(builder: (context) {
-                        return Dropdown(
-                          width: 169,
-                          height: 26,
-                          hint: 'Change the active pattern',
-                          items: project.sequence.patternOrder.map(
-                            (id) {
-                              final pattern = project.sequence.patterns[id]!;
-                              return DropdownItem(
-                                id: id,
-                                name: pattern.name,
-                                hint: pattern.name,
-                              );
+                      Observer(
+                        builder: (context) {
+                          return Dropdown(
+                            width: 169,
+                            height: 26,
+                            hint: 'Change the active pattern',
+                            items:
+                                project.sequence.patternOrder.map((id) {
+                                  final pattern =
+                                      project.sequence.patterns[id]!;
+                                  return DropdownItem(
+                                    id: id,
+                                    name: pattern.name,
+                                    hint: pattern.name,
+                                  );
+                                }).toList(),
+                            selectedID:
+                                project.sequence.activePatternID?.toString(),
+                            onChanged: (id) {
+                              project.sequence.activePatternID = id;
                             },
-                          ).toList(),
-                          selectedID:
-                              project.sequence.activePatternID?.toString(),
-                          onChanged: (id) {
-                            project.sequence.activePatternID = id;
-                          },
-                        );
-                      }),
+                          );
+                        },
+                      ),
                       const Expanded(child: SizedBox()),
                     ],
                   ),
@@ -137,26 +139,35 @@ class _PatternEditorState extends State<PatternEditor> {
                           child: Background(
                             type: BackgroundType.light,
                             border: Border.all(color: Theme.panel.border),
-                            borderRadius:
-                                const BorderRadius.all(Radius.circular(2)),
+                            borderRadius: const BorderRadius.all(
+                              Radius.circular(2),
+                            ),
                             child: SingleChildScrollView(
                               controller: verticalScrollController,
                               child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 5),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 5,
+                                ),
                                 child: SizeChangedLayoutNotifier(
-                                  child: Observer(builder: (context) {
-                                    return Column(
-                                      children: project.generatorOrder
-                                          .map<Widget>((id) {
-                                        return Padding(
-                                          padding:
-                                              const EdgeInsets.only(bottom: 1),
-                                          child: GeneratorRow(generatorID: id),
-                                        );
-                                      }).toList(),
-                                    );
-                                  }),
+                                  child: Observer(
+                                    builder: (context) {
+                                      return Column(
+                                        children:
+                                            project.generatorOrder.map<Widget>((
+                                              id,
+                                            ) {
+                                              return Padding(
+                                                padding: const EdgeInsets.only(
+                                                  bottom: 1,
+                                                ),
+                                                child: GeneratorRow(
+                                                  generatorID: id,
+                                                ),
+                                              );
+                                            }).toList(),
+                                      );
+                                    },
+                                  ),
                                 ),
                               ),
                             ),
