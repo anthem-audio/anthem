@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "modules/sequencer/time.h"
 #include "modules/sequencer/events/event.h"
 
 #include <string>

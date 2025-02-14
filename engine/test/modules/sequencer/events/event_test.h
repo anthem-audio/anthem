@@ -27,63 +27,10 @@ public:
   EventTest() : juce::UnitTest ("EventTest", "Anthem") {}
 
   void runTest() override {
-    testAnthemSequenceTimeOperators();
     testAnthemSequenceEventOperators();
   }
 
 private:
-  void testAnthemSequenceTimeOperators() {
-    beginTest ("AnthemSequenceTime Operators");
-
-    AnthemSequenceTime time1{ .ticks = 10, .fraction = 0.5 };
-    AnthemSequenceTime time2{ .ticks = 20, .fraction = 0.0 };
-    AnthemSequenceTime time3{ .ticks = 10, .fraction = 0.5 };
-    AnthemSequenceTime time4{ .ticks = 5, .fraction = 0.8 };
-    AnthemSequenceTime time5{ .ticks = 10, .fraction = 0.8 };
-
-    // operator=
-    AnthemSequenceTime timeCopy = time2;
-    expectEquals (timeCopy.ticks, time2.ticks, "operator=: ticks");
-    expectEquals (timeCopy.fraction, time2.fraction, "operator=: fraction");
-
-    // operator<
-    expect (time1 < time2, "operator<: time1 < time2");
-    expect (!(time2 < time1), "operator<: !(time2 < time1)");
-    expect (!(time1 < time3), "operator<: !(time1 < time3) - equal");
-    expect (time4 < time1, "operator<: time4 < time1 - smaller ticks");
-    expect (time1 < time5, "operator<: time1 < time5 - equal ticks, smaller fraction");
-
-    // operator>
-    expect (time2 > time1, "operator>: time2 > time1");
-    expect (!(time1 > time2), "operator>: !(time1 > time2)");
-    expect (!(time1 > time3), "operator>: !(time1 > time3) - equal");
-    expect (!(time4 > time1), "operator>: !(time4 > time1) - smaller ticks");
-    expect (!(time1 > time5), "operator>: !(time1 > time5) - equal ticks, smaller fraction");
-    expect (time5 > time1, "operator>: time5 > time1 - equal ticks, larger fraction");
-
-    // operator<=
-    expect (time1 <= time2, "operator<=: time1 <= time2");
-    expect (!(time2 <= time1), "operator<=: !(time2 <= time1)");
-    expect (time1 <= time3, "operator<=: time1 <= time3 - equal");
-    expect (time4 <= time1, "operator<=: time4 <= time1 - smaller ticks");
-    expect (time1 <= time5, "operator<=: time1 <= time5 - equal ticks, smaller fraction");
-    expect (time1 <= time1, "operator<=: time1 <= time1 - self");
-
-    // operator>=
-    expect (time2 >= time1, "operator>=: time2 >= time1");
-    expect (!(time1 >= time2), "operator>=: !(time1 >= time2)");
-    expect (time1 >= time3, "operator>=: time1 >= time3 - equal");
-    expect (!(time4 >= time1), "operator>=: !(time4 >= time1) - smaller ticks");
-    expect (!(time1 >= time5), "operator>=: !(time1 >= time5) - equal ticks, smaller fraction");
-    expect (time2 >= time2, "operator>=: time2 >= time2 - self");
-
-		expect (time1 + time2 == AnthemSequenceTime { .ticks = 30, .fraction = 0.5 }, "operator+: time1 + time2");
-		expect ((time1 + time5).ticks == 21, "operator+: time1 + time5 ticks");
-		expect (std::abs((time1 + time5).fraction - 0.3) < 0.0001, "operator+: time1 + time5 fraction");
-		expect ((time2 - time1).ticks == 9, "operator-: time1 - time2 ticks");
-		expect (std::abs((time2 - time1).fraction - 0.5) < 0.0001, "operator-: time1 - time2 fraction");
-  }
-
   void testAnthemSequenceEventOperators() {
     beginTest ("AnthemSequenceEvent Operators");
 

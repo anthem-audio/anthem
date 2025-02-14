@@ -24,6 +24,7 @@
 #include "modules/sequencer/compiler/sequence_compiler_test.h"
 #include "modules/sequencer/events/event_test.h"
 #include "modules/sequencer/runtime/runtime_sequence_store_test.h"
+#include "modules/sequencer/time_test.h"
 #include "modules/util/arena_allocator_test.h"
 
 int main(int argc, char** argv) {
