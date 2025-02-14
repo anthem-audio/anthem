@@ -22,8 +22,7 @@ jobs:
         # For some reason, 3.29.0 doesn't install properly for now - this will also upgrade to 3.29.0
         run: |
           flutter doctor
-          flutter channel stable
-          flutter upgrade
+          flutter upgrade --force
 
       # Get dependencies for Flutter
       - name: Get dependencies
@@ -92,8 +91,7 @@ jobs:
         # For some reason, 3.29.0 doesn't install properly for now - this will also upgrade to 3.29.0
         run: |
           flutter doctor
-          flutter channel stable
-          flutter upgrade
+          flutter upgrade --force
 
       # Get dependencies for Flutter
       - name: Get dependencies
