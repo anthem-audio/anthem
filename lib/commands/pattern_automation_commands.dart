@@ -78,15 +78,21 @@ class DeleteAutomationPointCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
-    project.sequence.patterns[patternID]!
-        .automationLanes[automationGeneratorID]!.points
+    project
+        .sequence
+        .patterns[patternID]!
+        .automationLanes[automationGeneratorID]!
+        .points
         .removeAt(index);
   }
 
   @override
   void rollback(ProjectModel project) {
-    project.sequence.patterns[patternID]!
-        .automationLanes[automationGeneratorID]!.points
+    project
+        .sequence
+        .patterns[patternID]!
+        .automationLanes[automationGeneratorID]!
+        .points
         .insert(index, point);
   }
 }

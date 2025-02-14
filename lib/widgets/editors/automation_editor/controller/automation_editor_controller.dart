@@ -39,8 +39,10 @@ part 'pointer_events.dart';
 
 class AutomationEditorController extends _AutomationEditorController
     with _AutomationEditorPointerEventsMixin {
-  AutomationEditorController(
-      {required super.viewModel, required super.project});
+  AutomationEditorController({
+    required super.viewModel,
+    required super.project,
+  });
 }
 
 class _AutomationEditorController {
@@ -48,8 +50,10 @@ class _AutomationEditorController {
   ProjectModel project;
   late ReactionDisposer pointAnimationAutorunDisposer;
 
-  _AutomationEditorController(
-      {required this.viewModel, required this.project}) {
+  _AutomationEditorController({
+    required this.viewModel,
+    required this.project,
+  }) {
     // This autorun updates the animation targets for automation points based on
     // the current hovered item.
     pointAnimationAutorunDisposer = autorun((_) {
@@ -74,10 +78,11 @@ class _AutomationEditorController {
         visitedPointIds.add(point.id);
 
         for (final handleKind in HandleKind.values) {
-          final handle = viewModel.pointAnimationTracker.values[(
-            handleKind: handleKind,
-            id: point.id,
-          )];
+          final handle =
+              viewModel.pointAnimationTracker.values[(
+                handleKind: handleKind,
+                id: point.id,
+              )];
 
           var didUpdateHandle = false;
 

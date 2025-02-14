@@ -42,10 +42,7 @@ abstract class _TimeSignatureModel with Store, AnthemModelBase {
   @anthemObservable
   int denominator;
 
-  _TimeSignatureModel(
-    this.numerator,
-    this.denominator,
-  ) : super();
+  _TimeSignatureModel(this.numerator, this.denominator) : super();
 
   String toDisplayString() => '$numerator/$denominator';
 }
@@ -62,11 +59,7 @@ class TimeSignatureChangeModel extends _TimeSignatureChangeModel
   });
 
   TimeSignatureChangeModel.uninitialized()
-      : super(
-          id: '',
-          timeSignature: TimeSignatureModel(4, 4),
-          offset: 0,
-        );
+    : super(id: '', timeSignature: TimeSignatureModel(4, 4), offset: 0);
 
   factory TimeSignatureChangeModel.fromJson(Map<String, dynamic> json) =>
       _$TimeSignatureChangeModelAnthemModelMixin.fromJson(json);

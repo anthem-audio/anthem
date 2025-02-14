@@ -24,12 +24,9 @@ mixin _PianoRollShortcutsMixin on _PianoRollController {
 
   void registerShortcuts() {
     // Delete
-    shortcutManager.register(
-      LogicalKeySet(LogicalKeyboardKey.delete),
-      () {
-        deleteSelected();
-      },
-    );
+    shortcutManager.register(LogicalKeySet(LogicalKeyboardKey.delete), () {
+      deleteSelected();
+    });
 
     // Ctrl + A
     shortcutManager.register(
@@ -40,44 +37,29 @@ mixin _PianoRollShortcutsMixin on _PianoRollController {
     );
 
     // P - pencil
-    shortcutManager.register(
-      LogicalKeySet(LogicalKeyboardKey.keyP),
-      () {
-        viewModel.tool = EditorTool.pencil;
-      },
-    );
+    shortcutManager.register(LogicalKeySet(LogicalKeyboardKey.keyP), () {
+      viewModel.tool = EditorTool.pencil;
+    });
 
     // B - brush - we don't have a brush, but this is on the left hand so it's nicer
-    shortcutManager.register(
-      LogicalKeySet(LogicalKeyboardKey.keyB),
-      () {
-        viewModel.tool = EditorTool.pencil;
-      },
-    );
+    shortcutManager.register(LogicalKeySet(LogicalKeyboardKey.keyB), () {
+      viewModel.tool = EditorTool.pencil;
+    });
 
     // E - select
-    shortcutManager.register(
-      LogicalKeySet(LogicalKeyboardKey.keyE),
-      () {
-        viewModel.tool = EditorTool.select;
-      },
-    );
+    shortcutManager.register(LogicalKeySet(LogicalKeyboardKey.keyE), () {
+      viewModel.tool = EditorTool.select;
+    });
 
     // D - erase
-    shortcutManager.register(
-      LogicalKeySet(LogicalKeyboardKey.keyD),
-      () {
-        viewModel.tool = EditorTool.eraser;
-      },
-    );
+    shortcutManager.register(LogicalKeySet(LogicalKeyboardKey.keyD), () {
+      viewModel.tool = EditorTool.eraser;
+    });
 
     // C - cut
-    shortcutManager.register(
-      LogicalKeySet(LogicalKeyboardKey.keyC),
-      () {
-        viewModel.tool = EditorTool.cut;
-      },
-    );
+    shortcutManager.register(LogicalKeySet(LogicalKeyboardKey.keyC), () {
+      viewModel.tool = EditorTool.cut;
+    });
   }
 
   void onShortcut(LogicalKeySet shortcut) {

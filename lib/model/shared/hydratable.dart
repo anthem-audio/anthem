@@ -125,7 +125,9 @@ class Hydratable {
       void check() async {
         if (!isHydrated) {
           Error.throwWithStackTrace(
-              Exception(_getHydrationError()), stackTrace);
+            Exception(_getHydrationError()),
+            stackTrace,
+          );
         }
       }
 

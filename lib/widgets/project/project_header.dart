@@ -46,9 +46,7 @@ class ProjectHeader extends StatelessWidget {
     return Container(
       height: 40,
       decoration: BoxDecoration(
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(4),
-        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4)),
         color: Theme.panel.accent,
       ),
       child: Padding(
@@ -62,9 +60,7 @@ class ProjectHeader extends StatelessWidget {
                 child: _LeftGroup(),
               ),
             ),
-            Center(
-              child: _MiddleGroup(),
-            ),
+            Center(child: _MiddleGroup()),
             Expanded(
               flex: 1,
               child: Align(
@@ -178,10 +174,7 @@ class _TempoControlState extends State<_TempoControl> {
         }
 
         projectModel.push(
-          SetTempoCommand(
-            oldRawTempo: originalTempo,
-            newRawTempo: newTempo,
-          ),
+          SetTempoCommand(oldRawTempo: originalTempo, newRawTempo: newTempo),
         );
       },
     );
@@ -257,9 +250,12 @@ class _ProjectMenu extends StatelessWidget {
                     onSelected: () async {
                       // ignore: avoid_print
                       print(
-                        jsonEncode(AnthemStore.instance
-                            .projects[AnthemStore.instance.activeProjectId]!
-                            .toJson()),
+                        jsonEncode(
+                          AnthemStore
+                              .instance
+                              .projects[AnthemStore.instance.activeProjectId]!
+                              .toJson(),
+                        ),
                       );
                     },
                   ),
@@ -282,8 +278,10 @@ class _ProjectMenu extends StatelessWidget {
                   AnthemMenuItem(
                     text: 'Open widget test area',
                     onSelected: () {
-                      final projectViewModel =
-                          Provider.of<ProjectViewModel>(context, listen: false);
+                      final projectViewModel = Provider.of<ProjectViewModel>(
+                        context,
+                        listen: false,
+                      );
 
                       projectViewModel.topPanelOverlayContentBuilder =
                           (context) => const WidgetTestArea();

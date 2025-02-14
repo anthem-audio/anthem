@@ -36,9 +36,7 @@ class SimpleVolumeLfoProcessorModel extends _SimpleVolumeLfoProcessorModel
     with
         _$SimpleVolumeLfoProcessorModel,
         _$SimpleVolumeLfoProcessorModelAnthemModelMixin {
-  SimpleVolumeLfoProcessorModel({
-    required super.nodeId,
-  });
+  SimpleVolumeLfoProcessorModel({required super.nodeId});
 
   SimpleVolumeLfoProcessorModel.uninitialized() : super(nodeId: '');
 
@@ -57,18 +55,14 @@ class SimpleVolumeLfoProcessorModel extends _SimpleVolumeLfoProcessorModel
       processor: SimpleVolumeLfoProcessorModel(nodeId: nodeId),
       audioInputPorts: AnthemObservableList.of([
         NodePortModel(
-          config: NodePortConfigModel(
-            dataType: NodePortDataType.audio,
-          ),
+          config: NodePortConfigModel(dataType: NodePortDataType.audio),
           id: audioInputPortId,
           nodeId: nodeId,
         ),
       ]),
       audioOutputPorts: AnthemObservableList.of([
         NodePortModel(
-          config: NodePortConfigModel(
-            dataType: NodePortDataType.audio,
-          ),
+          config: NodePortConfigModel(dataType: NodePortDataType.audio),
           id: audioOutputPortId,
           nodeId: nodeId,
         ),

@@ -31,7 +31,8 @@ String generateMobXAtoms({required ModelClassInfo context}) {
 
     result.write('late final _\$${fieldName}Atom = \n');
     result.write(
-        "    Atom(name: '${context.baseClass.name}.$fieldName', context: context);\n");
+      "    Atom(name: '${context.baseClass.name}.$fieldName', context: context);\n",
+    );
   }
 
   return result.toString();
@@ -58,7 +59,10 @@ if (!blockObservation) {
 }
 
 String wrapCodeWithMobXSetter(
-    String fieldName, ModelFieldInfo fieldInfo, String code) {
+  String fieldName,
+  ModelFieldInfo fieldInfo,
+  String code,
+) {
   String valueSetter;
 
   // If the field is late, we need to report that the old value is null. The

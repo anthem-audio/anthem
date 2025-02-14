@@ -100,11 +100,7 @@ class AutomationPointAnimationTracker {
     required Id id,
     required HandleKind handleKind,
     required AutomationPointAnimationValue value,
-  }) =>
-      values[(
-        id: id,
-        handleKind: handleKind,
-      )] = value;
+  }) => values[(id: id, handleKind: handleKind)] = value;
 
   /// Updates the values for all points that are currently animating.
   void update() {

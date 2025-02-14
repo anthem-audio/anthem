@@ -42,7 +42,8 @@ void main() {
   }
 
   final enginePath = path.resolve(
-      'engine/build/AnthemEngine_artefacts/Release/AnthemEngine${Platform.isWindows ? '.exe' : ''}');
+    'engine/build/AnthemEngine_artefacts/Release/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+  );
 
   test('Engine exists', () {
     // Note: If this fails, the engine has not been built. This uses release
@@ -51,8 +52,9 @@ void main() {
     // mode instead, and change the path above to point to debug instead of
     // release.
     expect(
-        File(enginePath.toFilePath(windows: Platform.isWindows)).existsSync(),
-        true);
+      File(enginePath.toFilePath(windows: Platform.isWindows)).existsSync(),
+      true,
+    );
   });
 
   group('Heartbeat tests', () {
@@ -72,8 +74,11 @@ void main() {
         onExit: () => exitStreamController.add(null),
       );
 
-      expect(exitCalled, isFalse,
-          reason: 'The engine should not crash when it first starts.');
+      expect(
+        exitCalled,
+        isFalse,
+        reason: 'The engine should not crash when it first starts.',
+      );
 
       final startTime = DateTime.now();
 
@@ -91,8 +96,11 @@ void main() {
 
       await heartbeatWaitCompleter.future;
 
-      expect(exitCalled, isTrue,
-          reason: 'The engine should exit if it does not receive a heartbeat.');
+      expect(
+        exitCalled,
+        isTrue,
+        reason: 'The engine should exit if it does not receive a heartbeat.',
+      );
     });
 
     test('Heartbeat', () async {
@@ -114,8 +122,11 @@ void main() {
 
       exitStreamController.stream.first.then((_) => exitCalled = true);
 
-      expect(exitCalled, isFalse,
-          reason: 'The engine should not crash when it first starts.');
+      expect(
+        exitCalled,
+        isFalse,
+        reason: 'The engine should not crash when it first starts.',
+      );
 
       heartbeatWaitCompleter = Completer<void>();
 
@@ -125,13 +136,19 @@ void main() {
 
       await heartbeatWaitCompleter.future;
 
-      expect(exitCalled, isFalse,
-          reason: 'The engine should not exit if it receives a heartbeat.');
+      expect(
+        exitCalled,
+        isFalse,
+        reason: 'The engine should not exit if it receives a heartbeat.',
+      );
 
       engineConnector.dispose();
       await exitStreamController.stream.first;
-      expect(exitCalled, isTrue,
-          reason: 'The engine should exit when disposed.');
+      expect(
+        exitCalled,
+        isTrue,
+        reason: 'The engine should exit when disposed.',
+      );
     });
   });
 
@@ -142,7 +159,8 @@ void main() {
       TestWidgetsFlutterBinding.ensureInitialized();
 
       project = ProjectModel.create(
-          enginePath.toFilePath(windows: Platform.isWindows));
+        enginePath.toFilePath(windows: Platform.isWindows),
+      );
       await project.engine.start();
       while (project.engine.engineState != EngineState.running) {
         await project.engine.engineStateStream.first;
@@ -161,13 +179,22 @@ void main() {
           jsonDecode(await project.engine.modelSyncApi.debugGetEngineJson())
               as Map<String, dynamic>;
 
-      expect(initialState['sequence'], isNotNull,
-          reason: 'The initial state should contain a sequence.');
-      expect(initialState['processingGraph'], isNotNull,
-          reason: 'The initial state should contain a processing graph.');
-      expect(initialState['isSaved'], isNotNull,
-          reason:
-              'The initial state should contain isSaved - this is not in the project file.');
+      expect(
+        initialState['sequence'],
+        isNotNull,
+        reason: 'The initial state should contain a sequence.',
+      );
+      expect(
+        initialState['processingGraph'],
+        isNotNull,
+        reason: 'The initial state should contain a processing graph.',
+      );
+      expect(
+        initialState['isSaved'],
+        isNotNull,
+        reason:
+            'The initial state should contain isSaved - this is not in the project file.',
+      );
     });
 
     test('Add a bunch of patterns', () async {
@@ -175,7 +202,9 @@ void main() {
 
       for (var i = 0; i < patternCount; i++) {
         final command = AddPatternCommand(
-            pattern: PatternModel.create(name: 'Pattern $i'), index: i);
+          pattern: PatternModel.create(name: 'Pattern $i'),
+          index: i,
+        );
         project.execute(command);
       }
 
@@ -187,16 +216,25 @@ void main() {
       final patternIdList =
           (state['sequence']!['patternOrder'] as List<dynamic>).cast<String>();
 
-      expect(patternMap.length, equals(patternCount),
-          reason: 'The pattern map should contain $patternCount patterns.');
-      expect(patternIdList.length, equals(patternCount),
-          reason: 'The pattern order should contain $patternCount patterns.');
+      expect(
+        patternMap.length,
+        equals(patternCount),
+        reason: 'The pattern map should contain $patternCount patterns.',
+      );
+      expect(
+        patternIdList.length,
+        equals(patternCount),
+        reason: 'The pattern order should contain $patternCount patterns.',
+      );
 
       for (var i = 0; i < patternCount; i++) {
         final id = patternIdList[i];
         final pattern = patternMap[id] as Map<String, dynamic>;
-        expect(pattern['name'], equals('Pattern $i'),
-            reason: 'Pattern $i should have the correct name.');
+        expect(
+          pattern['name'],
+          equals('Pattern $i'),
+          reason: 'Pattern $i should have the correct name.',
+        );
       }
     });
 
@@ -206,9 +244,10 @@ void main() {
       for (var i = originalPatternListSize - 1; i >= 0; i--) {
         if (i.isEven) {
           final command = DeletePatternCommand(
-              pattern:
-                  project.sequence.patterns[project.sequence.patternOrder[i]]!,
-              index: i);
+            pattern:
+                project.sequence.patterns[project.sequence.patternOrder[i]]!,
+            index: i,
+          );
           project.execute(command);
         }
       }
@@ -221,26 +260,34 @@ void main() {
       final patternIdList =
           (state['sequence']!['patternOrder'] as List<dynamic>).cast<String>();
 
-      expect(patternMap.length, equals(originalPatternListSize ~/ 2),
-          reason:
-              'The pattern map should contain ${originalPatternListSize ~/ 2} patterns.');
+      expect(
+        patternMap.length,
+        equals(originalPatternListSize ~/ 2),
+        reason:
+            'The pattern map should contain ${originalPatternListSize ~/ 2} patterns.',
+      );
 
       for (var i = 0; i < patternIdList.length; i++) {
         final id = patternIdList[i];
         final pattern = patternMap[id] as Map<String, dynamic>;
-        expect(pattern['name'], equals('Pattern ${i * 2 + 1}'),
-            reason: 'Pattern ${i * 2 + 1} should have the correct name.');
+        expect(
+          pattern['name'],
+          equals('Pattern ${i * 2 + 1}'),
+          reason: 'Pattern ${i * 2 + 1} should have the correct name.',
+        );
       }
     });
 
     test('Add a generator and some notes', () async {
-      project.execute(AddGeneratorCommand(
-        generatorId: 'generator1',
-        node: NodeModel.uninitialized(),
-        name: 'Genrator name',
-        generatorType: GeneratorType.instrument,
-        color: const Color(0xFF000000),
-      ));
+      project.execute(
+        AddGeneratorCommand(
+          generatorId: 'generator1',
+          node: NodeModel.uninitialized(),
+          name: 'Genrator name',
+          generatorType: GeneratorType.instrument,
+          color: const Color(0xFF000000),
+        ),
+      );
 
       final generator = project.generators['generator1']!;
 
@@ -263,50 +310,79 @@ void main() {
               as Map<String, dynamic>;
 
       final generatorMap = state['generators'] as Map<String, dynamic>;
-      expect(generatorMap['generator1'], isNotNull,
-          reason: 'The generator should be in the state.');
+      expect(
+        generatorMap['generator1'],
+        isNotNull,
+        reason: 'The generator should be in the state.',
+      );
 
-      final pattern = state['sequence']!['patterns']
-          [project.sequence.patternOrder[0]] as Map<String, dynamic>;
+      final pattern =
+          state['sequence']!['patterns'][project.sequence.patternOrder[0]]
+              as Map<String, dynamic>;
       final notes = pattern['notes']!['generator1'] as List<dynamic>;
-      expect(notes.length, equals(1),
-          reason: 'The pattern should contain 1 note.');
+      expect(
+        notes.length,
+        equals(1),
+        reason: 'The pattern should contain 1 note.',
+      );
 
       final note = notes[0] as Map<String, dynamic>;
-      expect(note['key'], equals(64),
-          reason: 'The note should have the correct key.');
-      expect(note['velocity'], equals(127),
-          reason: 'The note should have the correct velocity.');
-      expect(note['length'], equals(256),
-          reason: 'The note should have the correct length.');
-      expect(note['offset'], equals(123),
-          reason: 'The note should have the correct offset.');
-      expect(note['pan'], equals(0),
-          reason: 'The note should have the correct pan.');
+      expect(
+        note['key'],
+        equals(64),
+        reason: 'The note should have the correct key.',
+      );
+      expect(
+        note['velocity'],
+        equals(127),
+        reason: 'The note should have the correct velocity.',
+      );
+      expect(
+        note['length'],
+        equals(256),
+        reason: 'The note should have the correct length.',
+      );
+      expect(
+        note['offset'],
+        equals(123),
+        reason: 'The note should have the correct offset.',
+      );
+      expect(
+        note['pan'],
+        equals(0),
+        reason: 'The note should have the correct pan.',
+      );
     });
 
     test('Change all the note properties', () async {
       final patternId = project.sequence.patternOrder[0];
-      final note = project.sequence.patterns[project.sequence.patternOrder[0]]!
-          .notes['generator1']![0];
+      final note =
+          project
+              .sequence
+              .patterns[project.sequence.patternOrder[0]]!
+              .notes['generator1']![0];
 
-      project.execute(SetNoteAttributeCommand(
-        patternID: patternId,
-        generatorID: 'generator1',
-        noteID: note.id,
-        attribute: NoteAttribute.key,
-        oldValue: note.key,
-        newValue: 65,
-      ));
+      project.execute(
+        SetNoteAttributeCommand(
+          patternID: patternId,
+          generatorID: 'generator1',
+          noteID: note.id,
+          attribute: NoteAttribute.key,
+          oldValue: note.key,
+          newValue: 65,
+        ),
+      );
 
-      project.execute(SetNoteAttributeCommand(
-        patternID: patternId,
-        generatorID: 'generator1',
-        noteID: note.id,
-        attribute: NoteAttribute.velocity,
-        oldValue: note.velocity,
-        newValue: 126,
-      ));
+      project.execute(
+        SetNoteAttributeCommand(
+          patternID: patternId,
+          generatorID: 'generator1',
+          noteID: note.id,
+          attribute: NoteAttribute.velocity,
+          oldValue: note.velocity,
+          newValue: 126,
+        ),
+      );
 
       final state =
           jsonDecode(await project.engine.modelSyncApi.debugGetEngineJson())
@@ -315,14 +391,23 @@ void main() {
       final pattern =
           state['sequence']!['patterns'][patternId] as Map<String, dynamic>;
       final notes = pattern['notes']!['generator1'] as List<dynamic>;
-      expect(notes.length, equals(1),
-          reason: 'The pattern should contain 1 note.');
+      expect(
+        notes.length,
+        equals(1),
+        reason: 'The pattern should contain 1 note.',
+      );
 
       final updatedNote = notes[0] as Map<String, dynamic>;
-      expect(updatedNote['key'], equals(65),
-          reason: 'The note should have the correct key.');
-      expect(updatedNote['velocity'], equals(126),
-          reason: 'The note should have the correct velocity.');
+      expect(
+        updatedNote['key'],
+        equals(65),
+        reason: 'The note should have the correct key.',
+      );
+      expect(
+        updatedNote['velocity'],
+        equals(126),
+        reason: 'The note should have the correct velocity.',
+      );
     });
   });
 }

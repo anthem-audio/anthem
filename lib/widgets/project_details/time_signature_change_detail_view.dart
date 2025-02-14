@@ -41,14 +41,18 @@ class TimeSignatureChangeDetailView extends StatelessObserverWidget {
     late TimeSignatureChangeModel timeSignatureChange;
     if (detailView.arrangementID != null) {
       throw UnimplementedError(
-          'Time signature changes in arrangements are not supported yet.');
+        'Time signature changes in arrangements are not supported yet.',
+      );
     } else if (detailView.patternID != null) {
       timeSignatureChange = project
-          .sequence.patterns[detailView.patternID]!.timeSignatureChanges
+          .sequence
+          .patterns[detailView.patternID]!
+          .timeSignatureChanges
           .firstWhere((change) => change.id == detailView.changeID);
     } else {
       throw Exception(
-          'Invalid TimeSignatureChangeDetailViewKind - it should specify an arrangement ID or pattern ID, but it specified neither.');
+        'Invalid TimeSignatureChangeDetailViewKind - it should specify an arrangement ID or pattern ID, but it specified neither.',
+      );
     }
 
     return Column(
@@ -86,13 +90,10 @@ class TimeSignatureChangeDetailView extends StatelessObserverWidget {
               allowNoSelection: false,
               selectedID:
                   timeSignatureChange.timeSignature.numerator.toString(),
-              items: List.generate(
-                6,
-                (index) {
-                  final value = pow(2, index).toString();
-                  return DropdownItem(id: value, name: value);
-                },
-              ),
+              items: List.generate(6, (index) {
+                final value = pow(2, index).toString();
+                return DropdownItem(id: value, name: value);
+              }),
               onChanged: (id) {
                 project.execute(
                   SetTimeSignatureDenominatorCommand(

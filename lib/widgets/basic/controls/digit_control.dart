@@ -100,8 +100,9 @@ class _DigitControlState extends State<DigitControl> {
       DigitDisplaySize.large => 9,
     };
 
-    final mouseHandlerRegions =
-        Iterable.generate(widget.decimalPlaces + 1, (i) {
+    final mouseHandlerRegions = Iterable.generate(widget.decimalPlaces + 1, (
+      i,
+    ) {
       final mouseHandlerRegion = ControlMouseHandler(
         cursor: SystemMouseCursors.resizeUpDown,
         onStart: () {
@@ -139,10 +140,7 @@ class _DigitControlState extends State<DigitControl> {
       monospace: widget.monospace,
       overlay: Row(
         mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          ...mouseHandlerRegions,
-          SizedBox(width: 8),
-        ],
+        children: [...mouseHandlerRegions, SizedBox(width: 8)],
       ),
     );
 

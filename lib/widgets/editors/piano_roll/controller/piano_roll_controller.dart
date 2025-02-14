@@ -54,10 +54,7 @@ class _PianoRollController {
   final ProjectModel project;
   final PianoRollViewModel viewModel;
 
-  _PianoRollController({
-    required this.project,
-    required this.viewModel,
-  });
+  _PianoRollController({required this.project, required this.viewModel});
 
   NoteModel _addNote({
     required int key,
@@ -79,11 +76,13 @@ class _PianoRollController {
       pan: pan,
     );
 
-    project.execute(AddNoteCommand(
-      patternID: project.sequence.activePatternID!,
-      generatorID: project.activeInstrumentID!,
-      note: note,
-    ));
+    project.execute(
+      AddNoteCommand(
+        patternID: project.sequence.activePatternID!,
+        generatorID: project.activeInstrumentID!,
+        note: note,
+      ),
+    );
 
     return note;
   }
@@ -148,18 +147,20 @@ class _PianoRollController {
       return;
     }
 
-    final commands = project
-        .sequence
-        .patterns[project.sequence.activePatternID]!
-        .notes[project.activeInstrumentID]!
-        .where((note) => viewModel.selectedNotes.contains(note.id))
-        .map((note) {
-      return DeleteNoteCommand(
-        patternID: project.sequence.activePatternID!,
-        generatorID: project.activeInstrumentID!,
-        note: note,
-      );
-    }).toList();
+    final commands =
+        project
+            .sequence
+            .patterns[project.sequence.activePatternID]!
+            .notes[project.activeInstrumentID]!
+            .where((note) => viewModel.selectedNotes.contains(note.id))
+            .map((note) {
+              return DeleteNoteCommand(
+                patternID: project.sequence.activePatternID!,
+                generatorID: project.activeInstrumentID!,
+                note: note,
+              );
+            })
+            .toList();
 
     final command = JournalPageCommand(commands);
 
@@ -176,7 +177,9 @@ class _PianoRollController {
     }
 
     viewModel.selectedNotes = ObservableSet.of(
-      project.sequence.patterns[project.sequence.activePatternID]!
+      project
+          .sequence
+          .patterns[project.sequence.activePatternID]!
           .notes[project.activeInstrumentID]!
           .map((note) => note.id)
           .toSet(),
@@ -184,7 +187,10 @@ class _PianoRollController {
   }
 
   List<NoteModel> _getNotesUnderCursor(
-      List<NoteModel> notes, double key, double offset) {
+    List<NoteModel> notes,
+    double key,
+    double offset,
+  ) {
     final keyFloor = key.floor();
 
     return notes.where((note) {

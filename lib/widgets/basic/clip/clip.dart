@@ -57,9 +57,9 @@ class Clip extends StatelessWidget {
     required this.ticksPerPixel,
     this.hasResizeHandles = false,
     this.pressed = false,
-  })  : selected = false,
-        clipId = null,
-        arrangementId = null;
+  }) : selected = false,
+       clipId = null,
+       arrangementId = null;
 
   @override
   Widget build(BuildContext context) {
@@ -69,18 +69,20 @@ class Clip extends StatelessWidget {
     final patternModel =
         projectModel.sequence.patterns[clipModel?.patternId ?? patternId!]!;
 
-    return ShaderBuilder(
-      assetKey: 'assets/shaders/automation_curve.frag',
-      (context, shader, child) {
-        return CustomPaintObserver(
-          painterBuilder: () => ClipPainter(
-            curveShader: shader,
-            devicePixelRatio: View.of(context).devicePixelRatio,
-            pattern: patternModel,
-          ),
-        );
-      },
-    );
+    return ShaderBuilder(assetKey: 'assets/shaders/automation_curve.frag', (
+      context,
+      shader,
+      child,
+    ) {
+      return CustomPaintObserver(
+        painterBuilder:
+            () => ClipPainter(
+              curveShader: shader,
+              devicePixelRatio: View.of(context).devicePixelRatio,
+              pattern: patternModel,
+            ),
+      );
+    });
   }
 }
 
@@ -138,12 +140,7 @@ Color getBaseColor({
     lightness = (lightness - 0.1).clamp(0.0, 1.0);
   }
 
-  return HSLColor.fromAHSL(
-    1,
-    hue,
-    saturation,
-    lightness,
-  ).toColor();
+  return HSLColor.fromAHSL(1, hue, saturation, lightness).toColor();
 }
 
 Color getTextColor({
@@ -162,12 +159,7 @@ Color getTextColor({
     lightness = (lightness - 0.1).clamp(0.0, 1.0);
   }
 
-  return HSLColor.fromAHSL(
-    1,
-    hue,
-    saturation,
-    lightness,
-  ).toColor();
+  return HSLColor.fromAHSL(1, hue, saturation, lightness).toColor();
 }
 
 Color getContentColor({
@@ -186,10 +178,5 @@ Color getContentColor({
     lightness = (lightness - 0.1).clamp(0.0, 1.0);
   }
 
-  return HSLColor.fromAHSL(
-    1,
-    hue,
-    saturation,
-    lightness,
-  ).toColor();
+  return HSLColor.fromAHSL(1, hue, saturation, lightness).toColor();
 }

@@ -68,10 +68,7 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
             decimalPlaces: 0,
             onChanged: (v) => setState(() => digitControlValue = v),
           ),
-          TextBox(
-            width: 100,
-            height: 26,
-          ),
+          TextBox(width: 100, height: 26),
         ],
       ),
     );

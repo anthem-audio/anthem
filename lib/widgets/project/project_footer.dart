@@ -50,18 +50,20 @@ class ProjectFooter extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.max,
           children: [
-            Observer(builder: (context) {
-              return ButtonTabs(
-                tabs: [
-                  ButtonTabDef.withIcon(icon: Icons.projectPanel, id: false),
-                  ButtonTabDef.withIcon(icon: Icons.detailEditor, id: true),
-                ],
-                selected: projectModel.isDetailViewSelected,
-                onChange: (selected) {
-                  projectController.setActiveDetailView(selected);
-                },
-              );
-            }),
+            Observer(
+              builder: (context) {
+                return ButtonTabs(
+                  tabs: [
+                    ButtonTabDef.withIcon(icon: Icons.projectPanel, id: false),
+                    ButtonTabDef.withIcon(icon: Icons.detailEditor, id: true),
+                  ],
+                  selected: projectModel.isDetailViewSelected,
+                  onChange: (selected) {
+                    projectController.setActiveDetailView(selected);
+                  },
+                );
+              },
+            ),
             // Button(
             //   startIcon: Icons.projectPanel,
             //   toggleState: state.isProjectExplorerVisible,
@@ -77,30 +79,29 @@ class ProjectFooter extends StatelessWidget {
                   text: 'ARRANGE',
                   id: ProjectLayoutKind.arrange,
                 ),
-                ButtonTabDef.withText(
-                  text: 'EDIT',
-                  id: ProjectLayoutKind.edit,
-                ),
-                ButtonTabDef.withText(
-                  text: 'MIX',
-                  id: ProjectLayoutKind.mix,
-                ),
+                ButtonTabDef.withText(text: 'EDIT', id: ProjectLayoutKind.edit),
+                ButtonTabDef.withText(text: 'MIX', id: ProjectLayoutKind.mix),
               ],
             ),
             const SizedBox(width: 8),
-            Observer(builder: (context) {
-              return Button(
-                icon: Icons.patternEditor,
-                width: 32,
-                height: 32,
-                toggleState: projectModel.isPatternEditorVisible,
-                onPress: () => projectModel.isPatternEditorVisible =
-                    !projectModel.isPatternEditorVisible,
-                hint: projectModel.isPatternEditorVisible
-                    ? 'Hide pattern editor'
-                    : 'Show pattern editor',
-              );
-            }),
+            Observer(
+              builder: (context) {
+                return Button(
+                  icon: Icons.patternEditor,
+                  width: 32,
+                  height: 32,
+                  toggleState: projectModel.isPatternEditorVisible,
+                  onPress:
+                      () =>
+                          projectModel.isPatternEditorVisible =
+                              !projectModel.isPatternEditorVisible,
+                  hint:
+                      projectModel.isPatternEditorVisible
+                          ? 'Hide pattern editor'
+                          : 'Show pattern editor',
+                );
+              },
+            ),
             const SizedBox(width: 8),
             Observer(
               builder: (context) {
@@ -140,24 +141,22 @@ class ProjectFooter extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Observer(builder: (context) {
-                  return Text(
-                    viewModel.hintText,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Theme.text.main,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  );
-                }),
+                child: Observer(
+                  builder: (context) {
+                    return Text(
+                      viewModel.hintText,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Theme.text.main,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
             const SizedBox(width: 8),
-            Button(
-              icon: Icons.automationMatrixPanel,
-              width: 32,
-              height: 32,
-            ),
+            Button(icon: Icons.automationMatrixPanel, width: 32, height: 32),
           ],
         ),
       ),

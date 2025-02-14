@@ -72,13 +72,14 @@ class CppModelBuilder implements Builder {
     // annotation.
 
     // Looks for @GenerateCppModuleFile on this library.
-    final libraryAnnotation = library.metadata
-        .where(
-          (annotation) =>
-              annotation.element?.enclosingElement3?.name ==
-              'GenerateCppModuleFile',
-        )
-        .firstOrNull;
+    final libraryAnnotation =
+        library.metadata
+            .where(
+              (annotation) =>
+                  annotation.element?.enclosingElement3?.name ==
+                  'GenerateCppModuleFile',
+            )
+            .firstOrNull;
 
     // If we should generate a C++ module file from this file, we kick off the
     // function to do it here.
@@ -90,8 +91,9 @@ class CppModelBuilder implements Builder {
 
     // Warn for enums that are not annotated with @AnthemEnum
     for (final classElement in libraryReader.classes) {
-      final annotation = const TypeChecker.fromRuntime(AnthemModel)
-          .firstAnnotationOf(classElement);
+      final annotation = const TypeChecker.fromRuntime(
+        AnthemModel,
+      ).firstAnnotationOf(classElement);
 
       if (annotation == null) continue;
 
@@ -101,11 +103,13 @@ class CppModelBuilder implements Builder {
         if (fieldInfo.typeInfo is! EnumModelType) continue;
 
         // Check for enum annotation
-        final enumAnnotation = const TypeChecker.fromRuntime(AnthemEnum)
-            .firstAnnotationOf(fieldInfo.fieldElement.type.element!);
+        final enumAnnotation = const TypeChecker.fromRuntime(
+          AnthemEnum,
+        ).firstAnnotationOf(fieldInfo.fieldElement.type.element!);
 
-        final hideAnnotation = const TypeChecker.fromRuntime(Hide)
-            .firstAnnotationOf(fieldInfo.fieldElement);
+        final hideAnnotation = const TypeChecker.fromRuntime(
+          Hide,
+        ).firstAnnotationOf(fieldInfo.fieldElement);
 
         // If the enum is not annotated with @anthemEnum, then some necessary
         // codegen may not happen.
@@ -115,20 +119,25 @@ class CppModelBuilder implements Builder {
           if (hideAnnotation == null ||
               hideAnnotation.getField('cpp')?.toBoolValue() == false) {
             log.warning(
-                'Enum ${fieldInfo.fieldElement.type.element?.name} is not annotated with @anthemEnum. This is required for enums that are used by Anthem models.');
+              'Enum ${fieldInfo.fieldElement.type.element?.name} is not annotated with @anthemEnum. This is required for enums that are used by Anthem models.',
+            );
             log.warning(
-                'The enum ${fieldInfo.fieldElement.type.element?.name} is used in a field called ${fieldInfo.fieldElement.name} on ${classElement.name}.');
+              'The enum ${fieldInfo.fieldElement.type.element?.name} is used in a field called ${fieldInfo.fieldElement.name} on ${classElement.name}.',
+            );
           }
         }
       }
     }
 
-    final (code: enumsCode, forwardDeclarations: enumsForwardDeclarations) =
-        _generateEnumsForLibrary(
+    final (
+      code: enumsCode,
+      forwardDeclarations: enumsForwardDeclarations,
+    ) = _generateEnumsForLibrary(
       libraryReader.enums
           .where((e) {
-            final annotation =
-                const TypeChecker.fromRuntime(AnthemEnum).firstAnnotationOf(e);
+            final annotation = const TypeChecker.fromRuntime(
+              AnthemEnum,
+            ).firstAnnotationOf(e);
             return annotation != null;
           })
           .map((e) => EnumInfo(e))
@@ -143,8 +152,9 @@ class CppModelBuilder implements Builder {
     // Looks for @AnthemModel on each class in the file, and generates the
     // appropriate code
     for (final libraryClass in libraryReader.classes) {
-      final annotation = const TypeChecker.fromRuntime(AnthemModel)
-          .firstAnnotationOf(libraryClass);
+      final annotation = const TypeChecker.fromRuntime(
+        AnthemModel,
+      ).firstAnnotationOf(libraryClass);
 
       // If there is no annotation on this class, don't do anything
       if (annotation == null) {
@@ -174,8 +184,9 @@ class CppModelBuilder implements Builder {
 
         // If the model is being synced, then we will generate observability
         // code for it. This requires including the observability header.
-        headerImports
-            .add('#include "modules/codegen_helpers/observability_helpers.h"');
+        headerImports.add(
+          '#include "modules/codegen_helpers/observability_helpers.h"',
+        );
       }
 
       codeBlocks.add('// ${modelClassInfo.annotatedClass.name}\n\n');
@@ -214,8 +225,9 @@ class CppModelBuilder implements Builder {
       List<EnumElement> annotatedEnums = [];
 
       for (final classElement in importLibraryReader.classes) {
-        final annotation = const TypeChecker.fromRuntime(AnthemModel)
-            .firstAnnotationOf(classElement);
+        final annotation = const TypeChecker.fromRuntime(
+          AnthemModel,
+        ).firstAnnotationOf(classElement);
 
         if (annotation == null) {
           continue;
@@ -230,8 +242,9 @@ class CppModelBuilder implements Builder {
       }
 
       for (final enumElement in importLibraryReader.enums) {
-        final annotation = const TypeChecker.fromRuntime(AnthemEnum)
-            .firstAnnotationOf(enumElement);
+        final annotation = const TypeChecker.fromRuntime(
+          AnthemEnum,
+        ).firstAnnotationOf(enumElement);
 
         if (annotation == null) {
           continue;
@@ -264,8 +277,9 @@ class CppModelBuilder implements Builder {
             } else if (type is MapModelType) {
               return typeMatches(type.keyType) || typeMatches(type.valueType);
             } else if (type is CustomModelType) {
-              if (annotatedClasses
-                  .contains(type.modelClassInfo.annotatedClass)) {
+              if (annotatedClasses.contains(
+                type.modelClassInfo.annotatedClass,
+              )) {
                 return true;
               }
             } else if (type is EnumModelType) {
@@ -396,24 +410,28 @@ class CppModelBuilder implements Builder {
 
     final headerAssetId = inputId.changeExtension('.h');
     final headerAssetIdInEngine = AssetId(
-        headerAssetId.package, 'engine/src/generated/${headerAssetId.path}');
+      headerAssetId.package,
+      'engine/src/generated/${headerAssetId.path}',
+    );
     await buildStep.writeAsString(headerAssetIdInEngine, headerCodeToWrite);
 
     if (functionDefinitions.isNotEmpty) {
       final cppAssetId = inputId.changeExtension('.cpp');
       final cppAssetIdInEngine = AssetId(
-          cppAssetId.package, 'engine/src/generated/${cppAssetId.path}');
+        cppAssetId.package,
+        'engine/src/generated/${cppAssetId.path}',
+      );
       await buildStep.writeAsString(cppAssetIdInEngine, cppCodeToWrite);
     }
   }
 
   @override
   Map<String, List<String>> get buildExtensions => {
-        '{{dir}}/{{file}}.dart': [
-          'engine/src/generated/{{dir}}/{{file}}.h',
-          'engine/src/generated/{{dir}}/{{file}}.cpp'
-        ],
-      };
+    '{{dir}}/{{file}}.dart': [
+      'engine/src/generated/{{dir}}/{{file}}.h',
+      'engine/src/generated/{{dir}}/{{file}}.cpp',
+    ],
+  };
 }
 
 String _generateEnum(EnumInfo enumInfo) {
@@ -434,7 +452,8 @@ String _generateEnum(EnumInfo enumInfo) {
 }
 
 ({String code, List<String> forwardDeclarations}) _generateEnumsForLibrary(
-    List<EnumInfo> enums) {
+  List<EnumInfo> enums,
+) {
   final forwardDeclarations = <String>[];
   final writer = Writer();
 
@@ -445,7 +464,7 @@ String _generateEnum(EnumInfo enumInfo) {
 
   return (
     code: writer.result.toString(),
-    forwardDeclarations: forwardDeclarations
+    forwardDeclarations: forwardDeclarations,
   );
 }
 
@@ -455,7 +474,8 @@ String _generateEnum(EnumInfo enumInfo) {
   List<String> usingDirectives,
   List<String> cppFileImports,
   List<String> functionDefinitions,
-}) _generateStructsForModel(ModelClassInfo modelClassInfo) {
+})
+_generateStructsForModel(ModelClassInfo modelClassInfo) {
   final forwardDeclarations = <String>[];
   final usingDirectives = <String>[];
   final cppFileImports = <String>[];
@@ -474,7 +494,8 @@ String _generateEnum(EnumInfo enumInfo) {
       // Sealed classes are generated with tagged unions, and that complicates
       // the story for a wrapper class, so we won't handle it for now.
       throw ArgumentError(
-          'Cannot generate a wrapper class for a sealed class.');
+        'Cannot generate a wrapper class for a sealed class.',
+      );
     }
 
     baseText = 'Base';
@@ -487,8 +508,9 @@ String _generateEnum(EnumInfo enumInfo) {
   // Generate the main struct. If the class is sealed, this will be the "base
   // class", and all subclasses will use rfl::Flatten to include this struct.
 
-  forwardDeclarations
-      .add('struct ${modelClassInfo.annotatedClass.name}$baseText;');
+  forwardDeclarations.add(
+    'struct ${modelClassInfo.annotatedClass.name}$baseText;',
+  );
 
   writer.writeLine('struct ${modelClassInfo.annotatedClass.name}$baseText {');
   writer.incrementWhitespace();
@@ -503,7 +525,8 @@ String _generateEnum(EnumInfo enumInfo) {
       if (!generateWrapper) {
         final type = getCppType(fieldInfo.typeInfo, modelClassInfo);
         writer.writeLine(
-            'static const $type $fieldName = ${fieldInfo.constantValue};');
+          'static const $type $fieldName = ${fieldInfo.constantValue};',
+        );
       }
     } else {
       final type = getCppType(fieldInfo.typeInfo, modelClassInfo);
@@ -552,14 +575,16 @@ String _generateEnum(EnumInfo enumInfo) {
 
       final type = getCppType(field.typeInfo, modelClassInfo);
       writer.writeLine(
-          'static const $type ${field.fieldElement.name} = ${field.constantValue};');
+        'static const $type ${field.fieldElement.name} = ${field.constantValue};',
+      );
     }
 
     writer.writeLine('using ReflectionType = ${className}Impl;');
     writer.writeLine();
 
     writer.writeLine(
-        '$className$baseSuffix(const ${className}Impl& _impl) : impl(_impl) {}');
+      '$className$baseSuffix(const ${className}Impl& _impl) : impl(_impl) {}',
+    );
     writer.writeLine();
 
     writer.writeLine('virtual ~$className$baseSuffix() = default;');
@@ -567,24 +592,30 @@ String _generateEnum(EnumInfo enumInfo) {
 
     // Delete copy constructor and assignment operator
     writer.writeLine(
-        '$className$baseSuffix(const $className$baseSuffix&) = delete;');
+      '$className$baseSuffix(const $className$baseSuffix&) = delete;',
+    );
     writer.writeLine(
-        '$className$baseSuffix& operator=(const $className$baseSuffix&) = delete;');
+      '$className$baseSuffix& operator=(const $className$baseSuffix&) = delete;',
+    );
     writer.writeLine();
 
     // Create a move constructor and assignment operator
     writer.writeLine(
-        '$className$baseSuffix($className$baseSuffix&&) noexcept = default;');
+      '$className$baseSuffix($className$baseSuffix&&) noexcept = default;',
+    );
     writer.writeLine(
-        '$className$baseSuffix& operator=($className$baseSuffix&&) noexcept = default;');
-    writer.writeLine();
-
-    writer
-        .writeLine('const ReflectionType& reflection() const { return impl; }');
+      '$className$baseSuffix& operator=($className$baseSuffix&&) noexcept = default;',
+    );
     writer.writeLine();
 
     writer.writeLine(
-        'void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override;');
+      'const ReflectionType& reflection() const { return impl; }',
+    );
+    writer.writeLine();
+
+    writer.writeLine(
+      'void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override;',
+    );
     writer.writeLine();
 
     if (generateModelSync) {
@@ -624,21 +655,24 @@ String _generateEnum(EnumInfo enumInfo) {
         final upperCamelCaseFieldName =
             fieldName[0].toUpperCase() + fieldName.substring(1);
         writer.writeLine(
-            'ObserverHandle add${upperCamelCaseFieldName}Observer(std::function<void($type)> callback) {');
+          'ObserverHandle add${upperCamelCaseFieldName}Observer(std::function<void($type)> callback) {',
+        );
         writer.incrementWhitespace();
         writer.writeLine('return ${fieldName}Observers.addObserver(callback);');
         writer.decrementWhitespace();
         writer.writeLine('}');
 
         writer.writeLine(
-            'void remove${upperCamelCaseFieldName}Observer(ObserverHandle handle) {');
+          'void remove${upperCamelCaseFieldName}Observer(ObserverHandle handle) {',
+        );
         writer.incrementWhitespace();
         writer.writeLine('${fieldName}Observers.removeObserver(handle);');
         writer.decrementWhitespace();
         writer.writeLine('}');
 
-        privateObserverCollections
-            .add('FieldObservers<$type> ${fieldName}Observers;');
+        privateObserverCollections.add(
+          'FieldObservers<$type> ${fieldName}Observers;',
+        );
       }
     }
 
@@ -682,7 +716,8 @@ String _generateEnum(EnumInfo enumInfo) {
 
     final baseClassName = modelClassInfo.annotatedClass.name;
     writer.writeLine(
-        'rfl::Flatten<${baseClassName}Base> ${baseClassName[0].toLowerCase() + baseClassName.substring(1)}Base;');
+      'rfl::Flatten<${baseClassName}Base> ${baseClassName[0].toLowerCase() + baseClassName.substring(1)}Base;',
+    );
 
     writer.decrementWhitespace();
     writer.writeLine('};');
@@ -700,7 +735,8 @@ String _generateEnum(EnumInfo enumInfo) {
     final usingWriter = Writer();
 
     usingWriter.writeLine(
-        'using ${modelClassInfo.annotatedClass.name} = rfl::TaggedUnion<');
+      'using ${modelClassInfo.annotatedClass.name} = rfl::TaggedUnion<',
+    );
     usingWriter.incrementWhitespace();
     usingWriter.writeLine('"__type",');
 
@@ -732,14 +768,15 @@ String _generateEnum(EnumInfo enumInfo) {
 ///
 /// See documentation on [GenerateCppModuleFile] for context.
 ({List<String> forwardDeclarations, List<String> imports})
-    _generateCppModuleFile(LibraryReader libraryReader) {
+_generateCppModuleFile(LibraryReader libraryReader) {
   final forwardDeclarations = <String>[];
   final imports = <String>[];
 
   final library = libraryReader.element;
 
-  for (final export in library.definingCompilationUnit.libraryExports
-      .where((export) => export.uri is DirectiveUriWithRelativeUriString)) {
+  for (final export in library.definingCompilationUnit.libraryExports.where(
+    (export) => export.uri is DirectiveUriWithRelativeUriString,
+  )) {
     final uri = export.uri as DirectiveUriWithRelativeUriString;
 
     // If this export isn't a dart file for some reason, don't try to parse it
@@ -760,8 +797,9 @@ String _generateEnum(EnumInfo enumInfo) {
     List<DartObject> annotatedClasses = [];
 
     for (final classElement in exportLibraryReader.classes) {
-      final annotation = const TypeChecker.fromRuntime(AnthemModel)
-          .firstAnnotationOf(classElement);
+      final annotation = const TypeChecker.fromRuntime(
+        AnthemModel,
+      ).firstAnnotationOf(classElement);
 
       if (annotation == null) {
         continue;
@@ -779,8 +817,9 @@ String _generateEnum(EnumInfo enumInfo) {
     for (final enumElement in exportLibraryReader.enums) {
       if (hasAnyAnthemModel) break;
 
-      final annotation = const TypeChecker.fromRuntime(AnthemEnum)
-          .firstAnnotationOf(enumElement);
+      final annotation = const TypeChecker.fromRuntime(
+        AnthemEnum,
+      ).firstAnnotationOf(enumElement);
 
       if (annotation == null) {
         continue;
@@ -793,15 +832,18 @@ String _generateEnum(EnumInfo enumInfo) {
       continue;
     }
 
-    var cppFile =
-        uri.relativeUriString.substring(0, uri.relativeUriString.length - 5);
+    var cppFile = uri.relativeUriString.substring(
+      0,
+      uri.relativeUriString.length - 5,
+    );
 
     imports.add('#include "$cppFile.h"');
 
     for (final classAnnotation in annotatedClasses) {
-      final cppBehaviorClassIncludePath = classAnnotation
-          .getField('cppBehaviorClassIncludePath')
-          ?.toStringValue();
+      final cppBehaviorClassIncludePath =
+          classAnnotation
+              .getField('cppBehaviorClassIncludePath')
+              ?.toStringValue();
 
       if (cppBehaviorClassIncludePath != null) {
         imports.add('#include "$cppBehaviorClassIncludePath"');
@@ -815,8 +857,9 @@ String _generateEnum(EnumInfo enumInfo) {
 /// Checks if a field should be skipped when generating C++ code, based on the
 /// @Hide annotation.
 bool _shouldSkip(FieldElement field) {
-  final hideAnnotation =
-      const TypeChecker.fromRuntime(Hide).firstAnnotationOf(field);
+  final hideAnnotation = const TypeChecker.fromRuntime(
+    Hide,
+  ).firstAnnotationOf(field);
 
   final hide = Hide(
     cpp: hideAnnotation?.getField('cpp')?.toBoolValue() ?? false,

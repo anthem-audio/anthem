@@ -24,9 +24,7 @@ import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:source_gen/source_gen.dart';
 
 /// Generates code to deserialize JSON objects into model objects.
-String generateJsonDeserializationCode({
-  required ModelClassInfo context,
-}) {
+String generateJsonDeserializationCode({required ModelClassInfo context}) {
   var result = StringBuffer();
 
   result.write('''// ignore: duplicate_ignore
@@ -41,7 +39,8 @@ static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
     // with no arguments.
     if (context.annotatedClass.getNamedConstructor('uninitialized') != null) {
       result.write(
-          'final result = ${context.annotatedClass.name}.uninitialized();\n');
+        'final result = ${context.annotatedClass.name}.uninitialized();\n',
+      );
     } else {
       result.write('final result = ${context.annotatedClass.name}();\n');
     }
@@ -51,7 +50,8 @@ static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
     bool isFirst = true;
     for (final subclass in context.sealedSubclasses) {
       result.write(
-          '${isFirst ? '' : 'else '}if (json[\'__type\'] == \'${subclass.name}\') {\n');
+        '${isFirst ? '' : 'else '}if (json[\'__type\'] == \'${subclass.name}\') {\n',
+      );
       isFirst = false;
 
       // If the class has a special uninitialized constructor, we use that. If
@@ -59,7 +59,8 @@ static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
       // constructor with no arguments.
       if (subclass.subclass.getNamedConstructor('uninitialized') != null) {
         result.write(
-            'final subclassResult = ${subclass.name}.uninitialized();\n');
+          'final subclassResult = ${subclass.name}.uninitialized();\n',
+        );
       } else {
         result.write('final subclassResult = ${subclass.name}();\n');
       }
@@ -76,12 +77,14 @@ static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
           continue;
         }
 
-        result.write(_createSetterForField(
-          type: fieldInfo.typeInfo,
-          fieldName: name,
-          jsonName: 'json',
-          resultName: 'subclassResult',
-        ));
+        result.write(
+          _createSetterForField(
+            type: fieldInfo.typeInfo,
+            fieldName: name,
+            jsonName: 'json',
+            resultName: 'subclassResult',
+          ),
+        );
       }
 
       result.write('result = subclassResult;\n');
@@ -101,12 +104,14 @@ static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
       continue;
     }
 
-    result.write(_createSetterForField(
-      type: fieldInfo.typeInfo,
-      fieldName: name,
-      jsonName: 'json',
-      resultName: 'result',
-    ));
+    result.write(
+      _createSetterForField(
+        type: fieldInfo.typeInfo,
+        fieldName: name,
+        jsonName: 'json',
+        resultName: 'result',
+      ),
+    );
   }
 
   result.write('''
@@ -120,8 +125,9 @@ static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
 /// Checks if a field should be skipped when generating JSON serialization code,
 /// based on the @Hide annotation.
 bool _shouldSkip(FieldElement field) {
-  final hideAnnotation =
-      const TypeChecker.fromRuntime(Hide).firstAnnotationOf(field);
+  final hideAnnotation = const TypeChecker.fromRuntime(
+    Hide,
+  ).firstAnnotationOf(field);
 
   if (hideAnnotation == null) return false;
 
@@ -173,22 +179,22 @@ String _createGetterForField({
     EnumModelType(enumName: var enumName) =>
       '${type.isNullable ? '$getter == null ? null : ' : ''}$enumName.values.firstWhere((e) => e.name == $getter)',
     ListModelType() => _generateListGetter(
-        type: type,
-        fieldName: fieldName,
-        getter: getter,
-      ),
+      type: type,
+      fieldName: fieldName,
+      getter: getter,
+    ),
     MapModelType() => _generateMapGetter(
-        type: type,
-        fieldName: fieldName,
-        getter: getter,
-      ),
+      type: type,
+      fieldName: fieldName,
+      getter: getter,
+    ),
     CustomModelType() =>
       '${type.isNullable ? '$getter == null ? null : ' : ''}${type.modelClassInfo.annotatedClass.name}.fromJson($getter)',
     UnionModelType() => _generateUnionGetter(
-        type: type,
-        fieldName: fieldName,
-        getter: getter,
-      ),
+      type: type,
+      fieldName: fieldName,
+      getter: getter,
+    ),
     UnknownModelType() => 'null',
   };
 }

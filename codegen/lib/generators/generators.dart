@@ -24,7 +24,8 @@ import 'dart/anthem_model_generator.dart';
 import 'cpp/cpp_model_builder.dart';
 
 Builder anthemDartModelGeneratorBuilder(BuilderOptions options) =>
-    SharedPartBuilder(
-        [AnthemModelGenerator(options)], 'anthem_model_generator');
+    SharedPartBuilder([
+      AnthemModelGenerator(options),
+    ], 'anthem_model_generator');
 
 Builder cppModelBuilder(BuilderOptions options) => CppModelBuilder();

@@ -58,14 +58,15 @@ class PianoRollContentRenderer extends StatelessWidget {
     final viewModel = Provider.of<PianoRollViewModel>(context);
 
     return CustomPaintObserver(
-      painterBuilder: () => PianoRollPainter(
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        keyValueAtTop: keyValueAtTop,
-        project: project,
-        viewModel: viewModel,
-        devicePixelRatio: View.of(context).devicePixelRatio,
-      ),
+      painterBuilder:
+          () => PianoRollPainter(
+            timeViewStart: timeViewStart,
+            timeViewEnd: timeViewEnd,
+            keyValueAtTop: keyValueAtTop,
+            project: project,
+            viewModel: viewModel,
+            devicePixelRatio: View.of(context).devicePixelRatio,
+          ),
     );
   }
 }
@@ -109,26 +110,32 @@ class PianoRollPainter extends CustomPainterObserver {
   }
 
   void _drawNotes(
-      Canvas canvas, Size size, AnthemObservableList<NoteModel> notes) {
+    Canvas canvas,
+    Size size,
+    AnthemObservableList<NoteModel> notes,
+  ) {
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     for (final note in notes) {
       final keyHeight = viewModel.keyHeight;
       final key = note.key;
-      final x = timeToPixels(
+      final x =
+          timeToPixels(
             timeViewStart: timeViewStart,
             timeViewEnd: timeViewEnd,
             viewPixelWidth: size.width,
             time: note.offset.toDouble(),
           ) +
           1;
-      final y = keyValueToPixels(
+      final y =
+          keyValueToPixels(
             keyValue: key.toDouble() + 1,
             keyValueAtTop: keyValueAtTop,
             keyHeight: keyHeight,
           ) +
           1;
-      final width = timeToPixels(
+      final width =
+          timeToPixels(
             timeViewStart: timeViewStart,
             timeViewEnd: timeViewEnd,
             viewPixelWidth: size.width,
@@ -144,15 +151,17 @@ class PianoRollPainter extends CustomPainterObserver {
       final isSelected = viewModel.selectedNotes.contains(note.id);
       final isHovered = viewModel.hoveredNote == note.id;
 
-      var saturation = isPressed
-          ? 0.6
-          : isSelected
+      var saturation =
+          isPressed
+              ? 0.6
+              : isSelected
               ? 0.37
               : 0.46;
 
-      var lightness = isPressed
-          ? 0.22
-          : isSelected
+      var lightness =
+          isPressed
+              ? 0.22
+              : isSelected
               ? 0.37
               : 0.31;
 
@@ -176,10 +185,7 @@ class PianoRollPainter extends CustomPainterObserver {
         const Radius.circular(1),
       );
 
-      canvas.drawRRect(
-        rect,
-        Paint()..color = color,
-      );
+      canvas.drawRRect(rect, Paint()..color = color);
 
       if (isSelected) {
         canvas.drawRRect(
@@ -199,12 +205,13 @@ class PianoRollPainter extends CustomPainterObserver {
         final cachedLabel = noteLabelImageCache.get(key);
         if (cachedLabel == null) return;
 
-        final textColor = HSLColor.fromAHSL(
-          1,
-          166,
-          (saturation * 0.6).clamp(0, 1),
-          (lightness * 2).clamp(0, 1),
-        ).toColor();
+        final textColor =
+            HSLColor.fromAHSL(
+              1,
+              166,
+              (saturation * 0.6).clamp(0, 1),
+              (lightness * 2).clamp(0, 1),
+            ).toColor();
 
         final textX = x + 5;
         final textY = y + (keyHeight - noteLabelHeight) * 0.5 - 1;
@@ -228,7 +235,7 @@ class PianoRollPainter extends CustomPainterObserver {
               0,
               noteLabelWidth * devicePixelRatio,
               noteLabelHeight * devicePixelRatio,
-            )
+            ),
           ],
           [textColor],
           BlendMode.dstIn,
@@ -253,10 +260,7 @@ class PianoRollPainter extends CustomPainterObserver {
         canvas.restore();
       }
 
-      viewModel.visibleNotes.add(
-        rect: rect.outerRect,
-        metadata: (id: note.id),
-      );
+      viewModel.visibleNotes.add(rect: rect.outerRect, metadata: (id: note.id));
 
       // Notice this is fromLTRB. We generally use fromLTWH elsewhere.
       final endResizeHandleRect = Rect.fromLTRB(

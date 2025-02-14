@@ -78,9 +78,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
         final pointerPos = contentRenderBox.globalToLocal(event.position);
 
         if (event.buttons & kMiddleMouseButton == kMiddleMouseButton) {
-          handleMiddlePointerDown(
-            pointerPos: pointerPos,
-          );
+          handleMiddlePointerDown(pointerPos: pointerPos);
 
           return;
         }

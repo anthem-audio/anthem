@@ -35,8 +35,9 @@ class ProcessingGraphModel extends _ProcessingGraphModel
 
   ProcessingGraphModel() {
     // Set up the master output node
-    final masterOutputNode =
-        MasterOutputProcessorModel.createNode('masterOutput');
+    final masterOutputNode = MasterOutputProcessorModel.createNode(
+      'masterOutput',
+    );
     addNode(masterOutputNode);
     masterOutputNodeId = masterOutputNode.id;
 
@@ -81,8 +82,9 @@ class ProcessingGraphModel extends _ProcessingGraphModel
     sourceNodePort.connections.add(connection.id);
 
     final destinationNode = nodes[connection.destinationNodeId];
-    final destinationNodePort =
-        destinationNode!.getPortById(connection.destinationPortId);
+    final destinationNodePort = destinationNode!.getPortById(
+      connection.destinationPortId,
+    );
     destinationNodePort.connections.add(connection.id);
   }
 
@@ -93,8 +95,9 @@ class ProcessingGraphModel extends _ProcessingGraphModel
     sourceNodePort.connections.removeWhere((e) => e == connectionId);
 
     final destinationNode = nodes[connection.destinationNodeId]!;
-    final destinationNodePort =
-        destinationNode.getPortById(connection.destinationPortId);
+    final destinationNodePort = destinationNode.getPortById(
+      connection.destinationPortId,
+    );
     destinationNodePort.connections.removeWhere((e) => e == connectionId);
 
     connections.remove(connectionId);

@@ -33,11 +33,7 @@ part 'api/model_sync_api.dart';
 part 'api/processing_graph_api.dart';
 part 'api/sequencer_api.dart';
 
-enum EngineState {
-  stopped,
-  starting,
-  running,
-}
+enum EngineState { stopped, starting, running }
 
 var _engineIdGenerator = 0;
 

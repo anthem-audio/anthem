@@ -31,9 +31,7 @@ import 'serialize_generators.dart';
 /// handle special cases more elegantly. Before, MobX observable collections
 /// needed to have bespoke serializers and deserializers defined, which were
 /// difficult to write and to read.
-String generateJsonSerializationCode({
-  required ModelClassInfo context,
-}) {
+String generateJsonSerializationCode({required ModelClassInfo context}) {
   var result = StringBuffer();
 
   result.write('''// ignore: duplicate_ignore
@@ -61,11 +59,13 @@ Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
       result.write('if (includeFieldsForEngine) {\n');
     }
 
-    result.write(_createSetterForField(
-      type: fieldInfo.typeInfo,
-      fieldName: name,
-      mapName: 'map',
-    ));
+    result.write(
+      _createSetterForField(
+        type: fieldInfo.typeInfo,
+        fieldName: name,
+        mapName: 'map',
+      ),
+    );
 
     if (fieldBehavior == _FieldBehavior.serializeForEngineOnly) {
       result.write('}\n');
@@ -107,12 +107,14 @@ Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
           result.write('if (includeFieldsForEngine) {\n');
         }
 
-        result.write(_createSetterForField(
-          type: fieldInfo.typeInfo,
-          fieldName: name,
-          accessor: '(this as ${subclass.name}).$name',
-          mapName: 'map',
-        ));
+        result.write(
+          _createSetterForField(
+            type: fieldInfo.typeInfo,
+            fieldName: name,
+            accessor: '(this as ${subclass.name}).$name',
+            mapName: 'map',
+          ),
+        );
 
         if (fieldBehavior == _FieldBehavior.serializeForEngineOnly) {
           result.write('}\n');
@@ -133,11 +135,7 @@ Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
   return result.toString();
 }
 
-enum _FieldBehavior {
-  skip,
-  alwaysSerialize,
-  serializeForEngineOnly,
-}
+enum _FieldBehavior { skip, alwaysSerialize, serializeForEngineOnly }
 
 /// Gets the behavior of a field in the context of JSON serialization. This is
 /// based on the @Hide annotation. The options are:
@@ -146,8 +144,9 @@ enum _FieldBehavior {
 /// - serializeForEngineOnly: The field should be serialized only when sending
 ///   the model to the engine
 _FieldBehavior _getFieldBehavior(FieldElement field) {
-  final hideAnnotation =
-      const TypeChecker.fromRuntime(Hide).firstAnnotationOf(field);
+  final hideAnnotation = const TypeChecker.fromRuntime(
+    Hide,
+  ).firstAnnotationOf(field);
 
   if (hideAnnotation == null) return _FieldBehavior.alwaysSerialize;
 
@@ -174,10 +173,7 @@ String _createSetterForField({
 }) {
   accessor ??= fieldName;
 
-  final converter = createSerializerForField(
-    type: type,
-    accessor: accessor,
-  );
+  final converter = createSerializerForField(type: type, accessor: accessor);
 
   // If the field is nullable, we need to check if the value we're adding to the
   // JSON map is null before adding it

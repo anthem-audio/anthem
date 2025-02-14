@@ -73,31 +73,37 @@ class _MenuRendererState extends State<MenuRenderer> {
     final hasSubmenu = widget.menu.children
         .whereType<AnthemMenuItem>()
         .fold<bool>(
-            false,
-            (previousValue, element) =>
-                previousValue || element.submenu != null);
+          false,
+          (previousValue, element) => previousValue || element.submenu != null,
+        );
 
-    final widest =
-        widget.menu.children.whereType<AnthemMenuItem>().map((child) {
-      final labelWidth = measureText(
-        text: child.text,
-        textStyle: const TextStyle(fontSize: _Constants.fontSize),
-        context: context,
-      ).width;
-      var submenuArrowWidth = hasSubmenu
-          ? _Constants.padding +
-              _Constants.submenuArrowWidth +
-              (child.submenu != null ? 50 : 0)
-          : 0;
-      // The extra 4 pixels here is due to the border from the hover effect,
-      // plus something else that I'm not sure about. We need 2px for the hover
-      // effect border... I suppose the other 5px are for good luck. Anything
-      // less than 7 extra pixels means it will sometimes overflow.
-      return (labelWidth + submenuArrowWidth + 7);
-    }).fold<double>(0, (value, element) => max(value, element));
+    final widest = widget.menu.children
+        .whereType<AnthemMenuItem>()
+        .map((child) {
+          final labelWidth =
+              measureText(
+                text: child.text,
+                textStyle: const TextStyle(fontSize: _Constants.fontSize),
+                context: context,
+              ).width;
+          var submenuArrowWidth =
+              hasSubmenu
+                  ? _Constants.padding +
+                      _Constants.submenuArrowWidth +
+                      (child.submenu != null ? 50 : 0)
+                  : 0;
+          // The extra 4 pixels here is due to the border from the hover effect,
+          // plus something else that I'm not sure about. We need 2px for the hover
+          // effect border... I suppose the other 5px are for good luck. Anything
+          // less than 7 extra pixels means it will sometimes overflow.
+          return (labelWidth + submenuArrowWidth + 7);
+        })
+        .fold<double>(0, (value, element) => max(value, element));
 
     final height = widget.menu.children.fold<double>(
-        0, (value, element) => value + getMenuItemHeight(element));
+      0,
+      (value, element) => value + getMenuItemHeight(element),
+    );
 
     return MouseRegion(
       onEnter: (event) {
@@ -115,24 +121,23 @@ class _MenuRendererState extends State<MenuRenderer> {
         decoration: BoxDecoration(
           color: Theme.panel.accentDark,
           border: Border.all(color: Theme.panel.border),
-          borderRadius: const BorderRadius.all(
-            Radius.circular(4),
-          ),
+          borderRadius: const BorderRadius.all(Radius.circular(4)),
         ),
         width: widest + (_Constants.padding + 1) * 4,
         height: height + (_Constants.padding + 1) * 2,
         child: Padding(
           padding: const EdgeInsets.all(_Constants.padding),
           child: Column(
-            children: widget.menu.children
-                .map(
-                  (child) => MenuItemRenderer(
-                    menuItem: child,
-                    isMouseInMenu: isMouseInside,
-                    projectController: widget.projectController,
-                  ),
-                )
-                .toList(),
+            children:
+                widget.menu.children
+                    .map(
+                      (child) => MenuItemRenderer(
+                        menuItem: child,
+                        isMouseInMenu: isMouseInside,
+                        projectController: widget.projectController,
+                      ),
+                    )
+                    .toList(),
           ),
         ),
       ),
@@ -177,8 +182,9 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
   void didUpdateWidget(MenuItemRenderer oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    final screenOverlayController =
-        Provider.of<ScreenOverlayController>(context);
+    final screenOverlayController = Provider.of<ScreenOverlayController>(
+      context,
+    );
 
     if (!oldWidget.isMouseInMenu &&
         widget.isMouseInMenu &&
@@ -192,8 +198,9 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
 
   @override
   Widget build(BuildContext context) {
-    final screenOverlayController =
-        Provider.of<ScreenOverlayController>(context);
+    final screenOverlayController = Provider.of<ScreenOverlayController>(
+      context,
+    );
 
     final height = getMenuItemHeight(widget.menuItem);
 
@@ -203,19 +210,17 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
       final showHoverState =
           isHovered || (isSubmenuOpen && !widget.isMouseInMenu);
 
-      final textColor = showHoverState
-          ? Theme.primary.main
-          : item.disabled
+      final textColor =
+          showHoverState
+              ? Theme.primary.main
+              : item.disabled
               ? Theme.text.disabled
               : Theme.text.main;
 
       final rowChildren = [
         Text(
           item.text,
-          style: TextStyle(
-            color: textColor,
-            fontSize: _Constants.fontSize,
-          ),
+          style: TextStyle(color: textColor, fontSize: _Constants.fontSize),
         ),
         const Expanded(child: SizedBox()),
       ];
@@ -228,10 +233,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
             child: Transform.rotate(
               angle: -pi / 2,
               alignment: Alignment.center,
-              child: SvgIcon(
-                icon: Icons.arrowDown,
-                color: textColor,
-              ),
+              child: SvgIcon(icon: Icons.arrowDown, color: textColor),
             ),
           ),
         );
@@ -289,15 +291,17 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
             decoration: BoxDecoration(
               color: showHoverState ? Theme.primary.subtle : null,
               // This adds 2px to the width of the menu
-              border: showHoverState
-                  ? Border.all(color: Theme.primary.subtleBorder)
-                  : Border.all(color: const Color(0x00000000)),
+              border:
+                  showHoverState
+                      ? Border.all(color: Theme.primary.subtleBorder)
+                      : Border.all(color: const Color(0x00000000)),
               borderRadius: BorderRadius.circular(4),
             ),
             height: height,
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: _Constants.padding),
+              padding: const EdgeInsets.symmetric(
+                horizontal: _Constants.padding,
+              ),
               child: Row(
                 mainAxisSize: MainAxisSize.max,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -317,9 +321,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
             horizontal: _Constants.padding,
             vertical: (_Constants.separatorHeight / 2).floor().toDouble(),
           ),
-          child: Container(
-            color: Theme.separator,
-          ),
+          child: Container(color: Theme.separator),
         ),
       );
     }
@@ -340,38 +342,36 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
 
     submenuKey = getId();
 
-    screenOverlayController.add(submenuKey!, ScreenOverlayEntry(
-      builder: (screenOverlayContext, id) {
-        return Positioned(
-          left: position.dx + size.width + _Constants.padding,
-          top: position.dy -
-              _Constants.padding -
-              1, // -1 to account for menu border
-          child: MenuRenderer(
-            id: id,
-            menu: item.submenu!,
-            projectController: widget.projectController,
-          ),
-        );
-      },
-    ));
+    screenOverlayController.add(
+      submenuKey!,
+      ScreenOverlayEntry(
+        builder: (screenOverlayContext, id) {
+          return Positioned(
+            left: position.dx + size.width + _Constants.padding,
+            top:
+                position.dy -
+                _Constants.padding -
+                1, // -1 to account for menu border
+            child: MenuRenderer(
+              id: id,
+              menu: item.submenu!,
+              projectController: widget.projectController,
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void startHoverTimer({
     required ScreenOverlayController screenOverlayController,
     required AnthemMenuItem item,
   }) {
-    hoverTimer = Timer(
-      _Constants.hoverOpenDuration,
-      () {
-        openSubmenu(
-          screenOverlayController: screenOverlayController,
-          item: item,
-        );
+    hoverTimer = Timer(_Constants.hoverOpenDuration, () {
+      openSubmenu(screenOverlayController: screenOverlayController, item: item);
 
-        hoverTimer = null;
-      },
-    );
+      hoverTimer = null;
+    });
   }
 
   void cancelHoverTimer() {
@@ -379,20 +379,15 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
     hoverTimer = null;
   }
 
-  void startSubmenuCloseTimer(
-    ScreenOverlayController screenOverlayController,
-  ) {
-    submenuCloseTimer = Timer(
-      _Constants.hoverCloseDuration,
-      () {
-        if (submenuKey != null) {
-          screenOverlayController.remove(submenuKey!);
-          setState(() {
-            submenuKey = null;
-          });
-        }
-      },
-    );
+  void startSubmenuCloseTimer(ScreenOverlayController screenOverlayController) {
+    submenuCloseTimer = Timer(_Constants.hoverCloseDuration, () {
+      if (submenuKey != null) {
+        screenOverlayController.remove(submenuKey!);
+        setState(() {
+          submenuKey = null;
+        });
+      }
+    });
   }
 
   void cancelSubmenuCloseTimer() {

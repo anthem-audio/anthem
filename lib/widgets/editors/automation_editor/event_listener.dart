@@ -47,8 +47,10 @@ class AutomationEditorEventListener extends StatelessWidget {
           },
           child: Listener(
             onPointerDown: (e) {
-              final keyboardModifiers =
-                  Provider.of<KeyboardModifiers>(context, listen: false);
+              final keyboardModifiers = Provider.of<KeyboardModifiers>(
+                context,
+                listen: false,
+              );
 
               controller.pointerDown(
                 AutomationEditorPointerDownEvent(
@@ -61,8 +63,10 @@ class AutomationEditorEventListener extends StatelessWidget {
               );
             },
             onPointerMove: (e) {
-              final keyboardModifiers =
-                  Provider.of<KeyboardModifiers>(context, listen: false);
+              final keyboardModifiers = Provider.of<KeyboardModifiers>(
+                context,
+                listen: false,
+              );
               controller.pointerMove(
                 AutomationEditorPointerMoveEvent(
                   pos: e.localPosition,

@@ -38,9 +38,7 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
     with
         _$ToneGeneratorProcessorModel,
         _$ToneGeneratorProcessorModelAnthemModelMixin {
-  ToneGeneratorProcessorModel({
-    required super.nodeId,
-  });
+  ToneGeneratorProcessorModel({required super.nodeId});
 
   ToneGeneratorProcessorModel.uninitialized() : super(nodeId: '');
 
@@ -124,7 +122,5 @@ abstract class _ToneGeneratorProcessorModel with Store, AnthemModelBase {
 
   String nodeId;
 
-  _ToneGeneratorProcessorModel({
-    required this.nodeId,
-  });
+  _ToneGeneratorProcessorModel({required this.nodeId});
 }

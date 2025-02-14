@@ -42,7 +42,5 @@ abstract class _TrackModel with Store, AnthemModelBase {
   @anthemObservable
   String name;
 
-  _TrackModel({required this.name})
-      : id = getId(),
-        super();
+  _TrackModel({required this.name}) : id = getId(), super();
 }

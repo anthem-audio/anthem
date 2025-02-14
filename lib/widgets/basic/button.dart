@@ -27,23 +27,14 @@ import 'package:flutter/widgets.dart';
 import 'background.dart';
 import 'icon.dart';
 
-enum ButtonVariant {
-  light,
-  dark,
-  label,
-  ghost,
-}
+enum ButtonVariant { light, dark, label, ghost }
 
 class _ButtonColors {
   late Color base;
   late Color hover;
   late Color press;
 
-  _ButtonColors({
-    required this.base,
-    required this.hover,
-    required this.press,
-  });
+  _ButtonColors({required this.base, required this.hover, required this.press});
 
   _ButtonColors.all(Color color) {
     base = color;
@@ -82,9 +73,7 @@ final _lightTheme = _ButtonTheme(
     hover: const Color(0xFF505F69),
     press: const Color(0xFF505F69),
   ),
-  border: _ButtonColors.all(
-    const Color(0xFF293136),
-  ),
+  border: _ButtonColors.all(const Color(0xFF293136)),
   content: _textColors,
 );
 final _darkTheme = _ButtonTheme(
@@ -93,9 +82,7 @@ final _darkTheme = _ButtonTheme(
     hover: const Color(0xFF455159),
     press: const Color(0xFF455159),
   ),
-  border: _ButtonColors.all(
-    const Color(0xFF293136),
-  ),
+  border: _ButtonColors.all(const Color(0xFF293136)),
   content: _textColors,
 );
 final _labelTheme = _ButtonTheme(
@@ -117,9 +104,7 @@ final _ghostTheme = _ButtonTheme(
     hover: const Color(0xFF3C484F),
     press: const Color(0xFF3C484F),
   ),
-  border: _ButtonColors.all(
-    const Color(0xFF293136),
-  ),
+  border: _ButtonColors.all(const Color(0xFF293136)),
   content: _textColors,
 );
 
@@ -130,7 +115,7 @@ class Button extends StatefulWidget {
   final IconDef? icon;
 
   final Widget Function(BuildContext context, Color contentColor)?
-      contentBuilder;
+  contentBuilder;
 
   final double? width;
   final double? height;
@@ -184,8 +169,10 @@ class _ButtonState extends State<Button> {
   void didUpdateWidget(Button oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (hovered && oldWidget.hint != widget.hint) {
-      Provider.of<ProjectController>(context, listen: false)
-          .setHintText(widget.hint ?? '');
+      Provider.of<ProjectController>(
+        context,
+        listen: false,
+      ).setHintText(widget.hint ?? '');
     }
   }
 
@@ -195,7 +182,8 @@ class _ButtonState extends State<Button> {
 
     final backgroundType = Provider.of<BackgroundType>(context);
 
-    final variant = widget.variant ??
+    final variant =
+        widget.variant ??
         (backgroundType == BackgroundType.light
             ? ButtonVariant.light
             : ButtonVariant.dark);
@@ -251,10 +239,7 @@ class _ButtonState extends State<Button> {
     }
 
     final List<Widget> stackChildren = [
-      Padding(
-        padding: widget.contentPadding,
-        child: buttonContent,
-      ),
+      Padding(padding: widget.contentPadding, child: buttonContent),
     ];
 
     if (widget.showMenuIndicator == true) {
@@ -282,8 +267,10 @@ class _ButtonState extends State<Button> {
           hovered = true;
         });
         if (widget.hint != null) {
-          Provider.of<ProjectController>(context, listen: false)
-              .setHintText(widget.hint!);
+          Provider.of<ProjectController>(
+            context,
+            listen: false,
+          ).setHintText(widget.hint!);
         }
       },
       onExit: (e) {
@@ -292,8 +279,10 @@ class _ButtonState extends State<Button> {
           hovered = false;
         });
         if (widget.hint != null) {
-          Provider.of<ProjectController>(context, listen: false)
-              .clearHintText();
+          Provider.of<ProjectController>(
+            context,
+            listen: false,
+          ).clearHintText();
         }
       },
       child: Listener(
@@ -305,19 +294,21 @@ class _ButtonState extends State<Button> {
           height: widget.height,
           decoration: BoxDecoration(
             borderRadius: widget.borderRadius ?? BorderRadius.circular(4),
-            border: widget.hideBorder == true
-                ? null
-                : Border.all(
-                    color: theme.border.getColor(hovered, pressed),
-                  ),
+            border:
+                widget.hideBorder == true
+                    ? null
+                    : Border.all(
+                      color: theme.border.getColor(hovered, pressed),
+                    ),
             color: backgroundColor,
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(1),
             child: Stack(
-              fit: widget.expand != null
-                  ? StackFit.expand
-                  : StackFit.passthrough,
+              fit:
+                  widget.expand != null
+                      ? StackFit.expand
+                      : StackFit.passthrough,
               children: stackChildren,
             ),
           ),

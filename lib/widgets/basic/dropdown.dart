@@ -65,11 +65,14 @@ class _DropdownState extends State<Dropdown> {
     super.didUpdateWidget(oldWidget);
 
     if (hovered && oldWidget.selectedID != widget.selectedID) {
-      final item = widget.items
-          .firstWhereOrNull((element) => element.id == widget.selectedID);
+      final item = widget.items.firstWhereOrNull(
+        (element) => element.id == widget.selectedID,
+      );
 
-      final projectController =
-          Provider.of<ProjectController>(context, listen: false);
+      final projectController = Provider.of<ProjectController>(
+        context,
+        listen: false,
+      );
 
       if (item != null) {
         projectController.setHintText(item.hint ?? '');
@@ -92,7 +95,8 @@ class _DropdownState extends State<Dropdown> {
     return Menu(
       menuController: menuController,
       menuDef: MenuDef(
-        children: widget.items
+        children:
+            widget.items
                 .map<GenericMenuItem>(
                   (item) => AnthemMenuItem(
                     text: item.name ?? '',
@@ -104,12 +108,12 @@ class _DropdownState extends State<Dropdown> {
             (!widget.allowNoSelection
                 ? []
                 : [
-                    widget.items.isNotEmpty ? Separator() : null,
-                    AnthemMenuItem(
-                      text: '(none)',
-                      onSelected: () => select(null),
-                    )
-                  ].nonNulls.toList()),
+                  widget.items.isNotEmpty ? Separator() : null,
+                  AnthemMenuItem(
+                    text: '(none)',
+                    onSelected: () => select(null),
+                  ),
+                ].nonNulls.toList()),
       ),
       child: MouseRegion(
         // No need to setState since we're not reacting to these
@@ -127,8 +131,9 @@ class _DropdownState extends State<Dropdown> {
               final itemIndexDelta = (event.scrollDelta.dy / 100).ceil();
 
               final selectedID = selectedItem.id;
-              var selectedIndex = widget.items
-                  .indexWhere((element) => element.id == selectedID);
+              var selectedIndex = widget.items.indexWhere(
+                (element) => element.id == selectedID,
+              );
 
               // If we didn't find it, then we can probably assume there is no
               // selected item.
@@ -162,10 +167,7 @@ class _DropdownState extends State<Dropdown> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   if (selectedItem.icon != null)
-                    SvgIcon(
-                      icon: selectedItem.icon!,
-                      color: contentColor,
-                    ),
+                    SvgIcon(icon: selectedItem.icon!, color: contentColor),
                   Expanded(
                     child: Text(
                       (widget.showNameOnButton ? selectedItem.name : null) ??
@@ -177,10 +179,7 @@ class _DropdownState extends State<Dropdown> {
                       ),
                     ),
                   ),
-                  SvgIcon(
-                    icon: Icons.arrowDown,
-                    color: contentColor,
-                  ),
+                  SvgIcon(icon: Icons.arrowDown, color: contentColor),
                 ],
               );
             },
@@ -206,10 +205,5 @@ class DropdownItem {
   final IconDef? icon;
   final String? hint;
 
-  const DropdownItem({
-    required this.id,
-    this.name,
-    this.icon,
-    this.hint,
-  });
+  const DropdownItem({required this.id, this.name, this.icon, this.hint});
 }

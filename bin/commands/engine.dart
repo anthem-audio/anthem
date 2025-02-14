@@ -73,27 +73,33 @@ class _BuildEngineCommand extends Command<dynamic> {
   @override
   Future<void> run() async {
     if (Platform.isWindows && argResults!['address-sanitizer']) {
-      print(Colorize('Error: Address sanitizer is not supported on Windows.')
-        ..red());
+      print(
+        Colorize('Error: Address sanitizer is not supported on Windows.')
+          ..red(),
+      );
       return;
     }
 
     if (argResults!['release'] && argResults!['debug']) {
-      print(Colorize('Error: Cannot build in both release and debug mode.')
-        ..red());
+      print(
+        Colorize('Error: Cannot build in both release and debug mode.')..red(),
+      );
       return;
     }
 
     if (!argResults!['release'] && !argResults!['debug']) {
-      print(Colorize('Error: Must build in either release or debug mode.')
-        ..red());
+      print(
+        Colorize('Error: Must build in either release or debug mode.')..red(),
+      );
       return;
     }
 
     if (argResults!['release'] && argResults!['address-sanitizer']) {
-      print(Colorize(
-          'Error: Cannot build in release mode with address sanitizer enabled.')
-        ..red());
+      print(
+        Colorize(
+          'Error: Cannot build in release mode with address sanitizer enabled.',
+        )..red(),
+      );
       return;
     }
 
@@ -106,14 +112,16 @@ class _BuildEngineCommand extends Command<dynamic> {
     ).listSync(recursive: true);
 
     if (generatedCppFiles.isEmpty) {
-      print(Colorize('''Error: No generated files found. Run
+      print(
+        Colorize('''Error: No generated files found. Run
     dart run anthem:cli codegen generate
-to generate the files.''')..red());
+to generate the files.''')..red(),
+      );
       return;
     }
 
     print(
-        '''Note: Code generation must be run to keep the generated files up-to-date.
+      '''Note: Code generation must be run to keep the generated files up-to-date.
 
 Some things to keep in mind:
  - The following command can be used to keep the generated files up to date:
@@ -133,16 +141,17 @@ Some things to keep in mind:
    running the above commands.
 
 
-''');
+''',
+    );
 
     if (await _isIpcOutdated()) {
-      print(Colorize(
-          '''Error: IPC message files are outdated, and cannot be updated
+      print(
+        Colorize('''Error: IPC message files are outdated, and cannot be updated
 normally due to a limitation in package:build. Run
     dart run anthem:cli codegen clean
     dart run anthem:cli codegen generate
-to generate the files, then run this script again.''')
-        ..red());
+to generate the files, then run this script again.''')..red(),
+      );
       return;
     }
 
@@ -152,10 +161,13 @@ to generate the files, then run this script again.''')
       debug: argResults!['debug'],
     );
 
-    print(Colorize('Copying engine binary to Flutter assets directory...')
-      ..lightGreen());
+    print(
+      Colorize('Copying engine binary to Flutter assets directory...')
+        ..lightGreen(),
+    );
     final engineBinaryPath = packageRootPath.resolve(
-        'engine/build/AnthemEngine_artefacts${argResults!['debug'] ? '/Debug' : '/Release'}/AnthemEngine${Platform.isWindows ? '.exe' : ''}');
+      'engine/build/AnthemEngine_artefacts${argResults!['debug'] ? '/Debug' : '/Release'}/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+    );
     final flutterAssetsDirPath = packageRootPath.resolve('assets/engine/');
 
     // Create the engine directory in assets if it doesn't exist
@@ -165,10 +177,12 @@ to generate the files, then run this script again.''')
     }
 
     // Copy the engine binary to the Flutter assets directory
-    final flutterEngineBinaryPath = flutterAssetsDirPath
-        .resolve('AnthemEngine${Platform.isWindows ? '.exe' : ''}');
-    File.fromUri(engineBinaryPath).copySync(
-        flutterEngineBinaryPath.toFilePath(windows: Platform.isWindows));
+    final flutterEngineBinaryPath = flutterAssetsDirPath.resolve(
+      'AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+    );
+    File.fromUri(
+      engineBinaryPath,
+    ).copySync(flutterEngineBinaryPath.toFilePath(windows: Platform.isWindows));
 
     print(Colorize('Copy complete.').lightGreen());
   }
@@ -179,8 +193,11 @@ Future<bool> _isIpcOutdated() async {
   final messagesFiles = Directory.fromUri(
     packageRootPath.resolve('lib/engine_api/messages/'),
   ).listSync(recursive: true);
-  final generatedFile = File.fromUri(packageRootPath
-      .resolve('./engine/src/generated/lib/engine_api/messages/messages.h'));
+  final generatedFile = File.fromUri(
+    packageRootPath.resolve(
+      './engine/src/generated/lib/engine_api/messages/messages.h',
+    ),
+  );
   if (!await generatedFile.exists()) {
     // The generated file doesn't exist, so it can't be outdated.
     return false;
@@ -192,9 +209,11 @@ Future<bool> _isIpcOutdated() async {
 
   final generatedFileModifiedDate = (await generatedFile.stat()).modified;
 
-  final newestSourceFileDateFuture = Future.wait(sourceFiles.map((file) {
-    return file.stat().then((f) => f.modified);
-  })).then((dates) => dates.reduce((a, b) => a.isAfter(b) ? a : b));
+  final newestSourceFileDateFuture = Future.wait(
+    sourceFiles.map((file) {
+      return file.stat().then((f) => f.modified);
+    }),
+  ).then((dates) => dates.reduce((a, b) => a.isAfter(b) ? a : b));
   final newestSourceFileDate = await newestSourceFileDateFuture;
 
   return generatedFileModifiedDate.isBefore(newestSourceFileDate);
@@ -237,7 +256,8 @@ class _EngineUnitTestCommand extends Command<dynamic> {
 
     final packageRootPath = getPackageRootPath();
     final testExecutableLocation = packageRootPath.resolve(
-        'engine/build${Platform.isWindows ? '/Debug' : ''}/AnthemTest${Platform.isWindows ? '.exe' : ''}');
+      'engine/build${Platform.isWindows ? '/Debug' : ''}/AnthemTest${Platform.isWindows ? '.exe' : ''}',
+    );
 
     final testProcess = await Process.start(
       testExecutableLocation.toFilePath(windows: Platform.isWindows),
@@ -267,17 +287,22 @@ class _EngineUnitTestCommand extends Command<dynamic> {
       // advantage of the JUCE leak detector. We should add all our objects to
       // the leak detector, fix these leak detector items, and promote this to a
       // test failure.
-      print(Colorize(
-              '\n\nTests passed, but the JUCE leak detector reported a leak. This is due to us just not cleaning up some things; however, this should be fixed and promoted to an error.')
-          .yellow());
+      print(
+        Colorize(
+          '\n\nTests passed, but the JUCE leak detector reported a leak. This is due to us just not cleaning up some things; however, this should be fixed and promoted to an error.',
+        ).yellow(),
+      );
     }
 
     print(Colorize('Testing complete.').lightGreen());
   }
 }
 
-Future<void> _buildCmakeTarget(String target,
-    {bool addressSanitizer = false, bool debug = false}) async {
+Future<void> _buildCmakeTarget(
+  String target, {
+  bool addressSanitizer = false,
+  bool debug = false,
+}) async {
   final packageRootPath = getPackageRootPath();
 
   print(Colorize('Creating build directory...')..lightGreen());

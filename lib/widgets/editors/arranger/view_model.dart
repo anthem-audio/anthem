@@ -90,7 +90,8 @@ abstract class _ArrangerViewModel with Store {
   ({
     CanvasAnnotation<({Id id})>? clip,
     CanvasAnnotation<({Id id, ResizeAreaType type})>? resizeHandle,
-  }) getContentUnderCursor(Offset pos) {
+  })
+  getContentUnderCursor(Offset pos) {
     final clipUnderCursor = visibleClips.hitTest(pos);
     final resizeHandleUnderCursor = visibleResizeAreas
         .hitTestAll(pos)
@@ -99,9 +100,11 @@ abstract class _ArrangerViewModel with Store {
         // behavior for clip resizing a bit more predictable, as it then doesn't
         // depend on the Z-ordering of clips for clips that are right next to
         // each other.
-        .firstWhereOrNull((element) =>
-            clipUnderCursor == null ||
-            element.metadata.id == clipUnderCursor.metadata.id);
+        .firstWhereOrNull(
+          (element) =>
+              clipUnderCursor == null ||
+              element.metadata.id == clipUnderCursor.metadata.id,
+        );
     return (clip: clipUnderCursor, resizeHandle: resizeHandleUnderCursor);
   }
 }

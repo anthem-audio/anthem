@@ -71,10 +71,11 @@ class _ShortcutConsumerState extends State<ShortcutConsumer> {
   void register() {
     id = getId();
     controller!.registerRawKeyHandler(
-        id: id,
-        handler: (event) {
-          return widget.rawKeyHandler?.call(event) ?? false;
-        });
+      id: id,
+      handler: (event) {
+        return widget.rawKeyHandler?.call(event) ?? false;
+      },
+    );
     controller!.registerShortcutHandler(
       id: id,
       global: widget.global,

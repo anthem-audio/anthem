@@ -64,24 +64,26 @@ class ArrangerContentRenderer extends StatelessObserverWidget {
 
     if (arrangement == null) return const SizedBox();
 
-    return ShaderBuilder(
-      assetKey: 'assets/shaders/automation_curve.frag',
-      (context, shader, child) {
-        return CustomPaintObserver(
-          painterBuilder: () => ArrangerContentPainter(
-            curveShader: shader,
-            timeViewStart: timeViewStart,
-            timeViewEnd: timeViewEnd,
-            verticalScrollPosition: verticalScrollPosition,
-            project: project,
-            arrangement: arrangement,
-            viewModel: viewModel,
-            devicePixelRatio: View.of(context).devicePixelRatio,
-          ),
-          isComplex: true,
-        );
-      },
-    );
+    return ShaderBuilder(assetKey: 'assets/shaders/automation_curve.frag', (
+      context,
+      shader,
+      child,
+    ) {
+      return CustomPaintObserver(
+        painterBuilder:
+            () => ArrangerContentPainter(
+              curveShader: shader,
+              timeViewStart: timeViewStart,
+              timeViewEnd: timeViewEnd,
+              verticalScrollPosition: verticalScrollPosition,
+              project: project,
+              arrangement: arrangement,
+              viewModel: viewModel,
+              devicePixelRatio: View.of(context).devicePixelRatio,
+            ),
+        isComplex: true,
+      );
+    });
   }
 }
 
@@ -143,7 +145,8 @@ class ArrangerContentPainter extends CustomPainterObserver {
         viewPixelWidth: size.width,
         time: clip.offset.toDouble(),
       );
-      final width = timeToPixels(
+      final width =
+          timeToPixels(
             timeViewStart: timeViewStart,
             timeViewEnd: timeViewEnd,
             viewPixelWidth: size.width,
@@ -154,17 +157,20 @@ class ArrangerContentPainter extends CustomPainterObserver {
 
       if (x > size.width || x + width < 0) return;
 
-      final y = trackIndexToPos(
-            trackIndex: project.sequence.trackOrder
-                .indexWhere((trackID) => trackID == clip.trackId)
-                .toDouble(),
+      final y =
+          trackIndexToPos(
+            trackIndex:
+                project.sequence.trackOrder
+                    .indexWhere((trackID) => trackID == clip.trackId)
+                    .toDouble(),
             baseTrackHeight: viewModel.baseTrackHeight,
             trackOrder: project.sequence.trackOrder,
             trackHeightModifiers: viewModel.trackHeightModifiers,
             scrollPosition: verticalScrollPosition,
           ) -
           1;
-      final trackHeight = getTrackHeight(
+      final trackHeight =
+          getTrackHeight(
             viewModel.baseTrackHeight,
             viewModel.trackHeightModifiers[clip.trackId]!,
           ) +
@@ -199,7 +205,9 @@ class ArrangerContentPainter extends CustomPainterObserver {
             // Ensures there's a bit of the clip still showing
             -
             (_minimumClickableClipArea - width).clamp(
-                0, (_clipResizeHandleWidth - _clipResizeHandleOvershoot)),
+              0,
+              (_clipResizeHandleWidth - _clipResizeHandleOvershoot),
+            ),
         trackHeight - 1,
       );
       viewModel.visibleResizeAreas.add(

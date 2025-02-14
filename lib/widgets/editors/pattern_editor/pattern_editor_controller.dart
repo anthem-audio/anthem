@@ -27,9 +27,11 @@ class PatternEditorController {
   PatternEditorController({required this.project});
 
   void deletePattern(Id patternID) {
-    project.execute(DeletePatternCommand(
-      pattern: project.sequence.patterns[patternID]!,
-      index: project.sequence.patternOrder.indexOf(patternID),
-    ));
+    project.execute(
+      DeletePatternCommand(
+        pattern: project.sequence.patterns[patternID]!,
+        index: project.sequence.patternOrder.indexOf(patternID),
+      ),
+    );
   }
 }

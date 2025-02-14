@@ -97,15 +97,20 @@ class _ShortcutProviderState extends State<ShortcutProvider> {
     final keyUp = e is KeyUpEvent;
     final keyRepeat = e is KeyRepeatEvent;
 
-    final ctrl = e.logicalKey.keyLabel == 'Control Left' ||
+    final ctrl =
+        e.logicalKey.keyLabel == 'Control Left' ||
         e.logicalKey.keyLabel == 'Control Right';
-    final alt = e.logicalKey.keyLabel == 'Alt Left' ||
+    final alt =
+        e.logicalKey.keyLabel == 'Alt Left' ||
         e.logicalKey.keyLabel == 'Alt Right';
-    final shift = e.logicalKey.keyLabel == 'Shift Left' ||
+    final shift =
+        e.logicalKey.keyLabel == 'Shift Left' ||
         e.logicalKey.keyLabel == 'Shift Right';
 
-    final keyboardModifiers =
-        Provider.of<KeyboardModifiers>(context, listen: false);
+    final keyboardModifiers = Provider.of<KeyboardModifiers>(
+      context,
+      listen: false,
+    );
 
     if (ctrl && keyDown) keyboardModifiers.setCtrl(true);
     if (ctrl && keyUp) keyboardModifiers.setCtrl(false);

@@ -105,8 +105,10 @@ class GetSerializedModelFromEngineResponse extends Response {
 
   GetSerializedModelFromEngineResponse.uninitialized();
 
-  GetSerializedModelFromEngineResponse(
-      {required int id, required this.serializedModel}) {
+  GetSerializedModelFromEngineResponse({
+    required int id,
+    required this.serializedModel,
+  }) {
     super.id = id;
   }
 }

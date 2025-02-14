@@ -43,10 +43,7 @@ part 'shortcuts.dart';
 
 class ArrangerController extends _ArrangerController
     with _ArrangerPointerEventsMixin, _ArrangerShortcutsMixin {
-  ArrangerController({
-    required super.viewModel,
-    required super.project,
-  }) {
+  ArrangerController({required super.viewModel, required super.project}) {
     // Register shortcuts for this editor
     registerShortcuts();
   }
@@ -58,10 +55,7 @@ abstract class _ArrangerController {
 
   late final ReactionDisposer patternCursorAutorunDispose;
 
-  _ArrangerController({
-    required this.viewModel,
-    required this.project,
-  }) {
+  _ArrangerController({required this.viewModel, required this.project}) {
     // Set up an autorun to update the current cursor pattern if the selected
     // pattern changes
     patternCursorAutorunDispose = autorun((_) {
@@ -75,14 +69,19 @@ abstract class _ArrangerController {
   }
 
   void setBaseTrackHeight(double trackHeight) {
-    final oldClampedTrackHeight =
-        viewModel.baseTrackHeight.clamp(minTrackHeight, maxTrackHeight);
+    final oldClampedTrackHeight = viewModel.baseTrackHeight.clamp(
+      minTrackHeight,
+      maxTrackHeight,
+    );
     final oldVerticalScrollPosition = viewModel.verticalScrollPosition;
-    final clampedTrackHeight =
-        trackHeight.clamp(minTrackHeight, maxTrackHeight);
+    final clampedTrackHeight = trackHeight.clamp(
+      minTrackHeight,
+      maxTrackHeight,
+    );
 
     viewModel.baseTrackHeight = trackHeight;
-    viewModel.verticalScrollPosition = oldVerticalScrollPosition *
+    viewModel.verticalScrollPosition =
+        oldVerticalScrollPosition *
         (clampedTrackHeight / oldClampedTrackHeight);
 
     onBaseTrackHeightChanged.add(null);
@@ -103,10 +102,12 @@ abstract class _ArrangerController {
     project.startJournalPage();
 
     for (final clipID in viewModel.selectedClips) {
-      project.execute(DeleteClipCommand(
-        arrangementID: project.sequence.activeArrangementID!,
-        clip: arrangement.clips[clipID]!,
-      ));
+      project.execute(
+        DeleteClipCommand(
+          arrangementID: project.sequence.activeArrangementID!,
+          clip: arrangement.clips[clipID]!,
+        ),
+      );
     }
 
     project.commitJournalPage();

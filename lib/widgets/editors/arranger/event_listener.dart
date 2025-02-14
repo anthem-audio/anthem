@@ -33,10 +33,7 @@ import 'helpers.dart';
 class ArrangerEventListener extends StatefulWidget {
   final Widget? child;
 
-  const ArrangerEventListener({
-    super.key,
-    this.child,
-  });
+  const ArrangerEventListener({super.key, this.child});
 
   @override
   State<ArrangerEventListener> createState() => _ArrangerEventListenerState();
@@ -48,67 +45,72 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, boxConstraints) {
-      return Observer(builder: (context) {
-        final viewModel = Provider.of<ArrangerViewModel>(context);
-        final controller = Provider.of<ArrangerController>(context);
+    return LayoutBuilder(
+      builder: (context, boxConstraints) {
+        return Observer(
+          builder: (context) {
+            final viewModel = Provider.of<ArrangerViewModel>(context);
+            final controller = Provider.of<ArrangerController>(context);
 
-        return EditorScrollManager(
-          timeView: viewModel.timeView,
-          onVerticalScrollChange: (pixelDelta) {
-            viewModel.verticalScrollPosition =
-                (viewModel.verticalScrollPosition +
+            return EditorScrollManager(
+              timeView: viewModel.timeView,
+              onVerticalScrollChange: (pixelDelta) {
+                viewModel.verticalScrollPosition = (viewModel
+                            .verticalScrollPosition +
                         pixelDelta *
                             0.01 *
-                            viewModel.baseTrackHeight
-                                .clamp(minTrackHeight, maxTrackHeight))
+                            viewModel.baseTrackHeight.clamp(
+                              minTrackHeight,
+                              maxTrackHeight,
+                            ))
                     .clamp(0, double.infinity);
+              },
+              onVerticalPanStart: (y) {
+                _panYStart = y;
+                _panScrollPosStart = viewModel.verticalScrollPosition;
+              },
+              onVerticalPanMove: (y) {
+                final delta = -(y - _panYStart);
+                viewModel.verticalScrollPosition = (_panScrollPosStart + delta)
+                    .clamp(0, double.infinity);
+              },
+              child: Listener(
+                onPointerDown: (event) {
+                  controller.pointerDown(
+                    convertPointerEvent(event, boxConstraints.biggest),
+                  );
+                },
+                onPointerMove: (event) {
+                  controller.pointerMove(
+                    convertPointerEvent(event, boxConstraints.biggest),
+                  );
+                },
+                onPointerUp: (event) {
+                  controller.pointerUp(
+                    convertPointerEvent(event, boxConstraints.biggest),
+                  );
+                },
+                onPointerCancel: (event) {
+                  controller.pointerUp(
+                    convertPointerEvent(event, boxConstraints.biggest),
+                  );
+                },
+                child: widget.child,
+              ),
+            );
           },
-          onVerticalPanStart: (y) {
-            _panYStart = y;
-            _panScrollPosStart = viewModel.verticalScrollPosition;
-          },
-          onVerticalPanMove: (y) {
-            final delta = -(y - _panYStart);
-            viewModel.verticalScrollPosition =
-                (_panScrollPosStart + delta).clamp(0, double.infinity);
-          },
-          child: Listener(
-            onPointerDown: (event) {
-              controller.pointerDown(
-                convertPointerEvent(event, boxConstraints.biggest),
-              );
-            },
-            onPointerMove: (event) {
-              controller.pointerMove(
-                convertPointerEvent(event, boxConstraints.biggest),
-              );
-            },
-            onPointerUp: (event) {
-              controller.pointerUp(
-                convertPointerEvent(event, boxConstraints.biggest),
-              );
-            },
-            onPointerCancel: (event) {
-              controller.pointerUp(
-                convertPointerEvent(event, boxConstraints.biggest),
-              );
-            },
-            child: widget.child,
-          ),
         );
-      });
-    });
+      },
+    );
   }
 
-  ArrangerPointerEvent convertPointerEvent(
-    PointerEvent event,
-    Size viewSize,
-  ) {
+  ArrangerPointerEvent convertPointerEvent(PointerEvent event, Size viewSize) {
     final viewModel = Provider.of<ArrangerViewModel>(context, listen: false);
     final project = Provider.of<ProjectModel>(context, listen: false);
-    final keyboardModifiers =
-        Provider.of<KeyboardModifiers>(context, listen: false);
+    final keyboardModifiers = Provider.of<KeyboardModifiers>(
+      context,
+      listen: false,
+    );
 
     final offset = pixelsToTime(
       timeViewStart: viewModel.timeView.start,
@@ -125,8 +127,10 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
       scrollPosition: viewModel.verticalScrollPosition,
     );
 
-    final (clip: clipUnderCursor, resizeHandle: resizeHandleUnderCursor) =
-        viewModel.getContentUnderCursor(event.localPosition);
+    final (
+      clip: clipUnderCursor,
+      resizeHandle: resizeHandleUnderCursor,
+    ) = viewModel.getContentUnderCursor(event.localPosition);
 
     return ArrangerPointerEvent(
       offset: offset,

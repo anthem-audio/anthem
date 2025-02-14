@@ -63,9 +63,11 @@ class _PianoControlState extends State<PianoControl> {
         List<int> whiteNotes = [];
         List<int> blackNotes = [];
 
-        for (var i = widget.keyValueAtTop.ceil();
-            i >= keyValueAtBottom - 1;
-            i--) {
+        for (
+          var i = widget.keyValueAtTop.ceil();
+          i >= keyValueAtBottom - 1;
+          i--
+        ) {
           if (getKeyType(i) == KeyType.white) {
             whiteNotes.add(i);
           } else {
@@ -75,19 +77,20 @@ class _PianoControlState extends State<PianoControl> {
 
         final notes = whiteNotes + blackNotes;
 
-        final noteWidgets = notes.map((note) {
-          final keyType = getKeyType(note);
+        final noteWidgets =
+            notes.map((note) {
+              final keyType = getKeyType(note);
 
-          Widget child;
+              Widget child;
 
-          if (keyType == KeyType.white) {
-            child = _WhiteKey(keyHeight: widget.keyHeight, keyNumber: note);
-          } else {
-            child = _BlackKey(keyHeight: widget.keyHeight, keyNumber: note);
-          }
+              if (keyType == KeyType.white) {
+                child = _WhiteKey(keyHeight: widget.keyHeight, keyNumber: note);
+              } else {
+                child = _BlackKey(keyHeight: widget.keyHeight, keyNumber: note);
+              }
 
-          return LayoutId(id: note, child: child);
-        }).toList();
+              return LayoutId(id: note, child: child);
+            }).toList();
 
         return ClipRect(
           child: CustomMultiChildLayout(
@@ -124,10 +127,12 @@ class KeyLayoutDelegate extends MultiChildLayoutDelegate {
       final keyType = getKeyType(note);
       final notchType = getNotchType(note);
 
-      var y = keyValueToPixels(
-              keyValue: note.toDouble(),
-              keyValueAtTop: keyValueAtTop,
-              keyHeight: keyHeight) -
+      var y =
+          keyValueToPixels(
+            keyValue: note.toDouble(),
+            keyValueAtTop: keyValueAtTop,
+            keyHeight: keyHeight,
+          ) -
           keyHeight +
           // this is why I want Dart support for Prettier
           1;
@@ -137,10 +142,7 @@ class KeyLayoutDelegate extends MultiChildLayoutDelegate {
         y -= keyHeight * 0.5;
       }
 
-      layoutChild(
-        note,
-        BoxConstraints(maxWidth: size.width),
-      );
+      layoutChild(note, BoxConstraints(maxWidth: size.width));
       positionChild(note, Offset(0, y));
     }
   }
@@ -178,24 +180,25 @@ class _WhiteKey extends StatelessWidget {
         borderRadius: const BorderRadius.horizontal(right: Radius.circular(1)),
         color: const Color(0xFFAAB7C0).withValues(alpha: opacity),
       ),
-      child: showKeyText
-          ? Center(
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    right: 4,
-                    // Aligns this text with the text in the notes
-                    top: keyHeight * 0.5 + 1,
-                  ),
-                  child: Text(
-                    style: const TextStyle(color: blackKeyColor),
-                    keyToString(keyNumber),
+      child:
+          showKeyText
+              ? Center(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right: 4,
+                      // Aligns this text with the text in the notes
+                      top: keyHeight * 0.5 + 1,
+                    ),
+                    child: Text(
+                      style: const TextStyle(color: blackKeyColor),
+                      keyToString(keyNumber),
+                    ),
                   ),
                 ),
-              ),
-            )
-          : null,
+              )
+              : null,
     );
   }
 }

@@ -60,7 +60,8 @@ class PatternModel extends _PatternModel
       // I had a todo comment to remove this, but I have no idea why, so I'm
       // leaving this comment instead. ¯\_(ツ)_/¯
       for (final generator in project.generators.values.where(
-          (generator) => generator.generatorType == GeneratorType.automation)) {
+        (generator) => generator.generatorType == GeneratorType.automation,
+      )) {
         automationLanes[generator.id] = AutomationLaneModel();
       }
     });
@@ -110,24 +111,17 @@ abstract class _PatternModel with Store, AnthemModelBase {
   /// For deserialization. Use `PatternModel.create()` instead.
   _PatternModel();
 
-  _PatternModel.create({
-    required this.name,
-  }) {
-    color = AnthemColor(
-      hue: 0,
-      saturationMultiplier: 0,
-    );
+  _PatternModel.create({required this.name}) {
+    color = AnthemColor(hue: 0, saturationMultiplier: 0);
     timeSignatureChanges = AnthemObservableList();
   }
 
   /// Gets the time position of the end of the last item in this pattern
   /// (note, audio clip, automation point), rounded upward to the nearest
   /// `barMultiple` bars.
-  int getWidth({
-    int barMultiple = 1,
-    int minPaddingInBarMultiples = 1,
-  }) {
-    final ticksPerBarDouble = project.sequence.ticksPerQuarter /
+  int getWidth({int barMultiple = 1, int minPaddingInBarMultiples = 1}) {
+    final ticksPerBarDouble =
+        project.sequence.ticksPerQuarter /
         (project.sequence.defaultTimeSignature.denominator / 4) *
         project.sequence.defaultTimeSignature.numerator;
     final ticksPerBar = ticksPerBarDouble.round();
@@ -138,10 +132,13 @@ abstract class _PatternModel with Store, AnthemModelBase {
     // ticksPerQuarter must be divisible by [0.25, 0.5, 1, 2, 4, 8].
     assert(ticksPerBarDouble == ticksPerBar);
 
-    final lastNoteContent = notes.values.expand((e) => e).fold<int>(
-        ticksPerBar * barMultiple * minPaddingInBarMultiples,
-        (previousValue, note) =>
-            max(previousValue, (note.offset + note.length)));
+    final lastNoteContent = notes.values
+        .expand((e) => e)
+        .fold<int>(
+          ticksPerBar * barMultiple * minPaddingInBarMultiples,
+          (previousValue, note) =>
+              max(previousValue, (note.offset + note.length)),
+        );
 
     final lastAutomationContent = automationLanes.values.fold<int>(
       ticksPerBar * barMultiple * minPaddingInBarMultiples,

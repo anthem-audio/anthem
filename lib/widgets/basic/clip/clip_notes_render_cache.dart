@@ -80,10 +80,7 @@ class ClipNotesRenderCache {
   var lowestNote = 64;
   var highestNote = 64;
 
-  ClipNotesRenderCache({
-    required this.pattern,
-    required this.generatorID,
-  }) {
+  ClipNotesRenderCache({required this.pattern, required this.generatorID}) {
     update();
   }
 
@@ -115,9 +112,6 @@ class ClipNotesRenderCache {
       vertexIndex += 12;
     }
 
-    renderedVertices = Vertices.raw(
-      VertexMode.triangles,
-      rawVertices!,
-    );
+    renderedVertices = Vertices.raw(VertexMode.triangles, rawVertices!);
   }
 }

@@ -57,10 +57,11 @@ void paintClip({
   );
 
   final rectPaint = Paint()..color = color;
-  final rectStrokePaint = Paint()
-    ..color = Theme.grid.accent
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 1.0;
+  final rectStrokePaint =
+      Paint()
+        ..color = Theme.grid.accent
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0;
 
   final rect = Rect.fromLTWH(x + 0.5, y + 0.5, width - 1, height - 1);
   final rRect = RRect.fromRectAndRadius(
@@ -164,10 +165,12 @@ void paintClip({
 
       canvas.save();
 
-      canvas.clipRRect(RRect.fromRectAndRadius(
-        Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2),
-        const Radius.circular(3),
-      ));
+      canvas.clipRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2),
+          const Radius.circular(3),
+        ),
+      );
 
       final innerHeight = height - 2;
 
@@ -180,11 +183,14 @@ void paintClip({
       // translate this to the correct position and scale it to convert it into
       // pixel coordnates.
 
-      final clipScaleFactor = (width - 1) /
+      final clipScaleFactor =
+          (width - 1) /
           (clip?.width.toDouble() ?? pattern.getWidth().toDouble());
 
       canvas.translate(
-          -(clip?.timeView?.start.toDouble() ?? 0.0) * clipScaleFactor, 0);
+        -(clip?.timeView?.start.toDouble() ?? 0.0) * clipScaleFactor,
+        0,
+      );
       canvas.translate(x + 1, y + 1 + clipTitleHeight + notePadding);
       canvas.scale(
         clipScaleFactor,
@@ -211,10 +217,12 @@ void paintClip({
 
     canvas.save();
 
-    canvas.clipRRect(RRect.fromRectAndRadius(
-      Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2),
-      const Radius.circular(3),
-    ));
+    canvas.clipRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2),
+        const Radius.circular(3),
+      ),
+    );
 
     for (final lane in pattern.automationLanes.values) {
       for (var i = 1; i < lane.points.length; i++) {
@@ -225,7 +233,8 @@ void paintClip({
         final timeViewEnd =
             clip?.timeView?.end.toDouble() ?? pattern.getWidth().toDouble();
 
-        final lastPointX = timeToPixels(
+        final lastPointX =
+            timeToPixels(
               timeViewStart: timeViewStart,
               timeViewEnd: timeViewEnd,
               viewPixelWidth: width - 1,
@@ -233,7 +242,8 @@ void paintClip({
             ) +
             x +
             1;
-        final pointX = timeToPixels(
+        final pointX =
+            timeToPixels(
               timeViewStart: timeViewStart,
               timeViewEnd: timeViewEnd,
               viewPixelWidth: width - 1,
@@ -309,16 +319,16 @@ void drawPatternTitle({
     maxLines: 1,
   );
 
-  final paragraphBuilder = ParagraphBuilder(paragraphStyle)
-    ..pushStyle(TextStyle(color: textColor, fontSize: 11 * devicePixelRatio))
-    ..addText(pattern.name);
+  final paragraphBuilder =
+      ParagraphBuilder(paragraphStyle)
+        ..pushStyle(
+          TextStyle(color: textColor, fontSize: 11 * devicePixelRatio),
+        )
+        ..addText(pattern.name);
 
   final paragraph = paragraphBuilder.build();
   final constraints = ParagraphConstraints(width: width);
   paragraph.layout(constraints);
 
-  canvas.drawParagraph(
-    paragraph,
-    Offset(x + 3, y),
-  );
+  canvas.drawParagraph(paragraph, Offset(x + 3, y));
 }

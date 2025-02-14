@@ -51,60 +51,62 @@ class _ToneGeneratorState extends State<ToneGenerator> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Observer(builder: (context) {
-                final value = widget.node
-                        .getPortById(
-                            ToneGeneratorProcessorModel.frequencyPortId)
-                        .parameterValue ??
-                    440;
+              Observer(
+                builder: (context) {
+                  final value =
+                      widget.node
+                          .getPortById(
+                            ToneGeneratorProcessorModel.frequencyPortId,
+                          )
+                          .parameterValue ??
+                      440;
 
-                return Knob(
-                  value: value,
-                  min: 20,
-                  max: 1200,
-                  width: 26,
-                  height: 26,
-                  onValueChanged: (newValue) {
-                    widget.node
-                        .getPortById(
-                            ToneGeneratorProcessorModel.frequencyPortId)
-                        .parameterValue = newValue;
-                  },
-                );
-              }),
-              Text(
-                'Pitch',
-                style: TextStyle(
-                  color: Theme.text.main,
-                ),
+                  return Knob(
+                    value: value,
+                    min: 20,
+                    max: 1200,
+                    width: 26,
+                    height: 26,
+                    onValueChanged: (newValue) {
+                      widget
+                          .node
+                          .getPortById(
+                            ToneGeneratorProcessorModel.frequencyPortId,
+                          )
+                          .parameterValue = newValue;
+                    },
+                  );
+                },
               ),
-              Observer(builder: (context) {
-                final value = widget.node
-                        .getPortById(
-                            ToneGeneratorProcessorModel.amplitudePortId)
-                        .parameterValue ??
-                    0.125;
+              Text('Pitch', style: TextStyle(color: Theme.text.main)),
+              Observer(
+                builder: (context) {
+                  final value =
+                      widget.node
+                          .getPortById(
+                            ToneGeneratorProcessorModel.amplitudePortId,
+                          )
+                          .parameterValue ??
+                      0.125;
 
-                return Knob(
-                  value: value,
-                  min: 0,
-                  max: 1,
-                  width: 26,
-                  height: 26,
-                  onValueChanged: (value) {
-                    widget.node
-                        .getPortById(
-                            ToneGeneratorProcessorModel.amplitudePortId)
-                        .parameterValue = value;
-                  },
-                );
-              }),
-              Text(
-                'Amp',
-                style: TextStyle(
-                  color: Theme.text.main,
-                ),
+                  return Knob(
+                    value: value,
+                    min: 0,
+                    max: 1,
+                    width: 26,
+                    height: 26,
+                    onValueChanged: (value) {
+                      widget
+                          .node
+                          .getPortById(
+                            ToneGeneratorProcessorModel.amplitudePortId,
+                          )
+                          .parameterValue = value;
+                    },
+                  );
+                },
               ),
+              Text('Amp', style: TextStyle(color: Theme.text.main)),
             ],
           ),
         ),

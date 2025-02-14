@@ -101,18 +101,13 @@ class LazyFollowItem {
     animationController = controller;
     tween = Tween<double>(begin: mostRecentValue, end: mostRecentValue);
     animation = tween.animate(
-      CurvedAnimation(
-        parent: controller,
-        curve: Curves.easeOutExpo,
-      ),
+      CurvedAnimation(parent: controller, curve: Curves.easeOutExpo),
     );
   }
 
-  LazyFollowItem({
-    required double initialValue,
-    this.getTarget,
-  })  : mostRecentValue = initialValue,
-        target = initialValue;
+  LazyFollowItem({required double initialValue, this.getTarget})
+    : mostRecentValue = initialValue,
+      target = initialValue;
 
   void snapTo(double value) {
     tween.begin = value;

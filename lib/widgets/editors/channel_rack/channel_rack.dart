@@ -44,13 +44,8 @@ class _ChannelRackState extends State<ChannelRack> {
         padding: const EdgeInsets.all(4),
         child: Row(
           children: [
-            Container(
-              width: 130,
-              color: const Color(0x11FFFFFF),
-            ),
-            const Expanded(
-              child: _ProcessorList(),
-            ),
+            Container(width: 130, color: const Color(0x11FFFFFF)),
+            const Expanded(child: _ProcessorList()),
           ],
         ),
       ),

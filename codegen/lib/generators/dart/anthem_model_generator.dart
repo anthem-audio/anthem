@@ -58,8 +58,9 @@ class AnthemModelGenerator extends Generator {
     // Looks for @AnthemModel on each class in the file, and generates the
     // appropriate code
     for (final libraryClass in library.classes) {
-      final annotationFromAnalyzer = const TypeChecker.fromRuntime(AnthemModel)
-          .firstAnnotationOf(libraryClass);
+      final annotationFromAnalyzer = const TypeChecker.fromRuntime(
+        AnthemModel,
+      ).firstAnnotationOf(libraryClass);
 
       // If there is no annotation on this class, don't do anything
       if (annotationFromAnalyzer == null) continue;
@@ -69,7 +70,8 @@ class AnthemModelGenerator extends Generator {
       final context = ModelClassInfo(library, libraryClass);
 
       result.write(
-          'mixin _\$${libraryClass.name}AnthemModelMixin on ${context.baseClass.name}${context.annotation!.generateModelSync ? ', AnthemModelBase' : ''} {\n');
+        'mixin _\$${libraryClass.name}AnthemModelMixin on ${context.baseClass.name}${context.annotation!.generateModelSync ? ', AnthemModelBase' : ''} {\n',
+      );
 
       if (context.annotation!.serializable) {
         result.write('\n  // JSON serialization\n');
@@ -84,10 +86,12 @@ class AnthemModelGenerator extends Generator {
       result.write(generateMobXAtoms(context: context));
       result.write('\n  // Getters and setters\n');
       result.write('\n');
-      result.write(_generateGettersAndSetters(
-        context: context,
-        classHasModelSyncCode: context.annotation!.generateModelSync,
-      ));
+      result.write(
+        _generateGettersAndSetters(
+          context: context,
+          classHasModelSyncCode: context.annotation!.generateModelSync,
+        ),
+      );
       if (context.annotation!.generateModelSync) {
         result.write('\n  // Init function\n');
         result.write('\n');
@@ -108,8 +112,10 @@ class AnthemModelGenerator extends Generator {
 /// Generates getters and setters for model items.
 ///
 /// Note that this will not generate anything for fields in sealed classes.
-String _generateGettersAndSetters(
-    {required ModelClassInfo context, required bool classHasModelSyncCode}) {
+String _generateGettersAndSetters({
+  required ModelClassInfo context,
+  required bool classHasModelSyncCode,
+}) {
   var result = StringBuffer();
 
   for (final MapEntry(key: fieldName, value: fieldInfo)
@@ -129,14 +135,16 @@ String _generateGettersAndSetters(
       if (fieldInfo.typeInfo case ListModelType typeInfo) {
         if (typeInfo.collectionType != CollectionType.anthemObservable) {
           throw Exception(
-              'Synced models must use AnthemObservableList, but $fieldName is using ${typeInfo.collectionType} instead.');
+            'Synced models must use AnthemObservableList, but $fieldName is using ${typeInfo.collectionType} instead.',
+          );
         }
       }
 
       if (fieldInfo.typeInfo case MapModelType typeInfo) {
         if (typeInfo.collectionType != CollectionType.anthemObservable) {
           throw Exception(
-              'Synced models must use AnthemObservableMap, but $fieldName is using ${typeInfo.collectionType} instead.');
+            'Synced models must use AnthemObservableMap, but $fieldName is using ${typeInfo.collectionType} instead.',
+          );
         }
       }
 
@@ -149,14 +157,16 @@ String _generateGettersAndSetters(
           if (subtype is ListModelType) {
             if (subtype.collectionType != CollectionType.anthemObservable) {
               throw Exception(
-                  'Synced models must use AnthemObservableList, but $fieldName is using ${subtype.collectionType} instead.');
+                'Synced models must use AnthemObservableList, but $fieldName is using ${subtype.collectionType} instead.',
+              );
             }
           }
 
           if (subtype is MapModelType) {
             if (subtype.collectionType != CollectionType.anthemObservable) {
               throw Exception(
-                  'Synced models must use AnthemObservableMap, but $fieldName is using ${subtype.collectionType} instead.');
+                'Synced models must use AnthemObservableMap, but $fieldName is using ${subtype.collectionType} instead.',
+              );
             }
           }
         }
@@ -253,10 +263,12 @@ notifyFieldChanged(
 
     result.write('@override\n');
     result.write(
-        'set $fieldName(${fieldInfo.typeInfo.dartName}$typeQ value) {\n');
+      'set $fieldName(${fieldInfo.typeInfo.dartName}$typeQ value) {\n',
+    );
     if (fieldInfo.isObservable) {
       result.write(
-          wrapCodeWithMobXSetter(fieldName, fieldInfo, setter.toString()));
+        wrapCodeWithMobXSetter(fieldName, fieldInfo, setter.toString()),
+      );
     } else {
       result.write(setter);
     }

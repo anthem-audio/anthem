@@ -24,11 +24,7 @@ import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 
-void _addNote(
-  PatternModel pattern,
-  Id generatorID,
-  NoteModel note,
-) {
+void _addNote(PatternModel pattern, Id generatorID, NoteModel note) {
   if (!pattern.notes.containsKey(generatorID)) {
     pattern.notes[generatorID] = AnthemObservableList();
   }
@@ -37,22 +33,15 @@ void _addNote(
   pattern.scheduleClipNotesRenderCacheUpdate();
 }
 
-void _removeNote(
-  PatternModel pattern,
-  Id generatorID,
-  Id noteID,
-) {
+void _removeNote(PatternModel pattern, Id generatorID, Id noteID) {
   pattern.notes[generatorID]!.removeWhere((element) => element.id == noteID);
   pattern.scheduleClipNotesRenderCacheUpdate();
 }
 
-NoteModel _getNote(
-  PatternModel pattern,
-  Id generatorID,
-  Id noteID,
-) {
-  return pattern.notes[generatorID]!
-      .firstWhere((element) => element.id == noteID);
+NoteModel _getNote(PatternModel pattern, Id generatorID, Id noteID) {
+  return pattern.notes[generatorID]!.firstWhere(
+    (element) => element.id == noteID,
+  );
 }
 
 class AddNoteCommand extends Command {

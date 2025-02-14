@@ -88,10 +88,7 @@ class _ArrangerState extends State<Arranger> {
       timeView: TimeRange(0, 3072),
     );
 
-    controller ??= ArrangerController(
-      viewModel: viewModel!,
-      project: project,
-    );
+    controller ??= ArrangerController(viewModel: viewModel!, project: project);
 
     ArrangementModel? getModel() =>
         project.sequence.arrangements[project.sequence.activeArrangementID];
@@ -145,10 +142,10 @@ class _ArrangerState extends State<Arranger> {
                                         submenu: MenuDef(
                                           children: [
                                             AnthemMenuItem(
-                                                text:
-                                                    'Add time signature change',
-                                                hint:
-                                                    'Add a time signature change'),
+                                              text: 'Add time signature change',
+                                              hint:
+                                                  'Add a time signature change',
+                                            ),
                                           ],
                                         ),
                                       ),
@@ -162,115 +159,133 @@ class _ArrangerState extends State<Arranger> {
                                   ),
                                 ),
                                 const SizedBox(width: 4),
-                                Observer(builder: (context) {
-                                  return SizedBox(
-                                    width: 39,
-                                    child: Dropdown(
-                                      showNameOnButton: false,
-                                      allowNoSelection: false,
-                                      hint: 'Change the active tool',
-                                      selectedID: EditorTool.values
-                                          .firstWhere(
-                                            (tool) =>
-                                                tool.name ==
-                                                viewModel!.tool.name,
-                                          )
-                                          .name,
-                                      items: [
-                                        DropdownItem(
-                                          id: EditorTool.pencil.name,
-                                          name: 'Pencil',
-                                          hint:
-                                              'Pencil: left click to add clips, right click to delete',
-                                          icon: Icons.tools.pencil,
-                                        ),
-                                        DropdownItem(
-                                          id: EditorTool.eraser.name,
-                                          name: 'Eraser',
-                                          hint:
-                                              'Eraser: left click to delete clips',
-                                          icon: Icons.tools.erase,
-                                        ),
-                                        DropdownItem(
-                                          id: EditorTool.select.name,
-                                          name: 'Select',
-                                          hint:
-                                              'Select: left click and drag to select clips',
-                                          icon: Icons.tools.select,
-                                        ),
-                                        DropdownItem(
-                                          id: EditorTool.cut.name,
-                                          name: 'Cut',
-                                          hint:
-                                              'Cut: left click and drag to cut clips',
-                                          icon: Icons.tools.cut,
-                                        ),
-                                      ],
-                                      onChanged: (id) {
-                                        viewModel!.tool =
-                                            EditorTool.values.firstWhere(
-                                          (tool) => tool.name == id,
-                                        );
-                                      },
-                                    ),
-                                  );
-                                }),
+                                Observer(
+                                  builder: (context) {
+                                    return SizedBox(
+                                      width: 39,
+                                      child: Dropdown(
+                                        showNameOnButton: false,
+                                        allowNoSelection: false,
+                                        hint: 'Change the active tool',
+                                        selectedID:
+                                            EditorTool.values
+                                                .firstWhere(
+                                                  (tool) =>
+                                                      tool.name ==
+                                                      viewModel!.tool.name,
+                                                )
+                                                .name,
+                                        items: [
+                                          DropdownItem(
+                                            id: EditorTool.pencil.name,
+                                            name: 'Pencil',
+                                            hint:
+                                                'Pencil: left click to add clips, right click to delete',
+                                            icon: Icons.tools.pencil,
+                                          ),
+                                          DropdownItem(
+                                            id: EditorTool.eraser.name,
+                                            name: 'Eraser',
+                                            hint:
+                                                'Eraser: left click to delete clips',
+                                            icon: Icons.tools.erase,
+                                          ),
+                                          DropdownItem(
+                                            id: EditorTool.select.name,
+                                            name: 'Select',
+                                            hint:
+                                                'Select: left click and drag to select clips',
+                                            icon: Icons.tools.select,
+                                          ),
+                                          DropdownItem(
+                                            id: EditorTool.cut.name,
+                                            name: 'Cut',
+                                            hint:
+                                                'Cut: left click and drag to cut clips',
+                                            icon: Icons.tools.cut,
+                                          ),
+                                        ],
+                                        onChanged: (id) {
+                                          viewModel!.tool = EditorTool.values
+                                              .firstWhere(
+                                                (tool) => tool.name == id,
+                                              );
+                                        },
+                                      ),
+                                    );
+                                  },
+                                ),
                                 const SizedBox(width: 4),
                                 Flexible(
                                   fit: FlexFit.tight,
-                                  child: Observer(builder: (context) {
-                                    return Dropdown(
-                                      hint: 'Change the active arrangement',
-                                      selectedID:
-                                          project.sequence.activeArrangementID,
-                                      items: project.sequence.arrangementOrder
-                                          .map<DropdownItem>((id) {
-                                        final name = project
-                                            .sequence.arrangements[id]!.name;
-                                        return DropdownItem(
-                                          id: id.toString(),
-                                          name: name,
-                                          hint: name,
-                                        );
-                                      }).toList(),
-                                      onChanged: (selectedID) {
-                                        project.sequence.activeArrangementID =
-                                            selectedID;
-                                      },
-                                    );
-                                  }),
+                                  child: Observer(
+                                    builder: (context) {
+                                      return Dropdown(
+                                        hint: 'Change the active arrangement',
+                                        selectedID:
+                                            project
+                                                .sequence
+                                                .activeArrangementID,
+                                        items:
+                                            project.sequence.arrangementOrder
+                                                .map<DropdownItem>((id) {
+                                                  final name =
+                                                      project
+                                                          .sequence
+                                                          .arrangements[id]!
+                                                          .name;
+                                                  return DropdownItem(
+                                                    id: id.toString(),
+                                                    name: name,
+                                                    hint: name,
+                                                  );
+                                                })
+                                                .toList(),
+                                        onChanged: (selectedID) {
+                                          project.sequence.activeArrangementID =
+                                              selectedID;
+                                        },
+                                      );
+                                    },
+                                  ),
                                 ),
                                 const SizedBox(width: 4),
                               ],
                             ),
                           ),
-                          Observer(builder: (context) {
-                            return Expanded(
-                              child: ScrollbarRenderer(
-                                scrollRegionStart: 0,
-                                scrollRegionEnd: getHorizontalScrollRegionEnd(),
-                                handleStart: viewModel!.timeView.start,
-                                handleEnd: viewModel!.timeView.end,
-                                canScrollPastEnd: true,
-                                disableAtFullSize: false,
-                                onChange: (event) {
-                                  viewModel!.timeView.start = event.handleStart;
-                                  viewModel!.timeView.end = event.handleEnd;
-                                },
-                              ),
-                            );
-                          }),
+                          Observer(
+                            builder: (context) {
+                              return Expanded(
+                                child: ScrollbarRenderer(
+                                  scrollRegionStart: 0,
+                                  scrollRegionEnd:
+                                      getHorizontalScrollRegionEnd(),
+                                  handleStart: viewModel!.timeView.start,
+                                  handleEnd: viewModel!.timeView.end,
+                                  canScrollPastEnd: true,
+                                  disableAtFullSize: false,
+                                  onChange: (event) {
+                                    viewModel!.timeView.start =
+                                        event.handleStart;
+                                    viewModel!.timeView.end = event.handleEnd;
+                                  },
+                                ),
+                              );
+                            },
+                          ),
                           const SizedBox(width: 4),
-                          Observer(builder: (context) {
-                            return VerticalScaleControl(
-                              min: 0,
-                              max: maxTrackHeight,
-                              value: viewModel!.baseTrackHeight,
-                              onChange: (newHeight) {
-                                controller!.setBaseTrackHeight(newHeight);
-                              },
-                            );
-                          }),
+                          Observer(
+                            builder: (context) {
+                              return VerticalScaleControl(
+                                min: 0,
+                                max: maxTrackHeight,
+                                value: viewModel!.baseTrackHeight,
+                                onChange: (newHeight) {
+                                  controller!.setBaseTrackHeight(newHeight);
+                                },
+                              );
+                            },
+                          ),
                         ],
                       ),
                     ),
@@ -281,37 +296,34 @@ class _ArrangerState extends State<Arranger> {
                         children: [
                           const Padding(
                             padding: EdgeInsets.only(top: 15),
-                            child: SizedBox(
-                              width: 126,
-                              child: PatternPicker(),
-                            ),
+                            child: SizedBox(width: 126, child: PatternPicker()),
                           ),
                           const SizedBox(width: 6),
-                          const Expanded(
-                            child: _ArrangerContent(),
-                          ),
+                          const Expanded(child: _ArrangerContent()),
                           const SizedBox(width: 4),
                           SizedBox(
                             width: 17,
                             child: LayoutBuilder(
                               builder: (context, constraints) {
-                                return Observer(builder: (context) {
-                                  return ScrollbarRenderer(
-                                    scrollRegionStart: 0,
-                                    scrollRegionEnd:
-                                        viewModel!.scrollAreaHeight,
-                                    handleStart:
-                                        viewModel!.verticalScrollPosition,
-                                    handleEnd:
-                                        viewModel!.verticalScrollPosition +
-                                            constraints.maxHeight -
-                                            _timelineHeight,
-                                    onChange: (event) {
-                                      viewModel!.verticalScrollPosition =
-                                          event.handleStart;
-                                    },
-                                  );
-                                });
+                                return Observer(
+                                  builder: (context) {
+                                    return ScrollbarRenderer(
+                                      scrollRegionStart: 0,
+                                      scrollRegionEnd:
+                                          viewModel!.scrollAreaHeight,
+                                      handleStart:
+                                          viewModel!.verticalScrollPosition,
+                                      handleEnd:
+                                          viewModel!.verticalScrollPosition +
+                                          constraints.maxHeight -
+                                          _timelineHeight,
+                                      onChange: (event) {
+                                        viewModel!.verticalScrollPosition =
+                                            event.handleStart;
+                                      },
+                                    );
+                                  },
+                                );
                               },
                             ),
                           ),
@@ -421,11 +433,11 @@ class _ArrangerContentState extends State<_ArrangerContent>
         verticalScrollPositionAnimationHelper!.items;
 
     // Snap vertical scroll position when base track height is changed
-    baseTrackHeightChangedSub ??=
-        controller.onBaseTrackHeightChanged.stream.listen((event) {
-      final animHelper = verticalScrollPositionAnimationHelper!;
-      animHelper.items.first.snapTo(viewModel.verticalScrollPosition);
-    });
+    baseTrackHeightChangedSub ??= controller.onBaseTrackHeightChanged.stream
+        .listen((event) {
+          final animHelper = verticalScrollPositionAnimationHelper!;
+          animHelper.items.first.snapTo(viewModel.verticalScrollPosition);
+        });
 
     // Updates the animations whenever the vertical scroll position changes.
     animationTweenUpdaterDisposer ??= mobx.autorun((p0) {
@@ -453,15 +465,18 @@ class _ArrangerContentState extends State<_ArrangerContent>
                   const SizedBox(width: trackHeaderWidth),
                   Container(width: 1, color: Theme.panel.border),
                   Expanded(
-                    child: Observer(builder: (context) {
-                      return Timeline.arrangement(
-                        timeViewAnimationController:
-                            timeViewEndAnimItem.animationController,
-                        timeViewStartAnimation: timeViewStartAnimItem.animation,
-                        timeViewEndAnimation: timeViewEndAnimItem.animation,
-                        arrangementID: project.sequence.activeArrangementID,
-                      );
-                    }),
+                    child: Observer(
+                      builder: (context) {
+                        return Timeline.arrangement(
+                          timeViewAnimationController:
+                              timeViewEndAnimItem.animationController,
+                          timeViewStartAnimation:
+                              timeViewStartAnimItem.animation,
+                          timeViewEndAnimation: timeViewEndAnimItem.animation,
+                          arrangementID: project.sequence.activeArrangementID,
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -474,8 +489,9 @@ class _ArrangerContentState extends State<_ArrangerContent>
                   SizedBox(
                     width: trackHeaderWidth,
                     child: AnimatedBuilder(
-                      animation: verticalScrollPositionAnimationHelper!
-                          .animationController,
+                      animation:
+                          verticalScrollPositionAnimationHelper!
+                              .animationController,
                       builder: (context, child) {
                         return _TrackHeaders(
                           verticalScrollPosition:
@@ -543,16 +559,19 @@ class _ArrangerCanvas extends StatelessWidget {
                     animation: timeViewAnimationController,
                     builder: (context, child) {
                       return CustomPaintObserver(
-                        painterBuilder: () => ArrangerBackgroundPainter(
-                          viewModel: viewModel,
-                          activeArrangement: project.sequence.arrangements[
-                              project.sequence.activeArrangementID],
-                          project: project,
-                          verticalScrollPosition:
-                              verticalScrollPositionAnimation.value,
-                          timeViewStart: timeViewStartAnimation.value,
-                          timeViewEnd: timeViewEndAnimation.value,
-                        ),
+                        painterBuilder:
+                            () => ArrangerBackgroundPainter(
+                              viewModel: viewModel,
+                              activeArrangement:
+                                  project.sequence.arrangements[project
+                                      .sequence
+                                      .activeArrangementID],
+                              project: project,
+                              verticalScrollPosition:
+                                  verticalScrollPositionAnimation.value,
+                              timeViewStart: timeViewStartAnimation.value,
+                              timeViewEnd: timeViewEndAnimation.value,
+                            ),
                       );
                     },
                   );
@@ -560,33 +579,36 @@ class _ArrangerCanvas extends StatelessWidget {
               ),
             );
 
-            final clipsContainer = Observer(builder: (context) {
-              Widget clips() {
-                return AnimatedBuilder(
-                  animation: verticalScrollPositionAnimationController,
-                  builder: (context, child) {
-                    return AnimatedBuilder(
-                      animation: timeViewAnimationController,
-                      builder: (context, child) {
-                        return ArrangerContentRenderer(
-                          timeViewStart: timeViewStartAnimation.value,
-                          timeViewEnd: timeViewEndAnimation.value,
-                          verticalScrollPosition:
-                              verticalScrollPositionAnimation.value,
-                          viewModel: viewModel,
-                        );
-                      },
-                    );
-                  },
-                );
-              }
+            final clipsContainer = Observer(
+              builder: (context) {
+                Widget clips() {
+                  return AnimatedBuilder(
+                    animation: verticalScrollPositionAnimationController,
+                    builder: (context, child) {
+                      return AnimatedBuilder(
+                        animation: timeViewAnimationController,
+                        builder: (context, child) {
+                          return ArrangerContentRenderer(
+                            timeViewStart: timeViewStartAnimation.value,
+                            timeViewEnd: timeViewEndAnimation.value,
+                            verticalScrollPosition:
+                                verticalScrollPositionAnimation.value,
+                            viewModel: viewModel,
+                          );
+                        },
+                      );
+                    },
+                  );
+                }
 
-              return Positioned.fill(
-                child: project.sequence.activeArrangementID == null
-                    ? const SizedBox()
-                    : clips(),
-              );
-            });
+                return Positioned.fill(
+                  child:
+                      project.sequence.activeArrangementID == null
+                          ? const SizedBox()
+                          : clips(),
+                );
+              },
+            );
 
             final selectionBox = Observer(
               builder: (context) {
@@ -647,9 +669,7 @@ class _ArrangerCanvas extends StatelessWidget {
             );
 
             return ArrangerEventListener(
-              child: Stack(
-                children: [grid, clipsContainer, selectionBox],
-              ),
+              child: Stack(children: [grid, clipsContainer, selectionBox]),
             );
           },
         ),
@@ -681,9 +701,10 @@ class _ArrangerCanvasCursorState extends State<_ArrangerCanvasCursor> {
         final pos = e.localPosition;
 
         final contentUnderCursor = viewModel.getContentUnderCursor(pos);
-        final newCursor = contentUnderCursor.resizeHandle != null
-            ? SystemMouseCursors.resizeLeftRight
-            : contentUnderCursor.clip != null
+        final newCursor =
+            contentUnderCursor.resizeHandle != null
+                ? SystemMouseCursors.resizeLeftRight
+                : contentUnderCursor.clip != null
                 ? SystemMouseCursors.move
                 : MouseCursor.defer;
 
@@ -701,9 +722,7 @@ class _ArrangerCanvasCursorState extends State<_ArrangerCanvasCursor> {
 class _TrackHeaders extends StatefulWidget {
   final double verticalScrollPosition;
 
-  const _TrackHeaders({
-    required this.verticalScrollPosition,
-  });
+  const _TrackHeaders({required this.verticalScrollPosition});
 
   @override
   State<_TrackHeaders> createState() => _TrackHeadersState();
@@ -721,81 +740,88 @@ class _TrackHeadersState extends State<_TrackHeaders> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        return Observer(builder: (context) {
-          List<Widget> headers = [];
-          List<Widget> resizeHandles = [];
+        return Observer(
+          builder: (context) {
+            List<Widget> headers = [];
+            List<Widget> resizeHandles = [];
 
-          var trackPositionPointer = -widget.verticalScrollPosition;
+            var trackPositionPointer = -widget.verticalScrollPosition;
 
-          for (final trackID in project.sequence.trackOrder) {
-            final heightModifier = viewModel.trackHeightModifiers[trackID];
+            for (final trackID in project.sequence.trackOrder) {
+              final heightModifier = viewModel.trackHeightModifiers[trackID];
 
-            if (heightModifier == null) continue;
+              if (heightModifier == null) continue;
 
-            final trackHeight = getTrackHeight(
-              viewModel.baseTrackHeight,
-              heightModifier,
-            );
-
-            if (trackPositionPointer < constraints.maxHeight &&
-                trackPositionPointer + trackHeight > 0) {
-              headers.add(
-                Positioned(
-                  key: Key(trackID),
-                  top: trackPositionPointer,
-                  left: 0,
-                  right: 0,
-                  child: SizedBox(
-                    height: trackHeight - 1,
-                    child: TrackHeader(trackID: trackID),
-                  ),
-                ),
+              final trackHeight = getTrackHeight(
+                viewModel.baseTrackHeight,
+                heightModifier,
               );
-              const resizeHandleHeight = 10.0;
-              resizeHandles.add(
-                Positioned(
-                  key: Key('$trackID-handle'),
-                  left: 0,
-                  right: 0,
-                  top: trackPositionPointer +
-                      trackHeight -
-                      1 -
-                      resizeHandleHeight / 2,
-                  child: SizedBox(
-                    height: resizeHandleHeight,
-                    child: MouseRegion(
-                      cursor: SystemMouseCursors.resizeUpDown,
-                      child: Listener(
-                        onPointerDown: (event) {
-                          startPixelHeight = trackHeight;
-                          startModifier = heightModifier;
-                          startY = event.position.dy;
-                        },
-                        onPointerMove: (event) {
-                          final newPixelHeight =
-                              (event.position.dy - startY + startPixelHeight)
-                                  .clamp(minTrackHeight, maxTrackHeight);
-                          final newModifier =
-                              newPixelHeight / startPixelHeight * startModifier;
-                          viewModel.trackHeightModifiers[trackID] = newModifier;
-                        },
-                        // Hack: Listener callbacks do nothing unless this is
-                        // here
-                        child: Container(color: const Color(0x00000000)),
+
+              if (trackPositionPointer < constraints.maxHeight &&
+                  trackPositionPointer + trackHeight > 0) {
+                headers.add(
+                  Positioned(
+                    key: Key(trackID),
+                    top: trackPositionPointer,
+                    left: 0,
+                    right: 0,
+                    child: SizedBox(
+                      height: trackHeight - 1,
+                      child: TrackHeader(trackID: trackID),
+                    ),
+                  ),
+                );
+                const resizeHandleHeight = 10.0;
+                resizeHandles.add(
+                  Positioned(
+                    key: Key('$trackID-handle'),
+                    left: 0,
+                    right: 0,
+                    top:
+                        trackPositionPointer +
+                        trackHeight -
+                        1 -
+                        resizeHandleHeight / 2,
+                    child: SizedBox(
+                      height: resizeHandleHeight,
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.resizeUpDown,
+                        child: Listener(
+                          onPointerDown: (event) {
+                            startPixelHeight = trackHeight;
+                            startModifier = heightModifier;
+                            startY = event.position.dy;
+                          },
+                          onPointerMove: (event) {
+                            final newPixelHeight = (event.position.dy -
+                                    startY +
+                                    startPixelHeight)
+                                .clamp(minTrackHeight, maxTrackHeight);
+                            final newModifier =
+                                newPixelHeight /
+                                startPixelHeight *
+                                startModifier;
+                            viewModel.trackHeightModifiers[trackID] =
+                                newModifier;
+                          },
+                          // Hack: Listener callbacks do nothing unless this is
+                          // here
+                          child: Container(color: const Color(0x00000000)),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              );
+                );
+              }
+
+              if (trackPositionPointer >= constraints.maxHeight) break;
+
+              trackPositionPointer += trackHeight;
             }
 
-            if (trackPositionPointer >= constraints.maxHeight) break;
-
-            trackPositionPointer += trackHeight;
-          }
-
-          return ClipRect(child: Stack(children: headers + resizeHandles));
-        });
+            return ClipRect(child: Stack(children: headers + resizeHandles));
+          },
+        );
       },
     );
   }

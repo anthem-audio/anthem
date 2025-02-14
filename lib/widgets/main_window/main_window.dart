@@ -56,31 +56,34 @@ class _MainWindowState extends State<MainWindow> {
           color: const Color(0xFF2A3237),
           child: Padding(
             padding: const EdgeInsets.all(3),
-            child: Observer(builder: (context) {
-              final tabs = store.projectOrder
-                  .map<TabDef>(
-                    (projectId) => TabDef(
-                      id: projectId,
-                      title: store.projects[projectId]!.id,
-                    ),
-                  )
-                  .toList();
+            child: Observer(
+              builder: (context) {
+                final tabs =
+                    store.projectOrder
+                        .map<TabDef>(
+                          (projectId) => TabDef(
+                            id: projectId,
+                            title: store.projects[projectId]!.id,
+                          ),
+                        )
+                        .toList();
 
-              return Column(
-                children: [
-                  WindowHeader(
-                    selectedTabId: store.activeProjectId,
-                    tabs: tabs,
-                  ),
-                  Expanded(
-                    child: TabContentSwitcher(
-                      tabs: tabs,
+                return Column(
+                  children: [
+                    WindowHeader(
                       selectedTabId: store.activeProjectId,
+                      tabs: tabs,
                     ),
-                  ),
-                ],
-              );
-            }),
+                    Expanded(
+                      child: TabContentSwitcher(
+                        tabs: tabs,
+                        selectedTabId: store.activeProjectId,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),

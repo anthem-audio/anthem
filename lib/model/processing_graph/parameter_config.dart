@@ -51,13 +51,13 @@ class ParameterConfigModel extends _ParameterConfigModel
   });
 
   ParameterConfigModel.uninitialized()
-      : super(
-          id: 0,
-          defaultValue: 0.0,
-          minimumValue: 0.0,
-          maximumValue: 1.0,
-          smoothingDurationSeconds: 0.0,
-        );
+    : super(
+        id: 0,
+        defaultValue: 0.0,
+        minimumValue: 0.0,
+        maximumValue: 1.0,
+        smoothingDurationSeconds: 0.0,
+      );
 
   factory ParameterConfigModel.fromJson(Map<String, dynamic> json) =>
       _$ParameterConfigModelAnthemModelMixin.fromJson(json);

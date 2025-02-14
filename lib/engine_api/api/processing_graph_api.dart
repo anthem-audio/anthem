@@ -36,9 +36,7 @@ class ProcessingGraphApi {
   Future<void> compile() async {
     final id = _engine._getRequestId();
 
-    final request = CompileProcessingGraphRequest(
-      id: id,
-    );
+    final request = CompileProcessingGraphRequest(id: id);
 
     final response =
         (await _engine._request(request)) as CompileProcessingGraphResponse;

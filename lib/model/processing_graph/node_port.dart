@@ -43,11 +43,12 @@ class NodePortModel extends _NodePortModel
   }
 
   NodePortModel.uninitialized()
-      : super(
-            id: -1,
-            nodeId: '',
-            config: NodePortConfigModel.uninitialized(),
-            connections: AnthemObservableList());
+    : super(
+        id: -1,
+        nodeId: '',
+        config: NodePortConfigModel.uninitialized(),
+        connections: AnthemObservableList(),
+      );
 
   factory NodePortModel.fromJson(Map<String, dynamic> json) =>
       _$NodePortModelAnthemModelMixin.fromJson(json);

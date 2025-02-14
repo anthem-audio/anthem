@@ -77,13 +77,9 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
       vsync: this,
       items: [
         // Size multiplier
-        LazyFollowItem(
-          initialValue: 1,
-        ),
+        LazyFollowItem(initialValue: 1),
         // Track size
-        LazyFollowItem(
-          initialValue: 2,
-        ),
+        LazyFollowItem(initialValue: 2),
       ],
     );
 
@@ -145,8 +141,10 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
           final rawPixelChange = e.delta.dy;
           final valueChange = rawPixelChange / 300;
 
-          final newValueRaw =
-              (getRawValue(lastValue) + valueChange).clamp(0.0, 1.0);
+          final newValueRaw = (getRawValue(lastValue) + valueChange).clamp(
+            0.0,
+            1.0,
+          );
 
           final newValue = newValueRaw * (widget.max - widget.min) + widget.min;
 
@@ -172,13 +170,15 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
             stickyTrapCounter = (stickyTrapCounter! + valueChange);
 
             if (stickyTrapCounter!.abs() > _stickyTrapSize) {
-              final overshoot = stickyTrapCounter! > 0
-                  ? stickyTrapCounter! - _stickyTrapSize
-                  : stickyTrapCounter! + _stickyTrapSize;
+              final overshoot =
+                  stickyTrapCounter! > 0
+                      ? stickyTrapCounter! - _stickyTrapSize
+                      : stickyTrapCounter! + _stickyTrapSize;
 
               final newValueRaw = lastValue + overshoot;
 
-              final newValue = (getRawValue(lastValue) + overshoot) *
+              final newValue =
+                  (getRawValue(lastValue) + overshoot) *
                       (widget.max - widget.min) +
                   widget.min;
 
@@ -237,20 +237,23 @@ class _KnobPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final multipliedSize = size * sizeMultiplier;
 
-    final trackBorderPaint = Paint()
-      ..color = const Color(0xFF2F2F2F)
-      ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
-    final trackFillPaint = Paint()
-      ..color = const Color(0xFF28D1AA)
-      ..strokeWidth = trackSize
-      ..style = PaintingStyle.stroke;
+    final trackBorderPaint =
+        Paint()
+          ..color = const Color(0xFF2F2F2F)
+          ..strokeWidth = 1
+          ..style = PaintingStyle.stroke;
+    final trackFillPaint =
+        Paint()
+          ..color = const Color(0xFF28D1AA)
+          ..strokeWidth = trackSize
+          ..style = PaintingStyle.stroke;
 
     final center = Offset(size.width / 2, size.height / 2);
 
     final arcRect = Rect.fromCircle(
-        center: center,
-        radius: multipliedSize.width / 2 - (0.5 + trackSize * 0.5));
+      center: center,
+      radius: multipliedSize.width / 2 - (0.5 + trackSize * 0.5),
+    );
 
     final startAngle = switch (type) {
       KnobType.normal => pi / 2,
@@ -268,7 +271,10 @@ class _KnobPainter extends CustomPainter {
     // Borders
     canvas.drawCircle(center, multipliedSize.width / 2, trackBorderPaint);
     canvas.drawCircle(
-        center, multipliedSize.width / 2 - (trackSize + 1), trackBorderPaint);
+      center,
+      multipliedSize.width / 2 - (trackSize + 1),
+      trackBorderPaint,
+    );
   }
 
   @override
@@ -280,7 +286,4 @@ class _KnobPainter extends CustomPainter {
   }
 }
 
-enum KnobType {
-  normal,
-  pan,
-}
+enum KnobType { normal, pan }

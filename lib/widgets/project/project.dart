@@ -77,121 +77,120 @@ class _ProjectState extends State<Project> {
         child: Column(
           children: [
             const ProjectHeader(),
-            const SizedBox(
-              height: 3,
-            ),
+            const SizedBox(height: 3),
             Expanded(
-              child: Observer(builder: (context) {
-                const automationEditor = AutomationEditor();
-                const channelRack = ChannelRack();
-                const pianoRoll = PianoRoll();
-                const mixer = Text('Mixer');
+              child: Observer(
+                builder: (context) {
+                  const automationEditor = AutomationEditor();
+                  const channelRack = ChannelRack();
+                  const pianoRoll = PianoRoll();
+                  const mixer = Text('Mixer');
 
-                final selectedEditor = Stack(
-                  children: [
-                    Visibility(
-                      maintainState: true,
-                      visible:
-                          viewModel.selectedEditor == EditorKind.automation,
-                      child: automationEditor,
-                    ),
-                    Visibility(
-                      maintainState: true,
-                      visible:
-                          viewModel.selectedEditor == EditorKind.channelRack,
-                      child: channelRack,
-                    ),
-                    Visibility(
-                      maintainState: true,
-                      visible: viewModel.selectedEditor == EditorKind.detail,
-                      child: pianoRoll,
-                    ),
-                    Visibility(
-                      maintainState: true,
-                      visible: viewModel.selectedEditor == EditorKind.mixer,
-                      child: mixer,
-                    ),
-                  ],
-                );
-
-                return Panel(
-                  hidden: !projectModel.isProjectExplorerVisible,
-                  orientation: PanelOrientation.left,
-                  sizeBehavior: PanelSizeBehavior.pixels,
-                  panelStartSize: 200,
-                  panelMinSize: 200,
-                  // Left side-panel content
-                  panelContent: Stack(
+                  final selectedEditor = Stack(
                     children: [
-                      Positioned.fill(
-                        child: Visibility(
-                          maintainAnimation: false,
-                          maintainInteractivity: false,
-                          maintainSemantics: false,
-                          maintainSize: false,
-                          maintainState: true,
-                          visible: !projectModel.isDetailViewSelected,
-                          child: const ProjectExplorer(),
-                        ),
+                      Visibility(
+                        maintainState: true,
+                        visible:
+                            viewModel.selectedEditor == EditorKind.automation,
+                        child: automationEditor,
                       ),
-                      Positioned.fill(
-                        child: Visibility(
-                          maintainAnimation: false,
-                          maintainInteractivity: false,
-                          maintainSemantics: false,
-                          maintainSize: false,
-                          maintainState: true,
-                          visible: projectModel.isDetailViewSelected,
-                          child: RepaintBoundary(
-                            child: ProjectDetails(
-                              selectedProjectDetails:
-                                  projectModel.getSelectedDetailView(),
+                      Visibility(
+                        maintainState: true,
+                        visible:
+                            viewModel.selectedEditor == EditorKind.channelRack,
+                        child: channelRack,
+                      ),
+                      Visibility(
+                        maintainState: true,
+                        visible: viewModel.selectedEditor == EditorKind.detail,
+                        child: pianoRoll,
+                      ),
+                      Visibility(
+                        maintainState: true,
+                        visible: viewModel.selectedEditor == EditorKind.mixer,
+                        child: mixer,
+                      ),
+                    ],
+                  );
+
+                  return Panel(
+                    hidden: !projectModel.isProjectExplorerVisible,
+                    orientation: PanelOrientation.left,
+                    sizeBehavior: PanelSizeBehavior.pixels,
+                    panelStartSize: 200,
+                    panelMinSize: 200,
+                    // Left side-panel content
+                    panelContent: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Visibility(
+                            maintainAnimation: false,
+                            maintainInteractivity: false,
+                            maintainSemantics: false,
+                            maintainSize: false,
+                            maintainState: true,
+                            visible: !projectModel.isDetailViewSelected,
+                            child: const ProjectExplorer(),
+                          ),
+                        ),
+                        Positioned.fill(
+                          child: Visibility(
+                            maintainAnimation: false,
+                            maintainInteractivity: false,
+                            maintainSemantics: false,
+                            maintainSize: false,
+                            maintainState: true,
+                            visible: projectModel.isDetailViewSelected,
+                            child: RepaintBoundary(
+                              child: ProjectDetails(
+                                selectedProjectDetails:
+                                    projectModel.getSelectedDetailView(),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-
-                  child: Panel(
-                    hidden: true,
-                    orientation: PanelOrientation.right,
-                    sizeBehavior: PanelSizeBehavior.pixels,
-                    panelStartSize: 200,
-                    // Right side-panel content
-                    panelContent: Container(color: Theme.panel.main),
+                      ],
+                    ),
 
                     child: Panel(
-                      orientation: PanelOrientation.bottom,
-                      panelMinSize: 300,
-                      contentMinSize: 300,
-                      // Bottom panel content (selected editor)
-                      panelContent: RepaintBoundary(child: selectedEditor),
-                      child: _PanelOverlay(
-                        builder: viewModel.topPanelOverlayContentBuilder,
-                        close: () => viewModel.clearTopPanelOverlay(),
-                        child: Panel(
-                          hidden: !projectModel.isPatternEditorVisible,
-                          orientation: PanelOrientation.left,
-                          panelStartSize: 500,
-                          panelMinSize: 500,
-                          contentMinSize: 500,
-                          sizeBehavior: PanelSizeBehavior.pixels,
-                          // Pattern editor
-                          panelContent:
-                              const RepaintBoundary(child: PatternEditor()),
-                          // Arranger
-                          child: const RepaintBoundary(child: Arranger()),
+                      hidden: true,
+                      orientation: PanelOrientation.right,
+                      sizeBehavior: PanelSizeBehavior.pixels,
+                      panelStartSize: 200,
+                      // Right side-panel content
+                      panelContent: Container(color: Theme.panel.main),
+
+                      child: Panel(
+                        orientation: PanelOrientation.bottom,
+                        panelMinSize: 300,
+                        contentMinSize: 300,
+                        // Bottom panel content (selected editor)
+                        panelContent: RepaintBoundary(child: selectedEditor),
+                        child: _PanelOverlay(
+                          builder: viewModel.topPanelOverlayContentBuilder,
+                          close: () => viewModel.clearTopPanelOverlay(),
+                          child: Panel(
+                            hidden: !projectModel.isPatternEditorVisible,
+                            orientation: PanelOrientation.left,
+                            panelStartSize: 500,
+                            panelMinSize: 500,
+                            contentMinSize: 500,
+                            sizeBehavior: PanelSizeBehavior.pixels,
+                            // Pattern editor
+                            panelContent: const RepaintBoundary(
+                              child: PatternEditor(),
+                            ),
+                            // Arranger
+                            child: const RepaintBoundary(child: Arranger()),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              }),
+                  );
+                },
+              ),
             ),
-            const SizedBox(
-              height: 3,
-            ),
+            const SizedBox(height: 3),
             const ProjectFooter(),
           ],
         ),
@@ -205,11 +204,7 @@ class _PanelOverlay extends StatelessWidget {
   final void Function() close;
   final Widget child;
 
-  const _PanelOverlay({
-    this.builder,
-    required this.close,
-    required this.child,
-  });
+  const _PanelOverlay({this.builder, required this.close, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -217,11 +212,7 @@ class _PanelOverlay extends StatelessWidget {
       fit: StackFit.passthrough,
       children: [
         // Original content
-        Visibility(
-          visible: builder == null,
-          maintainState: true,
-          child: child,
-        ),
+        Visibility(visible: builder == null, maintainState: true, child: child),
 
         // Background, if overlay is present
         if (builder != null)
@@ -249,10 +240,7 @@ class _PanelOverlay extends StatelessWidget {
           ),
 
         // Overlay content
-        if (builder != null)
-          Positioned.fill(
-            child: builder!(context),
-          ),
+        if (builder != null) Positioned.fill(child: builder!(context)),
       ],
     );
   }

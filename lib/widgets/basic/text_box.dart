@@ -55,16 +55,10 @@ class _TextBoxState extends State<TextBox> {
         child: TextField(
           controller: widget.controller,
           focusNode: widget.focusNode,
-          decoration: InputDecoration(
-            border: InputBorder.none,
-            isDense: true,
-          ),
+          decoration: InputDecoration(border: InputBorder.none, isDense: true),
           maxLines: 1,
           cursorColor: anthem_theme.Theme.text.main,
-          style: TextStyle(
-            color: anthem_theme.Theme.text.main,
-            fontSize: 11,
-          ),
+          style: TextStyle(color: anthem_theme.Theme.text.main, fontSize: 11),
         ),
       ),
     );

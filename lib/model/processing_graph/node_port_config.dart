@@ -26,19 +26,12 @@ import 'parameter_config.dart';
 part 'node_port_config.g.dart';
 
 @AnthemEnum()
-enum NodePortDataType {
-  audio,
-  midi,
-  control,
-}
+enum NodePortDataType { audio, midi, control }
 
 @AnthemModel.syncedModel()
 class NodePortConfigModel extends _NodePortConfigModel
     with _$NodePortConfigModel, _$NodePortConfigModelAnthemModelMixin {
-  NodePortConfigModel({
-    required super.dataType,
-    super.parameterConfig,
-  });
+  NodePortConfigModel({required super.dataType, super.parameterConfig});
 
   NodePortConfigModel.uninitialized() : super(dataType: NodePortDataType.audio);
 
@@ -50,8 +43,5 @@ abstract class _NodePortConfigModel with Store, AnthemModelBase {
   NodePortDataType dataType;
   ParameterConfigModel? parameterConfig;
 
-  _NodePortConfigModel({
-    required this.dataType,
-    this.parameterConfig,
-  });
+  _NodePortConfigModel({required this.dataType, this.parameterConfig});
 }

@@ -43,10 +43,7 @@ abstract class _TimeRange with Store {
 
 // I don't remember how this works lol
 class Division {
-  Division({
-    required this.multiplier,
-    required this.divisor,
-  });
+  Division({required this.multiplier, required this.divisor});
 
   int multiplier;
   int divisor;
@@ -75,9 +72,4 @@ typedef Time = int;
 // Misc
 //
 
-enum EditorTool {
-  pencil,
-  eraser,
-  select,
-  cut,
-}
+enum EditorTool { pencil, eraser, select, cut }

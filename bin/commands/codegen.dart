@@ -47,17 +47,23 @@ class _CodegenCleanCommand extends Command<dynamic> {
   String get description => 'Cleans up generated files.';
 
   _CodegenCleanCommand() {
-    argParser.addFlag('skip-prompts',
-        abbr: 'y', help: 'Skip confirmation prompts.');
-    argParser.addFlag('root-only',
-        help: 'Only clean up generated files in the root package.');
+    argParser.addFlag(
+      'skip-prompts',
+      abbr: 'y',
+      help: 'Skip confirmation prompts.',
+    );
+    argParser.addFlag(
+      'root-only',
+      help: 'Only clean up generated files in the root package.',
+    );
   }
 
   @override
   Future<void> run() async {
     if (!argResults!['skip-prompts']) {
       print(
-          'This will delete ALL files/folders matching the following patterns:');
+        'This will delete ALL files/folders matching the following patterns:',
+      );
       print('  - lib/**/*.g.dart');
       print('  - lib/**/*.g.part');
       if (!argResults!['root-only']) {
@@ -81,10 +87,9 @@ class _CodegenCleanCommand extends Command<dynamic> {
 
     var deleteCount = 0;
 
-    final dartLibFilesToDelete =
-        Directory.fromUri(getPackageRootPath().resolve('lib/'))
-            .listSync(recursive: true)
-            .where((f) {
+    final dartLibFilesToDelete = Directory.fromUri(
+      getPackageRootPath().resolve('lib/'),
+    ).listSync(recursive: true).where((f) {
       return f.path.endsWith('.g.dart') || f.path.endsWith('.g.part');
     });
 
@@ -94,10 +99,9 @@ class _CodegenCleanCommand extends Command<dynamic> {
     }
 
     if (!argResults!['root-only']) {
-      final dartCodegenFilesToDelete =
-          Directory.fromUri(getPackageRootPath().resolve('codegen/'))
-              .listSync(recursive: true)
-              .where((f) {
+      final dartCodegenFilesToDelete = Directory.fromUri(
+        getPackageRootPath().resolve('codegen/'),
+      ).listSync(recursive: true).where((f) {
         return f.path.endsWith('.g.dart') || f.path.endsWith('.g.part');
       });
 
@@ -123,17 +127,20 @@ class _CodegenCleanCommand extends Command<dynamic> {
     final processInRoot = await Process.start(
       'dart',
       ['run', 'build_runner', 'clean'],
-      workingDirectory:
-          getPackageRootPath().toFilePath(windows: Platform.isWindows),
+      workingDirectory: getPackageRootPath().toFilePath(
+        windows: Platform.isWindows,
+      ),
       mode: ProcessStartMode.inheritStdio,
     );
 
     final exitCode = await processInRoot.exitCode;
 
     if (exitCode != 0) {
-      print(Colorize(
-              '\n\nError: Code cleanup failed. Could not run build_runner clean in root package.')
-          .red());
+      print(
+        Colorize(
+          '\n\nError: Code cleanup failed. Could not run build_runner clean in root package.',
+        ).red(),
+      );
       exit(exitCode);
     }
 
@@ -150,9 +157,11 @@ class _CodegenCleanCommand extends Command<dynamic> {
       final exitCode = await processInCodegen.exitCode;
 
       if (exitCode != 0) {
-        print(Colorize(
-                '\n\nError: Code cleanup failed. Could not run build_runner clean in codegen package.')
-            .red());
+        print(
+          Colorize(
+            '\n\nError: Code cleanup failed. Could not run build_runner clean in codegen package.',
+          ).red(),
+        );
         exit(exitCode);
       }
     }
@@ -169,12 +178,16 @@ class _CodegenGenerateCommand extends Command<dynamic> {
   String get description => 'Generates code for Anthem.';
 
   _CodegenGenerateCommand() {
-    argParser.addFlag('watch',
-        abbr: 'w',
-        help:
-            'Starts build_runner in watch mode, which will regenerate code as files change.');
-    argParser.addFlag('root-only',
-        help: 'Only generate code in the root package.');
+    argParser.addFlag(
+      'watch',
+      abbr: 'w',
+      help:
+          'Starts build_runner in watch mode, which will regenerate code as files change.',
+    );
+    argParser.addFlag(
+      'root-only',
+      help: 'Only generate code in the root package.',
+    );
   }
 
   @override
@@ -190,14 +203,10 @@ class _CodegenGenerateCommand extends Command<dynamic> {
 
       final process = await Process.start(
         'dart',
-        [
-          'run',
-          'build_runner',
-          'watch',
-          '--delete-conflicting-outputs',
-        ],
-        workingDirectory:
-            packageRootPath.toFilePath(windows: Platform.isWindows),
+        ['run', 'build_runner', 'watch', '--delete-conflicting-outputs'],
+        workingDirectory: packageRootPath.toFilePath(
+          windows: Platform.isWindows,
+        ),
         mode: ProcessStartMode.inheritStdio,
       );
 
@@ -214,20 +223,18 @@ class _CodegenGenerateCommand extends Command<dynamic> {
       final workingDirectory =
           subpath == null ? packageRootPath : packageRootPath.resolve(subpath);
 
-      print(Colorize(
-              'Generating code in ${workingDirectory.toFilePath(windows: Platform.isWindows)}...')
-          .lightGreen());
+      print(
+        Colorize(
+          'Generating code in ${workingDirectory.toFilePath(windows: Platform.isWindows)}...',
+        ).lightGreen(),
+      );
 
       final process = await Process.start(
         'dart',
-        [
-          'run',
-          'build_runner',
-          'build',
-          '--delete-conflicting-outputs',
-        ],
-        workingDirectory:
-            workingDirectory.toFilePath(windows: Platform.isWindows),
+        ['run', 'build_runner', 'build', '--delete-conflicting-outputs'],
+        workingDirectory: workingDirectory.toFilePath(
+          windows: Platform.isWindows,
+        ),
         mode: ProcessStartMode.inheritStdio,
       );
 

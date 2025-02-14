@@ -107,14 +107,15 @@ class EngineConnector {
 
   final String? enginePathOverride;
 
-  EngineConnector(this._id,
-      {required this.kDebugMode,
-      void Function(Response)? onReply,
-      void Function()? onExit,
-      this.noHeartbeat = false,
-      this.enginePathOverride})
-      : _onExit = onExit,
-        _onReply = onReply {
+  EngineConnector(
+    this._id, {
+    required this.kDebugMode,
+    void Function(Response)? onReply,
+    void Function()? onExit,
+    this.noHeartbeat = false,
+    this.enginePathOverride,
+  }) : _onExit = onExit,
+       _onReply = onReply {
     onInit = _init();
 
     // If any requests came in before the engine was started, send them now.
@@ -155,25 +156,30 @@ class EngineConnector {
       // Don't use the repo engine if Dart is running in AOT compiled mode
       if (projectRoot.pathSegments.last.endsWith('.dart')) {
         while (projectRoot.path.length > 1 &&
-            !(await File.fromUri(projectRoot.resolve('./pubspec.yaml'))
-                .exists())) {
+            !(await File.fromUri(
+              projectRoot.resolve('./pubspec.yaml'),
+            ).exists())) {
           projectRoot = projectRoot.resolve('../');
         }
 
         var enginePath = projectRoot.resolve(
-            './engine/build/AnthemEngine_artefacts/Debug/AnthemEngine${Platform.isWindows ? '.exe' : ''}');
+          './engine/build/AnthemEngine_artefacts/Debug/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+        );
         if (await File.fromUri(enginePath).exists()) {
-          developmentEnginePath =
-              enginePath.toFilePath(windows: Platform.isWindows);
+          developmentEnginePath = enginePath.toFilePath(
+            windows: Platform.isWindows,
+          );
         }
       }
     }
 
-    final anthemPathStr = enginePathOverride ??
+    final anthemPathStr =
+        enginePathOverride ??
         (developmentEnginePath ??
             mainExecutablePath.parent.uri
                 .resolve(
-                    './data/flutter_assets/assets/engine/AnthemEngine${Platform.isWindows ? '.exe' : ''}')
+                  './data/flutter_assets/assets/engine/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+                )
                 .toFilePath(windows: Platform.isWindows));
 
     if (!await File(anthemPathStr).exists()) {
@@ -184,13 +190,10 @@ class EngineConnector {
     if (kDebugMode) {
       if (Platform.isWindows) {
         _setEngineProcess(
-          await Process.start(
-            'powershell',
-            [
-              '-Command',
-              '& {Start-Process -FilePath "$anthemPathStr" -ArgumentList "${EngineSocketServer.instance.port} $_id" -Wait}'
-            ],
-          ),
+          await Process.start('powershell', [
+            '-Command',
+            '& {Start-Process -FilePath "$anthemPathStr" -ArgumentList "${EngineSocketServer.instance.port} $_id" -Wait}',
+          ]),
         );
       } else if (Platform.isLinux) {
         _setEngineProcess(
@@ -205,10 +208,10 @@ class EngineConnector {
       }
     } else {
       _setEngineProcess(
-        await Process.start(
-          anthemPathStr,
-          [EngineSocketServer.instance.port.toString(), _id.toString()],
-        ),
+        await Process.start(anthemPathStr, [
+          EngineSocketServer.instance.port.toString(),
+          _id.toString(),
+        ]),
       );
     }
 
@@ -225,18 +228,17 @@ class EngineConnector {
         },
       );
 
-      _engineHeartbeatTimer = Timer.periodic(
-        const Duration(seconds: 5),
-        (timer) {
-          final id = getRequestId();
+      _engineHeartbeatTimer = Timer.periodic(const Duration(seconds: 5), (
+        timer,
+      ) {
+        final id = getRequestId();
 
-          final heartbeat = Heartbeat(id: id);
+        final heartbeat = Heartbeat(id: id);
 
-          final encoder = JsonUtf8Encoder();
+        final encoder = JsonUtf8Encoder();
 
-          send(encoder.convert(heartbeat.toJson()) as Uint8List);
-        },
-      );
+        send(encoder.convert(heartbeat.toJson()) as Uint8List);
+      });
     }
 
     // Wait for the engine to connect before setting our initialized state to
@@ -277,8 +279,9 @@ class EngineConnector {
     // Process the buffer to extract complete messages
     while (_messageBuffer.buffer.length >= 8) {
       // Extract the message length (8 bytes, 64-bit integer)
-      final byteData =
-          ByteData.sublistView(Uint8List.fromList(_messageBuffer.buffer));
+      final byteData = ByteData.sublistView(
+        Uint8List.fromList(_messageBuffer.buffer),
+      );
       final messageLength = byteData.getUint64(0, Endian.host);
 
       // Check if the buffer contains the full message
@@ -287,9 +290,7 @@ class EngineConnector {
         final fullMessage = _messageBuffer.buffer.sublist(8, 8 + messageLength);
 
         final response = Response.fromJson(
-          jsonDecode(
-            utf8.decode(fullMessage),
-          ),
+          jsonDecode(utf8.decode(fullMessage)),
         );
 
         // Handle heartbeat reply

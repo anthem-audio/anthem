@@ -28,11 +28,7 @@ class AddChannelMenu extends StatelessWidget {
   final MenuController menuController;
   final Widget? child;
 
-  const AddChannelMenu({
-    super.key,
-    required this.menuController,
-    this.child,
-  });
+  const AddChannelMenu({super.key, required this.menuController, this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -90,10 +86,6 @@ class AddChannelMenu extends StatelessWidget {
       ],
     );
 
-    return Menu(
-      menuController: menuController,
-      menuDef: menuDef,
-      child: child,
-    );
+    return Menu(menuController: menuController, menuDef: menuDef, child: child);
   }
 }

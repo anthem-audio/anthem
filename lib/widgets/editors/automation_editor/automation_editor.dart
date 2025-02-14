@@ -54,8 +54,10 @@ class AutomationEditorState extends State<AutomationEditor> {
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     viewModel ??= AutomationEditorViewModel(timeView: TimeRange(0, 3072));
-    controller ??=
-        AutomationEditorController(viewModel: viewModel!, project: project);
+    controller ??= AutomationEditorController(
+      viewModel: viewModel!,
+      project: project,
+    );
 
     return Provider.value(
       value: viewModel!,
@@ -90,12 +92,7 @@ class _AutomationEditorHeader extends StatelessWidget {
       height: 26,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Button(
-            icon: Icons.kebab,
-            width: 26,
-          ),
-        ],
+        children: [Button(icon: Icons.kebab, width: 26)],
       ),
     );
   }
@@ -160,7 +157,8 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
             handleStart: viewModel.timeView.start,
             handleEnd: viewModel.timeView.end,
             scrollRegionStart: 0,
-            scrollRegionEnd: pattern?.lastContent.toDouble() ??
+            scrollRegionEnd:
+                pattern?.lastContent.toDouble() ??
                 (project.sequence.ticksPerQuarter * 4 * noContentBars)
                     .toDouble(),
             canScrollPastEnd: true,
@@ -176,9 +174,7 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              border: Border.all(
-                color: Theme.panel.border,
-              ),
+              border: Border.all(color: Theme.panel.border),
               borderRadius: const BorderRadius.all(Radius.circular(4)),
             ),
             child: ClipRRect(

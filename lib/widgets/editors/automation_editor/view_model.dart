@@ -30,17 +30,10 @@ import '../shared/helpers/types.dart';
 
 part 'view_model.g.dart';
 
-enum HandleKind {
-  tensionHandle,
-  point,
-}
+enum HandleKind { tensionHandle, point }
 
-typedef PointAnnotation = ({
-  HandleKind kind,
-  int pointIndex,
-  Id pointId,
-  Offset center,
-});
+typedef PointAnnotation =
+    ({HandleKind kind, int pointIndex, Id pointId, Offset center});
 
 // ignore: library_private_types_in_public_api
 class AutomationEditorViewModel = _AutomationEditorViewModel

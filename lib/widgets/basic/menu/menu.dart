@@ -55,17 +55,21 @@ class _MenuState extends State<Menu> {
 
   @override
   Widget build(BuildContext context) {
-    final screenOverlayController =
-        Provider.of<ScreenOverlayController>(context);
+    final screenOverlayController = Provider.of<ScreenOverlayController>(
+      context,
+    );
     widget.menuController.open =
         ([pos]) => openMenu(screenOverlayController, pos);
     return widget.child ?? const SizedBox();
   }
 
   void openMenu(
-      ScreenOverlayController screenOverlayController, Offset? incomingPos) {
+    ScreenOverlayController screenOverlayController,
+    Offset? incomingPos,
+  ) {
     final contentRenderBox = context.findRenderObject() as RenderBox;
-    final pos = incomingPos ??
+    final pos =
+        incomingPos ??
         contentRenderBox.localToGlobal(
           Offset(
             widget.menuAlignment == MenuAlignment.topLeft ||
@@ -79,8 +83,10 @@ class _MenuState extends State<Menu> {
           ),
         );
     final id = getId();
-    final projectController =
-        Provider.of<ProjectController>(context, listen: false);
+    final projectController = Provider.of<ProjectController>(
+      context,
+      listen: false,
+    );
 
     screenOverlayController.add(
       id,
