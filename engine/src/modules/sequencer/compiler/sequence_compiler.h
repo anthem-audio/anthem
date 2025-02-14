@@ -48,6 +48,14 @@ private:
   // sequence store.
   static void compilePattern(std::string patternId, std::vector<std::string>& channelIdsToRebuild);
 
+  // Compiles the given arrangement, and adds or replaces its entry in the
+  // sequence store.
+  static void compileArrangement(std::string arrangementId);
+
+  // Compiles the given channels for the given arrangement, and replaces them in
+  // the sequence store.
+  static void compileArrangement(std::string arrangementId, std::vector<std::string>& channelIdsToRebuild);
+
   // Gets the note events on a given channel for the given arrangement.
   //
   // The events will be added to the given `events` vector.
