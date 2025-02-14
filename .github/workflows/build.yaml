@@ -12,14 +12,17 @@ jobs:
       - name: Clone Flutter
         run: |
           # Shallow-clone Flutter to reduce download size
-          git clone --depth 1 --branch 3.29.0 https://github.com/flutter/flutter.git $env:RUNNER_TEMP\flutter
+          git clone --depth 1 --branch 3.27.4 https://github.com/flutter/flutter.git $env:RUNNER_TEMP\flutter
 
           # Add Flutter to PATH
           Add-Content $env:GITHUB_PATH "$env:RUNNER_TEMP\flutter\bin"
       
       - name: Install Flutter
         # Running "flutter doctor" will download Flutter's dependencies
-        run: flutter doctor
+        # For some reason, 3.29.0 doesn't install properly for now - this will also upgrade to 3.29.0
+        run: |
+          flutter doctor
+          flutter upgrade
 
       # Get dependencies for Flutter
       - name: Get dependencies
@@ -78,14 +81,17 @@ jobs:
       - name: Clone Flutter
         run: |
           # Shallow-clone Flutter to reduce download size
-          git clone --depth 1 --branch 3.29.0 https://github.com/flutter/flutter.git $RUNNER_TEMP/flutter
+          git clone --depth 1 --branch 3.27.4 https://github.com/flutter/flutter.git $RUNNER_TEMP/flutter
 
           # Add Flutter to PATH
           echo "$RUNNER_TEMP/flutter/bin" >> $GITHUB_PATH
 
       - name: Install Flutter
         # Running "flutter doctor" will download Flutter's dependencies
-        run: flutter doctor
+        # For some reason, 3.29.0 doesn't install properly for now - this will also upgrade to 3.29.0
+        run: |
+          flutter doctor
+          flutter upgrade
 
       # Get dependencies for Flutter
       - name: Get dependencies
