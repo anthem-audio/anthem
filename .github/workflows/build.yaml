@@ -12,7 +12,7 @@ jobs:
       - name: Clone Flutter
         run: |
           # Shallow-clone Flutter to reduce download size
-          git clone --depth 1 --branch stable https://github.com/flutter/flutter.git $env:RUNNER_TEMP\flutter
+          git clone --branch stable https://github.com/flutter/flutter.git $env:RUNNER_TEMP\flutter
 
           # Add Flutter to PATH
           Add-Content $env:GITHUB_PATH "$env:RUNNER_TEMP\flutter\bin"
@@ -79,7 +79,7 @@ jobs:
       - name: Clone Flutter
         run: |
           # Shallow-clone Flutter to reduce download size
-          git clone --depth 1 --branch stable https://github.com/flutter/flutter.git $RUNNER_TEMP/flutter
+          git clone --branch stable https://github.com/flutter/flutter.git $RUNNER_TEMP/flutter
 
           # Add Flutter to PATH
           echo "$RUNNER_TEMP/flutter/bin" >> $GITHUB_PATH
