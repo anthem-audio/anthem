@@ -30,7 +30,6 @@ class _TreeItem extends StatefulWidget {
 
   const _TreeItem({
     // ignore: unused_element
-    super.key,
     required this.model,
     this.hasOpenIndicatorIndent = false,
     required this.filterModel,
