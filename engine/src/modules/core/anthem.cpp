@@ -30,6 +30,7 @@ Anthem::Anthem() {
 void Anthem::initialize() {
   graphProcessor = std::make_unique<AnthemGraphProcessor>();
   sequenceStore = std::make_unique<AnthemRuntimeSequenceStore>();
+  transport = std::make_unique<Transport>();
 }
 
 void Anthem::shutdown() {

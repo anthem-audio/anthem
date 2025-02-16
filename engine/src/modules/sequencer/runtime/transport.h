@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,22 +19,25 @@
 
 #pragma once
 
-#include "generated/lib/model/sequence.h"
+#include <atomic>
+#include <cstdint>
+#include <optional>
 
-class Sequence : public SequenceModelBase {
+#include "../time.h"
+
+#include "modules/util/double_buffered_value.h"
+
+class Transport {
 public:
-  Sequence(const SequenceModelImpl& _impl) : SequenceModelBase(_impl) {}
-  ~Sequence() {}
+  DoubleBufferedValue<std::optional<std::string>> activeSequenceId;
 
-  Sequence(const Sequence&) = delete;
-  Sequence& operator=(const Sequence&) = delete;
-  
-  Sequence(Sequence&&) noexcept = default;
-  Sequence& operator=(Sequence&&) noexcept = default;
+  AnthemSequenceTime rt_playhead;
 
-  void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override;
+  std::atomic<int64_t> ticksPerQuarter;
+  std::atomic<double> beatsPerMinute;
 
-  // void handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {
-  //   SequenceModelBase::handleModelUpdate(request, fieldAccessIndex);
-  // }
+  Transport() {
+    rt_playhead.ticks = 0;
+    rt_playhead.fraction = 0.0;
+  }
 };

@@ -27,6 +27,7 @@
 #include "modules/core/anthem_audio_callback.h"
 #include "modules/processing_graph/runtime/anthem_graph_processor.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
+#include "modules/sequencer/runtime/transport.h"
 
 #include "modules/util/id_generator.h"
 
@@ -66,6 +67,13 @@ public:
   // The graph processor, which takes the compilation result from the compiler
   // and uses it on the audio thread to process data in the graph
   std::unique_ptr<AnthemGraphProcessor> graphProcessor;
+
+  // The transport contains information about:
+  // - The sequence being played
+  // - The playhead position
+  // - The project tempo
+  // - The current playhead reset point and loop points
+  std::unique_ptr<Transport> transport;
 
   Anthem();
 
