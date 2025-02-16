@@ -614,7 +614,7 @@ _generateStructsForModel(ModelClassInfo modelClassInfo) {
     writer.writeLine();
 
     writer.writeLine(
-      'void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override;',
+      'virtual void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override;',
     );
     writer.writeLine();
 

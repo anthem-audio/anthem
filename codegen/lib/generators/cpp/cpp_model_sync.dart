@@ -25,7 +25,7 @@ import 'get_cpp_type.dart';
 
 void writeModelSyncFnDeclaration(Writer writer) {
   writer.writeLine(
-    'void handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex);',
+    'virtual void handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex);',
   );
 }
 
