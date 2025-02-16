@@ -67,8 +67,8 @@ AnthemRuntimeSequenceStore::AnthemRuntimeSequenceStore()
         this->processMapDeletionQueue();
       })
     ),
-    mapUpdateQueue(1024),
-    mapDeletionQueue(1024)
+    mapUpdateQueue(),
+    mapDeletionQueue()
 {
   eventLists = new std::unordered_map<std::string, SequenceEventListCollection>();
   rt_eventLists = eventLists;

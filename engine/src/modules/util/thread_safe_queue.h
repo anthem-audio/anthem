@@ -23,21 +23,27 @@
 #include <optional>
 
 // A thread- and realtime-safe queue for storing items of type T
-template <typename T>
+template <
+  typename T,
+  std::size_t size
+>
 class ThreadSafeQueue
 {
 public:
-  ThreadSafeQueue(int size) : fifo(size), buffer(size) {}
+  ThreadSafeQueue() : fifo(size) {}
 
   // Adds an item to the queue from the main thread
-  void add(T item) {
+  bool add(T item) {
     int start1, size1, start2, size2;
     fifo.prepareToWrite(1, start1, size1, start2, size2);
 
     if (size1 > 0) {
       buffer[start1] = item;
       fifo.finishedWrite(1);
+      return true;
     }
+
+    return false;
   }
 
   // Reads the next item from the queue if it exists
@@ -57,5 +63,5 @@ public:
 
 private:
   juce::AbstractFifo fifo;
-  std::vector<T> buffer;
+  std::array<T, size> buffer;
 };

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -37,8 +37,8 @@
 class AnthemGraphProcessor {
 private:
   AnthemGraphCompilationResult* processingSteps;
-  ThreadSafeQueue<AnthemGraphCompilationResult*> processingStepsQueue;
-  ThreadSafeQueue<AnthemGraphCompilationResult*> processingStepsDeletionQueue;
+  ThreadSafeQueue<AnthemGraphCompilationResult*, 512> processingStepsQueue;
+  ThreadSafeQueue<AnthemGraphCompilationResult*, 512> processingStepsDeletionQueue;
   juce::TimedCallback clearDeletionQueueTimedCallback;
 public:
   // Processes a single block of audio in the graph. This will also process and

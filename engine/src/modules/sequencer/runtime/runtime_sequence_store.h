@@ -128,10 +128,10 @@ private:
   SequenceIdToEventsMap* rt_eventLists;
 
   // For sending new values of the map to the audio thread
-  ThreadSafeQueue<SequenceIdToEventsMap*> mapUpdateQueue;
+  ThreadSafeQueue<SequenceIdToEventsMap*, 1024> mapUpdateQueue;
 
   // For the audio thread to send old values of the map to be deleted by the main thread
-  ThreadSafeQueue<SequenceIdToEventsMap*> mapDeletionQueue;
+  ThreadSafeQueue<SequenceIdToEventsMap*, 1024> mapDeletionQueue;
 
   juce::TimedCallback clearDeletionQueueTimedCallback;
 
