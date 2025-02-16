@@ -27,7 +27,7 @@
 //
 // It is used when the latest value is the only relevant value. If you need to
 // be able to read through all the values that have been sent, then you should
-// use a ThreadSafeQueue instead.
+// use a RingBuffer instead.
 //
 // This operates like a mutexed value. The real-time code can lock the value via
 // a fence created with an atomic value. The difference is that, if the main

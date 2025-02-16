@@ -26,7 +26,7 @@
 #include <memory>
 
 #include "modules/sequencer/events/event.h"
-#include "modules/util/thread_safe_queue.h"
+#include "modules/util/ring_buffer.h"
 
 /*
   Anthem compiles each pattern and arrangement into a list of events for each
@@ -128,10 +128,10 @@ private:
   SequenceIdToEventsMap* rt_eventLists;
 
   // For sending new values of the map to the audio thread
-  ThreadSafeQueue<SequenceIdToEventsMap*, 1024> mapUpdateQueue;
+  RingBuffer<SequenceIdToEventsMap*, 1024> mapUpdateQueue;
 
   // For the audio thread to send old values of the map to be deleted by the main thread
-  ThreadSafeQueue<SequenceIdToEventsMap*, 1024> mapDeletionQueue;
+  RingBuffer<SequenceIdToEventsMap*, 1024> mapDeletionQueue;
 
   juce::TimedCallback clearDeletionQueueTimedCallback;
 

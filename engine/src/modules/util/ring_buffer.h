@@ -27,10 +27,10 @@ template <
   typename T,
   std::size_t size
 >
-class ThreadSafeQueue
+class RingBuffer
 {
 public:
-  ThreadSafeQueue() : fifo(size) {}
+  RingBuffer() : fifo(size) {}
 
   // Adds an item to the queue from the main thread
   bool add(T item) {
