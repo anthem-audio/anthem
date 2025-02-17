@@ -59,8 +59,8 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
   // Get the total number of event ports in the graph.
   for (auto& nodePair : *processingGraphModel->nodes()) {
     auto& node = nodePair.second;
-    totalEventPorts += node->midiInputPorts()->size();
-    totalEventPorts += node->midiOutputPorts()->size();
+    totalEventPorts += node->eventInputPorts()->size();
+    totalEventPorts += node->eventOutputPorts()->size();
   }
 
   // Create a buffer allocator for events, and allocate double the size of the
@@ -270,9 +270,9 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
               )
             );
             break;
-          case NodePortDataType::midi:
+          case NodePortDataType::event:
             actions->push_back(
-              std::make_unique<CopyNoteEventsAction>(
+              std::make_unique<CopyEventsAction>(
                 edge->sourceNodeContext,
                 sourcePort->id(),
                 edge->destinationNodeContext,

@@ -41,17 +41,17 @@ class NodeModel extends _NodeModel
     required super.id,
     super.processor,
     AnthemObservableList<NodePortModel>? audioInputPorts,
-    AnthemObservableList<NodePortModel>? midiInputPorts,
+    AnthemObservableList<NodePortModel>? eventInputPorts,
     AnthemObservableList<NodePortModel>? controlInputPorts,
     AnthemObservableList<NodePortModel>? audioOutputPorts,
-    AnthemObservableList<NodePortModel>? midiOutputPorts,
+    AnthemObservableList<NodePortModel>? eventOutputPorts,
     AnthemObservableList<NodePortModel>? controlOutputPorts,
   }) : super(
          audioInputPorts: audioInputPorts ?? AnthemObservableList(),
-         midiInputPorts: midiInputPorts ?? AnthemObservableList(),
+         eventInputPorts: eventInputPorts ?? AnthemObservableList(),
          controlInputPorts: controlInputPorts ?? AnthemObservableList(),
          audioOutputPorts: audioOutputPorts ?? AnthemObservableList(),
-         midiOutputPorts: midiOutputPorts ?? AnthemObservableList(),
+         eventOutputPorts: eventOutputPorts ?? AnthemObservableList(),
          controlOutputPorts: controlOutputPorts ?? AnthemObservableList(),
        );
 
@@ -59,10 +59,10 @@ class NodeModel extends _NodeModel
     : super(
         id: '',
         audioInputPorts: AnthemObservableList(),
-        midiInputPorts: AnthemObservableList(),
+        eventInputPorts: AnthemObservableList(),
         controlInputPorts: AnthemObservableList(),
         audioOutputPorts: AnthemObservableList(),
-        midiOutputPorts: AnthemObservableList(),
+        eventOutputPorts: AnthemObservableList(),
         controlOutputPorts: AnthemObservableList(),
         processor: null,
       );
@@ -74,7 +74,7 @@ class NodeModel extends _NodeModel
     for (final port in audioInputPorts) {
       if (port.id == portId) return port;
     }
-    for (final port in midiInputPorts) {
+    for (final port in eventInputPorts) {
       if (port.id == portId) return port;
     }
     for (final port in controlInputPorts) {
@@ -83,7 +83,7 @@ class NodeModel extends _NodeModel
     for (final port in audioOutputPorts) {
       if (port.id == portId) return port;
     }
-    for (final port in midiOutputPorts) {
+    for (final port in eventOutputPorts) {
       if (port.id == portId) return port;
     }
     for (final port in controlOutputPorts) {
@@ -95,8 +95,8 @@ class NodeModel extends _NodeModel
   Iterable<NodePortModel> getAllPorts() {
     return audioInputPorts
         .followedBy(audioOutputPorts)
-        .followedBy(midiInputPorts)
-        .followedBy(midiOutputPorts)
+        .followedBy(eventInputPorts)
+        .followedBy(eventOutputPorts)
         .followedBy(controlInputPorts)
         .followedBy(controlOutputPorts);
   }
@@ -106,11 +106,11 @@ abstract class _NodeModel with Store, AnthemModelBase {
   String id;
 
   AnthemObservableList<NodePortModel> audioInputPorts;
-  AnthemObservableList<NodePortModel> midiInputPorts;
+  AnthemObservableList<NodePortModel> eventInputPorts;
   AnthemObservableList<NodePortModel> controlInputPorts;
 
   AnthemObservableList<NodePortModel> audioOutputPorts;
-  AnthemObservableList<NodePortModel> midiOutputPorts;
+  AnthemObservableList<NodePortModel> eventOutputPorts;
   AnthemObservableList<NodePortModel> controlOutputPorts;
 
   @Union([
@@ -125,10 +125,10 @@ abstract class _NodeModel with Store, AnthemModelBase {
   _NodeModel({
     required this.id,
     required this.audioInputPorts,
-    required this.midiInputPorts,
+    required this.eventInputPorts,
     required this.controlInputPorts,
     required this.audioOutputPorts,
-    required this.midiOutputPorts,
+    required this.eventOutputPorts,
     required this.controlOutputPorts,
     required this.processor,
   });

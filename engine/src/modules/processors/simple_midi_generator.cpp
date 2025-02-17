@@ -37,13 +37,13 @@ SimpleMidiGeneratorProcessor::SimpleMidiGeneratorProcessor(const SimpleMidiGener
 SimpleMidiGeneratorProcessor::~SimpleMidiGeneratorProcessor() {}
 
 void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int numSamples) {
-  auto& midiOutBuffer = context.getOutputNoteEventBuffer(SimpleMidiGeneratorProcessorModelBase::midiOutputPortId);
+  auto& eventOutBuffer = context.getOutputEventBuffer(SimpleMidiGeneratorProcessorModelBase::eventOutputPortId);
 
   if (!noteOn) {
     currentNote = 50;
     currentNoteId = 0;
     currentNoteDuration = 0;
-    midiOutBuffer->addEvent(
+    eventOutBuffer->addEvent(
       AnthemLiveEvent {
         .time = AnthemLiveTime {
           .offset = 0
@@ -80,7 +80,7 @@ void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int nu
         }
       };
 
-      midiOutBuffer->addEvent(noteOffEvent);
+      eventOutBuffer->addEvent(noteOffEvent);
 
       currentNoteId++;
       currentNoteDuration = 0;
@@ -101,7 +101,7 @@ void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int nu
         }
       };
 
-      midiOutBuffer->addEvent(noteOnEvent);
+      eventOutBuffer->addEvent(noteOnEvent);
     }
   }
 }

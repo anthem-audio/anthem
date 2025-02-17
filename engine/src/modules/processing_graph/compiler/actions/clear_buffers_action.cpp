@@ -26,11 +26,11 @@ void ClearBuffersAction::execute(int) {
     pair.second.clear();
   }
 
-  for (auto& pair : this->context->getAllInputNoteEventBuffers()) {
+  for (auto& pair : this->context->getAllInputEventBuffers()) {
     pair.second->clear();
   }
 
-  for (auto& pair : this->context->getAllOutputNoteEventBuffers()) {
+  for (auto& pair : this->context->getAllOutputEventBuffers()) {
     pair.second->clear();
   }
 }

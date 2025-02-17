@@ -42,8 +42,8 @@ private:
   std::unordered_map<int32_t, juce::AudioSampleBuffer> inputControlBuffers;
   std::unordered_map<int32_t, juce::AudioSampleBuffer> outputControlBuffers;
 
-  std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>> inputNoteEventBuffers;
-  std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>> outputNoteEventBuffers;
+  std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>> inputEventBuffers;
+  std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>> outputEventBuffers;
 
   std::unordered_map<int32_t, std::atomic<float>*> parameterValues;
   std::unordered_map<int32_t, std::unique_ptr<LinearParameterSmoother>> parameterSmoothers;
@@ -87,14 +87,14 @@ public:
   juce::AudioSampleBuffer& getInputControlBuffer(int32_t id);
   juce::AudioSampleBuffer& getOutputControlBuffer(int32_t id);
 
-  void setAllInputNoteEventBuffers(std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& buffers);
-  void setAllOutputNoteEventBuffers(std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& buffers);
+  void setAllInputEventBuffers(std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& buffers);
+  void setAllOutputEventBuffers(std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& buffers);
 
-  std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& getAllInputNoteEventBuffers();
-  std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& getAllOutputNoteEventBuffers();
+  std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& getAllInputEventBuffers();
+  std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& getAllOutputEventBuffers();
 
-  std::unique_ptr<AnthemEventBuffer>& getInputNoteEventBuffer(int32_t id);
-  std::unique_ptr<AnthemEventBuffer>& getOutputNoteEventBuffer(int32_t id);
+  std::unique_ptr<AnthemEventBuffer>& getInputEventBuffer(int32_t id);
+  std::unique_ptr<AnthemEventBuffer>& getOutputEventBuffer(int32_t id);
 
   std::unordered_map<int32_t, std::atomic<float>*>& getParameterValues() {
     return parameterValues;

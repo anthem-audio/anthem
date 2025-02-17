@@ -26,7 +26,7 @@ import 'parameter_config.dart';
 part 'node_port_config.g.dart';
 
 @AnthemEnum()
-enum NodePortDataType { audio, midi, control }
+enum NodePortDataType { audio, event, control }
 
 @AnthemModel.syncedModel()
 class NodePortConfigModel extends _NodePortConfigModel

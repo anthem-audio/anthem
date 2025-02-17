@@ -42,7 +42,7 @@ private:
   juce::TimedCallback clearDeletionQueueTimedCallback;
 public:
   // Processes a single block of audio in the graph. This will also process and
-  // propagate MIDI and control data.
+  // propagate event and control data.
   void process(int numSamples);
 
   // This function adds a new set of processing steps to the queue. This is

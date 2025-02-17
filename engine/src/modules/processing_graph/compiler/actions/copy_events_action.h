@@ -20,7 +20,7 @@
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 #include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
 
-class CopyNoteEventsAction : public AnthemGraphCompilerAction {
+class CopyEventsAction : public AnthemGraphCompilerAction {
 public:
   AnthemProcessContext* source;
   int32_t sourcePortId;
@@ -28,7 +28,7 @@ public:
   AnthemProcessContext* destination;
   int32_t destinationPortId;
 
-  CopyNoteEventsAction(
+  CopyEventsAction(
     AnthemProcessContext* source,
     int32_t sourcePortId,
     AnthemProcessContext* destination,

@@ -38,7 +38,7 @@ void AnthemGraphCompilerNode::assignEdges(
     }
   }
 
-  for (auto& port : *node->midiInputPorts()) {
+  for (auto& port : *node->eventInputPorts()) {
     for (auto& connectionId : *port->connections()) {
       auto& connection = Anthem::getInstance().project->processingGraph()->connections()->at(connectionId);
       assignEdge(nodeToCompilerNode, connectionToCompilerEdge, inputEdges, connection);
@@ -59,7 +59,7 @@ void AnthemGraphCompilerNode::assignEdges(
     }
   }
 
-  for (auto& port : *node->midiOutputPorts()) {
+  for (auto& port : *node->eventOutputPorts()) {
     for (auto& connectionId : *port->connections()) {
       auto& connection = Anthem::getInstance().project->processingGraph()->connections()->at(connectionId);
       assignEdge(nodeToCompilerNode, connectionToCompilerEdge, outputEdges, connection);

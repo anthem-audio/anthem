@@ -26,7 +26,7 @@ part 'generator.g.dart';
 
 // Note: I'm not sure about how we're differentiating generator types here. This
 // is well-defined in the audio engine, but we need to know what kind of data to
-// feed the node (automation, audio, MIDI, etc) and what port to send it, and
+// feed the node (automation, audio, events) and what port to send it, and
 // that's a sequencer problem. Once the sequencer exists, we should revisit
 // this.
 

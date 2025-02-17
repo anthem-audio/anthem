@@ -43,11 +43,11 @@ void ToneGeneratorProcessor::process(AnthemProcessContext& context, int numSampl
   auto& frequencyControlBuffer = context.getInputControlBuffer(ToneGeneratorProcessorModelBase::frequencyPortId);
   auto& amplitudeControlBuffer = context.getInputControlBuffer(ToneGeneratorProcessorModelBase::amplitudePortId);
 
-  // Process incoming MIDI events
-  auto& midiInBuffer = context.getInputNoteEventBuffer(ToneGeneratorProcessorModelBase::midiInputPortId);
+  // Process incoming events
+  auto& eventInBuffer = context.getInputEventBuffer(ToneGeneratorProcessorModelBase::eventInputPortId);
 
-  for (size_t i = 0; i < midiInBuffer->getNumEvents(); ++i) {
-    auto& liveEvent = midiInBuffer->getEvent(i);
+  for (size_t i = 0; i < eventInBuffer->getNumEvents(); ++i) {
+    auto& liveEvent = eventInBuffer->getEvent(i);
 
     if (liveEvent.event.type == AnthemEventType::NoteOn) {
       hasNoteOverride = true;

@@ -27,7 +27,7 @@ part 'parameter_config.g.dart';
 /// processing graph.
 ///
 /// All nodes in the processing graph have input ports and output ports. These
-/// inputs and outputs can be of either audio, MIDI or control types. Control
+/// inputs and outputs can be of either audio, event or control types. Control
 /// ports that are inputs are also parameters. This model represents the
 /// configuration of a parameter.
 ///

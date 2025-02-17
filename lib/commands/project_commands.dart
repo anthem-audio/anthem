@@ -53,9 +53,9 @@ void _addGenerator(
     NodeConnectionModel(
       id: getId(),
       sourceNodeId: midiGenNode.id,
-      sourcePortId: midiGenNode.midiOutputPorts[0].id,
+      sourcePortId: midiGenNode.eventOutputPorts[0].id,
       destinationNodeId: generatorNode.id,
-      destinationPortId: generatorNode.midiInputPorts[0].id,
+      destinationPortId: generatorNode.eventInputPorts[0].id,
     ),
   );
   project.processingGraph.addConnection(

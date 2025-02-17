@@ -55,7 +55,7 @@
 #include "actions/copy_audio_buffer_action.h"
 #include "actions/copy_control_buffer_action.h"
 #include "actions/write_parameters_to_control_inputs_action.h"
-#include "actions/copy_note_events_action.h"
+#include "actions/copy_events_action.h"
 
 // This class is used to compile a processing graph into a set of processing
 // instructions that can be executed in a real-time context.
