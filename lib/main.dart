@@ -35,7 +35,7 @@ import 'package:bitsdojo_window/bitsdojo_window.dart';
 GlobalKey mainWindowKey = GlobalKey();
 
 void main() async {
-  runApp(const MyApp());
+  runApp(const App());
 
   // Make sure all engines are stopped before the application is closed
   FlutterWindowClose.setWindowShouldCloseHandler(() async {
@@ -80,8 +80,8 @@ void main() async {
   store.activeProjectId = projectModel.id;
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class App extends StatelessWidget {
+  const App({super.key});
 
   @override
   Widget build(BuildContext context) {
