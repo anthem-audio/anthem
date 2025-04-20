@@ -79,8 +79,24 @@ class PatternModel extends _PatternModel
         clipNotesUpdateSignal.value =
             (clipNotesUpdateSignal.value + 1) % 0xFFFFFFFF;
       });
+
+      // Initialize render caches
       updateClipTitleCache();
       updateClipNotesRenderCache();
+
+      // When notes are changed in the pattern, we need to update the clip notes
+      // render cache.
+      notes.addFieldChangedListener((fieldAccessors, operation) {
+        scheduleClipNotesRenderCacheUpdate();
+      });
+
+      // When the pattern title is changed, we need to update the clip title
+      // render cache.
+      addFieldChangedListener((fieldAccessors, operation) {
+        if (fieldAccessors.first.fieldName == 'name') {
+          updateClipTitleCache();
+        }
+      });
     });
   }
 }
