@@ -525,7 +525,7 @@ _generateStructsForModel(ModelClassInfo modelClassInfo) {
       if (!generateWrapper) {
         final type = getCppType(fieldInfo.typeInfo, modelClassInfo);
         writer.writeLine(
-          'static const $type $fieldName = ${fieldInfo.constantValue};',
+          'static inline const $type $fieldName = ${fieldInfo.constantValue};',
         );
       }
     } else {
