@@ -30,10 +30,12 @@ class SetVisualizationSubscriptionsRequest extends Request {
   /// This replaces any existing subscriptions.
   List<String> subscriptions;
 
-  SetVisualizationSubscriptionsRequest.uninitialized()
-      : subscriptions = [];
+  SetVisualizationSubscriptionsRequest.uninitialized() : subscriptions = [];
 
-  SetVisualizationSubscriptionsRequest({required int id, required this.subscriptions}) {
+  SetVisualizationSubscriptionsRequest({
+    required int id,
+    required this.subscriptions,
+  }) {
     super.id = id;
   }
 }
@@ -43,7 +45,8 @@ class SetVisualizationSubscriptionsRequest extends Request {
 /// Some items only ever have one value, while others can have multiple values,
 /// depending on what they are representing.
 @AnthemModel(serializable: true, generateCpp: true)
-class VisualizationItem extends _VisualizationItem with _$VisualizationItemAnthemModelMixin {
+class VisualizationItem extends _VisualizationItem
+    with _$VisualizationItemAnthemModelMixin {
   VisualizationItem.uninitialized() : super(id: '', values: []);
 
   VisualizationItem({required super.id, required super.values});
