@@ -10,6 +10,8 @@ jobs:
         include:
           - os: windows-latest
             arch: x64
+          - os: windows-11-arm
+            arch: arm64
           - os: ubuntu-latest
             arch: x64
           - os: ubuntu-24.04-arm
@@ -25,7 +27,7 @@ jobs:
       # Install dependencies (Linux only)
       # --------------------------------------------------------------
       - name: Install apt dependencies
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
+        if: contains(matrix.os, 'ubuntu')
         run: |
           sudo apt update
           sudo apt install -y ninja-build llvm clang libx11-dev libxrandr-dev \
@@ -38,7 +40,7 @@ jobs:
       # Clone + set up Flutter (Windows)
       # --------------------------------------------------------------
       - name: Clone Flutter (Windows)
-        if: matrix.os == 'windows-latest'
+        if: contains(matrix.os, 'windows')
         run: |
           git clone --branch stable https://github.com/flutter/flutter.git $env:RUNNER_TEMP\flutter
           Add-Content $env:GITHUB_PATH "$env:RUNNER_TEMP\flutter\bin"
@@ -47,7 +49,7 @@ jobs:
       # Clone + set up Flutter (Linux)
       # --------------------------------------------------------------
       - name: Clone Flutter (Linux)
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
+        if: contains(matrix.os, 'ubuntu')
         run: |
           git clone --branch stable https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
           echo "$RUNNER_TEMP/flutter/bin" >> $GITHUB_PATH
@@ -80,7 +82,7 @@ jobs:
       # Lint (Windows)
       # --------------------------------------------------------------
       - name: Lint code
-        if: matrix.os == 'windows-latest'
+        if: contains(matrix.os, 'windows')
         run: |
           mkdir assets\engine
           dart analyze --fatal-infos
@@ -89,7 +91,7 @@ jobs:
       # Lint (Linux)
       # --------------------------------------------------------------
       - name: Lint code
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
+        if: contains(matrix.os, 'ubuntu')
         run: |
           mkdir -p assets/engine
           dart analyze --fatal-infos
@@ -116,31 +118,31 @@ jobs:
         # Build Flutter (Windows)
         # --------------------------------------------------------------
       - name: Build Flutter (Windows)
-        if: matrix.os == 'windows-latest'
+        if: contains(matrix.os, 'windows')
         run: flutter build windows --verbose --release
         
         # --------------------------------------------------------------
         # Build Flutter (Linux)
         # --------------------------------------------------------------
       - name: Build Flutter (Linux)
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
+        if: contains(matrix.os, 'ubuntu')
         run: flutter build linux --verbose --release
 
       # --------------------------------------------------------------
       # Upload artifacts (Windows)
       # --------------------------------------------------------------
       - name: Upload artifact (Windows)
-        if: matrix.os == 'windows-latest'
+        if: contains(matrix.os, 'windows')
         uses: actions/upload-artifact@v4
         with:
           name: anthem-windows-${{ matrix.arch }}
-          path: ${{ github.workspace }}/build/windows/x64/runner/Release
+          path: ${{ github.workspace }}/${{ matrix.arch == 'x64' && 'build/windows/x64/runner/Release' || 'build/windows/arm64/runner/Release' }}
 
       # --------------------------------------------------------------
       # Upload artifacts (Linux)
       # --------------------------------------------------------------
       - name: Upload artifact (Linux)
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
+        if: contains(matrix.os, 'ubuntu')
         uses: actions/upload-artifact@v4
         with:
           name: anthem-linux-${{ matrix.arch }}
