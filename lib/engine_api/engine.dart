@@ -32,6 +32,7 @@ export 'package:anthem/engine_api/messages/messages.dart'
 part 'api/model_sync_api.dart';
 part 'api/processing_graph_api.dart';
 part 'api/sequencer_api.dart';
+part 'api/visualization_api.dart';
 
 enum EngineState { stopped, starting, running }
 
@@ -52,6 +53,8 @@ class Engine {
 
   late ModelSyncApi modelSyncApi;
   late ProcessingGraphApi processingGraphApi;
+  late SequencerApi sequencerApi;
+  late VisualizationApi visualizationApi;
 
   Map<int, void Function(Response response)> replyFunctions = {};
 
@@ -76,6 +79,8 @@ class Engine {
 
     modelSyncApi = ModelSyncApi(this);
     processingGraphApi = ProcessingGraphApi(this);
+    sequencerApi = SequencerApi(this);
+    visualizationApi = VisualizationApi(this);
   }
 
   void _onReply(Response response) {

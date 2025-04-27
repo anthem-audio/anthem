@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -24,6 +24,7 @@ import 'package:anthem_codegen/include/annotations.dart';
 part 'model_sync.dart';
 part 'processing_graph.dart';
 part 'sequencer.dart';
+part 'visualization.dart';
 
 part 'messages.g.dart';
 

@@ -41,6 +41,7 @@
 #include "./command_handlers/model_sync_command_handler.h"
 #include "./command_handlers/processing_graph_command_handler.h"
 #include "./command_handlers/sequencer_command_handler.h"
+#include "./command_handlers/visualization_command_handler.h"
 
 #include "messages/messages.h"
 
@@ -151,6 +152,14 @@ public:
         didOverwriteResponse = true;
       }
       response = std::move(handleSequencerCommandResponse);
+    }
+
+    auto handleVisualizationCommandResponse = handleVisualizationCommand(request);
+    if (handleVisualizationCommandResponse.has_value()) {
+      if (response.has_value()) {
+        didOverwriteResponse = true;
+      }
+      response = std::move(handleVisualizationCommandResponse);
     }
 
     // Warn if multiple handlers gave back a reply. This would indicate that a

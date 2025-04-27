@@ -49,7 +49,7 @@ class SequencerApi {
       );
     }
 
-    var request = CompileSequenceRequest.arrangement(
+    final request = CompileSequenceRequest.arrangement(
       id: _engine._getRequestId(),
       arrangementId: arrangementId.toString(),
       channelsToRebuild: channelsToRebuild,
@@ -84,7 +84,7 @@ class SequencerApi {
       );
     }
 
-    var request = CompileSequenceRequest.pattern(
+    final request = CompileSequenceRequest.pattern(
       id: _engine._getRequestId(),
       patternId: patternId.toString(),
       channelsToRebuild: channelsToRebuild,
@@ -104,7 +104,7 @@ class SequencerApi {
   /// sequences in the engine - otherwise, we would need to rebuild each
   /// sequence from scratch to remove that channel.
   void cleanUpChannel(String channelId) {
-    var request = RemoveChannelRequest(
+    final request = RemoveChannelRequest(
       id: _engine._getRequestId(),
       channelId: channelId,
     );
