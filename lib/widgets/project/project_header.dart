@@ -25,6 +25,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/controls/digit_control.dart';
 import 'package:anthem/widgets/basic/controls/time_signature_control.dart';
+import 'package:anthem/widgets/basic/horizontal_meter_simple.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/debug/widget_test_area.dart';
@@ -53,21 +54,9 @@ class ProjectHeader extends StatelessWidget {
         padding: const EdgeInsets.all(7),
         child: Row(
           children: [
-            Expanded(
-              flex: 1,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: _LeftGroup(),
-              ),
-            ),
+            Expanded(flex: 1, child: _LeftGroup()),
             Center(child: _MiddleGroup()),
-            Expanded(
-              flex: 1,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: _RightGroup(),
-              ),
-            ),
+            Expanded(flex: 1, child: _RightGroup()),
           ],
         ),
       ),
@@ -186,7 +175,11 @@ class _RightGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container();
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [HorizontalMeterSimple(width: 60, value: 0.4, label: '40%')],
+    );
   }
 }
 
