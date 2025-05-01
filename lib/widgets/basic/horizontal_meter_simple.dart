@@ -44,10 +44,7 @@ class HorizontalMeterSimple extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Theme.control.background,
                 borderRadius: BorderRadius.circular(3),
-                border: Border.all(
-                  color: Theme.control.border,
-                  width: 1,
-                ),
+                border: Border.all(color: Theme.control.border, width: 1),
               ),
             ),
           ),
@@ -71,7 +68,10 @@ class HorizontalMeterSimple extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                  color: Theme.text.main, // Should be an accent color when we restyle everything
+                  color:
+                      Theme
+                          .text
+                          .main, // Should be an accent color when we restyle everything
                   fontSize: 12,
                 ),
               ),
