@@ -261,7 +261,7 @@ class _CodegenGenerateCommand extends Command<dynamic> {
       final files = Directory.fromUri(
         packageRootPath,
       ).listSync(recursive: true).where((f) {
-        return f.path.endsWith('.g.dart');
+        return f.path.endsWith('.g.dart') || f.path.endsWith('.mocks.dart');
       });
 
       for (final file in files) {
