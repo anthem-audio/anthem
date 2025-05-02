@@ -31,11 +31,13 @@ import 'package:provider/provider.dart';
 class VisualizationBuilder extends StatefulWidget {
   final Widget Function(BuildContext context, double value) builder;
   final VisualizationSubscriptionConfig config;
+  final Duration? minimumUpdateInterval;
 
   const VisualizationBuilder({
     super.key,
     required this.config,
     required this.builder,
+    this.minimumUpdateInterval,
   });
 
   @override
@@ -46,6 +48,7 @@ class _VisualizationBuilderState extends State<VisualizationBuilder> {
   late final VisualizationSubscription _subscription;
   double _latestValue = 0;
   StreamSubscription<void>? _updateSubscription;
+  DateTime? _lastUpdateTime;
 
   @override
   void initState() {
@@ -56,6 +59,15 @@ class _VisualizationBuilderState extends State<VisualizationBuilder> {
     ).visualizationProvider.subscribe(widget.config);
 
     _updateSubscription = _subscription.onUpdate.listen((_) {
+      if (widget.minimumUpdateInterval != null) {
+        final now = DateTime.now();
+        if (_lastUpdateTime != null &&
+            now.difference(_lastUpdateTime!) < widget.minimumUpdateInterval!) {
+          return;
+        }
+        _lastUpdateTime = now;
+      }
+
       final newValue = _subscription.readValue();
 
       if (newValue != _latestValue) {
