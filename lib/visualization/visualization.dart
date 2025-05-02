@@ -26,8 +26,9 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:anthem/engine_api/messages/messages.dart'
-    show VisualizationUpdate;
+    show VisualizationItem, VisualizationUpdate;
 import 'package:anthem/model/project.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'ring_buffer_double.dart';
 

@@ -28,6 +28,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/sequence.dart';
+import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:anthem/engine_api/messages/messages.dart' as message_api;
 import 'package:mobx/mobx.dart';
@@ -168,10 +169,14 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   @hide
   var engineState = EngineState.stopped;
 
+  @hide
+  late final VisualizationProvider visualizationProvider;
+
   // This method is used for deserialization and so doesn't create new child
   // models.
   _ProjectModel() : _enginePathOverride = null, super() {
     _commandStack = CommandStack(this as ProjectModel);
+    visualizationProvider = VisualizationProvider(this as ProjectModel);
   }
 
   @hide
@@ -182,10 +187,9 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
 
   _ProjectModel.create([this._enginePathOverride]) : super() {
     _commandStack = CommandStack(this as ProjectModel);
-
     sequence = SequenceModel.create();
-
     processingGraph = ProcessingGraphModel();
+    visualizationProvider = VisualizationProvider(this as ProjectModel);
 
     hydrate();
   }

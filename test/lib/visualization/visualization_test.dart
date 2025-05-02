@@ -35,6 +35,8 @@ import 'package:mockito/mockito.dart';
 import 'visualization_test.mocks.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('Subscription object behavior', () {
     for (final value in VisualizationSubscriptionType.values) {
       final visualizationApiMock = MockVisualizationApi();

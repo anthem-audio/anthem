@@ -51,10 +51,22 @@ class VisualizationSubscriptionConfig {
 class VisualizationSubscription {
   final VisualizationProvider _parent;
   final VisualizationSubscriptionConfig _config;
+  late final Ticker _ticker;
 
   final RingBufferDouble? _buffer;
   double _value = 0;
   bool _shouldReset = false;
+
+  bool _isUpdateStale = false;
+  final StreamController<void> _updateController = StreamController.broadcast(
+    sync: true,
+  );
+
+  /// The stream that will be triggered when the value for this subscription
+  /// changes.
+  ///
+  /// This happens at most once per frame.
+  Stream<void> get onUpdate => _updateController.stream;
 
   /// Read the latest value for this visualization item.
   ///
@@ -81,7 +93,17 @@ class VisualizationSubscription {
     : _buffer =
           _config.type == VisualizationSubscriptionType.lastNValues
               ? RingBufferDouble(_config.bufferSize!)
-              : null;
+              : null {
+    _ticker = Ticker(_onTick)..start();
+  }
+
+  /// Called when the ticker ticks.
+  void _onTick(Duration elapsed) {
+    if (_isUpdateStale) {
+      _isUpdateStale = false;
+      _updateController.add(null);
+    }
+  }
 
   /// Add a new value to the subscription.
   void _addValue(double value) {
@@ -105,9 +127,13 @@ class VisualizationSubscription {
         _value = value;
       }
     }
+
+    _isUpdateStale = true;
   }
 
   void dispose() {
     _parent._unsubscribe(this);
+    _ticker.dispose();
+    _updateController.close();
   }
 }
