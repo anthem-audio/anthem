@@ -67,6 +67,23 @@ class Engine {
   EngineState _engineState = EngineState.stopped;
   EngineState get engineState => _engineState;
 
+  /// Returns a [Future] that completes when the engine is ready to receive
+  /// messages.
+  ///
+  /// If the engine is already running, this will complete immediately. If not,
+  /// it will wait for the engine to start and then complete.
+  ///
+  /// Note that if the engine is stopped and not starting, this will wait for
+  /// the engine to start, which may never happen.
+  Future<void> get readyForMessages =>
+      _engineState == EngineState.running
+          ? Future.value()
+          : Future(() async {
+            await _engineStateStreamController.stream.firstWhere(
+              (state) => state == EngineState.running,
+            );
+          });
+
   final String? enginePathOverride;
 
   void _setEngineState(EngineState state) {
