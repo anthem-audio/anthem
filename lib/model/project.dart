@@ -189,7 +189,6 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     _commandStack = CommandStack(this as ProjectModel);
     sequence = SequenceModel.create();
     processingGraph = ProcessingGraphModel();
-    visualizationProvider = VisualizationProvider(this as ProjectModel);
 
     hydrate();
   }
@@ -235,6 +234,8 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     // another model, which will call setParentPropertiesOnChildren. Since this
     // is the top level, we need to call it ourselves.
     setParentPropertiesOnChildren();
+
+    visualizationProvider = VisualizationProvider(this as ProjectModel);
 
     isHydrated = true;
   }
