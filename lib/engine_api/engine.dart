@@ -84,6 +84,19 @@ class Engine {
             );
           });
 
+  List<void Function()> _startupCallbacks = [];
+
+  /// Adds a callback to be called when the engine is started.
+  void onStart(
+    void Function() callback, {
+    required bool runNowIfEngineRunning,
+  }) {
+    if (_engineState == EngineState.running && runNowIfEngineRunning) {
+      callback();
+    }
+    _startupCallbacks.add(callback);
+  }
+
   final String? enginePathOverride;
 
   void _setEngineState(EngineState state) {
@@ -156,6 +169,12 @@ class Engine {
     final success = await _engineConnector.onInit;
 
     _setEngineState(success ? EngineState.running : EngineState.stopped);
+
+    if (_engineState == EngineState.running) {
+      for (final callback in _startupCallbacks) {
+        callback();
+      }
+    }
   }
 
   /// Sends a request to the engine, and asynchronously returns the response.

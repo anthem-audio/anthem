@@ -40,6 +40,22 @@ class SetVisualizationSubscriptionsRequest extends Request {
   }
 }
 
+/// Sets the preferred update interval for visualization items.
+class SetVisualizationUpdateIntervalRequest extends Request {
+  /// The preferred update interval for visualization items.
+  double intervalMilliseconds;
+
+  SetVisualizationUpdateIntervalRequest.uninitialized()
+    : intervalMilliseconds = 0.0;
+
+  SetVisualizationUpdateIntervalRequest({
+    required int id,
+    required this.intervalMilliseconds,
+  }) {
+    super.id = id;
+  }
+}
+
 /// Represents a value that the engine is sending updates for.
 ///
 /// Some items only ever have one value, while others can have multiple values,

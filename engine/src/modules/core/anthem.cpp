@@ -31,6 +31,7 @@ void Anthem::initialize() {
   graphProcessor = std::make_unique<AnthemGraphProcessor>();
   sequenceStore = std::make_unique<AnthemRuntimeSequenceStore>();
   transport = std::make_unique<Transport>();
+  globalVisualizationSources = std::make_unique<GlobalVisualizationSources>();
 }
 
 void Anthem::shutdown() {

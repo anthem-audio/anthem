@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -58,7 +58,7 @@ class MainWindowController {
     final store = AnthemStore.instance;
 
     // Stop engine
-    store.projects[projectId]!.engine.dispose();
+    store.projects[projectId]!.dispose();
 
     // Remove project from model
     store.projects.remove(projectId);

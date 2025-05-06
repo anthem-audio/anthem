@@ -25,10 +25,12 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart'
-    show VisualizationItem, VisualizationUpdate;
+    show VisualizationUpdate;
 import 'package:anthem/model/project.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 
 import 'ring_buffer_double.dart';
 

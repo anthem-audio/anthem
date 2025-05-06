@@ -24,6 +24,7 @@
 #include <vector>
 #include <string>
 #include "visualization_provider.h"
+#include "juce_events/juce_events.h"
 
 // This class coordinates visualization subscriptions.
 //
@@ -43,10 +44,10 @@
 // The UI can then subscribe to any of these data providers. Whatever
 // subscriptions are active will determine which data providers have their data
 // queryed and sent to the UI.
-class VisualizationBroker {
+class VisualizationBroker : private juce::Timer {
 private:
   // Private constructor for singleton pattern
-  VisualizationBroker() = default;
+  VisualizationBroker();
 
   // Private destructor
   ~VisualizationBroker() = default;
@@ -59,8 +60,17 @@ private:
   VisualizationBroker(VisualizationBroker&&) = delete;
   VisualizationBroker& operator=(VisualizationBroker&&) = delete;
 
-  std::unordered_map<std::string, std::unique_ptr<VisualizationDataProvider>> dataProviders;
+  std::unordered_map<std::string, std::shared_ptr<VisualizationDataProvider>> dataProviders;
   std::vector<std::string> subscriptions;
+
+  // The interval at which the visualization broker updates the UI, in
+  // milliseconds
+  //
+  // Defaults to just faster than 60 FPS (16.67ms). If the UI has a faster
+  // refresh rate, this will be set to a lower value.
+  double updateIntervalMs;
+
+  void timerCallback() override;
 
 public:
   static VisualizationBroker& getInstance() {
@@ -69,4 +79,11 @@ public:
   }
 
   void setSubscriptions(const std::vector<std::string>& newSubscriptions);
+  void setUpdateInterval(double updateIntervalMs);
+  void registerDataProvider(const std::string& name, std::shared_ptr<VisualizationDataProvider> provider) {
+    dataProviders[name] = provider;
+  }
+  void unregisterDataProvider(const std::string& name) {
+    dataProviders.erase(name);
+  }
 };

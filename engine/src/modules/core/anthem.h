@@ -28,6 +28,7 @@
 #include "modules/processing_graph/runtime/anthem_graph_processor.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
 #include "modules/sequencer/runtime/transport.h"
+#include "modules/core/visualization/global_visualization_sources.h"
 
 #include "modules/util/id_generator.h"
 
@@ -74,6 +75,10 @@ public:
   // - The project tempo
   // - The current playhead reset point and loop points
   std::unique_ptr<Transport> transport;
+
+  // Class for coordinating global visualization that is sent back to the UI,
+  // such as CPU burden and transport location.
+  std::unique_ptr<GlobalVisualizationSources> globalVisualizationSources;
 
   Anthem();
 

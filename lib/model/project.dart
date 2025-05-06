@@ -402,6 +402,11 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     final command = JournalPageCommand(accumulator);
     _commandStack.push(command);
   }
+
+  void dispose() {
+    visualizationProvider.dispose();
+    engine.dispose();
+  }
 }
 
 /// Used to describe which detail view is active in the project sidebar, if any

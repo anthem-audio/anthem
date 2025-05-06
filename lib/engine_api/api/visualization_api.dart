@@ -35,4 +35,13 @@ class VisualizationApi {
 
     _engine._request(request);
   }
+
+  void setUpdateInterval(double intervalMilliseconds) {
+    final request = SetVisualizationUpdateIntervalRequest(
+      id: _engine._getRequestId(),
+      intervalMilliseconds: intervalMilliseconds,
+    );
+
+    _engine._request(request);
+  }
 }

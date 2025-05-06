@@ -19,9 +19,46 @@
 
 #include "visualization_broker.h"
 
+VisualizationBroker::VisualizationBroker() {
+  std::cout << "VisualizationBroker CTOR." << std::endl;
+  this->updateIntervalMs = 15.0;
+  this->startTimerHz(static_cast<int>(1000.0 / this->updateIntervalMs));
+}
+
 void VisualizationBroker::setSubscriptions(
   const std::vector<std::string>& subscriptions
 ) {
-  // Set the subscriptions for the visualization broker
+  std::cout << "Setting subscriptions: ";
+  for (const auto& subscription : subscriptions) {
+    std::cout << subscription << ", ";
+  }
+  std::cout << std::endl;
+
   this->subscriptions = subscriptions;
+}
+
+void VisualizationBroker::setUpdateInterval(
+  double updateIntervalMs
+) {
+  std::cout << "Setting update interval to: " << updateIntervalMs << " ms" << std::endl;
+
+  this->updateIntervalMs = updateIntervalMs;
+
+  this->stopTimer();
+  this->startTimerHz(static_cast<int>(1000.0 / this->updateIntervalMs));
+}
+
+void VisualizationBroker::timerCallback() {
+  // Iterate over all subscriptions and query the data providers for updates
+  for (const auto& subscription : this->subscriptions) {
+    auto it = this->dataProviders.find(subscription);
+    if (it != this->dataProviders.end()) {
+      auto data = it->second->getData();
+      std::cout << "Data for " << subscription << ": ";
+      for (const auto& value : data) {
+        std::cout << value << ", ";
+      }
+      std::cout << std::endl;
+    }
+  }
 }

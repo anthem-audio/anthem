@@ -36,6 +36,15 @@ std::optional<Response> handleVisualizationCommand(Request& request) {
     VisualizationBroker::getInstance().setSubscriptions(
       *setVisualizationSubscriptionsRequest.subscriptions
     );
+  } else if (rfl::holds_alternative<SetVisualizationUpdateIntervalRequest>(request.variant())) {
+    auto& setVisualizationUpdateIntervalRequest = rfl::get<SetVisualizationUpdateIntervalRequest>(request.variant());
+
+    // intervalMilliseconds is a double
+    std::cout << "SetVisualizationUpdateIntervalRequest: " << setVisualizationUpdateIntervalRequest.intervalMilliseconds << std::endl;
+
+    VisualizationBroker::getInstance().setUpdateInterval(
+      setVisualizationUpdateIntervalRequest.intervalMilliseconds
+    );
   }
 
   return std::nullopt;

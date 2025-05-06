@@ -23,10 +23,36 @@ part of 'visualization.dart';
 /// them.
 class VisualizationProvider {
   final ProjectModel _project;
+  late final StreamSubscription<EngineState> _engineStateChangeSub;
 
   final Map<String, List<VisualizationSubscription>> _subscriptions = {};
 
-  VisualizationProvider(this._project);
+  VisualizationProvider(this._project) {
+    if (_project.engine.engineState == EngineState.running) {
+      _sendUpdateIntervalToEngine();
+    }
+
+    _engineStateChangeSub = _project.engine.engineStateStream.listen((state) {
+      if (state == EngineState.running) {
+        _sendUpdateIntervalToEngine();
+      }
+    });
+  }
+
+  void _sendUpdateIntervalToEngine() {
+    final refreshRate =
+        WidgetsBinding
+            .instance
+            .platformDispatcher
+            .views
+            .first
+            .display
+            .refreshRate;
+
+    _project.engine.visualizationApi.setUpdateInterval(
+      (1000 / refreshRate) * 0.9, // A bit faster than the refresh rate
+    );
+  }
 
   void processVisualizationUpdate(VisualizationUpdate update) {
     for (final item in update.items) {
@@ -88,5 +114,17 @@ class VisualizationProvider {
       );
       _isSubscriptionListUpdatePending = false;
     });
+  }
+
+  void dispose() {
+    _engineStateChangeSub.cancel();
+
+    for (final subscriptions in _subscriptions.values) {
+      for (final subscription in subscriptions) {
+        subscription.dispose();
+      }
+    }
+
+    _subscriptions.clear();
   }
 }

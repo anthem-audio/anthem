@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,17 +20,22 @@
 #pragma once
 
 #include <memory>
+#include <chrono>
 
 #include <juce_audio_devices/juce_audio_devices.h>
 
 #include "modules/core/constants.h"
 #include "modules/processors/master_output.h"
 
+#include "modules/core/visualization/global_visualization_sources.h"
+
 class Anthem;
 
 class AnthemAudioCallback : public juce::AudioIODeviceCallback
 {
 private:
+  int64_t lastDebugOutputTime;
+
   // There is a shared_ptr reference to the processor here to ensure that it is
   // not deleted, but it should never be accessed from the callback, since
   // shared_ptr is not real-time safe.
@@ -42,6 +47,11 @@ private:
   // normally stored in a shared_ptr, which we can't use from the audio thread
   // since it's not real-time safe.
   Anthem* anthem;
+
+  // This is a reference to the CPU burden provider. The audio callback
+  // calculates the CPU burden every time the audio callback is called, and sets
+  // it here.
+  CpuVisualizationProvider* cpuBurdenProvider;
 public:
   AnthemAudioCallback(Anthem* anthem);
 
