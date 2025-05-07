@@ -84,7 +84,7 @@ class Engine {
             );
           });
 
-  List<void Function()> _startupCallbacks = [];
+  final List<void Function()> _startupCallbacks = [];
 
   /// Adds a callback to be called when the engine is started.
   void onStart(
