@@ -43,11 +43,9 @@
 #include "./command_handlers/sequencer_command_handler.h"
 #include "./command_handlers/visualization_command_handler.h"
 
+#include "comms.h"
+
 #include "messages/messages.h"
-
-juce::StreamingSocket socketToUi;
-
-std::mutex socketInUseMutex;
 
 volatile bool heartbeatOccurred = true;
 
@@ -173,26 +171,13 @@ public:
       // Serialize the response to a string
       auto responseStr = rfl::json::write(response.value());
 
-      auto receiveBufferPtr = responseStr.c_str();
-      auto bufferSize = responseStr.size();
-
-      // Write the message length to the socket
-      auto bufferSize64 = static_cast<uint64_t>(bufferSize);
-
-      // Create an array to hold the bytes of the id
-      unsigned char bufferSizeBytes[sizeof(bufferSize64)];
-
-      // Copy the bytes of bufferSize64 into bufferSizeBytes
-      std::memcpy(bufferSizeBytes, &bufferSize64, sizeof(bufferSize64));
-
-      std::unique_lock<std::mutex> socketLock(socketInUseMutex);
-
-      socketToUi.write(bufferSizeBytes, sizeof(uint64_t));
-
-      // Write the message to the socket
-      socketToUi.write(receiveBufferPtr, bufferSize);
-
-      socketLock.unlock();
+      // Send the response back to the UI
+      auto socketWriteResult = AnthemComms::getInstance().writeString(responseStr);
+      if (socketWriteResult <= 0) {
+        std::cerr << "Socket failed to write. Result is: " << socketWriteResult << ". Exiting..." << std::endl;
+        juce::JUCEApplication::quit();
+        return;
+      }
     }
 
     if (isExit) {
@@ -235,7 +220,7 @@ void messageLoop(CommandMessageListener& messageListener) {
   }
 
   juce::Logger::writeToLog("Opening socket connection to UI at port " + portStr + "...");
-  auto success = socketToUi.connect("::1", std::stoi(portStr.toStdString()));
+  auto success = AnthemComms::getInstance().connect(std::stoi(portStr.toStdString()));
   if (!success) {
     std::cerr << "Socket failed to start. Exiting..." << std::endl;
     juce::JUCEApplication::quit();
@@ -245,8 +230,6 @@ void messageLoop(CommandMessageListener& messageListener) {
 
   juce::Logger::writeToLog("Sending ID back to UI as first message...");
 
-  std::this_thread::sleep_for(std::chrono::seconds(1));
-
   auto id = std::stoull(idStr.toStdString());
 
   // Create an array to hold the bytes of the id
@@ -255,7 +238,7 @@ void messageLoop(CommandMessageListener& messageListener) {
   // Copy the bytes of id into idBytes
   std::memcpy(idBytes, &id, sizeof(id));
 
-  auto socketWriteResult = socketToUi.write(idBytes, sizeof(unsigned long long));
+  auto socketWriteResult = AnthemComms::getInstance().write(idBytes, sizeof(unsigned long long));
   if (socketWriteResult <= 0) {
     std::cerr << "Socket failed to write. Result is: " << socketWriteResult << ". Exiting..." << std::endl;
     juce::JUCEApplication::quit();
@@ -270,25 +253,36 @@ void messageLoop(CommandMessageListener& messageListener) {
   uint8_t tempBuffer[4096];
   juce::MemoryBlock messageBuffer;
 
+  int microsecondBackoff = 0;
+  int microsecondBackoffMax = 5000;
+  int microsecondBackoffIncrement = 100;
+
   juce::Logger::writeToLog("Anthem engine started successfully. Listening for messages from UI...");
   while (true) {
-    std::unique_lock<std::mutex> socketLock(socketInUseMutex);
-
     // Get any available data from the socket
-    auto bytesRead = socketToUi.read(tempBuffer, sizeof(tempBuffer), false);
-
-    socketLock.unlock();
+    auto bytesRead = AnthemComms::getInstance().read(tempBuffer, sizeof(tempBuffer), false);
 
     // Append the data to our memory block
     messageBuffer.append(tempBuffer, static_cast<size_t>(bytesRead));
+
+    // If we didn't read any bytes, we should wait for a bit before trying again
+    if (bytesRead <= 0) {
+      std::this_thread::sleep_for(std::chrono::microseconds(microsecondBackoff));
+
+      microsecondBackoff += microsecondBackoffIncrement;
+      if (microsecondBackoff > microsecondBackoffMax) {
+        microsecondBackoff = microsecondBackoffMax;
+      }
+
+      continue;
+    }
 
     // Process messages in buffer
     while (messageBuffer.getSize() >= sizeof(uint64_t)) {
       const uint64_t* messageLengthPtr = static_cast<const uint64_t*>(messageBuffer.getData());
       uint64_t messageLength = *messageLengthPtr;
 
-      if (messageBuffer.getSize() >= sizeof(uint64_t) + messageLength)
-      {
+      if (messageBuffer.getSize() >= sizeof(uint64_t) + messageLength) {
         // Extract and print the message
         const uint8_t* messagePtr = static_cast<const uint8_t*>(messageBuffer.getData()) + sizeof(uint64_t);
 
