@@ -56,7 +56,8 @@ class Engine {
   late SequencerApi sequencerApi;
   late VisualizationApi visualizationApi;
 
-  Map<int, void Function(Response response)> replyFunctions = {};
+  Map<int, ({void Function(Response response) onReply, Timer timeoutTimer})>
+  replyFunctions = {};
 
   int Function() get _getRequestId => _engineConnector.getRequestId;
 
@@ -120,7 +121,8 @@ class Engine {
     }
 
     if (replyFunctions[response.id] != null) {
-      replyFunctions[response.id]!(response);
+      replyFunctions[response.id]!.onReply(response);
+      replyFunctions[response.id]!.timeoutTimer.cancel();
       replyFunctions.remove(response.id);
     }
   }
@@ -190,11 +192,24 @@ class Engine {
 
     final completer = Completer<Response>();
 
-    void onResponse(Response response) {
+    void onReply(Response response) {
       completer.complete(response);
     }
 
-    replyFunctions[request.id] = onResponse;
+    final timeout = Duration(seconds: 5);
+    final timer = Timer(timeout, () {
+      if (replyFunctions[request.id] != null) {
+        completer.completeError(
+          TimeoutException(
+            'Request ${request.id} of type ${request.runtimeType} timed out after ${timeout.inSeconds} seconds.',
+            timeout,
+          ),
+        );
+        replyFunctions.remove(request.id);
+      }
+    });
+
+    replyFunctions[request.id] = (onReply: onReply, timeoutTimer: timer);
 
     final encoder = JsonUtf8Encoder();
 
