@@ -35,6 +35,7 @@ class VisualizationProvider {
     _engineStateChangeSub = _project.engine.engineStateStream.listen((state) {
       if (state == EngineState.running) {
         _sendUpdateIntervalToEngine();
+        // _scheduleSubscriptionListUpdate();
       }
     });
   }
@@ -108,7 +109,10 @@ class VisualizationProvider {
 
     _isSubscriptionListUpdatePending = true;
 
-    scheduleMicrotask(() {
+    scheduleMicrotask(() async {
+      // If the engine is starting or stopped, wait for it to be ready.
+      await _project.engine.readyForMessages;
+
       _project.engine.visualizationApi.setSubscriptions(
         _subscriptions.keys.toList(),
       );

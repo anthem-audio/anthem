@@ -25,6 +25,7 @@
 #include <string>
 #include "visualization_provider.h"
 #include "juce_events/juce_events.h"
+#include "comms.h"
 
 // This class coordinates visualization subscriptions.
 //

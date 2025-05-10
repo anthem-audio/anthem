@@ -22,12 +22,14 @@ import 'dart:convert';
 import 'package:anthem/commands/sequence_commands.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/controls/digit_control.dart';
 import 'package:anthem/widgets/basic/controls/time_signature_control.dart';
 import 'package:anthem/widgets/basic/horizontal_meter_simple.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/basic/visualization_builder.dart';
 import 'package:anthem/widgets/debug/widget_test_area.dart';
 import 'package:anthem/widgets/main_window/main_window_controller.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
@@ -178,7 +180,18 @@ class _RightGroup extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisAlignment: MainAxisAlignment.end,
-      children: [HorizontalMeterSimple(width: 60, value: 0.4, label: '40%')],
+      children: [
+        VisualizationBuilder(
+          builder:
+              (context, value) => HorizontalMeterSimple(
+                width: 60,
+                value: value,
+                label: '${(value * 100).round()}%',
+              ),
+          config: VisualizationSubscriptionConfig.max('cpu'),
+          minimumUpdateInterval: const Duration(milliseconds: 1000),
+        ),
+      ],
     );
   }
 }

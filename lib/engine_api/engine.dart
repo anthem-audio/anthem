@@ -114,6 +114,11 @@ class Engine {
   }
 
   void _onReply(Response response) {
+    if (response is VisualizationUpdate) {
+      project.visualizationProvider.processVisualizationUpdate(response);
+      return;
+    }
+
     if (replyFunctions[response.id] != null) {
       replyFunctions[response.id]!(response);
       replyFunctions.remove(response.id);

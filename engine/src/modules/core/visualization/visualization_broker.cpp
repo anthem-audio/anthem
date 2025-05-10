@@ -19,6 +19,8 @@
 
 #include "visualization_broker.h"
 
+#include "messages/messages.h"
+
 VisualizationBroker::VisualizationBroker() {
   std::cout << "VisualizationBroker CTOR." << std::endl;
   this->updateIntervalMs = 15.0;
@@ -49,16 +51,33 @@ void VisualizationBroker::setUpdateInterval(
 }
 
 void VisualizationBroker::timerCallback() {
+  auto visualizationItems = std::make_shared<std::vector<std::shared_ptr<VisualizationItem>>>();
+
   // Iterate over all subscriptions and query the data providers for updates
   for (const auto& subscription : this->subscriptions) {
     auto it = this->dataProviders.find(subscription);
     if (it != this->dataProviders.end()) {
-      auto data = it->second->getData();
-      std::cout << "Data for " << subscription << ": ";
-      for (const auto& value : data) {
-        std::cout << value << ", ";
-      }
-      std::cout << std::endl;
+      std::vector<double> data = it->second->getData();
+      auto dataSharedPtr = std::make_shared<std::vector<double>>(data);
+
+      auto visualizationItem = std::make_shared<VisualizationItem>();
+      visualizationItem->id = subscription;
+      visualizationItem->values = dataSharedPtr;
+      visualizationItems->push_back(visualizationItem);
     }
   }
+
+  // Create a VisualizationUpdate message and send it to the UI
+  Response visualizationUpdate = VisualizationUpdate {
+    .items = visualizationItems,
+    .responseBase = ResponseBase {
+      // Usually, the response ID is the same as the ID of the request that was
+      // sent to the engine. In this case, there was no request, so we set it to
+      // -1.
+      .id = -1,
+    }
+  };
+
+  auto responseText = rfl::json::write(visualizationUpdate);
+  AnthemComms::getInstance().writeString(responseText);
 }

@@ -56,7 +56,7 @@ class SequencerApi {
       invalidationRanges: invalidationRanges,
     );
 
-    _engine._request(request);
+    _engine._requestNoReply(request);
   }
 
   /// Tells the engine to compile the given pattern.
@@ -90,7 +90,7 @@ class SequencerApi {
       channelsToRebuild: channelsToRebuild,
     );
 
-    _engine._request(request);
+    _engine._requestNoReply(request);
   }
 
   /// Cleans up the given channel from the sequencer.
@@ -109,6 +109,6 @@ class SequencerApi {
       channelId: channelId,
     );
 
-    _engine._request(request);
+    _engine._requestNoReply(request);
   }
 }

@@ -33,7 +33,7 @@ class VisualizationApi {
       subscriptions: subscriptions,
     );
 
-    _engine._request(request);
+    _engine._requestNoReply(request);
   }
 
   void setUpdateInterval(double intervalMilliseconds) {
@@ -42,6 +42,6 @@ class VisualizationApi {
       intervalMilliseconds: intervalMilliseconds,
     );
 
-    _engine._request(request);
+    _engine._requestNoReply(request);
   }
 }
