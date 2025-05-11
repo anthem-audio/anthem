@@ -35,6 +35,15 @@ private:
   juce::StreamingSocket socketToUi;
   std::mutex socketInUseMutex;
 
+  // Writes the size of the upcoming message to the socket. The UI expects the
+  // expected size of each message to be sent before the message itself.
+  int writeMessageSize(uint64_t size) {
+    uint64_t size64 = size;
+    uint8_t sizeBytes[sizeof(uint64_t)];
+    std::memcpy(sizeBytes, &size64, sizeof(size64));
+    return socketToUi.write(sizeBytes, sizeof(uint64_t));
+  }
+
 public:
   // Constructor
   AnthemComms() = default;
@@ -69,23 +78,15 @@ public:
     return socketToUi.write(buffer, size);
   }
 
-  // Writes the size of the upcoming message to the socket. The UI expects the
-  // expected size of each message to be sent before the message itself.
-  int writeMessageSize(uint64_t size) {
-    uint64_t size64 = size;
-    uint8_t sizeBytes[sizeof(uint64_t)];
-    std::memcpy(sizeBytes, &size64, sizeof(size64));
-    return this->write(sizeBytes, sizeof(uint64_t));
-  }
-
   // Write a string to the UI. This will first write the size of the string, and
   // then the string itself.
   int writeString(const std::string& str) {
+    std::lock_guard<std::mutex> socketLock(socketInUseMutex);
     auto sizeResult = writeMessageSize(str.size());
     if (sizeResult < 0) {
       return sizeResult;
     }
-    return this->write(str.c_str(), str.size());
+    return socketToUi.write(str.c_str(), str.size());
   }
 
   // Singleton instance
