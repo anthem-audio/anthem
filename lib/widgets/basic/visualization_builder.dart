@@ -79,6 +79,19 @@ class _VisualizationBuilderState extends State<VisualizationBuilder> {
   }
 
   @override
+  void didUpdateWidget(VisualizationBuilder oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.config != widget.config) {
+      _subscription.dispose();
+      _subscription = Provider.of<ProjectModel>(
+        context,
+        listen: false,
+      ).visualizationProvider.subscribe(widget.config);
+    }
+  }
+
+  @override
   void dispose() {
     _subscription.dispose();
     _updateSubscription?.cancel();
@@ -88,5 +101,104 @@ class _VisualizationBuilderState extends State<VisualizationBuilder> {
   @override
   Widget build(BuildContext context) {
     return widget.builder(context, _latestValue);
+  }
+}
+
+/// Builder that rebuilds when the given visualization data items change.
+///
+/// This builder will attempt to rebuild on every frame, but will only
+/// actually rebuild if at least one of the data items have changed.
+class MultiVisualizationBuilder extends StatefulWidget {
+  final Widget Function(BuildContext context, List<double> values) builder;
+  final List<VisualizationSubscriptionConfig> configs;
+  final Duration? minimumUpdateInterval;
+
+  const MultiVisualizationBuilder({
+    super.key,
+    required this.configs,
+    required this.builder,
+    this.minimumUpdateInterval,
+  });
+
+  @override
+  State<MultiVisualizationBuilder> createState() =>
+      _MultiVisualizationBuilderState();
+}
+
+class _MultiVisualizationBuilderState extends State<MultiVisualizationBuilder> {
+  late final List<VisualizationSubscription> _subscriptions;
+  List<double> _latestValues = [];
+  List<DateTime?> _lastUpdateTimes = [];
+
+  void _attachSubscriptions() {
+    _latestValues = List.filled(widget.configs.length, 0.0);
+
+    _lastUpdateTimes = List.filled(widget.configs.length, null);
+
+    _subscriptions =
+        widget.configs
+            .map(
+              (config) => Provider.of<ProjectModel>(
+                context,
+                listen: false,
+              ).visualizationProvider.subscribe(config),
+            )
+            .toList();
+
+    for (var i = 0; i < _subscriptions.length; i++) {
+      final sub = _subscriptions[i];
+      sub.onUpdate.listen((_) {
+        if (widget.minimumUpdateInterval != null) {
+          final now = DateTime.now();
+          if (_lastUpdateTimes[i] != null &&
+              now.difference(_lastUpdateTimes[i]!) <
+                  widget.minimumUpdateInterval!) {
+            return;
+          }
+          _lastUpdateTimes[i] = now;
+        }
+
+        final newValue = sub.readValue();
+
+        if (newValue != _latestValues[i]) {
+          setState(() {
+            _latestValues[i] = newValue;
+          });
+        }
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    _attachSubscriptions();
+  }
+
+  @override
+  void didUpdateWidget(MultiVisualizationBuilder oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.configs.length != widget.configs.length ||
+        !oldWidget.configs.every((config) => widget.configs.contains(config))) {
+      for (var sub in _subscriptions) {
+        sub.dispose();
+      }
+      _attachSubscriptions();
+    }
+  }
+
+  @override
+  void dispose() {
+    for (var sub in _subscriptions) {
+      sub.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.builder(context, _latestValues);
   }
 }
