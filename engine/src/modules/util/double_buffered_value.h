@@ -88,11 +88,17 @@ private:
 
   bool trySet(T value) {
     if (tryLock()) {
+      // If the real-time thread is reading B...
       if (readTarget) {
-        valueB = value;
-      } else {
+        // ... then we need to set A
         valueA = value;
+      } else {
+        // ... otherwise we need to set B
+        valueB = value;
       }
+
+      // The latest value is now in the other read target, so we need to set the
+      // stale flag to true.
       isReadTargetStale = true;
       unlock();
 
