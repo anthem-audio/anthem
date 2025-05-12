@@ -30,6 +30,7 @@ AnthemAudioCallback::AnthemAudioCallback(Anthem* anthem) {
   masterOutputProcessor = masterOutputProcessorSharedPtr.get();
 
   cpuBurdenProvider = Anthem::getInstance().globalVisualizationSources->cpuBurdenProvider.get();
+  playheadProvider = Anthem::getInstance().globalVisualizationSources->playheadProvider.get();
 }
 
 void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
@@ -40,9 +41,13 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
   int numSamples,
   [[maybe_unused]] const juce::AudioIODeviceCallbackContext& context
 ) {
-  auto startTime = std::chrono::high_resolution_clock::now();
-
   jassert(numSamples <= MAX_AUDIO_BUFFER_SIZE);
+  auto startTime = std::chrono::high_resolution_clock::now();
+  
+  auto transport = anthem->transport.get();
+
+  // Set up the transport for this processing block
+  transport->rt_prepareForProcessingBlock();
 
   anthem->graphProcessor->process(numSamples);
 
@@ -85,7 +90,10 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
   auto durationInSeconds = static_cast<double>(duration) / 1e6;
   auto sampleRate = 44100.0f; // TODO: Get sample rate from device
   auto cpuBurden = durationInSeconds * sampleRate / static_cast<double>(numSamples); // actual time / total buffer time
-  cpuBurdenProvider->updateCpuBurden(cpuBurden);
+  cpuBurdenProvider->rt_updateCpuBurden(cpuBurden);
+  playheadProvider->rt_updatePlayheadPosition(transport->rt_playhead.ticks);
+
+  transport->rt_advancePlayhead(numSamples);
 }
 
 void AnthemAudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIODevice* device) {

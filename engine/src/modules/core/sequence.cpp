@@ -25,15 +25,15 @@ void Sequence::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr
   SequenceModelBase::initialize(self, parent);
 
   // Write initial values to transport
-  Anthem::getInstance().transport->ticksPerQuarter = this->ticksPerQuarter();
-  Anthem::getInstance().transport->beatsPerMinute = this->beatsPerMinuteRaw() / 100.0;
+  Anthem::getInstance().transport->setTicksPerQuarter(this->ticksPerQuarter());
+  Anthem::getInstance().transport->setBeatsPerMinute(this->beatsPerMinuteRaw() / 100.0);
 
   // This is temporary. We set the active sequence to the active arrangement
   // once, globally.
   //
   // We should in the future set the active arrangement to whatever was last
   // active in the UI.
-  Anthem::getInstance().transport->activeSequenceId.set(this->activeArrangementID().value());
+  Anthem::getInstance().transport->setActiveSequenceId(this->activeArrangementID().value());
 
   addBeatsPerMinuteRawObserver([this](int64_t value) {
     auto beatsPerMinute = static_cast<double>(value) / 100.0;
@@ -49,6 +49,6 @@ void Sequence::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr
     //
     // So far this completely ignores tempo automation, so we'll need to address
     // that at some point.
-    Anthem::getInstance().transport->beatsPerMinute = beatsPerMinute;
+    Anthem::getInstance().transport->setBeatsPerMinute(beatsPerMinute);
   });
 }

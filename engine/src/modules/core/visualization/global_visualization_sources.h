@@ -37,15 +37,30 @@ private:
 public:
   std::vector<double> getData() override;
 
-  void updateCpuBurden(double newCpuBurden);
+  void rt_updateCpuBurden(double newCpuBurden);
 
   CpuVisualizationProvider() : cpuBurden(0.0), overwriteNextUpdate(false) {}
+};
+
+class PlayheadVisualizationProvider : public VisualizationDataProvider {
+private:
+  std::atomic<double> playheadPosition;
+
+public:
+  std::vector<double> getData() override;
+
+  void rt_updatePlayheadPosition(double newPlayheadPosition);
+
+  PlayheadVisualizationProvider() : playheadPosition(0.0) {}
 };
 
 class GlobalVisualizationSources {
 public:
   // Measures the processing time relative to the buffer size.
   std::shared_ptr<CpuVisualizationProvider> cpuBurdenProvider;
+
+  // The playhead position in the transport.
+  std::shared_ptr<PlayheadVisualizationProvider> playheadProvider;
 
   GlobalVisualizationSources();
 };

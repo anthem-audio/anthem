@@ -118,12 +118,35 @@ class _MiddleGroup extends StatelessWidget {
           height: 24,
           width: 24,
           contentPadding: EdgeInsets.all(3),
+          onPress: () {
+            final projectModel = Provider.of<ProjectModel>(
+              context,
+              listen: false,
+            );
+            projectModel.engine.sequencerApi.play();
+          },
         ),
         Button(
           icon: Icons.stop,
           height: 24,
           width: 24,
           contentPadding: EdgeInsets.all(3),
+          onPress: () {
+            final projectModel = Provider.of<ProjectModel>(
+              context,
+              listen: false,
+            );
+            projectModel.engine.sequencerApi.stop();
+          },
+        ),
+
+        SizedBox(width: 8),
+
+        VisualizationBuilder(
+          config: VisualizationSubscriptionConfig.latest('playhead'),
+          builder: (context, value) {
+            return Text(value.toString());
+          },
         ),
       ],
     );

@@ -19,6 +19,17 @@
 
 #include "sequencer_command_handler.h"
 
+#include "modules/core/anthem.h"
+
 std::optional<Response> handleSequencerCommand(Request& request) {
+  if (rfl::holds_alternative<PlayRequest>(request.variant())) {
+    // auto& playRequest = rfl::get<PlayRequest>(request.variant());
+    Anthem::getInstance().transport->play();
+  }
+  else if (rfl::holds_alternative<StopRequest>(request.variant())) {
+    // auto& stopRequest = rfl::get<StopRequest>(request.variant());
+    Anthem::getInstance().transport->stop();
+  }
+
   return std::nullopt;
 }

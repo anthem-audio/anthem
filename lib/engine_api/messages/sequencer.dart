@@ -107,3 +107,21 @@ class RemoveChannelRequest extends Request {
     super.id = id;
   }
 }
+
+/// A request to start the transport.
+class PlayRequest extends Request {
+  PlayRequest.uninitialized();
+
+  PlayRequest({required int id}) {
+    super.id = id;
+  }
+}
+
+/// A request to stop the transport.
+class StopRequest extends Request {
+  StopRequest.uninitialized();
+
+  StopRequest({required int id}) {
+    super.id = id;
+  }
+}

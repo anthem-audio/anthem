@@ -18,3 +18,49 @@
 */
 
 #include "transport.h"
+
+Transport::Transport() : rt_playhead{0, 0.0} {
+  // Initialize the transport with default values
+  configBufferedValue.set(TransportConfig{});
+}
+
+void Transport::play() {
+  config.isPlaying = true;
+  configBufferedValue.set(config);
+}
+
+void Transport::stop() {
+  config.isPlaying = false;
+  configBufferedValue.set(config);
+}
+
+void Transport::rt_prepareForProcessingBlock() {
+  // Get the current transport state
+  auto newConfig = configBufferedValue.rt_get();
+
+  // Check if the transport state has changed
+
+  // Check for stop
+  if (!newConfig.isPlaying && rt_config.isPlaying) {
+    rt_playhead.ticks = 0; // Reset the playhead position
+
+    // TODO: We will need to send a stop notes event for any channels receiving
+    // notes
+  }
+
+  // Update the real-time transport state
+  rt_config = newConfig;
+}
+
+void Transport::rt_advancePlayhead(int numSamples) {
+  if (rt_config.isPlaying) {
+    auto ticksPerQuarter = rt_config.ticksPerQuarter;
+    auto beatsPerMinute = rt_config.beatsPerMinute;
+    auto ticksPerMinute = ticksPerQuarter * beatsPerMinute;
+    auto ticksPerSecond = ticksPerMinute / 60.0;
+    auto ticksPerSample = ticksPerSecond / 44100.0; // Assuming a sample rate of 44100 Hz
+    auto ticks = static_cast<int64_t>(numSamples * ticksPerSample);
+    rt_playhead.ticks += ticks;
+    // We really need to use doubles for time instead of this
+  }
+}

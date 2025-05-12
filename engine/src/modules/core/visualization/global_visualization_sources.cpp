@@ -31,7 +31,7 @@ std::vector<double> CpuVisualizationProvider::getData() {
 // writing below, if overwriteNextUpdate is true, we will overwrite the value
 // regardless of the value. Otherwise, we will only overwrite the value if the
 // new value is greater than the current value.
-void CpuVisualizationProvider::updateCpuBurden(double newCpuBurden) {
+void CpuVisualizationProvider::rt_updateCpuBurden(double newCpuBurden) {
   if (overwriteNextUpdate.load()) {
     overwriteNextUpdate.store(false);
     cpuBurden.store(newCpuBurden);
@@ -44,10 +44,20 @@ void CpuVisualizationProvider::updateCpuBurden(double newCpuBurden) {
   }
 }
 
+std::vector<double> PlayheadVisualizationProvider::getData() {
+  auto result = playheadPosition.load();
+  return { result };
+}
+
+void PlayheadVisualizationProvider::rt_updatePlayheadPosition(double newPlayheadPosition) {
+  playheadPosition.store(newPlayheadPosition);
+}
+
 GlobalVisualizationSources::GlobalVisualizationSources() {
-  // Initialize the CPU burden provider
   cpuBurdenProvider = std::make_shared<CpuVisualizationProvider>();
+  playheadProvider = std::make_shared<PlayheadVisualizationProvider>();
 
   // Register global sources with the visualization broker
   VisualizationBroker::getInstance().registerDataProvider("cpu", cpuBurdenProvider);
+  VisualizationBroker::getInstance().registerDataProvider("playhead", playheadProvider);
 }

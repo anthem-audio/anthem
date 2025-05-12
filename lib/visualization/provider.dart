@@ -35,7 +35,7 @@ class VisualizationProvider {
     _engineStateChangeSub = _project.engine.engineStateStream.listen((state) {
       if (state == EngineState.running) {
         _sendUpdateIntervalToEngine();
-        // _scheduleSubscriptionListUpdate();
+        _scheduleSubscriptionListUpdate();
       }
     });
   }

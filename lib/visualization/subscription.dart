@@ -40,6 +40,18 @@ class VisualizationSubscriptionConfig {
   /// Subscribe to the last N values for this visualization item.
   const VisualizationSubscriptionConfig.lastNValues(this.id, this.bufferSize)
     : type = VisualizationSubscriptionType.lastNValues;
+
+  @override
+  operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! VisualizationSubscriptionConfig) return false;
+    return id == other.id &&
+        type == other.type &&
+        bufferSize == other.bufferSize;
+  }
+
+  @override
+  int get hashCode => id.hashCode ^ type.hashCode ^ bufferSize.hashCode;
 }
 
 /// Represents a subscription to a visualization item.

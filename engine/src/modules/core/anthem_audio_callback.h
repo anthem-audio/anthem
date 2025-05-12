@@ -52,6 +52,11 @@ private:
   // calculates the CPU burden every time the audio callback is called, and sets
   // it here.
   CpuVisualizationProvider* cpuBurdenProvider;
+
+  // This is a reference to the playhead provider. The audio callback updates
+  // the playhead position every time the audio callback is called, and sets it
+  // here.
+  PlayheadVisualizationProvider* playheadProvider;
 public:
   AnthemAudioCallback(Anthem* anthem);
 

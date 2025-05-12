@@ -27,17 +27,50 @@
 
 #include "modules/util/double_buffered_value.h"
 
+class TransportConfig {
+public:
+  std::optional<std::string> activeSequenceId;
+  int64_t ticksPerQuarter = 96;
+  double beatsPerMinute = 120.0;
+  bool isPlaying = false;
+};
+
 class Transport {
 public:
-  DoubleBufferedValue<std::optional<std::string>> activeSequenceId;
+  // The transport state
+  TransportConfig config;
 
+  // The audio thread reads the transport state from here
+  DoubleBufferedValue<TransportConfig> configBufferedValue;
+
+  // The transport state, as seen by the audio thread.
+  //
+  // This should be read at the start of every processing block.
+  TransportConfig rt_config;
+
+  // The playhead position
   AnthemSequenceTime rt_playhead;
 
-  std::atomic<int64_t> ticksPerQuarter;
-  std::atomic<double> beatsPerMinute;
+  Transport();
 
-  Transport() {
-    rt_playhead.ticks = 0;
-    rt_playhead.fraction = 0.0;
+  void play();
+  void stop();
+
+  void setActiveSequenceId(std::string sequenceId) {
+    config.activeSequenceId = sequenceId;
+    configBufferedValue.set(config);
   }
+  void setTicksPerQuarter(int64_t ticksPerQuarter) {
+    config.ticksPerQuarter = ticksPerQuarter;
+    configBufferedValue.set(config);
+  }
+  void setBeatsPerMinute(double beatsPerMinute) {
+    config.beatsPerMinute = beatsPerMinute;
+    configBufferedValue.set(config);
+  }
+
+  // Must be called at the start of every processing block.
+  void rt_prepareForProcessingBlock();
+
+  void rt_advancePlayhead(int samples);
 };
