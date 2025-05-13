@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -117,8 +117,9 @@ class EngineSocketServer {
               // If there is any extra data in the first message, capture it and
               // send it to the handler.
               if (message.length > writePtr - writePtrStart) {
-                message.sublist(writePtr - writePtrStart);
-                _engineSocketMessageHandlers[engineId]?.call(message);
+                _engineSocketMessageHandlers[engineId]?.call(
+                  message.sublist(writePtr - writePtrStart),
+                );
               }
             } else {
               _engineSocketMessageHandlers[engineId]?.call(message);
