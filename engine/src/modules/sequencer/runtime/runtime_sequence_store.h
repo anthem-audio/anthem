@@ -45,7 +45,10 @@
   the audio thread.
 */
 
-// Stores a list of events for a given channel.
+// Stores a list of events meant for a single channel.
+//
+// There will be at least one of these per sequence (pattern or arrangement),
+// unless the sequence is completely empty.
 struct SequenceEventList {
   // List of events for this channel.
   std::vector<AnthemSequenceEvent>* events;
@@ -84,15 +87,24 @@ struct SequenceEventListCollection {
   // This method allows us to have full control over when these are deleted. The
   // flow is as follows:
   //   1. The main thread wants to replace the events for a sequence, so it
-  //      first clones the AnthemRuntimeSequenceStore::eventLists map below
+  //      first clones the AnthemRuntimeSequenceStore::eventLists map below.
+  //      Note that this does not result in any of the acutal sequence data
+  //      being cloned, since each SequenceEventListCollection just holds a
+  //      pointer to its channel map. That pointer remains the same for every
+  //      cloned SequenceEventListCollection.
   //   2. The main thread specifically wants to replace the item at sequence id
-  //      "mySequenceId", so it prepares a new value for that key
+  //      "mySequenceId", so it prepares a new value for that key. This value
+  //      includes a new map of channels with new pointers to new data.
   //   3. The main thread grabs the old value at "mySequenceId", and stores it
-  //      in AnthemRuntimeSequenceStore::pendingSequenceDeletions for deletion
+  //      in AnthemRuntimeSequenceStore::pendingSequenceDeletions for deletion.
+  //      Note again that this is just a pointer to the old map. The audio
+  //      thread currently owns this pointer, and will for an unknown amount of
+  //      time until it is able to release it, so we can't delete it yet.
   //   4. The main thread adds the pointer to the new map to
-  //      AnthemRuntimeSequenceStore::mapUpdateQueue
+  //      AnthemRuntimeSequenceStore::mapUpdateQueue, to be picked up by the
+  //      audio thread.
   //   5. The audio thread eventually releases control of the old map, and adds
-  //      its pointer to AnthemRuntimeSequenceStore::mapDeletionQueue
+  //      its pointer to AnthemRuntimeSequenceStore::mapDeletionQueue.
   //   6. Periodically, the main thread will check this queue. For each pointer
   //      it finds in the queue, it will delete the pointer, and clean up any
   //      associated entries in
