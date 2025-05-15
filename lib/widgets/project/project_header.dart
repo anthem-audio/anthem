@@ -145,7 +145,7 @@ class _MiddleGroup extends StatelessWidget {
         VisualizationBuilder(
           config: VisualizationSubscriptionConfig.latest('playhead'),
           builder: (context, value) {
-            return Text(value.toString());
+            return Text(value.round().toString());
           },
         ),
       ],

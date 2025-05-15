@@ -168,12 +168,12 @@ void AnthemSequenceCompiler::getChannelNoteEventsForArrangement(
       clip->timeView().has_value()
           ? std::make_optional(
               std::make_tuple(
-                AnthemSequenceTime { .ticks = clip->timeView().value()->start(), .fraction = 0. },
-                AnthemSequenceTime { .ticks = clip->timeView().value()->end(), .fraction = 0. }
+                static_cast<double>(clip->timeView().value()->start()),
+                static_cast<double>(clip->timeView().value()->end())
               )
             )
           : std::nullopt,
-      AnthemSequenceTime { .ticks = clip->offset(), .fraction = 0. },
+      static_cast<double>(clip->offset()),
       events
     );
   }
@@ -182,8 +182,8 @@ void AnthemSequenceCompiler::getChannelNoteEventsForArrangement(
 void AnthemSequenceCompiler::getChannelNoteEventsForPattern(
   std::string channelId,
   std::string patternId,
-  std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> range,
-  std::optional<AnthemSequenceTime> offset,
+  std::optional<std::tuple<double, double>> range,
+  std::optional<double> offset,
   std::vector<AnthemSequenceEvent>& events
 ) {
   auto& anthem = Anthem::getInstance();
@@ -204,8 +204,8 @@ void AnthemSequenceCompiler::getChannelNoteEventsForPattern(
 
   for (auto& note : *notes) {
     auto rangeOptional = clampStartAndEndToRange(
-      AnthemSequenceTime { .ticks = note->offset(), .fraction = 0. },
-      AnthemSequenceTime { .ticks = note->offset() + note->length(), .fraction = 0. },
+      static_cast<double>(note->offset()),
+      static_cast<double>(note->offset()),
       range
     );
 
@@ -227,7 +227,7 @@ void AnthemSequenceCompiler::getChannelNoteEventsForPattern(
     }
 
     events.push_back(AnthemSequenceEvent {
-      .time = startWithOffset,
+      .offset = startWithOffset,
       .event = AnthemEvent {
         .type = AnthemEventType::NoteOn,
         .noteOn = AnthemNoteOnEvent(
@@ -241,7 +241,7 @@ void AnthemSequenceCompiler::getChannelNoteEventsForPattern(
     });
 
     events.push_back(AnthemSequenceEvent {
-      .time = endWithOffset,
+      .offset = endWithOffset,
       .event = AnthemEvent {
         .type = AnthemEventType::NoteOff,
         .noteOff = AnthemNoteOffEvent(
@@ -257,18 +257,14 @@ void AnthemSequenceCompiler::getChannelNoteEventsForPattern(
 
 void AnthemSequenceCompiler::sortEventList(std::vector<AnthemSequenceEvent>& events) {
   std::sort(events.begin(), events.end(), [](const AnthemSequenceEvent& a, const AnthemSequenceEvent& b) {
-    bool isFractionEarlier = a.time.fraction < b.time.fraction;
-    bool isTickEqual = a.time.ticks == b.time.ticks;
-    bool isTickEarlier = a.time.ticks < b.time.ticks;
-
-    return (isTickEqual && isFractionEarlier) || isTickEarlier;
+    return a.offset < b.offset;
   });
 }
 
-std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> AnthemSequenceCompiler::clampStartAndEndToRange(
-  AnthemSequenceTime start,
-  AnthemSequenceTime end,
-  std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> range
+std::optional<std::tuple<double, double>> AnthemSequenceCompiler::clampStartAndEndToRange(
+  double start,
+  double end,
+  std::optional<std::tuple<double, double>> range
 ) {
   if (!range.has_value()) {
     return std::make_tuple(start, end);
@@ -290,17 +286,17 @@ std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> AnthemSequence
   );
 }
 
-AnthemSequenceTime AnthemSequenceCompiler::clampTimeToRange(
-  AnthemSequenceTime time,
-  std::tuple<AnthemSequenceTime, AnthemSequenceTime> range
+double AnthemSequenceCompiler::clampTimeToRange(
+  double time,
+  std::tuple<double, double> range
 ) {
   auto [start, end] = range;
 
-  if (time.ticks < start.ticks || (time.ticks == start.ticks && time.fraction < start.fraction)) {
+  if (time < start) {
     return start;
   }
 
-  if (time.ticks > end.ticks || (time.ticks == end.ticks && time.fraction > end.fraction)) {
+  if (time > end) {
     return end;
   }
 

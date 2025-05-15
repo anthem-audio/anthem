@@ -19,7 +19,6 @@
 
 #pragma once
 
-#include "modules/sequencer/time.h"
 #include "modules/sequencer/events/event.h"
 
 #include <string>
@@ -84,8 +83,8 @@ private:
   static void getChannelNoteEventsForPattern(
     std::string channelId,
     std::string patternId,
-    std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> range,
-    std::optional<AnthemSequenceTime> offset,
+    std::optional<std::tuple<double, double>> range,
+    std::optional<double> offset,
     std::vector<AnthemSequenceEvent>& events
   );
 
@@ -99,16 +98,16 @@ private:
   //
   // If std::nullopt is returned, it means the event was entirely outside the
   // range.
-  static std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> clampStartAndEndToRange(
-    AnthemSequenceTime start,
-    AnthemSequenceTime end,
-    std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> range
+  static std::optional<std::tuple<double, double>> clampStartAndEndToRange(
+    double start,
+    double end,
+    std::optional<std::tuple<double, double>> range
   );
 
   // Clamps a given timestamp to the given range.
-  static AnthemSequenceTime clampTimeToRange(
-    AnthemSequenceTime time,
-    std::tuple<AnthemSequenceTime, AnthemSequenceTime> range
+  static double clampTimeToRange(
+    double time,
+    std::tuple<double, double> range
   );
 public:
 };

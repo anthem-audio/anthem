@@ -20,7 +20,6 @@
 #pragma once
 
 #include "note_events.h"
-#include "../time.h"
 
 enum AnthemEventType {
   NoteOn,
@@ -48,39 +47,31 @@ struct AnthemEvent {
 
 struct AnthemSequenceEvent {
   // The time of the event, relative to the start of the sequence.
-  AnthemSequenceTime time;
+  double offset;
 
   // The event itself.
   AnthemEvent event;
 
   bool operator<(const AnthemSequenceEvent& other) const {
-    return time < other.time;
-  }
-
-  bool operator==(const AnthemSequenceEvent& other) const {
-    return time == other.time;
+    return offset < other.offset;
   }
 
   bool operator>(const AnthemSequenceEvent& other) const {
-    return time > other.time;
+    return offset > other.offset;
   }
 
   bool operator<=(const AnthemSequenceEvent& other) const {
-    return time <= other.time;
+    return offset <= other.offset;
   }
 
   bool operator>=(const AnthemSequenceEvent& other) const {
-    return time >= other.time;
-  }
-
-  bool operator!=(const AnthemSequenceEvent& other) const {
-    return time != other.time;
+    return offset >= other.offset;
   }
 };
 
 struct AnthemLiveEvent {
   // The time of the event, relative to the start of the processing block.
-  AnthemLiveTime time;
+  double time;
 
   // The event itself.
   AnthemEvent event;

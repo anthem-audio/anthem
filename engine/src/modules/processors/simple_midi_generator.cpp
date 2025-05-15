@@ -45,9 +45,7 @@ void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int nu
     currentNoteDuration = 0;
     eventOutBuffer->addEvent(
       AnthemLiveEvent {
-        .time = AnthemLiveTime {
-          .offset = 0
-        },
+        .time = 0.0,
         .event = AnthemEvent {
           .type = AnthemEventType::NoteOn,
           .noteOn = AnthemNoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f, currentNoteId)
@@ -71,9 +69,7 @@ void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int nu
 
     if (currentNoteDuration >= durationSamples) {
       AnthemLiveEvent noteOffEvent = AnthemLiveEvent {
-        .time = AnthemLiveTime {
-          .offset = 0
-        },
+        .time = 0.0,
         .event = AnthemEvent {
           .type = AnthemEventType::NoteOff,
           .noteOff = AnthemNoteOffEvent(currentNote, 0, 0.0f, currentNoteId)
@@ -92,9 +88,7 @@ void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int nu
       }
 
       AnthemLiveEvent noteOnEvent = AnthemLiveEvent {
-        .time = AnthemLiveTime {
-          .offset = 0
-        },
+        .time = 0.0,
         .event = AnthemEvent {
           .type = AnthemEventType::NoteOn,
           .noteOn = AnthemNoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f, currentNoteId)

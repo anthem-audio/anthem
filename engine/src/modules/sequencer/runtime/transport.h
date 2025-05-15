@@ -23,8 +23,6 @@
 #include <cstdint>
 #include <optional>
 
-#include "../time.h"
-
 #include "modules/util/double_buffered_value.h"
 
 class TransportConfig {
@@ -49,7 +47,7 @@ public:
   TransportConfig rt_config;
 
   // The playhead position
-  AnthemSequenceTime rt_playhead;
+  double rt_playhead;
 
   Transport();
 

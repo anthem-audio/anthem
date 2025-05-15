@@ -91,7 +91,7 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
   auto sampleRate = 44100.0f; // TODO: Get sample rate from device
   auto cpuBurden = durationInSeconds * sampleRate / static_cast<double>(numSamples); // actual time / total buffer time
   cpuBurdenProvider->rt_updateCpuBurden(cpuBurden);
-  playheadProvider->rt_updatePlayheadPosition(transport->rt_playhead.ticks);
+  playheadProvider->rt_updatePlayheadPosition(transport->rt_playhead);
 
   transport->rt_advancePlayhead(numSamples);
 }
