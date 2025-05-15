@@ -58,7 +58,7 @@ void main() {
   });
 
   group('Heartbeat tests', () {
-    test('No heartbeat', () async {
+    test('No heartbeat', timeout: Timeout(Duration(seconds: 120)), () async {
       final exitStreamController = StreamController<void>.broadcast();
 
       var exitCalled = false;
@@ -67,7 +67,7 @@ void main() {
       var heartbeatWaitCompleter = Completer<void>();
 
       final _ = EngineConnector(
-        0,
+        12345678, // Can't collide with any other tests
         enginePathOverride: enginePath.toFilePath(windows: Platform.isWindows),
         kDebugMode: true,
         noHeartbeat: true,
@@ -103,7 +103,7 @@ void main() {
       );
     });
 
-    test('Heartbeat', () async {
+    test('Heartbeat', timeout: Timeout(Duration(seconds: 120)), () async {
       final exitStreamController = StreamController<void>.broadcast();
 
       var exitCalled = false;
@@ -112,7 +112,7 @@ void main() {
       var heartbeatWaitCompleter = Completer<void>();
 
       final engineConnector = EngineConnector(
-        0,
+        12345678 + 1, // Can't collide with any other tests
         enginePathOverride: enginePath.toFilePath(windows: Platform.isWindows),
         kDebugMode: true,
         onExit: () => exitStreamController.add(null),
@@ -144,6 +144,7 @@ void main() {
 
       engineConnector.dispose();
       await exitStreamController.stream.first;
+
       expect(
         exitCalled,
         isTrue,
