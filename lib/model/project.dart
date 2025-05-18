@@ -322,10 +322,10 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
         },
         fieldAccesses: convertedAccesses,
         serializedValue: switch (operation) {
-          RawFieldUpdate() => serializeValue(operation.newValue),
-          ListInsert() => serializeValue(operation.value),
-          ListUpdate() => serializeValue(operation.value),
-          MapPut() => serializeValue(operation.value),
+          RawFieldUpdate() => serializeValue(operation.newValueSerialized),
+          ListInsert() => serializeValue(operation.valueSerialized),
+          ListUpdate() => serializeValue(operation.newValueSerialized),
+          MapPut() => serializeValue(operation.newValueSerialized),
           _ => null,
         },
       );

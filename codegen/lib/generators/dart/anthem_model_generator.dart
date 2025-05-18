@@ -190,6 +190,11 @@ String _generateGettersAndSetters({
     // Setter
 
     var setter = StringBuffer();
+
+    if (shouldGenerateModelSync) {
+      setter.write('final oldValue = super.$fieldName;\n');
+    }
+
     setter.write('super.$fieldName = value;\n');
 
     if (shouldGenerateModelSync) {
@@ -249,7 +254,9 @@ ${first ? '' : 'else '}if (value is ${subtype.dartName}) {
       setter.write('''
 notifyFieldChanged(
   operation: RawFieldUpdate(
-    newValue: $valueGetter,
+    oldValue: oldValue,
+    newValue: value,
+    newValueSerialized: $valueGetter,
   ),
   accessorChain: [
     FieldAccessor(

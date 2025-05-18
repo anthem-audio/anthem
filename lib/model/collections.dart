@@ -87,7 +87,8 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
 
             notifyFieldChanged(
               operation: ListInsert(
-                value: _serializeValue(
+                value: elementChange.newValue,
+                valueSerialized: _serializeValue(
                   elementChange.newValue,
                   includeFieldsForEngine: true,
                 ),
@@ -96,13 +97,15 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
             );
           } else if (elementChange.type == OperationType.remove) {
             notifyFieldChanged(
-              operation: ListRemove(),
+              operation: ListRemove(removedValue: elementChange.oldValue),
               accessorChain: accessorChain,
             );
           } else if (elementChange.type == OperationType.update) {
             notifyFieldChanged(
               operation: ListUpdate(
-                value: _serializeValue(
+                oldValue: elementChange.oldValue,
+                newValue: elementChange.newValue,
+                newValueSerialized: _serializeValue(
                   elementChange.newValue,
                   includeFieldsForEngine: true,
                 ),
@@ -174,7 +177,9 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
           change.type == OperationType.update) {
         notifyFieldChanged(
           operation: MapPut(
-            value: _serializeValue(
+            oldValue: change.oldValue,
+            newValue: change.newValue,
+            newValueSerialized: _serializeValue(
               change.newValue,
               includeFieldsForEngine: true,
             ),
@@ -187,7 +192,7 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
         }
       } else if (change.type == OperationType.remove) {
         notifyFieldChanged(
-          operation: MapRemove(),
+          operation: MapRemove(removedValue: change.oldValue),
           accessorChain: accessorChain,
         );
       }
