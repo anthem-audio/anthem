@@ -143,6 +143,12 @@ void AnthemSequenceCompiler::compileArrangement(
   }
 }
 
+void AnthemSequenceCompiler::cleanUpChannel(std::string channelId) {
+  auto& store = *Anthem::getInstance().sequenceStore;
+
+  store.removeChannelFromAllSequences(channelId);
+}
+
 void AnthemSequenceCompiler::getChannelNoteEventsForArrangement(
   std::string channelId,
   std::string arrangementId,

@@ -71,6 +71,19 @@ class ProjectModel extends _ProjectModel
     // another model, which will call setParentPropertiesOnChildren. Since this
     // is the top level, we need to call it ourselves.
     setParentPropertiesOnChildren();
+
+    generators.addFieldChangedListener((fieldAccessors, operation) {
+      // If there is only one item, then this change is directly related to the
+      // generators map itself.
+      if (fieldAccessors.elementAtOrNull(1) == null) {
+        // If the operation is a remove, we need to notify the engine so it can
+        // clean up any compiled sequences for this channel.
+        if (operation is MapRemove) {
+          final generatorId = fieldAccessors.elementAt(0).key as Id;
+          engine.sequencerApi.cleanUpChannel(generatorId);
+        }
+      }
+    });
   }
 }
 
@@ -282,6 +295,16 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     // but it still needs to be compiled by the engine for use on the audio
     // thread, so we do that here.
     engine.processingGraphApi.compile();
+
+    // We need to compile all arrangements for use in the audio thread.
+    for (final arrangement in sequence.arrangements.values) {
+      engine.sequencerApi.compileArrangement(arrangement.id);
+    }
+
+    // And same for patterns.
+    for (final pattern in sequence.patterns.values) {
+      engine.sequencerApi.compilePattern(pattern.id);
+    }
   }
 
   /// Attaches a listener for model state change events, and send them to the

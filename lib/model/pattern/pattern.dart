@@ -21,6 +21,7 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/main.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
@@ -84,10 +85,22 @@ class PatternModel extends _PatternModel
       updateClipTitleCache();
       updateClipNotesRenderCache();
 
-      // When notes are changed in the pattern, we need to update the clip notes
-      // render cache.
+      // Make sure the engine knows about this sequence when it is created, in
+      // case it is created from project load or undo/redo
+      _compileInEngine();
+
+      // When notes are changed in the pattern, we need to:
+      //   1. Update the clip notes render cache.
+      //   2. Tell the engine to re-compile all relevant sequences.
       notes.addFieldChangedListener((fieldAccessors, operation) {
         scheduleClipNotesRenderCacheUpdate();
+
+        final channelIdFieldAccessor = fieldAccessors.first;
+        final channelId = channelIdFieldAccessor.key;
+
+        if (channelId != null) {
+          _compileInEngine(channelIds: [channelId], updateArrangements: true);
+        }
       });
 
       // When the pattern title is changed, we need to update the clip title
@@ -99,6 +112,86 @@ class PatternModel extends _PatternModel
       });
     });
   }
+
+  void _compileInEngine({
+    bool updateArrangements = false,
+    List<String>? channelIds,
+  }) {
+    // If the engine is not running, we don't need to worry about sending this
+    // update. If the engine starts, all patterns need to be compiled anyway, so
+    // the engine startup code should handle this.
+    if (project.engine.engineState != EngineState.running) {
+      return;
+    }
+
+    _schedulePatternCompile(channelIds ?? channelsWithContent);
+
+    if (updateArrangements) {
+      _shceduleArrangementsCompile(channelIds ?? channelsWithContent);
+    }
+  }
+
+  Iterable<Id> _channelsToCompileForPattern = Iterable.empty();
+  bool _isPatternCompileScheduled = false;
+  void _schedulePatternCompile(Iterable<Id> channelIds) {
+    if (_isPatternCompileScheduled) {
+      _channelsToCompileForPattern = _channelsToCompileForPattern.followedBy(
+        channelIds,
+      );
+      return;
+    }
+
+    _isPatternCompileScheduled = true;
+
+    Future.microtask(() {
+      _isPatternCompileScheduled = false;
+
+      if (project.engine.engineState != EngineState.running) {
+        _channelsToCompileForPattern = Iterable.empty();
+        return;
+      }
+
+      project.engine.sequencerApi.compilePattern(
+        id,
+        channelsToRebuild: _channelsToCompileForPattern.toSet().toList(),
+      );
+
+      _channelsToCompileForPattern = Iterable.empty();
+    });
+  }
+
+  Iterable<Id> _channelsToCompileForArrangements = Iterable.empty();
+  bool _isArrangementsCompileScheduled = false;
+  void _shceduleArrangementsCompile(Iterable<Id> channelIds) {
+    if (_isArrangementsCompileScheduled) {
+      _channelsToCompileForArrangements = _channelsToCompileForArrangements
+          .followedBy(channelIds);
+      return;
+    }
+
+    _isArrangementsCompileScheduled = true;
+
+    Future.microtask(() {
+      _isArrangementsCompileScheduled = false;
+
+      if (project.engine.engineState != EngineState.running) {
+        _channelsToCompileForArrangements = Iterable.empty();
+        return;
+      }
+
+      for (final arrangement in project.sequence.arrangements.values) {
+        project.engine.sequencerApi.compileArrangement(
+          arrangement.id,
+          channelsToRebuild: _channelsToCompileForArrangements.toSet().toList(),
+        );
+
+        _channelsToCompileForArrangements = Iterable.empty();
+      }
+    });
+  }
+
+  Iterable<String> get channelsWithContent =>
+      notes.keys.followedBy(automationLanes.keys);
 }
 
 abstract class _PatternModel with Store, AnthemModelBase {

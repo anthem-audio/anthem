@@ -19,6 +19,7 @@
 
 import 'dart:math';
 
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
@@ -34,15 +35,147 @@ part 'arrangement.g.dart';
 @AnthemModel.syncedModel()
 class ArrangementModel extends _ArrangementModel
     with _$ArrangementModel, _$ArrangementModelAnthemModelMixin {
-  ArrangementModel({required super.name, required super.id});
+  ArrangementModel({required super.name, required super.id}) {
+    _init();
+  }
 
-  ArrangementModel.uninitialized() : super(name: '', id: '');
+  ArrangementModel.uninitialized() : super(name: '', id: '') {
+    _init();
+  }
 
   ArrangementModel.create({required super.name, required super.id})
-    : super.create();
+    : super.create() {
+    _init();
+  }
 
-  factory ArrangementModel.fromJson(Map<String, dynamic> json) =>
-      _$ArrangementModelAnthemModelMixin.fromJson(json);
+  factory ArrangementModel.fromJson(Map<String, dynamic> json) {
+    final arrangement = _$ArrangementModelAnthemModelMixin.fromJson(json);
+    arrangement._init();
+    return arrangement;
+  }
+
+  void _init() {
+    onModelAttached(() {
+      _compileInEngine();
+
+      clips.addFieldChangedListener((fieldAccessors, operation) {
+        _recompileModifiedClips(fieldAccessors, operation);
+      });
+    });
+  }
+
+  /// Rebuilds only modified clips in the engine.
+  ///
+  /// This is meant to be attached to the clips field changed listener above.
+  void _recompileModifiedClips(
+    Iterable<FieldAccessor> fieldAccessors,
+    FieldOperation operation,
+  ) {
+    // If the engine is not running, then we don't need to worry about
+    // sending this update. When the engine is started, it will recompile
+    // all arrangements.
+    if (project.engine.engineState != EngineState.running) {
+      return;
+    }
+
+    // We're collecting a list of channels to recompile for this
+    // arrangement. We want to recompile as few as possible, since
+    // recompiling during playback may require us to flush events for any
+    // channels that are rebuilt.
+    final channelsToRebuild = <String>{};
+
+    // This means we're adding, replacing or removing a clip.
+    if (fieldAccessors.length == 1) {
+      final oldClip = switch (operation) {
+        RawFieldUpdate() => operation.oldValueAs<ClipModel>(),
+        ListInsert() => null,
+        ListRemove() => operation.removedValueAs<ClipModel>(),
+        ListUpdate() => operation.oldValueAs<ClipModel>(),
+        MapPut() => operation.oldValueAs<ClipModel?>(),
+        MapRemove() => operation.removedValueAs<ClipModel>(),
+      };
+
+      final newClip = switch (operation) {
+        RawFieldUpdate() => operation.newValueAs<ClipModel>(),
+        ListInsert() => operation.valueAs<ClipModel>(),
+        ListRemove() => null,
+        ListUpdate() => operation.newValueAs<ClipModel>(),
+        MapPut() => operation.newValueAs<ClipModel?>(),
+        MapRemove() => null,
+      };
+
+      if (oldClip != null) {
+        final pattern = project.sequence.patterns[oldClip.patternId];
+        if (pattern != null) {
+          channelsToRebuild.addAll(pattern.channelsWithContent);
+        }
+      }
+
+      if (newClip != null) {
+        final pattern = project.sequence.patterns[newClip.patternId];
+        if (pattern != null) {
+          channelsToRebuild.addAll(pattern.channelsWithContent);
+        }
+      }
+    }
+
+    final clipAccessor = fieldAccessors.elementAtOrNull(1);
+
+    // This means we're changing a property of a clip.
+    if (clipAccessor != null) {
+      // We need to mark the clip for rebuilding if anything changed,
+      // besides trackId since that just tells it which row to render on.
+      if (clipAccessor.fieldName != 'trackId') {
+        final clipId = fieldAccessors.first.key as Id;
+        final clip = clips[clipId];
+        if (clip != null) {
+          final pattern = project.sequence.patterns[clip.patternId];
+          if (pattern != null) {
+            channelsToRebuild.addAll(pattern.channelsWithContent);
+          }
+        }
+      }
+    }
+
+    _scheduleChannelsToCompile(channelsToRebuild);
+  }
+
+  Iterable<Id> _channelsToCompile = Iterable.empty();
+  bool _isScheduled = false;
+  void _scheduleChannelsToCompile(Iterable<Id> channelIds) {
+    if (_isScheduled) {
+      _channelsToCompile = _channelsToCompile.followedBy(channelIds);
+      return;
+    }
+
+    _isScheduled = true;
+
+    Future.microtask(() {
+      _isScheduled = false;
+
+      // If the engine is not running, we won't try to send anything.
+      if (project.engine.engineState != EngineState.running) {
+        _channelsToCompile = Iterable.empty();
+        return;
+      }
+
+      project.engine.sequencerApi.compileArrangement(
+        id,
+        channelsToRebuild: _channelsToCompile.toSet().toList(),
+      );
+
+      _channelsToCompile = Iterable.empty();
+    });
+  }
+
+  /// Compiles the entire arrangement in the engine.
+  void _compileInEngine() {
+    if (project.engine.engineState != EngineState.running) {
+      return;
+    }
+
+    project.engine.sequencerApi.compileArrangement(id);
+  }
 }
 
 abstract class _ArrangementModel with Store, AnthemModelBase {

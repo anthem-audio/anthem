@@ -20,6 +20,7 @@
 #include "sequencer_command_handler.h"
 
 #include "modules/core/anthem.h"
+#include "modules/sequencer/compiler/sequence_compiler.h"
 
 std::optional<Response> handleSequencerCommand(Request& request) {
   if (rfl::holds_alternative<PlayRequest>(request.variant())) {
@@ -29,6 +30,41 @@ std::optional<Response> handleSequencerCommand(Request& request) {
   else if (rfl::holds_alternative<StopRequest>(request.variant())) {
     // auto& stopRequest = rfl::get<StopRequest>(request.variant());
     Anthem::getInstance().transport->stop();
+  }
+  else if (rfl::holds_alternative<CompileSequenceRequest>(request.variant())) {
+		auto& compileSequenceRequest = rfl::get<CompileSequenceRequest>(request.variant());
+
+    if (compileSequenceRequest.patternId.has_value()) {
+      if (compileSequenceRequest.channelsToRebuild.has_value()) {
+				// Compile only the specified channels for the given pattern
+				AnthemSequenceCompiler::compilePattern(
+					compileSequenceRequest.patternId.value(),
+					*compileSequenceRequest.channelsToRebuild.value()
+				);
+			}
+			else {
+				// Compile the entire pattern
+				AnthemSequenceCompiler::compilePattern(compileSequenceRequest.patternId.value());
+      }
+    }
+    else if (compileSequenceRequest.arrangementId.has_value()) {
+      if (compileSequenceRequest.channelsToRebuild.has_value()) {
+        // Compile only the specified channels for the given arrangement
+        AnthemSequenceCompiler::compileArrangement(
+          compileSequenceRequest.arrangementId.value(),
+          *compileSequenceRequest.channelsToRebuild.value()
+        );
+      }
+      else {
+        // Compile the entire arrangement
+        AnthemSequenceCompiler::compileArrangement(compileSequenceRequest.arrangementId.value());
+      }
+    }
+  }
+  else if (rfl::holds_alternative<RemoveChannelRequest>(request.variant())) {
+    auto& removeChannelRequest = rfl::get<RemoveChannelRequest>(request.variant());
+
+		AnthemSequenceCompiler::cleanUpChannel(removeChannelRequest.channelId);
   }
 
   return std::nullopt;

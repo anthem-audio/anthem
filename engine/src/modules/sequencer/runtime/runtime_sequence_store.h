@@ -110,6 +110,10 @@ struct SequenceEventListCollection {
   //      associated entries in
   //      AnthemRuntimeSequenceStore::pendingSequenceDeletions by calling this
   //      method.
+  //
+  // To be clear, note that this method is called in the LAST step of the above
+  // process. This means that the audio thread has already released the pointer
+  // to the old map and it is ready to be deleted.
   static void cleanUpInstance(SequenceEventListCollection& instance);
 };
 
