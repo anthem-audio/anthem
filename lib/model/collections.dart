@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -66,10 +66,6 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
   }
 
   void _init() {
-    for (var i = 0; i < length; i++) {
-      _setParentPropertiesOnIndex(i);
-    }
-
     observe((change) {
       int? firstChangedIndex;
 
@@ -164,10 +160,6 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
   }
 
   void _init() {
-    for (final key in keys) {
-      _setParentPropertiesOnValue(key);
-    }
-
     observe((change) {
       final accessorChain = [
         FieldAccessor(fieldType: FieldType.map, key: change.key),
