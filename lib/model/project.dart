@@ -47,11 +47,31 @@ enum ProjectLayoutKind { arrange, edit, mix }
 )
 class ProjectModel extends _ProjectModel
     with _$ProjectModel, _$ProjectModelAnthemModelMixin {
-  ProjectModel() : super();
-  ProjectModel.create([super._enginePathOverride]) : super.create();
+  ProjectModel() : super() {
+    _init();
+  }
 
-  factory ProjectModel.fromJson(Map<String, dynamic> json) =>
-      _$ProjectModelAnthemModelMixin.fromJson(json)..isSaved = true;
+  ProjectModel.create([super._enginePathOverride]) : super.create() {
+    _init();
+  }
+
+  factory ProjectModel.fromJson(Map<String, dynamic> json) {
+    final project =
+        _$ProjectModelAnthemModelMixin.fromJson(json)
+          ..isSaved = true
+          // This is the top model in the tree. setParentPropertiesOnChildren will not
+          // work correctly if we don't set this.
+          ..isTopLevelModel = true;
+    project._init();
+    return project;
+  }
+
+  void _init() {
+    // Normally we rely on the fact that this will always be put in the field of
+    // another model, which will call setParentPropertiesOnChildren. Since this
+    // is the top level, we need to call it ourselves.
+    setParentPropertiesOnChildren();
+  }
 }
 
 abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
@@ -175,6 +195,10 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   // This method is used for deserialization and so doesn't create new child
   // models.
   _ProjectModel() : _enginePathOverride = null, super() {
+    // This is the top model in the tree. setParentPropertiesOnChildren will not
+    // work correctly if we don't set this.
+    isTopLevelModel = true;
+
     _commandStack = CommandStack(this as ProjectModel);
     visualizationProvider = VisualizationProvider(this as ProjectModel);
   }
@@ -186,6 +210,10 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   final String? _enginePathOverride;
 
   _ProjectModel.create([this._enginePathOverride]) : super() {
+    // This is the top model in the tree. setParentPropertiesOnChildren will not
+    // work correctly if we don't set this.
+    isTopLevelModel = true;
+
     _commandStack = CommandStack(this as ProjectModel);
     sequence = SequenceModel.create();
     processingGraph = ProcessingGraphModel();
@@ -229,11 +257,6 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
         _modelSyncCompleter = Completer();
       }
     });
-
-    // Normally we rely on the fact that this will always be put in the field of
-    // another model, which will call setParentPropertiesOnChildren. Since this
-    // is the top level, we need to call it ourselves.
-    setParentPropertiesOnChildren();
 
     visualizationProvider = VisualizationProvider(this as ProjectModel);
 

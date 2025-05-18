@@ -204,12 +204,18 @@ String _generateGettersAndSetters({
           fieldInfo.typeInfo is UnknownModelType ||
           fieldInfo.typeInfo is ListModelType ||
           fieldInfo.typeInfo is MapModelType) {
+        final fieldGetter = 'super.$fieldName$typeQ';
+        // If the model is not attached to its parent, then this will happen
+        // to the entire subtree when it is attached. Otherwise, we need to
+        // do it now.
         setter.write('''
-super.$fieldName$typeQ.setParentProperties(
-  parent: this,
-  fieldName: '$fieldName',
-  fieldType: FieldType.raw,
-);
+if (!isTopLevelModel && $fieldGetter.parent != null) {
+  $fieldGetter.setParentProperties(
+    parent: this,
+    fieldName: '$fieldName',
+    fieldType: FieldType.raw,
+  );
+}
 ''');
       } else if (fieldInfo.typeInfo case UnionModelType typeInfo) {
         var first = true;
@@ -225,12 +231,17 @@ ${first ? '' : 'else '}if (value is ${subtype.dartName}) {
               subtype is UnknownModelType ||
               subtype is ListModelType ||
               subtype is MapModelType) {
+            // If the model is not attached to its parent, then this will happen
+            // to the entire subtree when it is attached. Otherwise, we need to
+            // do it now.
             setter.write('''
-  value.setParentProperties(
-    parent: this,
-    fieldName: '$fieldName',
-    fieldType: FieldType.raw,
-  );
+  if (!isTopLevelModel && value.parent != null) {
+    value.setParentProperties(
+      parent: this,
+      fieldName: '$fieldName',
+      fieldType: FieldType.raw,
+    );
+  }
 ''');
           }
           setter.write('}');
@@ -302,12 +313,18 @@ String _generateInitFunction({required ModelClassInfo context}) {
     if (fieldInfo.typeInfo is ListModelType ||
         fieldInfo.typeInfo is MapModelType ||
         fieldInfo.typeInfo is CustomModelType) {
+      final fieldGetter = 'super.$fieldName$typeQ';
+      // If the model is not attached to its parent, then this will happen
+      // to the entire subtree when it is attached. Otherwise, we need to
+      // do it now.
       result.write('''
-super.$fieldName$typeQ.setParentProperties(
-  parent: this,
-  fieldName: '$fieldName',
-  fieldType: FieldType.raw,
-);
+if (!isTopLevelModel && $fieldGetter.parent != null) {
+  $fieldGetter.setParentProperties(
+    parent: this,
+    fieldName: '$fieldName',
+    fieldType: FieldType.raw,
+  );
+}
 ''');
     } else if (fieldInfo.typeInfo is UnionModelType) {
       var first = true;
@@ -331,12 +348,18 @@ ${first ? '' : 'else '}if (super.$fieldName is ${subtype.dartName}) {
             subtype is UnknownModelType ||
             subtype is ListModelType ||
             subtype is MapModelType) {
+          final fieldGetter = '(super.$fieldName as ${subtype.dartName})';
+          // If the model is not attached to its parent, then this will happen
+          // to the entire subtree when it is attached. Otherwise, we need to
+          // do it now.
           result.write('''
-  (super.$fieldName as ${subtype.dartName}).setParentProperties(
-    parent: this,
-    fieldName: '$fieldName',
-    fieldType: FieldType.raw,
-  );
+  if (!isTopLevelModel && $fieldGetter.parent != null) {
+    $fieldGetter.setParentProperties(
+      parent: this,
+      fieldName: '$fieldName',
+      fieldType: FieldType.raw,
+    );
+  }
 ''');
         }
         result.write('}\n');

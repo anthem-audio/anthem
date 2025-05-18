@@ -190,6 +190,8 @@ class MapRemove extends FieldOperation {
   /// This is the actual value, not a serialized representation.
   final dynamic removedValue;
 
+  T removedValueAs<T>() => removedValue as T;
+
   MapRemove({required this.removedValue});
 
   @override
@@ -280,6 +282,12 @@ mixin AnthemModelBase {
   /// A write will be reported to tihs atom when this model or any descendant
   /// model is changed.
   final Atom _allChangesAtom = Atom();
+
+  /// Indicates whether this is the top level model in the tree.
+  ///
+  /// This should only be set by the top level model (ProjectModel in our case).
+  /// Other models should leave this alone.
+  bool isTopLevelModel = false;
 
   /// If called during a MobX observation, this will cause the widget to rebuild
   /// when any field in this model or any descendant model is changed.
