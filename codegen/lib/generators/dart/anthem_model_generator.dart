@@ -326,13 +326,11 @@ String _generateInitFunction({required ModelClassInfo context}) {
       // to the entire subtree when it is attached. Otherwise, we need to
       // do it now.
       result.write('''
-if (!isTopLevelModel && $fieldGetter.parent != null) {
   $fieldGetter.setParentProperties(
     parent: this,
     fieldName: '$fieldName',
     fieldType: FieldType.raw,
   );
-}
 ''');
     } else if (fieldInfo.typeInfo is UnionModelType) {
       var first = true;
