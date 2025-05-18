@@ -192,7 +192,15 @@ String _generateGettersAndSetters({
     var setter = StringBuffer();
 
     if (shouldGenerateModelSync) {
-      setter.write('final oldValue = super.$fieldName;\n');
+      setter.write('''
+${fieldInfo.typeInfo.dartName}? oldValue;
+try {
+  oldValue = super.$fieldName;
+}
+catch (_) {
+  oldValue = null;
+}
+''');
     }
 
     setter.write('super.$fieldName = value;\n');
