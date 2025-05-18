@@ -57,10 +57,14 @@ class RawFieldUpdate extends FieldOperation {
   /// This is the actual value, not a serialized representation.
   final dynamic oldValue;
 
+  T oldValueAs<T>() => oldValue as T;
+
   /// The new value of the field.
   ///
   /// This is the actual value, not a serialized representation.
   final dynamic newValue;
+
+  T newValueAs<T>() => newValue as T;
 
   RawFieldUpdate({
     required this.newValueSerialized,
@@ -86,6 +90,8 @@ class ListInsert extends FieldOperation {
   /// This is the actual value, not a serialized representation.
   final dynamic value;
 
+  T valueAs<T>() => value as T;
+
   ListInsert({required this.valueSerialized, required this.value});
 
   @override
@@ -102,6 +108,8 @@ class ListRemove extends FieldOperation {
   ///
   /// This is the actual value, not a serialized representation.
   final dynamic removedValue;
+
+  T removedValueAs<T>() => removedValue as T;
 
   @override
   String toString() {
@@ -121,10 +129,14 @@ class ListUpdate extends FieldOperation {
   /// This is the actual value, not a serialized representation.
   final dynamic oldValue;
 
+  T oldValueAs<T>() => oldValue as T;
+
   /// The new value of the field.
   ///
   /// This is the actual value, not a serialized representation.
   final dynamic newValue;
+
+  T newValueAs<T>() => newValue as T;
 
   ListUpdate({
     required this.newValueSerialized,
@@ -150,10 +162,14 @@ class MapPut extends FieldOperation {
   /// This is the actual value, not a serialized representation.
   final dynamic oldValue;
 
+  T oldValueAs<T>() => oldValue as T;
+
   /// The value to be inserted.
   ///
   /// This is the actual value, not a serialized representation.
   final dynamic newValue;
+
+  T newValueAs<T>() => newValue as T;
 
   MapPut({
     required this.newValueSerialized,
