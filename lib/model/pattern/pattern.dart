@@ -127,17 +127,16 @@ class PatternModel extends _PatternModel
     _schedulePatternCompile(channelIds ?? channelsWithContent);
 
     if (updateArrangements) {
-      _shceduleArrangementsCompile(channelIds ?? channelsWithContent);
+      _scheduleArrangementsCompile(channelIds ?? channelsWithContent);
     }
   }
 
-  Iterable<Id> _channelsToCompileForPattern = Iterable.empty();
+  Set<Id> _channelsToCompileForPattern = {};
   bool _isPatternCompileScheduled = false;
   void _schedulePatternCompile(Iterable<Id> channelIds) {
+    _channelsToCompileForPattern.addAll(channelIds);
+
     if (_isPatternCompileScheduled) {
-      _channelsToCompileForPattern = _channelsToCompileForPattern.followedBy(
-        channelIds,
-      );
       return;
     }
 
@@ -147,25 +146,25 @@ class PatternModel extends _PatternModel
       _isPatternCompileScheduled = false;
 
       if (project.engine.engineState != EngineState.running) {
-        _channelsToCompileForPattern = Iterable.empty();
+        _channelsToCompileForPattern = {};
         return;
       }
 
       project.engine.sequencerApi.compilePattern(
         id,
-        channelsToRebuild: _channelsToCompileForPattern.toSet().toList(),
+        channelsToRebuild: _channelsToCompileForPattern.toList(),
       );
 
-      _channelsToCompileForPattern = Iterable.empty();
+      _channelsToCompileForPattern = {};
     });
   }
 
-  Iterable<Id> _channelsToCompileForArrangements = Iterable.empty();
+  Set<Id> _channelsToCompileForArrangements = {};
   bool _isArrangementsCompileScheduled = false;
-  void _shceduleArrangementsCompile(Iterable<Id> channelIds) {
+  void _scheduleArrangementsCompile(Iterable<Id> channelIds) {
+    _channelsToCompileForArrangements.addAll(channelIds);
+
     if (_isArrangementsCompileScheduled) {
-      _channelsToCompileForArrangements = _channelsToCompileForArrangements
-          .followedBy(channelIds);
       return;
     }
 
@@ -175,17 +174,17 @@ class PatternModel extends _PatternModel
       _isArrangementsCompileScheduled = false;
 
       if (project.engine.engineState != EngineState.running) {
-        _channelsToCompileForArrangements = Iterable.empty();
+        _channelsToCompileForArrangements = {};
         return;
       }
 
       for (final arrangement in project.sequence.arrangements.values) {
         project.engine.sequencerApi.compileArrangement(
           arrangement.id,
-          channelsToRebuild: _channelsToCompileForArrangements.toSet().toList(),
+          channelsToRebuild: _channelsToCompileForArrangements.toList(),
         );
 
-        _channelsToCompileForArrangements = Iterable.empty();
+        _channelsToCompileForArrangements = {};
       }
     });
   }

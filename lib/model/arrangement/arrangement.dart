@@ -137,14 +137,23 @@ class ArrangementModel extends _ArrangementModel
       }
     }
 
+    if (channelsToRebuild.isEmpty) {
+      return;
+    }
+
     _scheduleChannelsToCompile(channelsToRebuild);
   }
 
-  Iterable<Id> _channelsToCompile = Iterable.empty();
+  Set<Id> _channelsToCompile = {};
   bool _isScheduled = false;
   void _scheduleChannelsToCompile(Iterable<Id> channelIds) {
+    if (channelIds.isEmpty) {
+      return;
+    }
+
+    _channelsToCompile.addAll(channelIds);
+
     if (_isScheduled) {
-      _channelsToCompile = _channelsToCompile.followedBy(channelIds);
       return;
     }
 
@@ -155,16 +164,16 @@ class ArrangementModel extends _ArrangementModel
 
       // If the engine is not running, we won't try to send anything.
       if (project.engine.engineState != EngineState.running) {
-        _channelsToCompile = Iterable.empty();
+        _channelsToCompile = {};
         return;
       }
 
       project.engine.sequencerApi.compileArrangement(
         id,
-        channelsToRebuild: _channelsToCompile.toSet().toList(),
+        channelsToRebuild: _channelsToCompile.toList(),
       );
 
-      _channelsToCompile = Iterable.empty();
+      _channelsToCompile = {};
     });
   }
 
