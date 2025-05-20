@@ -54,7 +54,7 @@ public:
   void play();
   void stop();
 
-  void setActiveSequenceId(std::string sequenceId) {
+  void setActiveSequenceId(std::optional<std::string>& sequenceId) {
     config.activeSequenceId = sequenceId;
     configBufferedValue.set(config);
   }
@@ -71,4 +71,6 @@ public:
   void rt_prepareForProcessingBlock();
 
   void rt_advancePlayhead(int samples);
+
+  double rt_getPlayheadAfterAdvance(int samples);
 };

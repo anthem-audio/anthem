@@ -53,6 +53,10 @@ void Transport::rt_prepareForProcessingBlock() {
 }
 
 void Transport::rt_advancePlayhead(int numSamples) {
+  rt_playhead = rt_getPlayheadAfterAdvance(numSamples);
+}
+
+double Transport::rt_getPlayheadAfterAdvance(int numSamples) {
   if (rt_config.isPlaying) {
     auto ticksPerQuarter = rt_config.ticksPerQuarter;
     auto beatsPerMinute = rt_config.beatsPerMinute;
@@ -60,6 +64,8 @@ void Transport::rt_advancePlayhead(int numSamples) {
     auto ticksPerSecond = ticksPerMinute / 60.0;
     auto ticksPerSample = ticksPerSecond / 44100.0; // Assuming a sample rate of 44100 Hz
     auto ticks = static_cast<double>(numSamples * ticksPerSample);
-    rt_playhead += ticks;
+    return rt_playhead + ticks;
   }
+
+  return rt_playhead;
 }

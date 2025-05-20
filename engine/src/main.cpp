@@ -287,7 +287,8 @@ void messageLoop(CommandMessageListener& messageListener) {
         const uint8_t* messagePtr = static_cast<const uint8_t*>(messageBuffer.getData()) + sizeof(uint64_t);
 
         if (reinterpret_cast<uintptr_t>(messagePtr) % 4 != 0) {
-          std::cerr << "Buffer is not properly aligned!" << std::endl;
+          std::cerr << "Fatal: Buffer is not properly aligned!" << std::endl;
+          juce::JUCEApplication::quit();
           return;
         }
 

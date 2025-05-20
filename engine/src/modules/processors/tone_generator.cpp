@@ -58,8 +58,6 @@ void ToneGeneratorProcessor::process(AnthemProcessContext& context, int numSampl
       // reading liveEvent.time, which represents the time since the start of
       // the processing block.
 
-    } else if (liveEvent.event.type == AnthemEventType::NoteOff) {
-      hasNoteOverride = false;
     }
   }
 

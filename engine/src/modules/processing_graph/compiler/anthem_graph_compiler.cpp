@@ -184,10 +184,9 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
     std::cout << "Nodes still left to process: " << std::to_string(nodesToProcess.size()) << std::endl;
     std::cout << "Last size: " << std::to_string(lastSize) << std::endl;
 
-    // If there's an infinite loop, throw an error, since this should never
-    // happen, and a bug that causes an infinite loop here would prevent the
-    // engine from being shut down. Since the engine is hidden from the user, we
-    // shouldn't risk this.
+    // If there's an infinite loop, throw an error. This should never happen,
+    // and a bug that causes an infinite loop here would prevent the engine from
+    // being shut down. This is a safety check to prevent that.
     if (lastSize == nodesToProcess.size()) {
       throw std::runtime_error("Infinite loop detected in graph compiler");
     }

@@ -30,7 +30,8 @@ void _addGenerator(
   int? index,
   required NodeModel generatorNode,
   required NodeModel gainNode,
-  required NodeModel midiGenNode,
+  // required NodeModel midiGenNode,
+  required NodeModel sequenceNoteProviderNode,
 }) {
   if (index != null) {
     project.generatorOrder.insert(index, generator.id);
@@ -47,13 +48,23 @@ void _addGenerator(
 
   project.processingGraph.addNode(generatorNode);
   project.processingGraph.addNode(gainNode);
-  project.processingGraph.addNode(midiGenNode);
+  // project.processingGraph.addNode(midiGenNode);
+  project.processingGraph.addNode(sequenceNoteProviderNode);
 
+  // project.processingGraph.addConnection(
+  //   NodeConnectionModel(
+  //     id: getId(),
+  //     sourceNodeId: midiGenNode.id,
+  //     sourcePortId: midiGenNode.eventOutputPorts[0].id,
+  //     destinationNodeId: generatorNode.id,
+  //     destinationPortId: generatorNode.eventInputPorts[0].id,
+  //   ),
+  // );
   project.processingGraph.addConnection(
     NodeConnectionModel(
       id: getId(),
-      sourceNodeId: midiGenNode.id,
-      sourcePortId: midiGenNode.eventOutputPorts[0].id,
+      sourceNodeId: sequenceNoteProviderNode.id,
+      sourcePortId: sequenceNoteProviderNode.eventOutputPorts[0].id,
       destinationNodeId: generatorNode.id,
       destinationPortId: generatorNode.eventInputPorts[0].id,
     ),
@@ -95,7 +106,8 @@ void _removeGenerator(ProjectModel project, Id generatorID) {
 
   project.processingGraph.removeNode(generator.generatorNodeId!);
   project.processingGraph.removeNode(generator.gainNodeId!);
-  project.processingGraph.removeNode(generator.midiGenNodeId!);
+  // project.processingGraph.removeNode(generator.midiGenNodeId!);
+  project.processingGraph.removeNode(generator.sequenceNoteProviderNodeId!);
 
   project.engine.processingGraphApi.compile();
 }
@@ -133,7 +145,9 @@ class AddGeneratorCommand extends Command {
   @override
   void execute(ProjectModel project) {
     final gainNode = GainProcessorModel.createNode();
-    final midiGenNode = SimpleMidiGeneratorProcessorModel.createNode();
+    // final midiGenNode = SimpleMidiGeneratorProcessorModel.createNode();
+    final sequencerNoteProviderNode =
+        SequenceNoteProviderProcessorModel.createNode(generatorId);
 
     final generator = GeneratorModel(
       id: generatorId,
@@ -142,7 +156,8 @@ class AddGeneratorCommand extends Command {
       color: color,
       generatorNodeId: node.id,
       gainNodeId: gainNode.id,
-      midiGenNodeId: midiGenNode.id,
+      // midiGenNodeId: midiGenNode.id,
+      sequenceNoteProviderNodeId: sequencerNoteProviderNode.id,
     );
 
     _addGenerator(
@@ -150,7 +165,9 @@ class AddGeneratorCommand extends Command {
       generator,
       generatorNode: node,
       gainNode: gainNode,
-      midiGenNode: midiGenNode,
+
+      // midiGenNode: midiGenNode,
+      sequenceNoteProviderNode: sequencerNoteProviderNode,
     );
   }
 
@@ -164,7 +181,8 @@ class RemoveGeneratorCommand extends Command {
   GeneratorModel generator;
   NodeModel generatorNode;
   NodeModel gainNode;
-  NodeModel midiGenNode;
+  // NodeModel midiGenNode;
+  NodeModel sequenceNoteProviderNode;
   late int index;
 
   RemoveGeneratorCommand({
@@ -173,7 +191,10 @@ class RemoveGeneratorCommand extends Command {
   }) : generatorNode =
            project.processingGraph.nodes[generator.generatorNodeId]!,
        gainNode = project.processingGraph.nodes[generator.gainNodeId]!,
-       midiGenNode = project.processingGraph.nodes[generator.midiGenNodeId]! {
+       //  midiGenNode = project.processingGraph.nodes[generator.midiGenNodeId]!
+       sequenceNoteProviderNode =
+           project.processingGraph.nodes[generator // what is this formatting
+               .sequenceNoteProviderNodeId]! {
     index = project.generatorOrder.indexOf(generator.id);
   }
 
@@ -190,7 +211,8 @@ class RemoveGeneratorCommand extends Command {
       index: index,
       generatorNode: generatorNode,
       gainNode: gainNode,
-      midiGenNode: midiGenNode,
+      // midiGenNode: midiGenNode,
+      sequenceNoteProviderNode: sequenceNoteProviderNode,
     );
   }
 }

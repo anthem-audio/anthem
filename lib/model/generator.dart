@@ -44,7 +44,8 @@ class GeneratorModel extends _GeneratorModel
         generatorType: GeneratorType.instrument,
         generatorNodeId: null,
         gainNodeId: null,
-        midiGenNodeId: null,
+        // midiGenNodeId: null,
+        sequenceNoteProviderNodeId: null,
       );
 
   GeneratorModel({
@@ -54,7 +55,8 @@ class GeneratorModel extends _GeneratorModel
     required super.color,
     required super.generatorNodeId,
     required super.gainNodeId,
-    required super.midiGenNodeId,
+    // required super.midiGenNodeId,
+    required super.sequenceNoteProviderNodeId,
   });
 
   factory GeneratorModel.fromJson(Map<String, dynamic> json) =>
@@ -86,8 +88,11 @@ abstract class _GeneratorModel with Store, AnthemModelBase {
   @anthemObservable
   String? gainNodeId;
 
+  // @anthemObservable
+  // String? midiGenNodeId;
+
   @anthemObservable
-  String? midiGenNodeId;
+  String? sequenceNoteProviderNodeId;
 
   _GeneratorModel({
     required this.id,
@@ -96,6 +101,7 @@ abstract class _GeneratorModel with Store, AnthemModelBase {
     required this.color,
     required this.generatorNodeId,
     required this.gainNodeId,
-    required this.midiGenNodeId,
+    // required this.midiGenNodeId,
+    required this.sequenceNoteProviderNodeId,
   }) : super();
 }
