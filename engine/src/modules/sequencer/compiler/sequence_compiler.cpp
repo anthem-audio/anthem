@@ -282,7 +282,7 @@ std::optional<std::tuple<double, double>> AnthemSequenceCompiler::clampStartAndE
     return std::nullopt;
   }
 
-  if (start > rangeEnd && end > rangeEnd) {
+  if (start >= rangeEnd && end >= rangeEnd) {
     return std::nullopt;
   }
 
