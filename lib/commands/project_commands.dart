@@ -20,6 +20,7 @@
 import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/model.dart';
 
 import 'command.dart';
@@ -32,6 +33,9 @@ void _addGenerator(
   required NodeModel gainNode,
   // required NodeModel midiGenNode,
   required NodeModel sequenceNoteProviderNode,
+
+  Map<Id, AnthemObservableList<NoteModel>>? notes,
+  Map<Id, AutomationLaneModel>? automationLanes,
 }) {
   if (index != null) {
     project.generatorOrder.insert(index, generator.id);
@@ -89,6 +93,17 @@ void _addGenerator(
     ),
   );
 
+  // Add back sequence data for this generator to all patterns
+  for (final pattern in project.sequence.patterns.values) {
+    if (notes != null && notes.containsKey(pattern.id)) {
+      pattern.notes[generator.id] = notes[pattern.id]!;
+    }
+
+    if (automationLanes != null && automationLanes.containsKey(pattern.id)) {
+      pattern.automationLanes[generator.id] = automationLanes[pattern.id]!;
+    }
+  }
+
   project.engine.processingGraphApi.compile();
 }
 
@@ -108,6 +123,17 @@ void _removeGenerator(ProjectModel project, Id generatorID) {
   project.processingGraph.removeNode(generator.gainNodeId!);
   // project.processingGraph.removeNode(generator.midiGenNodeId!);
   project.processingGraph.removeNode(generator.sequenceNoteProviderNodeId!);
+
+  // Remove sequence data for this generator from all patterns
+  for (final pattern in project.sequence.patterns.values) {
+    if (pattern.notes.containsKey(generatorID)) {
+      pattern.notes.remove(generatorID);
+    }
+
+    if (pattern.automationLanes.containsKey(generatorID)) {
+      pattern.automationLanes.remove(generatorID);
+    }
+  }
 
   project.engine.processingGraphApi.compile();
 }
@@ -185,6 +211,12 @@ class RemoveGeneratorCommand extends Command {
   NodeModel sequenceNoteProviderNode;
   late int index;
 
+  /// Map of pattern ID to notes for this generator.
+  Map<Id, AnthemObservableList<NoteModel>>? notes;
+
+  /// Map of pattern ID to notes for this generator.
+  Map<Id, AutomationLaneModel>? automationLanes;
+
   RemoveGeneratorCommand({
     required ProjectModel project,
     required this.generator,
@@ -196,6 +228,20 @@ class RemoveGeneratorCommand extends Command {
            project.processingGraph.nodes[generator // what is this formatting
                .sequenceNoteProviderNodeId]! {
     index = project.generatorOrder.indexOf(generator.id);
+
+    notes = {};
+    for (final pattern in project.sequence.patterns.values) {
+      if (pattern.notes.containsKey(generator.id)) {
+        notes![pattern.id] = pattern.notes[generator.id]!;
+      }
+    }
+
+    automationLanes = {};
+    for (final pattern in project.sequence.patterns.values) {
+      if (pattern.automationLanes.containsKey(generator.id)) {
+        automationLanes![pattern.id] = pattern.automationLanes[generator.id]!;
+      }
+    }
   }
 
   @override
@@ -213,6 +259,9 @@ class RemoveGeneratorCommand extends Command {
       gainNode: gainNode,
       // midiGenNode: midiGenNode,
       sequenceNoteProviderNode: sequenceNoteProviderNode,
+
+      notes: notes,
+      automationLanes: automationLanes,
     );
   }
 }

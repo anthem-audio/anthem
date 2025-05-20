@@ -106,6 +106,13 @@ class PatternModel extends _PatternModel
       // When the pattern title is changed, we need to update the clip title
       // render cache.
       addFieldChangedListener((fieldAccessors, operation) {
+        // The notes field might be entirely replaced instead of just updated.
+        // In this case we also need to update the clip notes render cache.
+        if (fieldAccessors.elementAtOrNull(1) == null &&
+            fieldAccessors.first.fieldName == 'notes') {
+          scheduleClipNotesRenderCacheUpdate();
+        }
+
         if (fieldAccessors.first.fieldName == 'name') {
           updateClipTitleCache();
         }
