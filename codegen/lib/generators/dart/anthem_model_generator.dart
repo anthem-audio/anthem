@@ -217,7 +217,7 @@ catch (_) {
         // to the entire subtree when it is attached. Otherwise, we need to
         // do it now.
         setter.write('''
-if (!isTopLevelModel && $fieldGetter.parent != null) {
+if (!isTopLevelModel && parent != null) {
   $fieldGetter.setParentProperties(
     parent: this,
     fieldName: '$fieldName',
@@ -243,7 +243,7 @@ ${first ? '' : 'else '}if (value is ${subtype.dartName}) {
             // to the entire subtree when it is attached. Otherwise, we need to
             // do it now.
             setter.write('''
-  if (!isTopLevelModel && value.parent != null) {
+  if (!isTopLevelModel && parent != null) {
     value.setParentProperties(
       parent: this,
       fieldName: '$fieldName',
@@ -359,7 +359,7 @@ ${first ? '' : 'else '}if (super.$fieldName is ${subtype.dartName}) {
           // to the entire subtree when it is attached. Otherwise, we need to
           // do it now.
           result.write('''
-  if (!isTopLevelModel && $fieldGetter.parent != null) {
+  if (!isTopLevelModel && parent != null) {
     $fieldGetter.setParentProperties(
       parent: this,
       fieldName: '$fieldName',
