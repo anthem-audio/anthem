@@ -801,17 +801,6 @@ void writeParentSetterForType({
       writer.writeLine(
         '$fieldAccessor$valueFn->initialize($fieldAccessor$valueFn, $parentAccessor);',
       );
-
-      writer.writeLine('for (auto& item : (*$fieldAccessor$valueFn)) {');
-      writer.incrementWhitespace();
-      writeParentSetterForType(
-        writer: writer,
-        type: type.itemType,
-        fieldAccessor: 'item',
-        parentAccessor: '$fieldAccessor$valueFn',
-      );
-      writer.decrementWhitespace();
-      writer.writeLine('}');
     }
   } else if (type is MapModelType) {
     if (type.valueType is CustomModelType ||
@@ -822,19 +811,6 @@ void writeParentSetterForType({
       writer.writeLine(
         '$fieldAccessor$valueFn->initialize($fieldAccessor$valueFn, $parentAccessor);',
       );
-
-      writer.writeLine(
-        'for (auto& [key, value] : (*$fieldAccessor$valueFn)) {',
-      );
-      writer.incrementWhitespace();
-      writeParentSetterForType(
-        writer: writer,
-        type: type.valueType,
-        fieldAccessor: 'value',
-        parentAccessor: '$fieldAccessor$valueFn',
-      );
-      writer.decrementWhitespace();
-      writer.writeLine('}');
     }
   } else if (type is UnionModelType) {
     final valueFn = type.isNullable ? '.value()' : '';

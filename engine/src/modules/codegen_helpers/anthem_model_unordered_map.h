@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -28,6 +28,45 @@ class AnthemModelUnorderedMap : public AnthemModelBase {
 private:
   // The internal unordered_map
   std::unordered_map<Key, T, Hash, KeyEqual> data;
+
+  // Helper to check if T is std::shared_ptr<U> where U derives from AnthemModelBase
+  template <typename U>
+  struct IsSharedPtrOfAnthemModelBase : std::false_type {};
+
+  template <typename U>
+  struct IsSharedPtrOfAnthemModelBase<std::shared_ptr<U>>
+      : std::is_base_of<AnthemModelBase, U> {};
+
+  // Helper to check if T is std::optional<std::shared_ptr<U>> where U derives from AnthemModelBase
+  template <typename U>
+  struct IsOptionalSharedPtrOfAnthemModelBase : std::false_type {};
+
+  template <typename U>
+  struct IsOptionalSharedPtrOfAnthemModelBase<std::optional<std::shared_ptr<U>>>
+      : std::is_base_of<AnthemModelBase, U> {};
+
+  static constexpr bool isAnthemModelBase =
+      IsSharedPtrOfAnthemModelBase<T>::value ||
+          IsOptionalSharedPtrOfAnthemModelBase<T>::value;
+
+  // Helper method to initialize a value if it's a model
+  void initializeItem(T& item) {
+    // Only initialize if this map itself has been initialized
+    auto selfPtr = this->self.lock();
+    if (!selfPtr) {
+      return;
+    }
+
+    if constexpr (IsOptionalSharedPtrOfAnthemModelBase<T>::value) {
+      if (item && *item) {  // Check if optional has value AND the shared_ptr is not null
+        (*item)->initialize(item, selfPtr);
+      }
+    } else if constexpr (IsSharedPtrOfAnthemModelBase<T>::value) {
+      if (item) {  // Check if the shared_ptr is not null
+        item->initialize(item, selfPtr);
+      }
+    }
+  }
 
 public:
   // Constructors
@@ -60,8 +99,31 @@ public:
   T& at(const Key& key) { return data.at(key); }
   const T& at(const Key& key) const { return data.at(key); }
 
-  T& operator[](const Key& key) { return data[key]; }
-  T& operator[](Key&& key) { return data[std::move(key)]; }
+  T& operator[](const Key& key) { 
+    auto it = data.find(key);
+    bool isNewElement = (it == data.end());
+    T& result = data[key];
+    
+    // If this was a new element, initialize it
+    if (isNewElement) {
+      initializeItem(result);
+    }
+    
+    return result;
+  }
+  
+  T& operator[](Key&& key) { 
+    auto it = data.find(key);
+    bool isNewElement = (it == data.end());
+    T& result = data[std::move(key)];
+    
+    // If this was a new element, initialize it
+    if (isNewElement) {
+      initializeItem(result);
+    }
+    
+    return result;
+  }
 
   // Iterators
   typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator begin() { return data.begin(); }
@@ -78,50 +140,94 @@ public:
   void clear() noexcept { data.clear(); }
 
   std::pair<typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator, bool> insert(const typename std::unordered_map<Key, T, Hash, KeyEqual>::value_type& value) {
-    return data.insert(value);
+    auto result = data.insert(value);
+    if (result.second) {  // If insertion was successful
+      initializeItem(result.first->second);
+    }
+    return result;
   }
 
   typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator insert(typename std::unordered_map<Key, T, Hash, KeyEqual>::const_iterator hint, const typename std::unordered_map<Key, T, Hash, KeyEqual>::value_type& value) {
-    return data.insert(hint, value);
+    auto resultIt = data.insert(hint, value);
+    initializeItem(resultIt->second);
+    return resultIt;
   }
 
   template<typename InputIt>
   void insert(InputIt first, InputIt last) {
+    // Store the initial size to check for new elements
+    size_t initialSize = data.size();
     data.insert(first, last);
+    
+    // Only initialize elements that were actually inserted
+    if (data.size() > initialSize) {
+      for (auto it = first; it != last; ++it) {
+        auto mapIt = data.find(it->first);
+        if (mapIt != data.end()) {
+          initializeItem(mapIt->second);
+        }
+      }
+    }
   }
 
   void insert(std::initializer_list<typename std::unordered_map<Key, T, Hash, KeyEqual>::value_type> ilist) {
+    // Store the initial size to check for new elements
+    size_t initialSize = data.size();
     data.insert(ilist);
+    
+    // Initialize all newly inserted elements
+    if (data.size() > initialSize) {
+      for (const auto& item : ilist) {
+        auto it = data.find(item.first);
+        if (it != data.end()) {
+          initializeItem(it->second);
+        }
+      }
+    }
   }
 
   template<typename M>
   std::pair<typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator, bool> insert_or_assign(const Key& k, M&& obj) {
-    return data.insert_or_assign(k, std::forward<M>(obj));
+    auto result = data.insert_or_assign(k, std::forward<M>(obj));
+    initializeItem(result.first->second);
+    return result;
   }
 
   template<typename M>
   std::pair<typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator, bool> insert_or_assign(Key&& k, M&& obj) {
-    return data.insert_or_assign(std::move(k), std::forward<M>(obj));
+    auto result = data.insert_or_assign(std::move(k), std::forward<M>(obj));
+    initializeItem(result.first->second);
+    return result;
   }
 
   template<typename M>
   typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator insert_or_assign(typename std::unordered_map<Key, T, Hash, KeyEqual>::const_iterator hint, const Key& k, M&& obj) {
-    return data.insert_or_assign(hint, k, std::forward<M>(obj));
+    auto resultIt = data.insert_or_assign(hint, k, std::forward<M>(obj));
+    initializeItem(resultIt->second);
+    return resultIt;
   }
 
   template<typename M>
   typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator insert_or_assign(typename std::unordered_map<Key, T, Hash, KeyEqual>::const_iterator hint, Key&& k, M&& obj) {
-    return data.insert_or_assign(hint, std::move(k), std::forward<M>(obj));
+    auto resultIt = data.insert_or_assign(hint, std::move(k), std::forward<M>(obj));
+    initializeItem(resultIt->second);
+    return resultIt;
   }
 
   template<typename... Args>
   std::pair<typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator, bool> emplace(Args&&... args) {
-    return data.emplace(std::forward<Args>(args)...);
+    auto result = data.emplace(std::forward<Args>(args)...);
+    if (result.second) {  // If insertion was successful
+      initializeItem(result.first->second);
+    }
+    return result;
   }
 
   template<typename... Args>
   typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator emplace_hint(typename std::unordered_map<Key, T, Hash, KeyEqual>::const_iterator hint, Args&&... args) {
-    return data.emplace_hint(hint, std::forward<Args>(args)...);
+    auto resultIt = data.emplace_hint(hint, std::forward<Args>(args)...);
+    initializeItem(resultIt->second);
+    return resultIt;
   }
 
   typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator erase(typename std::unordered_map<Key, T, Hash, KeyEqual>::const_iterator pos) {
@@ -174,9 +280,17 @@ public:
   KeyEqual key_eq() const { return data.key_eq(); }
 
   // Additional methods
-  // void myMethod() {
-    // Your implementation here
-  // }
+  void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override {
+    AnthemModelBase::initialize(self, parent);
+
+    // Initialize all existing items in the map, if this map is holding Anthem
+    // models
+    if constexpr (isAnthemModelBase) {
+      for (auto& [key, value] : data) {
+        initializeItem(value);
+      }
+    }
+  }
 
   // Friend functions for comparison operators
   template<typename K, typename V, typename H, typename KE>
