@@ -836,6 +836,41 @@ void writeParentSetterForType({
       writer.decrementWhitespace();
       writer.writeLine('}');
     }
+  } else if (type is UnionModelType) {
+    final valueFn = type.isNullable ? '.value()' : '';
+
+    writer.writeLine('rfl::visit([&](auto& item) {');
+    writer.incrementWhitespace();
+
+    writer.writeLine(
+      'using Name = typename std::decay_t<decltype(item)>::Name;',
+    );
+
+    bool isFirst = true;
+    for (final subType in type.subTypes) {
+      // If the subtype does not inherit from AnthemModelBase, then we
+      // don't need to do anything with it.
+      if (subType is! CustomModelType &&
+          subType is! ListModelType &&
+          subType is! MapModelType) {
+        continue;
+      }
+
+      writer.writeLine(
+        '${isFirst ? '' : 'else '}if constexpr (std::is_same<Name, rfl::Literal<"${subType.dartName}">>()) {',
+      );
+      writer.incrementWhitespace();
+      writer.writeLine(
+        'item.value()->initialize(item.value(), $parentAccessor);',
+      );
+      writer.decrementWhitespace();
+      writer.writeLine('}');
+
+      isFirst = false;
+    }
+
+    writer.decrementWhitespace();
+    writer.writeLine('}, $fieldAccessor$valueFn);');
   }
 
   if (shouldWrite && type.isNullable) {
