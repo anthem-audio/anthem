@@ -67,7 +67,7 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
           nodeId: id,
           id: _ToneGeneratorProcessorModel.frequencyPortId,
           config: NodePortConfigModel(
-            dataType: NodePortDataType.audio,
+            dataType: NodePortDataType.control,
             parameterConfig: ParameterConfigModel(
               id: _ToneGeneratorProcessorModel.frequencyPortId,
               defaultValue: 440,
@@ -81,7 +81,7 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
           nodeId: id,
           id: _ToneGeneratorProcessorModel.amplitudePortId,
           config: NodePortConfigModel(
-            dataType: NodePortDataType.audio,
+            dataType: NodePortDataType.control,
             parameterConfig: ParameterConfigModel(
               id: _ToneGeneratorProcessorModel.amplitudePortId,
               defaultValue: 0.125,

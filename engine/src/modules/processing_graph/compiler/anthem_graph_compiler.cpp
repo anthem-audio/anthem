@@ -149,7 +149,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
 
   for (auto& node : nodesToProcess) {
     actions->push_back(
-      std::make_unique<WriteParametersToControlInputsAction>(node->context, 44100.0f)
+      std::make_unique<WriteParametersToControlInputsAction>(node->context, 48000.0f)
     );
   }
 

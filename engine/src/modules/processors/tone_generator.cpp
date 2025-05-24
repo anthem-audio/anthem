@@ -29,7 +29,7 @@ ToneGeneratorProcessor::ToneGeneratorProcessor(const ToneGeneratorProcessorModel
   phase = 0;
   // amplitude = 0.125;
   // this->frequency = frequency;
-  sampleRate = 44100.0; // TODO: This should be dynamic - in the context maybe?
+  sampleRate = 48000.0; // TODO: This should be dynamic - in the context maybe?
 
   hasNoteOverride = false;
   noteOverride = 0;

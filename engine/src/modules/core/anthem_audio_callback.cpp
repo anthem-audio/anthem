@@ -88,7 +88,7 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
 
   auto duration = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
   auto durationInSeconds = static_cast<double>(duration) / 1e6;
-  auto sampleRate = 44100.0f; // TODO: Get sample rate from device
+  auto sampleRate = 48000.0f; // TODO: Get sample rate from device
   auto cpuBurden = durationInSeconds * sampleRate / static_cast<double>(numSamples); // actual time / total buffer time
   cpuBurdenProvider->rt_updateCpuBurden(cpuBurden);
   playheadProvider->rt_updatePlayheadPosition(transport->rt_playhead);

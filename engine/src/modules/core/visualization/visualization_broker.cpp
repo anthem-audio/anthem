@@ -22,7 +22,6 @@
 #include "messages/messages.h"
 
 VisualizationBroker::VisualizationBroker() {
-  std::cout << "VisualizationBroker CTOR." << std::endl;
   this->updateIntervalMs = 15.0;
   this->startTimerHz(static_cast<int>(1000.0 / this->updateIntervalMs));
 }

@@ -23,6 +23,7 @@
 #include <iostream>
 
 #include <juce_audio_devices/juce_audio_devices.h>
+#include <juce_audio_processors/juce_audio_processors.h>
 
 #include "modules/core/anthem_audio_callback.h"
 #include "modules/processing_graph/runtime/anthem_graph_processor.h"
@@ -40,8 +41,6 @@ private:
 
   // Singleton shared pointer instance
   static std::unique_ptr<Anthem> instance;
-
-  juce::AudioDeviceManager deviceManager;
 
   std::unique_ptr<AnthemAudioCallback> audioCallback;
 
@@ -80,6 +79,12 @@ public:
   // such as CPU burden and transport location.
   std::unique_ptr<GlobalVisualizationSources> globalVisualizationSources;
 
+  // JUCE class for managing audio devices
+  juce::AudioDeviceManager audioDeviceManager;
+
+  // JUCE class for loading and managing plugins
+  juce::AudioPluginFormatManager audioPluginFormatManager;
+
   Anthem();
 
   void initialize();
@@ -109,6 +114,6 @@ public:
 
   // TODO: These generic config items should be settable, which means they
   // should live in the actual synced model.
-  static const int SAMPLE_RATE = 44100;
+  static const int SAMPLE_RATE = 48000;
   static const int NUM_CHANNELS = 2;
 };

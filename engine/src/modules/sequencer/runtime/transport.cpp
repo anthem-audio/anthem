@@ -62,7 +62,7 @@ double Transport::rt_getPlayheadAfterAdvance(int numSamples) {
     auto beatsPerMinute = rt_config.beatsPerMinute;
     auto ticksPerMinute = ticksPerQuarter * beatsPerMinute;
     auto ticksPerSecond = ticksPerMinute / 60.0;
-    auto ticksPerSample = ticksPerSecond / 44100.0; // Assuming a sample rate of 44100 Hz
+    auto ticksPerSample = ticksPerSecond / 48000.0; // Assuming a sample rate of 48000 Hz
     auto ticks = static_cast<double>(numSamples * ticksPerSample);
     return rt_playhead + ticks;
   }

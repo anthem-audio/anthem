@@ -24,7 +24,7 @@
 
 SimpleMidiGeneratorProcessor::SimpleMidiGeneratorProcessor(const SimpleMidiGeneratorProcessorModelImpl& _impl)
     : AnthemProcessor("SimpleMidiGenerator"), SimpleMidiGeneratorProcessorModelBase(_impl) {
-  sampleRate = 44100; // TODO: This should be dynamic - in the context maybe?
+  sampleRate = 48000; // TODO: This should be dynamic - in the context maybe?
   durationSamples = 22050;
   velocity = 80;
   noteOn = false;

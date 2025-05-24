@@ -32,11 +32,13 @@ void Anthem::initialize() {
   sequenceStore = std::make_unique<AnthemRuntimeSequenceStore>();
   transport = std::make_unique<Transport>();
   globalVisualizationSources = std::make_unique<GlobalVisualizationSources>();
+
+  audioPluginFormatManager.addDefaultFormats();
 }
 
 void Anthem::shutdown() {
   if (isAudioCallbackRunning) {
-    deviceManager.removeAudioCallback(audioCallback.get());
+    audioDeviceManager.removeAudioCallback(audioCallback.get());
   }
 }
 
@@ -49,10 +51,10 @@ void Anthem::startAudioCallback() {
   audioCallback = std::make_unique<AnthemAudioCallback>(this);
 
   // Initialize the audio device manager with 2 input and 2 output channels
-  this->deviceManager.initialiseWithDefaultDevices(2, 2);
+  this->audioDeviceManager.initialiseWithDefaultDevices(2, 2);
 
   // Set up the audio callback
-  this->deviceManager.addAudioCallback(this->audioCallback.get());
+  this->audioDeviceManager.addAudioCallback(this->audioCallback.get());
 
   isAudioCallbackRunning = true;
 }
