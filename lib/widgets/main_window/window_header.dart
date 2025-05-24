@@ -178,18 +178,17 @@ class _TabState extends State<_Tab> {
           width: 115,
           decoration: BoxDecoration(
             color: widget.isSelected ? Theme.panel.accent : Theme.panel.main,
-            borderRadius:
-                widget.isSelected
-                    ? const BorderRadius.only(
-                      topLeft: Radius.circular(2),
-                      topRight: Radius.circular(2),
-                    )
-                    : const BorderRadius.only(
-                      topLeft: Radius.circular(1),
-                      topRight: Radius.circular(1),
-                      bottomRight: Radius.circular(1),
-                      bottomLeft: Radius.circular(1),
-                    ),
+            borderRadius: widget.isSelected
+                ? const BorderRadius.only(
+                    topLeft: Radius.circular(2),
+                    topRight: Radius.circular(2),
+                  )
+                : const BorderRadius.only(
+                    topLeft: Radius.circular(1),
+                    topRight: Radius.circular(1),
+                    bottomRight: Radius.circular(1),
+                    bottomLeft: Radius.circular(1),
+                  ),
           ),
           child: Padding(
             padding: EdgeInsets.only(bottom: widget.isSelected ? 1 : 0),

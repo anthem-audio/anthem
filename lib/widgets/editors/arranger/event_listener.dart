@@ -55,15 +55,15 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
             return EditorScrollManager(
               timeView: viewModel.timeView,
               onVerticalScrollChange: (pixelDelta) {
-                viewModel.verticalScrollPosition = (viewModel
-                            .verticalScrollPosition +
-                        pixelDelta *
-                            0.01 *
-                            viewModel.baseTrackHeight.clamp(
-                              minTrackHeight,
-                              maxTrackHeight,
-                            ))
-                    .clamp(0, double.infinity);
+                viewModel.verticalScrollPosition =
+                    (viewModel.verticalScrollPosition +
+                            pixelDelta *
+                                0.01 *
+                                viewModel.baseTrackHeight.clamp(
+                                  minTrackHeight,
+                                  maxTrackHeight,
+                                ))
+                        .clamp(0, double.infinity);
               },
               onVerticalPanStart: (y) {
                 _panYStart = y;
@@ -127,10 +127,8 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
       scrollPosition: viewModel.verticalScrollPosition,
     );
 
-    final (
-      clip: clipUnderCursor,
-      resizeHandle: resizeHandleUnderCursor,
-    ) = viewModel.getContentUnderCursor(event.localPosition);
+    final (clip: clipUnderCursor, resizeHandle: resizeHandleUnderCursor) =
+        viewModel.getContentUnderCursor(event.localPosition);
 
     return ArrangerPointerEvent(
       offset: offset,

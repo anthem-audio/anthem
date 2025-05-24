@@ -357,11 +357,10 @@ void main() {
 
     test('Change all the note properties', () async {
       final patternId = project.sequence.patternOrder[0];
-      final note =
-          project
-              .sequence
-              .patterns[project.sequence.patternOrder[0]]!
-              .notes['generator1']![0];
+      final note = project
+          .sequence
+          .patterns[project.sequence.patternOrder[0]]!
+          .notes['generator1']![0];
 
       project.execute(
         SetNoteAttributeCommand(

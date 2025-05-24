@@ -57,14 +57,13 @@ class PianoRollGrid extends StatelessWidget {
             animation: timeViewAnimationController,
             builder: (context, child) {
               return CustomPaintObserver(
-                painterBuilder:
-                    () => PianoRollBackgroundPainter(
-                      project: project,
-                      viewModel: viewModel,
-                      keyValueAtTop: keyValueAtTopAnimation.value,
-                      timeViewStart: timeViewStartAnimation.value,
-                      timeViewEnd: timeViewEndAnimation.value,
-                    ),
+                painterBuilder: () => PianoRollBackgroundPainter(
+                  project: project,
+                  viewModel: viewModel,
+                  keyValueAtTop: keyValueAtTopAnimation.value,
+                  timeViewStart: timeViewStartAnimation.value,
+                  timeViewEnd: timeViewEndAnimation.value,
+                ),
               );
             },
           );
@@ -155,8 +154,9 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
     if (viewModel.pressedNote != null && activePattern != null) {
       final notes = activePattern.notes[project.activeInstrumentID];
       if (notes != null) {
-        final key =
-            notes.firstWhere((note) => note.id == viewModel.pressedNote).key;
+        final key = notes
+            .firstWhere((note) => note.id == viewModel.pressedNote)
+            .key;
 
         final keyHeight = viewModel.keyHeight;
 

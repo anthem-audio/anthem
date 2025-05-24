@@ -41,14 +41,13 @@ class GeneratorRowNotes extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaintObserver(
-      painterBuilder:
-          () => _GeneratorRowNotesPainter(
-            pattern: pattern,
-            generatorID: generatorID,
-            timeViewStart: timeViewStart,
-            ticksPerPixel: ticksPerPixel,
-            color: color,
-          ),
+      painterBuilder: () => _GeneratorRowNotesPainter(
+        pattern: pattern,
+        generatorID: generatorID,
+        timeViewStart: timeViewStart,
+        ticksPerPixel: ticksPerPixel,
+        color: color,
+      ),
     );
   }
 }

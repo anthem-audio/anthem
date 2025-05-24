@@ -108,12 +108,12 @@ class _DropdownState extends State<Dropdown> {
             (!widget.allowNoSelection
                 ? []
                 : [
-                  widget.items.isNotEmpty ? Separator() : null,
-                  AnthemMenuItem(
-                    text: '(none)',
-                    onSelected: () => select(null),
-                  ),
-                ].nonNulls.toList()),
+                    widget.items.isNotEmpty ? Separator() : null,
+                    AnthemMenuItem(
+                      text: '(none)',
+                      onSelected: () => select(null),
+                    ),
+                  ].nonNulls.toList()),
       ),
       child: MouseRegion(
         // No need to setState since we're not reacting to these

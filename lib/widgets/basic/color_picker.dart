@@ -80,13 +80,12 @@ class _ColorPickerState extends State<ColorPicker> {
                     onPointerCancel: onPointerUp,
                     child: Container(
                       margin: const EdgeInsets.all(squareMargin),
-                      color:
-                          HSLColor.fromAHSL(
-                            1,
-                            hue,
-                            (saturation * saturationMultiplier).clamp(0, 1),
-                            (0.5 * lightnessMultiplier).clamp(0, 1),
-                          ).toColor(),
+                      color: HSLColor.fromAHSL(
+                        1,
+                        hue,
+                        (saturation * saturationMultiplier).clamp(0, 1),
+                        (0.5 * lightnessMultiplier).clamp(0, 1),
+                      ).toColor(),
                     ),
                   ),
                 );

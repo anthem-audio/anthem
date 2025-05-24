@@ -41,14 +41,13 @@ class VisualizationProvider {
   }
 
   void _sendUpdateIntervalToEngine() {
-    final refreshRate =
-        WidgetsBinding
-            .instance
-            .platformDispatcher
-            .views
-            .first
-            .display
-            .refreshRate;
+    final refreshRate = WidgetsBinding
+        .instance
+        .platformDispatcher
+        .views
+        .first
+        .display
+        .refreshRate;
 
     _project.engine.visualizationApi.setUpdateInterval(
       (1000 / refreshRate) * 0.9, // A bit faster than the refresh rate

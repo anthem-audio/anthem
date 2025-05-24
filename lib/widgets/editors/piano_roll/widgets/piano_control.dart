@@ -77,20 +77,19 @@ class _PianoControlState extends State<PianoControl> {
 
         final notes = whiteNotes + blackNotes;
 
-        final noteWidgets =
-            notes.map((note) {
-              final keyType = getKeyType(note);
+        final noteWidgets = notes.map((note) {
+          final keyType = getKeyType(note);
 
-              Widget child;
+          Widget child;
 
-              if (keyType == KeyType.white) {
-                child = _WhiteKey(keyHeight: widget.keyHeight, keyNumber: note);
-              } else {
-                child = _BlackKey(keyHeight: widget.keyHeight, keyNumber: note);
-              }
+          if (keyType == KeyType.white) {
+            child = _WhiteKey(keyHeight: widget.keyHeight, keyNumber: note);
+          } else {
+            child = _BlackKey(keyHeight: widget.keyHeight, keyNumber: note);
+          }
 
-              return LayoutId(id: note, child: child);
-            }).toList();
+          return LayoutId(id: note, child: child);
+        }).toList();
 
         return ClipRect(
           child: CustomMultiChildLayout(
@@ -168,11 +167,13 @@ class _WhiteKey extends StatelessWidget {
     final showKeyText = keyHeight > 25 && (keyNumber - 3) % 12 == 0;
 
     final notchType = getNotchType(keyNumber);
-    final widgetHeight =
-        notchType == NotchType.both ? keyHeight * 2 : keyHeight * 1.5;
+    final widgetHeight = notchType == NotchType.both
+        ? keyHeight * 2
+        : keyHeight * 1.5;
 
-    final double opacity =
-        keyNumber < minKeyValue || keyNumber > maxKeyValue ? 0.7 : 1;
+    final double opacity = keyNumber < minKeyValue || keyNumber > maxKeyValue
+        ? 0.7
+        : 1;
 
     return Container(
       height: widgetHeight - 1,
@@ -180,25 +181,24 @@ class _WhiteKey extends StatelessWidget {
         borderRadius: const BorderRadius.horizontal(right: Radius.circular(1)),
         color: const Color(0xFFAAB7C0).withValues(alpha: opacity),
       ),
-      child:
-          showKeyText
-              ? Center(
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      right: 4,
-                      // Aligns this text with the text in the notes
-                      top: keyHeight * 0.5 + 1,
-                    ),
-                    child: Text(
-                      style: const TextStyle(color: blackKeyColor),
-                      keyToString(keyNumber),
-                    ),
+      child: showKeyText
+          ? Center(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    right: 4,
+                    // Aligns this text with the text in the notes
+                    top: keyHeight * 0.5 + 1,
+                  ),
+                  child: Text(
+                    style: const TextStyle(color: blackKeyColor),
+                    keyToString(keyNumber),
                   ),
                 ),
-              )
-              : null,
+              ),
+            )
+          : null,
     );
   }
 }

@@ -209,16 +209,15 @@ class _ScrollbarState extends State<Scrollbar> {
                 if (!_isHorizontal()) return;
                 _handleMove(details.localPosition.dx, context.size?.width ?? 1);
               },
-              child:
-                  isHorizontal
-                      ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: flexChildren,
-                      )
-                      : Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: flexChildren,
-                      ),
+              child: isHorizontal
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: flexChildren,
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: flexChildren,
+                    ),
             ),
           ),
         ],

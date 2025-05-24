@@ -135,15 +135,14 @@ class _MultiVisualizationBuilderState extends State<MultiVisualizationBuilder> {
 
     _lastUpdateTimes = List.filled(widget.configs.length, null);
 
-    _subscriptions =
-        widget.configs
-            .map(
-              (config) => Provider.of<ProjectModel>(
-                context,
-                listen: false,
-              ).visualizationProvider.subscribe(config),
-            )
-            .toList();
+    _subscriptions = widget.configs
+        .map(
+          (config) => Provider.of<ProjectModel>(
+            context,
+            listen: false,
+          ).visualizationProvider.subscribe(config),
+        )
+        .toList();
 
     for (var i = 0; i < _subscriptions.length; i++) {
       final sub = _subscriptions[i];

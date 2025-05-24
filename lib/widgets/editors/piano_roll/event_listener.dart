@@ -53,10 +53,8 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
 
     final controller = Provider.of<PianoRollController>(context, listen: false);
 
-    final (
-      note: noteUnderCursor,
-      resizeHandle: resizeHandleUnderCursor,
-    ) = viewModel.getContentUnderCursor(e.localPosition);
+    final (note: noteUnderCursor, resizeHandle: resizeHandleUnderCursor) =
+        viewModel.getContentUnderCursor(e.localPosition);
 
     final note = pixelsToKeyValue(
       keyHeight: viewModel.keyHeight,

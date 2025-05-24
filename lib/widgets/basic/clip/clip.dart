@@ -75,12 +75,11 @@ class Clip extends StatelessWidget {
       child,
     ) {
       return CustomPaintObserver(
-        painterBuilder:
-            () => ClipPainter(
-              curveShader: shader,
-              devicePixelRatio: View.of(context).devicePixelRatio,
-              pattern: patternModel,
-            ),
+        painterBuilder: () => ClipPainter(
+          curveShader: shader,
+          devicePixelRatio: View.of(context).devicePixelRatio,
+          pattern: patternModel,
+        ),
       );
     });
   }
@@ -130,10 +129,12 @@ Color getBaseColor({
   required bool pressed,
 }) {
   final hue = selected ? 166.0 : color.hue;
-  var saturation =
-      selected ? 0.6 : (0.28 * color.saturationMultiplier).clamp(0.0, 1.0);
-  var lightness =
-      selected ? 0.31 : (0.49 * color.lightnessMultiplier).clamp(0.0, 0.92);
+  var saturation = selected
+      ? 0.6
+      : (0.28 * color.saturationMultiplier).clamp(0.0, 1.0);
+  var lightness = selected
+      ? 0.31
+      : (0.49 * color.lightnessMultiplier).clamp(0.0, 0.92);
 
   if (pressed) {
     saturation = (saturation * 0.9).clamp(0.0, 1.0);
@@ -149,10 +150,12 @@ Color getTextColor({
   required bool pressed,
 }) {
   final hue = selected ? 166.0 : color.hue;
-  var saturation =
-      selected ? 1.0 : (1 * color.saturationMultiplier).clamp(0.0, 1.0);
-  var lightness =
-      selected ? 0.92 : (0.92 * color.lightnessMultiplier).clamp(0.0, 0.92);
+  var saturation = selected
+      ? 1.0
+      : (1 * color.saturationMultiplier).clamp(0.0, 1.0);
+  var lightness = selected
+      ? 0.92
+      : (0.92 * color.lightnessMultiplier).clamp(0.0, 0.92);
 
   if (pressed) {
     saturation = (saturation * 0.9).clamp(0.0, 1.0);
@@ -168,10 +171,12 @@ Color getContentColor({
   required bool pressed,
 }) {
   final hue = selected ? 166.0 : color.hue;
-  var saturation =
-      selected ? 0.7 : (0.7 * color.saturationMultiplier).clamp(0.0, 1.0);
-  var lightness =
-      selected ? 0.78 : (0.78 * color.lightnessMultiplier).clamp(0.0, 0.92);
+  var saturation = selected
+      ? 0.7
+      : (0.7 * color.saturationMultiplier).clamp(0.0, 1.0);
+  var lightness = selected
+      ? 0.78
+      : (0.78 * color.lightnessMultiplier).clamp(0.0, 0.92);
 
   if (pressed) {
     saturation = (saturation * 0.9).clamp(0.0, 1.0);

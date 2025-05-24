@@ -56,12 +56,11 @@ class ProjectModel extends _ProjectModel
   }
 
   factory ProjectModel.fromJson(Map<String, dynamic> json) {
-    final project =
-        _$ProjectModelAnthemModelMixin.fromJson(json)
-          ..isSaved = true
-          // This is the top model in the tree. setParentPropertiesOnChildren will not
-          // work correctly if we don't set this.
-          ..isTopLevelModel = true;
+    final project = _$ProjectModelAnthemModelMixin.fromJson(json)
+      ..isSaved = true
+      // This is the top model in the tree. setParentPropertiesOnChildren will not
+      // work correctly if we don't set this.
+      ..isTopLevelModel = true;
     project._init();
     return project;
   }
@@ -344,19 +343,18 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
         };
       }
 
-      final convertedAccesses =
-          accesses.map((access) {
-            return message_api.FieldAccess(
-              fieldName: access.fieldName,
-              fieldType: switch (access.fieldType) {
-                FieldType.raw => message_api.FieldType.raw,
-                FieldType.list => message_api.FieldType.list,
-                FieldType.map => message_api.FieldType.map,
-              },
-              listIndex: access.index,
-              serializedMapKey: serializeMapKey(access.key),
-            );
-          }).toList();
+      final convertedAccesses = accesses.map((access) {
+        return message_api.FieldAccess(
+          fieldName: access.fieldName,
+          fieldType: switch (access.fieldType) {
+            FieldType.raw => message_api.FieldType.raw,
+            FieldType.list => message_api.FieldType.list,
+            FieldType.map => message_api.FieldType.map,
+          },
+          listIndex: access.index,
+          serializedMapKey: serializeMapKey(access.key),
+        );
+      }).toList();
 
       engine.modelSyncApi.updateModel(
         updateKind: switch (operation) {

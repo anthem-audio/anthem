@@ -58,15 +58,14 @@ class PianoRollContentRenderer extends StatelessWidget {
     final viewModel = Provider.of<PianoRollViewModel>(context);
 
     return CustomPaintObserver(
-      painterBuilder:
-          () => PianoRollPainter(
-            timeViewStart: timeViewStart,
-            timeViewEnd: timeViewEnd,
-            keyValueAtTop: keyValueAtTop,
-            project: project,
-            viewModel: viewModel,
-            devicePixelRatio: View.of(context).devicePixelRatio,
-          ),
+      painterBuilder: () => PianoRollPainter(
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        keyValueAtTop: keyValueAtTop,
+        project: project,
+        viewModel: viewModel,
+        devicePixelRatio: View.of(context).devicePixelRatio,
+      ),
     );
   }
 }
@@ -151,19 +150,17 @@ class PianoRollPainter extends CustomPainterObserver {
       final isSelected = viewModel.selectedNotes.contains(note.id);
       final isHovered = viewModel.hoveredNote == note.id;
 
-      var saturation =
-          isPressed
-              ? 0.6
-              : isSelected
-              ? 0.37
-              : 0.46;
+      var saturation = isPressed
+          ? 0.6
+          : isSelected
+          ? 0.37
+          : 0.46;
 
-      var lightness =
-          isPressed
-              ? 0.22
-              : isSelected
-              ? 0.37
-              : 0.31;
+      var lightness = isPressed
+          ? 0.22
+          : isSelected
+          ? 0.37
+          : 0.31;
 
       if (isHovered && !isPressed) {
         saturation -= 0.06;
@@ -205,13 +202,12 @@ class PianoRollPainter extends CustomPainterObserver {
         final cachedLabel = noteLabelImageCache.get(key);
         if (cachedLabel == null) return;
 
-        final textColor =
-            HSLColor.fromAHSL(
-              1,
-              166,
-              (saturation * 0.6).clamp(0, 1),
-              (lightness * 2).clamp(0, 1),
-            ).toColor();
+        final textColor = HSLColor.fromAHSL(
+          1,
+          166,
+          (saturation * 0.6).clamp(0, 1),
+          (lightness * 2).clamp(0, 1),
+        ).toColor();
 
         final textX = x + 5;
         final textY = y + (keyHeight - noteLabelHeight) * 0.5 - 1;

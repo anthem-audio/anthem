@@ -123,13 +123,12 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
       if (event.buttons & kSecondaryButton > 0) {
         int newPointTime;
 
-        newPointTime =
-            pixelsToTime(
-              timeViewStart: viewModel.timeView.start,
-              timeViewEnd: viewModel.timeView.end,
-              viewPixelWidth: event.viewSize.width,
-              pixelOffsetFromLeft: event.pos.dx,
-            ).round();
+        newPointTime = pixelsToTime(
+          timeViewStart: viewModel.timeView.start,
+          timeViewEnd: viewModel.timeView.end,
+          viewPixelWidth: event.viewSize.width,
+          pixelOffsetFromLeft: event.pos.dx,
+        ).round();
 
         if (!event.keyboardModifiers.alt) {
           final divisionChanges = getDivisionChanges(
@@ -213,10 +212,9 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
             pressed!;
             return (
               index: index + pressed.metadata.pointIndex,
-              startTime:
-                  automationLane
-                      .points[pressed.metadata.pointIndex + index]
-                      .offset,
+              startTime: automationLane
+                  .points[pressed.metadata.pointIndex + index]
+                  .offset,
             );
           },
         ),
@@ -247,9 +245,9 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
       _eventHandlingState = EventHandlingState.changingTension;
 
       // The first point doesn't have a tension handle, so this is safe
-      final previousPoint =
-          automationLane.points.nonObservableInner[pressed.metadata.pointIndex -
-              1];
+      final previousPoint = automationLane
+          .points
+          .nonObservableInner[pressed.metadata.pointIndex - 1];
 
       _tensionChangeActionData = _TensionChangeActionData(
         pointIndex: pressed.metadata.pointIndex,
@@ -347,9 +345,9 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
       final deltaTension = -deltaY / 250;
       final invertMult = _tensionChangeActionData!.invert ? -1 : 1;
 
-      point.tension = (_tensionChangeActionData!.startTension +
-              invertMult * deltaTension)
-          .clamp(-1, 1);
+      point.tension =
+          (_tensionChangeActionData!.startTension + invertMult * deltaTension)
+              .clamp(-1, 1);
     }
   }
 
@@ -359,12 +357,11 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
 
     switch (_eventHandlingState) {
       case EventHandlingState.movingPoint:
-        final point =
-            project
-                .sequence
-                .patterns[project.sequence.activePatternID]!
-                .automationLanes[project.activeAutomationGeneratorID]!
-                .points[_pointMoveActionData!.pointIndex];
+        final point = project
+            .sequence
+            .patterns[project.sequence.activePatternID]!
+            .automationLanes[project.activeAutomationGeneratorID]!
+            .points[_pointMoveActionData!.pointIndex];
 
         project.startJournalPage();
 
@@ -415,12 +412,11 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
 
         break;
       case EventHandlingState.changingTension:
-        final point =
-            project
-                .sequence
-                .patterns[project.sequence.activePatternID]!
-                .automationLanes[project.activeAutomationGeneratorID]!
-                .points[_tensionChangeActionData!.pointIndex];
+        final point = project
+            .sequence
+            .patterns[project.sequence.activePatternID]!
+            .automationLanes[project.activeAutomationGeneratorID]!
+            .points[_tensionChangeActionData!.pointIndex];
 
         project.startJournalPage();
 

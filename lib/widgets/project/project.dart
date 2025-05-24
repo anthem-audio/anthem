@@ -143,8 +143,8 @@ class _ProjectState extends State<Project> {
                             visible: projectModel.isDetailViewSelected,
                             child: RepaintBoundary(
                               child: ProjectDetails(
-                                selectedProjectDetails:
-                                    projectModel.getSelectedDetailView(),
+                                selectedProjectDetails: projectModel
+                                    .getSelectedDetailView(),
                               ),
                             ),
                           ),

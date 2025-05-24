@@ -189,10 +189,9 @@ GetBestDivisionResult getBestDivision({
         if (divisionSizeLowerBound >= barLength) {
           snapSize = barLength;
         } else {
-          final division =
-              snap is DivisionSnap
-                  ? snap.division
-                  : Division(multiplier: 1, divisor: 4);
+          final division = snap is DivisionSnap
+              ? snap.division
+              : Division(multiplier: 1, divisor: 4);
           snapSize = division.getSizeInTicks(ticksPerQuarter, timeSignature);
         }
         bestDivision = snapSize;

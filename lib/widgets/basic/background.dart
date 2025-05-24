@@ -47,10 +47,9 @@ class Background extends StatelessWidget {
       create: (context) => type,
       child: Container(
         decoration: BoxDecoration(
-          color:
-              type == BackgroundType.dark
-                  ? Theme.panel.main
-                  : Theme.panel.accent,
+          color: type == BackgroundType.dark
+              ? Theme.panel.main
+              : Theme.panel.accent,
           border: border,
           borderRadius: borderRadius,
         ),

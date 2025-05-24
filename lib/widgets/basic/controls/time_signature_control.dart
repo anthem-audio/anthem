@@ -62,10 +62,11 @@ class _TimeSignatureControlState extends State<TimeSignatureControl> {
                     startNumerator = timeSignature.numerator;
                   },
                   onChange: (event) {
-                    final newNumerator = (startNumerator +
-                            event.absolute.dy / 50)
-                        .round()
-                        .clamp(1, 32);
+                    final newNumerator =
+                        (startNumerator + event.absolute.dy / 50).round().clamp(
+                          1,
+                          32,
+                        );
 
                     timeSignature.numerator = newNumerator;
                   },
@@ -94,10 +95,10 @@ class _TimeSignatureControlState extends State<TimeSignatureControl> {
                     );
                   },
                   onChange: (event) {
-                    final newDenominatorIndex = (startDenominatorIndex +
-                            event.absolute.dy / 50)
-                        .round()
-                        .clamp(0, validDenominators.length - 1);
+                    final newDenominatorIndex =
+                        (startDenominatorIndex + event.absolute.dy / 50)
+                            .round()
+                            .clamp(0, validDenominators.length - 1);
 
                     timeSignature.denominator =
                         validDenominators[newDenominatorIndex];

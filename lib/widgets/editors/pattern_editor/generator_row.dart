@@ -109,8 +109,9 @@ class _GeneratorRowState extends State<GeneratorRow> {
                         if (node == null) return;
 
                         node
-                            .getPortById(GainProcessorModel.gainPortId)
-                            .parameterValue = value;
+                                .getPortById(GainProcessorModel.gainPortId)
+                                .parameterValue =
+                            value;
                       },
                     );
                   },
@@ -150,10 +151,9 @@ class _GeneratorRowState extends State<GeneratorRow> {
                 },
                 child: Observer(
                   builder: (context) {
-                    final backgroundHoverColor =
-                        HSLColor.fromColor(
-                          generator.color,
-                        ).withLightness(0.56).toColor();
+                    final backgroundHoverColor = HSLColor.fromColor(
+                      generator.color,
+                    ).withLightness(0.56).toColor();
 
                     return Listener(
                       onPointerDown: (e) {
@@ -178,11 +178,10 @@ class _GeneratorRowState extends State<GeneratorRow> {
                             child: Text(
                               generator.name,
                               style: TextStyle(
-                                color:
-                                    HSLColor.fromColor(generator.color)
-                                        .withSaturation(0.5)
-                                        .withLightness(0.8)
-                                        .toColor(),
+                                color: HSLColor.fromColor(generator.color)
+                                    .withSaturation(0.5)
+                                    .withLightness(0.8)
+                                    .toColor(),
                                 fontSize: 11,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -211,11 +210,11 @@ class _GeneratorRowState extends State<GeneratorRow> {
                   onTap: () {
                     final generator = project.generators[widget.generatorID]!;
 
-                    projectViewModel.selectedEditor = switch (generator
-                        .generatorType) {
-                      GeneratorType.instrument => EditorKind.detail,
-                      GeneratorType.automation => EditorKind.automation,
-                    };
+                    projectViewModel.selectedEditor =
+                        switch (generator.generatorType) {
+                          GeneratorType.instrument => EditorKind.detail,
+                          GeneratorType.automation => EditorKind.automation,
+                        };
                   },
                   child: Container(
                     height: 30,

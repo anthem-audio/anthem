@@ -127,27 +127,24 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
               },
               onDoubleTap:
                   widget.model.children.isNotEmpty &&
-                          widget.model.onClick != null
-                      ? () => widget.model.onClick?.call()
-                      : null,
+                      widget.model.onClick != null
+                  ? () => widget.model.onClick?.call()
+                  : null,
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: Container(
                   decoration: BoxDecoration(
-                    color:
-                        isHovered || hasHighestScore
-                            ? Theme.primary.subtle
-                            : null,
+                    color: isHovered || hasHighestScore
+                        ? Theme.primary.subtle
+                        : null,
                     border: Border.all(
-                      color:
-                          isHovered
-                              ? Theme.primary.subtleBorder
-                              : const Color(0x00000000),
+                      color: isHovered
+                          ? Theme.primary.subtleBorder
+                          : const Color(0x00000000),
                     ),
-                    borderRadius:
-                        !isHovered && hasHighestScore
-                            ? null
-                            : BorderRadius.circular(4),
+                    borderRadius: !isHovered && hasHighestScore
+                        ? null
+                        : BorderRadius.circular(4),
                   ),
                   height: itemHeight,
                   child: Row(
@@ -157,21 +154,20 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
                       SizedBox(
                         width:
                             widget.model.children.isNotEmpty ||
-                                    widget.hasOpenIndicatorIndent
-                                ? 10
-                                : 0,
+                                widget.hasOpenIndicatorIndent
+                            ? 10
+                            : 0,
                         height: 10,
-                        child:
-                            (widget.model.children.isEmpty)
-                                ? null
-                                : Transform.rotate(
-                                  angle: isOpen ? 0 : -pi / 2,
-                                  alignment: Alignment.center,
-                                  child: SvgIcon(
-                                    icon: Icons.arrowDown,
-                                    color: Theme.text.main,
-                                  ),
+                        child: (widget.model.children.isEmpty)
+                            ? null
+                            : Transform.rotate(
+                                angle: isOpen ? 0 : -pi / 2,
+                                alignment: Alignment.center,
+                                child: SvgIcon(
+                                  icon: Icons.arrowDown,
+                                  color: Theme.text.main,
                                 ),
+                              ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(

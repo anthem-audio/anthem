@@ -177,8 +177,8 @@ class _TempoControlState extends State<_TempoControl> {
         originalTempo = projectModel.sequence.beatsPerMinuteRaw;
       },
       onChanged: (value) {
-        projectModel.sequence.beatsPerMinuteRaw =
-            (value.clamp(10, 999) * 100).round();
+        projectModel.sequence.beatsPerMinuteRaw = (value.clamp(10, 999) * 100)
+            .round();
       },
       onEnd: () {
         final newTempo = projectModel.sequence.beatsPerMinuteRaw;
@@ -205,12 +205,11 @@ class _RightGroup extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         VisualizationBuilder(
-          builder:
-              (context, value) => HorizontalMeterSimple(
-                width: 60,
-                value: value,
-                label: '${(value * 100).round()}%',
-              ),
+          builder: (context, value) => HorizontalMeterSimple(
+            width: 60,
+            value: value,
+            label: '${(value * 100).round()}%',
+          ),
           config: VisualizationSubscriptionConfig.max('cpu'),
           minimumUpdateInterval: const Duration(milliseconds: 1000),
         ),

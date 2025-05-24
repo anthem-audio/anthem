@@ -200,12 +200,9 @@ class _PianoRollHeader extends StatelessWidget {
                   showNameOnButton: false,
                   allowNoSelection: false,
                   hint: 'Change the active tool',
-                  selectedID:
-                      EditorTool.values
-                          .firstWhere(
-                            (tool) => tool.name == viewModel.tool.name,
-                          )
-                          .name,
+                  selectedID: EditorTool.values
+                      .firstWhere((tool) => tool.name == viewModel.tool.name)
+                      .name,
                   items: [
                     DropdownItem(
                       id: EditorTool.pencil.name,
@@ -331,8 +328,9 @@ class _PianoRollContentState extends State<_PianoRollContent>
 
     final timeline = Observer(
       builder: (context) {
-        final timelineHeight =
-            (getPattern()?.hasTimeMarkers ?? false) ? 42.0 : 21.0;
+        final timelineHeight = (getPattern()?.hasTimeMarkers ?? false)
+            ? 42.0
+            : 21.0;
         final pattern = getPattern();
 
         return SizedBox(
@@ -448,13 +446,12 @@ class _PianoRollContentState extends State<_PianoRollContent>
                               viewModel.keyValueAtTop - selectionBox.height,
                         );
 
-                        final borderColor =
-                            const HSLColor.fromAHSL(
-                              1,
-                              166,
-                              0.6,
-                              0.35,
-                            ).toColor();
+                        final borderColor = const HSLColor.fromAHSL(
+                          1,
+                          166,
+                          0.6,
+                          0.35,
+                        ).toColor();
                         final backgroundColor = borderColor.withAlpha(100);
 
                         return Positioned(
@@ -638,12 +635,11 @@ class _PianoRollCanvasCursorState extends State<_PianoRollCanvasCursor> {
         final pos = e.localPosition;
 
         final contentUnderCursor = viewModel.getContentUnderCursor(pos);
-        final newCursor =
-            contentUnderCursor.resizeHandle != null
-                ? SystemMouseCursors.resizeLeftRight
-                : contentUnderCursor.note != null
-                ? SystemMouseCursors.move
-                : MouseCursor.defer;
+        final newCursor = contentUnderCursor.resizeHandle != null
+            ? SystemMouseCursors.resizeLeftRight
+            : contentUnderCursor.note != null
+            ? SystemMouseCursors.move
+            : MouseCursor.defer;
 
         final note = contentUnderCursor.note?.metadata.id;
         if (note != viewModel.hoveredNote) {

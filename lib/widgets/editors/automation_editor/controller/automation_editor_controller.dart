@@ -78,11 +78,9 @@ class _AutomationEditorController {
         visitedPointIds.add(point.id);
 
         for (final handleKind in HandleKind.values) {
-          final handle =
-              viewModel.pointAnimationTracker.values[(
-                handleKind: handleKind,
-                id: point.id,
-              )];
+          final handle = viewModel
+              .pointAnimationTracker
+              .values[(handleKind: handleKind, id: point.id)];
 
           var didUpdateHandle = false;
 

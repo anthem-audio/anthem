@@ -386,13 +386,9 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       timeViewEnd: viewModel.timeView.end,
     );
 
-    final targetTime =
-        event.keyboardModifiers.alt
-            ? eventTime
-            : getSnappedTime(
-              rawTime: eventTime,
-              divisionChanges: divisionChanges,
-            );
+    final targetTime = event.keyboardModifiers.alt
+        ? eventTime
+        : getSnappedTime(rawTime: eventTime, divisionChanges: divisionChanges);
 
     project.startJournalPage();
 
@@ -460,16 +456,14 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         final track = event.track - _clipMoveActionData!.trackOffset;
         final offset = event.offset - _clipMoveActionData!.timeOffset;
 
-        final arrangement =
-            project.sequence.arrangements[project
-                .sequence
-                .activeArrangementID]!;
-        final clips =
-            isSelectionMove
-                ? viewModel.selectedClips.map(
-                  (clipID) => arrangement.clips[clipID]!,
-                )
-                : [_clipMoveActionData!.clipUnderCursor];
+        final arrangement = project
+            .sequence
+            .arrangements[project.sequence.activeArrangementID]!;
+        final clips = isSelectionMove
+            ? viewModel.selectedClips.map(
+                (clipID) => arrangement.clips[clipID]!,
+              )
+            : [_clipMoveActionData!.clipUnderCursor];
 
         var snappedOffset = offset.floor();
 
@@ -488,10 +482,8 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
             rawTime: offset.floor(),
             divisionChanges: divisionChanges,
             round: true,
-            startTime:
-                _clipMoveActionData!.startTimes[_clipMoveActionData!
-                    .clipUnderCursor
-                    .id]!,
+            startTime: _clipMoveActionData!
+                .startTimes[_clipMoveActionData!.clipUnderCursor.id]!,
           );
         }
 
@@ -558,20 +550,18 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
           Point(event.offset, event.track),
         );
 
-        final clipsInSelection =
-            arrangement.clips.values
-                .where((clip) {
-                  final trackTop =
-                      project.sequence.trackOrder
-                          .indexOf(clip.trackId)
-                          .toDouble();
+        final clipsInSelection = arrangement.clips.values
+            .where((clip) {
+              final trackTop = project.sequence.trackOrder
+                  .indexOf(clip.trackId)
+                  .toDouble();
 
-                  return viewModel.selectionBox!.intersects(
-                    Rectangle(clip.offset, trackTop, clip.width, 1),
-                  );
-                })
-                .map((clip) => clip.id)
-                .toSet();
+              return viewModel.selectionBox!.intersects(
+                Rectangle(clip.offset, trackTop, clip.width, 1),
+              );
+            })
+            .map((clip) => clip.id)
+            .toSet();
 
         if (isSubtractive) {
           viewModel.selectedClips = ObservableSet.of(
@@ -587,46 +577,42 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
         break;
       case EventHandlingState.deleting:
-        final arrangement =
-            project.sequence.arrangements[project
-                .sequence
-                .activeArrangementID]!;
+        final arrangement = project
+            .sequence
+            .arrangements[project.sequence.activeArrangementID]!;
 
         final thisPoint = Point(event.offset, event.track);
 
-        final clipsUnderCursorPath =
-            arrangement.clips.values.where((clip) {
-              // This might be too inefficient... For each clip, we have to get the
-              // index of its track in the track list. This is fine if there's not
-              // a lot of clips or not a lot of tracks, or if the clips are all
-              // near the top (this last one is pretty likely), but feels not-so-
-              // great to me for larger projects. I don't want to prematurely
-              // optimize though, so I'm leaving this note for the next weary
-              // traveler.
-              final clipTrack = project.sequence.trackOrder.indexOf(
-                clip.trackId,
-              );
+        final clipsUnderCursorPath = arrangement.clips.values.where((clip) {
+          // This might be too inefficient... For each clip, we have to get the
+          // index of its track in the track list. This is fine if there's not
+          // a lot of clips or not a lot of tracks, or if the clips are all
+          // near the top (this last one is pretty likely), but feels not-so-
+          // great to me for larger projects. I don't want to prematurely
+          // optimize though, so I'm leaving this note for the next weary
+          // traveler.
+          final clipTrack = project.sequence.trackOrder.indexOf(clip.trackId);
 
-              final clipTopLeft = Point(clip.offset, clipTrack);
-              final clipBottomRight = Point(
-                clip.offset + clip.width,
-                clipTrack + 1,
-              );
+          final clipTopLeft = Point(clip.offset, clipTrack);
+          final clipBottomRight = Point(
+            clip.offset + clip.width,
+            clipTrack + 1,
+          );
 
-              return rectanglesIntersect(
-                    Rectangle.fromPoints(
-                      _deleteActionData!.mostRecentPoint,
-                      thisPoint,
-                    ),
-                    Rectangle.fromPoints(clipTopLeft, clipBottomRight),
-                  ) &&
-                  lineIntersectsBox(
-                    _deleteActionData!.mostRecentPoint,
-                    thisPoint,
-                    clipTopLeft,
-                    clipBottomRight,
-                  );
-            }).toList();
+          return rectanglesIntersect(
+                Rectangle.fromPoints(
+                  _deleteActionData!.mostRecentPoint,
+                  thisPoint,
+                ),
+                Rectangle.fromPoints(clipTopLeft, clipBottomRight),
+              ) &&
+              lineIntersectsBox(
+                _deleteActionData!.mostRecentPoint,
+                thisPoint,
+                clipTopLeft,
+                clipBottomRight,
+              );
+        }).toList();
 
         final clipsToRemoveFromIgnore = <ClipModel>[];
 
@@ -655,13 +641,12 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         break;
       case EventHandlingState.resizingSingleClip:
       case EventHandlingState.resizingSelection:
-        final arrangement =
-            project.sequence.arrangements[project
-                .sequence
-                .activeArrangementID]!;
+        final arrangement = project
+            .sequence
+            .arrangements[project.sequence.activeArrangementID]!;
 
-        var snappedOriginalTime =
-            _clipResizeActionData!.pointerStartOffset.floor();
+        var snappedOriginalTime = _clipResizeActionData!.pointerStartOffset
+            .floor();
         var snappedEventTime = event.offset.floor();
 
         final divisionChanges = getDivisionChanges(
@@ -690,9 +675,8 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
         late int snapAtSmallestClipStart;
 
-        final offsetOfSmallestClipAtStart =
-            _clipResizeActionData!.startWidths[_clipResizeActionData!
-                .smallestClip]!;
+        final offsetOfSmallestClipAtStart = _clipResizeActionData!
+            .startWidths[_clipResizeActionData!.smallestClip]!;
 
         for (var i = 0; i < divisionChanges.length; i++) {
           if (i < divisionChanges.length - 1 &&
@@ -789,8 +773,10 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
           // Update cursor pattern and time range
           viewModel.cursorPattern =
               _clipResizeActionData!.pressedClip.patternId;
-          viewModel.cursorTimeRange =
-              _clipResizeActionData!.pressedClip.timeView?.clone();
+          viewModel.cursorTimeRange = _clipResizeActionData!
+              .pressedClip
+              .timeView
+              ?.clone();
         }
 
         break;
@@ -809,26 +795,22 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       final isSingleClip =
           _eventHandlingState == EventHandlingState.movingSingleClip;
 
-      final relevantClips =
-          isSingleClip
-              ? [_clipMoveActionData!.clipUnderCursor]
-              : viewModel.selectedClips
-                  .map((clipID) => clips[clipID]!)
-                  .toList();
+      final relevantClips = isSingleClip
+          ? [_clipMoveActionData!.clipUnderCursor]
+          : viewModel.selectedClips.map((clipID) => clips[clipID]!).toList();
 
-      final commands =
-          relevantClips.map((clip) {
-            return MoveClipCommand(
-              arrangementID: arrangement.id,
-              clipID: clip.id,
-              oldOffset: _clipMoveActionData!.startTimes[clip.id]!,
-              newOffset: clip.offset,
-              oldTrack:
-                  project.sequence.trackOrder[_clipMoveActionData!
-                      .startTracks[clip.id]!],
-              newTrack: clip.trackId,
-            );
-          }).toList();
+      final commands = relevantClips.map((clip) {
+        return MoveClipCommand(
+          arrangementID: arrangement.id,
+          clipID: clip.id,
+          oldOffset: _clipMoveActionData!.startTimes[clip.id]!,
+          newOffset: clip.offset,
+          oldTrack: project
+              .sequence
+              .trackOrder[_clipMoveActionData!.startTracks[clip.id]!],
+          newTrack: clip.trackId,
+        );
+      }).toList();
 
       project.push(JournalPageCommand(commands));
     } else if (_eventHandlingState == EventHandlingState.deleting) {
@@ -847,26 +829,22 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       final arrangement =
           project.sequence.arrangements[project.sequence.activeArrangementID]!;
 
-      final commands =
-          _clipResizeActionData!.startWidths.keys.map((id) {
-            final clip = arrangement.clips[id]!;
-            final oldStart = _clipResizeActionData!.startTimeViewStarts[id]!;
-            final oldWidth = _clipResizeActionData!.startWidths[id]!;
+      final commands = _clipResizeActionData!.startWidths.keys.map((id) {
+        final clip = arrangement.clips[id]!;
+        final oldStart = _clipResizeActionData!.startTimeViewStarts[id]!;
+        final oldWidth = _clipResizeActionData!.startWidths[id]!;
 
-            return ResizeClipCommand(
-              arrangementID: project.sequence.activeArrangementID!,
-              clipID: id,
-              oldOffset: _clipResizeActionData!.startOffsets[id]!,
-              oldTimeView: TimeViewModel(
-                start: oldStart,
-                end: oldStart + oldWidth,
-              ),
-              newOffset: clip.offset,
-              newTimeView:
-                  clip.timeView?.clone() ??
-                  TimeViewModel(start: 0, end: clip.width),
-            );
-          }).toList();
+        return ResizeClipCommand(
+          arrangementID: project.sequence.activeArrangementID!,
+          clipID: id,
+          oldOffset: _clipResizeActionData!.startOffsets[id]!,
+          oldTimeView: TimeViewModel(start: oldStart, end: oldStart + oldWidth),
+          newOffset: clip.offset,
+          newTimeView:
+              clip.timeView?.clone() ??
+              TimeViewModel(start: 0, end: clip.width),
+        );
+      }).toList();
 
       final command = JournalPageCommand(commands);
 

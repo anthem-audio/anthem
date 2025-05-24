@@ -102,10 +102,9 @@ class VisualizationSubscription {
   }
 
   VisualizationSubscription(this._config, this._parent)
-    : _buffer =
-          _config.type == VisualizationSubscriptionType.lastNValues
-              ? RingBufferDouble(_config.bufferSize!)
-              : null {
+    : _buffer = _config.type == VisualizationSubscriptionType.lastNValues
+          ? RingBufferDouble(_config.bufferSize!)
+          : null {
     _ticker = Ticker(_onTick)..start();
   }
 

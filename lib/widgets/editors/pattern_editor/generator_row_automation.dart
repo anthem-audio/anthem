@@ -51,16 +51,15 @@ class GeneratorRowAutomation extends StatelessWidget {
       child,
     ) {
       return CustomPaintObserver(
-        painterBuilder:
-            () => _GeneratorRowAutomationPainter(
-              shader: shader,
-              pattern: pattern,
-              generatorID: generatorID,
-              timeViewStart: timeViewStart,
-              ticksPerPixel: ticksPerPixel,
-              color: color,
-              devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
-            ),
+        painterBuilder: () => _GeneratorRowAutomationPainter(
+          shader: shader,
+          pattern: pattern,
+          generatorID: generatorID,
+          timeViewStart: timeViewStart,
+          ticksPerPixel: ticksPerPixel,
+          color: color,
+          devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
+        ),
       );
     });
   }

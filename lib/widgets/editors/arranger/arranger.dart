@@ -167,14 +167,13 @@ class _ArrangerState extends State<Arranger> {
                                         showNameOnButton: false,
                                         allowNoSelection: false,
                                         hint: 'Change the active tool',
-                                        selectedID:
-                                            EditorTool.values
-                                                .firstWhere(
-                                                  (tool) =>
-                                                      tool.name ==
-                                                      viewModel!.tool.name,
-                                                )
-                                                .name,
+                                        selectedID: EditorTool.values
+                                            .firstWhere(
+                                              (tool) =>
+                                                  tool.name ==
+                                                  viewModel!.tool.name,
+                                            )
+                                            .name,
                                         items: [
                                           DropdownItem(
                                             id: EditorTool.pencil.name,
@@ -222,25 +221,22 @@ class _ArrangerState extends State<Arranger> {
                                     builder: (context) {
                                       return Dropdown(
                                         hint: 'Change the active arrangement',
-                                        selectedID:
-                                            project
-                                                .sequence
-                                                .activeArrangementID,
-                                        items:
-                                            project.sequence.arrangementOrder
-                                                .map<DropdownItem>((id) {
-                                                  final name =
-                                                      project
-                                                          .sequence
-                                                          .arrangements[id]!
-                                                          .name;
-                                                  return DropdownItem(
-                                                    id: id.toString(),
-                                                    name: name,
-                                                    hint: name,
-                                                  );
-                                                })
-                                                .toList(),
+                                        selectedID: project
+                                            .sequence
+                                            .activeArrangementID,
+                                        items: project.sequence.arrangementOrder
+                                            .map<DropdownItem>((id) {
+                                              final name = project
+                                                  .sequence
+                                                  .arrangements[id]!
+                                                  .name;
+                                              return DropdownItem(
+                                                id: id.toString(),
+                                                name: name,
+                                                hint: name,
+                                              );
+                                            })
+                                            .toList(),
                                         onChanged: (selectedID) {
                                           project.sequence.activeArrangementID =
                                               selectedID;
@@ -489,9 +485,8 @@ class _ArrangerContentState extends State<_ArrangerContent>
                   SizedBox(
                     width: trackHeaderWidth,
                     child: AnimatedBuilder(
-                      animation:
-                          verticalScrollPositionAnimationHelper!
-                              .animationController,
+                      animation: verticalScrollPositionAnimationHelper!
+                          .animationController,
                       builder: (context, child) {
                         return _TrackHeaders(
                           verticalScrollPosition:
@@ -559,19 +554,18 @@ class _ArrangerCanvas extends StatelessWidget {
                     animation: timeViewAnimationController,
                     builder: (context, child) {
                       return CustomPaintObserver(
-                        painterBuilder:
-                            () => ArrangerBackgroundPainter(
-                              viewModel: viewModel,
-                              activeArrangement:
-                                  project.sequence.arrangements[project
-                                      .sequence
-                                      .activeArrangementID],
-                              project: project,
-                              verticalScrollPosition:
-                                  verticalScrollPositionAnimation.value,
-                              timeViewStart: timeViewStartAnimation.value,
-                              timeViewEnd: timeViewEndAnimation.value,
-                            ),
+                        painterBuilder: () => ArrangerBackgroundPainter(
+                          viewModel: viewModel,
+                          activeArrangement:
+                              project.sequence.arrangements[project
+                                  .sequence
+                                  .activeArrangementID],
+                          project: project,
+                          verticalScrollPosition:
+                              verticalScrollPositionAnimation.value,
+                          timeViewStart: timeViewStartAnimation.value,
+                          timeViewEnd: timeViewEndAnimation.value,
+                        ),
                       );
                     },
                   );
@@ -602,10 +596,9 @@ class _ArrangerCanvas extends StatelessWidget {
                 }
 
                 return Positioned.fill(
-                  child:
-                      project.sequence.activeArrangementID == null
-                          ? const SizedBox()
-                          : clips(),
+                  child: project.sequence.activeArrangementID == null
+                      ? const SizedBox()
+                      : clips(),
                 );
               },
             );
@@ -648,8 +641,12 @@ class _ArrangerCanvas extends StatelessWidget {
                   trackIndex: selectionBox.top + selectionBox.height,
                 );
 
-                final borderColor =
-                    const HSLColor.fromAHSL(1, 166, 0.6, 0.35).toColor();
+                final borderColor = const HSLColor.fromAHSL(
+                  1,
+                  166,
+                  0.6,
+                  0.35,
+                ).toColor();
                 final backgroundColor = borderColor.withAlpha(100);
 
                 return Positioned(
@@ -701,12 +698,11 @@ class _ArrangerCanvasCursorState extends State<_ArrangerCanvasCursor> {
         final pos = e.localPosition;
 
         final contentUnderCursor = viewModel.getContentUnderCursor(pos);
-        final newCursor =
-            contentUnderCursor.resizeHandle != null
-                ? SystemMouseCursors.resizeLeftRight
-                : contentUnderCursor.clip != null
-                ? SystemMouseCursors.move
-                : MouseCursor.defer;
+        final newCursor = contentUnderCursor.resizeHandle != null
+            ? SystemMouseCursors.resizeLeftRight
+            : contentUnderCursor.clip != null
+            ? SystemMouseCursors.move
+            : MouseCursor.defer;
 
         if (cursor == newCursor) return;
 
@@ -793,10 +789,9 @@ class _TrackHeadersState extends State<_TrackHeaders> {
                             startY = event.position.dy;
                           },
                           onPointerMove: (event) {
-                            final newPixelHeight = (event.position.dy -
-                                    startY +
-                                    startPixelHeight)
-                                .clamp(minTrackHeight, maxTrackHeight);
+                            final newPixelHeight =
+                                (event.position.dy - startY + startPixelHeight)
+                                    .clamp(minTrackHeight, maxTrackHeight);
                             final newModifier =
                                 newPixelHeight /
                                 startPixelHeight *

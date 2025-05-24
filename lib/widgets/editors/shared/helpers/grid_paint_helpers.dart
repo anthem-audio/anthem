@@ -183,14 +183,14 @@ void paintPhraseShading({
 
   var timeSignatures =
       timeSignatureChanges.isEmpty || timeSignatureChanges[0].offset > 0
-          ? [
-            TimeSignatureChangeModel(
-              timeSignature: defaultTimeSignature,
-              offset: 0,
-            ),
-            ...timeSignatureChanges,
-          ]
-          : timeSignatureChanges;
+      ? [
+          TimeSignatureChangeModel(
+            timeSignature: defaultTimeSignature,
+            offset: 0,
+          ),
+          ...timeSignatureChanges,
+        ]
+      : timeSignatureChanges;
 
   while (tick < timeViewEnd) {
     final timeSignatureChange = timeSignatures[timeSignatureIndex];
@@ -203,8 +203,8 @@ void paintPhraseShading({
 
     final nextTimeSignatureChangeOffset =
         timeSignatureIndex + 1 >= timeSignatures.length
-            ? 0x7FFFFFFFFFFFFFFF
-            : timeSignatures[timeSignatureIndex + 1].offset;
+        ? 0x7FFFFFFFFFFFFFFF
+        : timeSignatures[timeSignatureIndex + 1].offset;
 
     var phraseWidth = barSize * 4;
     if (tick + phraseWidth > nextTimeSignatureChangeOffset) {

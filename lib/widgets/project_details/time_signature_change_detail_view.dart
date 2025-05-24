@@ -63,8 +63,8 @@ class TimeSignatureChangeDetailView extends StatelessObserverWidget {
             Dropdown(
               height: 26,
               allowNoSelection: false,
-              selectedID:
-                  timeSignatureChange.timeSignature.numerator.toString(),
+              selectedID: timeSignatureChange.timeSignature.numerator
+                  .toString(),
               items: List.generate(
                 32,
                 (index) => DropdownItem(
@@ -88,8 +88,8 @@ class TimeSignatureChangeDetailView extends StatelessObserverWidget {
             Dropdown(
               height: 26,
               allowNoSelection: false,
-              selectedID:
-                  timeSignatureChange.timeSignature.numerator.toString(),
+              selectedID: timeSignatureChange.timeSignature.numerator
+                  .toString(),
               items: List.generate(6, (index) {
                 final value = pow(2, index).toString();
                 return DropdownItem(id: value, name: value);

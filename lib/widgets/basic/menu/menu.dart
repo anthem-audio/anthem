@@ -58,8 +58,8 @@ class _MenuState extends State<Menu> {
     final screenOverlayController = Provider.of<ScreenOverlayController>(
       context,
     );
-    widget.menuController.open =
-        ([pos]) => openMenu(screenOverlayController, pos);
+    widget.menuController.open = ([pos]) =>
+        openMenu(screenOverlayController, pos);
     return widget.child ?? const SizedBox();
   }
 

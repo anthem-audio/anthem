@@ -164,12 +164,12 @@ class _MyModel {
                 .getField('generateCppWrapperClass')
                 ?.toBoolValue() ??
             false,
-        cppBehaviorClassName:
-            annotationElement.getField('cppBehaviorClassName')?.toStringValue(),
-        cppBehaviorClassIncludePath:
-            annotationElement
-                .getField('cppBehaviorClassIncludePath')
-                ?.toStringValue(),
+        cppBehaviorClassName: annotationElement
+            .getField('cppBehaviorClassName')
+            ?.toStringValue(),
+        cppBehaviorClassIncludePath: annotationElement
+            .getField('cppBehaviorClassIncludePath')
+            ?.toStringValue(),
       );
 
       assert(
@@ -190,10 +190,9 @@ class _MyModel {
           .expand((e) => e),
     ].expand((e) => e);
 
-    _baseClass =
-        libraryAndImportedClasses
-            .where((e) => e.name == '_${annotatedClass.name}')
-            .firstOrNull;
+    _baseClass = libraryAndImportedClasses
+        .where((e) => e.name == '_${annotatedClass.name}')
+        .firstOrNull;
 
     // The code below just doesn't work. I think it's because the mixin isn't
     // defined, so while it exists from a lexing standpoint, the analyzer
@@ -320,53 +319,49 @@ class ModelFieldInfo {
          annotatedClass,
          field: fieldElement,
        ),
-       isObservable =
-           (() {
-             final hideAnnotation = const TypeChecker.fromRuntime(
-               AnthemObservable,
-             ).firstAnnotationOf(fieldElement);
+       isObservable = (() {
+         final hideAnnotation = const TypeChecker.fromRuntime(
+           AnthemObservable,
+         ).firstAnnotationOf(fieldElement);
 
-             if (hideAnnotation == null) return false;
+         if (hideAnnotation == null) return false;
 
-             return true;
-           })(),
-       hideAnnotation =
-           (() {
-             final hideAnnotation = const TypeChecker.fromRuntime(
-               Hide,
-             ).firstAnnotationOf(fieldElement);
+         return true;
+       })(),
+       hideAnnotation = (() {
+         final hideAnnotation = const TypeChecker.fromRuntime(
+           Hide,
+         ).firstAnnotationOf(fieldElement);
 
-             if (hideAnnotation == null) return null;
+         if (hideAnnotation == null) return null;
 
-             return Hide(
-               serialization:
-                   hideAnnotation.getField('serialization')?.toBoolValue() ??
-                   false,
-               cpp: hideAnnotation.getField('cpp')?.toBoolValue() ?? false,
-             );
-           })(),
+         return Hide(
+           serialization:
+               hideAnnotation.getField('serialization')?.toBoolValue() ?? false,
+           cpp: hideAnnotation.getField('cpp')?.toBoolValue() ?? false,
+         );
+       })(),
        isModelConstant = fieldElement.isStatic && fieldElement.isConst,
-       constantValue =
-           (() {
-             if (!(fieldElement.isStatic && fieldElement.isConst)) return null;
+       constantValue = (() {
+         if (!(fieldElement.isStatic && fieldElement.isConst)) return null;
 
-             final value = fieldElement.computeConstantValue();
+         final value = fieldElement.computeConstantValue();
 
-             if (value == null) return null;
+         if (value == null) return null;
 
-             // If the value is a string, return it as a string
-             if (value.type?.isDartCoreString == true) {
-               return '"${value.toString()}"';
-             } else if (value.type?.isDartCoreInt == true) {
-               return value.toIntValue()?.toString();
-             } else if (value.type?.isDartCoreDouble == true) {
-               return value.toDoubleValue()?.toString();
-             } else if (value.type?.isDartCoreBool == true) {
-               return value.toBoolValue()?.toString();
-             }
+         // If the value is a string, return it as a string
+         if (value.type?.isDartCoreString == true) {
+           return '"${value.toString()}"';
+         } else if (value.type?.isDartCoreInt == true) {
+           return value.toIntValue()?.toString();
+         } else if (value.type?.isDartCoreDouble == true) {
+           return value.toDoubleValue()?.toString();
+         } else if (value.type?.isDartCoreBool == true) {
+           return value.toBoolValue()?.toString();
+         }
 
-             return null;
-           })();
+         return null;
+       })();
 }
 
 /// Returns true if the field should be skipped during code generation, based on

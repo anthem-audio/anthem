@@ -40,8 +40,9 @@ mixin _ClipTitleRenderCacheMixin on _PatternModel {
     final recorder = PictureRecorder();
     final canvas = Canvas(recorder);
 
-    final devicePixelRatio =
-        widgets.View.of(mainWindowKey.currentContext!).devicePixelRatio;
+    final devicePixelRatio = widgets.View.of(
+      mainWindowKey.currentContext!,
+    ).devicePixelRatio;
 
     final width = 250.0 * devicePixelRatio;
     final height = 15.0 * devicePixelRatio;

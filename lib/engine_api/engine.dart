@@ -76,14 +76,13 @@ class Engine {
   ///
   /// Note that if the engine is stopped and not starting, this will wait for
   /// the engine to start, which may never happen.
-  Future<void> get readyForMessages =>
-      _engineState == EngineState.running
-          ? Future.value()
-          : Future(() async {
-            await _engineStateStreamController.stream.firstWhere(
-              (state) => state == EngineState.running,
-            );
-          });
+  Future<void> get readyForMessages => _engineState == EngineState.running
+      ? Future.value()
+      : Future(() async {
+          await _engineStateStreamController.stream.firstWhere(
+            (state) => state == EngineState.running,
+          );
+        });
 
   final List<void Function()> _startupCallbacks = [];
 

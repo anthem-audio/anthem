@@ -78,18 +78,17 @@ class _AutomationEditorContentRendererState
     return ShaderBuilder(
       assetKey: 'assets/shaders/automation_curve.frag',
       (context, shader, child) => CustomPaintObserver(
-        painterBuilder:
-            () => AutomationEditorPainter(
-              timeViewStart: widget.timeViewStart,
-              timeViewEnd: widget.timeViewEnd,
-              ticksPerQuarter: project.sequence.ticksPerQuarter,
-              project: project,
-              pattern: pattern,
-              shader: shader,
-              devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
-              visiblePoints: viewModel.visiblePoints,
-              viewModel: viewModel,
-            ),
+        painterBuilder: () => AutomationEditorPainter(
+          timeViewStart: widget.timeViewStart,
+          timeViewEnd: widget.timeViewEnd,
+          ticksPerQuarter: project.sequence.ticksPerQuarter,
+          project: project,
+          pattern: pattern,
+          shader: shader,
+          devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
+          visiblePoints: viewModel.visiblePoints,
+          viewModel: viewModel,
+        ),
         isComplex: true,
       ),
     );

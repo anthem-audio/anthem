@@ -68,10 +68,9 @@ class HorizontalMeterSimple extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                  color:
-                      Theme
-                          .text
-                          .main, // Should be an accent color when we restyle everything
+                  color: Theme
+                      .text
+                      .main, // Should be an accent color when we restyle everything
                   fontSize: 12,
                 ),
               ),

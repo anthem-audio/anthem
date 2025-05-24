@@ -57,11 +57,10 @@ void paintClip({
   );
 
   final rectPaint = Paint()..color = color;
-  final rectStrokePaint =
-      Paint()
-        ..color = Theme.grid.accent
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.0;
+  final rectStrokePaint = Paint()
+    ..color = Theme.grid.accent
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.0;
 
   final rect = Rect.fromLTWH(x + 0.5, y + 0.5, width - 1, height - 1);
   final rRect = RRect.fromRectAndRadius(
@@ -79,8 +78,9 @@ void paintClip({
   pattern.name;
 
   const textHeight = 15.0;
-  final textY =
-      height > smallSizeThreshold ? y : y + (height / 2) - (textHeight / 2);
+  final textY = height > smallSizeThreshold
+      ? y
+      : y + (height / 2) - (textHeight / 2);
 
   if (titleImage != null) {
     final textColor = getTextColor(
@@ -319,12 +319,9 @@ void drawPatternTitle({
     maxLines: 1,
   );
 
-  final paragraphBuilder =
-      ParagraphBuilder(paragraphStyle)
-        ..pushStyle(
-          TextStyle(color: textColor, fontSize: 11 * devicePixelRatio),
-        )
-        ..addText(pattern.name);
+  final paragraphBuilder = ParagraphBuilder(paragraphStyle)
+    ..pushStyle(TextStyle(color: textColor, fontSize: 11 * devicePixelRatio))
+    ..addText(pattern.name);
 
   final paragraph = paragraphBuilder.build();
   final constraints = ParagraphConstraints(width: width);

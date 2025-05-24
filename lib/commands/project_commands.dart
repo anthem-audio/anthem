@@ -88,8 +88,10 @@ void _addGenerator(
       sourceNodeId: gainNode.id,
       sourcePortId: gainNode.audioOutputPorts[0].id,
       destinationNodeId: project.processingGraph.masterOutputNodeId,
-      destinationPortId:
-          project.processingGraph.getMasterOutputNode().audioInputPorts[0].id,
+      destinationPortId: project.processingGraph
+          .getMasterOutputNode()
+          .audioInputPorts[0]
+          .id,
     ),
   );
 

@@ -91,14 +91,11 @@ class ProjectFooter extends StatelessWidget {
                   width: 32,
                   height: 32,
                   toggleState: projectModel.isPatternEditorVisible,
-                  onPress:
-                      () =>
-                          projectModel.isPatternEditorVisible =
-                              !projectModel.isPatternEditorVisible,
-                  hint:
-                      projectModel.isPatternEditorVisible
-                          ? 'Hide pattern editor'
-                          : 'Show pattern editor',
+                  onPress: () => projectModel.isPatternEditorVisible =
+                      !projectModel.isPatternEditorVisible,
+                  hint: projectModel.isPatternEditorVisible
+                      ? 'Hide pattern editor'
+                      : 'Show pattern editor',
                 );
               },
             ),

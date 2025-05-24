@@ -61,18 +61,15 @@ class SealedClassC extends SealedClass {
 
 void main() {
   test('Test sealed classes', () {
-    final sealedClassA =
-        SealedClassA(-1)
-          ..baseField = 1
-          ..a = 2;
-    final sealedClassB =
-        SealedClassB()
-          ..baseField = 3
-          ..b = 4;
-    final sealedClassC =
-        SealedClassC()
-          ..baseField = 5
-          ..c = 6;
+    final sealedClassA = SealedClassA(-1)
+      ..baseField = 1
+      ..a = 2;
+    final sealedClassB = SealedClassB()
+      ..baseField = 3
+      ..b = 4;
+    final sealedClassC = SealedClassC()
+      ..baseField = 5
+      ..c = 6;
 
     expect(sealedClassA.baseField, 1);
     expect(sealedClassA.a, 2);
