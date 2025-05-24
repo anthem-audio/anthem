@@ -211,7 +211,7 @@ void AnthemSequenceCompiler::getChannelNoteEventsForPattern(
   for (auto& note : *notes) {
     auto rangeOptional = clampStartAndEndToRange(
       static_cast<double>(note->offset()),
-      static_cast<double>(note->offset()),
+      static_cast<double>(note->offset() + note->length()),
       range
     );
 
