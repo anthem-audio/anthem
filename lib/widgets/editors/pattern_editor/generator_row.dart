@@ -44,7 +44,7 @@ class GeneratorRow extends StatefulWidget {
 }
 
 class _GeneratorRowState extends State<GeneratorRow> {
-  MenuController contextMenuController = MenuController();
+  AnthemMenuController contextMenuController = AnthemMenuController();
 
   bool secondaryDown = false;
 

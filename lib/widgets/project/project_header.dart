@@ -224,7 +224,7 @@ class _ProjectMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final menuController = MenuController();
+    final menuController = AnthemMenuController();
     final mainWindowController = context.read<MainWindowController>();
 
     final project = Provider.of<ProjectModel>(context);

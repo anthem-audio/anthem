@@ -55,7 +55,7 @@ abstract class _AutomationEditorViewModel with Store {
 
   final pointAnimationTracker = AutomationPointAnimationTracker();
 
-  MenuController pointMenuController = MenuController();
+  AnthemMenuController pointMenuController = AnthemMenuController();
 
   MenuDef pointMenu = MenuDef();
 

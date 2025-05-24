@@ -144,7 +144,7 @@ class PianoRollTimeViewProvider extends StatelessObserverWidget {
 class _PianoRollHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final menuController = MenuController();
+    final menuController = AnthemMenuController();
     final viewModel = Provider.of<PianoRollViewModel>(context);
 
     return SizedBox(

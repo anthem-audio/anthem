@@ -28,7 +28,7 @@ import 'package:provider/provider.dart';
 import 'menu_renderer.dart';
 
 class Menu extends StatefulWidget {
-  final MenuController menuController;
+  final AnthemMenuController menuController;
   final MenuDef menuDef;
   final Widget? child;
   late final MenuAlignment menuAlignment;
@@ -117,6 +117,6 @@ class _MenuState extends State<Menu> {
   }
 }
 
-class MenuController {
+class AnthemMenuController {
   late void Function([Offset? pos]) open;
 }

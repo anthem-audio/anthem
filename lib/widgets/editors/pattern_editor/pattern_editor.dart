@@ -54,8 +54,8 @@ class _PatternEditorState extends State<PatternEditor> {
     final projectController = Provider.of<ProjectController>(context);
     controller ??= PatternEditorController(project: project);
 
-    final kebabMenuController = MenuController();
-    final addChannelMenuController = MenuController();
+    final kebabMenuController = AnthemMenuController();
+    final addChannelMenuController = AnthemMenuController();
 
     return Provider.value(
       value: controller!,

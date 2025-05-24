@@ -84,7 +84,7 @@ class _DropdownState extends State<Dropdown> {
 
   @override
   Widget build(BuildContext context) {
-    final menuController = MenuController();
+    final menuController = AnthemMenuController();
     final selectedID = widget.selectedID ?? localSelectedID;
 
     final selectedItem = widget.items.firstWhere(

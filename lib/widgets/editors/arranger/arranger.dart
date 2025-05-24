@@ -96,7 +96,7 @@ class _ArrangerState extends State<Arranger> {
         getModel()?.width.toDouble() ??
         project.sequence.ticksPerQuarter * 4 * 4;
 
-    final menuController = MenuController();
+    final menuController = AnthemMenuController();
 
     return Provider.value(
       value: viewModel!,

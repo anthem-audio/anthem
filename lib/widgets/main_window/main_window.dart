@@ -38,7 +38,7 @@ class MainWindow extends StatefulWidget {
 
 class _MainWindowState extends State<MainWindow> {
   bool isTestMenuOpen = false;
-  MenuController menuController = MenuController();
+  AnthemMenuController menuController = AnthemMenuController();
   MainWindowController controller = MainWindowController();
 
   @override
