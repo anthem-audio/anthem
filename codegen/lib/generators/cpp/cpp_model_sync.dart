@@ -772,6 +772,7 @@ void _writeKeyDeserialize({
   }
 }
 
+// Writes (accessor)->initialize(self, parent), if necessary.
 void writeParentSetterForType({
   required Writer writer,
   required ModelType type,
@@ -779,38 +780,24 @@ void writeParentSetterForType({
   required String parentAccessor,
 }) {
   final shouldWrite =
-      type is CustomModelType || type is ListModelType || type is MapModelType;
+      type is CustomModelType ||
+      type is ListModelType ||
+      type is MapModelType ||
+      type is UnionModelType;
 
   if (shouldWrite && type.isNullable) {
     writer.writeLine('if ($fieldAccessor.has_value()) {');
     writer.incrementWhitespace();
   }
 
-  if (type is CustomModelType) {
+  if (type is CustomModelType ||
+      type is ListModelType ||
+      type is MapModelType) {
     final valueFn = type.isNullable ? '.value()' : '';
+    writer.writeLine('// Custom model');
     writer.writeLine(
       '$fieldAccessor$valueFn->initialize($fieldAccessor$valueFn, $parentAccessor);',
     );
-  } else if (type is ListModelType) {
-    if (type.itemType is CustomModelType ||
-        type.itemType is ListModelType ||
-        type.itemType is MapModelType) {
-      final valueFn = type.isNullable ? '.value()' : '';
-
-      writer.writeLine(
-        '$fieldAccessor$valueFn->initialize($fieldAccessor$valueFn, $parentAccessor);',
-      );
-    }
-  } else if (type is MapModelType) {
-    if (type.valueType is CustomModelType ||
-        type.valueType is ListModelType ||
-        type.valueType is MapModelType) {
-      final valueFn = type.isNullable ? '.value()' : '';
-
-      writer.writeLine(
-        '$fieldAccessor$valueFn->initialize($fieldAccessor$valueFn, $parentAccessor);',
-      );
-    }
   } else if (type is UnionModelType) {
     final valueFn = type.isNullable ? '.value()' : '';
 
