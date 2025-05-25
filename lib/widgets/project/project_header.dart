@@ -139,15 +139,6 @@ class _MiddleGroup extends StatelessWidget {
             projectModel.engine.sequencerApi.stop();
           },
         ),
-
-        SizedBox(width: 8),
-
-        VisualizationBuilder(
-          config: VisualizationSubscriptionConfig.latest('playhead'),
-          builder: (context, value) {
-            return Text(value.round().toString());
-          },
-        ),
       ],
     );
   }
