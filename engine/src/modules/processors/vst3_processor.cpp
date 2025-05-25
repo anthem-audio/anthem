@@ -88,17 +88,33 @@ void VST3Processor::tryInitializePlugin() {
   // will retry again later.
   if (device == nullptr) {
     auto node = std::static_pointer_cast<Node>(parent.lock());
-    auto nodeGraph = std::static_pointer_cast<ProcessingGraphModel>(node->parent.lock());
 
     auto nodeId = node->id();
-    juce::Timer::callAfterDelay(1000, [nodeGraph, nodeId, this]() {
-      // First check if "this" is still valid. If the node no longer exists, then
-      // "this" is invalid, and we should not try to initialize the plugin.
-      if (nodeGraph->nodes()->find(nodeId) == nodeGraph->nodes()->end()) {
+    juce::Timer::callAfterDelay(1000, [nodeId]() {
+      // We need to find this node via the node graph, in case our "this"
+      // pointer is no longer valid (likely due to a move during
+      // initialization).
+
+      auto project = Anthem::getInstance().project;
+      auto node = project->processingGraph()->nodes()->at(nodeId);
+      std::shared_ptr<VST3Processor> processor = rfl::visit(
+        [&](auto& item) {
+          using Name = typename std::decay_t<decltype(item)>::Name;
+          if constexpr (std::is_same<Name, rfl::Literal<"VST3ProcessorModel">>()) {
+            return item.value();
+          }
+
+          return std::shared_ptr<VST3Processor>(nullptr);
+        },
+        node->processor().value()
+      );
+
+      if (processor == nullptr) {
+        std::cerr << "Failed to find processor for node: " << nodeId << std::endl;
         return;
       }
 
-      this->tryInitializePlugin();
+      processor->tryInitializePlugin();
     });
 
     return;
