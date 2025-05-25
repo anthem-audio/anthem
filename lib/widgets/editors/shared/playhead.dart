@@ -87,20 +87,15 @@ class _PlayheadPainter extends CustomPainter {
       ..color = const Color(0xFFD9D9D9)
       ..style = PaintingStyle.fill;
 
-    final transportX =
+    final lineX =
         size.width *
         (transportPosition - timeViewStart) /
         (timeViewEnd - timeViewStart);
-    final transportWidth = 2.0;
+    final lineWidth = 1.0;
 
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
     canvas.drawRect(
-      Rect.fromLTWH(
-        transportX - transportWidth / 2,
-        0,
-        transportWidth,
-        size.height,
-      ),
+      Rect.fromLTWH(lineX - lineWidth / 2, 0, lineWidth, size.height),
       paint,
     );
   }
