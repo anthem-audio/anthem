@@ -48,7 +48,6 @@ private:
 class VST3Processor : public AnthemProcessor, public VST3ProcessorModelBase {
 private:
   juce::PluginDescription pluginDescription;
-  bool isInitialized = false;
 
   bool hasEditor = false;
 

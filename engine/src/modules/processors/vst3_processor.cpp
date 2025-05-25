@@ -73,12 +73,6 @@ void VST3Processor::process(AnthemProcessContext& context, int numSamples) {
 }
 
 void VST3Processor::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) {
-  if (this->isInitialized) {
-    return;
-  }
-
-  this->isInitialized = true;
-
   VST3ProcessorModelBase::initialize(self, parent);
 
   this->tryInitializePlugin();

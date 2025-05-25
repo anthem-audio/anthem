@@ -296,6 +296,7 @@ void _writeUpdate({
   required ModelClassInfo context,
   int fieldAccessIndexMod = 0,
   String parentAccessor = 'self',
+  bool isCollectionSetter = false,
 }) {
   switch (type) {
     case StringModelType _ ||
@@ -411,6 +412,7 @@ void _writeUpdate({
         observabilityNotifier: '',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
         parentAccessor: fieldAccessExpression,
+        isCollectionSetter: true,
       );
       writer.decrementWhitespace();
       writer.writeLine('}');
@@ -511,6 +513,7 @@ void _writeUpdate({
         observabilityNotifier: '',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
         parentAccessor: fieldAccessExpression,
+        isCollectionSetter: true,
       );
 
       writer.decrementWhitespace();
@@ -539,6 +542,12 @@ void _writeUpdate({
       );
       writer.writeLine(createFieldSetter('std::move(result.value())'));
       writer.writeLine(observabilityNotifier);
+      writeParentSetterForType(
+        writer: writer,
+        type: type,
+        fieldAccessor: fieldAccessExpression,
+        parentAccessor: parentAccessor,
+      );
 
       writer.decrementWhitespace();
       writer.writeLine('}');
@@ -567,12 +576,20 @@ void _writeUpdate({
       );
       writer.writeLine(createFieldSetter('std::move(result.value())'));
       writer.writeLine(observabilityNotifier);
-      writeParentSetterForType(
-        writer: writer,
-        type: type,
-        fieldAccessor: fieldAccessExpression,
-        parentAccessor: parentAccessor,
-      );
+
+      // If we're setting inside a collection (e.g. someList[someIndex] =
+      // deserializedValue), then we don't want to initialize the newly created
+      // model because the list will do that for us.
+      if (!isCollectionSetter) {
+        // ... Otherwise, this is a raw setter (e.g. this->someField =
+        // someValue), and we need to initialize the model.
+        writeParentSetterForType(
+          writer: writer,
+          type: type,
+          fieldAccessor: fieldAccessExpression,
+          parentAccessor: parentAccessor,
+        );
+      }
 
       writer.decrementWhitespace();
 
