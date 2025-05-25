@@ -231,7 +231,8 @@ String _generateMapGetter({
   final keyTypeQ = type.keyType.isNullable ? '?' : '';
   final valueTypeQ = type.valueType.isNullable ? '?' : '';
 
-  final result = '''(() {
+  final result =
+      '''(() {
   final valueFromJson = $getter as Map<String, dynamic>$q;
   ${type.isNullable ? 'if (valueFromJson == null) return null;' : ''}
 
@@ -262,8 +263,9 @@ String _createGetterForKeyField({
 }) {
   if (type.isNullable) {
     return switch (type) {
-      StringModelType() =>
-        throw Exception('String keys in maps cannot be nullable'),
+      StringModelType() => throw Exception(
+        'String keys in maps cannot be nullable',
+      ),
       IntModelType() => "$getter == 'null' ? null : int.parse($getter)",
       DoubleModelType() => "$getter == 'null' ? null : double.parse($getter)",
       NumModelType() => "$getter == 'null' ? null : num.parse($getter)",

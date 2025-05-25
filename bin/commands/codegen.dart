@@ -87,11 +87,12 @@ class _CodegenCleanCommand extends Command<dynamic> {
 
     var deleteCount = 0;
 
-    final dartLibFilesToDelete = Directory.fromUri(
-      getPackageRootPath().resolve('lib/'),
-    ).listSync(recursive: true).where((f) {
-      return f.path.endsWith('.g.dart') || f.path.endsWith('.g.part');
-    });
+    final dartLibFilesToDelete =
+        Directory.fromUri(
+          getPackageRootPath().resolve('lib/'),
+        ).listSync(recursive: true).where((f) {
+          return f.path.endsWith('.g.dart') || f.path.endsWith('.g.part');
+        });
 
     for (final file in dartLibFilesToDelete) {
       file.deleteSync();
@@ -99,11 +100,12 @@ class _CodegenCleanCommand extends Command<dynamic> {
     }
 
     if (!argResults!['root-only']) {
-      final dartCodegenFilesToDelete = Directory.fromUri(
-        getPackageRootPath().resolve('codegen/'),
-      ).listSync(recursive: true).where((f) {
-        return f.path.endsWith('.g.dart') || f.path.endsWith('.g.part');
-      });
+      final dartCodegenFilesToDelete =
+          Directory.fromUri(
+            getPackageRootPath().resolve('codegen/'),
+          ).listSync(recursive: true).where((f) {
+            return f.path.endsWith('.g.dart') || f.path.endsWith('.g.part');
+          });
 
       for (final file in dartCodegenFilesToDelete) {
         file.deleteSync();
@@ -225,8 +227,9 @@ class _CodegenGenerateCommand extends Command<dynamic> {
     }
 
     for (final subpath in [null, if (!argResults!['root-only']) 'codegen/']) {
-      final workingDirectory =
-          subpath == null ? packageRootPath : packageRootPath.resolve(subpath);
+      final workingDirectory = subpath == null
+          ? packageRootPath
+          : packageRootPath.resolve(subpath);
 
       print(
         Colorize(
@@ -258,11 +261,11 @@ class _CodegenGenerateCommand extends Command<dynamic> {
     // the time of writing.
     if (argResults!['explicit-format-for-ci']) {
       print('Formatting generated code...');
-      final files = Directory.fromUri(
-        packageRootPath,
-      ).listSync(recursive: true).where((f) {
-        return f.path.endsWith('.g.dart') || f.path.endsWith('.mocks.dart');
-      });
+      final files = Directory.fromUri(packageRootPath)
+          .listSync(recursive: true)
+          .where((f) {
+            return f.path.endsWith('.g.dart') || f.path.endsWith('.mocks.dart');
+          });
 
       for (final file in files) {
         final process = await Process.start(

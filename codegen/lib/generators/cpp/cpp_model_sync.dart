@@ -59,8 +59,9 @@ String getModelSyncFn(ModelClassInfo context) {
       context.annotation?.generateCppWrapperClass == true;
   final parentheses = fieldAccessIsFunctionCall ? '()' : '';
 
-  final baseSuffix =
-      context.annotation?.cppBehaviorClassName != null ? 'Base' : '';
+  final baseSuffix = context.annotation?.cppBehaviorClassName != null
+      ? 'Base'
+      : '';
 
   writer.writeLine(
     'void ${context.annotatedClass.name}$baseSuffix::handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {',
@@ -405,9 +406,8 @@ void _writeUpdate({
         type: type.itemType,
         fieldAccessExpression:
             '(*$fieldAccessExpression)[(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value()]',
-        createFieldSetter:
-            (value) =>
-                '(*$fieldAccessExpression)[(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value()] = $value;',
+        createFieldSetter: (value) =>
+            '(*$fieldAccessExpression)[(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value()] = $value;',
         observabilityNotifier: '',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
         parentAccessor: fieldAccessExpression,
@@ -506,9 +506,8 @@ void _writeUpdate({
         writer: writer,
         type: type.valueType,
         fieldAccessExpression: '$fieldAccessExpression->at(deserializedKey)',
-        createFieldSetter:
-            (value) =>
-                '$fieldAccessExpression->insert_or_assign(deserializedKey, $value);',
+        createFieldSetter: (value) =>
+            '$fieldAccessExpression->insert_or_assign(deserializedKey, $value);',
         observabilityNotifier: '',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
         parentAccessor: fieldAccessExpression,
@@ -886,8 +885,9 @@ String getInitializeFn(ModelClassInfo context) {
   final writer = Writer();
 
   final className = context.annotatedClass.name;
-  final baseSuffix =
-      context.annotation?.cppBehaviorClassName != null ? 'Base' : '';
+  final baseSuffix = context.annotation?.cppBehaviorClassName != null
+      ? 'Base'
+      : '';
 
   writer.writeLine(
     'void $className$baseSuffix::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) {',
