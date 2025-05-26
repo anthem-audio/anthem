@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,6 +21,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline_notifications.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
@@ -356,9 +357,69 @@ class TimelinePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    var divisionChanges = getDivisionChanges(
+    // Draw a bottom border - we don't make this a separate widget because we
+    // want to draw the playhead line on top of it.
+    final borderPaint = Paint()
+      ..color = Theme.panel.border
+      ..style = PaintingStyle.fill;
+
+    final markerPaint = Paint()
+      ..color = Theme.grid.minor
+      ..style = PaintingStyle.fill;
+
+    canvas.drawRect(
+      Rect.fromLTWH(0, size.height - 1, size.width, 1),
+      borderPaint,
+    );
+
+    // Line to separate numbers and tick marks
+    canvas.drawRect(Rect.fromLTWH(0, 17, size.width, 1), borderPaint);
+
+    final minorDivisionChanges = getDivisionChanges(
       viewWidthInPixels: size.width,
-      minPixelsPerSection: 32,
+      minPixelsPerSection: minorMinPixels,
+      snap: AutoSnap(),
+      defaultTimeSignature: defaultTimeSignature,
+      timeSignatureChanges: timeSignatureChanges,
+      ticksPerQuarter: ticksPerQuarter,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+    );
+
+    paintVerticalLines(
+      canvas: canvas,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      divisionChanges: minorDivisionChanges,
+      size: size,
+      paint: markerPaint,
+      height: 5,
+    );
+
+    final majorDivisionChanges = getDivisionChanges(
+      viewWidthInPixels: size.width,
+      minPixelsPerSection: majorMinPixels,
+      snap: AutoSnap(),
+      defaultTimeSignature: defaultTimeSignature,
+      timeSignatureChanges: timeSignatureChanges,
+      ticksPerQuarter: ticksPerQuarter,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+    );
+
+    paintVerticalLines(
+      canvas: canvas,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      divisionChanges: majorDivisionChanges,
+      size: size,
+      paint: markerPaint,
+      height: 13,
+    );
+
+    var barDivisionChanges = getDivisionChanges(
+      viewWidthInPixels: size.width,
+      minPixelsPerSection: barMinPixels,
       snap: BarSnap(),
       defaultTimeSignature: defaultTimeSignature,
       timeSignatureChanges: timeSignatureChanges,
@@ -367,44 +428,25 @@ class TimelinePainter extends CustomPainter {
       timeViewEnd: timeViewEnd,
     );
 
-    // Calculate a starting point that isn't the beginning, but is before the
-    // start of the TimeView
-    // var firstChangeOnScreen = divisionChanges[0];
-
-    // var first = true;
-
-    // for (final change in divisionChanges) {
-    //   if (first) {
-    //     first = false;
-    //     continue;
-    //   }
-
-    //   if (timeViewStart < change.offset) {
-    //     break;
-    //   }
-
-    //   firstChangeOnScreen = change;
-    // }
-
     var i = 0;
     var timePtr = 0;
-    var barNumber = divisionChanges[0].startLabel;
+    var barNumber = barDivisionChanges[0].startLabel;
 
     barNumber +=
         (timePtr /
-                (divisionChanges[0].divisionRenderSize /
-                    divisionChanges[0].distanceBetween))
+                (barDivisionChanges[0].divisionRenderSize /
+                    barDivisionChanges[0].distanceBetween))
             .floor();
 
     while (timePtr < timeViewEnd) {
       // This shouldn't happen, but safety first
-      if (i >= divisionChanges.length) break;
+      if (i >= barDivisionChanges.length) break;
 
-      final thisDivision = divisionChanges[i];
-      var nextDivisionStart = 0x7FFFFFFFFFFFFFFF; // int max
+      final thisDivision = barDivisionChanges[i];
+      var nextDivisionStart = 0x7FFF_FFFF_FFFF_FFFF; // int max
 
-      if (i < divisionChanges.length - 1) {
-        nextDivisionStart = divisionChanges[i + 1].offset;
+      if (i < barDivisionChanges.length - 1) {
+        nextDivisionStart = barDivisionChanges[i + 1].offset;
       }
 
       while (timePtr < nextDivisionStart && timePtr < timeViewEnd) {
@@ -417,8 +459,18 @@ class TimelinePainter extends CustomPainter {
 
         // Don't draw numbers that are off-screen
         if (x >= -50) {
+          // Vertical line for bar - skip bar 1, because it looks weird
+          if (barNumber > 1) {
+            canvas.drawRect(Rect.fromLTWH(x, 0, 1, size.height), markerPaint);
+          }
+
+          // Bar number
           TextSpan span = TextSpan(
-            style: TextStyle(color: Theme.text.main),
+            style: TextStyle(
+              color: Theme.text.main,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
             text: barNumber.toString(),
           );
           TextPainter textPainter = TextPainter(
@@ -427,10 +479,7 @@ class TimelinePainter extends CustomPainter {
             textDirection: TextDirection.ltr,
           );
           textPainter.layout();
-          textPainter.paint(
-            canvas,
-            Offset(x, (21 - textPainter.size.height) / 2),
-          );
+          textPainter.paint(canvas, Offset(x + 5, 1));
         }
 
         timePtr += thisDivision.divisionRenderSize;
@@ -439,7 +488,7 @@ class TimelinePainter extends CustomPainter {
         // If this is true, then this is the last iteration of the inner loop
         if (timePtr >= nextDivisionStart) {
           timePtr = nextDivisionStart;
-          barNumber = divisionChanges[i + 1].startLabel;
+          barNumber = barDivisionChanges[i + 1].startLabel;
         }
       }
 

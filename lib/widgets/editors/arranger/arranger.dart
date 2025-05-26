@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2024 Joshua Wade
+  Copyright (C) 2022 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -51,7 +51,7 @@ import 'view_model.dart';
 import 'helpers.dart';
 import 'widgets/pattern_picker.dart';
 
-const _timelineHeight = 44.0;
+const _timelineHeight = 38.0;
 
 class Arranger extends StatefulWidget {
   const Arranger({super.key});
@@ -459,7 +459,14 @@ class _ArrangerContentState extends State<_ArrangerContent>
               height: _timelineHeight,
               child: Row(
                 children: [
-                  const SizedBox(width: trackHeaderWidth),
+                  Container(
+                    width: trackHeaderWidth,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: Theme.panel.border, width: 1),
+                      ),
+                    ),
+                  ),
                   Container(width: 1, color: Theme.panel.border),
                   Expanded(
                     child: Observer(
@@ -478,7 +485,6 @@ class _ArrangerContentState extends State<_ArrangerContent>
                 ],
               ),
             ),
-            Container(height: 1, color: Theme.panel.border),
             Expanded(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,

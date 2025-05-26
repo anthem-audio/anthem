@@ -119,7 +119,10 @@ void paintVerticalLines({
   required List<DivisionChange> divisionChanges,
   required Size size,
   required Paint paint,
+  double? height, // If unset, the line will be the full height of the canvas
 }) {
+  height ??= size.height;
+
   var i = 0;
   // There should always be at least one division change. The first change
   // should always represent the base time signature for the pattern (or the
@@ -146,14 +149,22 @@ void paintVerticalLines({
     }
 
     while (timePtr < nextDivisionStart && timePtr < timeViewEnd) {
-      final x = timeToPixels(
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        viewPixelWidth: size.width,
-        time: timePtr.toDouble(),
-      );
+      // We skip the line if it's at the very start of the sequence, because
+      // otherwise it looks like a double line when the view is scrolled all the
+      // way to the left.
+      if (timePtr > 0) {
+        final x = timeToPixels(
+          timeViewStart: timeViewStart,
+          timeViewEnd: timeViewEnd,
+          viewPixelWidth: size.width,
+          time: timePtr.toDouble(),
+        );
 
-      canvas.drawRect(Rect.fromLTWH(x, 0, 1, size.height), paint);
+        canvas.drawRect(
+          Rect.fromLTWH(x, size.height - height, 1, height),
+          paint,
+        );
+      }
 
       timePtr += thisDivision.divisionRenderSize;
 

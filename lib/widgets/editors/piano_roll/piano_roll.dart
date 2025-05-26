@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2024 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -85,7 +85,7 @@ class _PianoRollState extends State<PianoRoll> {
     final project = Provider.of<ProjectModel>(context);
 
     viewModel ??= PianoRollViewModel(
-      keyHeight: 20,
+      keyHeight: 14.0,
       // Hack: cuts off the top horizontal line. Otherwise the default view looks off
       keyValueAtTop: 63.95,
       timeView: TimeRange(0, 3072),
@@ -328,9 +328,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
 
     final timeline = Observer(
       builder: (context) {
-        final timelineHeight = (getPattern()?.hasTimeMarkers ?? false)
-            ? 42.0
-            : 21.0;
+        final timelineHeight = 38.0;
         final pattern = getPattern();
 
         return SizedBox(

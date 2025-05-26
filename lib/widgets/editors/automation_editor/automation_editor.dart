@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -185,7 +185,7 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
                   Provider.value(
                     value: viewModel.timeView,
                     child: SizedBox(
-                      height: 21,
+                      height: 38,
                       child: Timeline.pattern(
                         patternID: activePatternID,
                         timeViewStartAnimation: timeViewStartAnimItem.animation,
