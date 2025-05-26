@@ -49,6 +49,13 @@ public:
   // The playhead position
   double rt_playhead;
 
+  // This will be true if a stop or jump was requested for the current
+  // processing block.
+  //
+  // This will be set before the node graph is processed for the frame, and
+  // reset after.
+  bool rt_playheadJumpOccurred = false;
+
   Transport();
 
   void play();
@@ -70,6 +77,10 @@ public:
   // Must be called at the start of every processing block.
   void rt_prepareForProcessingBlock();
 
+  // Advances the playhead by the given number of samples.
+  //
+  // This should be called at the end of every processing block, and should be
+  // the last thing done within the transport for the block.
   void rt_advancePlayhead(int samples);
 
   double rt_getPlayheadAfterAdvance(int samples);

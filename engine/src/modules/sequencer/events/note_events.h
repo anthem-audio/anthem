@@ -67,3 +67,8 @@ struct AnthemNoteOffEvent {
   // Default constructor
   AnthemNoteOffEvent() : pitch(0), channel(0), velocity(0.0f), id(0) {}
 };
+
+struct AnthemAllVoicesOffEvent {
+  // Default constructor
+  AnthemAllVoicesOffEvent() {}
+};

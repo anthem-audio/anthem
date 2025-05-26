@@ -42,10 +42,11 @@ void Transport::rt_prepareForProcessingBlock() {
 
   // Check for stop
   if (!newConfig.isPlaying && rt_config.isPlaying) {
-    rt_playhead = 0.0; // Reset the playhead position
+    // Reset the playhead position
+    rt_playhead = 0.0;
 
-    // TODO: We will need to send a stop notes event for any channels receiving
-    // notes
+    // Provides a signal that instruments need to stop playing any active voices
+    rt_playheadJumpOccurred = true;
   }
 
   // Update the real-time transport state
@@ -54,6 +55,7 @@ void Transport::rt_prepareForProcessingBlock() {
 
 void Transport::rt_advancePlayhead(int numSamples) {
   rt_playhead = rt_getPlayheadAfterAdvance(numSamples);
+  rt_playheadJumpOccurred = false;
 }
 
 double Transport::rt_getPlayheadAfterAdvance(int numSamples) {

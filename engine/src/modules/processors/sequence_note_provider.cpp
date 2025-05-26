@@ -40,6 +40,16 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
 
   auto& transport = Anthem::getInstance().transport;
 
+  // If the transport jumped for any reason, we need to send a stop event to the
+  // downstream device.
+  if (transport->rt_playheadJumpOccurred) {
+    AnthemLiveEvent liveEvent {};
+    liveEvent.time = 0;
+    liveEvent.event.type = AnthemEventType::AllVoicesOff;
+
+    outputEventBuffer->addEvent(liveEvent);
+  }
+
   auto start = transport->rt_playhead; // Inclusive
   auto end = transport->rt_getPlayheadAfterAdvance(numSamples); // Not inclusive
 
@@ -57,17 +67,16 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
   }
 
   auto& sequenceMap = sequenceStore.rt_getEventLists();
-  
-  if (sequenceMap.find(*activeSequenceId) == sequenceMap.end()) {
+    if (sequenceMap.find(*activeSequenceId) == sequenceMap.end()) {
     return;
   }
-  auto& eventsForSequence = sequenceMap.at(*activeSequenceId);
 
+  auto& eventsForSequence = sequenceMap.at(*activeSequenceId);
   if (eventsForSequence.channels->find(channelId) == eventsForSequence.channels->end()) {
     return;
   }
-  auto& channelEvents = eventsForSequence.channels->at(channelId);
 
+  auto& channelEvents = eventsForSequence.channels->at(channelId);
   for (auto& event : *channelEvents.events) {
     if (event.offset >= start && event.offset < end) {
       AnthemLiveEvent liveEvent {};

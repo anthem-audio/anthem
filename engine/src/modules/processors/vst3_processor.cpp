@@ -52,17 +52,23 @@ void VST3Processor::process(AnthemProcessContext& context, int numSamples) {
 
     if (liveEvent.event.type == AnthemEventType::NoteOn) {
       auto noteOn = juce::MidiMessage::noteOn(
-        1, liveEvent.event.noteOn.pitch, static_cast<uint8_t>(std::round(liveEvent.event.noteOn.velocity * 127.0f))
+        liveEvent.event.noteOn.channel + 1, liveEvent.event.noteOn.pitch, static_cast<uint8_t>(std::round(liveEvent.event.noteOn.velocity * 127.0f))
       );
 
       rt_eventBufferForPlugin.addEvent(noteOn, static_cast<int>(std::round(liveEvent.time)));
     }
     else if (liveEvent.event.type == AnthemEventType::NoteOff) {
       auto noteOff = juce::MidiMessage::noteOff(
-        1, liveEvent.event.noteOff.pitch, static_cast<uint8_t>(std::round(liveEvent.event.noteOff.velocity * 127.0f))
+        liveEvent.event.noteOff.channel + 1, liveEvent.event.noteOff.pitch, static_cast<uint8_t>(std::round(liveEvent.event.noteOff.velocity * 127.0f))
       );
 
       rt_eventBufferForPlugin.addEvent(noteOff, static_cast<int>(std::round(liveEvent.time)));
+    }
+    else if (liveEvent.event.type == AnthemEventType::AllVoicesOff) {
+      for (int i = 0; i <= 16; i++) {
+        auto allVoicesOff = juce::MidiMessage::allNotesOff(i);
+        rt_eventBufferForPlugin.addEvent(allVoicesOff, static_cast<int>(std::round(liveEvent.time)));
+      }
     }
   }
 

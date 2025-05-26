@@ -23,7 +23,8 @@
 
 enum AnthemEventType {
   NoteOn,
-  NoteOff
+  NoteOff,
+  AllVoicesOff,
 };
 
 // An event that can occur in Anthem.
@@ -42,6 +43,7 @@ struct AnthemEvent {
   union {
     AnthemNoteOnEvent noteOn;
     AnthemNoteOffEvent noteOff;
+    AnthemAllVoicesOffEvent allVoicesOff;
   };
 };
 
