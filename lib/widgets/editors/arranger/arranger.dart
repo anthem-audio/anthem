@@ -292,7 +292,7 @@ class _ArrangerState extends State<Arranger> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           const Padding(
-                            padding: EdgeInsets.only(top: 15),
+                            padding: EdgeInsets.only(top: 8),
                             child: SizedBox(width: 126, child: PatternPicker()),
                           ),
                           const SizedBox(width: 6),
