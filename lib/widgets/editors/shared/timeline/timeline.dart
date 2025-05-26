@@ -17,10 +17,15 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+import 'dart:typed_data';
+
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/visualization/visualization.dart';
+import 'package:anthem/widgets/basic/visualization_builder.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline_notifications.dart';
 import 'package:flutter/gestures.dart';
@@ -30,6 +35,8 @@ import 'package:provider/provider.dart';
 
 import '../helpers/time_helpers.dart';
 import '../helpers/types.dart';
+
+const _playheadHandleSize = Size(15, 15);
 
 class Timeline extends StatefulWidget {
   final Id? arrangementID;
@@ -165,6 +172,22 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                       },
                     );
                   },
+                ),
+                Visibility(
+                  visible:
+                      (widget.patternID != null &&
+                          widget.patternID ==
+                              project.sequence.activePatternID) ||
+                      (widget.arrangementID != null &&
+                          widget.arrangementID ==
+                              project.sequence.activeArrangementID),
+                  child: _PlayheadPositioner(
+                    timeViewAnimationController:
+                        widget.timeViewAnimationController,
+                    timeViewStartAnimation: widget.timeViewStartAnimation,
+                    timeViewEndAnimation: widget.timeViewEndAnimation,
+                    timelineSize: constraints.biggest,
+                  ),
                 ),
               ],
             ),
@@ -508,4 +531,140 @@ class TimelinePainter extends CustomPainter {
 
   @override
   bool shouldRebuildSemantics(TimelinePainter oldDelegate) => false;
+}
+
+Path _getPlayheadHandlePath() {
+  final handlePath1 = Path()
+    ..addRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(0, 0, _playheadHandleSize.width, 8),
+        Radius.circular(2),
+      ),
+    );
+
+  final rotatedRectSideLength = sqrt(
+    _playheadHandleSize.width * _playheadHandleSize.width / 2,
+  );
+  final posOffsetForRotate =
+      (_playheadHandleSize.width - rotatedRectSideLength) / 2;
+
+  final rRect = RRect.fromRectAndRadius(
+    Rect.fromLTWH(
+      posOffsetForRotate,
+      4 - posOffsetForRotate,
+      rotatedRectSideLength,
+      rotatedRectSideLength,
+    ),
+    Radius.circular(2),
+  );
+  final handlePath2 = Path()..addRRect(rRect);
+
+  final center = rRect.center;
+  final angle = pi / 4; // 45°
+
+  // Build a 4×4 rotation matrix about `center`
+  final cosA = cos(angle);
+  final sinA = sin(angle);
+  final dx = center.dx;
+  final dy = center.dy;
+  final Float64List rotationMatrix = Float64List.fromList([
+    cosA,
+    sinA,
+    0,
+    0,
+    //
+    -sinA,
+    cosA,
+    0,
+    0,
+    //
+    0,
+    0,
+    1,
+    0,
+    //
+    dx - cosA * dx + sinA * dy,
+    dy - sinA * dx - cosA * dy,
+    0,
+    1,
+  ]);
+
+  return Path.combine(
+    PathOperation.union,
+    handlePath1,
+    handlePath2.transform(rotationMatrix),
+  );
+}
+
+final _playheadHandlePath = _getPlayheadHandlePath();
+
+class _PlayheadPositioner extends StatelessWidget {
+  final AnimationController timeViewAnimationController;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
+  final Size timelineSize;
+
+  const _PlayheadPositioner({
+    required this.timeViewAnimationController,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+    required this.timelineSize,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: timeViewAnimationController,
+      builder: (context, child) {
+        return VisualizationBuilder(
+          config: VisualizationSubscriptionConfig.latest('playhead'),
+          builder: (context, playheadPosition) {
+            final timeViewStart = timeViewStartAnimation.value;
+            final timeViewEnd = timeViewEndAnimation.value;
+
+            final playheadX = timeToPixels(
+              timeViewStart: timeViewStart,
+              timeViewEnd: timeViewEnd,
+              viewPixelWidth: timelineSize.width,
+              time: playheadPosition,
+            );
+
+            return Positioned(
+              left: playheadX - (_playheadHandleSize.width) / 2,
+              top: timelineSize.height - _playheadHandleSize.height,
+              child: CustomPaint(
+                size: _playheadHandleSize,
+                painter: _PlayheadHandlePainter(),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _PlayheadHandlePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final handlePaint = Paint()
+      ..color = Color(0xFFFFFFFF).withAlpha(255 * 4 ~/ 10)
+      ..style = PaintingStyle.fill;
+
+    final linePaint = Paint()
+      ..color = Color(0xFFD9D9D9)
+      ..style = PaintingStyle.fill;
+
+    canvas.drawPath(_playheadHandlePath, handlePaint);
+    canvas.drawRect(
+      Rect.fromLTWH((size.width - 1) / 2, 0, 1, size.height),
+      linePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_PlayheadHandlePainter oldDelegate) => false;
+
+  @override
+  bool shouldRebuildSemantics(_PlayheadHandlePainter oldDelegate) => false;
 }
