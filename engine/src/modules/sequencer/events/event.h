@@ -21,10 +21,12 @@
 
 #include "note_events.h"
 
+// The event type. This determines ordering for events that occur at the same
+// time - e.g. NoteOff must come before NoteOn.
 enum AnthemEventType {
-  NoteOn,
-  NoteOff,
   AllVoicesOff,
+  NoteOff,
+  NoteOn,
 };
 
 // An event that can occur in Anthem.

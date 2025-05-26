@@ -263,7 +263,14 @@ void AnthemSequenceCompiler::getChannelNoteEventsForPattern(
 
 void AnthemSequenceCompiler::sortEventList(std::vector<AnthemSequenceEvent>& events) {
   std::sort(events.begin(), events.end(), [](const AnthemSequenceEvent& a, const AnthemSequenceEvent& b) {
-    return a.offset < b.offset;
+    if (a.offset != b.offset) {
+      return a.offset < b.offset;
+    }
+
+    // If the offsets are equal, sort by event type. This allows us to give
+    // certain events priority over others - e.g., if a noteOff and a noteOn
+    // occur at the same time, the noteOff should come first.
+    return a.event.type < b.event.type;
   });
 }
 
