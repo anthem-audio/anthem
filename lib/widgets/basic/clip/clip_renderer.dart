@@ -122,7 +122,9 @@ void paintClip({
       height: height,
       selected: selected,
       pressed: pressed,
-      devicePixelRatio: devicePixelRatio,
+      // We don't need to manually handle device pixel ratio here since we're
+      // drawing directly to the canvas, which already accounts for it.
+      devicePixelRatio: 1,
     );
   }
 
