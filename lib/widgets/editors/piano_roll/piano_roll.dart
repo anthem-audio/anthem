@@ -560,7 +560,6 @@ class _PianoRollContentState extends State<_PianoRollContent>
                         child: Column(
                           children: [
                             timeline,
-                            Container(color: Theme.panel.border, height: 1),
                             Expanded(
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,

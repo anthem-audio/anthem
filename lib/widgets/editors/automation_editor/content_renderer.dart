@@ -129,7 +129,8 @@ class AutomationEditorPainter extends CustomPainterObserver {
 
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
-    for (var i = 0.0; i < size.height; i += size.height / 5) {
+    final horizontalLineStep = size.height / 5;
+    for (var i = horizontalLineStep; i < size.height; i += horizontalLineStep) {
       canvas.drawRect(
         Rect.fromLTWH(0, i, size.width, 1),
         Paint()..color = Theme.grid.major,
