@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,8 +23,9 @@ import 'package:anthem/model/shared/time_signature.dart';
 
 import 'types.dart';
 
-const minorMinPixels = 12.0;
-const majorMinPixels = 25.0;
+const minorMinPixels = 18.0;
+const majorMinPixels = 36.0;
+const barMinPixels = 64.0;
 
 double timeToPixels({
   required double timeViewStart,

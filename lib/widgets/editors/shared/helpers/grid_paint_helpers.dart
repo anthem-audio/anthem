@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -82,7 +82,7 @@ void paintTimeGrid({
 
   final barDivisionChanges = getDivisionChanges(
     viewWidthInPixels: size.width,
-    minPixelsPerSection: majorMinPixels,
+    minPixelsPerSection: barMinPixels,
     snap: BarSnap(),
     defaultTimeSignature: baseTimeSignature,
     timeSignatureChanges: timeSignatureChanges,
