@@ -168,6 +168,7 @@ GetBestDivisionResult getBestDivision({
   required double ticksPerPixel,
   required double minPixelsPerDivision,
   required int ticksPerQuarter,
+  int skipBottomNDivisions = 0,
 }) {
   final barLength = getBarLength(ticksPerQuarter, timeSignature);
   final divisionSizeLowerBound = ticksPerPixel * minPixelsPerDivision;
@@ -206,7 +207,7 @@ GetBestDivisionResult getBestDivision({
     final multipliers = factors(numDivisionsInBar);
 
     for (final multiplier in multipliers) {
-      if (bestDivision >= divisionSizeLowerBound) {
+      if (bestDivision >= divisionSizeLowerBound && skipBottomNDivisions <= 0) {
         return GetBestDivisionResult(
           renderSize: bestDivision,
           snapSize: snap is DivisionSnap ? snapSize : bestDivision,
@@ -214,6 +215,7 @@ GetBestDivisionResult getBestDivision({
         );
       }
 
+      skipBottomNDivisions--;
       bestDivision *= multiplier;
     }
   }
@@ -249,6 +251,7 @@ List<DivisionChange> getDivisionChanges({
   required int ticksPerQuarter,
   required double timeViewStart,
   required double timeViewEnd,
+  int skipBottomNDivisions = 0,
 }) {
   if (viewWidthInPixels < 1) {
     return [];
@@ -276,6 +279,7 @@ List<DivisionChange> getDivisionChanges({
       ticksPerPixel: (timeViewEnd - timeViewStart) / viewWidthInPixels,
       ticksPerQuarter: ticksPerQuarter,
       timeSignature: timeSignature,
+      skipBottomNDivisions: skipBottomNDivisions,
     );
 
     var nthDivision = bestDivision.skip;

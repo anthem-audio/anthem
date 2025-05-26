@@ -405,6 +405,10 @@ class TimelinePainter extends CustomPainter {
       ticksPerQuarter: ticksPerQuarter,
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
+
+      // When zoomed in, this means major tick marks will always be drawn less
+      // frequently than minor tick marks.
+      skipBottomNDivisions: 1,
     );
 
     paintVerticalLines(

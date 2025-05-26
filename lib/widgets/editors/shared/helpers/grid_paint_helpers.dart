@@ -69,6 +69,10 @@ void paintTimeGrid({
     ticksPerQuarter: ticksPerQuarter,
     timeViewStart: timeViewStart,
     timeViewEnd: timeViewEnd,
+
+    // When zoomed in, this means major grid lines will always be drawn less
+    // frequently than minor grid lines.
+    skipBottomNDivisions: 1,
   );
 
   paintVerticalLines(
