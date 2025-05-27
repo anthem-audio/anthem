@@ -123,7 +123,7 @@ class _MiddleGroup extends StatelessWidget {
               context,
               listen: false,
             );
-            projectModel.engine.sequencerApi.play();
+            projectModel.sequence.isPlaying = true;
           },
         ),
         Button(
@@ -136,7 +136,7 @@ class _MiddleGroup extends StatelessWidget {
               context,
               listen: false,
             );
-            projectModel.engine.sequencerApi.stop();
+            projectModel.sequence.isPlaying = false;
           },
         ),
       ],

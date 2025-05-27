@@ -111,19 +111,4 @@ class SequencerApi {
 
     _engine._requestNoReply(request);
   }
-
-  /// Starts the transport.
-  ///
-  /// This is not yet fine-grained to specific sequences, and will simply start
-  /// playing first arrangement. This is temporary and will need to be refined.
-  void play() {
-    final request = PlayRequest(id: _engine._getRequestId());
-    _engine._requestNoReply(request);
-  }
-
-  /// Stops the transport.
-  void stop() {
-    final request = StopRequest(id: _engine._getRequestId());
-    _engine._requestNoReply(request);
-  }
 }

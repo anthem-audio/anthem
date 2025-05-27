@@ -93,6 +93,11 @@ abstract class _SequenceModel with Store, AnthemModelBase {
   @anthemObservable
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
 
+  /// Whether the sequence is currently playing.
+  @anthemObservable
+  @hideFromSerialization
+  bool isPlaying = false;
+
   _SequenceModel() : super();
 
   _SequenceModel.create() : super() {

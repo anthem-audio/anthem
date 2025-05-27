@@ -24,16 +24,6 @@ Transport::Transport() : rt_playhead{0.0} {
   configBufferedValue.set(TransportConfig{});
 }
 
-void Transport::play() {
-  config.isPlaying = true;
-  configBufferedValue.set(config);
-}
-
-void Transport::stop() {
-  config.isPlaying = false;
-  configBufferedValue.set(config);
-}
-
 void Transport::rt_prepareForProcessingBlock() {
   // Get the current transport state
   auto newConfig = configBufferedValue.rt_get();

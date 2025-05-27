@@ -23,15 +23,7 @@
 #include "modules/sequencer/compiler/sequence_compiler.h"
 
 std::optional<Response> handleSequencerCommand(Request& request) {
-  if (rfl::holds_alternative<PlayRequest>(request.variant())) {
-    // auto& playRequest = rfl::get<PlayRequest>(request.variant());
-    Anthem::getInstance().transport->play();
-  }
-  else if (rfl::holds_alternative<StopRequest>(request.variant())) {
-    // auto& stopRequest = rfl::get<StopRequest>(request.variant());
-    Anthem::getInstance().transport->stop();
-  }
-  else if (rfl::holds_alternative<CompileSequenceRequest>(request.variant())) {
+  if (rfl::holds_alternative<CompileSequenceRequest>(request.variant())) {
 		auto& compileSequenceRequest = rfl::get<CompileSequenceRequest>(request.variant());
 
     if (compileSequenceRequest.patternId.has_value()) {

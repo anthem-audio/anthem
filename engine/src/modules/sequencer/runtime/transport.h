@@ -58,9 +58,10 @@ public:
 
   Transport();
 
-  void play();
-  void stop();
-
+  void setIsPlaying(bool isPlaying) {
+    config.isPlaying = isPlaying;
+    configBufferedValue.set(config);
+  }
   void setActiveSequenceId(std::optional<std::string>& sequenceId) {
     config.activeSequenceId = sequenceId;
     configBufferedValue.set(config);
