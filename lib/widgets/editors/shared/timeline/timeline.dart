@@ -18,7 +18,6 @@
 */
 
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
@@ -38,6 +37,7 @@ import '../helpers/types.dart';
 
 const _playheadHandleSize = Size(15, 15);
 
+/// Draws the timeline for editors.
 class Timeline extends StatefulWidget {
   final Id? arrangementID;
   final Id? patternID;
@@ -563,36 +563,15 @@ Path _getPlayheadHandlePath() {
   final angle = pi / 4; // 45°
 
   // Build a 4×4 rotation matrix about `center`
-  final cosA = cos(angle);
-  final sinA = sin(angle);
-  final dx = center.dx;
-  final dy = center.dy;
-  final Float64List rotationMatrix = Float64List.fromList([
-    cosA,
-    sinA,
-    0,
-    0,
-    //
-    -sinA,
-    cosA,
-    0,
-    0,
-    //
-    0,
-    0,
-    1,
-    0,
-    //
-    dx - cosA * dx + sinA * dy,
-    dy - sinA * dx - cosA * dy,
-    0,
-    1,
-  ]);
+  final rotationMatrix = Matrix4.identity()
+    ..translate(center.dx, center.dy)
+    ..rotateZ(angle)
+    ..translate(-center.dx, -center.dy);
 
   return Path.combine(
     PathOperation.union,
     handlePath1,
-    handlePath2.transform(rotationMatrix),
+    handlePath2.transform(rotationMatrix.storage),
   );
 }
 
