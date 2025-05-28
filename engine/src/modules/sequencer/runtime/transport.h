@@ -22,8 +22,14 @@
 #include <atomic>
 #include <cstdint>
 #include <optional>
+#include <unordered_map>
+#include <vector>
+
+#include "juce_events/juce_events.h"
 
 #include "modules/util/double_buffered_value.h"
+#include "modules/util/ring_buffer.h"
+#include "modules/sequencer/events/event.h"
 
 class TransportConfig {
 public:
@@ -31,30 +37,58 @@ public:
   int64_t ticksPerQuarter = 96;
   double beatsPerMinute = 120.0;
   bool isPlaying = false;
+  double playheadStart = 0.0;
 };
 
-class Transport {
+// Represents the playhead jumping to a new location for the current sequence.
+//
+// There is a map included that contains the events that should be played at the
+// new playhead position. For example, if we jump into the middle of a note, we
+// want to start playing that note.
+class PlayheadJumpEvent {
 public:
-  // The transport state
-  TransportConfig config;
+  double newPlayheadPosition = 0.0;
+  std::unordered_map<std::string, std::vector<AnthemLiveEvent>> eventsToPlayAtJump;
+};
 
+class Transport : private juce::Timer {
+private:
   // The audio thread reads the transport state from here
   DoubleBufferedValue<TransportConfig> configBufferedValue;
+
+  // Playhead jump events are sent to the audio thread through this buffer.
+  RingBuffer<PlayheadJumpEvent*, 64> playheadJumpEventBuffer;
+
+  // PLayhead jump events are sent back to the main thread for deletion through
+  // this buffer.
+  RingBuffer<PlayheadJumpEvent*, 64> playheadJumpEventDeleteBuffer;
+
+  void timerCallback() override;
+
+public:
+  // The transport config.
+  //
+  // This should only be modified using the methods below.
+  TransportConfig config;
+
+  // The playhead position
+  double rt_playhead;
+
+  // The current playhead jump event, if one is relevant for the current
+  // processing block.
+  PlayheadJumpEvent* rt_playheadJumpEvent;
 
   // The transport state, as seen by the audio thread.
   //
   // This should be read at the start of every processing block.
   TransportConfig rt_config;
 
-  // The playhead position
-  double rt_playhead;
-
   // This will be true if a stop or jump was requested for the current
   // processing block.
   //
   // This will be set before the node graph is processed for the frame, and
   // reset after.
-  bool rt_playheadJumpOccurred = false;
+  bool rt_playheadJumpOrPauseOccurred = false;
 
   Transport();
 
@@ -74,6 +108,11 @@ public:
     config.beatsPerMinute = beatsPerMinute;
     configBufferedValue.set(config);
   }
+  void setPlayheadStart(double playheadPosition) {
+    config.playheadStart = playheadPosition;
+    configBufferedValue.set(config);
+  }
+  void jumpTo(double playheadPosition);
 
   // Must be called at the start of every processing block.
   void rt_prepareForProcessingBlock();
@@ -84,5 +123,7 @@ public:
   // the last thing done within the transport for the block.
   void rt_advancePlayhead(int samples);
 
+  // Returns the value that the playhead would have after advancing it by the
+  // given number of samples.
   double rt_getPlayheadAfterAdvance(int samples);
 };

@@ -93,6 +93,11 @@ abstract class _SequenceModel with Store, AnthemModelBase {
   @anthemObservable
   TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
 
+  /// The playback start position, in ticks.
+  @anthemObservable
+  @hideFromSerialization
+  int playbackStartPosition = 0;
+
   /// Whether the sequence is currently playing.
   @anthemObservable
   @hideFromSerialization

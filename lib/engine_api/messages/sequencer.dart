@@ -108,20 +108,14 @@ class RemoveChannelRequest extends Request {
   }
 }
 
-/// A request to start the transport.
-class PlayRequest extends Request {
-  PlayRequest.uninitialized();
+/// Jumps the location of the playhead to the given offset.
+class PlayheadJumpRequest extends Request {
+  /// The offset to jump to
+  double offset;
 
-  PlayRequest({required int id}) {
-    super.id = id;
-  }
-}
+  PlayheadJumpRequest.uninitialized() : offset = 0;
 
-/// A request to stop the transport.
-class StopRequest extends Request {
-  StopRequest.uninitialized();
-
-  StopRequest({required int id}) {
+  PlayheadJumpRequest({required int id, required this.offset}) {
     super.id = id;
   }
 }

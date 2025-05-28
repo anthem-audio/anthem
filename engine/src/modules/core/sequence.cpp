@@ -56,4 +56,8 @@ void Sequence::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr
   addIsPlayingObserver([this](bool value) {
     Anthem::getInstance().transport->setIsPlaying(value);
   });
+
+  addPlaybackStartPositionObserver([this](double value) {
+    Anthem::getInstance().transport->setPlayheadStart(value);
+  });
 }

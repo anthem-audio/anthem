@@ -24,6 +24,7 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/visualization/visualization.dart';
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/basic/visualization_builder.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline_notifications.dart';
@@ -36,6 +37,7 @@ import '../helpers/time_helpers.dart';
 import '../helpers/types.dart';
 
 const _playheadHandleSize = Size(15, 15);
+const _loopAreaHeight = 17.0;
 
 /// Draws the timeline for editors.
 class Timeline extends StatefulWidget {
@@ -67,14 +69,101 @@ class Timeline extends StatefulWidget {
 }
 
 class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
-  double dragStartPixelValue = -1.0;
-  double dragStartTimeViewStartValue = -1.0;
-  double dragStartTimeViewEndValue = -1.0;
+  late Size _lastTimelineSize;
+  bool _playheadMoveActive = false;
+  double? _lastPlayheadPositionSet;
+
+  void setPlayheadPosition(double time, bool ignoreSnap) {
+    final project = Provider.of<ProjectModel>(context, listen: false);
+
+    var targetTime = time.round();
+
+    if (!ignoreSnap) {
+      final divisionChanges = getDivisionChanges(
+        viewWidthInPixels: _lastTimelineSize.width,
+        snap: AutoSnap(),
+        defaultTimeSignature: project.sequence.defaultTimeSignature,
+        timeSignatureChanges: [],
+        ticksPerQuarter: project.sequence.ticksPerQuarter,
+        timeViewStart: widget.timeViewStartAnimation.value,
+        timeViewEnd: widget.timeViewEndAnimation.value,
+        minPixelsPerSection: minorMinPixels,
+      );
+
+      targetTime = getSnappedTime(
+        rawTime: time.toInt(),
+        divisionChanges: divisionChanges,
+        round: true,
+      );
+    }
+
+    if (!project.sequence.isPlaying &&
+        project.sequence.playbackStartPosition != targetTime) {
+      project.sequence.playbackStartPosition = targetTime;
+    }
+
+    if (_lastPlayheadPositionSet != targetTime) {
+      final asDouble = targetTime.toDouble();
+      project.engine.sequencerApi.jumpPlayheadTo(asDouble);
+      _lastPlayheadPositionSet = asDouble;
+    }
+  }
+
+  void handlePointerDown(PointerEvent event) {
+    final keyboardModifiers = Provider.of<KeyboardModifiers>(
+      context,
+      listen: false,
+    );
+
+    final isPlayheadMove = event.buttons & kPrimaryButton != 0;
+
+    if (isPlayheadMove) {
+      var time = pixelsToTime(
+        timeViewStart: widget.timeViewStartAnimation.value,
+        timeViewEnd: widget.timeViewEndAnimation.value,
+        viewPixelWidth: _lastTimelineSize.width,
+        pixelOffsetFromLeft: event.localPosition.dx,
+      );
+
+      if (time < 0) time = 0;
+
+      setPlayheadPosition(time, keyboardModifiers.alt);
+
+      _playheadMoveActive = true;
+    }
+  }
+
+  void handlePointerMove(PointerEvent event) {
+    final keyboardModifiers = Provider.of<KeyboardModifiers>(
+      context,
+      listen: false,
+    );
+
+    if (_playheadMoveActive) {
+      var time = pixelsToTime(
+        timeViewStart: widget.timeViewStartAnimation.value,
+        timeViewEnd: widget.timeViewEndAnimation.value,
+        viewPixelWidth: _lastTimelineSize.width,
+        pixelOffsetFromLeft: event.localPosition.dx,
+      );
+
+      if (time < 0) time = 0;
+
+      setPlayheadPosition(time, keyboardModifiers.alt);
+    }
+  }
+
+  void handlePointerUp(PointerEvent event) {
+    _playheadMoveActive = false;
+    _lastPlayheadPositionSet = null;
+  }
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        _lastTimelineSize = constraints.biggest;
+
         final timeView = context.watch<TimeRange>();
         final project = Provider.of<ProjectModel>(context);
 
@@ -100,6 +189,9 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
               handleScroll(event.scrollDelta.dy, event.localPosition.dx);
             }
           },
+          onPointerDown: handlePointerDown,
+          onPointerMove: handlePointerMove,
+          onPointerUp: handlePointerUp,
           child: ClipRect(
             child: Stack(
               fit: StackFit.expand,
@@ -175,12 +267,12 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                 ),
                 Visibility(
                   visible:
-                      (widget.patternID != null &&
-                          widget.patternID ==
-                              project.sequence.activePatternID) ||
+                      //     (widget.patternID != null &&
+                      //         widget.patternID ==
+                      //             project.sequence.activePatternID) ||
                       (widget.arrangementID != null &&
-                          widget.arrangementID ==
-                              project.sequence.activeArrangementID),
+                      widget.arrangementID ==
+                          project.sequence.activeArrangementID),
                   child: _PlayheadPositioner(
                     timeViewAnimationController:
                         widget.timeViewAnimationController,
@@ -396,7 +488,10 @@ class TimelinePainter extends CustomPainter {
     );
 
     // Line to separate numbers and tick marks
-    canvas.drawRect(Rect.fromLTWH(0, 17, size.width, 1), borderPaint);
+    canvas.drawRect(
+      Rect.fromLTWH(0, _loopAreaHeight, size.width, 1),
+      borderPaint,
+    );
 
     final minorDivisionChanges = getDivisionChanges(
       viewWidthInPixels: size.width,

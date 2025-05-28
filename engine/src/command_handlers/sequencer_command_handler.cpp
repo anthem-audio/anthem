@@ -58,6 +58,11 @@ std::optional<Response> handleSequencerCommand(Request& request) {
 
 		AnthemSequenceCompiler::cleanUpChannel(removeChannelRequest.channelId);
   }
+  else if (rfl::holds_alternative<PlayheadJumpRequest>(request.variant())) {
+    auto& playheadJumpRequest = rfl::get<PlayheadJumpRequest>(request.variant());
+
+    Anthem::getInstance().transport->jumpTo(playheadJumpRequest.offset);
+  }
 
   return std::nullopt;
 }

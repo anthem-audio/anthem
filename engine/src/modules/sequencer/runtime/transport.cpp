@@ -22,6 +22,12 @@
 Transport::Transport() : rt_playhead{0.0} {
   // Initialize the transport with default values
   configBufferedValue.set(TransportConfig{});
+
+  rt_playheadJumpEvent = nullptr;
+
+  // Start the cleanup loop, which will clean up memory sent back from the audio
+  // thread
+  this->startTimer(100);
 }
 
 void Transport::rt_prepareForProcessingBlock() {
@@ -32,20 +38,39 @@ void Transport::rt_prepareForProcessingBlock() {
 
   // Check for stop
   if (!newConfig.isPlaying && rt_config.isPlaying) {
-    // Reset the playhead position
-    rt_playhead = 0.0;
+    rt_playhead = newConfig.playheadStart;
 
     // Provides a signal that instruments need to stop playing any active voices
-    rt_playheadJumpOccurred = true;
+    rt_playheadJumpOrPauseOccurred = true;
   }
 
   // Update the real-time transport state
   rt_config = newConfig;
+
+  // Check if there are any playhead jump events to process
+  while (auto event = playheadJumpEventBuffer.read()) {
+    if (rt_playheadJumpEvent != nullptr) {
+      playheadJumpEventDeleteBuffer.add(rt_playheadJumpEvent);
+    }
+    rt_playheadJumpEvent = event.value();
+  }
+
+  if (rt_playheadJumpEvent != nullptr) {
+    rt_playhead = rt_playheadJumpEvent->newPlayheadPosition;
+    rt_playheadJumpOrPauseOccurred = true;
+  }
 }
 
 void Transport::rt_advancePlayhead(int numSamples) {
   rt_playhead = rt_getPlayheadAfterAdvance(numSamples);
-  rt_playheadJumpOccurred = false;
+  rt_playheadJumpOrPauseOccurred = false;
+
+  // Send the playhead jump event back to the main thread for deletion, if there
+  // is one
+  if (rt_playheadJumpEvent != nullptr) {
+    playheadJumpEventDeleteBuffer.add(rt_playheadJumpEvent);
+    rt_playheadJumpEvent = nullptr;
+  }
 }
 
 double Transport::rt_getPlayheadAfterAdvance(int numSamples) {
@@ -60,4 +85,22 @@ double Transport::rt_getPlayheadAfterAdvance(int numSamples) {
   }
 
   return rt_playhead;
+}
+
+void Transport::jumpTo(double playheadPosition) {
+  auto* event = new PlayheadJumpEvent();
+
+  event->newPlayheadPosition = playheadPosition;
+
+  // TODO: Get events to play at the new playhead position
+
+  playheadJumpEventBuffer.add(event);
+}
+
+void Transport::timerCallback() {
+  // Clean up any playhead jump events that have been sent back from the audio
+  // thread for deletion
+  while (auto event = playheadJumpEventDeleteBuffer.read()) {
+    delete event.value();
+  }
 }

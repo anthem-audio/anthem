@@ -111,4 +111,14 @@ class SequencerApi {
 
     _engine._requestNoReply(request);
   }
+
+  /// Jumps the playhead to the given timestamp.
+  void jumpPlayheadTo(double offset) {
+    final request = PlayheadJumpRequest(
+      id: _engine._getRequestId(),
+      offset: offset,
+    );
+
+    _engine._requestNoReply(request);
+  }
 }

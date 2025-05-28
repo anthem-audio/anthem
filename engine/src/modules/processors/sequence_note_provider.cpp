@@ -42,7 +42,7 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
 
   // If the transport jumped for any reason, we need to send a stop event to the
   // downstream device.
-  if (transport->rt_playheadJumpOccurred) {
+  if (transport->rt_playheadJumpOrPauseOccurred) {
     AnthemLiveEvent liveEvent {};
     liveEvent.time = 0;
     liveEvent.event.type = AnthemEventType::AllVoicesOff;
