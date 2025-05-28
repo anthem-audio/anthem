@@ -50,6 +50,26 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
     outputEventBuffer->addEvent(liveEvent);
   }
 
+  if (transport->rt_playheadJumpEventForStart != nullptr) {
+    auto& eventsForStart = transport->rt_playheadJumpEventForStart->eventsToPlayAtJump;
+    if (eventsForStart.find(channelId) != eventsForStart.end()) {
+      auto& events = eventsForStart.at(channelId);
+      for (auto& event : events) {
+        outputEventBuffer->addEvent(event);
+      }
+    }
+  }
+
+  if (transport->rt_playheadJumpEvent != nullptr) {
+    auto& eventsForJump = transport->rt_playheadJumpEvent->eventsToPlayAtJump;
+    if (eventsForJump.find(channelId) != eventsForJump.end()) {
+      auto& events = eventsForJump.at(channelId);
+      for (auto& event : events) {
+        outputEventBuffer->addEvent(event);
+      }
+    }
+  }
+
   auto start = transport->rt_playhead; // Inclusive
   auto end = transport->rt_getPlayheadAfterAdvance(numSamples); // Not inclusive
 

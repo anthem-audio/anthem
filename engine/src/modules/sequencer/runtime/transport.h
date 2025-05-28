@@ -31,15 +31,6 @@
 #include "modules/util/ring_buffer.h"
 #include "modules/sequencer/events/event.h"
 
-class TransportConfig {
-public:
-  std::optional<std::string> activeSequenceId;
-  int64_t ticksPerQuarter = 96;
-  double beatsPerMinute = 120.0;
-  bool isPlaying = false;
-  double playheadStart = 0.0;
-};
-
 // Represents the playhead jumping to a new location for the current sequence.
 //
 // There is a map included that contains the events that should be played at the
@@ -49,6 +40,16 @@ class PlayheadJumpEvent {
 public:
   double newPlayheadPosition = 0.0;
   std::unordered_map<std::string, std::vector<AnthemLiveEvent>> eventsToPlayAtJump;
+};
+
+class TransportConfig {
+public:
+  std::optional<std::string> activeSequenceId;
+  int64_t ticksPerQuarter = 96;
+  double beatsPerMinute = 120.0;
+  bool isPlaying = false;
+  double playheadStart = 0.0;
+  PlayheadJumpEvent* playheadJumpEventForStart = nullptr;
 };
 
 class Transport : private juce::Timer {
@@ -65,6 +66,11 @@ private:
 
   void timerCallback() override;
 
+  void addStartEventsForPattern(
+    std::string patternId, double offset, std::unordered_map<std::string, std::vector<AnthemLiveEvent>>& collector);
+
+  PlayheadJumpEvent* createPlayheadJumpEvent(double playheadPosition);
+
 public:
   // The transport config.
   //
@@ -77,6 +83,10 @@ public:
   // The current playhead jump event, if one is relevant for the current
   // processing block.
   PlayheadJumpEvent* rt_playheadJumpEvent;
+
+  // The current playhead jump event for start, if one is relevant for the current
+  // processing block.
+  PlayheadJumpEvent* rt_playheadJumpEventForStart;
 
   // The transport state, as seen by the audio thread.
   //
@@ -108,10 +118,7 @@ public:
     config.beatsPerMinute = beatsPerMinute;
     configBufferedValue.set(config);
   }
-  void setPlayheadStart(double playheadPosition) {
-    config.playheadStart = playheadPosition;
-    configBufferedValue.set(config);
-  }
+  void setPlayheadStart(double playheadPosition);
   void jumpTo(double playheadPosition);
 
   // Must be called at the start of every processing block.

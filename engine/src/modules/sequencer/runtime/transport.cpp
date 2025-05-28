@@ -19,6 +19,8 @@
 
 #include "transport.h"
 
+#include "modules/core/anthem.h"
+
 Transport::Transport() : rt_playhead{0.0} {
   // Initialize the transport with default values
   configBufferedValue.set(TransportConfig{});
@@ -44,6 +46,22 @@ void Transport::rt_prepareForProcessingBlock() {
     rt_playheadJumpOrPauseOccurred = true;
   }
 
+  // Check for play
+  if (newConfig.isPlaying && !rt_config.isPlaying) {
+    // We should set the pointer that allows consumers to read any events we
+    // want to post on start
+    if (newConfig.playheadJumpEventForStart != nullptr) {
+      rt_playheadJumpEventForStart = newConfig.playheadJumpEventForStart;
+    }
+  }
+
+  // Check for change to start event list, and clean up the old one if necessary
+  if (newConfig.playheadJumpEventForStart != rt_config.playheadJumpEventForStart) {
+    if (rt_config.playheadJumpEventForStart != nullptr) {
+      playheadJumpEventDeleteBuffer.add(rt_config.playheadJumpEventForStart);
+    }
+  }
+
   // Update the real-time transport state
   rt_config = newConfig;
 
@@ -59,6 +77,13 @@ void Transport::rt_prepareForProcessingBlock() {
     rt_playhead = rt_playheadJumpEvent->newPlayheadPosition;
     rt_playheadJumpOrPauseOccurred = true;
   }
+
+  // If we're not playing, then we do not want downstream consumers to pick up
+  // any sequencer events that this object might have contained
+  if (!rt_config.isPlaying) {
+    playheadJumpEventDeleteBuffer.add(rt_playheadJumpEvent);
+    rt_playheadJumpEvent = nullptr;
+  }
 }
 
 void Transport::rt_advancePlayhead(int numSamples) {
@@ -71,6 +96,8 @@ void Transport::rt_advancePlayhead(int numSamples) {
     playheadJumpEventDeleteBuffer.add(rt_playheadJumpEvent);
     rt_playheadJumpEvent = nullptr;
   }
+
+  rt_playheadJumpEventForStart = nullptr; // This is cleaned up elsewhere
 }
 
 double Transport::rt_getPlayheadAfterAdvance(int numSamples) {
@@ -87,12 +114,62 @@ double Transport::rt_getPlayheadAfterAdvance(int numSamples) {
   return rt_playhead;
 }
 
-void Transport::jumpTo(double playheadPosition) {
+PlayheadJumpEvent* Transport::createPlayheadJumpEvent(double playheadPosition) {
   auto* event = new PlayheadJumpEvent();
 
   event->newPlayheadPosition = playheadPosition;
 
-  // TODO: Get events to play at the new playhead position
+  if (config.activeSequenceId.has_value()) {
+    auto& patterns = *Anthem::getInstance().project->sequence()->patterns();
+    if (patterns.find(config.activeSequenceId.value()) != patterns.end()) {
+      auto& pattern = *patterns.at(config.activeSequenceId.value());
+      event->eventsToPlayAtJump.clear();
+      addStartEventsForPattern(config.activeSequenceId.value(), playheadPosition, event->eventsToPlayAtJump);
+    }
+
+    auto& arrangements = *Anthem::getInstance().project->sequence()->arrangements();
+    if (arrangements.find(config.activeSequenceId.value()) != arrangements.end()) {
+      auto& arrangement = *arrangements.at(config.activeSequenceId.value());
+
+      for (auto& clipPair : *arrangement.clips()) {
+        auto& clip = *clipPair.second;
+        auto clipOffset = clip.offset();
+        if (playheadPosition < clipOffset) {
+          continue;
+        }
+
+        auto& clipTimeView = clip.timeView();
+        if (clipTimeView.has_value()) {
+          auto start = clipTimeView.value()->start();
+          auto end = clipTimeView.value()->end();
+          if (playheadPosition >= clipOffset + (end - start)) {
+            continue;
+          }
+
+          addStartEventsForPattern(
+            clip.patternId(), playheadPosition - clipOffset + start, event->eventsToPlayAtJump);
+        }
+        else {
+          addStartEventsForPattern(
+            clip.patternId(), playheadPosition - clipOffset, event->eventsToPlayAtJump);
+        }
+      }
+    }
+  }
+
+  return event;
+}
+
+void Transport::setPlayheadStart(double playheadStart) {
+  auto* event = createPlayheadJumpEvent(playheadStart);
+
+  config.playheadStart = playheadStart;
+  config.playheadJumpEventForStart = event;
+  configBufferedValue.set(config);
+}
+
+void Transport::jumpTo(double playheadPosition) {
+  auto* event = createPlayheadJumpEvent(playheadPosition);
 
   playheadJumpEventBuffer.add(event);
 }
@@ -102,5 +179,42 @@ void Transport::timerCallback() {
   // thread for deletion
   while (auto event = playheadJumpEventDeleteBuffer.read()) {
     delete event.value();
+  }
+}
+
+void Transport::addStartEventsForPattern(
+  std::string patternId, double offset, std::unordered_map<std::string, std::vector<AnthemLiveEvent>>& collector) {
+  auto& pattern = *Anthem::getInstance().project->sequence()->patterns()->at(patternId);
+
+  for (auto& pair : *pattern.notes()) {
+    auto& channelId = pair.first;
+    auto& notes = pair.second;
+
+    for (auto& note : *notes) {
+      auto noteOffset = note->offset();
+      auto noteLength = note->length();
+      // noteOffset < offset, because if noteOffset == offset then the note
+      // will be picked up by the sequencer
+      if (noteOffset < offset && noteOffset + noteLength > offset) {
+        if (collector.find(channelId) == collector.end()) {
+          collector[channelId] = std::vector<AnthemLiveEvent>();
+        }
+
+        auto& events = collector[channelId];
+        events.push_back(AnthemLiveEvent{
+          .time = 0,
+          .event = AnthemEvent {
+            .type = AnthemEventType::NoteOn,
+            .noteOn = AnthemNoteOnEvent(
+              static_cast<int16_t>(note->key()),
+              static_cast<int16_t>(0),
+              static_cast<float>(note->velocity()),
+              0.f,
+              static_cast<int32_t>(-1)
+            )
+          }
+        });
+      }
+    }
   }
 }
