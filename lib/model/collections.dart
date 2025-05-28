@@ -67,8 +67,6 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
 
   void _init() {
     observe((change) {
-      int? firstChangedIndex;
-
       if (change.elementChanges != null) {
         for (final elementChange in change.elementChanges!) {
           final accessorChain = [
@@ -79,7 +77,10 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
           ];
 
           if (elementChange.type == OperationType.add) {
-            firstChangedIndex = elementChange.index;
+            final firstChangedIndex = elementChange.index;
+            for (var i = firstChangedIndex; i < length; i++) {
+              _setParentPropertiesOnIndex(i);
+            }
 
             notifyFieldChanged(
               operation: ListInsert(
@@ -92,11 +93,18 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
               accessorChain: accessorChain,
             );
           } else if (elementChange.type == OperationType.remove) {
+            final firstChangedIndex = elementChange.index;
+            for (var i = firstChangedIndex; i < length; i++) {
+              _setParentPropertiesOnIndex(i);
+            }
+
             notifyFieldChanged(
               operation: ListRemove(removedValue: elementChange.oldValue),
               accessorChain: accessorChain,
             );
           } else if (elementChange.type == OperationType.update) {
+            _setParentPropertiesOnIndex(elementChange.index);
+
             notifyFieldChanged(
               operation: ListUpdate(
                 oldValue: elementChange.oldValue,
@@ -109,12 +117,6 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
               accessorChain: accessorChain,
             );
           }
-        }
-      }
-
-      if (firstChangedIndex != null) {
-        for (var i = firstChangedIndex; i < length; i++) {
-          _setParentPropertiesOnIndex(i);
         }
       }
     });
