@@ -64,6 +64,9 @@ private:
   // this buffer.
   RingBuffer<PlayheadJumpEvent*, 64> playheadJumpEventDeleteBuffer;
 
+  PlayheadJumpEvent* rt_playheadJumpEventForSeek;
+  PlayheadJumpEvent* rt_playheadJumpEventForStart;
+
   void timerCallback() override;
 
   void addStartEventsForPattern(
@@ -80,13 +83,9 @@ public:
   // The playhead position
   double rt_playhead;
 
-  // The current playhead jump event, if one is relevant for the current
+// The current playhead jump event, if one is relevant for the current
   // processing block.
   PlayheadJumpEvent* rt_playheadJumpEvent;
-
-  // The current playhead jump event for start, if one is relevant for the current
-  // processing block.
-  PlayheadJumpEvent* rt_playheadJumpEventForStart;
 
   // The transport state, as seen by the audio thread.
   //

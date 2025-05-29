@@ -26,6 +26,8 @@ Transport::Transport() : rt_playhead{0.0} {
   configBufferedValue.set(TransportConfig{});
 
   rt_playheadJumpEvent = nullptr;
+  rt_playheadJumpEventForSeek = nullptr;
+  rt_playheadJumpEventForStart = nullptr;
 
   // Start the cleanup loop, which will clean up memory sent back from the audio
   // thread
@@ -67,21 +69,33 @@ void Transport::rt_prepareForProcessingBlock() {
 
   // Check if there are any playhead jump events to process
   while (auto event = playheadJumpEventBuffer.read()) {
-    if (rt_playheadJumpEvent != nullptr) {
-      playheadJumpEventDeleteBuffer.add(rt_playheadJumpEvent);
+    if (rt_playheadJumpEventForSeek != nullptr) {
+      playheadJumpEventDeleteBuffer.add(rt_playheadJumpEventForSeek);
     }
-    rt_playheadJumpEvent = event.value();
+    rt_playheadJumpEventForSeek = event.value();
   }
 
-  if (rt_playheadJumpEvent != nullptr) {
-    rt_playhead = rt_playheadJumpEvent->newPlayheadPosition;
+  if (rt_playheadJumpEventForSeek != nullptr) {
+    rt_playhead = rt_playheadJumpEventForSeek->newPlayheadPosition;
     rt_playheadJumpOrPauseOccurred = true;
   }
 
   // If we're not playing, then we do not want downstream consumers to pick up
   // any sequencer events that this object might have contained
   if (!rt_config.isPlaying) {
-    playheadJumpEventDeleteBuffer.add(rt_playheadJumpEvent);
+    playheadJumpEventDeleteBuffer.add(rt_playheadJumpEventForSeek);
+    rt_playheadJumpEventForSeek = nullptr;
+  }
+
+  // Set the public-facing playhead jump event pointer
+  if (rt_playheadJumpEventForSeek != nullptr) {
+    rt_playheadJumpEvent = rt_playheadJumpEventForSeek;
+  } else if (rt_playheadJumpEventForStart != nullptr) {
+    // If there is no seek event, but there is a start event, then we use that
+    // as the playhead jump event
+    rt_playheadJumpEvent = rt_playheadJumpEventForStart;
+  } else {
+    // Otherwise, we have no playhead jump event for this processing block
     rt_playheadJumpEvent = nullptr;
   }
 }
@@ -92,9 +106,9 @@ void Transport::rt_advancePlayhead(int numSamples) {
 
   // Send the playhead jump event back to the main thread for deletion, if there
   // is one
-  if (rt_playheadJumpEvent != nullptr) {
-    playheadJumpEventDeleteBuffer.add(rt_playheadJumpEvent);
-    rt_playheadJumpEvent = nullptr;
+  if (rt_playheadJumpEventForSeek != nullptr) {
+    playheadJumpEventDeleteBuffer.add(rt_playheadJumpEventForSeek);
+    rt_playheadJumpEventForSeek = nullptr;
   }
 
   rt_playheadJumpEventForStart = nullptr; // This is cleaned up elsewhere
