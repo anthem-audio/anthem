@@ -104,16 +104,20 @@ void paintTimeGrid({
     paint: accentLinePaint,
   );
 
-  paintPhraseShading(
-    canvas: canvas,
-    timeViewStart: timeViewStart,
-    timeViewEnd: timeViewEnd,
-    defaultTimeSignature: baseTimeSignature,
-    timeSignatureChanges: timeSignatureChanges,
-    size: size,
-    paint: shadedPaint,
-    ticksPerQuarter: ticksPerQuarter,
-  );
+  // If there are more than 128 4-bar groups on screen, we won't draw the
+  // alternating dark and light shading.
+  if (timeViewEnd - timeViewStart < ticksPerQuarter * 4 * 4 * 128) {
+    paintPhraseShading(
+      canvas: canvas,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      defaultTimeSignature: baseTimeSignature,
+      timeSignatureChanges: timeSignatureChanges,
+      size: size,
+      paint: shadedPaint,
+      ticksPerQuarter: ticksPerQuarter,
+    );
+  }
 }
 
 void paintVerticalLines({
