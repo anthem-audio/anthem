@@ -65,7 +65,7 @@ void VST3Processor::process(AnthemProcessContext& context, int numSamples) {
       rt_eventBufferForPlugin.addEvent(noteOff, static_cast<int>(std::round(liveEvent.time)));
     }
     else if (liveEvent.event.type == AnthemEventType::AllVoicesOff) {
-      for (int i = 0; i <= 16; i++) {
+      for (int i = 1; i <= 16; i++) {
         auto allVoicesOff = juce::MidiMessage::allNotesOff(i);
         rt_eventBufferForPlugin.addEvent(allVoicesOff, static_cast<int>(std::round(liveEvent.time)));
       }
