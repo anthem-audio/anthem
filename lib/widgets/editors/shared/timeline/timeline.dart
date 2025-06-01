@@ -287,7 +287,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
       if (time < 0) time = 0;
 
-      if (!keyboardModifiers.alt) {
+      if (!keyboardModifiers.alt && time > 0) {
         var divisionChanges = getDivisionChanges(
           viewWidthInPixels: _lastTimelineSize.width,
           snap: AutoSnap(),
