@@ -29,6 +29,7 @@ import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
+import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes_render_cache.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
 import 'package:anthem_codegen/include/annotations.dart';
@@ -222,6 +223,10 @@ abstract class _PatternModel with Store, AnthemModelBase {
   @anthemObservable
   AnthemObservableList<TimeSignatureChangeModel> timeSignatureChanges =
       AnthemObservableList();
+
+  @anthemObservable
+  @hideFromSerialization
+  LoopPointsModel? loopPoints;
 
   /// For deserialization. Use `PatternModel.create()` instead.
   _PatternModel();

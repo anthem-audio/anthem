@@ -25,6 +25,7 @@ import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/sequence.dart';
+import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
@@ -195,6 +196,10 @@ abstract class _ArrangementModel with Store, AnthemModelBase {
 
   @anthemObservable
   AnthemObservableMap<Id, ClipModel> clips = AnthemObservableMap();
+
+  @anthemObservable
+  @hideFromSerialization
+  LoopPointsModel? loopPoints;
 
   _ArrangementModel({required this.name, required this.id}) : super();
 

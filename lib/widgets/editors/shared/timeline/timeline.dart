@@ -19,8 +19,12 @@
 
 import 'dart:math';
 
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/arrangement/arrangement.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/visualization/visualization.dart';
@@ -70,10 +74,37 @@ class Timeline extends StatefulWidget {
 
 class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
   late Size _lastTimelineSize;
+  DateTime? _lastMouseDownTime;
+
   bool _playheadMoveActive = false;
   double? _lastPlayheadPositionSet;
 
-  void setPlayheadPosition(double time, bool ignoreSnap) {
+  bool _loopCreateActive = false;
+  int? _loopCreateStart;
+
+  // During event handling, if the start or end loop markers are pressed before
+  // the event reaches the timeline, one of these will be set to true.
+  bool _loopStartPressed = false;
+  bool _loopEndPressed = false;
+
+  bool _loopHandleMoveActive = false;
+  int _loopHandleMoveTimeAtEventStart = 0;
+
+  PatternModel? get _pattern {
+    final project = Provider.of<ProjectModel>(context, listen: false);
+    return project.sequence.patterns[widget.patternID];
+  }
+
+  ArrangementModel? get _arrangement {
+    final project = Provider.of<ProjectModel>(context, listen: false);
+    return project.sequence.arrangements[widget.arrangementID];
+  }
+
+  void _setPlayheadPosition(
+    double time,
+    bool ignoreSnap, {
+    /* ArrangementModel? arrangement, */ PatternModel? pattern,
+  }) {
     final project = Provider.of<ProjectModel>(context, listen: false);
 
     var targetTime = time.round();
@@ -83,7 +114,8 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
         viewWidthInPixels: _lastTimelineSize.width,
         snap: AutoSnap(),
         defaultTimeSignature: project.sequence.defaultTimeSignature,
-        timeSignatureChanges: [],
+        timeSignatureChanges: /* arrangement?.timeSignatureChanges ?? */
+            pattern?.timeSignatureChanges ?? [],
         ticksPerQuarter: project.sequence.ticksPerQuarter,
         timeViewStart: widget.timeViewStartAnimation.value,
         timeViewEnd: widget.timeViewEndAnimation.value,
@@ -104,18 +136,44 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
     if (_lastPlayheadPositionSet != targetTime) {
       final asDouble = targetTime.toDouble();
-      project.engine.sequencerApi.jumpPlayheadTo(asDouble);
+      if (project.engine.engineState == EngineState.running) {
+        project.engine.sequencerApi.jumpPlayheadTo(asDouble);
+      }
       _lastPlayheadPositionSet = asDouble;
     }
   }
 
   void handlePointerDown(PointerEvent event) {
+    final arrangement = _arrangement;
+    final pattern = _pattern;
+
+    final deltaSinceLastMouseDown = _lastMouseDownTime == null
+        ? Duration(days: 1)
+        : DateTime.now().difference(_lastMouseDownTime!);
+    final isDoubleClick =
+        deltaSinceLastMouseDown.inMilliseconds < 500 &&
+        event.buttons & kPrimaryButton != 0;
+    _lastMouseDownTime = DateTime.now();
+
     final keyboardModifiers = Provider.of<KeyboardModifiers>(
       context,
       listen: false,
     );
 
-    final isPlayheadMove = event.buttons & kPrimaryButton != 0;
+    final isPlayheadMove =
+        event.buttons & kPrimaryButton != 0 &&
+        event.localPosition.dy > _loopAreaHeight;
+
+    final isLoopHandleMove =
+        (event.buttons & kPrimaryButton != 0 &&
+        !isDoubleClick &&
+        (_loopStartPressed || _loopEndPressed));
+
+    final isLoopCreate =
+        (isDoubleClick ||
+            (event.buttons & kSecondaryButton != 0) ||
+            (event.buttons & kPrimaryButton != 0 && keyboardModifiers.ctrl)) &&
+        event.localPosition.dy <= _loopAreaHeight;
 
     if (isPlayheadMove) {
       var time = pixelsToTime(
@@ -127,13 +185,73 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
       if (time < 0) time = 0;
 
-      setPlayheadPosition(time, keyboardModifiers.alt);
+      _setPlayheadPosition(time, keyboardModifiers.alt, pattern: pattern);
 
       _playheadMoveActive = true;
+    } else if (isLoopHandleMove) {
+      if (arrangement == null && pattern == null) {
+        // If there is no arrangement or pattern, we can't move the loop handle
+        return;
+      }
+
+      _loopHandleMoveActive = true;
+
+      if (_loopStartPressed) {
+        _loopHandleMoveTimeAtEventStart =
+            arrangement?.loopPoints?.start ?? pattern?.loopPoints?.start ?? 0;
+      } else if (_loopEndPressed) {
+        _loopHandleMoveTimeAtEventStart =
+            arrangement?.loopPoints?.end ?? pattern?.loopPoints?.end ?? 0;
+      }
+    } else if (isLoopCreate) {
+      var time = pixelsToTime(
+        timeViewStart: widget.timeViewStartAnimation.value,
+        timeViewEnd: widget.timeViewEndAnimation.value,
+        viewPixelWidth: _lastTimelineSize.width,
+        pixelOffsetFromLeft: event.localPosition.dx,
+      );
+
+      if (time < 0) time = 0;
+
+      if (keyboardModifiers.alt) {
+        _loopCreateStart = time.round();
+      } else {
+        final divisionChanges = getDivisionChanges(
+          viewWidthInPixels: _lastTimelineSize.width,
+          snap: AutoSnap(),
+          defaultTimeSignature: Provider.of<ProjectModel>(
+            context,
+            listen: false,
+          ).sequence.defaultTimeSignature,
+          timeSignatureChanges: /* arrangement?.timeSignatureChanges ?? */
+              pattern?.timeSignatureChanges ?? [],
+          ticksPerQuarter: Provider.of<ProjectModel>(
+            context,
+            listen: false,
+          ).sequence.ticksPerQuarter,
+          timeViewStart: widget.timeViewStartAnimation.value,
+          timeViewEnd: widget.timeViewEndAnimation.value,
+          minPixelsPerSection: minorMinPixels,
+        );
+
+        _loopCreateStart = getSnappedTime(
+          rawTime: time.toInt(),
+          divisionChanges: divisionChanges,
+          round: true,
+        );
+
+        _arrangement?.loopPoints = null;
+        _pattern?.loopPoints = null;
+      }
+
+      _loopCreateActive = true;
     }
   }
 
   void handlePointerMove(PointerEvent event) {
+    final arrangement = _arrangement;
+    final pattern = _pattern;
+
     final keyboardModifiers = Provider.of<KeyboardModifiers>(
       context,
       listen: false,
@@ -149,13 +267,150 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
       if (time < 0) time = 0;
 
-      setPlayheadPosition(time, keyboardModifiers.alt);
+      _setPlayheadPosition(time, keyboardModifiers.alt, pattern: pattern);
+    } else if (_loopHandleMoveActive) {
+      if (arrangement == null && pattern == null) {
+        // If there is no arrangement or pattern, we can't move the loop handle
+        return;
+      }
+
+      final loopPoints = arrangement?.loopPoints ?? pattern?.loopPoints;
+
+      if (loopPoints == null) {
+        // If this happens it's probably a bug
+        return;
+      }
+
+      var time = pixelsToTime(
+        timeViewStart: widget.timeViewStartAnimation.value,
+        timeViewEnd: widget.timeViewEndAnimation.value,
+        viewPixelWidth: _lastTimelineSize.width,
+        pixelOffsetFromLeft: event.localPosition.dx,
+      );
+
+      if (time < 0) time = 0;
+
+      if (!keyboardModifiers.alt) {
+        var divisionChanges = getDivisionChanges(
+          viewWidthInPixels: _lastTimelineSize.width,
+          snap: AutoSnap(),
+          defaultTimeSignature: Provider.of<ProjectModel>(
+            context,
+            listen: false,
+          ).sequence.defaultTimeSignature,
+          timeSignatureChanges: /* arrangement?.timeSignatureChanges ?? */
+              pattern?.timeSignatureChanges ?? [],
+          ticksPerQuarter: Provider.of<ProjectModel>(
+            context,
+            listen: false,
+          ).sequence.ticksPerQuarter,
+          timeViewStart: widget.timeViewStartAnimation.value,
+          timeViewEnd: widget.timeViewEndAnimation.value,
+          minPixelsPerSection: minorMinPixels,
+        );
+
+        time = getSnappedTime(
+          rawTime: time.toInt(),
+          divisionChanges: divisionChanges,
+          round: true,
+          startTime: _loopHandleMoveTimeAtEventStart,
+        ).toDouble();
+      }
+
+      if (_loopStartPressed) {
+        if (time >= loopPoints.end) {
+          // This would be invalid
+          return;
+        }
+
+        loopPoints.start = time.round();
+      } else if (_loopEndPressed) {
+        if (time <= loopPoints.start) {
+          // This would be invalid
+          return;
+        }
+
+        loopPoints.end = time.round();
+      }
+    } else if (_loopCreateActive) {
+      if (arrangement == null && pattern == null) {
+        // If there is no arrangement or pattern, we can't create a loop
+        return;
+      }
+
+      var time = pixelsToTime(
+        timeViewStart: widget.timeViewStartAnimation.value,
+        timeViewEnd: widget.timeViewEndAnimation.value,
+        viewPixelWidth: _lastTimelineSize.width,
+        pixelOffsetFromLeft: event.localPosition.dx,
+      );
+
+      if (time < 0) time = 0;
+
+      if (!keyboardModifiers.alt) {
+        var divisionChanges = getDivisionChanges(
+          viewWidthInPixels: _lastTimelineSize.width,
+          snap: AutoSnap(),
+          defaultTimeSignature: Provider.of<ProjectModel>(
+            context,
+            listen: false,
+          ).sequence.defaultTimeSignature,
+          timeSignatureChanges: /* arrangement?.timeSignatureChanges ?? */
+              pattern?.timeSignatureChanges ?? [],
+          ticksPerQuarter: Provider.of<ProjectModel>(
+            context,
+            listen: false,
+          ).sequence.ticksPerQuarter,
+          timeViewStart: widget.timeViewStartAnimation.value,
+          timeViewEnd: widget.timeViewEndAnimation.value,
+          minPixelsPerSection: minorMinPixels,
+        );
+
+        time = getSnappedTime(
+          rawTime: time.toInt(),
+          divisionChanges: divisionChanges,
+          round: true,
+        ).toDouble();
+      }
+
+      var loopStart = _loopCreateStart!;
+      var loopEnd = time.round();
+
+      if (loopStart == loopEnd) {
+        arrangement?.loopPoints = null;
+        pattern?.loopPoints = null;
+        return;
+      }
+
+      if (loopStart > loopEnd) {
+        // If the start is after the end, swap them
+        final temp = loopStart;
+        loopStart = loopEnd;
+        loopEnd = temp;
+      }
+
+      if (arrangement?.loopPoints == null && pattern?.loopPoints == null) {
+        arrangement?.loopPoints = LoopPointsModel(loopStart, loopEnd);
+        pattern?.loopPoints = LoopPointsModel(loopStart, loopEnd);
+      } else {
+        arrangement?.loopPoints?.start = loopStart;
+        arrangement?.loopPoints?.end = loopEnd;
+        pattern?.loopPoints?.start = loopStart;
+        pattern?.loopPoints?.end = loopEnd;
+      }
     }
   }
 
   void handlePointerUp(PointerEvent event) {
     _playheadMoveActive = false;
     _lastPlayheadPositionSet = null;
+
+    _loopCreateActive = false;
+    _loopCreateStart = null;
+
+    _loopHandleMoveActive = false;
+    _loopStartPressed = false;
+    _loopEndPressed = false;
   }
 
   @override
@@ -265,21 +520,50 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                     );
                   },
                 ),
-                Visibility(
-                  visible:
-                      //     (widget.patternID != null &&
-                      //         widget.patternID ==
-                      //             project.sequence.activePatternID) ||
-                      (widget.arrangementID != null &&
-                      widget.arrangementID ==
-                          project.sequence.activeArrangementID),
-                  child: _PlayheadPositioner(
-                    timeViewAnimationController:
-                        widget.timeViewAnimationController,
-                    timeViewStartAnimation: widget.timeViewStartAnimation,
-                    timeViewEndAnimation: widget.timeViewEndAnimation,
-                    timelineSize: constraints.biggest,
-                  ),
+                Observer(
+                  builder: (context) {
+                    final loopPoints =
+                        _arrangement?.loopPoints ?? _pattern?.loopPoints;
+                    return _LoopHandles(
+                      timeViewAnimationController:
+                          widget.timeViewAnimationController,
+                      timeViewStartAnimation: widget.timeViewStartAnimation,
+                      timeViewEndAnimation: widget.timeViewEndAnimation,
+                      timelineSize: constraints.biggest,
+                      loopStart: loopPoints?.start,
+                      loopEnd: loopPoints?.end,
+                      onLoopStartPressed: () {
+                        _loopStartPressed = true;
+                      },
+                      onLoopEndPressed: () {
+                        _loopEndPressed = true;
+                      },
+                    );
+                  },
+                ),
+                Observer(
+                  // project.sequence.activeArrangementID is accessed
+                  // conditionally, so this warns sometimes if we don't disable
+                  // it
+                  warnWhenNoObservables: false,
+                  builder: (context) {
+                    return Visibility(
+                      visible:
+                          (widget.patternID != null &&
+                              widget.patternID ==
+                                  project.sequence.activePatternID) ||
+                          (widget.arrangementID != null &&
+                              widget.arrangementID ==
+                                  project.sequence.activeArrangementID),
+                      child: _PlayheadPositioner(
+                        timeViewAnimationController:
+                            widget.timeViewAnimationController,
+                        timeViewStartAnimation: widget.timeViewStartAnimation,
+                        timeViewEndAnimation: widget.timeViewEndAnimation,
+                        timelineSize: constraints.biggest,
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -621,7 +905,10 @@ class TimelinePainter extends CustomPainter {
   @override
   bool shouldRepaint(TimelinePainter oldDelegate) {
     return oldDelegate.timeViewStart != timeViewStart ||
-        oldDelegate.timeViewEnd != timeViewEnd;
+        oldDelegate.timeViewEnd != timeViewEnd ||
+        oldDelegate.ticksPerQuarter != ticksPerQuarter ||
+        oldDelegate.defaultTimeSignature != defaultTimeSignature ||
+        oldDelegate.timeSignatureChanges != timeSignatureChanges;
   }
 
   @override
@@ -741,4 +1028,129 @@ class _PlayheadHandlePainter extends CustomPainter {
 
   @override
   bool shouldRebuildSemantics(_PlayheadHandlePainter oldDelegate) => false;
+}
+
+class _LoopHandles extends StatelessWidget {
+  final AnimationController timeViewAnimationController;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
+  final Size timelineSize;
+  final int? loopStart;
+  final int? loopEnd;
+
+  final void Function() onLoopStartPressed;
+  final void Function() onLoopEndPressed;
+
+  const _LoopHandles({
+    required this.timeViewAnimationController,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+    required this.timelineSize,
+    required this.loopStart,
+    required this.loopEnd,
+    required this.onLoopStartPressed,
+    required this.onLoopEndPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: timeViewAnimationController,
+      builder: (context, child) {
+        final timeViewStart = timeViewStartAnimation.value;
+        final timeViewEnd = timeViewEndAnimation.value;
+
+        final loopStartX = timeToPixels(
+          timeViewStart: timeViewStart,
+          timeViewEnd: timeViewEnd,
+          viewPixelWidth: timelineSize.width,
+          time: loopStart?.toDouble() ?? 0.0,
+        );
+
+        final loopEndX = timeToPixels(
+          timeViewStart: timeViewStart,
+          timeViewEnd: timeViewEnd,
+          viewPixelWidth: timelineSize.width,
+          time: loopEnd?.toDouble() ?? 0.0,
+        );
+
+        final handleInteractSize = 16.0;
+        final handleSize = 3.0;
+
+        return Visibility(
+          visible: loopStart != null && loopEnd != null,
+          child: Positioned(
+            left: loopStartX - handleInteractSize / 2,
+            top: 0,
+            child: SizedBox(
+              width: loopEndX - loopStartX + handleInteractSize,
+              height: _loopAreaHeight,
+              child: Stack(
+                children: [
+                  // Main loop area
+                  Positioned(
+                    left: handleInteractSize / 2 + handleSize / 2,
+                    right: handleInteractSize / 2 + handleSize / 2,
+                    top: 0,
+                    bottom: 0,
+                    child: Container(color: Color(0xFF20A888).withAlpha(63)),
+                  ),
+
+                  // Loop start handle
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: SizedBox(
+                      width: handleInteractSize,
+                      child: Listener(
+                        onPointerDown: (event) {
+                          onLoopStartPressed();
+                        },
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.resizeLeftRight,
+                          child: Center(
+                            child: Container(
+                              width: handleSize,
+                              height: _loopAreaHeight,
+                              color: Color(0xFF20A888).withAlpha(200),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Loop end handle
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: SizedBox(
+                      width: handleInteractSize,
+                      child: Listener(
+                        onPointerDown: (event) {
+                          onLoopEndPressed();
+                        },
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.resizeLeftRight,
+                          child: Center(
+                            child: Container(
+                              width: handleSize,
+                              height: _loopAreaHeight,
+                              color: Color(0xFF20A888).withAlpha(200),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

@@ -47,6 +47,7 @@ export 'processing_graph/processing_graph.dart';
 
 export 'shared/anthem_color.dart';
 export 'shared/hydratable.dart';
+export 'shared/loop_points.dart';
 export 'shared/time_signature.dart';
 
 export 'app.dart';
