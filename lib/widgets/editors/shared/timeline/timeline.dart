@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:math';
-
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
@@ -27,11 +25,7 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
-import 'package:anthem/widgets/basic/visualization_builder.dart';
-import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
-import 'package:anthem/widgets/editors/shared/timeline/timeline_notifications.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -39,9 +33,12 @@ import 'package:provider/provider.dart';
 
 import '../helpers/time_helpers.dart';
 import '../helpers/types.dart';
+import 'loop_indicator.dart';
+import 'playhead_handle.dart';
+import 'timeline_labels.dart';
+import 'timeline_painter.dart';
 
-const _playheadHandleSize = Size(15, 15);
-const _loopAreaHeight = 17.0;
+const loopAreaHeight = 17.0;
 
 /// Draws the timeline for editors.
 class Timeline extends StatefulWidget {
@@ -162,7 +159,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
     final isPlayheadMove =
         event.buttons & kPrimaryButton != 0 &&
-        event.localPosition.dy > _loopAreaHeight;
+        event.localPosition.dy > loopAreaHeight;
 
     final isLoopHandleMove =
         (event.buttons & kPrimaryButton != 0 &&
@@ -173,7 +170,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
         (isDoubleClick ||
             (event.buttons & kSecondaryButton != 0) ||
             (event.buttons & kPrimaryButton != 0 && keyboardModifiers.ctrl)) &&
-        event.localPosition.dy <= _loopAreaHeight;
+        event.localPosition.dy <= loopAreaHeight;
 
     if (isPlayheadMove) {
       var time = pixelsToTime(
@@ -524,7 +521,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                   builder: (context) {
                     final loopPoints =
                         _arrangement?.loopPoints ?? _pattern?.loopPoints;
-                    return _LoopHandles(
+                    return LoopIndicator(
                       timeViewAnimationController:
                           widget.timeViewAnimationController,
                       timeViewStartAnimation: widget.timeViewStartAnimation,
@@ -555,7 +552,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                           (widget.arrangementID != null &&
                               widget.arrangementID ==
                                   project.sequence.activeArrangementID),
-                      child: _PlayheadPositioner(
+                      child: PlayheadPositioner(
                         timeViewAnimationController:
                             widget.timeViewAnimationController,
                         timeViewStartAnimation: widget.timeViewStartAnimation,
@@ -566,587 +563,6 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                   },
                 ),
               ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class TimeSignatureLabelLayoutDelegate extends MultiChildLayoutDelegate {
-  TimeSignatureLabelLayoutDelegate({
-    required this.timeSignatureChanges,
-    required this.timeViewStart,
-    required this.timeViewEnd,
-  });
-
-  List<TimeSignatureChangeModel> timeSignatureChanges;
-  double timeViewStart;
-  double timeViewEnd;
-
-  @override
-  void performLayout(Size size) {
-    for (var change in timeSignatureChanges) {
-      layoutChild(
-        change.offset,
-        BoxConstraints(maxWidth: size.width, maxHeight: size.height),
-      );
-
-      var x = timeToPixels(
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        viewPixelWidth: size.width,
-        time: change.offset.toDouble(),
-      );
-
-      positionChild(
-        change.offset,
-        Offset(x - _labelHandleMouseAreaPadding, 21),
-      );
-    }
-  }
-
-  @override
-  bool shouldRelayout(TimeSignatureLabelLayoutDelegate oldDelegate) {
-    return oldDelegate.timeViewStart != timeViewStart ||
-        oldDelegate.timeViewEnd != timeViewEnd ||
-        oldDelegate.timeSignatureChanges != timeSignatureChanges;
-  }
-}
-
-const _labelHandleWidth = 2.0;
-const _labelHandleMouseAreaPadding = 5.0;
-
-class TimelineLabel extends StatefulWidget {
-  final String text;
-  final Id id;
-  final Time offset;
-  final double timelineWidth;
-  // We need to pass in the parent's build context, since our build context
-  // doesn't stay valid during event handling.
-  final BuildContext stableBuildContext;
-
-  const TimelineLabel({
-    super.key,
-    required this.text,
-    required this.id,
-    required this.offset,
-    required this.timelineWidth,
-    required this.stableBuildContext,
-  });
-
-  @override
-  State<TimelineLabel> createState() => _TimelineLabelState();
-}
-
-class _TimelineLabelState extends State<TimelineLabel> {
-  double pointerStart = 0;
-  Time timeStart = 0;
-
-  void onPointerDown(PointerEvent e) {
-    pointerStart = e.position.dx;
-    timeStart = widget.offset;
-    TimelineLabelPointerDownNotification(
-      time: widget.offset.toDouble(),
-      labelID: widget.id,
-      labelType: TimelineLabelType.timeSignatureChange,
-      viewWidthInPixels: widget.timelineWidth,
-    ).dispatch(widget.stableBuildContext);
-  }
-
-  void onPointerMove(PointerEvent e) {
-    final timeView = Provider.of<TimeRange>(
-      widget.stableBuildContext,
-      listen: false,
-    );
-    final time =
-        (e.position.dx - pointerStart) * timeView.width / widget.timelineWidth;
-    TimelineLabelPointerMoveNotification(
-      time: time,
-      labelID: widget.id,
-      labelType: TimelineLabelType.timeSignatureChange,
-      viewWidthInPixels: widget.timelineWidth,
-    ).dispatch(widget.stableBuildContext);
-  }
-
-  void onPointerUp(PointerEvent e) {
-    final timeView = Provider.of<TimeRange>(
-      widget.stableBuildContext,
-      listen: false,
-    );
-    final time =
-        (e.position.dx - pointerStart) * timeView.width / widget.timelineWidth;
-    TimelineLabelPointerUpNotification(
-      time: time,
-      labelID: widget.id,
-      labelType: TimelineLabelType.timeSignatureChange,
-      viewWidthInPixels: widget.timelineWidth,
-    ).dispatch(widget.stableBuildContext);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.passthrough,
-      clipBehavior: Clip.none,
-      children: [
-        Positioned(
-          left: _labelHandleMouseAreaPadding,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                color: const Color(0xFFFFFFFF).withValues(alpha: 0.6),
-                width: _labelHandleWidth,
-                height: 21,
-              ),
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFFFFF).withValues(alpha: 0.08),
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(3),
-                  ),
-                ),
-                padding: const EdgeInsets.only(left: 4, right: 4),
-                height: 21,
-                child: Text(
-                  widget.text,
-                  style: TextStyle(color: Theme.text.main),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Positioned(
-          left: 0,
-          top: 0,
-          bottom: 0,
-          child: MouseRegion(
-            cursor: SystemMouseCursors.resizeLeftRight,
-            child: Listener(
-              behavior: HitTestBehavior.opaque,
-              onPointerDown: onPointerDown,
-              onPointerMove: onPointerMove,
-              onPointerUp: onPointerUp,
-              onPointerCancel: onPointerUp,
-              child: const SizedBox(width: 12),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class TimelinePainter extends CustomPainter {
-  TimelinePainter({
-    required this.timeViewStart,
-    required this.timeViewEnd,
-    required this.ticksPerQuarter,
-    required this.defaultTimeSignature,
-    required this.timeSignatureChanges,
-  });
-
-  final double timeViewStart;
-  final double timeViewEnd;
-  final int ticksPerQuarter;
-  final TimeSignatureModel defaultTimeSignature;
-  final List<TimeSignatureChangeModel> timeSignatureChanges;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Draw a bottom border - we don't make this a separate widget because we
-    // want to draw the playhead line on top of it.
-    final borderPaint = Paint()
-      ..color = Theme.panel.border
-      ..style = PaintingStyle.fill;
-
-    final markerPaint = Paint()
-      ..color = Theme.grid.minor
-      ..style = PaintingStyle.fill;
-
-    canvas.drawRect(
-      Rect.fromLTWH(0, size.height - 1, size.width, 1),
-      borderPaint,
-    );
-
-    // Line to separate numbers and tick marks
-    canvas.drawRect(
-      Rect.fromLTWH(0, _loopAreaHeight, size.width, 1),
-      borderPaint,
-    );
-
-    final minorDivisionChanges = getDivisionChanges(
-      viewWidthInPixels: size.width,
-      minPixelsPerSection: minorMinPixels,
-      snap: AutoSnap(),
-      defaultTimeSignature: defaultTimeSignature,
-      timeSignatureChanges: timeSignatureChanges,
-      ticksPerQuarter: ticksPerQuarter,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-    );
-
-    paintVerticalLines(
-      canvas: canvas,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-      divisionChanges: minorDivisionChanges,
-      size: size,
-      paint: markerPaint,
-      height: 5,
-    );
-
-    final majorDivisionChanges = getDivisionChanges(
-      viewWidthInPixels: size.width,
-      minPixelsPerSection: majorMinPixels,
-      snap: AutoSnap(),
-      defaultTimeSignature: defaultTimeSignature,
-      timeSignatureChanges: timeSignatureChanges,
-      ticksPerQuarter: ticksPerQuarter,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-
-      // When zoomed in, this means major tick marks will always be drawn less
-      // frequently than minor tick marks.
-      skipBottomNDivisions: 1,
-    );
-
-    paintVerticalLines(
-      canvas: canvas,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-      divisionChanges: majorDivisionChanges,
-      size: size,
-      paint: markerPaint,
-      height: 13,
-    );
-
-    var barDivisionChanges = getDivisionChanges(
-      viewWidthInPixels: size.width,
-      minPixelsPerSection: barMinPixels,
-      snap: BarSnap(),
-      defaultTimeSignature: defaultTimeSignature,
-      timeSignatureChanges: timeSignatureChanges,
-      ticksPerQuarter: ticksPerQuarter,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-    );
-
-    var i = 0;
-    var timePtr = 0;
-    var barNumber = barDivisionChanges[0].startLabel;
-
-    barNumber +=
-        (timePtr /
-                (barDivisionChanges[0].divisionRenderSize /
-                    barDivisionChanges[0].distanceBetween))
-            .floor();
-
-    while (timePtr < timeViewEnd) {
-      // This shouldn't happen, but safety first
-      if (i >= barDivisionChanges.length) break;
-
-      final thisDivision = barDivisionChanges[i];
-      var nextDivisionStart = 0x7FFF_FFFF_FFFF_FFFF; // int max
-
-      if (i < barDivisionChanges.length - 1) {
-        nextDivisionStart = barDivisionChanges[i + 1].offset;
-      }
-
-      while (timePtr < nextDivisionStart && timePtr < timeViewEnd) {
-        final x = timeToPixels(
-          timeViewStart: timeViewStart,
-          timeViewEnd: timeViewEnd,
-          viewPixelWidth: size.width,
-          time: timePtr.toDouble(),
-        );
-
-        // Don't draw numbers that are off-screen
-        if (x >= -50) {
-          // Vertical line for bar - skip bar 1, because it looks weird
-          if (barNumber > 1) {
-            canvas.drawRect(Rect.fromLTWH(x, 0, 1, size.height), markerPaint);
-          }
-
-          // Bar number
-          TextSpan span = TextSpan(
-            style: TextStyle(
-              color: Theme.text.main,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-            text: barNumber.toString(),
-          );
-          TextPainter textPainter = TextPainter(
-            text: span,
-            textAlign: TextAlign.left,
-            textDirection: TextDirection.ltr,
-          );
-          textPainter.layout();
-          textPainter.paint(canvas, Offset(x + 5, 1));
-        }
-
-        timePtr += thisDivision.divisionRenderSize;
-        barNumber += thisDivision.distanceBetween;
-
-        // If this is true, then this is the last iteration of the inner loop
-        if (timePtr >= nextDivisionStart) {
-          timePtr = nextDivisionStart;
-          barNumber = barDivisionChanges[i + 1].startLabel;
-        }
-      }
-
-      i++;
-    }
-  }
-
-  @override
-  bool shouldRepaint(TimelinePainter oldDelegate) {
-    return oldDelegate.timeViewStart != timeViewStart ||
-        oldDelegate.timeViewEnd != timeViewEnd ||
-        oldDelegate.ticksPerQuarter != ticksPerQuarter ||
-        oldDelegate.defaultTimeSignature != defaultTimeSignature ||
-        oldDelegate.timeSignatureChanges != timeSignatureChanges;
-  }
-
-  @override
-  bool shouldRebuildSemantics(TimelinePainter oldDelegate) => false;
-}
-
-Path _getPlayheadHandlePath() {
-  final handlePath1 = Path()
-    ..addRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(0, 0, _playheadHandleSize.width, 8),
-        Radius.circular(2),
-      ),
-    );
-
-  final rotatedRectSideLength = sqrt(
-    _playheadHandleSize.width * _playheadHandleSize.width / 2,
-  );
-  final posOffsetForRotate =
-      (_playheadHandleSize.width - rotatedRectSideLength) / 2;
-
-  final rRect = RRect.fromRectAndRadius(
-    Rect.fromLTWH(
-      posOffsetForRotate,
-      4 - posOffsetForRotate,
-      rotatedRectSideLength,
-      rotatedRectSideLength,
-    ),
-    Radius.circular(2),
-  );
-  final handlePath2 = Path()..addRRect(rRect);
-
-  final center = rRect.center;
-  final angle = pi / 4; // 45°
-
-  // Build a 4×4 rotation matrix about `center`
-  final rotationMatrix = Matrix4.identity()
-    ..translate(center.dx, center.dy)
-    ..rotateZ(angle)
-    ..translate(-center.dx, -center.dy);
-
-  return Path.combine(
-    PathOperation.union,
-    handlePath1,
-    handlePath2.transform(rotationMatrix.storage),
-  );
-}
-
-final _playheadHandlePath = _getPlayheadHandlePath();
-
-class _PlayheadPositioner extends StatelessWidget {
-  final AnimationController timeViewAnimationController;
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
-  final Size timelineSize;
-
-  const _PlayheadPositioner({
-    required this.timeViewAnimationController,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
-    required this.timelineSize,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: timeViewAnimationController,
-      builder: (context, child) {
-        return VisualizationBuilder(
-          config: VisualizationSubscriptionConfig.latest('playhead'),
-          builder: (context, playheadPosition) {
-            final timeViewStart = timeViewStartAnimation.value;
-            final timeViewEnd = timeViewEndAnimation.value;
-
-            final playheadX = timeToPixels(
-              timeViewStart: timeViewStart,
-              timeViewEnd: timeViewEnd,
-              viewPixelWidth: timelineSize.width,
-              time: playheadPosition,
-            );
-
-            return Positioned(
-              left: playheadX - (_playheadHandleSize.width) / 2,
-              top: timelineSize.height - _playheadHandleSize.height,
-              child: CustomPaint(
-                size: _playheadHandleSize,
-                painter: _PlayheadHandlePainter(),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-class _PlayheadHandlePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final handlePaint = Paint()
-      ..color = Color(0xFFFFFFFF).withAlpha(255 * 4 ~/ 10)
-      ..style = PaintingStyle.fill;
-
-    final linePaint = Paint()
-      ..color = Color(0xFFD9D9D9)
-      ..style = PaintingStyle.fill;
-
-    canvas.drawPath(_playheadHandlePath, handlePaint);
-    canvas.drawRect(
-      Rect.fromLTWH((size.width - 1) / 2, 0, 1, size.height),
-      linePaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_PlayheadHandlePainter oldDelegate) => false;
-
-  @override
-  bool shouldRebuildSemantics(_PlayheadHandlePainter oldDelegate) => false;
-}
-
-class _LoopHandles extends StatelessWidget {
-  final AnimationController timeViewAnimationController;
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
-  final Size timelineSize;
-  final int? loopStart;
-  final int? loopEnd;
-
-  final void Function() onLoopStartPressed;
-  final void Function() onLoopEndPressed;
-
-  const _LoopHandles({
-    required this.timeViewAnimationController,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
-    required this.timelineSize,
-    required this.loopStart,
-    required this.loopEnd,
-    required this.onLoopStartPressed,
-    required this.onLoopEndPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: timeViewAnimationController,
-      builder: (context, child) {
-        final timeViewStart = timeViewStartAnimation.value;
-        final timeViewEnd = timeViewEndAnimation.value;
-
-        final loopStartX = timeToPixels(
-          timeViewStart: timeViewStart,
-          timeViewEnd: timeViewEnd,
-          viewPixelWidth: timelineSize.width,
-          time: loopStart?.toDouble() ?? 0.0,
-        );
-
-        final loopEndX = timeToPixels(
-          timeViewStart: timeViewStart,
-          timeViewEnd: timeViewEnd,
-          viewPixelWidth: timelineSize.width,
-          time: loopEnd?.toDouble() ?? 0.0,
-        );
-
-        final handleInteractSize = 16.0;
-        final handleSize = 3.0;
-
-        return Visibility(
-          visible: loopStart != null && loopEnd != null,
-          child: Positioned(
-            left: loopStartX - handleInteractSize / 2,
-            top: 0,
-            child: SizedBox(
-              width: loopEndX - loopStartX + handleInteractSize,
-              height: _loopAreaHeight,
-              child: Stack(
-                children: [
-                  // Main loop area
-                  Positioned(
-                    left: handleInteractSize / 2 + handleSize / 2,
-                    right: handleInteractSize / 2 + handleSize / 2,
-                    top: 0,
-                    bottom: 0,
-                    child: Container(color: Color(0xFF20A888).withAlpha(63)),
-                  ),
-
-                  // Loop start handle
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    child: SizedBox(
-                      width: handleInteractSize,
-                      child: Listener(
-                        onPointerDown: (event) {
-                          onLoopStartPressed();
-                        },
-                        child: MouseRegion(
-                          cursor: SystemMouseCursors.resizeLeftRight,
-                          child: Center(
-                            child: Container(
-                              width: handleSize,
-                              height: _loopAreaHeight,
-                              color: Color(0xFF20A888).withAlpha(200),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Loop end handle
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                    child: SizedBox(
-                      width: handleInteractSize,
-                      child: Listener(
-                        onPointerDown: (event) {
-                          onLoopEndPressed();
-                        },
-                        child: MouseRegion(
-                          cursor: SystemMouseCursors.resizeLeftRight,
-                          child: Center(
-                            child: Container(
-                              width: handleSize,
-                              height: _loopAreaHeight,
-                              color: Color(0xFF20A888).withAlpha(200),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ),
           ),
         );
