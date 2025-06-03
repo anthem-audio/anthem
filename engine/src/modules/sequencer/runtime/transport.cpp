@@ -22,8 +22,11 @@
 #include "modules/core/anthem.h"
 
 Transport::Transport() : rt_playhead{0.0} {
+  config.loopStart = 0.0;
+  config.loopEnd = std::numeric_limits<double>::infinity();
+
   // Initialize the transport with default values
-  configBufferedValue.set(TransportConfig{});
+  configBufferedValue.set(config);
 
   rt_playheadJumpEvent = nullptr;
   rt_playheadJumpEventForSeek = nullptr;
@@ -58,10 +61,15 @@ void Transport::rt_prepareForProcessingBlock() {
   }
 
   // Check for change to start event list, and clean up the old one if necessary
-  if (newConfig.playheadJumpEventForStart != rt_config.playheadJumpEventForStart) {
-    if (rt_config.playheadJumpEventForStart != nullptr) {
-      playheadJumpEventDeleteBuffer.add(rt_config.playheadJumpEventForStart);
-    }
+  if (newConfig.playheadJumpEventForStart != rt_config.playheadJumpEventForStart &&
+      rt_config.playheadJumpEventForStart != nullptr) {
+    playheadJumpEventDeleteBuffer.add(rt_config.playheadJumpEventForStart);
+  }
+
+  // Check for change to loop jump event list, and clean up the old one if necessary
+  if (newConfig.playheadJumpEventForLoop != rt_config.playheadJumpEventForLoop &&
+      rt_config.playheadJumpEventForLoop != nullptr) {
+    playheadJumpEventDeleteBuffer.add(rt_config.playheadJumpEventForLoop);
   }
 
   // Update the real-time transport state
@@ -90,11 +98,13 @@ void Transport::rt_prepareForProcessingBlock() {
   // Set the public-facing playhead jump event pointer
   if (rt_playheadJumpEventForSeek != nullptr) {
     rt_playheadJumpEvent = rt_playheadJumpEventForSeek;
-  } else if (rt_playheadJumpEventForStart != nullptr) {
+  }
+  else if (rt_playheadJumpEventForStart != nullptr) {
     // If there is no seek event, but there is a start event, then we use that
     // as the playhead jump event
     rt_playheadJumpEvent = rt_playheadJumpEventForStart;
-  } else {
+  }
+  else {
     // Otherwise, we have no playhead jump event for this processing block
     rt_playheadJumpEvent = nullptr;
   }
@@ -114,15 +124,47 @@ void Transport::rt_advancePlayhead(int numSamples) {
   rt_playheadJumpEventForStart = nullptr; // This is cleaned up elsewhere
 }
 
+double Transport::rt_getPlayheadAdvanceAmount(int numSamples) {
+  if (!rt_config.isPlaying) {
+    return 0.0;
+  }
+  auto ticksPerQuarter = rt_config.ticksPerQuarter;
+  auto beatsPerMinute = rt_config.beatsPerMinute;
+  auto ticksPerMinute = ticksPerQuarter * beatsPerMinute;
+  auto ticksPerSecond = ticksPerMinute / 60.0;
+  auto ticksPerSample = ticksPerSecond / 48000.0; // Assuming a sample rate of 48000 Hz
+  return static_cast<double>(numSamples * ticksPerSample);
+}
+
 double Transport::rt_getPlayheadAfterAdvance(int numSamples) {
   if (rt_config.isPlaying) {
-    auto ticksPerQuarter = rt_config.ticksPerQuarter;
-    auto beatsPerMinute = rt_config.beatsPerMinute;
-    auto ticksPerMinute = ticksPerQuarter * beatsPerMinute;
-    auto ticksPerSecond = ticksPerMinute / 60.0;
-    auto ticksPerSample = ticksPerSecond / 48000.0; // Assuming a sample rate of 48000 Hz
-    auto ticks = static_cast<double>(numSamples * ticksPerSample);
-    return rt_playhead + ticks;
+    auto ticks = rt_getPlayheadAdvanceAmount(numSamples);
+
+    // Because we're using floating point math, the math operations here must
+    // precisely mirror those in the event provider nodes. If not, then we might
+    // drop or double-count events.
+    double timePointer = rt_playhead;
+    double incrementRemaining = ticks;
+    double loopStart = rt_config.loopStart;
+    double loopEnd = rt_config.loopEnd; // This will be inifinite if no loop is set
+
+    while (incrementRemaining > 0.0) {
+      double incrementAmount = incrementRemaining;
+
+      if (timePointer + incrementAmount >= loopEnd) {
+        // If the increment would take us past the loop end, we need to
+        // calculate how much of the increment we can actually apply.
+        incrementAmount = loopEnd - timePointer;
+        incrementRemaining -= incrementAmount;
+        timePointer = loopStart;
+      }
+      else {
+        timePointer += incrementAmount;
+        incrementRemaining = 0.0;
+      }
+    }
+
+    rt_playhead = timePointer;
   }
 
   return rt_playhead;
@@ -186,6 +228,61 @@ void Transport::jumpTo(double playheadPosition) {
   auto* event = createPlayheadJumpEvent(playheadPosition);
 
   playheadJumpEventBuffer.add(event);
+}
+
+void Transport::clearLoopPoints() {
+  if (!config.hasLoop) {
+    return;
+  }
+
+  config.hasLoop = false;
+  config.loopStart = 0.0;
+  config.loopEnd = std::numeric_limits<double>::infinity();
+
+  // The audio thread will release this into the delete buffer when it picks up the new config
+  config.playheadJumpEventForLoop = nullptr;
+}
+
+void Transport::updateLoopPoints(bool send) {
+  if (!config.activeSequenceId.has_value()) {
+    clearLoopPoints();
+
+    if (send) {
+      configBufferedValue.set(config);
+    }
+
+    return;
+  }
+
+  auto& patterns = *Anthem::getInstance().project->sequence()->patterns();
+  auto& arrangements = *Anthem::getInstance().project->sequence()->arrangements();
+
+  std::shared_ptr<LoopPointsModel> loopPoints;
+
+  if (patterns.find(config.activeSequenceId.value()) != patterns.end() &&
+      patterns.at(config.activeSequenceId.value())->loopPoints().has_value()) {
+    loopPoints = patterns.at(config.activeSequenceId.value())->loopPoints().value();
+  }
+  else if (arrangements.find(config.activeSequenceId.value()) != arrangements.end() &&
+      arrangements.at(config.activeSequenceId.value())->loopPoints().has_value()) {
+    loopPoints = arrangements.at(config.activeSequenceId.value())->loopPoints().value();
+  }
+  else {
+    clearLoopPoints();
+
+    if (send) {
+      configBufferedValue.set(config);
+    }
+
+    return;
+  }
+
+  config.hasLoop = true;
+  config.loopStart = static_cast<double>(loopPoints->start());
+  config.loopEnd = static_cast<double>(loopPoints->end());
+  config.playheadJumpEventForLoop = createPlayheadJumpEvent(static_cast<double>(config.loopStart));
+
+  configBufferedValue.set(config);
 }
 
 void Transport::timerCallback() {

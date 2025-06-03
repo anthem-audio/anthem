@@ -49,7 +49,13 @@ public:
   double beatsPerMinute = 120.0;
   bool isPlaying = false;
   double playheadStart = 0.0;
+
   PlayheadJumpEvent* playheadJumpEventForStart = nullptr;
+
+  bool hasLoop = false;
+  PlayheadJumpEvent* playheadJumpEventForLoop = nullptr;
+  double loopStart = 0.0;
+  double loopEnd = 0.0;
 };
 
 class Transport : private juce::Timer {
@@ -62,7 +68,7 @@ private:
 
   // PLayhead jump events are sent back to the main thread for deletion through
   // this buffer.
-  RingBuffer<PlayheadJumpEvent*, 64> playheadJumpEventDeleteBuffer;
+  RingBuffer<PlayheadJumpEvent*, 256> playheadJumpEventDeleteBuffer;
 
   PlayheadJumpEvent* rt_playheadJumpEventForSeek;
   PlayheadJumpEvent* rt_playheadJumpEventForStart;
@@ -74,6 +80,9 @@ private:
 
   PlayheadJumpEvent* createPlayheadJumpEvent(double playheadPosition);
 
+  void updateLoopPoints(bool send);
+  void clearLoopPoints();
+
 public:
   // The transport config.
   //
@@ -83,7 +92,7 @@ public:
   // The playhead position
   double rt_playhead;
 
-// The current playhead jump event, if one is relevant for the current
+  // The current playhead jump event, if one is relevant for the current
   // processing block.
   PlayheadJumpEvent* rt_playheadJumpEvent;
 
@@ -107,6 +116,7 @@ public:
   }
   void setActiveSequenceId(std::optional<std::string>& sequenceId) {
     config.activeSequenceId = sequenceId;
+    updateLoopPoints(false);
     configBufferedValue.set(config);
   }
   void setTicksPerQuarter(int64_t ticksPerQuarter) {
@@ -117,11 +127,29 @@ public:
     config.beatsPerMinute = beatsPerMinute;
     configBufferedValue.set(config);
   }
+
+  // Sets the start point for the playhead.
+  //
+  // The start point is the position that the playhead will jump to when the
+  // transport is stopped, making it the place that playback will start from
+  // when the transport is started again.
   void setPlayheadStart(double playheadPosition);
+
+  // Jumps the playhead to the given position.
   void jumpTo(double playheadPosition);
+
+  // Pulls loop points from the active sequence and sends the relevant loop
+  // information to the audio thread, including events to play on loop jump.
+  void updateLoopPoints() {
+    updateLoopPoints(true);
+  }
 
   // Must be called at the start of every processing block.
   void rt_prepareForProcessingBlock();
+
+  // Gets the exact number of ticks that the playhead would advance by, given
+  // the current buffer size in samples.
+  double rt_getPlayheadAdvanceAmount(int samples);
 
   // Advances the playhead by the given number of samples.
   //

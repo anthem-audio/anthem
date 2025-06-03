@@ -21,7 +21,7 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 
-import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/main.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
@@ -51,6 +51,17 @@ class PatternModel extends _PatternModel
         _$PatternModelAnthemModelMixin,
         _ClipTitleRenderCacheMixin,
         _ClipNotesRenderCacheMixin {
+  /// Action to tell the engine to send new loop points to the audio thread.
+  late final _updateLoopPointsAction = MicrotaskDebouncedAction(() {
+    final engine = project.engine;
+
+    if (!engine.isRunning) {
+      return;
+    }
+
+    project.engine.sequencerApi.updateLoopPoints(id);
+  });
+
   PatternModel() : super() {
     _init();
   }
@@ -112,10 +123,10 @@ class PatternModel extends _PatternModel
         if (fieldAccessors.elementAtOrNull(1) == null &&
             fieldAccessors.first.fieldName == 'notes') {
           scheduleClipNotesRenderCacheUpdate();
-        }
-
-        if (fieldAccessors.first.fieldName == 'name') {
+        } else if (fieldAccessors.first.fieldName == 'name') {
           updateClipTitleCache();
+        } else if (fieldAccessors.first.fieldName == 'loopPoints') {
+          _updateLoopPointsAction.execute();
         }
       });
     });
@@ -128,7 +139,7 @@ class PatternModel extends _PatternModel
     // If the engine is not running, we don't need to worry about sending this
     // update. If the engine starts, all patterns need to be compiled anyway, so
     // the engine startup code should handle this.
-    if (project.engine.engineState != EngineState.running) {
+    if (!project.engine.isRunning) {
       return;
     }
 
@@ -153,7 +164,7 @@ class PatternModel extends _PatternModel
     Future.microtask(() {
       _isPatternCompileScheduled = false;
 
-      if (project.engine.engineState != EngineState.running) {
+      if (!project.engine.isRunning) {
         _channelsToCompileForPattern = {};
         return;
       }
@@ -181,7 +192,7 @@ class PatternModel extends _PatternModel
     Future.microtask(() {
       _isArrangementsCompileScheduled = false;
 
-      if (project.engine.engineState != EngineState.running) {
+      if (!project.engine.isRunning) {
         _channelsToCompileForArrangements = {};
         return;
       }

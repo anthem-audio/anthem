@@ -67,6 +67,7 @@ class Engine {
 
   EngineState _engineState = EngineState.stopped;
   EngineState get engineState => _engineState;
+  bool get isRunning => _engineState == EngineState.running;
 
   /// Returns a [Future] that completes when the engine is ready to receive
   /// messages.

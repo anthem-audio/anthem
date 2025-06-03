@@ -31,6 +31,18 @@ SequenceNoteProviderProcessor::~SequenceNoteProviderProcessor() {
   // Nothing to do here
 }
 
+void SequenceNoteProviderProcessor::addEventsForJump(std::unique_ptr<AnthemEventBuffer>& targetBuffer, PlayheadJumpEvent* event) {
+  auto& channelId = this->channelId();
+
+  auto& eventsForJump = event->eventsToPlayAtJump;
+  if (eventsForJump.find(channelId) != eventsForJump.end()) {
+    auto& events = eventsForJump.at(channelId);
+    for (auto& event : events) {
+      targetBuffer->addEvent(event);
+    }
+  }
+}
+
 void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int numSamples) {
   auto& outputEventBuffer = context.getOutputEventBuffer(
     SequenceNoteProviderProcessorModelBase::eventOutputPortId
@@ -39,6 +51,7 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
   auto& channelId = this->channelId();
 
   auto& transport = Anthem::getInstance().transport;
+  auto& config = transport->rt_config;
 
   // If the transport jumped for any reason, we need to send a stop event to the
   // downstream device.
@@ -51,20 +64,10 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
   }
 
   if (transport->rt_playheadJumpEvent != nullptr) {
-    auto& eventsForJump = transport->rt_playheadJumpEvent->eventsToPlayAtJump;
-    if (eventsForJump.find(channelId) != eventsForJump.end()) {
-      auto& events = eventsForJump.at(channelId);
-      for (auto& event : events) {
-        outputEventBuffer->addEvent(event);
-      }
-    }
+    addEventsForJump(outputEventBuffer, transport->rt_playheadJumpEvent);
   }
 
-  auto start = transport->rt_playhead; // Inclusive
-  auto end = transport->rt_getPlayheadAfterAdvance(numSamples); // Not inclusive
-
-  // If the transport is not running, we don't need to do anything.
-  if (start == end) {
+  if (!config.isPlaying) {
     return;
   }
 
@@ -77,7 +80,7 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
   }
 
   auto& sequenceMap = sequenceStore.rt_getEventLists();
-    if (sequenceMap.find(*activeSequenceId) == sequenceMap.end()) {
+  if (sequenceMap.find(*activeSequenceId) == sequenceMap.end()) {
     return;
   }
 
@@ -87,17 +90,66 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
   }
 
   auto& channelEvents = eventsForSequence.channels->at(channelId);
-  for (auto& event : *channelEvents.events) {
-    if (event.offset >= start && event.offset < end) {
-      AnthemLiveEvent liveEvent {};
-      liveEvent.time = event.offset - start;
-      liveEvent.event = event.event;
 
-      outputEventBuffer->addEvent(liveEvent);
+  double ticks = transport->rt_getPlayheadAdvanceAmount(numSamples);
+
+  double timePointer = transport->rt_playhead;
+  double incrementRemaining = ticks;
+  double loopStart = config.loopStart;
+  double loopEnd = config.loopEnd; // This will be inifinite if no loop is set
+
+  while (incrementRemaining > 0.0) {
+    double incrementAmount = incrementRemaining;
+    bool didJump = false;
+
+    double start = timePointer; // Inclusive
+    double end = -1; // Not inclusive
+
+    if (timePointer + incrementAmount >= loopEnd) {
+      // If the increment would take us past the loop end, we need to
+      // calculate how much of the increment we can actually apply.
+      incrementAmount = loopEnd - timePointer;
+      incrementRemaining -= incrementAmount;
+      timePointer = loopStart;
+      end = loopEnd;
+      didJump = true;
+    }
+    else {
+      timePointer += incrementAmount;
+      end = timePointer;
+      incrementRemaining = 0.0;
     }
 
-    if (event.offset >= end) {
-      break;
+    // This might happen if a loop is created a long ways before the playhead
+    // and the playhead has to jump back
+    if (incrementAmount < 0) {
+      incrementAmount = 0;
+    }
+
+    for (auto& event : *channelEvents.events) {
+      if (event.offset >= start && event.offset < end) {
+        AnthemLiveEvent liveEvent{};
+        liveEvent.time = event.offset - start;
+        liveEvent.event = event.event;
+
+        outputEventBuffer->addEvent(liveEvent);
+      }
+
+      if (event.offset >= end) {
+        break;
+      }
+    }
+
+    if (didJump) {
+      // Stop all sound
+      AnthemLiveEvent liveEvent{};
+      liveEvent.time = 0;
+      liveEvent.event.type = AnthemEventType::AllVoicesOff;
+
+      outputEventBuffer->addEvent(liveEvent);
+
+      // Then play the events for loop start
+      addEventsForJump(outputEventBuffer, config.playheadJumpEventForLoop);
     }
   }
 }

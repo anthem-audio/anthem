@@ -19,7 +19,7 @@
 
 import 'dart:math';
 
-import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
@@ -55,12 +55,29 @@ class ArrangementModel extends _ArrangementModel
     return arrangement;
   }
 
+  /// Action to tell the engine to send new loop points to the audio thread.
+  late final _updateLoopPointsAction = MicrotaskDebouncedAction(() {
+    final engine = project.engine;
+
+    if (!engine.isRunning) {
+      return;
+    }
+
+    project.engine.sequencerApi.updateLoopPoints(id);
+  });
+
   void _init() {
     onModelAttached(() {
       _compileInEngine();
 
       clips.addFieldChangedListener((fieldAccessors, operation) {
         _recompileModifiedClips(fieldAccessors, operation);
+      });
+
+      addFieldChangedListener((fieldAccessors, operation) {
+        if (fieldAccessors.first.fieldName == 'loopPoints') {
+          _updateLoopPointsAction.execute();
+        }
       });
     });
   }
@@ -75,7 +92,7 @@ class ArrangementModel extends _ArrangementModel
     // If the engine is not running, then we don't need to worry about
     // sending this update. When the engine is started, it will recompile
     // all arrangements.
-    if (project.engine.engineState != EngineState.running) {
+    if (!project.engine.isRunning) {
       return;
     }
 
@@ -164,7 +181,7 @@ class ArrangementModel extends _ArrangementModel
       _isScheduled = false;
 
       // If the engine is not running, we won't try to send anything.
-      if (project.engine.engineState != EngineState.running) {
+      if (!project.engine.isRunning) {
         _channelsToCompile = {};
         return;
       }
@@ -180,7 +197,7 @@ class ArrangementModel extends _ArrangementModel
 
   /// Compiles the entire arrangement in the engine.
   void _compileInEngine() {
-    if (project.engine.engineState != EngineState.running) {
+    if (!project.engine.isRunning) {
       return;
     }
 

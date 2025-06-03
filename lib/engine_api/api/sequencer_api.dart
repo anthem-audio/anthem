@@ -121,4 +121,15 @@ class SequencerApi {
 
     _engine._requestNoReply(request);
   }
+
+  /// Sends the new loop points to the audio thread for the given sequence ID,
+  /// if the active sequence ID matches the given sequence ID.
+  void updateLoopPoints(String sequenceId) {
+    final request = LoopPointsChangedRequest(
+      id: _engine._getRequestId(),
+      sequenceId: sequenceId,
+    );
+
+    _engine._requestNoReply(request);
+  }
 }

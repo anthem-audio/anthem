@@ -119,3 +119,17 @@ class PlayheadJumpRequest extends Request {
     super.id = id;
   }
 }
+
+/// Notifies the engine that loop points have changed for a given sequence.
+class LoopPointsChangedRequest extends Request {
+  /// The sequence ID for which the loop points have changed.
+  ///
+  /// This will be either a pattern ID or an arrangement ID.
+  String sequenceId;
+
+  LoopPointsChangedRequest.uninitialized() : sequenceId = '';
+
+  LoopPointsChangedRequest({required int id, required this.sequenceId}) {
+    super.id = id;
+  }
+}

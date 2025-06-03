@@ -63,6 +63,14 @@ std::optional<Response> handleSequencerCommand(Request& request) {
 
     Anthem::getInstance().transport->jumpTo(playheadJumpRequest.offset);
   }
+  else if (rfl::holds_alternative<LoopPointsChangedRequest>(request.variant())) {
+    auto& loopPointsChangedRequest = rfl::get<LoopPointsChangedRequest>(request.variant());
+
+    auto& transport = *Anthem::getInstance().transport;
+    if (transport.config.activeSequenceId == loopPointsChangedRequest.sequenceId) {
+      transport.updateLoopPoints();
+    }
+  }
 
   return std::nullopt;
 }
