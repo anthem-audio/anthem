@@ -225,6 +225,11 @@ void Transport::setPlayheadStart(double playheadStart) {
 }
 
 void Transport::jumpTo(double playheadPosition) {
+  if (config.hasLoop && playheadPosition >= config.loopEnd) {
+    double mod = std::fmod(playheadPosition - config.loopStart, config.loopEnd - config.loopStart);
+    playheadPosition = config.loopStart + mod;
+  }
+
   auto* event = createPlayheadJumpEvent(playheadPosition);
 
   playheadJumpEventBuffer.add(event);
