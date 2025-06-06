@@ -43,12 +43,6 @@ class SequencerApi {
     List<String>? channelsToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {
-    // if ((channelsToRebuild == null) != (invalidationRanges == null)) {
-    //   throw ArgumentError(
-    //     'channelsToRebuild and invalidationRanges must both be specified or both be null',
-    //   );
-    // }
-
     final request = CompileSequenceRequest.arrangement(
       id: _engine._getRequestId(),
       arrangementId: arrangementId.toString(),
@@ -78,16 +72,11 @@ class SequencerApi {
     List<String>? channelsToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {
-    // if ((channelsToRebuild == null) != (invalidationRanges == null)) {
-    //   throw ArgumentError(
-    //     'channelsToRebuild and invalidationRanges must both be specified or both be null',
-    //   );
-    // }
-
     final request = CompileSequenceRequest.pattern(
       id: _engine._getRequestId(),
       patternId: patternId.toString(),
       channelsToRebuild: channelsToRebuild,
+      invalidationRanges: invalidationRanges,
     );
 
     _engine._requestNoReply(request);

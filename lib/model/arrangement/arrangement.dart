@@ -24,17 +24,23 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/sequence.dart';
+import 'package:anthem/model/shared/invalidation_range_collector.dart';
 import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
 import 'clip.dart';
 
+part 'arrangement_compiler_mixin.dart';
+
 part 'arrangement.g.dart';
 
 @AnthemModel.syncedModel()
 class ArrangementModel extends _ArrangementModel
-    with _$ArrangementModel, _$ArrangementModelAnthemModelMixin {
+    with
+        _$ArrangementModel,
+        _$ArrangementModelAnthemModelMixin,
+        _ArrangementCompilerMixin {
   ArrangementModel({required super.name, required super.id}) {
     _init();
   }
@@ -83,128 +89,6 @@ class ArrangementModel extends _ArrangementModel
       });
     });
   }
-
-  /// Rebuilds only modified clips in the engine.
-  ///
-  /// This is meant to be attached to the clips field changed listener above.
-  void _recompileModifiedClips(
-    Iterable<FieldAccessor> fieldAccessors,
-    FieldOperation operation,
-  ) {
-    // If the engine is not running, then we don't need to worry about
-    // sending this update. When the engine is started, it will recompile
-    // all arrangements.
-    if (!project.engine.isRunning) {
-      return;
-    }
-
-    // We're collecting a list of channels to recompile for this
-    // arrangement. We want to recompile as few as possible, since
-    // recompiling during playback may require us to flush events for any
-    // channels that are rebuilt.
-    final channelsToRebuild = <String>{};
-
-    // This means we're adding, replacing or removing a clip.
-    if (fieldAccessors.length == 1) {
-      final oldClip = switch (operation) {
-        RawFieldUpdate() => operation.oldValueAs<ClipModel>(),
-        ListInsert() => null,
-        ListRemove() => operation.removedValueAs<ClipModel>(),
-        ListUpdate() => operation.oldValueAs<ClipModel>(),
-        MapPut() => operation.oldValueAs<ClipModel?>(),
-        MapRemove() => operation.removedValueAs<ClipModel>(),
-      };
-
-      final newClip = switch (operation) {
-        RawFieldUpdate() => operation.newValueAs<ClipModel>(),
-        ListInsert() => operation.valueAs<ClipModel>(),
-        ListRemove() => null,
-        ListUpdate() => operation.newValueAs<ClipModel>(),
-        MapPut() => operation.newValueAs<ClipModel?>(),
-        MapRemove() => null,
-      };
-
-      if (oldClip != null) {
-        final pattern = project.sequence.patterns[oldClip.patternId];
-        if (pattern != null) {
-          channelsToRebuild.addAll(pattern.channelsWithContent);
-        }
-      }
-
-      if (newClip != null) {
-        final pattern = project.sequence.patterns[newClip.patternId];
-        if (pattern != null) {
-          channelsToRebuild.addAll(pattern.channelsWithContent);
-        }
-      }
-    }
-
-    final clipAccessor = fieldAccessors.elementAtOrNull(1);
-
-    // This means we're changing a property of a clip.
-    if (clipAccessor != null) {
-      // We need to mark the clip for rebuilding if anything changed,
-      // besides trackId since that just tells it which row to render on.
-      if (clipAccessor.fieldName != 'trackId') {
-        final clipId = fieldAccessors.first.key as Id;
-        final clip = clips[clipId];
-        if (clip != null) {
-          final pattern = project.sequence.patterns[clip.patternId];
-          if (pattern != null) {
-            channelsToRebuild.addAll(pattern.channelsWithContent);
-          }
-        }
-      }
-    }
-
-    if (channelsToRebuild.isEmpty) {
-      return;
-    }
-
-    _scheduleChannelsToCompile(channelsToRebuild);
-  }
-
-  Set<Id> _channelsToCompile = {};
-  bool _isScheduled = false;
-  void _scheduleChannelsToCompile(Iterable<Id> channelIds) {
-    if (channelIds.isEmpty) {
-      return;
-    }
-
-    _channelsToCompile.addAll(channelIds);
-
-    if (_isScheduled) {
-      return;
-    }
-
-    _isScheduled = true;
-
-    Future.microtask(() {
-      _isScheduled = false;
-
-      // If the engine is not running, we won't try to send anything.
-      if (!project.engine.isRunning) {
-        _channelsToCompile = {};
-        return;
-      }
-
-      project.engine.sequencerApi.compileArrangement(
-        id,
-        channelsToRebuild: _channelsToCompile.toList(),
-      );
-
-      _channelsToCompile = {};
-    });
-  }
-
-  /// Compiles the entire arrangement in the engine.
-  void _compileInEngine() {
-    if (!project.engine.isRunning) {
-      return;
-    }
-
-    project.engine.sequencerApi.compileArrangement(id);
-  }
 }
 
 abstract class _ArrangementModel with Store, AnthemModelBase {
@@ -245,7 +129,8 @@ abstract class _ArrangementModel with Store, AnthemModelBase {
 
     final lastContent = clips.values.fold<int>(
       ticksPerBar * barMultiple * minPaddingInBarMultiples,
-      (previousValue, clip) => max(previousValue, clip.offset + clip.width),
+      (previousValue, clip) =>
+          max(previousValue, clip.offset + clip.getWidthFromProject(project)),
     );
 
     return (max(lastContent, 1) / (ticksPerBar * barMultiple)).ceil() *

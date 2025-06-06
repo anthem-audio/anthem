@@ -29,6 +29,7 @@ import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
+import 'package:anthem/model/shared/invalidation_range_collector.dart';
 import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes_render_cache.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
@@ -41,8 +42,10 @@ import 'automation_lane.dart';
 import 'note.dart';
 
 part 'pattern.g.dart';
+
 part 'package:anthem/widgets/basic/clip/clip_title_render_cache_mixin.dart';
 part 'package:anthem/widgets/basic/clip/clip_notes_render_cache_mixin.dart';
+part 'pattern_compiler_mixin.dart';
 
 @AnthemModel.syncedModel()
 class PatternModel extends _PatternModel
@@ -50,7 +53,8 @@ class PatternModel extends _PatternModel
         _$PatternModel,
         _$PatternModelAnthemModelMixin,
         _ClipTitleRenderCacheMixin,
-        _ClipNotesRenderCacheMixin {
+        _ClipNotesRenderCacheMixin,
+        _PatternCompilerMixin {
   /// Action to tell the engine to send new loop points to the audio thread.
   late final _updateLoopPointsAction = MicrotaskDebouncedAction(() {
     final engine = project.engine;
@@ -101,7 +105,8 @@ class PatternModel extends _PatternModel
 
       // Make sure the engine knows about this sequence when it is created, in
       // case it is created from project load or undo/redo
-      _compileInEngine();
+      _channelsToCompile.addAll(channelsWithContent);
+      _schedulePatternCompile(false);
 
       // When notes are changed in the pattern, we need to:
       //   1. Update the clip notes render cache.
@@ -110,12 +115,7 @@ class PatternModel extends _PatternModel
         scheduleClipNotesRenderCacheUpdate();
         _clipAutoWidthUpdateAction.execute();
 
-        final channelIdFieldAccessor = fieldAccessors.first;
-        final channelId = channelIdFieldAccessor.key;
-
-        if (channelId != null) {
-          _compileInEngine(channelIds: [channelId], updateArrangements: true);
-        }
+        _recompileModifiedNotes(fieldAccessors, operation);
       });
 
       automationLanes.addFieldChangedListener((fieldAccessors, operation) {
@@ -136,82 +136,6 @@ class PatternModel extends _PatternModel
           _updateLoopPointsAction.execute();
         }
       });
-    });
-  }
-
-  void _compileInEngine({
-    bool updateArrangements = false,
-    List<String>? channelIds,
-  }) {
-    // If the engine is not running, we don't need to worry about sending this
-    // update. If the engine starts, all patterns need to be compiled anyway, so
-    // the engine startup code should handle this.
-    if (!project.engine.isRunning) {
-      return;
-    }
-
-    _schedulePatternCompile(channelIds ?? channelsWithContent);
-
-    if (updateArrangements) {
-      _scheduleArrangementsCompile(channelIds ?? channelsWithContent);
-    }
-  }
-
-  Set<Id> _channelsToCompileForPattern = {};
-  bool _isPatternCompileScheduled = false;
-  void _schedulePatternCompile(Iterable<Id> channelIds) {
-    _channelsToCompileForPattern.addAll(channelIds);
-
-    if (_isPatternCompileScheduled) {
-      return;
-    }
-
-    _isPatternCompileScheduled = true;
-
-    Future.microtask(() {
-      _isPatternCompileScheduled = false;
-
-      if (!project.engine.isRunning) {
-        _channelsToCompileForPattern = {};
-        return;
-      }
-
-      project.engine.sequencerApi.compilePattern(
-        id,
-        channelsToRebuild: _channelsToCompileForPattern.toList(),
-      );
-
-      _channelsToCompileForPattern = {};
-    });
-  }
-
-  Set<Id> _channelsToCompileForArrangements = {};
-  bool _isArrangementsCompileScheduled = false;
-  void _scheduleArrangementsCompile(Iterable<Id> channelIds) {
-    _channelsToCompileForArrangements.addAll(channelIds);
-
-    if (_isArrangementsCompileScheduled) {
-      return;
-    }
-
-    _isArrangementsCompileScheduled = true;
-
-    Future.microtask(() {
-      _isArrangementsCompileScheduled = false;
-
-      if (!project.engine.isRunning) {
-        _channelsToCompileForArrangements = {};
-        return;
-      }
-
-      for (final arrangement in project.sequence.arrangements.values) {
-        project.engine.sequencerApi.compileArrangement(
-          arrangement.id,
-          channelsToRebuild: _channelsToCompileForArrangements.toList(),
-        );
-
-        _channelsToCompileForArrangements = {};
-      }
     });
   }
 
