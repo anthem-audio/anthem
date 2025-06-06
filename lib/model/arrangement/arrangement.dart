@@ -22,7 +22,6 @@ import 'dart:math';
 import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/sequence.dart';
 import 'package:anthem/model/shared/loop_points.dart';
@@ -70,8 +69,11 @@ class ArrangementModel extends _ArrangementModel
     onModelAttached(() {
       _compileInEngine();
 
+      updateViewWidthAction.execute();
+
       clips.addFieldChangedListener((fieldAccessors, operation) {
         _recompileModifiedClips(fieldAccessors, operation);
+        updateViewWidthAction.execute();
       });
 
       addFieldChangedListener((fieldAccessors, operation) {
@@ -251,13 +253,16 @@ abstract class _ArrangementModel with Store, AnthemModelBase {
         barMultiple;
   }
 
-  @computed
-  int get width {
-    // Observing this operation is incredibly expensive for some reason, so we
-    // prevent detailed observation and just observe the whole thing.
+  /// Width of the arrangement in ticks, with some buffer at the end.
+  ///
+  /// This is updated whenever the clips change.
+  @anthemObservable
+  @hide
+  late int viewWidth = getWidth();
 
-    clips.observeAllChanges();
-
-    return blockObservation(modelItems: [clips], block: () => getWidth());
-  }
+  @hide
+  late final MicrotaskDebouncedAction updateViewWidthAction =
+      MicrotaskDebouncedAction(() {
+        viewWidth = getWidth();
+      });
 }

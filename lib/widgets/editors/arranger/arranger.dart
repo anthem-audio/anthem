@@ -94,7 +94,7 @@ class _ArrangerState extends State<Arranger> {
     ArrangementModel? getModel() =>
         project.sequence.arrangements[project.sequence.activeArrangementID];
     double getHorizontalScrollRegionEnd() =>
-        getModel()?.width.toDouble() ??
+        getModel()?.viewWidth.toDouble() ??
         project.sequence.ticksPerQuarter * 4 * 4;
 
     final menuController = AnthemMenuController();

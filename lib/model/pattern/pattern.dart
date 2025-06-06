@@ -97,6 +97,8 @@ class PatternModel extends _PatternModel
       updateClipTitleCache();
       updateClipNotesRenderCache();
 
+      _clipAutoWidthUpdateAction.execute();
+
       // Make sure the engine knows about this sequence when it is created, in
       // case it is created from project load or undo/redo
       _compileInEngine();
@@ -106,6 +108,7 @@ class PatternModel extends _PatternModel
       //   2. Tell the engine to re-compile all relevant sequences.
       notes.addFieldChangedListener((fieldAccessors, operation) {
         scheduleClipNotesRenderCacheUpdate();
+        _clipAutoWidthUpdateAction.execute();
 
         final channelIdFieldAccessor = fieldAccessors.first;
         final channelId = channelIdFieldAccessor.key;
@@ -113,6 +116,10 @@ class PatternModel extends _PatternModel
         if (channelId != null) {
           _compileInEngine(channelIds: [channelId], updateArrangements: true);
         }
+      });
+
+      automationLanes.addFieldChangedListener((fieldAccessors, operation) {
+        _clipAutoWidthUpdateAction.execute();
       });
 
       // When the pattern title is changed, we need to update the clip title
@@ -298,19 +305,32 @@ abstract class _PatternModel with Store, AnthemModelBase {
     );
   }
 
-  @computed
-  int get clipAutoWidth {
-    // Observing this operation is incredibly expensive for some reason, so we
-    // prevent detailed observation and just observe the whole thing.
+  /// The width that a clip will take on if it has no time view.
+  ///
+  /// This must be updated whenever the pattern content changes. This is cached
+  /// so that the arranger doesn't have to recalculate this for every changed
+  /// clip on every edit.
+  @anthemObservable
+  @hide
+  late int clipAutoWidth = getWidth();
 
-    notes.observeAllChanges();
-    automationLanes.observeAllChanges();
+  @hide
+  late final MicrotaskDebouncedAction _clipAutoWidthUpdateAction =
+      MicrotaskDebouncedAction(() {
+        final newClipAutoWidth = getWidth();
 
-    return blockObservation(
-      modelItems: [notes, automationLanes],
-      block: () => getWidth(),
-    );
-  }
+        final arrangements = project.sequence.arrangements.values.toList();
+
+        // If the clip size changed, it may be the newest last clip in any
+        // arrangement, so we need to resize all the arrangements.
+        if (newClipAutoWidth != clipAutoWidth) {
+          for (final arrangement in arrangements) {
+            arrangement.updateViewWidthAction.execute();
+          }
+        }
+
+        clipAutoWidth = newClipAutoWidth;
+      });
 
   @computed
   bool get hasTimeMarkers {

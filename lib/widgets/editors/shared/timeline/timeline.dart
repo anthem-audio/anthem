@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/pattern/pattern.dart';
@@ -133,7 +132,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
     if (_lastPlayheadPositionSet != targetTime) {
       final asDouble = targetTime.toDouble();
-      if (project.engine.engineState == EngineState.running) {
+      if (project.engine.isRunning) {
         project.engine.sequencerApi.jumpPlayheadTo(asDouble);
       }
       _lastPlayheadPositionSet = asDouble;

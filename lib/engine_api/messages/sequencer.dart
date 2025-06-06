@@ -45,12 +45,13 @@ class CompileSequenceRequest extends Request {
   List<String>? channelsToRebuild;
 
   /// If specified, these are the ranges of the sequence that are no longer
-  /// "valid".
+  /// valid.
   ///
-  /// Valid in this context means that the data within this range is changed and
-  /// can no longer be relied on for playback. For example, if an instrument has
-  /// received a note on event and the playhead is within one of these ranges,
-  /// the instrument is not guaranteed to receive a matching note off event.
+  /// "Valid" in this context means that the data within this range is changed
+  /// and can no longer be relied on for playback. For example, if an instrument
+  /// has received a note on event and the playhead is within one of these
+  /// ranges, the instrument is not guaranteed to receive a matching note off
+  /// event.
   ///
   /// The audio thread in the engine is expected to honor these ranges. If the
   /// playhead is within one of these ranges when the audio thread picks up the
