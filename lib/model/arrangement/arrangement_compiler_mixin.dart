@@ -84,7 +84,9 @@ mixin _ArrangementCompilerMixin on _ArrangementModel {
         );
       }
 
+      String? patternIdFromOldClip;
       if (oldClip != null) {
+        patternIdFromOldClip = oldClip.patternId;
         final pattern = project.sequence.patterns[oldClip.patternId];
         if (pattern != null) {
           for (final channelId in pattern.channelsWithContent) {
@@ -94,7 +96,7 @@ mixin _ArrangementCompilerMixin on _ArrangementModel {
         }
       }
 
-      if (newClip != null) {
+      if (newClip != null && patternIdFromOldClip != newClip.patternId) {
         final pattern = project.sequence.patterns[newClip.patternId];
         if (pattern != null) {
           for (final channelId in pattern.channelsWithContent) {
