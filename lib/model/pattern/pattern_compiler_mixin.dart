@@ -190,17 +190,11 @@ mixin _PatternCompilerMixin on _PatternModel {
                   _patternInvalidationRangeCollector.rawData[i * 2 + 1];
 
               final adjustedPatternRangeStart =
-                  max(
-                    clipTimeViewStart,
-                    patternInvalidationRangeStart + clip.offset,
-                  ) -
+                  max(clipTimeViewStart, patternInvalidationRangeStart) -
                   clipTimeViewStart;
 
               final adjustedPatternRangeEnd =
-                  min(
-                    clipTimeViewEnd,
-                    patternInvalidationRangeEnd + clip.offset,
-                  ) -
+                  min(clipTimeViewEnd, patternInvalidationRangeEnd) -
                   clipTimeViewStart;
 
               if (adjustedPatternRangeStart >= adjustedPatternRangeEnd) {
