@@ -157,10 +157,12 @@ mixin _PatternCompilerMixin on _PatternModel {
         return;
       }
 
+      final channelsToRebuild = _channelsToCompile.toList();
+
       // Compile the pattern
       engine.sequencerApi.compilePattern(
         id,
-        channelsToRebuild: _channelsToCompile.toList(),
+        channelsToRebuild: channelsToRebuild,
         invalidationRanges: _patternInvalidationRangeCollector.getRanges(),
       );
 
@@ -220,6 +222,7 @@ mixin _PatternCompilerMixin on _PatternModel {
           // for each clip in the arrangement.
           engine.sequencerApi.compileArrangement(
             arrangement.id,
+            channelsToRebuild: channelsToRebuild,
             invalidationRanges: _arrangementInvalidationRangeCollector
                 .getRanges(),
           );
