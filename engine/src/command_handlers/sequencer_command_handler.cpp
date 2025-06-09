@@ -28,10 +28,21 @@ std::optional<Response> handleSequencerCommand(Request& request) {
 
     if (compileSequenceRequest.patternId.has_value()) {
       if (compileSequenceRequest.channelsToRebuild.has_value()) {
+        auto invalidationRanges = std::vector<std::tuple<double, double>>();
+
+        if (compileSequenceRequest.invalidationRanges.has_value()) {
+          invalidationRanges.reserve(compileSequenceRequest.invalidationRanges.value()->size());
+
+          for (const auto& range : *compileSequenceRequest.invalidationRanges.value()) {
+            invalidationRanges.push_back(std::make_tuple(range->start, range->end));
+          }
+        }
+
 				// Compile only the specified channels for the given pattern
 				AnthemSequenceCompiler::compilePattern(
 					compileSequenceRequest.patternId.value(),
-					*compileSequenceRequest.channelsToRebuild.value()
+					*compileSequenceRequest.channelsToRebuild.value(),
+          invalidationRanges
 				);
 			}
 			else {
@@ -41,10 +52,20 @@ std::optional<Response> handleSequencerCommand(Request& request) {
     }
     else if (compileSequenceRequest.arrangementId.has_value()) {
       if (compileSequenceRequest.channelsToRebuild.has_value()) {
+        auto invalidationRanges = std::vector<std::tuple<double, double>>();
+
+        if (compileSequenceRequest.invalidationRanges.has_value()) {
+          invalidationRanges.reserve(compileSequenceRequest.invalidationRanges.value()->size());
+          for (const auto& range : *compileSequenceRequest.invalidationRanges.value()) {
+            invalidationRanges.push_back(std::make_tuple(range->start, range->end));
+          }
+        }
+
         // Compile only the specified channels for the given arrangement
         AnthemSequenceCompiler::compileArrangement(
           compileSequenceRequest.arrangementId.value(),
-          *compileSequenceRequest.channelsToRebuild.value()
+          *compileSequenceRequest.channelsToRebuild.value(),
+          invalidationRanges
         );
       }
       else {

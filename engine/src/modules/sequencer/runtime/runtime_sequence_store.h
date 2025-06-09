@@ -53,6 +53,19 @@ struct SequenceEventList {
   // List of events for this channel.
   std::vector<AnthemSequenceEvent>* events;
 
+  // List of invalidation ranges for the current processing block, if any. If
+  // this is set, it will be cleared when the processing block is read in,
+  // and will be sent back for deletion.
+  std::vector<std::tuple<double, double>>* invalidationRanges = nullptr;
+
+  // Whether the old event list is invalid for the current processing block.
+  //
+  // Multiple recompiles may happen for a single processing block. Because of
+  // this, the code that reads in new event lists needs to check against all
+  // of them. It will set the list above to nullptr, and set this flag if any
+  // of the relevant list updates have caused an invalidation.
+  bool invalidationOccurred = false;
+
   SequenceEventList();
 
   // These are here so we don't automatically deallocate anything.
@@ -146,8 +159,13 @@ private:
   // For sending new values of the map to the audio thread
   RingBuffer<SequenceIdToEventsMap*, 1024> mapUpdateQueue;
 
-  // For the audio thread to send old values of the map to be deleted by the main thread
+  // For the audio thread to send old values of the map to be deleted by the
+  // main thread
   RingBuffer<SequenceIdToEventsMap*, 1024> mapDeletionQueue;
+
+  // For the audio thread to send back invalidation range lists to be deleted
+  // by the mmain thread
+  RingBuffer<std::vector<std::tuple<double, double>>*, 1024> invalidationRangesDeletionQueue;
 
   juce::TimedCallback clearDeletionQueueTimedCallback;
 
@@ -183,11 +201,16 @@ private:
     >
   > pendingSequenceChannelDeletions;
 
-  void processMapDeletionQueue();
+  void processDeletionQueues();
 
 public:
   AnthemRuntimeSequenceStore();
   ~AnthemRuntimeSequenceStore();
+
+  // Picks up any updates to the event lists map from the mapUpdateQueue.
+  //
+  // Must be run at the start of each processing block.
+  void rt_processSequenceChanges(int bufferSize);
 
   // Gets the event lists map.
   //
@@ -222,11 +245,18 @@ public:
   // channel, and push the new map to the mapUpdateQueue. If the channel already
   // exists, it will be replaced, and the old channel will be added to the
   // pendingSequenceChannelDeletions map.
-  void addOrUpdateChannelInSequence(const std::string& sequenceId, const std::string& channelId, SequenceEventList channel);
+  void addOrUpdateChannelInSequence(
+    const std::string& sequenceId,
+    const std::string& channelId,
+    SequenceEventList channel);
 
   // Removes a channel from a sequence in the event lists map.
   void removeChannelFromSequence(const std::string& sequenceId, const std::string& channelId);
 
   // Removes every instance of the given channel from every sequence.
   void removeChannelFromAllSequences(const std::string& channelId);
+
+  // Sends invalidation lists back to be deleted. Must be run at the end of each
+  // processing block.
+  void rt_cleanupAfterBlock();
 };

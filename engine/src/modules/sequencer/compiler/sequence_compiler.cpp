@@ -43,12 +43,7 @@ void AnthemSequenceCompiler::compilePattern(std::string patternId) {
     getChannelNoteEventsForPattern(channelId, patternId, std::nullopt, std::nullopt, *newChannelEvents.events);
     sortEventList(*newChannelEvents.events);
 
-    if (newChannelEvents.events->size() > 0) {
-      newSequence.channels->insert_or_assign(channelId, std::move(newChannelEvents));
-    }
-    else {
-      SequenceEventList::cleanUpInstance(newChannelEvents);
-    }
+    newSequence.channels->insert_or_assign(channelId, std::move(newChannelEvents));
   }
 
   // Add the new sequence to the store
@@ -58,28 +53,20 @@ void AnthemSequenceCompiler::compilePattern(std::string patternId) {
 
 void AnthemSequenceCompiler::compilePattern(
   std::string patternId,
-  std::vector<std::string>& channelIdsToRebuild
+  std::vector<std::string>& channelIdsToRebuild,
+  std::vector<std::tuple<double, double>>& invalidationRanges
 ) {
   auto& store = *Anthem::getInstance().sequenceStore;
 
   for (auto& channelId : channelIdsToRebuild) {
     // This will leak memory if it's not assigned somewhere or cleaned up here
     SequenceEventList newChannelEvents;
+    newChannelEvents.invalidationRanges = new std::vector<std::tuple<double, double>>(invalidationRanges);
 
     getChannelNoteEventsForPattern(channelId, patternId, std::nullopt, std::nullopt, *newChannelEvents.events);
     sortEventList(*newChannelEvents.events);
 
-    if (newChannelEvents.events->size() > 0) {
-      store.addOrUpdateChannelInSequence(patternId, channelId, newChannelEvents);
-    }
-    else {
-      // Just in case, we'll remove the channel from the sequence store. If the
-      // channel used to have events and now doesn't, we want to remove it, and
-      // if the channel doesn't exist in the pattern then this will be a no-op.
-      store.removeChannelFromSequence(patternId, channelId);
-
-      SequenceEventList::cleanUpInstance(newChannelEvents);
-    }
+    store.addOrUpdateChannelInSequence(patternId, channelId, newChannelEvents);
   }
 }
 
@@ -103,12 +90,7 @@ void AnthemSequenceCompiler::compileArrangement(std::string arrangementId) {
     getChannelNoteEventsForArrangement(channelId, arrangementId, *newChannelEvents.events);
     sortEventList(*newChannelEvents.events);
 
-    if (newChannelEvents.events->size() > 0) {
-      newSequence.channels->insert_or_assign(channelId, std::move(newChannelEvents));
-    }
-    else {
-      SequenceEventList::cleanUpInstance(newChannelEvents);
-    }
+    newSequence.channels->insert_or_assign(channelId, std::move(newChannelEvents));
   }
 
   // Add the new sequence to the store
@@ -118,28 +100,20 @@ void AnthemSequenceCompiler::compileArrangement(std::string arrangementId) {
 
 void AnthemSequenceCompiler::compileArrangement(
   std::string arrangementId,
-  std::vector<std::string>& channelIdsToRebuild
+  std::vector<std::string>& channelIdsToRebuild,
+  std::vector<std::tuple<double, double>>& invalidationRanges
 ) {
   auto& store = *Anthem::getInstance().sequenceStore;
 
   for (auto& channelId : channelIdsToRebuild) {
     // This will leak memory if it's not assigned somewhere or cleaned up here
     SequenceEventList newChannelEvents;
+    newChannelEvents.invalidationRanges = new std::vector<std::tuple<double, double>>(invalidationRanges);
 
     getChannelNoteEventsForArrangement(channelId, arrangementId, *newChannelEvents.events);
     sortEventList(*newChannelEvents.events);
 
-    if (newChannelEvents.events->size() > 0) {
-      store.addOrUpdateChannelInSequence(arrangementId, channelId, newChannelEvents);
-    }
-    else {
-      // Just in case, we'll remove the channel from the sequence store. If the
-      // channel used to have events and now doesn't, we want to remove it, and
-      // if the channel doesn't exist in the pattern then this will be a no-op.
-      store.removeChannelFromSequence(arrangementId, channelId);
-
-      SequenceEventList::cleanUpInstance(newChannelEvents);
-    }
+    store.addOrUpdateChannelInSequence(arrangementId, channelId, newChannelEvents);
   }
 }
 

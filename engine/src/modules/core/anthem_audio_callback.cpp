@@ -49,6 +49,9 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
   // Set up the transport for this processing block
   transport->rt_prepareForProcessingBlock();
 
+  // Tell the sequence store to pick up any sequence updates.
+  anthem->sequenceStore->rt_processSequenceChanges(numSamples);
+
   anthem->graphProcessor->process(numSamples);
 
   auto& outputBuffer = masterOutputProcessor->buffer;
@@ -94,6 +97,7 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
   playheadProvider->rt_updatePlayheadPosition(transport->rt_playhead);
 
   transport->rt_advancePlayhead(numSamples);
+  anthem->sequenceStore->rt_cleanupAfterBlock();
 }
 
 void AnthemAudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIODevice* device) {

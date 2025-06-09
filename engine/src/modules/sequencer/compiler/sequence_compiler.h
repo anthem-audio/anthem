@@ -46,7 +46,10 @@ public:
 
   // Compiles the given channels for the given pattern, and replaces them in the
   // sequence store.
-  static void compilePattern(std::string patternId, std::vector<std::string>& channelIdsToRebuild);
+  static void compilePattern(
+    std::string patternId,
+    std::vector<std::string>& channelIdsToRebuild,
+    std::vector<std::tuple<double, double>>& invalidationRanges);
 
   // Compiles the given arrangement, and adds or replaces its entry in the
   // sequence store.
@@ -54,7 +57,10 @@ public:
 
   // Compiles the given channels for the given arrangement, and replaces them in
   // the sequence store.
-  static void compileArrangement(std::string arrangementId, std::vector<std::string>& channelIdsToRebuild);
+  static void compileArrangement(
+    std::string arrangementId,
+    std::vector<std::string>& channelIdsToRebuild,
+    std::vector<std::tuple<double, double>>& invalidationRanges);
 
   // Cleans up any sequences related to the given channel ID.
   static void cleanUpChannel(std::string channelId);

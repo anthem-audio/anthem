@@ -19,12 +19,20 @@
 
 #include "runtime_sequence_store.h"
 
+#include "modules/core/anthem.h";
+
 SequenceEventList::SequenceEventList() {
   events = new std::vector<AnthemSequenceEvent>();
 }
 
 void SequenceEventList::cleanUpInstance(SequenceEventList& instance) {
   delete instance.events;
+
+  // If the list is never sent to the audio thread for some reason, this might
+  // be set. I don't think it's possible in practice, but this seems safest.
+  if (instance.invalidationRanges != nullptr) {
+    delete instance.invalidationRanges;
+  }
 }
 
 SequenceEventListCollection::SequenceEventListCollection() {
@@ -42,8 +50,31 @@ void SequenceEventListCollection::cleanUpInstance(SequenceEventListCollection& i
   delete instance.channels;
 }
 
-AnthemRuntimeSequenceStore::SequenceIdToEventsMap& AnthemRuntimeSequenceStore::rt_getEventLists() {
+void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
   auto result = mapUpdateQueue.read();
+
+  double playheadStart = -1; // inclusive
+  double playheadEnd = -1; // not inclusive
+
+  // If this block includes a loop jump, these will be set to something besides
+  // -1. These represent a range starting at the loop start and extending for
+  // the total distance that the playhead will advance this block. If there is a
+  // jump, then this will usually be past the playhead's actual end position.
+  // The playhead will never go past loopStartRegionEnd in this block.
+  double loopStartRangeBegin = -1;
+  double loopStartRangeEnd = -1;
+
+  if (result.has_value()) {
+    auto& transport = *Anthem::getInstance().transport;
+    double advanceAmount = transport.rt_getPlayheadAdvanceAmount(bufferSize);
+    playheadStart = transport.rt_playhead;
+    playheadEnd = playheadStart + advanceAmount;
+
+    if (playheadEnd >= transport.rt_config.loopEnd) {
+      loopStartRangeBegin = transport.rt_config.loopStart;
+      loopStartRangeEnd = loopStartRangeBegin + advanceAmount;
+    }
+  }
 
   // Take all the updates from the queue, and push old values to the deletion
   // queue.
@@ -55,16 +86,86 @@ AnthemRuntimeSequenceStore::SequenceIdToEventsMap& AnthemRuntimeSequenceStore::r
 
     mapDeletionQueue.add(oldMap);
 
+    // This block checks invalidation ranges and flags any relevant sequences as
+    // invalid for the current playhead position if necessary.
+    for (auto& [seqKey, seqListObj] : *newMap) {
+      // First, we need to find all channel event lists that are new or have
+      // changed
+      auto oldSeqObj = oldMap->find(seqKey);
+
+      bool oldSeqObjExists = oldSeqObj != oldMap->end();
+
+      bool shouldCheckSequenceKey = !oldSeqObjExists ||
+        oldSeqObj->second.channels != seqListObj.channels;
+
+      if (!shouldCheckSequenceKey) {
+        // The channel list is not new or updated, so we can skip it
+        continue;
+      }
+
+      for (auto& [channelId, channelListObj] : *seqListObj.channels) {
+        if (oldSeqObjExists &&
+            oldSeqObj->second.channels->find(channelId) != oldSeqObj->second.channels->end()) {
+          auto oldChannelListObj = oldSeqObj->second.channels->find(channelId);
+          if (oldChannelListObj != oldSeqObj->second.channels->end()) {
+            // If the old event list exists, it may not have had a chance to be
+            // used yet. In that case, it may be marked as invalid for the current
+            // block, so we will carry over that state to the new channel
+            if (oldChannelListObj->second.invalidationOccurred) {
+              channelListObj.invalidationOccurred = true;
+            }
+
+            // If the inner event list pointer is identical, then the event list
+            // wasn't updated. We still need to carry over the invalidation
+            // state so we don't need to recalculate it (which we do above), but
+            // we can skip processing further for this channel.
+            if (oldChannelListObj->second.events == channelListObj.events) {
+              continue;
+            }
+          }
+        }
+
+        // If the invalidation didn't carry over, or if the event list is brand
+        // new, we need to check and see if the playhead is within any of the
+        // invalidation ranges for this event list update.
+        if (!channelListObj.invalidationOccurred) {
+          if (channelListObj.invalidationRanges == nullptr) {
+            // If there are no invalidation ranges, we can skip this channel.
+            continue;
+          }
+
+          auto& invalidationRanges = *channelListObj.invalidationRanges;
+          for (const auto& range : invalidationRanges) {
+            // If the playhead is within the invalidation range, we need to
+            // mark this channel as invalid for the current processing block.
+
+            bool isWithinMainRange = playheadStart < std::get<1>(range) &&
+              playheadEnd > std::get<0>(range);
+            bool isWithinLoopRange = loopStartRangeBegin != -1.0 && (
+              loopStartRangeBegin < std::get<1>(range) &&
+              loopStartRangeEnd > std::get<0>(range));
+
+            if (isWithinMainRange || isWithinLoopRange) {
+              channelListObj.invalidationOccurred = true;
+              break; // We only need to set this once
+            }
+          }
+        }
+      }
+    }
+
     result = mapUpdateQueue.read();
   }
+}
 
+AnthemRuntimeSequenceStore::SequenceIdToEventsMap& AnthemRuntimeSequenceStore::rt_getEventLists() {
   return *rt_eventLists;
 }
 
 AnthemRuntimeSequenceStore::AnthemRuntimeSequenceStore()
   : clearDeletionQueueTimedCallback(
       juce::TimedCallback([this]() {
-        this->processMapDeletionQueue();
+        this->processDeletionQueues();
       })
     ),
     mapUpdateQueue(),
@@ -89,7 +190,7 @@ AnthemRuntimeSequenceStore::AnthemRuntimeSequenceStore()
 // will leak memory.
 AnthemRuntimeSequenceStore::~AnthemRuntimeSequenceStore() {
   // Clean up any remaining maps in the deletion queue
-  processMapDeletionQueue();
+  processDeletionQueues();
 
   for (auto& [key, seqListObj] : *eventLists) {
     SequenceEventListCollection::cleanUpInstance(seqListObj);
@@ -98,7 +199,7 @@ AnthemRuntimeSequenceStore::~AnthemRuntimeSequenceStore() {
   delete eventLists;
 }
 
-void AnthemRuntimeSequenceStore::processMapDeletionQueue() {
+void AnthemRuntimeSequenceStore::processDeletionQueues() {
   auto nextMap = mapDeletionQueue.read();
 
   while (nextMap.has_value()) {
@@ -132,6 +233,13 @@ void AnthemRuntimeSequenceStore::processMapDeletionQueue() {
     delete map;
 
     nextMap = mapDeletionQueue.read();
+  }
+
+  auto nextInvalidationRangeList = invalidationRangesDeletionQueue.read();
+
+  while (nextInvalidationRangeList.has_value()) {
+    delete nextInvalidationRangeList.value();
+    nextInvalidationRangeList = invalidationRangesDeletionQueue.read();
   }
 }
 
@@ -176,7 +284,11 @@ void AnthemRuntimeSequenceStore::removeSequence(const std::string& sequenceId) {
   }
 }
 
-void AnthemRuntimeSequenceStore::addOrUpdateChannelInSequence(const std::string& sequenceId, const std::string& channelId, SequenceEventList channel) {
+void AnthemRuntimeSequenceStore::addOrUpdateChannelInSequence(
+  const std::string& sequenceId,
+  const std::string& channelId,
+  SequenceEventList channel
+) {
   auto newSequenceMap = new std::unordered_map<std::string, SequenceEventListCollection>(*eventLists);
   auto sequenceMapIt = newSequenceMap->find(sequenceId);
 
@@ -304,4 +416,12 @@ void AnthemRuntimeSequenceStore::removeChannelFromAllSequences(const std::string
   // The audio thread still has the old pointer. We will clean it up when the
   // audio thread releases it, via the JUCE timer in this class.
   eventLists = newMap;
+}
+
+void AnthemRuntimeSequenceStore::rt_cleanupAfterBlock() {
+  for (auto& [key, seqListObj] : *rt_eventLists) {
+    for (auto& [channelId, channelEvents] : *seqListObj.channels) {
+      channelEvents.invalidationOccurred = false;
+    }
+  }
 }

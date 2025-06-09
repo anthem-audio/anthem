@@ -91,9 +91,20 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
 
   auto& channelEvents = eventsForSequence.channels->at(channelId);
 
+  double playheadPos = transport->rt_playhead;
+
+  // If there are invalidation ranges and the playhead is within one of the
+  // ranges, we need to send a note stop event
+  if (channelEvents.invalidationOccurred) {
+    // Send a note off event for all notes in this channel
+    AnthemLiveEvent liveEvent{};
+    liveEvent.time = 0;
+    liveEvent.event.type = AnthemEventType::AllVoicesOff;
+    outputEventBuffer->addEvent(liveEvent);
+  }
+
   double ticks = transport->rt_getPlayheadAdvanceAmount(numSamples);
 
-  double timePointer = transport->rt_playhead;
   double incrementRemaining = ticks;
   double loopStart = config.loopStart;
   double loopEnd = config.loopEnd; // This will be inifinite if no loop is set
@@ -102,21 +113,21 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
     double incrementAmount = incrementRemaining;
     bool didJump = false;
 
-    double start = timePointer; // Inclusive
+    double start = playheadPos; // Inclusive
     double end = -1; // Not inclusive
 
-    if (timePointer + incrementAmount >= loopEnd) {
+    if (playheadPos + incrementAmount >= loopEnd) {
       // If the increment would take us past the loop end, we need to
       // calculate how much of the increment we can actually apply.
-      incrementAmount = loopEnd - timePointer;
+      incrementAmount = loopEnd - playheadPos;
       incrementRemaining -= incrementAmount;
-      timePointer = loopStart;
+      playheadPos = loopStart;
       end = loopEnd;
       didJump = true;
     }
     else {
-      timePointer += incrementAmount;
-      end = timePointer;
+      playheadPos += incrementAmount;
+      end = playheadPos;
       incrementRemaining = 0.0;
     }
 
