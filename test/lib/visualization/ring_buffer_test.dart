@@ -17,12 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/visualization/ring_buffer_double.dart';
+import 'package:anthem/visualization/ring_buffer.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('RingBufferDouble behavior', () {
-    final buffer = RingBufferDouble(3);
+    final buffer = RingBuffer<double>(3);
 
     expect(buffer.values.length, 0);
 

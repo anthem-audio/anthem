@@ -19,24 +19,27 @@
 
 import 'dart:math';
 
-/// A ring buffer that holds doubles.
-class RingBufferDouble {
+/// A ring buffer.
+///
+/// Contains a fixed-size buffer that overwrites old values when full.
+class RingBuffer<T> {
   final int _maxSize;
   int _size = 0;
-  final List<double> _buffer;
+  final List<T?> _buffer;
   int _index = 0;
 
-  RingBufferDouble(this._maxSize) : _buffer = List.filled(_maxSize, double.nan);
+  RingBuffer(this._maxSize)
+    : _buffer = List<T?>.filled(_maxSize, null, growable: false);
 
-  void add(double value) {
+  void add(T value) {
     _buffer[_index] = value;
     _index = (_index + 1) % _maxSize;
     _size = min(_size + 1, _maxSize);
   }
 
-  Iterable<double> get values {
+  Iterable<T> get values {
     if (_size < _maxSize) {
-      return _buffer.take(_size);
+      return _buffer.take(_size).cast<T>();
     }
 
     var valuesToTake = _size;
@@ -46,10 +49,10 @@ class RingBufferDouble {
     final itemsRemaining = _buffer.length - _index;
 
     if (valuesToTake <= itemsRemaining) {
-      return iter.take(valuesToTake);
+      return iter.take(valuesToTake).cast<T>();
     } else {
       valuesToTake -= itemsRemaining;
-      return iter.followedBy(_buffer.take(valuesToTake));
+      return iter.followedBy(_buffer.take(valuesToTake)).cast<T>();
     }
   }
 

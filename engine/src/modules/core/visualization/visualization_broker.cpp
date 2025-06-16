@@ -59,9 +59,13 @@ void VisualizationBroker::timerCallback() {
       std::vector<double> data = it->second->getData();
       auto dataSharedPtr = std::make_shared<std::vector<double>>(data);
 
-      auto visualizationItem = std::make_shared<VisualizationItem>();
-      visualizationItem->id = subscription;
-      visualizationItem->values = dataSharedPtr;
+      auto visualizationItem = std::make_shared<VisualizationItem>(
+        VisualizationItem{
+          .id = subscription,
+          .values = rfl::make_field<"List<double>">(dataSharedPtr)
+        }
+      );
+
       visualizationItems->push_back(visualizationItem);
     }
   }

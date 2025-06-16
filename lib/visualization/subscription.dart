@@ -65,8 +65,12 @@ class VisualizationSubscription {
   final VisualizationSubscriptionConfig _config;
   late final Ticker _ticker;
 
-  final RingBufferDouble? _buffer;
-  double _value = 0;
+  final RingBuffer<double>? _ringBufferDouble;
+  final RingBuffer<String>? _ringBufferString;
+
+  double _valueDouble = 0;
+  String? _valueString;
+
   bool _shouldReset = false;
 
   bool _isUpdateStale = false;
@@ -89,26 +93,54 @@ class VisualizationSubscription {
   /// For all other subscription types, this will return the latest value.
   double readValue() {
     _shouldReset = true;
-    return _value;
+    return _valueDouble;
+  }
+
+  /// Read the latest value as a string for this visualization item.
+  ///
+  /// For most visualization items, this will read out the current value as a
+  /// string. However, some items only have a string representation. For
+  /// example, the current transport position comes paired with another value
+  /// that says which sequence is currently playing. This item does not have
+  /// a numeric value, and is instead the ID of the sequence as a string.
+  String readValueString() {
+    _shouldReset = true;
+    return _valueString ?? _valueDouble.toString();
   }
 
   /// Read the last N values for this visualization item.
   ///
   /// If the configuration does not specify a subscription type with multiple
-  /// values, this will return an empty list.
+  /// values, this will return the result of [readValue] as a single-item list.
   Iterable<double> readValues() {
     _shouldReset = true;
-    return _buffer?.values ?? [_value];
+    return _ringBufferDouble?.values ?? [_valueDouble];
+  }
+
+  /// Reads the last N values as strings for this visualization item.
+  ///
+  /// If the configuration does not specify a subscription type with multiple
+  /// values, this will return the result of [readValueString] as a single-item
+  /// list.
+  Iterable<String> readValuesString() {
+    _shouldReset = true;
+    return _ringBufferString?.values ??
+        [_valueString ?? _valueDouble.toString()];
   }
 
   VisualizationSubscription(this._config, this._parent)
-    : _buffer = _config.type == VisualizationSubscriptionType.lastNValues
-          ? RingBufferDouble(_config.bufferSize!)
+    : _ringBufferDouble =
+          _config.type == VisualizationSubscriptionType.lastNValues
+          ? RingBuffer<double>(_config.bufferSize!)
+          : null,
+      _ringBufferString =
+          _config.type == VisualizationSubscriptionType.lastNValues
+          ? RingBuffer<String>(_config.bufferSize!)
           : null {
     _ticker = Ticker(_onTick)..start();
   }
 
-  /// Called when the ticker ticks.
+  /// Called when the [_ticker] ticks.
   void _onTick(Duration elapsed) {
     if (_isUpdateStale) {
       _isUpdateStale = false;
@@ -117,25 +149,57 @@ class VisualizationSubscription {
   }
 
   /// Add a new value to the subscription.
-  void _addValue(double value) {
+  void _addValue(Object /* String | double */ value) {
     if (_shouldReset) {
       _shouldReset = false;
 
-      if (_config.type == VisualizationSubscriptionType.lastNValues) {
-        _buffer!;
+      if (value is double) {
+        if (_config.type == VisualizationSubscriptionType.lastNValues) {
+          _ringBufferDouble!;
 
-        _buffer.reset();
-        _buffer.add(value);
+          _ringBufferDouble.reset();
+          _ringBufferDouble.add(value);
+        } else {
+          _valueDouble = value;
+        }
+      } else if (value is String) {
+        if (_config.type == VisualizationSubscriptionType.lastNValues) {
+          _ringBufferString!;
+
+          _ringBufferString.reset();
+          _ringBufferString.add(value);
+        } else {
+          _valueString = value;
+        }
       } else {
-        _value = value;
+        throw ArgumentError(
+          'Unexpected value type: ${value.runtimeType} for item ${_config.id}. Expected String or double.',
+        );
       }
     } else {
-      if (_config.type == VisualizationSubscriptionType.lastNValues) {
-        _buffer!.add(value);
-      } else if (_config.type == VisualizationSubscriptionType.max) {
-        _value = max(_value, value);
+      if (value is double) {
+        if (_config.type == VisualizationSubscriptionType.lastNValues) {
+          _ringBufferDouble!.add(value);
+        } else if (_config.type == VisualizationSubscriptionType.max) {
+          _valueDouble = max(_valueDouble, value);
+        } else {
+          _valueDouble = value;
+        }
+      } else if (value is String) {
+        assert(
+          _config.type != VisualizationSubscriptionType.max,
+          'String values are not supported for max subscription type.',
+        );
+
+        if (_config.type == VisualizationSubscriptionType.lastNValues) {
+          _ringBufferString!.add(value);
+        } else {
+          _valueString = value;
+        }
       } else {
-        _value = value;
+        throw ArgumentError(
+          'Unexpected value type: ${value.runtimeType} for item ${_config.id}. Expected String or double.',
+        );
       }
     }
 

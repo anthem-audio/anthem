@@ -60,8 +60,19 @@ class VisualizationProvider {
 
       if (subscriptions != null) {
         for (final subscription in subscriptions) {
-          for (final value in item.values) {
-            subscription._addValue(value);
+          final values = item.values as List;
+
+          for (final value in values) {
+            switch (value) {
+              case String _:
+                subscription._addValue(value);
+              case double _:
+                subscription._addValue(value);
+              default:
+                throw ArgumentError(
+                  'Unexpected value type: ${value.runtimeType} for item ${item.id}. Expected String or double.',
+                );
+            }
           }
         }
       }

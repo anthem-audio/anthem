@@ -32,7 +32,7 @@ import 'package:anthem/model/project.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
-import 'ring_buffer_double.dart';
+import 'ring_buffer.dart';
 
 part 'provider.dart';
 part 'subscription.dart';

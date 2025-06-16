@@ -63,7 +63,7 @@ class SetVisualizationUpdateIntervalRequest extends Request {
 @AnthemModel(serializable: true, generateCpp: true)
 class VisualizationItem extends _VisualizationItem
     with _$VisualizationItemAnthemModelMixin {
-  VisualizationItem.uninitialized() : super(id: '', values: []);
+  VisualizationItem.uninitialized() : super(id: '', values: <double>[]);
 
   VisualizationItem({required super.id, required super.values});
 
@@ -73,7 +73,9 @@ class VisualizationItem extends _VisualizationItem
 
 abstract class _VisualizationItem {
   String id;
-  List<double> values;
+
+  @Union([List<double>, List<String>])
+  Object values;
 
   _VisualizationItem({required this.id, required this.values});
 }
