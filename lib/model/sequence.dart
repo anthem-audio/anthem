@@ -79,6 +79,11 @@ abstract class _SequenceModel with Store, AnthemModelBase {
   @hideFromSerialization
   Id? activeArrangementID;
 
+  /// The ID of the sequence that is currently set to be played back, if any.
+  @anthemObservable
+  @hideFromSerialization
+  Id? activeTransportSequenceID;
+
   @anthemObservable
   AnthemObservableMap<Id, TrackModel> tracks = AnthemObservableMap();
 
@@ -113,6 +118,7 @@ abstract class _SequenceModel with Store, AnthemModelBase {
     arrangements = AnthemObservableMap.of({arrangement.id: arrangement});
     arrangementOrder = AnthemObservableList.of([arrangement.id]);
     activeArrangementID = arrangement.id;
+    activeTransportSequenceID = arrangement.id;
 
     final Map<Id, TrackModel> initTracks = {};
     final List<Id> initTrackOrder = [];

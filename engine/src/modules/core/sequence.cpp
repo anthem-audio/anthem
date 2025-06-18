@@ -29,7 +29,7 @@ void Sequence::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr
   // Write initial values to transport
   transport.setTicksPerQuarter(this->ticksPerQuarter());
   transport.setBeatsPerMinute(this->beatsPerMinuteRaw() / 100.0);
-  transport.setActiveSequenceId(this->activeArrangementID());
+  transport.setActiveSequenceId(this->activeTransportSequenceID());
   transport.setIsPlaying(this->isPlaying());
 
   addBeatsPerMinuteRawObserver([this](int64_t value) {
@@ -49,7 +49,7 @@ void Sequence::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr
     Anthem::getInstance().transport->setBeatsPerMinute(beatsPerMinute);
   });
 
-  addActiveArrangementIDObserver([this](std::optional<std::string> value) {
+  addActiveTransportSequenceIDObserver([this](std::optional<std::string> value) {
     Anthem::getInstance().transport->setActiveSequenceId(value);
   });
 
