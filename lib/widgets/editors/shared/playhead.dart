@@ -26,12 +26,14 @@ class Playhead extends StatelessWidget {
   final Animation<double> timeViewStartAnimation;
   final Animation<double> timeViewEndAnimation;
   final bool isVisible;
+  final String? editorActiveSequenceId;
 
   const Playhead({
     required this.timeViewAnimationController,
     required this.timeViewStartAnimation,
     required this.timeViewEndAnimation,
     required this.isVisible,
+    required this.editorActiveSequenceId,
     super.key,
   });
 
@@ -39,21 +41,33 @@ class Playhead extends StatelessWidget {
   Widget build(BuildContext context) {
     return Builder(
       builder: (context) {
-        return VisualizationBuilder.double(
-          config: VisualizationSubscriptionConfig.latest('playhead_position'),
-          builder: (context, transportPosition) {
-            return AnimatedBuilder(
-              animation: timeViewAnimationController,
-              builder: (context, child) {
-                return CustomPaint(
-                  painter: _PlayheadPainter(
-                    timeViewStart: timeViewStartAnimation.value,
-                    timeViewEnd: timeViewEndAnimation.value,
-                    transportPosition: transportPosition ?? 0,
-                    isVisible: transportPosition != null && isVisible,
-                  ),
-                );
-              },
+        return VisualizationBuilder.string(
+          config: VisualizationSubscriptionConfig.latest(
+            'playhead_sequence_id',
+          ),
+          builder: (context, activeSequenceId) {
+            return Visibility(
+              visible: activeSequenceId == editorActiveSequenceId,
+              child: VisualizationBuilder.double(
+                config: VisualizationSubscriptionConfig.latest(
+                  'playhead_position',
+                ),
+                builder: (context, transportPosition) {
+                  return AnimatedBuilder(
+                    animation: timeViewAnimationController,
+                    builder: (context, child) {
+                      return CustomPaint(
+                        painter: _PlayheadPainter(
+                          timeViewStart: timeViewStartAnimation.value,
+                          timeViewEnd: timeViewEndAnimation.value,
+                          transportPosition: transportPosition ?? 0,
+                          isVisible: transportPosition != null && isVisible,
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             );
           },
         );

@@ -678,6 +678,7 @@ class _ArrangerCanvas extends StatelessWidget {
                 timeViewStartAnimation: timeViewStartAnimation,
                 timeViewEndAnimation: timeViewEndAnimation,
                 isVisible: true,
+                editorActiveSequenceId: project.sequence.activeArrangementID,
               ),
             );
 
