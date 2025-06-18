@@ -67,7 +67,8 @@ class VisualizationProvider {
               case String _:
                 subscription._addValue(value);
               case double _:
-                subscription._addValue(value);
+              case int _:
+                subscription._addValue(value.toDouble());
               default:
                 throw ArgumentError(
                   'Unexpected value type: ${value.runtimeType} for item ${item.id}. Expected String or double.',
