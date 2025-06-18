@@ -36,7 +36,7 @@ import 'package:anthem/widgets/editors/arranger/event_listener.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/widgets/track_header.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
-import 'package:anthem/widgets/editors/shared/playhead.dart';
+import 'package:anthem/widgets/editors/shared/playhead_line.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:anthem/widgets/util/lazy_follower.dart';
@@ -673,7 +673,7 @@ class _ArrangerCanvas extends StatelessWidget {
             );
 
             final playhead = Positioned.fill(
-              child: Playhead(
+              child: PlayheadLine(
                 timeViewAnimationController: timeViewAnimationController,
                 timeViewStartAnimation: timeViewStartAnimation,
                 timeViewEndAnimation: timeViewEndAnimation,

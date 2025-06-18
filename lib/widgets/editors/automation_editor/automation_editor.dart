@@ -29,7 +29,7 @@ import 'package:anthem/widgets/editors/automation_editor/event_listener.dart';
 import 'package:anthem/widgets/editors/automation_editor/point_context_menu.dart';
 import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
-import 'package:anthem/widgets/editors/shared/playhead.dart';
+import 'package:anthem/widgets/editors/shared/playhead_line.dart';
 import 'package:anthem/widgets/util/lazy_follower.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -212,7 +212,7 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
                         );
 
                         final playhead = Positioned.fill(
-                          child: Playhead(
+                          child: PlayheadLine(
                             timeViewAnimationController:
                                 timeViewAnimationHelper!.animationController,
                             timeViewStartAnimation:

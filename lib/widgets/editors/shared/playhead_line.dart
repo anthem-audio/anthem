@@ -21,14 +21,14 @@ import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/visualization_builder.dart';
 import 'package:flutter/widgets.dart';
 
-class Playhead extends StatelessWidget {
+class PlayheadLine extends StatelessWidget {
   final AnimationController timeViewAnimationController;
   final Animation<double> timeViewStartAnimation;
   final Animation<double> timeViewEndAnimation;
   final bool isVisible;
   final String? editorActiveSequenceId;
 
-  const Playhead({
+  const PlayheadLine({
     required this.timeViewAnimationController,
     required this.timeViewStartAnimation,
     required this.timeViewEndAnimation,

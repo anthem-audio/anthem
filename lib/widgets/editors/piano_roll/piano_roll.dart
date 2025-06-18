@@ -32,7 +32,7 @@ import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/piano_roll/content_renderer.dart';
-import 'package:anthem/widgets/editors/shared/playhead.dart';
+import 'package:anthem/widgets/editors/shared/playhead_line.dart';
 import 'package:anthem/widgets/util/lazy_follower.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
@@ -463,7 +463,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
           );
 
           final playhead = Positioned.fill(
-            child: Playhead(
+            child: PlayheadLine(
               timeViewAnimationController:
                   timeViewAnimationHelper!.animationController,
               timeViewStartAnimation: timeViewStartAnimItem.animation,
