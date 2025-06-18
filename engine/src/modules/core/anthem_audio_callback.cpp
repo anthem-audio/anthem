@@ -30,7 +30,8 @@ AnthemAudioCallback::AnthemAudioCallback(Anthem* anthem) {
   masterOutputProcessor = masterOutputProcessorSharedPtr.get();
 
   cpuBurdenProvider = Anthem::getInstance().globalVisualizationSources->cpuBurdenProvider.get();
-  playheadProvider = Anthem::getInstance().globalVisualizationSources->playheadProvider.get();
+  playheadPositionProvider = Anthem::getInstance().globalVisualizationSources->playheadPositionProvider.get();
+  playheadSequenceIdProvider = Anthem::getInstance().globalVisualizationSources->playheadSequenceIdProvider.get();
 }
 
 void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
@@ -94,7 +95,14 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
   auto sampleRate = 48000.0f; // TODO: Get sample rate from device
   auto cpuBurden = durationInSeconds * sampleRate / static_cast<double>(numSamples); // actual time / total buffer time
   cpuBurdenProvider->rt_updateCpuBurden(cpuBurden);
-  playheadProvider->rt_updatePlayheadPosition(transport->rt_playhead);
+
+  playheadPositionProvider->rt_updatePlayheadPosition(transport->rt_playhead);
+
+  if (transport->rt_config.activeSequenceId.has_value()) {
+    // This is a pass-by-reference and the function reads out the byte data to a
+    // pre-allocated array, making it real-time safe.
+    playheadSequenceIdProvider->rt_updatePlayheadSequenceId(transport->rt_config.activeSequenceId.value());
+  }
 
   transport->rt_advancePlayhead(numSamples);
   anthem->sequenceStore->rt_cleanupAfterBlock();

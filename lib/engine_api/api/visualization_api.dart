@@ -25,6 +25,7 @@ class VisualizationApi {
   VisualizationApi(this._engine);
 
   static const String playheadPositionKey = 'playhead_position';
+  static const String playheadSequenceIdKey = 'playhead_sequence_id';
   static const String cpuKey = 'cpu';
 
   void setSubscriptions(List<String> subscriptions) {

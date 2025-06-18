@@ -19,12 +19,14 @@
 
 #include "global_visualization_sources.h"
 
-std::vector<double> CpuVisualizationProvider::getData() {
+std::optional<std::vector<double>> CpuVisualizationProvider::getNumericData() {
   auto result = cpuBurden.load();
 
   overwriteNextUpdate.store(true);
 
-  return { result };
+  std::vector resultList { result };
+
+  return resultList;
 }
 
 // Every time we read, we want the max value since the last time we read. When
@@ -44,20 +46,77 @@ void CpuVisualizationProvider::rt_updateCpuBurden(double newCpuBurden) {
   }
 }
 
-std::vector<double> PlayheadVisualizationProvider::getData() {
+std::optional<std::vector<double>> PlayheadPositionVisualizationProvider::getNumericData() {
   auto result = playheadPosition.load();
-  return { result };
+  
+  std::vector<double> resultList{ result };
+
+  return resultList;
 }
 
-void PlayheadVisualizationProvider::rt_updatePlayheadPosition(double newPlayheadPosition) {
+void PlayheadPositionVisualizationProvider::rt_updatePlayheadPosition(double newPlayheadPosition) {
   playheadPosition.store(newPlayheadPosition);
+}
+
+std::optional<std::vector<std::string>> PlayheadSequenceIdVisualizationProvider::getStringData() {
+  auto result = playheadSequenceIdBuffer.read();
+
+  if (!result.has_value()) {
+    return std::nullopt;
+  }
+
+  // Make a std::string from the array<unsigned char, 16>
+  std::string sequenceId;
+  sequenceId.reserve(16);
+  for (const auto& byte : result.value()) {
+   if (byte == 0) {
+     break; // Stop at the first null byte
+   }
+
+   sequenceId += static_cast<char>(byte);
+  }
+
+  // If the sequence ID is the same as the last sent ID, return nothing
+  if (sequenceId == lastSentId) {
+    return std::nullopt;
+  }
+
+  lastSentId = sequenceId;
+
+  std::vector<std::string> resultList{ sequenceId };
+
+  return resultList;
+}
+
+void PlayheadSequenceIdVisualizationProvider::rt_updatePlayheadSequenceId(const std::string& newPlayheadSequenceId) {
+  // Convert the string to a char array and write it to the ring buffer
+  std::array<char, 16> sequenceIdArray = {};
+
+  const auto bytesToCopy = newPlayheadSequenceId.size();
+
+  if (bytesToCopy > sequenceIdArray.size()) {
+    jassertfalse; // This should never happen, though it could if the project file is corrupted
+    return;
+  }
+
+  std::copy_n(newPlayheadSequenceId.begin(),
+    bytesToCopy,
+    sequenceIdArray.begin());
+
+  // Write the sequence ID to the ring buffer
+  //
+  // This should be copying to heap memory that is already allocated, in which case this
+  // function is real-time safe.
+  playheadSequenceIdBuffer.add(sequenceIdArray);
 }
 
 GlobalVisualizationSources::GlobalVisualizationSources() {
   cpuBurdenProvider = std::make_shared<CpuVisualizationProvider>();
-  playheadProvider = std::make_shared<PlayheadVisualizationProvider>();
+  playheadPositionProvider = std::make_shared<PlayheadPositionVisualizationProvider>();
+  playheadSequenceIdProvider = std::make_shared<PlayheadSequenceIdVisualizationProvider>();
 
   // Register global sources with the visualization broker
   VisualizationBroker::getInstance().registerDataProvider("cpu", cpuBurdenProvider);
-  VisualizationBroker::getInstance().registerDataProvider("playhead", playheadProvider);
+  VisualizationBroker::getInstance().registerDataProvider("playhead_position", playheadPositionProvider);
+  VisualizationBroker::getInstance().registerDataProvider("playhead_sequence_id", playheadSequenceIdProvider);
 }

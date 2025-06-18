@@ -39,8 +39,8 @@ class Playhead extends StatelessWidget {
   Widget build(BuildContext context) {
     return Builder(
       builder: (context) {
-        return VisualizationBuilder(
-          config: VisualizationSubscriptionConfig.latest('playhead'),
+        return VisualizationBuilder.double(
+          config: VisualizationSubscriptionConfig.latest('playhead_position'),
           builder: (context, transportPosition) {
             return AnimatedBuilder(
               animation: timeViewAnimationController,
@@ -49,8 +49,8 @@ class Playhead extends StatelessWidget {
                   painter: _PlayheadPainter(
                     timeViewStart: timeViewStartAnimation.value,
                     timeViewEnd: timeViewEndAnimation.value,
-                    transportPosition: transportPosition,
-                    isVisible: isVisible,
+                    transportPosition: transportPosition ?? 0,
+                    isVisible: transportPosition != null && isVisible,
                   ),
                 );
               },

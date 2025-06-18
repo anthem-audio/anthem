@@ -56,7 +56,12 @@ private:
   // This is a reference to the playhead provider. The audio callback updates
   // the playhead position every time the audio callback is called, and sets it
   // here.
-  PlayheadVisualizationProvider* playheadProvider;
+  PlayheadPositionVisualizationProvider* playheadPositionProvider;
+
+  // This is a reference to the playhead sequence ID provider. The audio
+  // callback updates the playhead sequence ID every time the audio callback is
+  // called, and sets it here.
+  PlayheadSequenceIdVisualizationProvider* playheadSequenceIdProvider;
 public:
   AnthemAudioCallback(Anthem* anthem);
 

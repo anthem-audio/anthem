@@ -29,29 +29,46 @@
 #include "modules/core/visualization/visualization_provider.h"
 #include "modules/core/visualization/visualization_broker.h"
 
+#include "modules/util/ring_buffer.h"
+
 class CpuVisualizationProvider : public VisualizationDataProvider {
 private:
   std::atomic<double> cpuBurden;
   std::atomic<bool> overwriteNextUpdate;
 
 public:
-  std::vector<double> getData() override;
+  std::optional<std::vector<double>> getNumericData() override;
 
   void rt_updateCpuBurden(double newCpuBurden);
 
   CpuVisualizationProvider() : cpuBurden(0.0), overwriteNextUpdate(false) {}
 };
 
-class PlayheadVisualizationProvider : public VisualizationDataProvider {
+class PlayheadPositionVisualizationProvider : public VisualizationDataProvider {
 private:
   std::atomic<double> playheadPosition;
 
 public:
-  std::vector<double> getData() override;
+  std::optional<std::vector<double>> getNumericData() override;
 
   void rt_updatePlayheadPosition(double newPlayheadPosition);
 
-  PlayheadVisualizationProvider() : playheadPosition(0.0) {}
+  PlayheadPositionVisualizationProvider() : playheadPosition(0.0) {}
+};
+
+class PlayheadSequenceIdVisualizationProvider : public VisualizationDataProvider {
+private:
+  RingBuffer<std::array<char, 16>, 3> playheadSequenceIdBuffer;
+  std::string lastSentId;
+
+public:
+  std::optional<std::vector<std::string>> getStringData() override;
+
+  void rt_updatePlayheadSequenceId(const std::string& newPlayheadSequenceId);
+
+  PlayheadSequenceIdVisualizationProvider() : playheadSequenceIdBuffer(RingBuffer<std::array<char, 16>, 3>()) {
+    lastSentId = "";
+  };
 };
 
 class GlobalVisualizationSources {
@@ -60,7 +77,10 @@ public:
   std::shared_ptr<CpuVisualizationProvider> cpuBurdenProvider;
 
   // The playhead position in the transport.
-  std::shared_ptr<PlayheadVisualizationProvider> playheadProvider;
+  std::shared_ptr<PlayheadPositionVisualizationProvider> playheadPositionProvider;
+
+  // The playhead sequence ID in the transport.
+  std::shared_ptr<PlayheadSequenceIdVisualizationProvider> playheadSequenceIdProvider;
 
   GlobalVisualizationSources();
 };

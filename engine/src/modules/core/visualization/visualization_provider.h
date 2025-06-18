@@ -20,6 +20,8 @@
 #pragma once
 
 #include <vector>
+#include <optional>
+#include <string>
 
 // This is an abstract interface for visualization data providers. It is used by the
 // VisualizationBroker to query data from various sources in the engine.
@@ -27,6 +29,13 @@ class VisualizationDataProvider {
 public:
   virtual ~VisualizationDataProvider() = default;
 
-  // Get the most recent data for this provider, if any
-  virtual std::vector<double> getData() = 0;
+  // Get the most recent numeric data for this provider, if any.
+  virtual std::optional<std::vector<double>> getNumericData() {
+    return std::nullopt;
+  }
+
+  // Get the most recent string data for this provider, if any.
+  virtual std::optional<std::vector<std::string>> getStringData() {
+    return std::nullopt;
+  }
 };

@@ -56,17 +56,39 @@ void VisualizationBroker::timerCallback() {
   for (const auto& subscription : this->subscriptions) {
     auto it = this->dataProviders.find(subscription);
     if (it != this->dataProviders.end()) {
-      std::vector<double> data = it->second->getData();
-      auto dataSharedPtr = std::make_shared<std::vector<double>>(data);
+      std::optional<std::vector<double>> numericData = it->second->getNumericData();
 
-      auto visualizationItem = std::make_shared<VisualizationItem>(
-        VisualizationItem{
-          .id = subscription,
-          .values = rfl::make_field<"List<double>">(dataSharedPtr)
-        }
-      );
+      if (numericData.has_value() && !numericData.value().empty()) {
+        auto dataSharedPtr = std::make_shared<std::vector<double>>(numericData.value());
 
-      visualizationItems->push_back(visualizationItem);
+        auto visualizationItem = std::make_shared<VisualizationItem>(
+          VisualizationItem{
+            .id = subscription,
+            .values = rfl::make_field<"List<double>">(dataSharedPtr)
+          }
+        );
+
+        visualizationItems->push_back(visualizationItem);
+
+        continue;
+      }
+
+      std::optional<std::vector<std::string>> stringData = it->second->getStringData();
+
+      if (stringData.has_value() && !stringData.value().empty()) {
+        auto dataSharedPtr = std::make_shared<std::vector<std::string>>(stringData.value());
+
+        auto visualizationItem = std::make_shared<VisualizationItem>(
+          VisualizationItem{
+            .id = subscription,
+            .values = rfl::make_field<"List<String>">(dataSharedPtr)
+          }
+        );
+
+        visualizationItems->push_back(visualizationItem);
+
+        continue;
+      }
     }
   }
 

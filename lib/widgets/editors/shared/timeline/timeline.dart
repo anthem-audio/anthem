@@ -24,7 +24,9 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
+import 'package:anthem/widgets/basic/visualization_builder.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -142,6 +144,17 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
   void handlePointerDown(PointerEvent event) {
     final arrangement = _arrangement;
     final pattern = _pattern;
+
+    final sequenceId = arrangement?.id ?? pattern?.id;
+    if (sequenceId == null) {
+      // If there is no arrangement or pattern, we can't handle the pointer down
+      return;
+    }
+
+    final project = Provider.of<ProjectModel>(context, listen: false);
+    if (project.sequence.activeTransportSequenceID != sequenceId) {
+      project.sequence.activeTransportSequenceID = sequenceId;
+    }
 
     final deltaSinceLastMouseDown = _lastMouseDownTime == null
         ? Duration(days: 1)
@@ -537,20 +550,36 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                     );
                   },
                 ),
-                Observer(
-                  // project.sequence.activeArrangementID is accessed
-                  // conditionally, so this warns sometimes if we don't disable
-                  // it
-                  warnWhenNoObservables: false,
-                  builder: (context) {
+                VisualizationBuilder.string(
+                  // This pulls the latest visualization value for the active
+                  // sequence ID.
+                  //
+                  // The engine tells us what sequence it is currently playing.
+                  // We could pull this from the local data model, but we need
+                  // to pull it from the engine. This is because updates take
+                  // some time to propagate to the engine and come back, and so
+                  // if we pull one value from the data model (active sequence
+                  // ID) and one from the engine (playhead position), we can get
+                  // a desync between the two which is noticeable.
+                  //
+                  // By pulling the active sequence ID from the engine, we
+                  // ensure that the playhead position value is always linked to
+                  // whatever sequence is active in the engine, and we don't get
+                  // a desync.
+                  //
+                  // Note that the round-trip delay here may be quick enough,
+                  // but the worst-case will be around one audio block which may
+                  // last even a few frames, depending on the current audio
+                  // configuration.
+                  config: VisualizationSubscriptionConfig.latest(
+                    'playhead_sequence_id',
+                  ),
+                  builder: (context, activeSequenceId) {
                     return Visibility(
                       visible:
-                          (widget.patternID != null &&
-                              widget.patternID ==
-                                  project.sequence.activePatternID) ||
-                          (widget.arrangementID != null &&
-                              widget.arrangementID ==
-                                  project.sequence.activeArrangementID),
+                          activeSequenceId != null &&
+                          (widget.patternID == activeSequenceId ||
+                              widget.arrangementID == activeSequenceId),
                       child: PlayheadPositioner(
                         timeViewAnimationController:
                             widget.timeViewAnimationController,

@@ -195,12 +195,16 @@ class _RightGroup extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        VisualizationBuilder(
-          builder: (context, value) => HorizontalMeterSimple(
-            width: 60,
-            value: value,
-            label: '${(value * 100).round()}%',
-          ),
+        VisualizationBuilder.double(
+          builder: (context, value) {
+            value ??= 0;
+
+            return HorizontalMeterSimple(
+              width: 60,
+              value: value,
+              label: '${(value * 100).round()}%',
+            );
+          },
           config: VisualizationSubscriptionConfig.max('cpu'),
           minimumUpdateInterval: const Duration(milliseconds: 1000),
         ),

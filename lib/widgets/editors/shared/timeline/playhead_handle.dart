@@ -89,8 +89,8 @@ class PlayheadPositioner extends StatelessWidget {
     return AnimatedBuilder(
       animation: timeViewAnimationController,
       builder: (context, child) {
-        return VisualizationBuilder(
-          config: VisualizationSubscriptionConfig.latest('playhead'),
+        return VisualizationBuilder.double(
+          config: VisualizationSubscriptionConfig.latest('playhead_position'),
           builder: (context, playheadPosition) {
             final timeViewStart = timeViewStartAnimation.value;
             final timeViewEnd = timeViewEndAnimation.value;
@@ -99,7 +99,7 @@ class PlayheadPositioner extends StatelessWidget {
               timeViewStart: timeViewStart,
               timeViewEnd: timeViewEnd,
               viewPixelWidth: timelineSize.width,
-              time: playheadPosition,
+              time: playheadPosition ?? 0,
             );
 
             return Positioned(
@@ -107,7 +107,7 @@ class PlayheadPositioner extends StatelessWidget {
               top: timelineSize.height - _playheadHandleSize.height,
               child: CustomPaint(
                 size: _playheadHandleSize,
-                painter: _PlayheadHandlePainter(),
+                painter: _PlayheadHandlePainter(hide: playheadPosition == null),
               ),
             );
           },
@@ -118,8 +118,15 @@ class PlayheadPositioner extends StatelessWidget {
 }
 
 class _PlayheadHandlePainter extends CustomPainter {
+  bool hide;
+  _PlayheadHandlePainter({this.hide = false});
+
   @override
   void paint(Canvas canvas, Size size) {
+    if (hide) {
+      return;
+    }
+
     final handlePaint = Paint()
       ..color = Color(0xFFFFFFFF).withAlpha(255 * 4 ~/ 10)
       ..style = PaintingStyle.fill;
