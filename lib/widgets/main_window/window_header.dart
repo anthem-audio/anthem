@@ -22,9 +22,9 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/main_window/window_header_engine_indicator.dart';
-import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'main_window_controller.dart';
 
@@ -62,7 +62,7 @@ class _WindowHeaderState extends State<WindowHeader> {
               title: tab.title,
             ),
           ),
-          Expanded(child: MoveWindow(child: _WindowHandleAndControls())),
+          Expanded(child: DragToMoveArea(child: _WindowHandleAndControls())),
         ],
       ),
     );
@@ -110,7 +110,7 @@ class _WindowButtons extends StatelessWidget {
             hideBorder: true,
             icon: Icons.minimize,
             onPress: () {
-              appWindow.minimize();
+              windowManager.minimize();
             },
           ),
         ),
@@ -123,8 +123,12 @@ class _WindowButtons extends StatelessWidget {
             variant: ButtonVariant.ghost,
             hideBorder: true,
             icon: Icons.maximize,
-            onPress: () {
-              appWindow.maximizeOrRestore();
+            onPress: () async {
+              if (await windowManager.isMaximized()) {
+                await windowManager.unmaximize();
+              } else {
+                await windowManager.maximize();
+              }
             },
           ),
         ),
@@ -138,7 +142,7 @@ class _WindowButtons extends StatelessWidget {
             hideBorder: true,
             icon: Icons.close,
             onPress: () {
-              appWindow.close();
+              windowManager.close();
             },
           ),
         ),

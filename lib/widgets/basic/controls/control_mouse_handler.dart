@@ -18,12 +18,12 @@
 */
 
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
-import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 import 'package:pointer_lock/pointer_lock.dart';
+import 'package:window_manager/window_manager.dart';
 
 class ControlMouseEvent {
   Offset delta;
@@ -69,14 +69,18 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
 
   MouseCursorManager manager = MouseCursorManager(SystemMouseCursors.basic);
 
-  void onPointerDown(PointerEvent e) {
+  void onPointerDown(PointerEvent e) async {
     final mediaQuery = MediaQuery.of(context);
     devicePixelRatio = mediaQuery.devicePixelRatio;
-    windowRect = Rect.fromLTRB(
-      appWindow.rect.left / devicePixelRatio,
-      appWindow.rect.top / devicePixelRatio,
-      appWindow.rect.right / devicePixelRatio,
-      appWindow.rect.bottom / devicePixelRatio,
+
+    final windowPos = await windowManager.getPosition();
+    final windowSize = await windowManager.getSize();
+
+    windowRect = Rect.fromLTWH(
+      windowPos.dx / devicePixelRatio,
+      windowPos.dy / devicePixelRatio,
+      windowSize.width / devicePixelRatio,
+      windowSize.height / devicePixelRatio,
     );
 
     final mousePos = Offset(
