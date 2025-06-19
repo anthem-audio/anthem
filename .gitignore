@@ -34,6 +34,7 @@
 *.g.dart
 *.g.part
 devtools_options.yaml
+*.mocks.dart
 
 # Web related
 lib/generated_plugin_registrant.dart
