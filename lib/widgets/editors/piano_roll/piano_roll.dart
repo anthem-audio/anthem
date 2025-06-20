@@ -463,13 +463,17 @@ class _PianoRollContentState extends State<_PianoRollContent>
           );
 
           final playhead = Positioned.fill(
-            child: PlayheadLine(
-              timeViewAnimationController:
-                  timeViewAnimationHelper!.animationController,
-              timeViewStartAnimation: timeViewStartAnimItem.animation,
-              timeViewEndAnimation: timeViewEndAnimItem.animation,
-              isVisible: true,
-              editorActiveSequenceId: project.sequence.activePatternID,
+            child: Observer(
+              builder: (context) {
+                return PlayheadLine(
+                  timeViewAnimationController:
+                      timeViewAnimationHelper!.animationController,
+                  timeViewStartAnimation: timeViewStartAnimItem.animation,
+                  timeViewEndAnimation: timeViewEndAnimItem.animation,
+                  isVisible: true,
+                  editorActiveSequenceId: project.sequence.activePatternID,
+                );
+              },
             ),
           );
 
