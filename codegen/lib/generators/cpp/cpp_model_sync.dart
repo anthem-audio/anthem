@@ -236,11 +236,10 @@ void _writeJsonResultCheck({
   required ModelClassInfo context,
   required String fieldAccessExpression,
 }) {
-  writer.writeLine('auto error = $resultVariable.error();');
-  writer.writeLine('if (error.has_value()) {');
+  writer.writeLine('if (!$resultVariable.has_value()) {');
   writer.incrementWhitespace();
   writer.writeLine(
-    'std::cout << "Error deserializing to field \\"$fieldAccessExpression\\" in model \\"${context.annotatedClass.name}\\":" << std::endl << error.value().what() << std::endl;',
+    'std::cout << "Error deserializing to field \\"$fieldAccessExpression\\" in model \\"${context.annotatedClass.name}\\":" << std::endl << $resultVariable.error().what() << std::endl;',
   );
   writer.writeLine('return;');
   writer.decrementWhitespace();

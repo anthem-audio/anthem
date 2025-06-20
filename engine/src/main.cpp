@@ -301,7 +301,7 @@ void messageLoop(CommandMessageListener& messageListener) {
         auto requestWrapped = rfl::json::read<Request>(messageStr);
 
         // Try to unwrap the request
-        if (requestWrapped.error()) {
+        if (!requestWrapped.has_value()) {
           std::cerr << "Failed to parse request: " << messageStr << std::endl;
           return;
         }
