@@ -1,5 +1,12 @@
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  errors:
+    # This is because of source_gen, which as of 2.0.0 hasn't updated to the new
+    # package:analyzer element model - see:
+    # https://github.com/dart-lang/sdk/blob/main/pkg/analyzer/doc/element_model_migration_guide.md
+    deprecated_member_use: ignore
+
 linter:
   rules:
     prefer_single_quotes: true

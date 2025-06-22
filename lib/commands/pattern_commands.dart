@@ -92,14 +92,12 @@ class SetPatternNameCommand extends Command {
   void execute(ProjectModel project) {
     final pattern = project.sequence.patterns[patternID]!;
     pattern.name = newName;
-    pattern.updateClipTitleCache();
   }
 
   @override
   void rollback(ProjectModel project) {
     final pattern = project.sequence.patterns[patternID]!;
     pattern.name = oldName;
-    pattern.updateClipTitleCache();
   }
 }
 

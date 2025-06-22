@@ -93,7 +93,7 @@ BEGIN
             VALUE "FileDescription", "Anthem" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "Anthem" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2021 - 2023 Anthem authors. Code licensed under the Gnu Public License version 3. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2021 - 2025 Anthem authors. Code licensed under the GNU General Public License version 3." "\0"
             VALUE "OriginalFilename", "Anthem.exe" "\0"
             VALUE "ProductName", "Anthem" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

@@ -48,16 +48,16 @@ class ScreenOverlay extends StatelessObserverWidget {
           Positioned.fill(child: child),
           viewModel.entries.isNotEmpty
               ? Positioned.fill(
-                child: Listener(
-                  onPointerUp: (event) {
-                    controller.clear();
-                  },
-                  onPointerCancel: (event) {
-                    controller.clear();
-                  },
-                  child: Container(color: const Color(0x00000000)),
-                ),
-              )
+                  child: Listener(
+                    onPointerUp: (event) {
+                      controller.clear();
+                    },
+                    onPointerCancel: (event) {
+                      controller.clear();
+                    },
+                    child: Container(color: const Color(0x00000000)),
+                  ),
+                )
               : null,
         ].nonNulls.toList() +
         // state.entries is a Map<ID, ScreenOverlayEntry>

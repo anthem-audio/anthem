@@ -25,7 +25,7 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 class AddChannelMenu extends StatelessWidget {
-  final MenuController menuController;
+  final AnthemMenuController menuController;
   final Widget? child;
 
   const AddChannelMenu({super.key, required this.menuController, this.child});

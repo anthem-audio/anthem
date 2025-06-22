@@ -32,6 +32,7 @@ export 'package:anthem/engine_api/messages/messages.dart'
 part 'api/model_sync_api.dart';
 part 'api/processing_graph_api.dart';
 part 'api/sequencer_api.dart';
+part 'api/visualization_api.dart';
 
 enum EngineState { stopped, starting, running }
 
@@ -52,8 +53,11 @@ class Engine {
 
   late ModelSyncApi modelSyncApi;
   late ProcessingGraphApi processingGraphApi;
+  late SequencerApi sequencerApi;
+  late VisualizationApi visualizationApi;
 
-  Map<int, void Function(Response response)> replyFunctions = {};
+  Map<int, ({void Function(Response response) onReply, Timer timeoutTimer})>
+  replyFunctions = {};
 
   int Function() get _getRequestId => _engineConnector.getRequestId;
 
@@ -63,6 +67,36 @@ class Engine {
 
   EngineState _engineState = EngineState.stopped;
   EngineState get engineState => _engineState;
+  bool get isRunning => _engineState == EngineState.running;
+
+  /// Returns a [Future] that completes when the engine is ready to receive
+  /// messages.
+  ///
+  /// If the engine is already running, this will complete immediately. If not,
+  /// it will wait for the engine to start and then complete.
+  ///
+  /// Note that if the engine is stopped and not starting, this will wait for
+  /// the engine to start, which may never happen.
+  Future<void> get readyForMessages => _engineState == EngineState.running
+      ? Future.value()
+      : Future(() async {
+          await _engineStateStreamController.stream.firstWhere(
+            (state) => state == EngineState.running,
+          );
+        });
+
+  final List<void Function()> _startupCallbacks = [];
+
+  /// Adds a callback to be called when the engine is started.
+  void onStart(
+    void Function() callback, {
+    required bool runNowIfEngineRunning,
+  }) {
+    if (_engineState == EngineState.running && runNowIfEngineRunning) {
+      callback();
+    }
+    _startupCallbacks.add(callback);
+  }
 
   final String? enginePathOverride;
 
@@ -76,11 +110,19 @@ class Engine {
 
     modelSyncApi = ModelSyncApi(this);
     processingGraphApi = ProcessingGraphApi(this);
+    sequencerApi = SequencerApi(this);
+    visualizationApi = VisualizationApi(this);
   }
 
   void _onReply(Response response) {
+    if (response is VisualizationUpdate) {
+      project.visualizationProvider.processVisualizationUpdate(response);
+      return;
+    }
+
     if (replyFunctions[response.id] != null) {
-      replyFunctions[response.id]!(response);
+      replyFunctions[response.id]!.onReply(response);
+      replyFunctions[response.id]!.timeoutTimer.cancel();
       replyFunctions.remove(response.id);
     }
   }
@@ -134,6 +176,12 @@ class Engine {
     final success = await _engineConnector.onInit;
 
     _setEngineState(success ? EngineState.running : EngineState.stopped);
+
+    if (_engineState == EngineState.running) {
+      for (final callback in _startupCallbacks) {
+        callback();
+      }
+    }
   }
 
   /// Sends a request to the engine, and asynchronously returns the response.
@@ -144,11 +192,24 @@ class Engine {
 
     final completer = Completer<Response>();
 
-    void onResponse(Response response) {
+    void onReply(Response response) {
       completer.complete(response);
     }
 
-    replyFunctions[request.id] = onResponse;
+    final timeout = Duration(seconds: 5);
+    final timer = Timer(timeout, () {
+      if (replyFunctions[request.id] != null) {
+        completer.completeError(
+          TimeoutException(
+            'Request ${request.id} of type ${request.runtimeType} timed out after ${timeout.inSeconds} seconds.',
+            timeout,
+          ),
+        );
+        replyFunctions.remove(request.id);
+      }
+    });
+
+    replyFunctions[request.id] = (onReply: onReply, timeoutTimer: timer);
 
     final encoder = JsonUtf8Encoder();
 

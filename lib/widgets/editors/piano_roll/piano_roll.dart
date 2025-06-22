@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2024 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -32,6 +32,7 @@ import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/piano_roll/content_renderer.dart';
+import 'package:anthem/widgets/editors/shared/playhead_line.dart';
 import 'package:anthem/widgets/util/lazy_follower.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
@@ -85,7 +86,7 @@ class _PianoRollState extends State<PianoRoll> {
     final project = Provider.of<ProjectModel>(context);
 
     viewModel ??= PianoRollViewModel(
-      keyHeight: 20,
+      keyHeight: 14.0,
       // Hack: cuts off the top horizontal line. Otherwise the default view looks off
       keyValueAtTop: 63.95,
       timeView: TimeRange(0, 3072),
@@ -144,7 +145,7 @@ class PianoRollTimeViewProvider extends StatelessObserverWidget {
 class _PianoRollHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final menuController = MenuController();
+    final menuController = AnthemMenuController();
     final viewModel = Provider.of<PianoRollViewModel>(context);
 
     return SizedBox(
@@ -200,12 +201,9 @@ class _PianoRollHeader extends StatelessWidget {
                   showNameOnButton: false,
                   allowNoSelection: false,
                   hint: 'Change the active tool',
-                  selectedID:
-                      EditorTool.values
-                          .firstWhere(
-                            (tool) => tool.name == viewModel.tool.name,
-                          )
-                          .name,
+                  selectedID: EditorTool.values
+                      .firstWhere((tool) => tool.name == viewModel.tool.name)
+                      .name,
                   items: [
                     DropdownItem(
                       id: EditorTool.pencil.name,
@@ -331,8 +329,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
 
     final timeline = Observer(
       builder: (context) {
-        final timelineHeight =
-            (getPattern()?.hasTimeMarkers ?? false) ? 42.0 : 21.0;
+        final timelineHeight = 38.0;
         final pattern = getPattern();
 
         return SizedBox(
@@ -380,101 +377,112 @@ class _PianoRollContentState extends State<_PianoRollContent>
       child: LayoutBuilder(
         builder: (context, constraints) {
           _pianoRollCanvasSize = constraints.biggest;
+
+          final grid = PianoRollGrid(
+            timeViewAnimationController:
+                timeViewAnimationHelper!.animationController,
+            timeViewStartAnimation: timeViewStartAnimItem.animation,
+            timeViewEndAnimation: timeViewEndAnimItem.animation,
+            keyValueAtTopAnimationController:
+                keyValueAtTopAnimationHelper!.animationController,
+            keyValueAtTopAnimation: keyValueAtTopAnimItem.animation,
+          );
+
+          final notes = AnimatedBuilder(
+            animation: timeViewAnimationHelper!.animationController,
+            builder: (context, child) {
+              return AnimatedBuilder(
+                animation: timeViewAnimationHelper!.animationController,
+                builder: (context, child) {
+                  return PianoRollContentRenderer(
+                    timeViewStart: timeViewStartAnimItem.animation.value,
+                    timeViewEnd: timeViewEndAnimItem.animation.value,
+                    keyValueAtTop: keyValueAtTopAnimItem.animation.value,
+                  );
+                },
+              );
+            },
+          );
+
+          final selectionBox = Observer(
+            builder: (context) {
+              if (viewModel.selectionBox == null) {
+                return const SizedBox();
+              }
+
+              final selectionBox = viewModel.selectionBox!;
+
+              final left = timeToPixels(
+                timeViewStart: viewModel.timeView.start,
+                timeViewEnd: viewModel.timeView.end,
+                viewPixelWidth: constraints.maxWidth,
+                time: selectionBox.left,
+              );
+
+              final width = timeToPixels(
+                timeViewStart: viewModel.timeView.start,
+                timeViewEnd: viewModel.timeView.end,
+                viewPixelWidth: constraints.maxWidth,
+                time: viewModel.timeView.start + selectionBox.width,
+              );
+
+              final top = keyValueToPixels(
+                keyValueAtTop: viewModel.keyValueAtTop,
+                keyHeight: viewModel.keyHeight,
+                keyValue: selectionBox.bottom,
+              );
+
+              final height = keyValueToPixels(
+                keyValueAtTop: viewModel.keyValueAtTop,
+                keyHeight: viewModel.keyHeight,
+                keyValue: viewModel.keyValueAtTop - selectionBox.height,
+              );
+
+              final borderColor = const HSLColor.fromAHSL(
+                1,
+                166,
+                0.6,
+                0.35,
+              ).toColor();
+              final backgroundColor = borderColor.withAlpha(100);
+
+              return Positioned(
+                left: left,
+                top: top,
+                child: Container(
+                  width: width,
+                  height: height,
+                  decoration: BoxDecoration(
+                    color: backgroundColor,
+                    border: Border.all(color: borderColor),
+                    borderRadius: const BorderRadius.all(Radius.circular(2)),
+                  ),
+                ),
+              );
+            },
+          );
+
+          final playhead = Positioned.fill(
+            child: Observer(
+              builder: (context) {
+                return PlayheadLine(
+                  timeViewAnimationController:
+                      timeViewAnimationHelper!.animationController,
+                  timeViewStartAnimation: timeViewStartAnimItem.animation,
+                  timeViewEndAnimation: timeViewEndAnimItem.animation,
+                  isVisible: true,
+                  editorActiveSequenceId: project.sequence.activePatternID,
+                );
+              },
+            ),
+          );
+
           return PianoRollEventListener(
             child: _PianoRollCanvasCursor(
               child: ClipRect(
                 child: Stack(
                   fit: StackFit.expand,
-                  children: [
-                    PianoRollGrid(
-                      timeViewAnimationController:
-                          timeViewAnimationHelper!.animationController,
-                      timeViewStartAnimation: timeViewStartAnimItem.animation,
-                      timeViewEndAnimation: timeViewEndAnimItem.animation,
-                      keyValueAtTopAnimationController:
-                          keyValueAtTopAnimationHelper!.animationController,
-                      keyValueAtTopAnimation: keyValueAtTopAnimItem.animation,
-                    ),
-                    AnimatedBuilder(
-                      animation: timeViewAnimationHelper!.animationController,
-                      builder: (context, child) {
-                        return AnimatedBuilder(
-                          animation:
-                              timeViewAnimationHelper!.animationController,
-                          builder: (context, child) {
-                            return PianoRollContentRenderer(
-                              timeViewStart:
-                                  timeViewStartAnimItem.animation.value,
-                              timeViewEnd: timeViewEndAnimItem.animation.value,
-                              keyValueAtTop:
-                                  keyValueAtTopAnimItem.animation.value,
-                            );
-                          },
-                        );
-                      },
-                    ),
-                    Observer(
-                      builder: (context) {
-                        if (viewModel.selectionBox == null) {
-                          return const SizedBox();
-                        }
-
-                        final selectionBox = viewModel.selectionBox!;
-
-                        final left = timeToPixels(
-                          timeViewStart: viewModel.timeView.start,
-                          timeViewEnd: viewModel.timeView.end,
-                          viewPixelWidth: constraints.maxWidth,
-                          time: selectionBox.left,
-                        );
-
-                        final width = timeToPixels(
-                          timeViewStart: viewModel.timeView.start,
-                          timeViewEnd: viewModel.timeView.end,
-                          viewPixelWidth: constraints.maxWidth,
-                          time: viewModel.timeView.start + selectionBox.width,
-                        );
-
-                        final top = keyValueToPixels(
-                          keyValueAtTop: viewModel.keyValueAtTop,
-                          keyHeight: viewModel.keyHeight,
-                          keyValue: selectionBox.bottom,
-                        );
-
-                        final height = keyValueToPixels(
-                          keyValueAtTop: viewModel.keyValueAtTop,
-                          keyHeight: viewModel.keyHeight,
-                          keyValue:
-                              viewModel.keyValueAtTop - selectionBox.height,
-                        );
-
-                        final borderColor =
-                            const HSLColor.fromAHSL(
-                              1,
-                              166,
-                              0.6,
-                              0.35,
-                            ).toColor();
-                        final backgroundColor = borderColor.withAlpha(100);
-
-                        return Positioned(
-                          left: left,
-                          top: top,
-                          child: Container(
-                            width: width,
-                            height: height,
-                            decoration: BoxDecoration(
-                              color: backgroundColor,
-                              border: Border.all(color: borderColor),
-                              borderRadius: const BorderRadius.all(
-                                Radius.circular(2),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                  children: [grid, notes, selectionBox, playhead],
                 ),
               ),
             ),
@@ -565,7 +573,6 @@ class _PianoRollContentState extends State<_PianoRollContent>
                         child: Column(
                           children: [
                             timeline,
-                            Container(color: Theme.panel.border, height: 1),
                             Expanded(
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -638,12 +645,11 @@ class _PianoRollCanvasCursorState extends State<_PianoRollCanvasCursor> {
         final pos = e.localPosition;
 
         final contentUnderCursor = viewModel.getContentUnderCursor(pos);
-        final newCursor =
-            contentUnderCursor.resizeHandle != null
-                ? SystemMouseCursors.resizeLeftRight
-                : contentUnderCursor.note != null
-                ? SystemMouseCursors.move
-                : MouseCursor.defer;
+        final newCursor = contentUnderCursor.resizeHandle != null
+            ? SystemMouseCursors.resizeLeftRight
+            : contentUnderCursor.note != null
+            ? SystemMouseCursors.move
+            : MouseCursor.defer;
 
         final note = contentUnderCursor.note?.metadata.id;
         if (note != viewModel.hoveredNote) {

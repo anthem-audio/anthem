@@ -26,7 +26,7 @@
 #include <memory>
 
 #include "modules/sequencer/events/event.h"
-#include "modules/util/thread_safe_queue.h"
+#include "modules/util/ring_buffer.h"
 
 /*
   Anthem compiles each pattern and arrangement into a list of events for each
@@ -45,10 +45,26 @@
   the audio thread.
 */
 
-// Stores a list of events for a given channel.
+// Stores a list of events meant for a single channel.
+//
+// There will be at least one of these per sequence (pattern or arrangement),
+// unless the sequence is completely empty.
 struct SequenceEventList {
   // List of events for this channel.
   std::vector<AnthemSequenceEvent>* events;
+
+  // List of invalidation ranges for the current processing block, if any. If
+  // this is set, it will be cleared when the processing block is read in,
+  // and will be sent back for deletion.
+  std::vector<std::tuple<double, double>>* invalidationRanges = nullptr;
+
+  // Whether the old event list is invalid for the current processing block.
+  //
+  // Multiple recompiles may happen for a single processing block. Because of
+  // this, the code that reads in new event lists needs to check against all
+  // of them. It will set the list above to nullptr, and set this flag if any
+  // of the relevant list updates have caused an invalidation.
+  bool invalidationOccurred = false;
 
   SequenceEventList();
 
@@ -84,20 +100,33 @@ struct SequenceEventListCollection {
   // This method allows us to have full control over when these are deleted. The
   // flow is as follows:
   //   1. The main thread wants to replace the events for a sequence, so it
-  //      first clones the AnthemRuntimeSequenceStore::eventLists map below
+  //      first clones the AnthemRuntimeSequenceStore::eventLists map below.
+  //      Note that this does not result in any of the acutal sequence data
+  //      being cloned, since each SequenceEventListCollection just holds a
+  //      pointer to its channel map. That pointer remains the same for every
+  //      cloned SequenceEventListCollection.
   //   2. The main thread specifically wants to replace the item at sequence id
-  //      "mySequenceId", so it prepares a new value for that key
+  //      "mySequenceId", so it prepares a new value for that key. This value
+  //      includes a new map of channels with new pointers to new data.
   //   3. The main thread grabs the old value at "mySequenceId", and stores it
-  //      in AnthemRuntimeSequenceStore::pendingSequenceDeletions for deletion
+  //      in AnthemRuntimeSequenceStore::pendingSequenceDeletions for deletion.
+  //      Note again that this is just a pointer to the old map. The audio
+  //      thread currently owns this pointer, and will for an unknown amount of
+  //      time until it is able to release it, so we can't delete it yet.
   //   4. The main thread adds the pointer to the new map to
-  //      AnthemRuntimeSequenceStore::mapUpdateQueue
+  //      AnthemRuntimeSequenceStore::mapUpdateQueue, to be picked up by the
+  //      audio thread.
   //   5. The audio thread eventually releases control of the old map, and adds
-  //      its pointer to AnthemRuntimeSequenceStore::mapDeletionQueue
+  //      its pointer to AnthemRuntimeSequenceStore::mapDeletionQueue.
   //   6. Periodically, the main thread will check this queue. For each pointer
   //      it finds in the queue, it will delete the pointer, and clean up any
   //      associated entries in
   //      AnthemRuntimeSequenceStore::pendingSequenceDeletions by calling this
   //      method.
+  //
+  // To be clear, note that this method is called in the LAST step of the above
+  // process. This means that the audio thread has already released the pointer
+  // to the old map and it is ready to be deleted.
   static void cleanUpInstance(SequenceEventListCollection& instance);
 };
 
@@ -128,10 +157,15 @@ private:
   SequenceIdToEventsMap* rt_eventLists;
 
   // For sending new values of the map to the audio thread
-  ThreadSafeQueue<SequenceIdToEventsMap*> mapUpdateQueue;
+  RingBuffer<SequenceIdToEventsMap*, 1024> mapUpdateQueue;
 
-  // For the audio thread to send old values of the map to be deleted by the main thread
-  ThreadSafeQueue<SequenceIdToEventsMap*> mapDeletionQueue;
+  // For the audio thread to send old values of the map to be deleted by the
+  // main thread
+  RingBuffer<SequenceIdToEventsMap*, 1024> mapDeletionQueue;
+
+  // For the audio thread to send back invalidation range lists to be deleted
+  // by the mmain thread
+  RingBuffer<std::vector<std::tuple<double, double>>*, 1024> invalidationRangesDeletionQueue;
 
   juce::TimedCallback clearDeletionQueueTimedCallback;
 
@@ -167,11 +201,16 @@ private:
     >
   > pendingSequenceChannelDeletions;
 
-  void processMapDeletionQueue();
+  void processDeletionQueues();
 
 public:
   AnthemRuntimeSequenceStore();
   ~AnthemRuntimeSequenceStore();
+
+  // Picks up any updates to the event lists map from the mapUpdateQueue.
+  //
+  // Must be run at the start of each processing block.
+  void rt_processSequenceChanges(int bufferSize);
 
   // Gets the event lists map.
   //
@@ -206,11 +245,18 @@ public:
   // channel, and push the new map to the mapUpdateQueue. If the channel already
   // exists, it will be replaced, and the old channel will be added to the
   // pendingSequenceChannelDeletions map.
-  void addOrUpdateChannelInSequence(const std::string& sequenceId, const std::string& channelId, SequenceEventList channel);
+  void addOrUpdateChannelInSequence(
+    const std::string& sequenceId,
+    const std::string& channelId,
+    SequenceEventList channel);
 
   // Removes a channel from a sequence in the event lists map.
   void removeChannelFromSequence(const std::string& sequenceId, const std::string& channelId);
 
   // Removes every instance of the given channel from every sequence.
   void removeChannelFromAllSequences(const std::string& channelId);
+
+  // Sends invalidation lists back to be deleted. Must be run at the end of each
+  // processing block.
+  void rt_cleanupAfterBlock();
 };

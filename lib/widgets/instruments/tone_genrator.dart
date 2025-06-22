@@ -68,12 +68,12 @@ class _ToneGeneratorState extends State<ToneGenerator> {
                     width: 26,
                     height: 26,
                     onValueChanged: (newValue) {
-                      widget
-                          .node
-                          .getPortById(
-                            ToneGeneratorProcessorModel.frequencyPortId,
-                          )
-                          .parameterValue = newValue;
+                      widget.node
+                              .getPortById(
+                                ToneGeneratorProcessorModel.frequencyPortId,
+                              )
+                              .parameterValue =
+                          newValue;
                     },
                   );
                 },
@@ -96,12 +96,12 @@ class _ToneGeneratorState extends State<ToneGenerator> {
                     width: 26,
                     height: 26,
                     onValueChanged: (value) {
-                      widget
-                          .node
-                          .getPortById(
-                            ToneGeneratorProcessorModel.amplitudePortId,
-                          )
-                          .parameterValue = value;
+                      widget.node
+                              .getPortById(
+                                ToneGeneratorProcessorModel.amplitudePortId,
+                              )
+                              .parameterValue =
+                          value;
                     },
                   );
                 },

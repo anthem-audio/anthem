@@ -50,38 +50,70 @@ class RawFieldUpdate extends FieldOperation {
   /// It can also be a serialized representation of another Anthem model. This
   /// will also be a map, but instead of representing an actual map collection,
   /// it will be the result of calling `toJson()` on the model.
+  final dynamic newValueSerialized;
+
+  /// The value that was replaced, if any.
+  ///
+  /// This is the actual value, not a serialized representation.
+  final dynamic oldValue;
+
+  T oldValueAs<T>() => oldValue as T;
+
+  /// The new value of the field.
+  ///
+  /// This is the actual value, not a serialized representation.
   final dynamic newValue;
 
-  RawFieldUpdate({required this.newValue});
+  T newValueAs<T>() => newValue as T;
+
+  RawFieldUpdate({
+    required this.newValueSerialized,
+    required this.newValue,
+    this.oldValue,
+  });
 
   @override
   String toString() {
-    return 'RawFieldUpdate(newValue: ${_stringifyValue(newValue)})';
+    return 'RawFieldUpdate(newValueSerialized (${newValueSerialized.runtimeType}): ${_stringifyValue(newValueSerialized)}, oldValue (${oldValue.runtimeType}): ${_stringifyValue(oldValue)}, newValue (${newValue.runtimeType}): ${_stringifyValue(newValue)})';
   }
 }
 
 /// Represents inserting an item in a list
 class ListInsert extends FieldOperation {
-  /// This is the new value of the field. It is a serialized representation.
+  /// This is the value to be inserted. It is a serialized representation.
   ///
   /// See above for the types that this can be.
+  final dynamic valueSerialized;
+
+  /// The value to be inserted.
+  ///
+  /// This is the actual value, not a serialized representation.
   final dynamic value;
 
-  ListInsert({required this.value});
+  T valueAs<T>() => value as T;
+
+  ListInsert({required this.valueSerialized, required this.value});
 
   @override
   String toString() {
-    return 'ListInsert(value: ${_stringifyValue(value)})';
+    return 'ListInsert(valueSerialized: ${_stringifyValue(valueSerialized)}, value (${value.runtimeType}): ${_stringifyValue(value)})';
   }
 }
 
 /// Represents removing an item from a list
 class ListRemove extends FieldOperation {
-  ListRemove();
+  ListRemove({required this.removedValue});
+
+  /// The value to be removed.
+  ///
+  /// This is the actual value, not a serialized representation.
+  final dynamic removedValue;
+
+  T removedValueAs<T>() => removedValue as T;
 
   @override
   String toString() {
-    return 'ListRemove()';
+    return 'ListRemove(removedValue (${removedValue.runtimeType}): ${_stringifyValue(removedValue)})';
   }
 }
 
@@ -90,13 +122,31 @@ class ListUpdate extends FieldOperation {
   /// This is the new value of the field. It is a serialized representation.
   ///
   /// See above for the types that this can be.
-  final dynamic value;
+  final dynamic newValueSerialized;
 
-  ListUpdate({required this.value});
+  /// The value that was replaced, if any.
+  ///
+  /// This is the actual value, not a serialized representation.
+  final dynamic oldValue;
+
+  T oldValueAs<T>() => oldValue as T;
+
+  /// The new value of the field.
+  ///
+  /// This is the actual value, not a serialized representation.
+  final dynamic newValue;
+
+  T newValueAs<T>() => newValue as T;
+
+  ListUpdate({
+    required this.newValueSerialized,
+    required this.oldValue,
+    required this.newValue,
+  });
 
   @override
   String toString() {
-    return 'ListUpdate(value: ${_stringifyValue(value)})';
+    return 'ListUpdate(newValueSerialized (${newValueSerialized.runtimeType}): ${_stringifyValue(newValueSerialized)}, oldValue (${oldValue.runtimeType}): ${_stringifyValue(oldValue)}, newValue (${newValue.runtimeType}): ${_stringifyValue(newValue)})';
   }
 }
 
@@ -105,21 +155,48 @@ class MapPut extends FieldOperation {
   /// This is the new value of the field. It is a serialized representation.
   ///
   /// See above for the types that this can be.
-  final dynamic value;
+  final dynamic newValueSerialized;
 
-  MapPut({required this.value});
+  /// The value that was replaced, if any.
+  ///
+  /// This is the actual value, not a serialized representation.
+  final dynamic oldValue;
+
+  T oldValueAs<T>() => oldValue as T;
+
+  /// The value to be inserted.
+  ///
+  /// This is the actual value, not a serialized representation.
+  final dynamic newValue;
+
+  T newValueAs<T>() => newValue as T;
+
+  MapPut({
+    required this.newValueSerialized,
+    required this.newValue,
+    required this.oldValue,
+  });
 
   @override
   String toString() {
-    return 'MapPut(value (${value.runtimeType}): ${_stringifyValue(value)})';
+    return 'MapPut(newValueSerialized (${newValueSerialized.runtimeType}): ${_stringifyValue(newValueSerialized)}, newValue (${newValue.runtimeType}): ${_stringifyValue(newValue)}, oldValue (${oldValue.runtimeType}): ${_stringifyValue(oldValue)})';
   }
 }
 
 /// Represents removing an item from a map.
 class MapRemove extends FieldOperation {
+  /// The value that was removed.
+  ///
+  /// This is the actual value, not a serialized representation.
+  final dynamic removedValue;
+
+  T removedValueAs<T>() => removedValue as T;
+
+  MapRemove({required this.removedValue});
+
   @override
   String toString() {
-    return 'MapRemove()';
+    return 'MapRemove(removedValue (${removedValue.runtimeType}): ${_stringifyValue(removedValue)})';
   }
 }
 
@@ -136,6 +213,11 @@ class FieldAccessor {
     this.index,
     this.key,
   });
+
+  @override
+  String toString() {
+    return 'FieldAccessor(fieldType: $fieldType, fieldName: $fieldName, index: $index, key: $key)';
+  }
 }
 
 /// A subset of [ListChange] from MobX. Allows us to serialize changes before
@@ -200,6 +282,12 @@ mixin AnthemModelBase {
   /// A write will be reported to tihs atom when this model or any descendant
   /// model is changed.
   final Atom _allChangesAtom = Atom();
+
+  /// Indicates whether this is the top level model in the tree.
+  ///
+  /// This should only be set by the top level model (ProjectModel in our case).
+  /// Other models should leave this alone.
+  bool isTopLevelModel = false;
 
   /// If called during a MobX observation, this will cause the widget to rebuild
   /// when any field in this model or any descendant model is changed.

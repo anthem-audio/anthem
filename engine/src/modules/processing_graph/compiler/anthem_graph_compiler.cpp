@@ -59,8 +59,8 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
   // Get the total number of event ports in the graph.
   for (auto& nodePair : *processingGraphModel->nodes()) {
     auto& node = nodePair.second;
-    totalEventPorts += node->midiInputPorts()->size();
-    totalEventPorts += node->midiOutputPorts()->size();
+    totalEventPorts += node->eventInputPorts()->size();
+    totalEventPorts += node->eventOutputPorts()->size();
   }
 
   // Create a buffer allocator for events, and allocate double the size of the
@@ -149,7 +149,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
 
   for (auto& node : nodesToProcess) {
     actions->push_back(
-      std::make_unique<WriteParametersToControlInputsAction>(node->context, 44100.0f)
+      std::make_unique<WriteParametersToControlInputsAction>(node->context, 48000.0f)
     );
   }
 
@@ -184,10 +184,9 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
     std::cout << "Nodes still left to process: " << std::to_string(nodesToProcess.size()) << std::endl;
     std::cout << "Last size: " << std::to_string(lastSize) << std::endl;
 
-    // If there's an infinite loop, throw an error, since this should never
-    // happen, and a bug that causes an infinite loop here would prevent the
-    // engine from being shut down. Since the engine is hidden from the user, we
-    // shouldn't risk this.
+    // If there's an infinite loop, throw an error. This should never happen,
+    // and a bug that causes an infinite loop here would prevent the engine from
+    // being shut down. This is a safety check to prevent that.
     if (lastSize == nodesToProcess.size()) {
       throw std::runtime_error("Infinite loop detected in graph compiler");
     }
@@ -270,9 +269,9 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
               )
             );
             break;
-          case NodePortDataType::midi:
+          case NodePortDataType::event:
             actions->push_back(
-              std::make_unique<CopyNoteEventsAction>(
+              std::make_unique<CopyEventsAction>(
                 edge->sourceNodeContext,
                 sourcePort->id(),
                 edge->destinationNodeContext,

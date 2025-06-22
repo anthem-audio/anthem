@@ -39,14 +39,17 @@
 // lists for the relevant channel.
 class AnthemSequenceCompiler {
 friend class SequenceCompilerTest;
-private:
+public:
   // Compiles the given pattern, and adds or replaces its entry in the sequence
   // store.
   static void compilePattern(std::string patternId);
 
   // Compiles the given channels for the given pattern, and replaces them in the
   // sequence store.
-  static void compilePattern(std::string patternId, std::vector<std::string>& channelIdsToRebuild);
+  static void compilePattern(
+    std::string patternId,
+    std::vector<std::string>& channelIdsToRebuild,
+    std::vector<std::tuple<double, double>>& invalidationRanges);
 
   // Compiles the given arrangement, and adds or replaces its entry in the
   // sequence store.
@@ -54,8 +57,15 @@ private:
 
   // Compiles the given channels for the given arrangement, and replaces them in
   // the sequence store.
-  static void compileArrangement(std::string arrangementId, std::vector<std::string>& channelIdsToRebuild);
+  static void compileArrangement(
+    std::string arrangementId,
+    std::vector<std::string>& channelIdsToRebuild,
+    std::vector<std::tuple<double, double>>& invalidationRanges);
 
+  // Cleans up any sequences related to the given channel ID.
+  static void cleanUpChannel(std::string channelId);
+
+private:
   // Gets the note events on a given channel for the given arrangement.
   //
   // The events will be added to the given `events` vector.
@@ -83,8 +93,8 @@ private:
   static void getChannelNoteEventsForPattern(
     std::string channelId,
     std::string patternId,
-    std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> range,
-    std::optional<AnthemSequenceTime> offset,
+    std::optional<std::tuple<double, double>> range,
+    std::optional<double> offset,
     std::vector<AnthemSequenceEvent>& events
   );
 
@@ -98,16 +108,15 @@ private:
   //
   // If std::nullopt is returned, it means the event was entirely outside the
   // range.
-  static std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> clampStartAndEndToRange(
-    AnthemSequenceTime start,
-    AnthemSequenceTime end,
-    std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> range
+  static std::optional<std::tuple<double, double>> clampStartAndEndToRange(
+    double start,
+    double end,
+    std::optional<std::tuple<double, double>> range
   );
 
   // Clamps a given timestamp to the given range.
-  static AnthemSequenceTime clampTimeToRange(
-    AnthemSequenceTime time,
-    std::tuple<AnthemSequenceTime, AnthemSequenceTime> range
+  static double clampTimeToRange(
+    double time,
+    std::tuple<double, double> range
   );
-public:
 };

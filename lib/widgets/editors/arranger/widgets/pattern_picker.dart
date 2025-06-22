@@ -119,23 +119,22 @@ class _PatternPickerState extends State<PatternPicker> {
                             builder: (context) {
                               return Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children:
-                                    project.sequence.patternOrder
-                                        .map(
-                                          (patternID) => Padding(
-                                            padding: const EdgeInsets.only(
-                                              bottom: 1,
-                                            ),
-                                            child: SizedBox(
-                                              height: patternHeight,
-                                              child: Clip.fromPattern(
-                                                patternId: patternID,
-                                                ticksPerPixel: 5,
-                                              ),
-                                            ),
+                                children: project.sequence.patternOrder
+                                    .map(
+                                      (patternID) => Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 1,
+                                        ),
+                                        child: SizedBox(
+                                          height: patternHeight,
+                                          child: Clip.fromPattern(
+                                            patternId: patternID,
+                                            ticksPerPixel: 5,
                                           ),
-                                        )
-                                        .toList(),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
                               );
                             },
                           ),

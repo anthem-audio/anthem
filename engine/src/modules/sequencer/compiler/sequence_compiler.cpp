@@ -43,12 +43,7 @@ void AnthemSequenceCompiler::compilePattern(std::string patternId) {
     getChannelNoteEventsForPattern(channelId, patternId, std::nullopt, std::nullopt, *newChannelEvents.events);
     sortEventList(*newChannelEvents.events);
 
-    if (newChannelEvents.events->size() > 0) {
-      newSequence.channels->insert_or_assign(channelId, std::move(newChannelEvents));
-    }
-    else {
-      SequenceEventList::cleanUpInstance(newChannelEvents);
-    }
+    newSequence.channels->insert_or_assign(channelId, std::move(newChannelEvents));
   }
 
   // Add the new sequence to the store
@@ -58,28 +53,20 @@ void AnthemSequenceCompiler::compilePattern(std::string patternId) {
 
 void AnthemSequenceCompiler::compilePattern(
   std::string patternId,
-  std::vector<std::string>& channelIdsToRebuild
+  std::vector<std::string>& channelIdsToRebuild,
+  std::vector<std::tuple<double, double>>& invalidationRanges
 ) {
   auto& store = *Anthem::getInstance().sequenceStore;
 
   for (auto& channelId : channelIdsToRebuild) {
     // This will leak memory if it's not assigned somewhere or cleaned up here
     SequenceEventList newChannelEvents;
+    newChannelEvents.invalidationRanges = new std::vector<std::tuple<double, double>>(invalidationRanges);
 
     getChannelNoteEventsForPattern(channelId, patternId, std::nullopt, std::nullopt, *newChannelEvents.events);
     sortEventList(*newChannelEvents.events);
 
-    if (newChannelEvents.events->size() > 0) {
-      store.addOrUpdateChannelInSequence(patternId, channelId, newChannelEvents);
-    }
-    else {
-      // Just in case, we'll remove the channel from the sequence store. If the
-      // channel used to have events and now doesn't, we want to remove it, and
-      // if the channel doesn't exist in the pattern then this will be a no-op.
-      store.removeChannelFromSequence(patternId, channelId);
-
-      SequenceEventList::cleanUpInstance(newChannelEvents);
-    }
+    store.addOrUpdateChannelInSequence(patternId, channelId, newChannelEvents);
   }
 }
 
@@ -103,12 +90,7 @@ void AnthemSequenceCompiler::compileArrangement(std::string arrangementId) {
     getChannelNoteEventsForArrangement(channelId, arrangementId, *newChannelEvents.events);
     sortEventList(*newChannelEvents.events);
 
-    if (newChannelEvents.events->size() > 0) {
-      newSequence.channels->insert_or_assign(channelId, std::move(newChannelEvents));
-    }
-    else {
-      SequenceEventList::cleanUpInstance(newChannelEvents);
-    }
+    newSequence.channels->insert_or_assign(channelId, std::move(newChannelEvents));
   }
 
   // Add the new sequence to the store
@@ -118,29 +100,27 @@ void AnthemSequenceCompiler::compileArrangement(std::string arrangementId) {
 
 void AnthemSequenceCompiler::compileArrangement(
   std::string arrangementId,
-  std::vector<std::string>& channelIdsToRebuild
+  std::vector<std::string>& channelIdsToRebuild,
+  std::vector<std::tuple<double, double>>& invalidationRanges
 ) {
   auto& store = *Anthem::getInstance().sequenceStore;
 
   for (auto& channelId : channelIdsToRebuild) {
     // This will leak memory if it's not assigned somewhere or cleaned up here
     SequenceEventList newChannelEvents;
+    newChannelEvents.invalidationRanges = new std::vector<std::tuple<double, double>>(invalidationRanges);
 
     getChannelNoteEventsForArrangement(channelId, arrangementId, *newChannelEvents.events);
     sortEventList(*newChannelEvents.events);
 
-    if (newChannelEvents.events->size() > 0) {
-      store.addOrUpdateChannelInSequence(arrangementId, channelId, newChannelEvents);
-    }
-    else {
-      // Just in case, we'll remove the channel from the sequence store. If the
-      // channel used to have events and now doesn't, we want to remove it, and
-      // if the channel doesn't exist in the pattern then this will be a no-op.
-      store.removeChannelFromSequence(arrangementId, channelId);
-
-      SequenceEventList::cleanUpInstance(newChannelEvents);
-    }
+    store.addOrUpdateChannelInSequence(arrangementId, channelId, newChannelEvents);
   }
+}
+
+void AnthemSequenceCompiler::cleanUpChannel(std::string channelId) {
+  auto& store = *Anthem::getInstance().sequenceStore;
+
+  store.removeChannelFromAllSequences(channelId);
 }
 
 void AnthemSequenceCompiler::getChannelNoteEventsForArrangement(
@@ -168,12 +148,12 @@ void AnthemSequenceCompiler::getChannelNoteEventsForArrangement(
       clip->timeView().has_value()
           ? std::make_optional(
               std::make_tuple(
-                AnthemSequenceTime { .ticks = clip->timeView().value()->start(), .fraction = 0. },
-                AnthemSequenceTime { .ticks = clip->timeView().value()->end(), .fraction = 0. }
+                static_cast<double>(clip->timeView().value()->start()),
+                static_cast<double>(clip->timeView().value()->end())
               )
             )
           : std::nullopt,
-      AnthemSequenceTime { .ticks = clip->offset(), .fraction = 0. },
+      static_cast<double>(clip->offset()),
       events
     );
   }
@@ -182,8 +162,8 @@ void AnthemSequenceCompiler::getChannelNoteEventsForArrangement(
 void AnthemSequenceCompiler::getChannelNoteEventsForPattern(
   std::string channelId,
   std::string patternId,
-  std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> range,
-  std::optional<AnthemSequenceTime> offset,
+  std::optional<std::tuple<double, double>> range,
+  std::optional<double> offset,
   std::vector<AnthemSequenceEvent>& events
 ) {
   auto& anthem = Anthem::getInstance();
@@ -204,8 +184,8 @@ void AnthemSequenceCompiler::getChannelNoteEventsForPattern(
 
   for (auto& note : *notes) {
     auto rangeOptional = clampStartAndEndToRange(
-      AnthemSequenceTime { .ticks = note->offset(), .fraction = 0. },
-      AnthemSequenceTime { .ticks = note->offset() + note->length(), .fraction = 0. },
+      static_cast<double>(note->offset()),
+      static_cast<double>(note->offset() + note->length()),
       range
     );
 
@@ -227,7 +207,7 @@ void AnthemSequenceCompiler::getChannelNoteEventsForPattern(
     }
 
     events.push_back(AnthemSequenceEvent {
-      .time = startWithOffset,
+      .offset = startWithOffset,
       .event = AnthemEvent {
         .type = AnthemEventType::NoteOn,
         .noteOn = AnthemNoteOnEvent(
@@ -241,7 +221,7 @@ void AnthemSequenceCompiler::getChannelNoteEventsForPattern(
     });
 
     events.push_back(AnthemSequenceEvent {
-      .time = endWithOffset,
+      .offset = endWithOffset,
       .event = AnthemEvent {
         .type = AnthemEventType::NoteOff,
         .noteOff = AnthemNoteOffEvent(
@@ -257,18 +237,21 @@ void AnthemSequenceCompiler::getChannelNoteEventsForPattern(
 
 void AnthemSequenceCompiler::sortEventList(std::vector<AnthemSequenceEvent>& events) {
   std::sort(events.begin(), events.end(), [](const AnthemSequenceEvent& a, const AnthemSequenceEvent& b) {
-    bool isFractionEarlier = a.time.fraction < b.time.fraction;
-    bool isTickEqual = a.time.ticks == b.time.ticks;
-    bool isTickEarlier = a.time.ticks < b.time.ticks;
+    if (a.offset != b.offset) {
+      return a.offset < b.offset;
+    }
 
-    return (isTickEqual && isFractionEarlier) || isTickEarlier;
+    // If the offsets are equal, sort by event type. This allows us to give
+    // certain events priority over others - e.g., if a noteOff and a noteOn
+    // occur at the same time, the noteOff should come first.
+    return a.event.type < b.event.type;
   });
 }
 
-std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> AnthemSequenceCompiler::clampStartAndEndToRange(
-  AnthemSequenceTime start,
-  AnthemSequenceTime end,
-  std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> range
+std::optional<std::tuple<double, double>> AnthemSequenceCompiler::clampStartAndEndToRange(
+  double start,
+  double end,
+  std::optional<std::tuple<double, double>> range
 ) {
   if (!range.has_value()) {
     return std::make_tuple(start, end);
@@ -280,7 +263,7 @@ std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> AnthemSequence
     return std::nullopt;
   }
 
-  if (start > rangeEnd && end > rangeEnd) {
+  if (start >= rangeEnd && end >= rangeEnd) {
     return std::nullopt;
   }
 
@@ -290,17 +273,17 @@ std::optional<std::tuple<AnthemSequenceTime, AnthemSequenceTime>> AnthemSequence
   );
 }
 
-AnthemSequenceTime AnthemSequenceCompiler::clampTimeToRange(
-  AnthemSequenceTime time,
-  std::tuple<AnthemSequenceTime, AnthemSequenceTime> range
+double AnthemSequenceCompiler::clampTimeToRange(
+  double time,
+  std::tuple<double, double> range
 ) {
   auto [start, end] = range;
 
-  if (time.ticks < start.ticks || (time.ticks == start.ticks && time.fraction < start.fraction)) {
+  if (time < start) {
     return start;
   }
 
-  if (time.ticks > end.ticks || (time.ticks == end.ticks && time.fraction > end.fraction)) {
+  if (time > end) {
     return end;
   }
 

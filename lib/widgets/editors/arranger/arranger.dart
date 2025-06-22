@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2024 Joshua Wade
+  Copyright (C) 2022 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -36,6 +36,7 @@ import 'package:anthem/widgets/editors/arranger/event_listener.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/widgets/track_header.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:anthem/widgets/editors/shared/playhead_line.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:anthem/widgets/util/lazy_follower.dart';
@@ -50,7 +51,7 @@ import 'view_model.dart';
 import 'helpers.dart';
 import 'widgets/pattern_picker.dart';
 
-const _timelineHeight = 44.0;
+const _timelineHeight = 38.0;
 
 class Arranger extends StatefulWidget {
   const Arranger({super.key});
@@ -93,10 +94,10 @@ class _ArrangerState extends State<Arranger> {
     ArrangementModel? getModel() =>
         project.sequence.arrangements[project.sequence.activeArrangementID];
     double getHorizontalScrollRegionEnd() =>
-        getModel()?.width.toDouble() ??
+        getModel()?.viewWidth.toDouble() ??
         project.sequence.ticksPerQuarter * 4 * 4;
 
-    final menuController = MenuController();
+    final menuController = AnthemMenuController();
 
     return Provider.value(
       value: viewModel!,
@@ -167,14 +168,13 @@ class _ArrangerState extends State<Arranger> {
                                         showNameOnButton: false,
                                         allowNoSelection: false,
                                         hint: 'Change the active tool',
-                                        selectedID:
-                                            EditorTool.values
-                                                .firstWhere(
-                                                  (tool) =>
-                                                      tool.name ==
-                                                      viewModel!.tool.name,
-                                                )
-                                                .name,
+                                        selectedID: EditorTool.values
+                                            .firstWhere(
+                                              (tool) =>
+                                                  tool.name ==
+                                                  viewModel!.tool.name,
+                                            )
+                                            .name,
                                         items: [
                                           DropdownItem(
                                             id: EditorTool.pencil.name,
@@ -222,25 +222,22 @@ class _ArrangerState extends State<Arranger> {
                                     builder: (context) {
                                       return Dropdown(
                                         hint: 'Change the active arrangement',
-                                        selectedID:
-                                            project
-                                                .sequence
-                                                .activeArrangementID,
-                                        items:
-                                            project.sequence.arrangementOrder
-                                                .map<DropdownItem>((id) {
-                                                  final name =
-                                                      project
-                                                          .sequence
-                                                          .arrangements[id]!
-                                                          .name;
-                                                  return DropdownItem(
-                                                    id: id.toString(),
-                                                    name: name,
-                                                    hint: name,
-                                                  );
-                                                })
-                                                .toList(),
+                                        selectedID: project
+                                            .sequence
+                                            .activeArrangementID,
+                                        items: project.sequence.arrangementOrder
+                                            .map<DropdownItem>((id) {
+                                              final name = project
+                                                  .sequence
+                                                  .arrangements[id]!
+                                                  .name;
+                                              return DropdownItem(
+                                                id: id.toString(),
+                                                name: name,
+                                                hint: name,
+                                              );
+                                            })
+                                            .toList(),
                                         onChanged: (selectedID) {
                                           project.sequence.activeArrangementID =
                                               selectedID;
@@ -295,7 +292,7 @@ class _ArrangerState extends State<Arranger> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           const Padding(
-                            padding: EdgeInsets.only(top: 15),
+                            padding: EdgeInsets.only(top: 8),
                             child: SizedBox(width: 126, child: PatternPicker()),
                           ),
                           const SizedBox(width: 6),
@@ -462,7 +459,14 @@ class _ArrangerContentState extends State<_ArrangerContent>
               height: _timelineHeight,
               child: Row(
                 children: [
-                  const SizedBox(width: trackHeaderWidth),
+                  Container(
+                    width: trackHeaderWidth,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: Theme.panel.border, width: 1),
+                      ),
+                    ),
+                  ),
                   Container(width: 1, color: Theme.panel.border),
                   Expanded(
                     child: Observer(
@@ -481,7 +485,6 @@ class _ArrangerContentState extends State<_ArrangerContent>
                 ],
               ),
             ),
-            Container(height: 1, color: Theme.panel.border),
             Expanded(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -489,9 +492,8 @@ class _ArrangerContentState extends State<_ArrangerContent>
                   SizedBox(
                     width: trackHeaderWidth,
                     child: AnimatedBuilder(
-                      animation:
-                          verticalScrollPositionAnimationHelper!
-                              .animationController,
+                      animation: verticalScrollPositionAnimationHelper!
+                          .animationController,
                       builder: (context, child) {
                         return _TrackHeaders(
                           verticalScrollPosition:
@@ -559,19 +561,18 @@ class _ArrangerCanvas extends StatelessWidget {
                     animation: timeViewAnimationController,
                     builder: (context, child) {
                       return CustomPaintObserver(
-                        painterBuilder:
-                            () => ArrangerBackgroundPainter(
-                              viewModel: viewModel,
-                              activeArrangement:
-                                  project.sequence.arrangements[project
-                                      .sequence
-                                      .activeArrangementID],
-                              project: project,
-                              verticalScrollPosition:
-                                  verticalScrollPositionAnimation.value,
-                              timeViewStart: timeViewStartAnimation.value,
-                              timeViewEnd: timeViewEndAnimation.value,
-                            ),
+                        painterBuilder: () => ArrangerBackgroundPainter(
+                          viewModel: viewModel,
+                          activeArrangement:
+                              project.sequence.arrangements[project
+                                  .sequence
+                                  .activeArrangementID],
+                          project: project,
+                          verticalScrollPosition:
+                              verticalScrollPositionAnimation.value,
+                          timeViewStart: timeViewStartAnimation.value,
+                          timeViewEnd: timeViewEndAnimation.value,
+                        ),
                       );
                     },
                   );
@@ -602,10 +603,9 @@ class _ArrangerCanvas extends StatelessWidget {
                 }
 
                 return Positioned.fill(
-                  child:
-                      project.sequence.activeArrangementID == null
-                          ? const SizedBox()
-                          : clips(),
+                  child: project.sequence.activeArrangementID == null
+                      ? const SizedBox()
+                      : clips(),
                 );
               },
             );
@@ -648,8 +648,12 @@ class _ArrangerCanvas extends StatelessWidget {
                   trackIndex: selectionBox.top + selectionBox.height,
                 );
 
-                final borderColor =
-                    const HSLColor.fromAHSL(1, 166, 0.6, 0.35).toColor();
+                final borderColor = const HSLColor.fromAHSL(
+                  1,
+                  166,
+                  0.6,
+                  0.35,
+                ).toColor();
                 final backgroundColor = borderColor.withAlpha(100);
 
                 return Positioned(
@@ -668,8 +672,20 @@ class _ArrangerCanvas extends StatelessWidget {
               },
             );
 
+            final playhead = Positioned.fill(
+              child: PlayheadLine(
+                timeViewAnimationController: timeViewAnimationController,
+                timeViewStartAnimation: timeViewStartAnimation,
+                timeViewEndAnimation: timeViewEndAnimation,
+                isVisible: true,
+                editorActiveSequenceId: project.sequence.activeArrangementID,
+              ),
+            );
+
             return ArrangerEventListener(
-              child: Stack(children: [grid, clipsContainer, selectionBox]),
+              child: Stack(
+                children: [grid, clipsContainer, selectionBox, playhead],
+              ),
             );
           },
         ),
@@ -701,12 +717,11 @@ class _ArrangerCanvasCursorState extends State<_ArrangerCanvasCursor> {
         final pos = e.localPosition;
 
         final contentUnderCursor = viewModel.getContentUnderCursor(pos);
-        final newCursor =
-            contentUnderCursor.resizeHandle != null
-                ? SystemMouseCursors.resizeLeftRight
-                : contentUnderCursor.clip != null
-                ? SystemMouseCursors.move
-                : MouseCursor.defer;
+        final newCursor = contentUnderCursor.resizeHandle != null
+            ? SystemMouseCursors.resizeLeftRight
+            : contentUnderCursor.clip != null
+            ? SystemMouseCursors.move
+            : MouseCursor.defer;
 
         if (cursor == newCursor) return;
 
@@ -793,10 +808,9 @@ class _TrackHeadersState extends State<_TrackHeaders> {
                             startY = event.position.dy;
                           },
                           onPointerMove: (event) {
-                            final newPixelHeight = (event.position.dy -
-                                    startY +
-                                    startPixelHeight)
-                                .clamp(minTrackHeight, maxTrackHeight);
+                            final newPixelHeight =
+                                (event.position.dy - startY + startPixelHeight)
+                                    .clamp(minTrackHeight, maxTrackHeight);
                             final newModifier =
                                 newPixelHeight /
                                 startPixelHeight *

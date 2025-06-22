@@ -21,9 +21,12 @@
 
 #include "note_events.h"
 
+// The event type. This determines ordering for events that occur at the same
+// time - e.g. NoteOff must come before NoteOn.
 enum AnthemEventType {
+  AllVoicesOff,
+  NoteOff,
   NoteOn,
-  NoteOff
 };
 
 // An event that can occur in Anthem.
@@ -42,118 +45,37 @@ struct AnthemEvent {
   union {
     AnthemNoteOnEvent noteOn;
     AnthemNoteOffEvent noteOff;
+    AnthemAllVoicesOffEvent allVoicesOff;
   };
-};
-
-// A time for a sequence event.
-struct AnthemSequenceTime {
-  // The number of ticks since the start of the sequence.
-  //
-  // This should be a uint64_t; however, Dart only supports signed integers, and
-  // since this data comes directly from the Dart model, we can't take advantage
-  // of the full range of uint64_t.
-  int64_t ticks;
-
-  // A normalized fraction of a tick, in the range [0, 1).
-  double fraction;
-
-  bool operator<(const AnthemSequenceTime& other) const {
-    return ticks < other.ticks || (ticks == other.ticks && fraction < other.fraction);
-  }
-
-  bool operator==(const AnthemSequenceTime& other) const {
-    return ticks == other.ticks && fraction == other.fraction;
-  }
-
-  bool operator>(const AnthemSequenceTime& other) const {
-    return ticks > other.ticks || (ticks == other.ticks && fraction > other.fraction);
-  }
-
-  bool operator<=(const AnthemSequenceTime& other) const {
-    return *this < other || *this == other;
-  }
-
-  bool operator>=(const AnthemSequenceTime& other) const {
-    return *this > other || *this == other;
-  }
-
-  bool operator!=(const AnthemSequenceTime& other) const {
-    return !(*this == other);
-  }
-
-  AnthemSequenceTime operator+(const AnthemSequenceTime& other) const {
-    // Calculate the sum of the fractional components.
-    double newFraction = fraction + other.fraction;
-
-    // Calculate the carry from the fractional component.
-    int64_t carry = newFraction >= 1.0 ? 1 : 0;
-
-    // Calculate the sum of the tick components.
-    int64_t newTicks = ticks + other.ticks + carry;
-
-    // If we carried, subtract 1 from the fractional component.
-    newFraction -= carry;
-
-    return AnthemSequenceTime { .ticks = newTicks, .fraction = newFraction };
-  }
-
-  AnthemSequenceTime operator-(const AnthemSequenceTime& other) const {
-    // Calculate the difference of the fractional components.
-    double newFraction = fraction - other.fraction;
-
-    // Calculate the borrow from the fractional component.
-    int64_t borrow = newFraction < 0.0 ? 1 : 0;
-
-    // Calculate the difference of the tick components.
-    int64_t newTicks = ticks - other.ticks - borrow;
-
-    newFraction += borrow;
-
-    return AnthemSequenceTime { .ticks = newTicks, .fraction = newFraction };
-  }
 };
 
 struct AnthemSequenceEvent {
   // The time of the event, relative to the start of the sequence.
-  AnthemSequenceTime time;
+  double offset;
 
   // The event itself.
   AnthemEvent event;
 
   bool operator<(const AnthemSequenceEvent& other) const {
-    return time < other.time;
-  }
-
-  bool operator==(const AnthemSequenceEvent& other) const {
-    return time == other.time;
+    return offset < other.offset;
   }
 
   bool operator>(const AnthemSequenceEvent& other) const {
-    return time > other.time;
+    return offset > other.offset;
   }
 
   bool operator<=(const AnthemSequenceEvent& other) const {
-    return time <= other.time;
+    return offset <= other.offset;
   }
 
   bool operator>=(const AnthemSequenceEvent& other) const {
-    return time >= other.time;
+    return offset >= other.offset;
   }
-
-  bool operator!=(const AnthemSequenceEvent& other) const {
-    return time != other.time;
-  }
-};
-
-// A time for a processing graph event.
-struct AnthemLiveTime {
-  // The number of samples since the start of the processing block.
-  int64_t offset;
 };
 
 struct AnthemLiveEvent {
   // The time of the event, relative to the start of the processing block.
-  AnthemLiveTime time;
+  double time;
 
   // The event itself.
   AnthemEvent event;

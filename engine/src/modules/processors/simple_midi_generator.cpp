@@ -24,7 +24,7 @@
 
 SimpleMidiGeneratorProcessor::SimpleMidiGeneratorProcessor(const SimpleMidiGeneratorProcessorModelImpl& _impl)
     : AnthemProcessor("SimpleMidiGenerator"), SimpleMidiGeneratorProcessorModelBase(_impl) {
-  sampleRate = 44100; // TODO: This should be dynamic - in the context maybe?
+  sampleRate = 48000; // TODO: This should be dynamic - in the context maybe?
   durationSamples = 22050;
   velocity = 80;
   noteOn = false;
@@ -37,17 +37,15 @@ SimpleMidiGeneratorProcessor::SimpleMidiGeneratorProcessor(const SimpleMidiGener
 SimpleMidiGeneratorProcessor::~SimpleMidiGeneratorProcessor() {}
 
 void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int numSamples) {
-  auto& midiOutBuffer = context.getOutputNoteEventBuffer(SimpleMidiGeneratorProcessorModelBase::midiOutputPortId);
+  auto& eventOutBuffer = context.getOutputEventBuffer(SimpleMidiGeneratorProcessorModelBase::eventOutputPortId);
 
   if (!noteOn) {
     currentNote = 50;
     currentNoteId = 0;
     currentNoteDuration = 0;
-    midiOutBuffer->addEvent(
+    eventOutBuffer->addEvent(
       AnthemLiveEvent {
-        .time = AnthemLiveTime {
-          .offset = 0
-        },
+        .time = 0.0,
         .event = AnthemEvent {
           .type = AnthemEventType::NoteOn,
           .noteOn = AnthemNoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f, currentNoteId)
@@ -71,16 +69,14 @@ void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int nu
 
     if (currentNoteDuration >= durationSamples) {
       AnthemLiveEvent noteOffEvent = AnthemLiveEvent {
-        .time = AnthemLiveTime {
-          .offset = 0
-        },
+        .time = 0.0,
         .event = AnthemEvent {
           .type = AnthemEventType::NoteOff,
           .noteOff = AnthemNoteOffEvent(currentNote, 0, 0.0f, currentNoteId)
         }
       };
 
-      midiOutBuffer->addEvent(noteOffEvent);
+      eventOutBuffer->addEvent(noteOffEvent);
 
       currentNoteId++;
       currentNoteDuration = 0;
@@ -92,16 +88,14 @@ void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int nu
       }
 
       AnthemLiveEvent noteOnEvent = AnthemLiveEvent {
-        .time = AnthemLiveTime {
-          .offset = 0
-        },
+        .time = 0.0,
         .event = AnthemEvent {
           .type = AnthemEventType::NoteOn,
           .noteOn = AnthemNoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f, currentNoteId)
         }
       };
 
-      midiOutBuffer->addEvent(noteOnEvent);
+      eventOutBuffer->addEvent(noteOnEvent);
     }
   }
 }

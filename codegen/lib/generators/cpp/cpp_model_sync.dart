@@ -25,7 +25,7 @@ import 'get_cpp_type.dart';
 
 void writeModelSyncFnDeclaration(Writer writer) {
   writer.writeLine(
-    'void handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex);',
+    'virtual void handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex);',
   );
 }
 
@@ -59,8 +59,9 @@ String getModelSyncFn(ModelClassInfo context) {
       context.annotation?.generateCppWrapperClass == true;
   final parentheses = fieldAccessIsFunctionCall ? '()' : '';
 
-  final baseSuffix =
-      context.annotation?.cppBehaviorClassName != null ? 'Base' : '';
+  final baseSuffix = context.annotation?.cppBehaviorClassName != null
+      ? 'Base'
+      : '';
 
   writer.writeLine(
     'void ${context.annotatedClass.name}$baseSuffix::handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {',
@@ -235,11 +236,10 @@ void _writeJsonResultCheck({
   required ModelClassInfo context,
   required String fieldAccessExpression,
 }) {
-  writer.writeLine('auto error = $resultVariable.error();');
-  writer.writeLine('if (error.has_value()) {');
+  writer.writeLine('if (!$resultVariable.has_value()) {');
   writer.incrementWhitespace();
   writer.writeLine(
-    'std::cout << "Error deserializing to field \\"$fieldAccessExpression\\" in model \\"${context.annotatedClass.name}\\":" << std::endl << error.value().what() << std::endl;',
+    'std::cout << "Error deserializing to field \\"$fieldAccessExpression\\" in model \\"${context.annotatedClass.name}\\":" << std::endl << $resultVariable.error().what() << std::endl;',
   );
   writer.writeLine('return;');
   writer.decrementWhitespace();
@@ -295,6 +295,7 @@ void _writeUpdate({
   required ModelClassInfo context,
   int fieldAccessIndexMod = 0,
   String parentAccessor = 'self',
+  bool isCollectionSetter = false,
 }) {
   switch (type) {
     case StringModelType _ ||
@@ -405,12 +406,12 @@ void _writeUpdate({
         type: type.itemType,
         fieldAccessExpression:
             '(*$fieldAccessExpression)[(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value()]',
-        createFieldSetter:
-            (value) =>
-                '(*$fieldAccessExpression)[(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value()] = $value;',
+        createFieldSetter: (value) =>
+            '(*$fieldAccessExpression)[(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value()] = $value;',
         observabilityNotifier: '',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
         parentAccessor: fieldAccessExpression,
+        isCollectionSetter: true,
       );
       writer.decrementWhitespace();
       writer.writeLine('}');
@@ -506,12 +507,12 @@ void _writeUpdate({
         writer: writer,
         type: type.valueType,
         fieldAccessExpression: '$fieldAccessExpression->at(deserializedKey)',
-        createFieldSetter:
-            (value) =>
-                '$fieldAccessExpression->insert_or_assign(deserializedKey, $value);',
+        createFieldSetter: (value) =>
+            '$fieldAccessExpression->insert_or_assign(deserializedKey, $value);',
         observabilityNotifier: '',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
         parentAccessor: fieldAccessExpression,
+        isCollectionSetter: true,
       );
 
       writer.decrementWhitespace();
@@ -540,6 +541,12 @@ void _writeUpdate({
       );
       writer.writeLine(createFieldSetter('std::move(result.value())'));
       writer.writeLine(observabilityNotifier);
+      writeParentSetterForType(
+        writer: writer,
+        type: type,
+        fieldAccessor: fieldAccessExpression,
+        parentAccessor: parentAccessor,
+      );
 
       writer.decrementWhitespace();
       writer.writeLine('}');
@@ -568,12 +575,20 @@ void _writeUpdate({
       );
       writer.writeLine(createFieldSetter('std::move(result.value())'));
       writer.writeLine(observabilityNotifier);
-      writeParentSetterForType(
-        writer: writer,
-        type: type,
-        fieldAccessor: fieldAccessExpression,
-        parentAccessor: parentAccessor,
-      );
+
+      // If we're setting inside a collection (e.g. someList[someIndex] =
+      // deserializedValue), then we don't want to initialize the newly created
+      // model because the list will do that for us.
+      if (!isCollectionSetter) {
+        // ... Otherwise, this is a raw setter (e.g. this->someField =
+        // someValue), and we need to initialize the model.
+        writeParentSetterForType(
+          writer: writer,
+          type: type,
+          fieldAccessor: fieldAccessExpression,
+          parentAccessor: parentAccessor,
+        );
+      }
 
       writer.decrementWhitespace();
 
@@ -773,6 +788,7 @@ void _writeKeyDeserialize({
   }
 }
 
+// Writes (accessor)->initialize(self, parent), if necessary.
 void writeParentSetterForType({
   required Writer writer,
   required ModelType type,
@@ -780,62 +796,59 @@ void writeParentSetterForType({
   required String parentAccessor,
 }) {
   final shouldWrite =
-      type is CustomModelType || type is ListModelType || type is MapModelType;
+      type is CustomModelType ||
+      type is ListModelType ||
+      type is MapModelType ||
+      type is UnionModelType;
 
   if (shouldWrite && type.isNullable) {
     writer.writeLine('if ($fieldAccessor.has_value()) {');
     writer.incrementWhitespace();
   }
 
-  if (type is CustomModelType) {
+  if (type is CustomModelType ||
+      type is ListModelType ||
+      type is MapModelType) {
     final valueFn = type.isNullable ? '.value()' : '';
+    writer.writeLine('// Custom model');
     writer.writeLine(
       '$fieldAccessor$valueFn->initialize($fieldAccessor$valueFn, $parentAccessor);',
     );
-  } else if (type is ListModelType) {
-    if (type.itemType is CustomModelType ||
-        type.itemType is ListModelType ||
-        type.itemType is MapModelType) {
-      final valueFn = type.isNullable ? '.value()' : '';
+  } else if (type is UnionModelType) {
+    final valueFn = type.isNullable ? '.value()' : '';
+
+    writer.writeLine('rfl::visit([&](auto& item) {');
+    writer.incrementWhitespace();
+
+    writer.writeLine(
+      'using Name = typename std::decay_t<decltype(item)>::Name;',
+    );
+
+    bool isFirst = true;
+    for (final subType in type.subTypes) {
+      // If the subtype does not inherit from AnthemModelBase, then we
+      // don't need to do anything with it.
+      if (subType is! CustomModelType &&
+          subType is! ListModelType &&
+          subType is! MapModelType) {
+        continue;
+      }
 
       writer.writeLine(
-        '$fieldAccessor$valueFn->initialize($fieldAccessor$valueFn, $parentAccessor);',
+        '${isFirst ? '' : 'else '}if constexpr (std::is_same<Name, rfl::Literal<"${subType.dartName}">>()) {',
       );
-
-      writer.writeLine('for (auto& item : (*$fieldAccessor$valueFn)) {');
       writer.incrementWhitespace();
-      writeParentSetterForType(
-        writer: writer,
-        type: type.itemType,
-        fieldAccessor: 'item',
-        parentAccessor: '$fieldAccessor$valueFn',
+      writer.writeLine(
+        'item.value()->initialize(item.value(), $parentAccessor);',
       );
       writer.decrementWhitespace();
       writer.writeLine('}');
-    }
-  } else if (type is MapModelType) {
-    if (type.valueType is CustomModelType ||
-        type.valueType is ListModelType ||
-        type.valueType is MapModelType) {
-      final valueFn = type.isNullable ? '.value()' : '';
 
-      writer.writeLine(
-        '$fieldAccessor$valueFn->initialize($fieldAccessor$valueFn, $parentAccessor);',
-      );
-
-      writer.writeLine(
-        'for (auto& [key, value] : (*$fieldAccessor$valueFn)) {',
-      );
-      writer.incrementWhitespace();
-      writeParentSetterForType(
-        writer: writer,
-        type: type.valueType,
-        fieldAccessor: 'value',
-        parentAccessor: '$fieldAccessor$valueFn',
-      );
-      writer.decrementWhitespace();
-      writer.writeLine('}');
+      isFirst = false;
     }
+
+    writer.decrementWhitespace();
+    writer.writeLine('}, $fieldAccessor$valueFn);');
   }
 
   if (shouldWrite && type.isNullable) {
@@ -875,8 +888,9 @@ String getInitializeFn(ModelClassInfo context) {
   final writer = Writer();
 
   final className = context.annotatedClass.name;
-  final baseSuffix =
-      context.annotation?.cppBehaviorClassName != null ? 'Base' : '';
+  final baseSuffix = context.annotation?.cppBehaviorClassName != null
+      ? 'Base'
+      : '';
 
   writer.writeLine(
     'void $className$baseSuffix::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) {',

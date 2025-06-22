@@ -24,6 +24,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/processing_graph/node.dart';
+import 'package:anthem/model/processing_graph/processors/vst3_processor.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
@@ -178,12 +179,12 @@ class ProjectController {
 
     if (path == null) return;
 
-    // addGenerator(
-    //   name: 'Instrument ${(Random()).nextInt(100).toString()}',
-    //   generatorType: GeneratorType.instrument,
-    //   color: getColor(),
-    //   pluginPath: path,
-    // );
+    addGenerator(
+      name: 'VST Plugin',
+      generatorType: GeneratorType.instrument,
+      color: getColor(),
+      node: VST3ProcessorModel.createNode(path),
+    );
   }
 
   void removeGenerator(Id generatorID) {

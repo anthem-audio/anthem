@@ -4,7 +4,6 @@
     "ARGB",
     "autofocus",
     "autorun",
-    "bitsdojo",
     "budislav",
     "buildlog",
     "calloc",
@@ -49,5 +48,6 @@
   "search.exclude": {
     "engine/include/*": true
   },
-  "editor.tabSize": 2
+  "editor.tabSize": 2,
+  "C_Cpp.errorSquiggles": "disabled"
 }

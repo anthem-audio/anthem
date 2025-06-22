@@ -70,17 +70,16 @@ class ArrangerContentRenderer extends StatelessObserverWidget {
       child,
     ) {
       return CustomPaintObserver(
-        painterBuilder:
-            () => ArrangerContentPainter(
-              curveShader: shader,
-              timeViewStart: timeViewStart,
-              timeViewEnd: timeViewEnd,
-              verticalScrollPosition: verticalScrollPosition,
-              project: project,
-              arrangement: arrangement,
-              viewModel: viewModel,
-              devicePixelRatio: View.of(context).devicePixelRatio,
-            ),
+        painterBuilder: () => ArrangerContentPainter(
+          curveShader: shader,
+          timeViewStart: timeViewStart,
+          timeViewEnd: timeViewEnd,
+          verticalScrollPosition: verticalScrollPosition,
+          project: project,
+          arrangement: arrangement,
+          viewModel: viewModel,
+          devicePixelRatio: View.of(context).devicePixelRatio,
+        ),
         isComplex: true,
       );
     });
@@ -159,10 +158,9 @@ class ArrangerContentPainter extends CustomPainterObserver {
 
       final y =
           trackIndexToPos(
-            trackIndex:
-                project.sequence.trackOrder
-                    .indexWhere((trackID) => trackID == clip.trackId)
-                    .toDouble(),
+            trackIndex: project.sequence.trackOrder
+                .indexWhere((trackID) => trackID == clip.trackId)
+                .toDouble(),
             baseTrackHeight: viewModel.baseTrackHeight,
             trackOrder: project.sequence.trackOrder,
             trackHeightModifiers: viewModel.trackHeightModifiers,

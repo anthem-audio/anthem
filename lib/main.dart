@@ -17,56 +17,24 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:io';
-
 import 'package:anthem/theme.dart' as anthem_theme;
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_window_close/flutter_window_close.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'model/project.dart';
 import 'model/store.dart';
 import 'widgets/main_window/main_window.dart';
 
-import 'package:bitsdojo_window/bitsdojo_window.dart';
-
 GlobalKey mainWindowKey = GlobalKey();
 
 void main() async {
-  runApp(const MyApp());
+  runApp(const App());
 
-  // Make sure all engines are stopped before the application is closed
-  FlutterWindowClose.setWindowShouldCloseHandler(() async {
-    // Kill any running engine processes
-    final store = AnthemStore.instance;
-
-    for (final project in store.projects.values) {
-      project.engine.dispose();
-    }
-
-    return true;
-  });
-
-  doWhenWindowReady(() {
-    // const initialSize = Size(800, 600);
-    // appWindow.minSize = initialSize;
-    // appWindow.size = initialSize;
-    // appWindow.alignment = Alignment.center;
-
-    if (Platform.isWindows) {
-      // This is a temporary fix for https://github.com/bitsdojo/bitsdojo_window/issues/193
-      // Based on code from https://github.com/MixinNetwork/flutter-app/pull/838
-      WidgetsBinding.instance.scheduleFrameCallback((timeStamp) {
-        appWindow.size = appWindow.size + const Offset(0, 1);
-        WidgetsBinding.instance.scheduleFrameCallback((timeStamp) {
-          appWindow.size = appWindow.size + const Offset(0, -1);
-        });
-      });
-    }
-    appWindow.show();
-  });
+  await windowManager.ensureInitialized();
+  await windowManager.setAsFrameless();
 
   final store = AnthemStore.instance;
 
@@ -80,8 +48,59 @@ void main() async {
   store.activeProjectId = projectModel.id;
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class App extends StatefulWidget {
+  const App({super.key});
+
+  @override
+  State<App> createState() => _AppState();
+}
+
+class _AppState extends State<App> with WindowListener {
+  Future<void> _initWindow() async {
+    await windowManager.setPreventClose(true);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    windowManager.addListener(this);
+    _initWindow();
+  }
+
+  @override
+  void dispose() {
+    windowManager.removeListener(this);
+    super.dispose();
+  }
+
+  @override
+  void onWindowClose() async {
+    // Kill any running engine processes
+    final store = AnthemStore.instance;
+
+    for (final project in store.projects.values) {
+      try {
+        await project.engine.dispose();
+      } catch (e) {
+        // Doesn't matter if it fails, the engine process will shut itself down
+        // if needed - also, the engine process is parented to this one, so it
+        // should exit no matter what.
+      }
+    }
+
+    // The below is a rough outline for save-before-exit
+
+    // // a) Ask the user or run an auto-save
+    // final shouldQuit = await _maybeSaveOrConfirm();
+
+    // if (shouldQuit) {
+    //   await windowManager.destroy();   // forces the app to exit
+    // } else {
+    //   // Simply return; the window stays open
+    // }
+
+    await windowManager.destroy();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -109,12 +128,14 @@ class MyApp extends StatelessWidget {
                 behavior: ScrollConfiguration.of(
                   context,
                 ).copyWith(scrollbars: false),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Container(color: anthem_theme.Theme.panel.border),
-                    MainWindow(key: mainWindowKey),
-                  ],
+                child: DragToResizeArea(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Container(color: anthem_theme.Theme.panel.border),
+                      MainWindow(key: mainWindowKey),
+                    ],
+                  ),
                 ),
               ),
             ),

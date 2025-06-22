@@ -19,6 +19,79 @@
 
 #include "sequencer_command_handler.h"
 
+#include "modules/core/anthem.h"
+#include "modules/sequencer/compiler/sequence_compiler.h"
+
 std::optional<Response> handleSequencerCommand(Request& request) {
+  if (rfl::holds_alternative<CompileSequenceRequest>(request.variant())) {
+		auto& compileSequenceRequest = rfl::get<CompileSequenceRequest>(request.variant());
+
+    if (compileSequenceRequest.patternId.has_value()) {
+      if (compileSequenceRequest.channelsToRebuild.has_value()) {
+        auto invalidationRanges = std::vector<std::tuple<double, double>>();
+
+        if (compileSequenceRequest.invalidationRanges.has_value()) {
+          invalidationRanges.reserve(compileSequenceRequest.invalidationRanges.value()->size());
+
+          for (const auto& range : *compileSequenceRequest.invalidationRanges.value()) {
+            invalidationRanges.push_back(std::make_tuple(range->start, range->end));
+          }
+        }
+
+				// Compile only the specified channels for the given pattern
+				AnthemSequenceCompiler::compilePattern(
+					compileSequenceRequest.patternId.value(),
+					*compileSequenceRequest.channelsToRebuild.value(),
+          invalidationRanges
+				);
+			}
+			else {
+				// Compile the entire pattern
+				AnthemSequenceCompiler::compilePattern(compileSequenceRequest.patternId.value());
+      }
+    }
+    else if (compileSequenceRequest.arrangementId.has_value()) {
+      if (compileSequenceRequest.channelsToRebuild.has_value()) {
+        auto invalidationRanges = std::vector<std::tuple<double, double>>();
+
+        if (compileSequenceRequest.invalidationRanges.has_value()) {
+          invalidationRanges.reserve(compileSequenceRequest.invalidationRanges.value()->size());
+          for (const auto& range : *compileSequenceRequest.invalidationRanges.value()) {
+            invalidationRanges.push_back(std::make_tuple(range->start, range->end));
+          }
+        }
+
+        // Compile only the specified channels for the given arrangement
+        AnthemSequenceCompiler::compileArrangement(
+          compileSequenceRequest.arrangementId.value(),
+          *compileSequenceRequest.channelsToRebuild.value(),
+          invalidationRanges
+        );
+      }
+      else {
+        // Compile the entire arrangement
+        AnthemSequenceCompiler::compileArrangement(compileSequenceRequest.arrangementId.value());
+      }
+    }
+  }
+  else if (rfl::holds_alternative<RemoveChannelRequest>(request.variant())) {
+    auto& removeChannelRequest = rfl::get<RemoveChannelRequest>(request.variant());
+
+		AnthemSequenceCompiler::cleanUpChannel(removeChannelRequest.channelId);
+  }
+  else if (rfl::holds_alternative<PlayheadJumpRequest>(request.variant())) {
+    auto& playheadJumpRequest = rfl::get<PlayheadJumpRequest>(request.variant());
+
+    Anthem::getInstance().transport->jumpTo(playheadJumpRequest.offset);
+  }
+  else if (rfl::holds_alternative<LoopPointsChangedRequest>(request.variant())) {
+    auto& loopPointsChangedRequest = rfl::get<LoopPointsChangedRequest>(request.variant());
+
+    auto& transport = *Anthem::getInstance().transport;
+    if (transport.config.activeSequenceId == loopPointsChangedRequest.sequenceId) {
+      transport.updateLoopPoints();
+    }
+  }
+
   return std::nullopt;
 }

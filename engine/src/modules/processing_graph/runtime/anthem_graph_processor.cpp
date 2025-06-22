@@ -22,8 +22,8 @@
 AnthemGraphProcessor::AnthemGraphProcessor() : clearDeletionQueueTimedCallback(juce::TimedCallback([this]() {
         this->clearDeletionQueueFromMainThread();
       })),
-      processingStepsQueue(ThreadSafeQueue<AnthemGraphCompilationResult*>(512)),
-      processingStepsDeletionQueue(ThreadSafeQueue<AnthemGraphCompilationResult*>(512)) {
+      processingStepsQueue(RingBuffer<AnthemGraphCompilationResult*, 512>()),
+      processingStepsDeletionQueue(RingBuffer<AnthemGraphCompilationResult*, 512>()) {
   // Set up a JUCE timer to clear the deletion queue every 1s
   // this->clearDeletionQueueTimedCallback = std::move();
   this->clearDeletionQueueTimedCallback.startTimer(2000);

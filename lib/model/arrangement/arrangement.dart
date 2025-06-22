@@ -19,30 +19,76 @@
 
 import 'dart:math';
 
+import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/sequence.dart';
+import 'package:anthem/model/shared/invalidation_range_collector.dart';
+import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
 import 'clip.dart';
 
+part 'arrangement_compiler_mixin.dart';
+
 part 'arrangement.g.dart';
 
 @AnthemModel.syncedModel()
 class ArrangementModel extends _ArrangementModel
-    with _$ArrangementModel, _$ArrangementModelAnthemModelMixin {
-  ArrangementModel({required super.name, required super.id});
+    with
+        _$ArrangementModel,
+        _$ArrangementModelAnthemModelMixin,
+        _ArrangementCompilerMixin {
+  ArrangementModel({required super.name, required super.id}) {
+    _init();
+  }
 
-  ArrangementModel.uninitialized() : super(name: '', id: '');
+  ArrangementModel.uninitialized() : super(name: '', id: '') {
+    _init();
+  }
 
   ArrangementModel.create({required super.name, required super.id})
-    : super.create();
+    : super.create() {
+    _init();
+  }
 
-  factory ArrangementModel.fromJson(Map<String, dynamic> json) =>
-      _$ArrangementModelAnthemModelMixin.fromJson(json);
+  factory ArrangementModel.fromJson(Map<String, dynamic> json) {
+    final arrangement = _$ArrangementModelAnthemModelMixin.fromJson(json);
+    arrangement._init();
+    return arrangement;
+  }
+
+  /// Action to tell the engine to send new loop points to the audio thread.
+  late final _updateLoopPointsAction = MicrotaskDebouncedAction(() {
+    final engine = project.engine;
+
+    if (!engine.isRunning) {
+      return;
+    }
+
+    project.engine.sequencerApi.updateLoopPoints(id);
+  });
+
+  void _init() {
+    onModelAttached(() {
+      _compileInEngine();
+
+      updateViewWidthAction.execute();
+
+      clips.addFieldChangedListener((fieldAccessors, operation) {
+        _recompileModifiedClips(fieldAccessors, operation);
+        updateViewWidthAction.execute();
+      });
+
+      addFieldChangedListener((fieldAccessors, operation) {
+        if (fieldAccessors.first.fieldName == 'loopPoints') {
+          _updateLoopPointsAction.execute();
+        }
+      });
+    });
+  }
 }
 
 abstract class _ArrangementModel with Store, AnthemModelBase {
@@ -53,6 +99,10 @@ abstract class _ArrangementModel with Store, AnthemModelBase {
 
   @anthemObservable
   AnthemObservableMap<Id, ClipModel> clips = AnthemObservableMap();
+
+  @anthemObservable
+  @hideFromSerialization
+  LoopPointsModel? loopPoints;
 
   _ArrangementModel({required this.name, required this.id}) : super();
 
@@ -79,7 +129,8 @@ abstract class _ArrangementModel with Store, AnthemModelBase {
 
     final lastContent = clips.values.fold<int>(
       ticksPerBar * barMultiple * minPaddingInBarMultiples,
-      (previousValue, clip) => max(previousValue, clip.offset + clip.width),
+      (previousValue, clip) =>
+          max(previousValue, clip.offset + clip.getWidthFromProject(project)),
     );
 
     return (max(lastContent, 1) / (ticksPerBar * barMultiple)).ceil() *
@@ -87,13 +138,16 @@ abstract class _ArrangementModel with Store, AnthemModelBase {
         barMultiple;
   }
 
-  @computed
-  int get width {
-    // Observing this operation is incredibly expensive for some reason, so we
-    // prevent detailed observation and just observe the whole thing.
+  /// Width of the arrangement in ticks, with some buffer at the end.
+  ///
+  /// This is updated whenever the clips change.
+  @anthemObservable
+  @hide
+  late int viewWidth = getWidth();
 
-    clips.observeAllChanges();
-
-    return blockObservation(modelItems: [clips], block: () => getWidth());
-  }
+  @hide
+  late final MicrotaskDebouncedAction updateViewWidthAction =
+      MicrotaskDebouncedAction(() {
+        viewWidth = getWidth();
+      });
 }

@@ -88,8 +88,9 @@ class _PanelState extends State<Panel> {
       builder: (context, constraints) {
         final horizontal = _isLeftOrRight(widget.orientation);
 
-        final mainAxisSize =
-            (horizontal ? constraints.maxWidth : constraints.maxHeight);
+        final mainAxisSize = (horizontal
+            ? constraints.maxWidth
+            : constraints.maxHeight);
 
         if (pixelPanelSize < 0) {
           pixelPanelSize = widget.panelStartSize ?? defaultPanelSize;
@@ -103,10 +104,9 @@ class _PanelState extends State<Panel> {
           }
         }
 
-        var panelSize =
-            widget.sizeBehavior == PanelSizeBehavior.flex
-                ? flexPanelSize * mainAxisSize
-                : pixelPanelSize;
+        var panelSize = widget.sizeBehavior == PanelSizeBehavior.flex
+            ? flexPanelSize * mainAxisSize
+            : pixelPanelSize;
 
         // Make sure we're snapping to a pixel boundary
         final queryData = MediaQuery.of(context);
@@ -136,20 +136,18 @@ class _PanelState extends State<Panel> {
         final separatorSize = widget.separatorSize ?? 3.0;
         const handleSize = 10.0;
 
-        var handleLeft =
-            panelHugLeft
-                ? panelSize - handleSize / 2 + separatorSize / 2
-                : null;
-        var handleRight =
-            panelHugRight
-                ? panelSize - handleSize / 2 + separatorSize / 2
-                : null;
-        var handleTop =
-            panelHugTop ? panelSize - handleSize / 2 + separatorSize / 2 : null;
-        var handleBottom =
-            panelHugBottom
-                ? panelSize - handleSize / 2 + separatorSize / 2
-                : null;
+        var handleLeft = panelHugLeft
+            ? panelSize - handleSize / 2 + separatorSize / 2
+            : null;
+        var handleRight = panelHugRight
+            ? panelSize - handleSize / 2 + separatorSize / 2
+            : null;
+        var handleTop = panelHugTop
+            ? panelSize - handleSize / 2 + separatorSize / 2
+            : null;
+        var handleBottom = panelHugBottom
+            ? panelSize - handleSize / 2 + separatorSize / 2
+            : null;
 
         if (horizontal) {
           handleTop = 0;
@@ -196,10 +194,9 @@ class _PanelState extends State<Panel> {
                 top: handleTop,
                 bottom: handleBottom,
                 child: MouseRegion(
-                  cursor:
-                      horizontal
-                          ? SystemMouseCursors.resizeLeftRight
-                          : SystemMouseCursors.resizeUpDown,
+                  cursor: horizontal
+                      ? SystemMouseCursors.resizeLeftRight
+                      : SystemMouseCursors.resizeUpDown,
                   opaque: false,
                   child: Listener(
                     onPointerDown: (e) {
@@ -237,9 +234,14 @@ class _PanelState extends State<Panel> {
                               widget.contentMaxSize,
                             );
 
-                        pixelPanelSize = (pixelPanelSizeRaw +
-                                (pixelContentSizeRaw - pixelContentSizeClamped))
-                            .clamp(widget.panelMinSize, widget.panelMaxSize);
+                        pixelPanelSize =
+                            (pixelPanelSizeRaw +
+                                    (pixelContentSizeRaw -
+                                        pixelContentSizeClamped))
+                                .clamp(
+                                  widget.panelMinSize,
+                                  widget.panelMaxSize,
+                                );
 
                         flexPanelSize = pixelPanelSize / mainAxisSize;
                       });

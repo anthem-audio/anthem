@@ -67,7 +67,7 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
           nodeId: id,
           id: _ToneGeneratorProcessorModel.frequencyPortId,
           config: NodePortConfigModel(
-            dataType: NodePortDataType.audio,
+            dataType: NodePortDataType.control,
             parameterConfig: ParameterConfigModel(
               id: _ToneGeneratorProcessorModel.frequencyPortId,
               defaultValue: 440,
@@ -81,7 +81,7 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
           nodeId: id,
           id: _ToneGeneratorProcessorModel.amplitudePortId,
           config: NodePortConfigModel(
-            dataType: NodePortDataType.audio,
+            dataType: NodePortDataType.control,
             parameterConfig: ParameterConfigModel(
               id: _ToneGeneratorProcessorModel.amplitudePortId,
               defaultValue: 0.125,
@@ -92,11 +92,11 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
           ),
         ),
       ]),
-      midiInputPorts: AnthemObservableList.of([
+      eventInputPorts: AnthemObservableList.of([
         NodePortModel(
           nodeId: id,
-          id: _ToneGeneratorProcessorModel.midiInputPortId,
-          config: NodePortConfigModel(dataType: NodePortDataType.midi),
+          id: _ToneGeneratorProcessorModel.eventInputPortId,
+          config: NodePortConfigModel(dataType: NodePortDataType.event),
         ),
       ]),
     );
@@ -108,8 +108,8 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
       _ToneGeneratorProcessorModel.frequencyPortId;
   static int get amplitudePortId =>
       _ToneGeneratorProcessorModel.amplitudePortId;
-  static int get midiInputPortId =>
-      _ToneGeneratorProcessorModel.midiInputPortId;
+  static int get eventInputPortId =>
+      _ToneGeneratorProcessorModel.eventInputPortId;
 }
 
 abstract class _ToneGeneratorProcessorModel with Store, AnthemModelBase {
@@ -118,7 +118,7 @@ abstract class _ToneGeneratorProcessorModel with Store, AnthemModelBase {
   static const int frequencyPortId = 1;
   static const int amplitudePortId = 2;
 
-  static const int midiInputPortId = 3;
+  static const int eventInputPortId = 3;
 
   String nodeId;
 

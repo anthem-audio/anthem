@@ -43,20 +43,14 @@ class SequencerApi {
     List<String>? channelsToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {
-    if ((channelsToRebuild == null) != (invalidationRanges == null)) {
-      throw ArgumentError(
-        'channelsToRebuild and invalidationRanges must both be specified or both be null',
-      );
-    }
-
-    var request = CompileSequenceRequest.arrangement(
+    final request = CompileSequenceRequest.arrangement(
       id: _engine._getRequestId(),
       arrangementId: arrangementId.toString(),
       channelsToRebuild: channelsToRebuild,
       invalidationRanges: invalidationRanges,
     );
 
-    _engine._request(request);
+    _engine._requestNoReply(request);
   }
 
   /// Tells the engine to compile the given pattern.
@@ -78,19 +72,14 @@ class SequencerApi {
     List<String>? channelsToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {
-    if ((channelsToRebuild == null) != (invalidationRanges == null)) {
-      throw ArgumentError(
-        'channelsToRebuild and invalidationRanges must both be specified or both be null',
-      );
-    }
-
-    var request = CompileSequenceRequest.pattern(
+    final request = CompileSequenceRequest.pattern(
       id: _engine._getRequestId(),
       patternId: patternId.toString(),
       channelsToRebuild: channelsToRebuild,
+      invalidationRanges: invalidationRanges,
     );
 
-    _engine._request(request);
+    _engine._requestNoReply(request);
   }
 
   /// Cleans up the given channel from the sequencer.
@@ -104,11 +93,32 @@ class SequencerApi {
   /// sequences in the engine - otherwise, we would need to rebuild each
   /// sequence from scratch to remove that channel.
   void cleanUpChannel(String channelId) {
-    var request = RemoveChannelRequest(
+    final request = RemoveChannelRequest(
       id: _engine._getRequestId(),
       channelId: channelId,
     );
 
-    _engine._request(request);
+    _engine._requestNoReply(request);
+  }
+
+  /// Jumps the playhead to the given timestamp.
+  void jumpPlayheadTo(double offset) {
+    final request = PlayheadJumpRequest(
+      id: _engine._getRequestId(),
+      offset: offset,
+    );
+
+    _engine._requestNoReply(request);
+  }
+
+  /// Sends the new loop points to the audio thread for the given sequence ID,
+  /// if the active sequence ID matches the given sequence ID.
+  void updateLoopPoints(String sequenceId) {
+    final request = LoopPointsChangedRequest(
+      id: _engine._getRequestId(),
+      sequenceId: sequenceId,
+    );
+
+    _engine._requestNoReply(request);
   }
 }

@@ -21,6 +21,7 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/main.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
@@ -28,6 +29,8 @@ import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
+import 'package:anthem/model/shared/invalidation_range_collector.dart';
+import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes_render_cache.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
 import 'package:anthem_codegen/include/annotations.dart';
@@ -39,8 +42,10 @@ import 'automation_lane.dart';
 import 'note.dart';
 
 part 'pattern.g.dart';
+
 part 'package:anthem/widgets/basic/clip/clip_title_render_cache_mixin.dart';
 part 'package:anthem/widgets/basic/clip/clip_notes_render_cache_mixin.dart';
+part 'pattern_compiler_mixin.dart';
 
 @AnthemModel.syncedModel()
 class PatternModel extends _PatternModel
@@ -48,7 +53,19 @@ class PatternModel extends _PatternModel
         _$PatternModel,
         _$PatternModelAnthemModelMixin,
         _ClipTitleRenderCacheMixin,
-        _ClipNotesRenderCacheMixin {
+        _ClipNotesRenderCacheMixin,
+        _PatternCompilerMixin {
+  /// Action to tell the engine to send new loop points to the audio thread.
+  late final _updateLoopPointsAction = MicrotaskDebouncedAction(() {
+    final engine = project.engine;
+
+    if (!engine.isRunning) {
+      return;
+    }
+
+    project.engine.sequencerApi.updateLoopPoints(id);
+  });
+
   PatternModel() : super() {
     _init();
   }
@@ -79,10 +96,51 @@ class PatternModel extends _PatternModel
         clipNotesUpdateSignal.value =
             (clipNotesUpdateSignal.value + 1) % 0xFFFFFFFF;
       });
+
+      // Initialize render caches
       updateClipTitleCache();
       updateClipNotesRenderCache();
+
+      _clipAutoWidthUpdateAction.execute();
+
+      // Make sure the engine knows about this sequence when it is created, in
+      // case it is created from project load or undo/redo
+      _channelsToCompile.addAll(channelsWithContent);
+      _schedulePatternCompile(false);
+
+      // When notes are changed in the pattern, we need to:
+      //   1. Update the clip notes render cache.
+      //   2. Tell the engine to re-compile all relevant sequences.
+      notes.addFieldChangedListener((fieldAccessors, operation) {
+        scheduleClipNotesRenderCacheUpdate();
+        _clipAutoWidthUpdateAction.execute();
+
+        _recompileModifiedNotes(fieldAccessors, operation);
+      });
+
+      automationLanes.addFieldChangedListener((fieldAccessors, operation) {
+        _clipAutoWidthUpdateAction.execute();
+      });
+
+      // When the pattern title is changed, we need to update the clip title
+      // render cache.
+      addFieldChangedListener((fieldAccessors, operation) {
+        // The notes field might be entirely replaced instead of just updated.
+        // In this case we also need to update the clip notes render cache.
+        if (fieldAccessors.elementAtOrNull(1) == null &&
+            fieldAccessors.first.fieldName == 'notes') {
+          scheduleClipNotesRenderCacheUpdate();
+        } else if (fieldAccessors.first.fieldName == 'name') {
+          updateClipTitleCache();
+        } else if (fieldAccessors.first.fieldName == 'loopPoints') {
+          _updateLoopPointsAction.execute();
+        }
+      });
     });
   }
+
+  Iterable<String> get channelsWithContent =>
+      notes.keys.followedBy(automationLanes.keys);
 }
 
 abstract class _PatternModel with Store, AnthemModelBase {
@@ -107,6 +165,10 @@ abstract class _PatternModel with Store, AnthemModelBase {
   @anthemObservable
   AnthemObservableList<TimeSignatureChangeModel> timeSignatureChanges =
       AnthemObservableList();
+
+  @anthemObservable
+  @hideFromSerialization
+  LoopPointsModel? loopPoints;
 
   /// For deserialization. Use `PatternModel.create()` instead.
   _PatternModel();
@@ -167,19 +229,32 @@ abstract class _PatternModel with Store, AnthemModelBase {
     );
   }
 
-  @computed
-  int get clipAutoWidth {
-    // Observing this operation is incredibly expensive for some reason, so we
-    // prevent detailed observation and just observe the whole thing.
+  /// The width that a clip will take on if it has no time view.
+  ///
+  /// This must be updated whenever the pattern content changes. This is cached
+  /// so that the arranger doesn't have to recalculate this for every changed
+  /// clip on every edit.
+  @anthemObservable
+  @hide
+  late int clipAutoWidth = getWidth();
 
-    notes.observeAllChanges();
-    automationLanes.observeAllChanges();
+  @hide
+  late final MicrotaskDebouncedAction _clipAutoWidthUpdateAction =
+      MicrotaskDebouncedAction(() {
+        final newClipAutoWidth = getWidth();
 
-    return blockObservation(
-      modelItems: [notes, automationLanes],
-      block: () => getWidth(),
-    );
-  }
+        final arrangements = project.sequence.arrangements.values.toList();
+
+        // If the clip size changed, it may be the newest last clip in any
+        // arrangement, so we need to resize all the arrangements.
+        if (newClipAutoWidth != clipAutoWidth) {
+          for (final arrangement in arrangements) {
+            arrangement.updateViewWidthAction.execute();
+          }
+        }
+
+        clipAutoWidth = newClipAutoWidth;
+      });
 
   @computed
   bool get hasTimeMarkers {

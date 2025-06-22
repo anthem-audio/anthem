@@ -170,10 +170,9 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
             stickyTrapCounter = (stickyTrapCounter! + valueChange);
 
             if (stickyTrapCounter!.abs() > _stickyTrapSize) {
-              final overshoot =
-                  stickyTrapCounter! > 0
-                      ? stickyTrapCounter! - _stickyTrapSize
-                      : stickyTrapCounter! + _stickyTrapSize;
+              final overshoot = stickyTrapCounter! > 0
+                  ? stickyTrapCounter! - _stickyTrapSize
+                  : stickyTrapCounter! + _stickyTrapSize;
 
               final newValueRaw = lastValue + overshoot;
 
@@ -237,16 +236,14 @@ class _KnobPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final multipliedSize = size * sizeMultiplier;
 
-    final trackBorderPaint =
-        Paint()
-          ..color = const Color(0xFF2F2F2F)
-          ..strokeWidth = 1
-          ..style = PaintingStyle.stroke;
-    final trackFillPaint =
-        Paint()
-          ..color = const Color(0xFF28D1AA)
-          ..strokeWidth = trackSize
-          ..style = PaintingStyle.stroke;
+    final trackBorderPaint = Paint()
+      ..color = const Color(0xFF2F2F2F)
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    final trackFillPaint = Paint()
+      ..color = const Color(0xFF28D1AA)
+      ..strokeWidth = trackSize
+      ..style = PaintingStyle.stroke;
 
     final center = Offset(size.width / 2, size.height / 2);
 

@@ -177,8 +177,8 @@ class Hide {
 /// Shorthand for @Hide.all()
 const hide = Hide.all();
 
-/// Shorthand for @hideFromSerialization - hides the field from serialization,
-/// but still generates C++ code and model sync code for it.
+/// Shorthand for @Hide(serialization: true) - hides the field from
+/// serialization, but still generates C++ code and model sync code for it.
 const hideFromSerialization = Hide(serialization: true);
 
 /// An annotation that marks a field as a MobX observable.

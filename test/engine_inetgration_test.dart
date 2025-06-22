@@ -41,24 +41,38 @@ void main() {
     path = path.resolve('../');
   }
 
-  final enginePath = path.resolve(
+  final releaseEnginePath = path.resolve(
     'engine/build/AnthemEngine_artefacts/Release/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
   );
 
-  test('Engine exists', () {
-    // Note: If this fails, the engine has not been built. This uses release
-    // mode, since it means we won't have to build the engine twice in CI. If
-    // you're running this locally, you may want to build the engine in debug
-    // mode instead, and change the path above to point to debug instead of
-    // release.
-    expect(
-      File(enginePath.toFilePath(windows: Platform.isWindows)).existsSync(),
-      true,
+  final debugEnginePath = path.resolve(
+    'engine/build/AnthemEngine_artefacts/Debug/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+  );
+
+  Uri? enginePath;
+
+  // This looks for the debug build of the engine first, then the release build.
+  //
+  // In CI, we use the release build since that's what we're releasing, and it means
+  // we don't have to build twice. When developing locally, we expect that the debug
+  // engine will be the most up-to-date, so we use that by default.
+  if (File(
+    debugEnginePath.toFilePath(windows: Platform.isWindows),
+  ).existsSync()) {
+    enginePath = debugEnginePath;
+  } else if (File(
+    releaseEnginePath.toFilePath(windows: Platform.isWindows),
+  ).existsSync()) {
+    enginePath = releaseEnginePath;
+  } else {
+    throw Exception(
+      'No engine found at $releaseEnginePath or $debugEnginePath. '
+      'Please build the engine before running the tests.',
     );
-  });
+  }
 
   group('Heartbeat tests', () {
-    test('No heartbeat', () async {
+    test('No heartbeat', timeout: Timeout(Duration(seconds: 120)), () async {
       final exitStreamController = StreamController<void>.broadcast();
 
       var exitCalled = false;
@@ -67,8 +81,8 @@ void main() {
       var heartbeatWaitCompleter = Completer<void>();
 
       final _ = EngineConnector(
-        0,
-        enginePathOverride: enginePath.toFilePath(windows: Platform.isWindows),
+        12345678, // Can't collide with any other tests
+        enginePathOverride: enginePath!.toFilePath(windows: Platform.isWindows),
         kDebugMode: true,
         noHeartbeat: true,
         onExit: () => exitStreamController.add(null),
@@ -103,7 +117,7 @@ void main() {
       );
     });
 
-    test('Heartbeat', () async {
+    test('Heartbeat', timeout: Timeout(Duration(seconds: 120)), () async {
       final exitStreamController = StreamController<void>.broadcast();
 
       var exitCalled = false;
@@ -112,8 +126,8 @@ void main() {
       var heartbeatWaitCompleter = Completer<void>();
 
       final engineConnector = EngineConnector(
-        0,
-        enginePathOverride: enginePath.toFilePath(windows: Platform.isWindows),
+        12345678 + 1, // Can't collide with any other tests
+        enginePathOverride: enginePath!.toFilePath(windows: Platform.isWindows),
         kDebugMode: true,
         onExit: () => exitStreamController.add(null),
       );
@@ -144,6 +158,7 @@ void main() {
 
       engineConnector.dispose();
       await exitStreamController.stream.first;
+
       expect(
         exitCalled,
         isTrue,
@@ -159,7 +174,7 @@ void main() {
       TestWidgetsFlutterBinding.ensureInitialized();
 
       project = ProjectModel.create(
-        enginePath.toFilePath(windows: Platform.isWindows),
+        enginePath!.toFilePath(windows: Platform.isWindows),
       );
       await project.engine.start();
       while (project.engine.engineState != EngineState.running) {
@@ -356,11 +371,10 @@ void main() {
 
     test('Change all the note properties', () async {
       final patternId = project.sequence.patternOrder[0];
-      final note =
-          project
-              .sequence
-              .patterns[project.sequence.patternOrder[0]]!
-              .notes['generator1']![0];
+      final note = project
+          .sequence
+          .patterns[project.sequence.patternOrder[0]]!
+          .notes['generator1']![0];
 
       project.execute(
         SetNoteAttributeCommand(

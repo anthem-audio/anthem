@@ -132,8 +132,9 @@ String createSerializerForCustomType({
   //    and the serialized value is being sent to the engine as part of a model
   //    change event. In this case, there will be no includeFieldsForEngine
   //    parameter, and we need to include the engine-only fields.
-  final includeFieldsForEngine =
-      alwaysIncludeEngineOnlyFields ? 'true' : 'includeFieldsForEngine';
+  final includeFieldsForEngine = alwaysIncludeEngineOnlyFields
+      ? 'true'
+      : 'includeFieldsForEngine';
   return '$accessor${type.isNullable ? '?' : ''}.toJson(includeFieldsForEngine: $includeFieldsForEngine)';
 }
 
@@ -145,7 +146,8 @@ String createSerializerForUnion({
   var switchCases = '';
 
   for (final subtype in type.subTypes) {
-    switchCases += '''
+    switchCases +=
+        '''
   case ${subtype.dartName} field:
     return {'${subtype.dartName}': ${createSerializerForField(type: subtype, accessor: 'field', alwaysIncludeEngineOnlyFields: alwaysIncludeEngineOnlyFields)}};
 ''';

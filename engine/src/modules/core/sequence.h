@@ -32,9 +32,7 @@ public:
   Sequence(Sequence&&) noexcept = default;
   Sequence& operator=(Sequence&&) noexcept = default;
 
-  void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override {
-    SequenceModelBase::initialize(self, parent);
-  }
+  void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override;
 
   // void handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {
   //   SequenceModelBase::handleModelUpdate(request, fieldAccessIndex);

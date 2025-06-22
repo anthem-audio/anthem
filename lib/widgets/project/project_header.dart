@@ -22,11 +22,14 @@ import 'dart:convert';
 import 'package:anthem/commands/sequence_commands.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/controls/digit_control.dart';
 import 'package:anthem/widgets/basic/controls/time_signature_control.dart';
+import 'package:anthem/widgets/basic/horizontal_meter_simple.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/basic/visualization_builder.dart';
 import 'package:anthem/widgets/debug/widget_test_area.dart';
 import 'package:anthem/widgets/main_window/main_window_controller.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
@@ -53,21 +56,9 @@ class ProjectHeader extends StatelessWidget {
         padding: const EdgeInsets.all(7),
         child: Row(
           children: [
-            Expanded(
-              flex: 1,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: _LeftGroup(),
-              ),
-            ),
+            Expanded(flex: 1, child: _LeftGroup()),
             Center(child: _MiddleGroup()),
-            Expanded(
-              flex: 1,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: _RightGroup(),
-              ),
-            ),
+            Expanded(flex: 1, child: _RightGroup()),
           ],
         ),
       ),
@@ -127,12 +118,26 @@ class _MiddleGroup extends StatelessWidget {
           height: 24,
           width: 24,
           contentPadding: EdgeInsets.all(3),
+          onPress: () {
+            final projectModel = Provider.of<ProjectModel>(
+              context,
+              listen: false,
+            );
+            projectModel.sequence.isPlaying = true;
+          },
         ),
         Button(
           icon: Icons.stop,
           height: 24,
           width: 24,
           contentPadding: EdgeInsets.all(3),
+          onPress: () {
+            final projectModel = Provider.of<ProjectModel>(
+              context,
+              listen: false,
+            );
+            projectModel.sequence.isPlaying = false;
+          },
         ),
       ],
     );
@@ -163,8 +168,8 @@ class _TempoControlState extends State<_TempoControl> {
         originalTempo = projectModel.sequence.beatsPerMinuteRaw;
       },
       onChanged: (value) {
-        projectModel.sequence.beatsPerMinuteRaw =
-            (value.clamp(10, 999) * 100).round();
+        projectModel.sequence.beatsPerMinuteRaw = (value.clamp(10, 999) * 100)
+            .round();
       },
       onEnd: () {
         final newTempo = projectModel.sequence.beatsPerMinuteRaw;
@@ -186,7 +191,25 @@ class _RightGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container();
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        VisualizationBuilder.double(
+          builder: (context, value) {
+            value ??= 0;
+
+            return HorizontalMeterSimple(
+              width: 60,
+              value: value,
+              label: '${(value * 100).round()}%',
+            );
+          },
+          config: VisualizationSubscriptionConfig.max('cpu'),
+          minimumUpdateInterval: const Duration(milliseconds: 1000),
+        ),
+      ],
+    );
   }
 }
 
@@ -195,7 +218,7 @@ class _ProjectMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final menuController = MenuController();
+    final menuController = AnthemMenuController();
     final mainWindowController = context.read<MainWindowController>();
 
     final project = Provider.of<ProjectModel>(context);

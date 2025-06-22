@@ -139,24 +139,23 @@ class _TreeViewState extends State<TreeView> {
             child: SizeChangedLayoutNotifier(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children:
-                    widget.items.map((item) {
-                      final filterItem = filterItems[item.key];
-                      final visible =
-                          filterItem == null ||
-                          filterItem.maxScoreOfChildren > widget.filterCutoff;
+                children: widget.items.map((item) {
+                  final filterItem = filterItems[item.key];
+                  final visible =
+                      filterItem == null ||
+                      filterItem.maxScoreOfChildren > widget.filterCutoff;
 
-                      return Visibility(
-                        maintainState: true,
-                        visible: visible,
-                        child: _TreeItem(
-                          model: item,
-                          allFilterModels: filterItems,
-                          filterModel: filterItem,
-                          filterCutoff: widget.filterCutoff,
-                        ),
-                      );
-                    }).toList(),
+                  return Visibility(
+                    maintainState: true,
+                    visible: visible,
+                    child: _TreeItem(
+                      model: item,
+                      allFilterModels: filterItems,
+                      filterModel: filterItem,
+                      filterCutoff: widget.filterCutoff,
+                    ),
+                  );
+                }).toList(),
               ),
             ),
           ),

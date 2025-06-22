@@ -45,13 +45,13 @@ std::optional<std::shared_ptr<NodePort>> Node::getPortById(int32_t id) {
     }
   }
 
-  for (auto& port : *this->midiInputPorts()) {
+  for (auto& port : *this->eventInputPorts()) {
     if (port->id() == id) {
       return port;
     }
   }
 
-  for (auto& port : *this->midiOutputPorts()) {
+  for (auto& port : *this->eventOutputPorts()) {
     if (port->id() == id) {
       return port;
     }

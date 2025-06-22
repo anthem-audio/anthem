@@ -23,10 +23,13 @@
 #include <iostream>
 
 #include <juce_audio_devices/juce_audio_devices.h>
+#include <juce_audio_processors/juce_audio_processors.h>
 
 #include "modules/core/anthem_audio_callback.h"
 #include "modules/processing_graph/runtime/anthem_graph_processor.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
+#include "modules/sequencer/runtime/transport.h"
+#include "modules/core/visualization/global_visualization_sources.h"
 
 #include "modules/util/id_generator.h"
 
@@ -38,8 +41,6 @@ private:
 
   // Singleton shared pointer instance
   static std::unique_ptr<Anthem> instance;
-
-  juce::AudioDeviceManager deviceManager;
 
   std::unique_ptr<AnthemAudioCallback> audioCallback;
 
@@ -66,6 +67,23 @@ public:
   // The graph processor, which takes the compilation result from the compiler
   // and uses it on the audio thread to process data in the graph
   std::unique_ptr<AnthemGraphProcessor> graphProcessor;
+
+  // The transport contains information about:
+  // - The sequence being played
+  // - The playhead position
+  // - The project tempo
+  // - The current playhead reset point and loop points
+  std::unique_ptr<Transport> transport;
+
+  // Class for coordinating global visualization that is sent back to the UI,
+  // such as CPU burden and transport location.
+  std::unique_ptr<GlobalVisualizationSources> globalVisualizationSources;
+
+  // JUCE class for managing audio devices
+  juce::AudioDeviceManager audioDeviceManager;
+
+  // JUCE class for loading and managing plugins
+  juce::AudioPluginFormatManager audioPluginFormatManager;
 
   Anthem();
 
@@ -96,6 +114,6 @@ public:
 
   // TODO: These generic config items should be settable, which means they
   // should live in the actual synced model.
-  static const int SAMPLE_RATE = 44100;
+  static const int SAMPLE_RATE = 48000;
   static const int NUM_CHANNELS = 2;
 };

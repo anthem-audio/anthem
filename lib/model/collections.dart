@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -66,13 +66,7 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
   }
 
   void _init() {
-    for (var i = 0; i < length; i++) {
-      _setParentPropertiesOnIndex(i);
-    }
-
     observe((change) {
-      int? firstChangedIndex;
-
       if (change.elementChanges != null) {
         for (final elementChange in change.elementChanges!) {
           final accessorChain = [
@@ -83,11 +77,15 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
           ];
 
           if (elementChange.type == OperationType.add) {
-            firstChangedIndex = elementChange.index;
+            final firstChangedIndex = elementChange.index;
+            for (var i = firstChangedIndex; i < length; i++) {
+              _setParentPropertiesOnIndex(i);
+            }
 
             notifyFieldChanged(
               operation: ListInsert(
-                value: _serializeValue(
+                value: elementChange.newValue,
+                valueSerialized: _serializeValue(
                   elementChange.newValue,
                   includeFieldsForEngine: true,
                 ),
@@ -95,14 +93,23 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
               accessorChain: accessorChain,
             );
           } else if (elementChange.type == OperationType.remove) {
+            final firstChangedIndex = elementChange.index;
+            for (var i = firstChangedIndex; i < length; i++) {
+              _setParentPropertiesOnIndex(i);
+            }
+
             notifyFieldChanged(
-              operation: ListRemove(),
+              operation: ListRemove(removedValue: elementChange.oldValue),
               accessorChain: accessorChain,
             );
           } else if (elementChange.type == OperationType.update) {
+            _setParentPropertiesOnIndex(elementChange.index);
+
             notifyFieldChanged(
               operation: ListUpdate(
-                value: _serializeValue(
+                oldValue: elementChange.oldValue,
+                newValue: elementChange.newValue,
+                newValueSerialized: _serializeValue(
                   elementChange.newValue,
                   includeFieldsForEngine: true,
                 ),
@@ -110,12 +117,6 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
               accessorChain: accessorChain,
             );
           }
-        }
-      }
-
-      if (firstChangedIndex != null) {
-        for (var i = firstChangedIndex; i < length; i++) {
-          _setParentPropertiesOnIndex(i);
         }
       }
     });
@@ -161,10 +162,6 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
   }
 
   void _init() {
-    for (final key in keys) {
-      _setParentPropertiesOnValue(key);
-    }
-
     observe((change) {
       final accessorChain = [
         FieldAccessor(fieldType: FieldType.map, key: change.key),
@@ -174,7 +171,9 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
           change.type == OperationType.update) {
         notifyFieldChanged(
           operation: MapPut(
-            value: _serializeValue(
+            oldValue: change.oldValue,
+            newValue: change.newValue,
+            newValueSerialized: _serializeValue(
               change.newValue,
               includeFieldsForEngine: true,
             ),
@@ -187,7 +186,7 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
         }
       } else if (change.type == OperationType.remove) {
         notifyFieldChanged(
-          operation: MapRemove(),
+          operation: MapRemove(removedValue: change.oldValue),
           accessorChain: accessorChain,
         );
       }

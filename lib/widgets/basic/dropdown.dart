@@ -84,7 +84,7 @@ class _DropdownState extends State<Dropdown> {
 
   @override
   Widget build(BuildContext context) {
-    final menuController = MenuController();
+    final menuController = AnthemMenuController();
     final selectedID = widget.selectedID ?? localSelectedID;
 
     final selectedItem = widget.items.firstWhere(
@@ -108,12 +108,12 @@ class _DropdownState extends State<Dropdown> {
             (!widget.allowNoSelection
                 ? []
                 : [
-                  widget.items.isNotEmpty ? Separator() : null,
-                  AnthemMenuItem(
-                    text: '(none)',
-                    onSelected: () => select(null),
-                  ),
-                ].nonNulls.toList()),
+                    widget.items.isNotEmpty ? Separator() : null,
+                    AnthemMenuItem(
+                      text: '(none)',
+                      onSelected: () => select(null),
+                    ),
+                  ].nonNulls.toList()),
       ),
       child: MouseRegion(
         // No need to setState since we're not reacting to these

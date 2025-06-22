@@ -53,22 +53,22 @@ class SimpleMidiGeneratorProcessorModel
     return NodeModel(
       id: id,
       processor: SimpleMidiGeneratorProcessorModel(nodeId: id),
-      midiOutputPorts: AnthemObservableList.of([
+      eventOutputPorts: AnthemObservableList.of([
         NodePortModel(
           nodeId: id,
-          id: midiOutputPortId,
-          config: NodePortConfigModel(dataType: NodePortDataType.midi),
+          id: eventOutputPortId,
+          config: NodePortConfigModel(dataType: NodePortDataType.event),
         ),
       ]),
     );
   }
 
-  static int get midiOutputPortId =>
-      _SimpleMidiGeneratorProcessorModel.midiOutputPortId;
+  static int get eventOutputPortId =>
+      _SimpleMidiGeneratorProcessorModel.eventOutputPortId;
 }
 
 abstract class _SimpleMidiGeneratorProcessorModel with Store, AnthemModelBase {
-  static const midiOutputPortId = 0;
+  static const eventOutputPortId = 0;
 
   String nodeId;
 

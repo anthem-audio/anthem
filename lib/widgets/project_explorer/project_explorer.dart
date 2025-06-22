@@ -69,53 +69,49 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
     TreeViewItemModel getArrangementsTree() => TreeViewItemModel(
       key: 'projectArrangementsFolder',
       label: 'Arrangements',
-      children:
-          project.sequence.arrangementOrder
-              .map(
-                (id) => TreeViewItemModel(
-                  key: 'arrangement-$id',
-                  label: project.sequence.arrangements[id]!.name,
-                  onClick:
-                      () => projectController.setActiveDetailView(
-                        true,
-                        ArrangementDetailViewKind(id),
-                      ),
-                ),
-              )
-              .toList(),
+      children: project.sequence.arrangementOrder
+          .map(
+            (id) => TreeViewItemModel(
+              key: 'arrangement-$id',
+              label: project.sequence.arrangements[id]!.name,
+              onClick: () => projectController.setActiveDetailView(
+                true,
+                ArrangementDetailViewKind(id),
+              ),
+            ),
+          )
+          .toList(),
     );
 
     TreeViewItemModel getPatternsTree() => TreeViewItemModel(
       key: 'projectPatternsFolder',
       label: 'Patterns',
-      children:
-          project.sequence.patternOrder
-              .map(
-                (patternID) => TreeViewItemModel(
-                  key: 'pattern-$patternID',
-                  label: project.sequence.patterns[patternID]!.name,
-                  onClick:
-                      () => projectController.setActiveDetailView(
-                        true,
-                        PatternDetailViewKind(patternID),
+      children: project.sequence.patternOrder
+          .map(
+            (patternID) => TreeViewItemModel(
+              key: 'pattern-$patternID',
+              label: project.sequence.patterns[patternID]!.name,
+              onClick: () => projectController.setActiveDetailView(
+                true,
+                PatternDetailViewKind(patternID),
+              ),
+              children: [
+                getMarkersItem(
+                  pattern: project.sequence.patterns[patternID],
+                  onClick: (changeID) {
+                    projectController.setActiveDetailView(
+                      true,
+                      TimeSignatureChangeDetailViewKind(
+                        changeID: changeID,
+                        patternID: patternID,
                       ),
-                  children: [
-                    getMarkersItem(
-                      pattern: project.sequence.patterns[patternID],
-                      onClick: (changeID) {
-                        projectController.setActiveDetailView(
-                          true,
-                          TimeSignatureChangeDetailViewKind(
-                            changeID: changeID,
-                            patternID: patternID,
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                    );
+                  },
                 ),
-              )
-              .toList(),
+              ],
+            ),
+          )
+          .toList(),
     );
 
     return Background(
@@ -201,17 +197,16 @@ TreeViewItemModel getMarkersItem({
   return TreeViewItemModel(
     key: 'markers',
     label: 'Time markers',
-    children:
-        timeSignatureChanges
-            .map(
-              (change) => TreeViewItemModel(
-                key: change.id,
-                label: change.timeSignature.toDisplayString(),
-                onClick: () {
-                  onClick(change.id);
-                },
-              ),
-            )
-            .toList(),
+    children: timeSignatureChanges
+        .map(
+          (change) => TreeViewItemModel(
+            key: change.id,
+            label: change.timeSignature.toDisplayString(),
+            onClick: () {
+              onClick(change.id);
+            },
+          ),
+        )
+        .toList(),
   );
 }

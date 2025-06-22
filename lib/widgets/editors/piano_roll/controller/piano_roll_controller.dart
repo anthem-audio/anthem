@@ -147,20 +147,19 @@ class _PianoRollController {
       return;
     }
 
-    final commands =
-        project
-            .sequence
-            .patterns[project.sequence.activePatternID]!
-            .notes[project.activeInstrumentID]!
-            .where((note) => viewModel.selectedNotes.contains(note.id))
-            .map((note) {
-              return DeleteNoteCommand(
-                patternID: project.sequence.activePatternID!,
-                generatorID: project.activeInstrumentID!,
-                note: note,
-              );
-            })
-            .toList();
+    final commands = project
+        .sequence
+        .patterns[project.sequence.activePatternID]!
+        .notes[project.activeInstrumentID]!
+        .where((note) => viewModel.selectedNotes.contains(note.id))
+        .map((note) {
+          return DeleteNoteCommand(
+            patternID: project.sequence.activePatternID!,
+            generatorID: project.activeInstrumentID!,
+            note: note,
+          );
+        })
+        .toList();
 
     final command = JournalPageCommand(commands);
 

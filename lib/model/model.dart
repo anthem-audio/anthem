@@ -32,9 +32,11 @@ export 'pattern/pattern.dart';
 
 export 'processing_graph/processors/gain.dart';
 export 'processing_graph/processors/master_output.dart';
+export 'processing_graph/processors/sequence_note_provider.dart';
 export 'processing_graph/processors/simple_midi_generator.dart';
 export 'processing_graph/processors/simple_volume_lfo.dart';
 export 'processing_graph/processors/tone_generator.dart';
+export 'processing_graph/processors/vst3_processor.dart';
 
 export 'processing_graph/node_connection.dart';
 export 'processing_graph/node_port_config.dart';
@@ -45,6 +47,7 @@ export 'processing_graph/processing_graph.dart';
 
 export 'shared/anthem_color.dart';
 export 'shared/hydratable.dart';
+export 'shared/loop_points.dart';
 export 'shared/time_signature.dart';
 
 export 'app.dart';

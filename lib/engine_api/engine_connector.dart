@@ -287,11 +287,24 @@ class EngineConnector {
       // Check if the buffer contains the full message
       if (_messageBuffer.buffer.length >= 8 + messageLength) {
         // Extract the full message
-        final fullMessage = _messageBuffer.buffer.sublist(8, 8 + messageLength);
-
-        final response = Response.fromJson(
-          jsonDecode(utf8.decode(fullMessage)),
+        final messageStart = 8;
+        final messsageEnd = messageStart + messageLength;
+        final fullMessage = _messageBuffer.buffer.sublist(
+          messageStart,
+          messsageEnd,
         );
+
+        Response response;
+        try {
+          response = Response.fromJson(jsonDecode(utf8.decode(fullMessage)));
+        } on FormatException catch (_) {
+          // If we can't deocde, then something is fatally wrong. This is
+          // probably a bug, so we should shut down the engine and report the
+          // error.
+          _shutdown();
+
+          rethrow;
+        }
 
         // Handle heartbeat reply
         if (response is HeartbeatReply) {

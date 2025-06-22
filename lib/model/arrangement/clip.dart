@@ -19,6 +19,7 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
+import 'package:anthem/model/project.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
 
@@ -57,13 +58,12 @@ class ClipModel extends _ClipModel
       patternId: other.patternId,
       trackId: other.trackId,
       offset: other.offset,
-      timeView:
-          other.timeView != null
-              ? TimeViewModel(
-                start: other.timeView!.start,
-                end: other.timeView!.end,
-              )
-              : null,
+      timeView: other.timeView != null
+          ? TimeViewModel(
+              start: other.timeView!.start,
+              end: other.timeView!.end,
+            )
+          : null,
     );
   }
 
@@ -103,7 +103,12 @@ abstract class _ClipModel with Store, AnthemModelBase {
     required this.offset,
   }) : super();
 
-  int get width {
+  /// Gets the width of the clip.
+  ///
+  /// Note that this may throw if the model is not attached.
+  int get width => getWidthFromProject(project);
+
+  int getWidthFromProject(ProjectModel project) {
     if (timeView != null) {
       return timeView!.width;
     }

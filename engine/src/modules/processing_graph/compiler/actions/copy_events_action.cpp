@@ -17,11 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "copy_note_events_action.h"
+#include "copy_events_action.h"
 
-void CopyNoteEventsAction::execute([[maybe_unused]] int numSamples) {
-  auto& sourceBuffer = this->source->getOutputNoteEventBuffer(this->sourcePortId);
-  auto& destinationBuffer = this->destination->getInputNoteEventBuffer(this->destinationPortId);
+void CopyEventsAction::execute([[maybe_unused]] int numSamples) {
+  auto& sourceBuffer = this->source->getOutputEventBuffer(this->sourcePortId);
+  auto& destinationBuffer = this->destination->getInputEventBuffer(this->destinationPortId);
 
   // Ensure the buffers have the same size
   jassert(sourceBuffer->getNumEvents() == destinationBuffer->getNumEvents());
@@ -32,9 +32,9 @@ void CopyNoteEventsAction::execute([[maybe_unused]] int numSamples) {
   }
 }
 
-void CopyNoteEventsAction::debugPrint() {
+void CopyEventsAction::debugPrint() {
   std::cout 
-    << "CopyNoteEventsAction: "
+    << "CopyEventsAction: "
     << this->source->getGraphNode()->id()
     << " -> "
     << this->destination->getGraphNode()->id()

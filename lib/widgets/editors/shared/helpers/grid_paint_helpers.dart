@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -69,6 +69,10 @@ void paintTimeGrid({
     ticksPerQuarter: ticksPerQuarter,
     timeViewStart: timeViewStart,
     timeViewEnd: timeViewEnd,
+
+    // When zoomed in, this means major grid lines will always be drawn less
+    // frequently than minor grid lines.
+    skipBottomNDivisions: 1,
   );
 
   paintVerticalLines(
@@ -82,7 +86,7 @@ void paintTimeGrid({
 
   final barDivisionChanges = getDivisionChanges(
     viewWidthInPixels: size.width,
-    minPixelsPerSection: majorMinPixels,
+    minPixelsPerSection: barMinPixels,
     snap: BarSnap(),
     defaultTimeSignature: baseTimeSignature,
     timeSignatureChanges: timeSignatureChanges,
@@ -100,16 +104,20 @@ void paintTimeGrid({
     paint: accentLinePaint,
   );
 
-  paintPhraseShading(
-    canvas: canvas,
-    timeViewStart: timeViewStart,
-    timeViewEnd: timeViewEnd,
-    defaultTimeSignature: baseTimeSignature,
-    timeSignatureChanges: timeSignatureChanges,
-    size: size,
-    paint: shadedPaint,
-    ticksPerQuarter: ticksPerQuarter,
-  );
+  // If there are more than 128 4-bar groups on screen, we won't draw the
+  // alternating dark and light shading.
+  if (timeViewEnd - timeViewStart < ticksPerQuarter * 4 * 4 * 128) {
+    paintPhraseShading(
+      canvas: canvas,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      defaultTimeSignature: baseTimeSignature,
+      timeSignatureChanges: timeSignatureChanges,
+      size: size,
+      paint: shadedPaint,
+      ticksPerQuarter: ticksPerQuarter,
+    );
+  }
 }
 
 void paintVerticalLines({
@@ -119,7 +127,10 @@ void paintVerticalLines({
   required List<DivisionChange> divisionChanges,
   required Size size,
   required Paint paint,
+  double? height, // If unset, the line will be the full height of the canvas
 }) {
+  height ??= size.height;
+
   var i = 0;
   // There should always be at least one division change. The first change
   // should always represent the base time signature for the pattern (or the
@@ -146,14 +157,22 @@ void paintVerticalLines({
     }
 
     while (timePtr < nextDivisionStart && timePtr < timeViewEnd) {
-      final x = timeToPixels(
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        viewPixelWidth: size.width,
-        time: timePtr.toDouble(),
-      );
+      // We skip the line if it's at the very start of the sequence, because
+      // otherwise it looks like a double line when the view is scrolled all the
+      // way to the left.
+      if (timePtr > 0) {
+        final x = timeToPixels(
+          timeViewStart: timeViewStart,
+          timeViewEnd: timeViewEnd,
+          viewPixelWidth: size.width,
+          time: timePtr.toDouble(),
+        );
 
-      canvas.drawRect(Rect.fromLTWH(x, 0, 1, size.height), paint);
+        canvas.drawRect(
+          Rect.fromLTWH(x, size.height - height, 1, height),
+          paint,
+        );
+      }
 
       timePtr += thisDivision.divisionRenderSize;
 
@@ -183,14 +202,14 @@ void paintPhraseShading({
 
   var timeSignatures =
       timeSignatureChanges.isEmpty || timeSignatureChanges[0].offset > 0
-          ? [
-            TimeSignatureChangeModel(
-              timeSignature: defaultTimeSignature,
-              offset: 0,
-            ),
-            ...timeSignatureChanges,
-          ]
-          : timeSignatureChanges;
+      ? [
+          TimeSignatureChangeModel(
+            timeSignature: defaultTimeSignature,
+            offset: 0,
+          ),
+          ...timeSignatureChanges,
+        ]
+      : timeSignatureChanges;
 
   while (tick < timeViewEnd) {
     final timeSignatureChange = timeSignatures[timeSignatureIndex];
@@ -203,8 +222,8 @@ void paintPhraseShading({
 
     final nextTimeSignatureChangeOffset =
         timeSignatureIndex + 1 >= timeSignatures.length
-            ? 0x7FFFFFFFFFFFFFFF
-            : timeSignatures[timeSignatureIndex + 1].offset;
+        ? 0x7FFFFFFFFFFFFFFF
+        : timeSignatures[timeSignatureIndex + 1].offset;
 
     var phraseWidth = barSize * 4;
     if (tick + phraseWidth > nextTimeSignatureChangeOffset) {

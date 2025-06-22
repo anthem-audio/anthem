@@ -29,7 +29,7 @@ ToneGeneratorProcessor::ToneGeneratorProcessor(const ToneGeneratorProcessorModel
   phase = 0;
   // amplitude = 0.125;
   // this->frequency = frequency;
-  sampleRate = 44100.0; // TODO: This should be dynamic - in the context maybe?
+  sampleRate = 48000.0; // TODO: This should be dynamic - in the context maybe?
 
   hasNoteOverride = false;
   noteOverride = 0;
@@ -43,11 +43,11 @@ void ToneGeneratorProcessor::process(AnthemProcessContext& context, int numSampl
   auto& frequencyControlBuffer = context.getInputControlBuffer(ToneGeneratorProcessorModelBase::frequencyPortId);
   auto& amplitudeControlBuffer = context.getInputControlBuffer(ToneGeneratorProcessorModelBase::amplitudePortId);
 
-  // Process incoming MIDI events
-  auto& midiInBuffer = context.getInputNoteEventBuffer(ToneGeneratorProcessorModelBase::midiInputPortId);
+  // Process incoming events
+  auto& eventInBuffer = context.getInputEventBuffer(ToneGeneratorProcessorModelBase::eventInputPortId);
 
-  for (size_t i = 0; i < midiInBuffer->getNumEvents(); ++i) {
-    auto& liveEvent = midiInBuffer->getEvent(i);
+  for (size_t i = 0; i < eventInBuffer->getNumEvents(); ++i) {
+    auto& liveEvent = eventInBuffer->getEvent(i);
 
     if (liveEvent.event.type == AnthemEventType::NoteOn) {
       hasNoteOverride = true;
@@ -58,8 +58,6 @@ void ToneGeneratorProcessor::process(AnthemProcessContext& context, int numSampl
       // reading liveEvent.time, which represents the time since the start of
       // the processing block.
 
-    } else if (liveEvent.event.type == AnthemEventType::NoteOff) {
-      hasNoteOverride = false;
     }
   }
 

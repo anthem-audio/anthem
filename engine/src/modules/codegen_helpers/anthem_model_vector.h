@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -30,6 +30,45 @@ class AnthemModelVector : public AnthemModelBase {
 private:
   // The internal vector
   std::vector<T> data;
+
+  // Helper to check if T is std::shared_ptr<U> where U derives from AnthemModelBase
+  template <typename U>
+  struct IsSharedPtrOfAnthemModelBase : std::false_type {};
+
+  template <typename U>
+  struct IsSharedPtrOfAnthemModelBase<std::shared_ptr<U>>
+      : std::is_base_of<AnthemModelBase, U> {};
+
+  // Helper to check if T is std::optional<std::shared_ptr<U>> where U derives from AnthemModelBase
+  template <typename U>
+  struct IsOptionalSharedPtrOfAnthemModelBase : std::false_type {};
+
+  template <typename U>
+  struct IsOptionalSharedPtrOfAnthemModelBase<std::optional<std::shared_ptr<U>>>
+      : std::is_base_of<AnthemModelBase, U> {};
+
+  static constexpr bool isAnthemModelBase =
+      IsSharedPtrOfAnthemModelBase<T>::value ||
+          IsOptionalSharedPtrOfAnthemModelBase<T>::value;
+
+  // Helper method to initialize a single item if the vector is initialized
+  void initializeItem(T& item) {
+    // Only initialize if this vector itself has been initialized
+    auto selfPtr = this->self.lock();
+    if (!selfPtr) {
+      return;
+    }
+
+    if constexpr (IsOptionalSharedPtrOfAnthemModelBase<T>::value) {
+      if (item && *item) {  // Check if optional has value AND the shared_ptr is not null
+        (*item)->initialize(item, selfPtr);
+      }
+    } else if constexpr (IsSharedPtrOfAnthemModelBase<T>::value) {
+      if (item) {  // Check if the shared_ptr is not null
+        item->initialize(item, selfPtr);
+      }
+    }
+  }
 
 public:
   // Constructors
@@ -79,16 +118,47 @@ public:
   size_t capacity() const { return data.capacity(); }
   bool empty() const { return data.empty(); }
   void reserve(size_t new_cap) { data.reserve(new_cap); }
-  void resize(size_t count) { data.resize(count); }
-  void resize(size_t count, const T& value) { data.resize(count, value); }
+  
+  void resize(size_t count) { 
+    size_t oldSize = data.size();
+    data.resize(count); 
+    
+    // Initialize new elements if expanding
+    if (count > oldSize) {
+      for (size_t i = oldSize; i < count; ++i) {
+        initializeItem(data[i]);
+      }
+    }
+  }
+  
+  void resize(size_t count, const T& value) { 
+    size_t oldSize = data.size();
+    data.resize(count, value); 
+    
+    // Initialize new elements if expanding
+    if (count > oldSize) {
+      for (size_t i = oldSize; i < count; ++i) {
+        initializeItem(data[i]);
+      }
+    }
+  }
 
   // Modifier methods
-  void push_back(const T& value) { data.push_back(value); }
-  void push_back(T&& value) { data.push_back(std::move(value)); }
+  void push_back(const T& value) { 
+    data.push_back(value);
+    initializeItem(data.back());
+  }
+  
+  void push_back(T&& value) { 
+    data.push_back(std::move(value));
+    initializeItem(data.back());
+  }
 
   template<typename... Args>
   T& emplace_back(Args&&... args) {
-    return data.emplace_back(std::forward<Args>(args)...);
+    T& item = data.emplace_back(std::forward<Args>(args)...);
+    initializeItem(item);
+    return item;
   }
 
   void pop_back() { data.pop_back(); }
@@ -97,30 +167,54 @@ public:
 
   // Insert methods
   typename std::vector<T>::iterator insert(typename std::vector<T>::const_iterator pos, const T& value) {
-    return data.insert(pos, value);
+    auto it = data.insert(pos, value);
+    initializeItem(*it);
+    return it;
   }
 
   typename std::vector<T>::iterator insert(typename std::vector<T>::const_iterator pos, T&& value) {
-    return data.insert(pos, std::move(value));
+    auto it = data.insert(pos, std::move(value));
+    initializeItem(*it);
+    return it;
   }
 
   typename std::vector<T>::iterator insert(typename std::vector<T>::const_iterator pos, size_t count, const T& value) {
-    return data.insert(pos, count, value);
+    auto it = data.insert(pos, count, value);
+    // Initialize all newly inserted elements
+    for (size_t i = 0; i < count; ++i) {
+      initializeItem(*(it + i));
+    }
+    return it;
   }
 
   template<typename InputIt>
   typename std::vector<T>::iterator insert(typename std::vector<T>::const_iterator pos, InputIt first, InputIt last) {
-    return data.insert(pos, first, last);
+    auto oldSize = data.size();
+    auto it = data.insert(pos, first, last);
+    // Calculate the distance from it to the end of the newly inserted elements
+    auto count = std::distance(first, last);
+    // Initialize all newly inserted elements
+    for (size_t i = 0; i < count; ++i) {
+      initializeItem(*(it + i));
+    }
+    return it;
   }
 
   typename std::vector<T>::iterator insert(typename std::vector<T>::const_iterator pos, std::initializer_list<T> ilist) {
-    return data.insert(pos, ilist);
+    auto it = data.insert(pos, ilist);
+    // Initialize all newly inserted elements
+    for (size_t i = 0; i < ilist.size(); ++i) {
+      initializeItem(*(it + i));
+    }
+    return it;
   }
 
   // Emplace method
   template<typename... Args>
   typename std::vector<T>::iterator emplace(typename std::vector<T>::const_iterator pos, Args&&... args) {
-    return data.emplace(pos, std::forward<Args>(args)...);
+    auto it = data.emplace(pos, std::forward<Args>(args)...);
+    initializeItem(*it);
+    return it;
   }
 
   // Erase methods
@@ -158,9 +252,16 @@ public:
   bool operator!=(const AnthemModelVector& other) const { return data != other.data; }
 
   // Additional methods
-  // void myMethod() {
-    // Method implementation
-  // }
+  void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override {
+    AnthemModelBase::initialize(self, parent);
+
+    // Initialize all elements in the vector, if applicable
+    if constexpr (isAnthemModelBase) {
+      for (auto& item : data) {
+        initializeItem(item);
+      }
+    }
+  }
 };
 
 namespace rfl {

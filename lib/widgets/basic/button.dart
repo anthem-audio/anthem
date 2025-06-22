@@ -294,21 +294,17 @@ class _ButtonState extends State<Button> {
           height: widget.height,
           decoration: BoxDecoration(
             borderRadius: widget.borderRadius ?? BorderRadius.circular(4),
-            border:
-                widget.hideBorder == true
-                    ? null
-                    : Border.all(
-                      color: theme.border.getColor(hovered, pressed),
-                    ),
+            border: widget.hideBorder == true
+                ? null
+                : Border.all(color: theme.border.getColor(hovered, pressed)),
             color: backgroundColor,
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(1),
             child: Stack(
-              fit:
-                  widget.expand != null
-                      ? StackFit.expand
-                      : StackFit.passthrough,
+              fit: widget.expand != null
+                  ? StackFit.expand
+                  : StackFit.passthrough,
               children: stackChildren,
             ),
           ),

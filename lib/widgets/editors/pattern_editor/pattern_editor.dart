@@ -54,8 +54,8 @@ class _PatternEditorState extends State<PatternEditor> {
     final projectController = Provider.of<ProjectController>(context);
     controller ??= PatternEditorController(project: project);
 
-    final kebabMenuController = MenuController();
-    final addChannelMenuController = MenuController();
+    final kebabMenuController = AnthemMenuController();
+    final addChannelMenuController = AnthemMenuController();
 
     return Provider.value(
       value: controller!,
@@ -109,18 +109,16 @@ class _PatternEditorState extends State<PatternEditor> {
                             width: 169,
                             height: 26,
                             hint: 'Change the active pattern',
-                            items:
-                                project.sequence.patternOrder.map((id) {
-                                  final pattern =
-                                      project.sequence.patterns[id]!;
-                                  return DropdownItem(
-                                    id: id,
-                                    name: pattern.name,
-                                    hint: pattern.name,
-                                  );
-                                }).toList(),
-                            selectedID:
-                                project.sequence.activePatternID?.toString(),
+                            items: project.sequence.patternOrder.map((id) {
+                              final pattern = project.sequence.patterns[id]!;
+                              return DropdownItem(
+                                id: id,
+                                name: pattern.name,
+                                hint: pattern.name,
+                              );
+                            }).toList(),
+                            selectedID: project.sequence.activePatternID
+                                ?.toString(),
                             onChanged: (id) {
                               project.sequence.activePatternID = id;
                             },
@@ -152,10 +150,8 @@ class _PatternEditorState extends State<PatternEditor> {
                                   child: Observer(
                                     builder: (context) {
                                       return Column(
-                                        children:
-                                            project.generatorOrder.map<Widget>((
-                                              id,
-                                            ) {
+                                        children: project.generatorOrder
+                                            .map<Widget>((id) {
                                               return Padding(
                                                 padding: const EdgeInsets.only(
                                                   bottom: 1,
@@ -164,7 +160,8 @@ class _PatternEditorState extends State<PatternEditor> {
                                                   generatorID: id,
                                                 ),
                                               );
-                                            }).toList(),
+                                            })
+                                            .toList(),
                                       );
                                     },
                                   ),

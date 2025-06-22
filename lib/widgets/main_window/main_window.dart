@@ -38,7 +38,7 @@ class MainWindow extends StatefulWidget {
 
 class _MainWindowState extends State<MainWindow> {
   bool isTestMenuOpen = false;
-  MenuController menuController = MenuController();
+  AnthemMenuController menuController = AnthemMenuController();
   MainWindowController controller = MainWindowController();
 
   @override
@@ -58,15 +58,14 @@ class _MainWindowState extends State<MainWindow> {
             padding: const EdgeInsets.all(3),
             child: Observer(
               builder: (context) {
-                final tabs =
-                    store.projectOrder
-                        .map<TabDef>(
-                          (projectId) => TabDef(
-                            id: projectId,
-                            title: store.projects[projectId]!.id,
-                          ),
-                        )
-                        .toList();
+                final tabs = store.projectOrder
+                    .map<TabDef>(
+                      (projectId) => TabDef(
+                        id: projectId,
+                        title: store.projects[projectId]!.id,
+                      ),
+                    )
+                    .toList();
 
                 return Column(
                   children: [

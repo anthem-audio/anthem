@@ -45,12 +45,13 @@ class CompileSequenceRequest extends Request {
   List<String>? channelsToRebuild;
 
   /// If specified, these are the ranges of the sequence that are no longer
-  /// "valid".
+  /// valid.
   ///
-  /// Valid in this context means that the data within this range is changed and
-  /// can no longer be relied on for playback. For example, if an instrument has
-  /// received a note on event and the playhead is within one of these ranges,
-  /// the instrument is not guaranteed to receive a matching note off event.
+  /// "Valid" in this context means that the data within this range is changed
+  /// and can no longer be relied on for playback. For example, if an instrument
+  /// has received a note on event and the playhead is within one of these
+  /// ranges, the instrument is not guaranteed to receive a matching note off
+  /// event.
   ///
   /// The audio thread in the engine is expected to honor these ranges. If the
   /// playhead is within one of these ranges when the audio thread picks up the
@@ -104,6 +105,32 @@ class RemoveChannelRequest extends Request {
   RemoveChannelRequest.uninitialized() : channelId = '';
 
   RemoveChannelRequest({required int id, required this.channelId}) {
+    super.id = id;
+  }
+}
+
+/// Jumps the location of the playhead to the given offset.
+class PlayheadJumpRequest extends Request {
+  /// The offset to jump to
+  double offset;
+
+  PlayheadJumpRequest.uninitialized() : offset = 0;
+
+  PlayheadJumpRequest({required int id, required this.offset}) {
+    super.id = id;
+  }
+}
+
+/// Notifies the engine that loop points have changed for a given sequence.
+class LoopPointsChangedRequest extends Request {
+  /// The sequence ID for which the loop points have changed.
+  ///
+  /// This will be either a pattern ID or an arrangement ID.
+  String sequenceId;
+
+  LoopPointsChangedRequest.uninitialized() : sequenceId = '';
+
+  LoopPointsChangedRequest({required int id, required this.sequenceId}) {
     super.id = id;
   }
 }

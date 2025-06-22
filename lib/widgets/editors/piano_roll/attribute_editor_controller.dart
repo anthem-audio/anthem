@@ -126,10 +126,13 @@ class AttributeEditorController {
       targetOffset = closestOffsetAfter;
     }
 
-    final affectedNotes = (hasSelectedNotes
-            ? notes.where((note) => viewModel.selectedNotes.contains(note.id))
-            : notes)
-        .where((note) => note.offset == targetOffset);
+    final affectedNotes =
+        (hasSelectedNotes
+                ? notes.where(
+                    (note) => viewModel.selectedNotes.contains(note.id),
+                  )
+                : notes)
+            .where((note) => note.offset == targetOffset);
 
     late final int bottom;
     late final int top;
@@ -186,19 +189,18 @@ class AttributeEditorController {
         break;
     }
 
-    final commands =
-        oldValues.keys
-            .map(
-              (noteID) => SetNoteAttributeCommand(
-                patternID: pattern.id,
-                generatorID: project.activeInstrumentID!,
-                noteID: noteID,
-                attribute: attribute,
-                oldValue: oldValues[noteID]!,
-                newValue: newValues[noteID]!,
-              ),
-            )
-            .toList();
+    final commands = oldValues.keys
+        .map(
+          (noteID) => SetNoteAttributeCommand(
+            patternID: pattern.id,
+            generatorID: project.activeInstrumentID!,
+            noteID: noteID,
+            attribute: attribute,
+            oldValue: oldValues[noteID]!,
+            newValue: newValues[noteID]!,
+          ),
+        )
+        .toList();
 
     final journalPageCommand = JournalPageCommand(commands);
 

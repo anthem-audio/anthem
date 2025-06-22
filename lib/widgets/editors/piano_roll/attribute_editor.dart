@@ -125,10 +125,11 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
                             viewPixelWidth: constraints.maxWidth,
                             pixelOffsetFromLeft: rawEvent.localPosition.dx,
                           ),
-                          normalizedY: (1 -
-                                  (rawEvent.localPosition.dy /
-                                      constraints.maxHeight))
-                              .clamp(0, 1),
+                          normalizedY:
+                              (1 -
+                                      (rawEvent.localPosition.dy /
+                                          constraints.maxHeight))
+                                  .clamp(0, 1),
                           viewSize: constraints.biggest,
                         );
                       }
@@ -151,15 +152,14 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
                           builder: (context, child) {
                             return ClipRect(
                               child: CustomPaintObserver(
-                                painterBuilder:
-                                    () => PianoRollAttributePainter(
-                                      viewModel: viewModel,
-                                      project: project,
-                                      timeViewStart:
-                                          widget.timeViewStartAnimation.value,
-                                      timeViewEnd:
-                                          widget.timeViewEndAnimation.value,
-                                    ),
+                                painterBuilder: () => PianoRollAttributePainter(
+                                  viewModel: viewModel,
+                                  project: project,
+                                  timeViewStart:
+                                      widget.timeViewStartAnimation.value,
+                                  timeViewEnd:
+                                      widget.timeViewEndAnimation.value,
+                                ),
                               ),
                             );
                           },
@@ -203,8 +203,8 @@ class PianoRollAttributePainter extends CustomPainterObserver {
 
     final selectedNotePaint = Paint()..color = selectedNoteColor.toColor();
     final notePaint = Paint()..color = noteColor.toColor();
-    final selectedNoteCirclePaint =
-        Paint()..color = selectedNoteCircleColor.toColor();
+    final selectedNoteCirclePaint = Paint()
+      ..color = selectedNoteCircleColor.toColor();
     final noteCirclePaint = Paint()..color = noteCircleColor.toColor();
 
     final activePattern =
@@ -284,14 +284,12 @@ class PianoRollAttributePainter extends CustomPainterObserver {
 
       if (endX < 0 || startX > size.width) continue;
 
-      final paint =
-          viewModel.selectedNotes.contains(note.id)
-              ? selectedNotePaint
-              : notePaint;
-      final circleCenterPaint =
-          viewModel.selectedNotes.contains(note.id)
-              ? selectedNoteCirclePaint
-              : noteCirclePaint;
+      final paint = viewModel.selectedNotes.contains(note.id)
+          ? selectedNotePaint
+          : notePaint;
+      final circleCenterPaint = viewModel.selectedNotes.contains(note.id)
+          ? selectedNoteCirclePaint
+          : noteCirclePaint;
 
       double valueToPixels(num value) =>
           ((1 - ((value - bottom) / (top - bottom))) * size.height)

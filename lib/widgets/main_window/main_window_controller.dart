@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -58,7 +58,7 @@ class MainWindowController {
     final store = AnthemStore.instance;
 
     // Stop engine
-    store.projects[projectId]!.engine.dispose();
+    store.projects[projectId]!.dispose();
 
     // Remove project from model
     store.projects.remove(projectId);
@@ -73,11 +73,10 @@ class MainWindowController {
   /// Returns the ID of the loaded project, or null if the project load failed
   /// or was cancelled.
   Future<Id?> loadProject() async {
-    final path =
-        (await FilePicker.platform.pickFiles(
-          type: FileType.custom,
-          allowedExtensions: ['anthem'],
-        ))?.files[0].path;
+    final path = (await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['anthem'],
+    ))?.files[0].path;
     if (path == null) return null;
     final file = await File(path).readAsString();
 

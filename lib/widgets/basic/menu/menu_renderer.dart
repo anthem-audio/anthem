@@ -80,18 +80,16 @@ class _MenuRendererState extends State<MenuRenderer> {
     final widest = widget.menu.children
         .whereType<AnthemMenuItem>()
         .map((child) {
-          final labelWidth =
-              measureText(
-                text: child.text,
-                textStyle: const TextStyle(fontSize: _Constants.fontSize),
-                context: context,
-              ).width;
-          var submenuArrowWidth =
-              hasSubmenu
-                  ? _Constants.padding +
-                      _Constants.submenuArrowWidth +
-                      (child.submenu != null ? 50 : 0)
-                  : 0;
+          final labelWidth = measureText(
+            text: child.text,
+            textStyle: const TextStyle(fontSize: _Constants.fontSize),
+            context: context,
+          ).width;
+          var submenuArrowWidth = hasSubmenu
+              ? _Constants.padding +
+                    _Constants.submenuArrowWidth +
+                    (child.submenu != null ? 50 : 0)
+              : 0;
           // The extra 4 pixels here is due to the border from the hover effect,
           // plus something else that I'm not sure about. We need 2px for the hover
           // effect border... I suppose the other 5px are for good luck. Anything
@@ -128,16 +126,15 @@ class _MenuRendererState extends State<MenuRenderer> {
         child: Padding(
           padding: const EdgeInsets.all(_Constants.padding),
           child: Column(
-            children:
-                widget.menu.children
-                    .map(
-                      (child) => MenuItemRenderer(
-                        menuItem: child,
-                        isMouseInMenu: isMouseInside,
-                        projectController: widget.projectController,
-                      ),
-                    )
-                    .toList(),
+            children: widget.menu.children
+                .map(
+                  (child) => MenuItemRenderer(
+                    menuItem: child,
+                    isMouseInMenu: isMouseInside,
+                    projectController: widget.projectController,
+                  ),
+                )
+                .toList(),
           ),
         ),
       ),
@@ -210,12 +207,11 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
       final showHoverState =
           isHovered || (isSubmenuOpen && !widget.isMouseInMenu);
 
-      final textColor =
-          showHoverState
-              ? Theme.primary.main
-              : item.disabled
-              ? Theme.text.disabled
-              : Theme.text.main;
+      final textColor = showHoverState
+          ? Theme.primary.main
+          : item.disabled
+          ? Theme.text.disabled
+          : Theme.text.main;
 
       final rowChildren = [
         Text(
@@ -291,10 +287,9 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
             decoration: BoxDecoration(
               color: showHoverState ? Theme.primary.subtle : null,
               // This adds 2px to the width of the menu
-              border:
-                  showHoverState
-                      ? Border.all(color: Theme.primary.subtleBorder)
-                      : Border.all(color: const Color(0x00000000)),
+              border: showHoverState
+                  ? Border.all(color: Theme.primary.subtleBorder)
+                  : Border.all(color: const Color(0x00000000)),
               borderRadius: BorderRadius.circular(4),
             ),
             height: height,

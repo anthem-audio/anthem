@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -24,7 +24,7 @@
 #include <juce_events/juce_events.h>
 
 #include "modules/processing_graph/compiler/anthem_graph_compilation_result.h"
-#include "modules/util/thread_safe_queue.h"
+#include "modules/util/ring_buffer.h"
 
 // This class is used to handle the audio thread concerns of the processing
 // graph. It owns a read-only instance of AnthemGraphTopology as well as a
@@ -37,12 +37,12 @@
 class AnthemGraphProcessor {
 private:
   AnthemGraphCompilationResult* processingSteps;
-  ThreadSafeQueue<AnthemGraphCompilationResult*> processingStepsQueue;
-  ThreadSafeQueue<AnthemGraphCompilationResult*> processingStepsDeletionQueue;
+  RingBuffer<AnthemGraphCompilationResult*, 512> processingStepsQueue;
+  RingBuffer<AnthemGraphCompilationResult*, 512> processingStepsDeletionQueue;
   juce::TimedCallback clearDeletionQueueTimedCallback;
 public:
   // Processes a single block of audio in the graph. This will also process and
-  // propagate MIDI and control data.
+  // propagate event and control data.
   void process(int numSamples);
 
   // This function adds a new set of processing steps to the queue. This is

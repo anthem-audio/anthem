@@ -75,10 +75,9 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
 
         if (rowWidth < constraints.maxWidth && constraints.maxWidth.isFinite) {
           final correction = constraints.maxWidth - rowWidth;
-          tabWidths =
-              tabWidths
-                  .map((size) => size + correction / tabWidths.length)
-                  .toList();
+          tabWidths = tabWidths
+              .map((size) => size + correction / tabWidths.length)
+              .toList();
           rowWidth += correction;
         }
 

@@ -69,7 +69,8 @@ String wrapCodeWithMobXSetter(
   // only way to tell if the field is previously unset is to catch the error
   // that is thrown when trying to access it.
   if (fieldInfo.fieldElement.isLate) {
-    valueSetter = '''try {
+    valueSetter =
+        '''try {
   oldValue = $fieldName;
 } catch (_) {
   oldValue = null;

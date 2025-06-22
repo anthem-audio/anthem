@@ -20,6 +20,7 @@
 import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/model.dart';
 
 import 'command.dart';
@@ -30,7 +31,11 @@ void _addGenerator(
   int? index,
   required NodeModel generatorNode,
   required NodeModel gainNode,
-  required NodeModel midiGenNode,
+  // required NodeModel midiGenNode,
+  required NodeModel sequenceNoteProviderNode,
+
+  Map<Id, AnthemObservableList<NoteModel>>? notes,
+  Map<Id, AutomationLaneModel>? automationLanes,
 }) {
   if (index != null) {
     project.generatorOrder.insert(index, generator.id);
@@ -47,15 +52,25 @@ void _addGenerator(
 
   project.processingGraph.addNode(generatorNode);
   project.processingGraph.addNode(gainNode);
-  project.processingGraph.addNode(midiGenNode);
+  // project.processingGraph.addNode(midiGenNode);
+  project.processingGraph.addNode(sequenceNoteProviderNode);
 
+  // project.processingGraph.addConnection(
+  //   NodeConnectionModel(
+  //     id: getId(),
+  //     sourceNodeId: midiGenNode.id,
+  //     sourcePortId: midiGenNode.eventOutputPorts[0].id,
+  //     destinationNodeId: generatorNode.id,
+  //     destinationPortId: generatorNode.eventInputPorts[0].id,
+  //   ),
+  // );
   project.processingGraph.addConnection(
     NodeConnectionModel(
       id: getId(),
-      sourceNodeId: midiGenNode.id,
-      sourcePortId: midiGenNode.midiOutputPorts[0].id,
+      sourceNodeId: sequenceNoteProviderNode.id,
+      sourcePortId: sequenceNoteProviderNode.eventOutputPorts[0].id,
       destinationNodeId: generatorNode.id,
-      destinationPortId: generatorNode.midiInputPorts[0].id,
+      destinationPortId: generatorNode.eventInputPorts[0].id,
     ),
   );
   project.processingGraph.addConnection(
@@ -73,10 +88,23 @@ void _addGenerator(
       sourceNodeId: gainNode.id,
       sourcePortId: gainNode.audioOutputPorts[0].id,
       destinationNodeId: project.processingGraph.masterOutputNodeId,
-      destinationPortId:
-          project.processingGraph.getMasterOutputNode().audioInputPorts[0].id,
+      destinationPortId: project.processingGraph
+          .getMasterOutputNode()
+          .audioInputPorts[0]
+          .id,
     ),
   );
+
+  // Add back sequence data for this generator to all patterns
+  for (final pattern in project.sequence.patterns.values) {
+    if (notes != null && notes.containsKey(pattern.id)) {
+      pattern.notes[generator.id] = notes[pattern.id]!;
+    }
+
+    if (automationLanes != null && automationLanes.containsKey(pattern.id)) {
+      pattern.automationLanes[generator.id] = automationLanes[pattern.id]!;
+    }
+  }
 
   project.engine.processingGraphApi.compile();
 }
@@ -95,7 +123,19 @@ void _removeGenerator(ProjectModel project, Id generatorID) {
 
   project.processingGraph.removeNode(generator.generatorNodeId!);
   project.processingGraph.removeNode(generator.gainNodeId!);
-  project.processingGraph.removeNode(generator.midiGenNodeId!);
+  // project.processingGraph.removeNode(generator.midiGenNodeId!);
+  project.processingGraph.removeNode(generator.sequenceNoteProviderNodeId!);
+
+  // Remove sequence data for this generator from all patterns
+  for (final pattern in project.sequence.patterns.values) {
+    if (pattern.notes.containsKey(generatorID)) {
+      pattern.notes.remove(generatorID);
+    }
+
+    if (pattern.automationLanes.containsKey(generatorID)) {
+      pattern.automationLanes.remove(generatorID);
+    }
+  }
 
   project.engine.processingGraphApi.compile();
 }
@@ -133,7 +173,9 @@ class AddGeneratorCommand extends Command {
   @override
   void execute(ProjectModel project) {
     final gainNode = GainProcessorModel.createNode();
-    final midiGenNode = SimpleMidiGeneratorProcessorModel.createNode();
+    // final midiGenNode = SimpleMidiGeneratorProcessorModel.createNode();
+    final sequencerNoteProviderNode =
+        SequenceNoteProviderProcessorModel.createNode(generatorId);
 
     final generator = GeneratorModel(
       id: generatorId,
@@ -142,7 +184,8 @@ class AddGeneratorCommand extends Command {
       color: color,
       generatorNodeId: node.id,
       gainNodeId: gainNode.id,
-      midiGenNodeId: midiGenNode.id,
+      // midiGenNodeId: midiGenNode.id,
+      sequenceNoteProviderNodeId: sequencerNoteProviderNode.id,
     );
 
     _addGenerator(
@@ -150,7 +193,9 @@ class AddGeneratorCommand extends Command {
       generator,
       generatorNode: node,
       gainNode: gainNode,
-      midiGenNode: midiGenNode,
+
+      // midiGenNode: midiGenNode,
+      sequenceNoteProviderNode: sequencerNoteProviderNode,
     );
   }
 
@@ -164,8 +209,15 @@ class RemoveGeneratorCommand extends Command {
   GeneratorModel generator;
   NodeModel generatorNode;
   NodeModel gainNode;
-  NodeModel midiGenNode;
+  // NodeModel midiGenNode;
+  NodeModel sequenceNoteProviderNode;
   late int index;
+
+  /// Map of pattern ID to notes for this generator.
+  Map<Id, AnthemObservableList<NoteModel>>? notes;
+
+  /// Map of pattern ID to notes for this generator.
+  Map<Id, AutomationLaneModel>? automationLanes;
 
   RemoveGeneratorCommand({
     required ProjectModel project,
@@ -173,8 +225,25 @@ class RemoveGeneratorCommand extends Command {
   }) : generatorNode =
            project.processingGraph.nodes[generator.generatorNodeId]!,
        gainNode = project.processingGraph.nodes[generator.gainNodeId]!,
-       midiGenNode = project.processingGraph.nodes[generator.midiGenNodeId]! {
+       //  midiGenNode = project.processingGraph.nodes[generator.midiGenNodeId]!
+       sequenceNoteProviderNode =
+           project.processingGraph.nodes[generator // what is this formatting
+               .sequenceNoteProviderNodeId]! {
     index = project.generatorOrder.indexOf(generator.id);
+
+    notes = {};
+    for (final pattern in project.sequence.patterns.values) {
+      if (pattern.notes.containsKey(generator.id)) {
+        notes![pattern.id] = pattern.notes[generator.id]!;
+      }
+    }
+
+    automationLanes = {};
+    for (final pattern in project.sequence.patterns.values) {
+      if (pattern.automationLanes.containsKey(generator.id)) {
+        automationLanes![pattern.id] = pattern.automationLanes[generator.id]!;
+      }
+    }
   }
 
   @override
@@ -190,7 +259,11 @@ class RemoveGeneratorCommand extends Command {
       index: index,
       generatorNode: generatorNode,
       gainNode: gainNode,
-      midiGenNode: midiGenNode,
+      // midiGenNode: midiGenNode,
+      sequenceNoteProviderNode: sequenceNoteProviderNode,
+
+      notes: notes,
+      automationLanes: automationLanes,
     );
   }
 }
