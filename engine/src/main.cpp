@@ -47,19 +47,19 @@
 
 #include "messages/messages.h"
 
-volatile bool heartbeatOccurred = true;
+volatile bool gotMessageSinceLastHeartbeatCheck = true;
 
 // Checks for a recent heartbeat every 10 seconds. If there wasn't one, we exit
 // the application.
 void heartbeat() {
   while (true) {
-    if (!heartbeatOccurred) {
+    if (!gotMessageSinceLastHeartbeatCheck) {
       juce::MessageManager::callAsync([]() {
         juce::JUCEApplication::quit();
       });
     }
 
-    heartbeatOccurred = false;
+    gotMessageSinceLastHeartbeatCheck = false;
 
     std::this_thread::sleep_for(std::chrono::seconds(10));
   }
@@ -84,6 +84,8 @@ class CommandMessageListener : public juce::MessageListener
 {
 public:
   void handleMessage(const juce::Message& message) override {
+    gotMessageSinceLastHeartbeatCheck = true;
+
     const CommandMessage& command = dynamic_cast<const CommandMessage&>(message);
 
     auto request = command.request;
@@ -120,8 +122,6 @@ public:
       response = std::optional(
         std::move(heartbeatReply)
       );
-
-      heartbeatOccurred = true;
     }
 
     // Forward request to handlers

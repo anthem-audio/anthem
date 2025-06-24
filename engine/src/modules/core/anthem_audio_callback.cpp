@@ -23,8 +23,10 @@
 AnthemAudioCallback::AnthemAudioCallback(Anthem* anthem) {
   this->anthem = anthem;
 
-  auto masterOutputNodeSharedPtr = Anthem::getInstance().project->processingGraph()->nodes()->at(
-    Anthem::getInstance().project->processingGraph()->masterOutputNodeId()
+  auto& processingGraph = Anthem::getInstance().project->processingGraph();
+
+  auto masterOutputNodeSharedPtr = processingGraph->nodes()->at(
+    processingGraph->masterOutputNodeId()
   );
   masterOutputProcessorSharedPtr = std::static_pointer_cast<MasterOutputProcessor>(masterOutputNodeSharedPtr->getProcessor().value());
   masterOutputProcessor = masterOutputProcessorSharedPtr.get();
@@ -109,8 +111,24 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
 }
 
 void AnthemAudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIODevice* device) {
-  // this->sampleRate = device->getCurrentSampleRate();
-  // TODO
+  // According to this:
+  //    https://forum.juce.com/t/which-thread-calls-audiodeviceabouttostart-stopped/6594
+  // -- we don't have any guarantees about which thread this will be called on, so we
+  // schedule this update to run on the message thread.
+  
+  juce::MessageManager::callAsync([device]() {
+    auto& anthem = Anthem::getInstance();
+    
+    // This notifies the UI that the engine has started
+    Response response = AudioReadyEvent {
+      .responseBase = ResponseBase {
+        .id = -1
+      },
+    };
+    
+    auto responseText = rfl::json::write(response);
+    AnthemComms::getInstance().writeString(responseText);
+  });
 }
 
 void AnthemAudioCallback::audioDeviceStopped() {
