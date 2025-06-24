@@ -29,12 +29,6 @@ VisualizationBroker::VisualizationBroker() {
 void VisualizationBroker::setSubscriptions(
   const std::vector<std::string>& subscriptions
 ) {
-  std::cout << "Setting subscriptions: ";
-  for (const auto& subscription : subscriptions) {
-    std::cout << subscription << ", ";
-  }
-  std::cout << std::endl;
-
   this->subscriptions = subscriptions;
 }
 
@@ -92,8 +86,8 @@ void VisualizationBroker::timerCallback() {
     }
   }
 
-  // Create a VisualizationUpdate message and send it to the UI
-  Response visualizationUpdate = VisualizationUpdate {
+  // Create a VisualizationUpdateEvent message and send it to the UI
+  Response visualizationUpdate = VisualizationUpdateEvent {
     .items = visualizationItems,
     .responseBase = ResponseBase {
       // Usually, the response ID is the same as the ID of the request that was

@@ -115,7 +115,7 @@ class Engine {
   }
 
   void _onReply(Response response) {
-    if (response is VisualizationUpdate) {
+    if (response is VisualizationUpdateEvent) {
       project.visualizationProvider.processVisualizationUpdate(response);
       return;
     }

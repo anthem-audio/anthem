@@ -27,7 +27,7 @@ import 'dart:math';
 
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart'
-    show VisualizationUpdate;
+    show VisualizationUpdateEvent;
 import 'package:anthem/model/project.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';

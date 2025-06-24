@@ -56,7 +56,7 @@ void main() {
           );
 
           visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdate(
+            VisualizationUpdateEvent(
               id: 0,
               items: [
                 VisualizationItem(id: 'unrelatedId', values: [double.nan]),
@@ -69,7 +69,7 @@ void main() {
           expect(subscription.readValues(), [0.5]);
 
           visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdate(
+            VisualizationUpdateEvent(
               id: 0,
               items: [
                 VisualizationItem(
@@ -90,7 +90,7 @@ void main() {
           );
 
           visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdate(
+            VisualizationUpdateEvent(
               id: 0,
               items: [
                 VisualizationItem(id: 'unrelatedId', values: [double.nan]),
@@ -103,7 +103,7 @@ void main() {
           expect(subscription.readValues(), [0.5]);
 
           visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdate(
+            VisualizationUpdateEvent(
               id: 0,
               items: [
                 VisualizationItem(
@@ -126,7 +126,7 @@ void main() {
           // be the maximum across the two updates
 
           visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdate(
+            VisualizationUpdateEvent(
               id: 0,
               items: [
                 VisualizationItem(id: 'subscriptionId', values: [0.9, 1.0]),
@@ -135,7 +135,7 @@ void main() {
           );
 
           visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdate(
+            VisualizationUpdateEvent(
               id: 0,
               items: [
                 VisualizationItem(
@@ -161,7 +161,7 @@ void main() {
           );
 
           visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdate(
+            VisualizationUpdateEvent(
               id: 0,
               items: [
                 VisualizationItem(id: 'unrelatedId', values: [double.nan]),
@@ -173,7 +173,7 @@ void main() {
           expect(subscription.readValues(), [0.5]);
 
           visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdate(
+            VisualizationUpdateEvent(
               id: 0,
               items: [
                 VisualizationItem(id: 'subscriptionId', values: [0.6]),
@@ -184,7 +184,7 @@ void main() {
           expect(subscription.readValues(), [0.6]);
 
           visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdate(
+            VisualizationUpdateEvent(
               id: 0,
               items: [
                 VisualizationItem(id: 'subscriptionId', values: [0.7, 0.8]),
@@ -195,7 +195,7 @@ void main() {
           expect(subscription.readValues(), [0.7, 0.8]);
 
           visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdate(
+            VisualizationUpdateEvent(
               id: 0,
               items: [
                 VisualizationItem(id: 'subscriptionId', values: [0.9, 1.0]),
@@ -204,7 +204,7 @@ void main() {
           );
 
           visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdate(
+            VisualizationUpdateEvent(
               id: 0,
               items: [
                 VisualizationItem(id: 'subscriptionId', values: [1.1, 1.2]),
