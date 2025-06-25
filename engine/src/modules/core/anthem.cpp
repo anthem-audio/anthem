@@ -62,13 +62,39 @@ void Anthem::startAudioCallback() {
 void Anthem::compileProcessingGraph() {
   auto result = AnthemGraphCompiler::compile();
 
-  std::cout << "Processing steps: " << result->processContexts.size() << std::endl;
+  // std::cout << "Processing steps: " << result->processContexts.size() << std::endl;
 
-  for (auto& group : result->actionGroups) {
-    juce::Logger::writeToLog("ACTION GROUP");
-    for (auto& action : *group) {
-      action->debugPrint();
+  // for (auto& group : result->actionGroups) {
+  //   juce::Logger::writeToLog("ACTION GROUP");
+  //   for (auto& action : *group) {
+  //     action->debugPrint();
+  //   }
+  // }
+
+  // Make sure all nodes have been prepared for processing
+  for (auto& pair : *project->processingGraph()->nodes()) {
+    auto& node = *pair.second;
+
+    auto& procVariant = node.processor();
+    if (!procVariant.has_value()) {
+      continue;
     }
+
+    rfl::visit([&](const auto& field) {
+      // 'field' is the rfl::Field<Name, Type> wrapper.
+      // We get the actual std::shared_ptr with .value().
+      const auto& sharedPtr = field.value();
+
+      // sharedPtr is a std::shared_ptr<DerivedProcessor>.
+      // .get() returns a DerivedProcessor*.
+      // C++ polymorphism allows us to assign a Derived* to a Base*.
+      AnthemProcessor* baseProcessor = sharedPtr.get();
+
+      if (!baseProcessor->isPrepared) {
+        baseProcessor->prepareToProcess();
+        baseProcessor->isPrepared = true;
+      }
+    }, procVariant.value());
   }
 
   graphProcessor->setProcessingStepsFromMainThread(result);

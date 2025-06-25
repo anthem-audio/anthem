@@ -111,9 +111,4 @@ public:
   void startAudioCallback();
 
   void compileProcessingGraph();
-
-  // TODO: These generic config items should be settable, which means they
-  // should live in the actual synced model.
-  static const int SAMPLE_RATE = 48000;
-  static const int NUM_CHANNELS = 2;
 };

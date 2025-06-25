@@ -37,6 +37,8 @@ ToneGeneratorProcessor::ToneGeneratorProcessor(const ToneGeneratorProcessorModel
 
 ToneGeneratorProcessor::~ToneGeneratorProcessor() {}
 
+void ToneGeneratorProcessor::prepareToProcess() {}
+
 void ToneGeneratorProcessor::process(AnthemProcessContext& context, int numSamples) {
   auto& audioOutBuffer = context.getOutputAudioBuffer(ToneGeneratorProcessorModelBase::audioOutputPortId);
 

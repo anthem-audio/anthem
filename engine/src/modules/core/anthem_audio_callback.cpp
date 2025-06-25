@@ -62,19 +62,22 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
   bool badValue = false;
   float lastBadValue = 0.0f;
   
-  for (int channel = 0; channel < numOutputChannels; ++channel) {
-    if (outputChannelData[channel] == nullptr) {
-      continue;
-    }
-
-    for (int sample = 0; sample < numSamples; ++sample) {
-      auto sampleValue = outputBuffer.getSample(channel, sample);
-      if (std::isnan(sampleValue) || std::isinf(sampleValue) || sampleValue > 100.0f || sampleValue < -100.0f) {
-        badValue = true;
-        lastBadValue = sampleValue;
-        sampleValue = 0.0f;
+  // The master output node may have an empty buffer if it hasn't been initialized yet
+  if (outputBuffer.getNumChannels() > 0 && outputBuffer.getNumSamples() > 0) {
+    for (int channel = 0; channel < numOutputChannels; ++channel) {
+      if (outputChannelData[channel] == nullptr) {
+        continue;
       }
-      outputChannelData[channel][sample] = sampleValue;
+
+      for (int sample = 0; sample < numSamples; ++sample) {
+        auto sampleValue = outputBuffer.getSample(channel, sample);
+        if (std::isnan(sampleValue) || std::isinf(sampleValue) || sampleValue > 100.0f || sampleValue < -100.0f) {
+          badValue = true;
+          lastBadValue = sampleValue;
+          sampleValue = 0.0f;
+        }
+        outputChannelData[channel][sample] = sampleValue;
+      }
     }
   }
 
@@ -94,8 +97,7 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
 
   auto duration = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
   auto durationInSeconds = static_cast<double>(duration) / 1e6;
-  auto sampleRate = 48000.0f; // TODO: Get sample rate from device
-  auto cpuBurden = durationInSeconds * sampleRate / static_cast<double>(numSamples); // actual time / total buffer time
+  auto cpuBurden = durationInSeconds * this->sampleRate / static_cast<double>(numSamples); // actual time / total buffer time
   cpuBurdenProvider->rt_updateCpuBurden(cpuBurden);
 
   playheadPositionProvider->rt_updatePlayheadPosition(transport->rt_playhead);
@@ -115,7 +117,9 @@ void AnthemAudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIO
   //    https://forum.juce.com/t/which-thread-calls-audiodeviceabouttostart-stopped/6594
   // -- we don't have any guarantees about which thread this will be called on, so we
   // schedule this update to run on the message thread.
-  
+
+  this->sampleRate = device->getCurrentSampleRate();
+
   juce::MessageManager::callAsync([device]() {
     auto& anthem = Anthem::getInstance();
     

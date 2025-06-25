@@ -36,6 +36,8 @@ SimpleMidiGeneratorProcessor::SimpleMidiGeneratorProcessor(const SimpleMidiGener
 
 SimpleMidiGeneratorProcessor::~SimpleMidiGeneratorProcessor() {}
 
+void SimpleMidiGeneratorProcessor::prepareToProcess() {}
+
 void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int numSamples) {
   auto& eventOutBuffer = context.getOutputEventBuffer(SimpleMidiGeneratorProcessorModelBase::eventOutputPortId);
 

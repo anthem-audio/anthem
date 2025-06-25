@@ -34,6 +34,12 @@ VST3Processor::~VST3Processor() {
   hidePluginGUI();
 }
 
+// We expect that a valid device is available when this method is called
+void VST3Processor::prepareToProcess() {
+  // If the plugin is not initialized, try to initialize it
+  tryInitializePlugin();
+}
+
 void VST3Processor::process(AnthemProcessContext& context, int numSamples) {
   
   auto& audioOutBuffer = context.getOutputAudioBuffer(VST3ProcessorModelBase::audioOutputPortId);
@@ -80,8 +86,6 @@ void VST3Processor::process(AnthemProcessContext& context, int numSamples) {
 
 void VST3Processor::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) {
   VST3ProcessorModelBase::initialize(self, parent);
-
-  this->tryInitializePlugin();
 }
 
 void VST3Processor::tryInitializePlugin() {
@@ -90,39 +94,8 @@ void VST3Processor::tryInitializePlugin() {
 
   auto* device = audioDeviceManager.getCurrentAudioDevice();
 
-  // If no device is available, we may still be starting the application. We
-  // will retry again later.
   if (device == nullptr) {
-    auto node = std::static_pointer_cast<Node>(parent.lock());
-
-    auto nodeId = node->id();
-    juce::Timer::callAfterDelay(1000, [nodeId]() {
-      // We need to find this node via the node graph, in case our "this"
-      // pointer is no longer valid (likely due to a move during
-      // initialization).
-
-      auto project = Anthem::getInstance().project;
-      auto node = project->processingGraph()->nodes()->at(nodeId);
-      std::shared_ptr<VST3Processor> processor = rfl::visit(
-        [&](auto& item) {
-          using Name = typename std::decay_t<decltype(item)>::Name;
-          if constexpr (std::is_same<Name, rfl::Literal<"VST3ProcessorModel">>()) {
-            return item.value();
-          }
-
-          return std::shared_ptr<VST3Processor>(nullptr);
-        },
-        node->processor().value()
-      );
-
-      if (processor == nullptr) {
-        std::cerr << "Failed to find processor for node: " << nodeId << std::endl;
-        return;
-      }
-
-      processor->tryInitializePlugin();
-    });
-
+    std::cerr << "No audio device available. Cannot initialize VST3 plugin." << std::endl;
     return;
   }
 

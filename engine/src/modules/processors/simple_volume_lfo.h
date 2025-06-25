@@ -38,5 +38,6 @@ public:
   SimpleVolumeLfoProcessor(SimpleVolumeLfoProcessor&&) noexcept = default;
   SimpleVolumeLfoProcessor& operator=(SimpleVolumeLfoProcessor&&) noexcept = default;
 
+  void prepareToProcess() override;
   void process(AnthemProcessContext& context, int numSamples) override;
 };

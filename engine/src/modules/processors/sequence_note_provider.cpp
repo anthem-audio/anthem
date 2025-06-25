@@ -43,6 +43,10 @@ void SequenceNoteProviderProcessor::addEventsForJump(std::unique_ptr<AnthemEvent
   }
 }
 
+void SequenceNoteProviderProcessor::prepareToProcess() {
+  // Nothing to do here
+}
+
 void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int numSamples) {
   auto& outputEventBuffer = context.getOutputEventBuffer(
     SequenceNoteProviderProcessorModelBase::eventOutputPortId

@@ -29,6 +29,8 @@ SimpleVolumeLfoProcessor::SimpleVolumeLfoProcessor(const SimpleVolumeLfoProcesso
 
 SimpleVolumeLfoProcessor::~SimpleVolumeLfoProcessor() {}
 
+void SimpleVolumeLfoProcessor::prepareToProcess() {}
+
 void SimpleVolumeLfoProcessor::process(AnthemProcessContext& context, int numSamples) {
   auto& inputBuffer = context.getInputAudioBuffer(SimpleVolumeLfoProcessorModelBase::audioInputPortId);
   auto& outputBuffer = context.getOutputAudioBuffer(SimpleVolumeLfoProcessorModelBase::audioOutputPortId);

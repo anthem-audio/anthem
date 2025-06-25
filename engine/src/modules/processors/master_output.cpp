@@ -18,19 +18,30 @@
 */
 
 #include "master_output.h"
-
 #include "modules/core/anthem.h"
+#include "modules/processing_graph/compiler/anthem_process_context.h"
+
+#include <juce_audio_basics/juce_audio_basics.h>
 
 #include <iostream>
 
-#include "modules/processing_graph/compiler/anthem_process_context.h"
-
 MasterOutputProcessor::MasterOutputProcessor(const MasterOutputProcessorModelImpl& _impl)
-      : AnthemProcessor("MasterOutput"), MasterOutputProcessorModelBase(_impl) {
-  buffer = juce::AudioSampleBuffer(Anthem::NUM_CHANNELS, MAX_AUDIO_BUFFER_SIZE);
-}
+      : AnthemProcessor("MasterOutput"), MasterOutputProcessorModelBase(_impl) {}
 
 MasterOutputProcessor::~MasterOutputProcessor() {}
+
+void MasterOutputProcessor::prepareToProcess() {
+  auto* device = Anthem::getInstance().audioDeviceManager.getCurrentAudioDevice();
+  if (!device) {
+    std::cerr << "Error: No audio device is currently set." << std::endl;
+    return;
+  }
+
+  auto outputChannelsMask = device->getActiveOutputChannels();
+  auto outputChannels = outputChannelsMask.countNumberOfSetBits();
+  auto bufferSize = device->getCurrentBufferSizeSamples();
+  buffer = juce::AudioSampleBuffer(outputChannels, bufferSize);
+}
 
 void MasterOutputProcessor::process(AnthemProcessContext& context, int numSamples) {
   auto& inputBuffer = context.getInputAudioBuffer(MasterOutputProcessorModelBase::inputPortId);
