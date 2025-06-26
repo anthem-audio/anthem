@@ -23,9 +23,6 @@ void CopyEventsAction::execute([[maybe_unused]] int numSamples) {
   auto& sourceBuffer = this->source->getOutputEventBuffer(this->sourcePortId);
   auto& destinationBuffer = this->destination->getInputEventBuffer(this->destinationPortId);
 
-  // Ensure the buffers have the same size
-  jassert(sourceBuffer->getNumEvents() == destinationBuffer->getNumEvents());
-
   for (int event = 0; event < sourceBuffer->getNumEvents(); ++event) {
     // Copy the event from the source buffer to the destination buffer
     destinationBuffer->addEvent(sourceBuffer->getEvent(event));
