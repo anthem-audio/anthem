@@ -28,6 +28,13 @@ handleProcessingGraphCommand(Request& request) {
 
     juce::Logger::writeToLog("Compiling from UI request...");
 
+    // Test for the audio device to exist. We need to be able to query a valid
+    // audio device to get buffer size and sample rate
+    if (anthem.audioDeviceManager.getCurrentAudioDevice() == nullptr) {
+      jassertfalse;
+      juce::JUCEApplication::quit();
+    }
+
     try {
       anthem.compileProcessingGraph();
     } catch (std::runtime_error& e) {

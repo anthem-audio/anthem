@@ -41,6 +41,7 @@ public:
   ToneGeneratorProcessor(ToneGeneratorProcessor&&) noexcept = default;
   ToneGeneratorProcessor& operator=(ToneGeneratorProcessor&&) noexcept = default;
 
+  void prepareToProcess() override;
   void process(AnthemProcessContext& context, int numSamples) override;
 
   void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override;

@@ -24,18 +24,23 @@
 
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 
+#include "modules/core/anthem.h"
+
 ToneGeneratorProcessor::ToneGeneratorProcessor(const ToneGeneratorProcessorModelImpl& _impl)
       : AnthemProcessor("ToneGenerator"), ToneGeneratorProcessorModelBase(_impl) {
   phase = 0;
-  // amplitude = 0.125;
-  // this->frequency = frequency;
-  sampleRate = 48000.0; // TODO: This should be dynamic - in the context maybe?
 
   hasNoteOverride = false;
   noteOverride = 0;
 }
 
 ToneGeneratorProcessor::~ToneGeneratorProcessor() {}
+
+void ToneGeneratorProcessor::prepareToProcess() {
+  auto* currentDevice = Anthem::getInstance().audioDeviceManager.getCurrentAudioDevice();
+  jassert(currentDevice != nullptr);
+  sampleRate = currentDevice->getCurrentSampleRate();
+}
 
 void ToneGeneratorProcessor::process(AnthemProcessContext& context, int numSamples) {
   auto& audioOutBuffer = context.getOutputAudioBuffer(ToneGeneratorProcessorModelBase::audioOutputPortId);

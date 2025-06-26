@@ -47,7 +47,7 @@ Note that the UI sends an ID with each request, and if the engine gives a respon
 
 The following is an overview of the the folder structure in the Anthem repository:
 
-- **`assets`**: Contains icons and other assets used by the UI. The engine executable and the engine connector dynamic library are both copied here as well, as a way to include them in the Flutter build.
+- **`assets`**: Contains icons and other assets used by the UI. The engine executable is copied here as well, as a way to include it in the Flutter build.
 - **`bin`**: Contains the `anthem:cli` scripts, used for running code generation and building the engine, among other things. Run `dart run anthem:cli -h` for info.
 - **`codegen`**: Contains custom code generation libraries for Anthem, written in Dart. These libraries allow us to define models in Dart, which are then mirrored as C++ models in the engine. JSON serialization and deserialization code is also generated, along with code for automatically synchronizing the two models at runtime.
 - **`docs`**: Contains documentation for the project.

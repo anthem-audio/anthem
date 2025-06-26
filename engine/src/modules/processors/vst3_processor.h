@@ -70,6 +70,7 @@ public:
   VST3Processor(VST3Processor&&) noexcept = default;
   VST3Processor& operator=(VST3Processor&&) noexcept = default;
 
+  void prepareToProcess() override;
   void process(AnthemProcessContext& context, int numSamples) override;
 
   void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override;

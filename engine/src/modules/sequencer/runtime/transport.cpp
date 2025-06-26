@@ -37,6 +37,12 @@ Transport::Transport() : rt_playhead{0.0} {
   this->startTimer(100);
 }
 
+void Transport::prepareToProcess() {
+  auto* currentDevice = Anthem::getInstance().audioDeviceManager.getCurrentAudioDevice();
+  jassert(currentDevice != nullptr);
+  sampleRate = currentDevice->getCurrentSampleRate();
+}
+
 void Transport::rt_prepareForProcessingBlock() {
   // Get the current transport state
   auto newConfig = configBufferedValue.rt_get();
@@ -132,7 +138,7 @@ double Transport::rt_getPlayheadAdvanceAmount(int numSamples) {
   auto beatsPerMinute = rt_config.beatsPerMinute;
   auto ticksPerMinute = ticksPerQuarter * beatsPerMinute;
   auto ticksPerSecond = ticksPerMinute / 60.0;
-  auto ticksPerSample = ticksPerSecond / 48000.0; // Assuming a sample rate of 48000 Hz
+  auto ticksPerSample = ticksPerSecond / sampleRate;
   return static_cast<double>(numSamples * ticksPerSample);
 }
 

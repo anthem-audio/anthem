@@ -247,7 +247,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
       engineID,
       this as ProjectModel,
       enginePathOverride: _enginePathOverride,
-    )..start();
+    );
 
     engine.engineStateStream.listen((state) {
       (this as ProjectModel).engineState = state;
@@ -269,6 +269,8 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
         _modelSyncCompleter = Completer();
       }
     });
+
+    engine.start();
 
     visualizationProvider = VisualizationProvider(this as ProjectModel);
 

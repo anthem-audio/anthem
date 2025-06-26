@@ -83,6 +83,8 @@ private:
   void updateLoopPoints(bool send);
   void clearLoopPoints();
 
+  double sampleRate;
+
 public:
   // The transport config.
   //
@@ -143,6 +145,10 @@ public:
   void updateLoopPoints() {
     updateLoopPoints(true);
   }
+
+  // Analogous to `prepareToProcess()` in AnthemProcessor, this must be called
+  // before the transport is used for processing.
+  void prepareToProcess();
 
   // Must be called at the start of every processing block.
   void rt_prepareForProcessingBlock();

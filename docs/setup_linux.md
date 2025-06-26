@@ -21,15 +21,17 @@ In addition to Flutter, Anthem needs the following:
 1. Clone this repository.
 2. Navigate to the local clone folder.
 3. Run `git submodule init` and `git submodule update`.
-4. Run `dart run anthem:cli codegen generate` to create or update generated code.
-5. Run `dart run anthem:cli engine build --debug`. This will build the engine executable.
+4. Run `flutter pub get`.
+5. `cd` to the `codegen` directory and run `flutter pub get` here as well.
+6. Run `dart run anthem:cli codegen generate` to create or update generated code.
+7. Run `dart run anthem:cli engine build --debug`. This will build the engine executable.
     - Note: You may need to tell CMake which make and compiler tools to use. Anthem is built with `make` and `Clang`. Other tools may work, but are untested. You can tell CMake which tools to use by setting environment variables. Place these in your shell's environment file (e.g. `~/.bashrc` for bash, `/etc/zsh/zshenv` for zsh, etc.):
         ```
         export CC=clang
         export CXX=clang++
         export CMAKE_MAKE_PROGRAM=make
         ```
-6. (Optional) Open the project in your preferred IDE, such as Visual Studio Code.
-7. Open a new terminal session and run `dart run anthem:cli codegen generate --watch`. This will run Dart-related code generation, and keep the generated files up-to-date as you develop.
+8. (Optional) Open the project in your preferred IDE, such as Visual Studio Code.
+9. Open a new terminal session and run `dart run anthem:cli codegen generate --watch`. This will run Dart-related code generation, and keep the generated files up-to-date as you develop.
    - Note: you may need to clean and re-run code generation in order to re-generate the files for the IPC messages if they are changed, since they sometimes don't re-generate automatically. There is a note that prints when running the codegen command above which has more info about this.
-8. Use `flutter run` to run Anthem, or start Anthem via your IDE.
+10. Use `flutter run` to run Anthem, or start Anthem via your IDE.

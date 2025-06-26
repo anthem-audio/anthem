@@ -39,6 +39,16 @@ public:
 
   virtual ~AnthemProcessor() = default;
 
+  // Called on the JUCE message thread to initialize the processor.
+  //
+  // Note that this is called after the audio device is started, so audio device
+  // information can be queried at this point.
+  virtual void prepareToProcess() = 0;
+
+  // This flag must be set after prepareToProcess() is called. It is set by the
+  // caller, not by the processor itself.
+  bool isPrepared = false;
+
   // This method is called by the processing graph to process audio, event and
   // control data. It is called once per processing block.
   virtual void process(AnthemProcessContext& context, int numSamples) = 0;

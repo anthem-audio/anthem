@@ -29,6 +29,11 @@
 // step in the algorithm is annotated here.
 
 AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
+  auto* currentDevice = Anthem::getInstance().audioDeviceManager.getCurrentAudioDevice();
+  jassert(currentDevice != nullptr);
+
+  auto sampleRate = currentDevice->getCurrentSampleRate();
+
   auto& processingGraphModel = Anthem::getInstance().project->processingGraph();
 
   AnthemGraphCompilationResult* result = new AnthemGraphCompilationResult();
@@ -149,7 +154,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
 
   for (auto& node : nodesToProcess) {
     actions->push_back(
-      std::make_unique<WriteParametersToControlInputsAction>(node->context, 48000.0f)
+      std::make_unique<WriteParametersToControlInputsAction>(node->context, sampleRate)
     );
   }
 

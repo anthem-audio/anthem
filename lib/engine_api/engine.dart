@@ -69,6 +69,24 @@ class Engine {
   EngineState get engineState => _engineState;
   bool get isRunning => _engineState == EngineState.running;
 
+  bool _isAudioReady = false;
+
+  /// Completer that completes when the audio thread is ready.
+  final Completer<void> audioReadyCompleter = Completer<void>();
+
+  /// Indicates that the audio thread is active.
+  ///
+  /// This will be false when the engine is first started, and the engine will
+  /// set this via an event once it has initialized the audio thread.
+  set isAudioReady(bool value) {
+    _isAudioReady = value;
+    if (value && !audioReadyCompleter.isCompleted) {
+      audioReadyCompleter.complete();
+    }
+  }
+
+  bool get isAudioReady => _isAudioReady;
+
   /// Returns a [Future] that completes when the engine is ready to receive
   /// messages.
   ///
@@ -115,9 +133,11 @@ class Engine {
   }
 
   void _onReply(Response response) {
-    if (response is VisualizationUpdate) {
+    if (response is VisualizationUpdateEvent) {
       project.visualizationProvider.processVisualizationUpdate(response);
       return;
+    } else if (response is AudioReadyEvent) {
+      isAudioReady = true;
     }
 
     if (replyFunctions[response.id] != null) {

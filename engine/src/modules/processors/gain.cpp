@@ -44,6 +44,8 @@ GainProcessor::GainProcessor(const GainProcessorModelImpl& _impl)
 
 GainProcessor::~GainProcessor() {}
 
+void GainProcessor::prepareToProcess() {}
+
 void GainProcessor::process(AnthemProcessContext& context, int numSamples) {
   auto& audioInBuffer = context.getInputAudioBuffer(GainProcessorModelBase::audioInputPortId);
   auto& audioOutBuffer = context.getOutputAudioBuffer(GainProcessorModelBase::audioOutputPortId);

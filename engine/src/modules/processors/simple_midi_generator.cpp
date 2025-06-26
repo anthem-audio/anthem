@@ -22,9 +22,10 @@
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 #include "modules/sequencer/events/event.h"
 
+#include "modules/core/anthem.h"
+
 SimpleMidiGeneratorProcessor::SimpleMidiGeneratorProcessor(const SimpleMidiGeneratorProcessorModelImpl& _impl)
     : AnthemProcessor("SimpleMidiGenerator"), SimpleMidiGeneratorProcessorModelBase(_impl) {
-  sampleRate = 48000; // TODO: This should be dynamic - in the context maybe?
   durationSamples = 22050;
   velocity = 80;
   noteOn = false;
@@ -35,6 +36,12 @@ SimpleMidiGeneratorProcessor::SimpleMidiGeneratorProcessor(const SimpleMidiGener
 }
 
 SimpleMidiGeneratorProcessor::~SimpleMidiGeneratorProcessor() {}
+
+void SimpleMidiGeneratorProcessor::prepareToProcess() {
+  auto* currentDevice = Anthem::getInstance().audioDeviceManager.getCurrentAudioDevice();
+  jassert(currentDevice != nullptr);
+  sampleRate = currentDevice->getCurrentSampleRate();
+}
 
 void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int numSamples) {
   auto& eventOutBuffer = context.getOutputEventBuffer(SimpleMidiGeneratorProcessorModelBase::eventOutputPortId);

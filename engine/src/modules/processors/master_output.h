@@ -45,6 +45,7 @@ public:
     return 0;
   }
 
+  void prepareToProcess() override;
   void process(AnthemProcessContext& context, int numSamples) override;
 
   void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override {

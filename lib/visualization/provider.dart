@@ -54,7 +54,7 @@ class VisualizationProvider {
     );
   }
 
-  void processVisualizationUpdate(VisualizationUpdate update) {
+  void processVisualizationUpdate(VisualizationUpdateEvent update) {
     for (final item in update.items) {
       final subscriptions = _subscriptions[item.id];
 

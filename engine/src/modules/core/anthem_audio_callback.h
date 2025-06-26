@@ -34,6 +34,8 @@ class Anthem;
 class AnthemAudioCallback : public juce::AudioIODeviceCallback
 {
 private:
+  double sampleRate = -1.0;
+
   int64_t lastDebugOutputTime;
 
   // There is a shared_ptr reference to the processor here to ensure that it is

@@ -46,5 +46,6 @@ public:
     return 0;
   }
 
+  void prepareToProcess() override;
   void process(AnthemProcessContext& context, int numSamples) override;
 };

@@ -60,6 +60,16 @@ class HeartbeatReply extends Response {
   }
 }
 
+/// Unsolicited response that is sent back one time, when the audio device has
+/// initialized.
+class AudioReadyEvent extends Response {
+  AudioReadyEvent.uninitialized();
+
+  AudioReadyEvent({required int id}) {
+    super.id = id;
+  }
+}
+
 @AnthemModel.ipc()
 sealed class Request extends _Request with _$RequestAnthemModelMixin {
   Request();

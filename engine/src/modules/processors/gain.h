@@ -48,5 +48,6 @@ public:
   GainProcessor(GainProcessor&&) noexcept = default;
   GainProcessor& operator=(GainProcessor&&) noexcept = default;
 
+  void prepareToProcess() override;
   void process(AnthemProcessContext& context, int numSamples) override;
 };
