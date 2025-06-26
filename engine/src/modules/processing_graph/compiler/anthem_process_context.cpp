@@ -19,7 +19,7 @@
 
 #include "anthem_process_context.h"
 
-#include "modules/core/anthem.h";
+#include "modules/core/anthem.h"
 
 AnthemProcessContext::AnthemProcessContext(std::shared_ptr<Node>& graphNode, ArenaBufferAllocator<AnthemLiveEvent>* eventAllocator) : graphNode(graphNode) {
   auto* currentDevice = Anthem::getInstance().audioDeviceManager.getCurrentAudioDevice();
