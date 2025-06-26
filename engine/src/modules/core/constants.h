@@ -19,9 +19,6 @@
 
 #pragma once
 
-// Max audio buffer size
-const int MAX_AUDIO_BUFFER_SIZE = 480;
-
 // The default size for an event buffer, in number of events.
 //
 // This is the size of each event buffer when it is first allocated. If the

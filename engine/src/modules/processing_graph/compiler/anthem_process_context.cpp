@@ -19,23 +19,33 @@
 
 #include "anthem_process_context.h"
 
-#include "modules/core/constants.h"
+#include "modules/core/anthem.h";
 
 AnthemProcessContext::AnthemProcessContext(std::shared_ptr<Node>& graphNode, ArenaBufferAllocator<AnthemLiveEvent>* eventAllocator) : graphNode(graphNode) {
+  auto* currentDevice = Anthem::getInstance().audioDeviceManager.getCurrentAudioDevice();
+
+  auto bufferSize = currentDevice->getCurrentBufferSizeSamples();
+
+  auto numChannelsMask = currentDevice->getActiveInputChannels();
+  auto numInputChannels = numChannelsMask.countNumberOfSetBits();
+
+  auto numOutputChannelsMask = currentDevice->getActiveOutputChannels();
+  auto numOutputChannels = numOutputChannelsMask.countNumberOfSetBits();
+
   for (auto& port : *graphNode->audioInputPorts()) {
-    inputAudioBuffers[port->id()] = juce::AudioSampleBuffer(2, MAX_AUDIO_BUFFER_SIZE);
+    inputAudioBuffers[port->id()] = juce::AudioSampleBuffer(numInputChannels, bufferSize);
   }
 
   for (auto& port : *graphNode->audioOutputPorts()) {
-    outputAudioBuffers[port->id()] = juce::AudioSampleBuffer(2, MAX_AUDIO_BUFFER_SIZE);
+    outputAudioBuffers[port->id()] = juce::AudioSampleBuffer(numOutputChannels, bufferSize);
   }
 
   for (auto& port : *graphNode->controlInputPorts()) {
-    inputControlBuffers[port->id()] = juce::AudioSampleBuffer(1, MAX_AUDIO_BUFFER_SIZE);
+    inputControlBuffers[port->id()] = juce::AudioSampleBuffer(1, bufferSize);
   }
 
   for (auto& port : *graphNode->controlOutputPorts()) {
-    outputControlBuffers[port->id()] = juce::AudioSampleBuffer(1, MAX_AUDIO_BUFFER_SIZE);
+    outputControlBuffers[port->id()] = juce::AudioSampleBuffer(1, bufferSize);
   }
 
   for (auto& port : *graphNode->eventInputPorts()) {

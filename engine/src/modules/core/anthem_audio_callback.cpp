@@ -44,7 +44,6 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
   int numSamples,
   [[maybe_unused]] const juce::AudioIODeviceCallbackContext& context
 ) {
-  jassert(numSamples <= MAX_AUDIO_BUFFER_SIZE);
   auto startTime = std::chrono::high_resolution_clock::now();
   
   auto transport = anthem->transport.get();
