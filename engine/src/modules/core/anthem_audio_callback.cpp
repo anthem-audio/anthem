@@ -117,12 +117,12 @@ void AnthemAudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIO
   // -- we don't have any guarantees about which thread this will be called on, so we
   // schedule this update to run on the message thread.
 
-  this->sampleRate = device->getCurrentSampleRate();
-
-  anthem->transport->prepareToProcess();
-
   juce::MessageManager::callAsync([device]() {
     auto& anthem = Anthem::getInstance();
+
+    this->sampleRate = device->getCurrentSampleRate();
+
+    anthem->transport->prepareToProcess();
     
     // This notifies the UI that the engine has started
     Response response = AudioReadyEvent {
