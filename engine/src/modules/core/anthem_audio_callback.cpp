@@ -119,6 +119,8 @@ void AnthemAudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIO
 
   this->sampleRate = device->getCurrentSampleRate();
 
+  anthem->transport->prepareToProcess();
+
   juce::MessageManager::callAsync([device]() {
     auto& anthem = Anthem::getInstance();
     
