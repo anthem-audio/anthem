@@ -166,7 +166,9 @@ to generate the files, then run this script again.''')..red(),
         ..lightGreen(),
     );
     final engineBinaryPath = packageRootPath.resolve(
-      'engine/build/AnthemEngine_artefacts${argResults!['debug'] ? '/Debug' : '/Release'}/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+      Platform.isMacOS
+          ? 'engine/build/AnthemEngine_artefacts/AnthemEngine'
+          : 'engine/build/AnthemEngine_artefacts${argResults!['debug'] ? '/Debug' : '/Release'}/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
     );
     final flutterAssetsDirPath = packageRootPath.resolve('assets/engine/');
 

@@ -179,7 +179,7 @@ class EngineConnector {
             '& {Start-Process -FilePath "$anthemPathStr" -ArgumentList "${EngineSocketServer.instance.port} $_id" -Wait}',
           ]),
         );
-      } else if (Platform.isLinux) {
+      } else {
         _setEngineProcess(
           await Process.start(
             anthemPathStr,
