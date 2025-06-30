@@ -26,6 +26,8 @@ import 'package:anthem/engine_api/engine_socket_server.dart';
 import 'package:anthem/engine_api/memory_block.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 
+part 'engine_connector.debug_engine_path.g.dart';
+
 final mainExecutablePath = File(Platform.resolvedExecutable);
 
 /// Provides a way to communicate with the engine process.
@@ -151,26 +153,8 @@ class EngineConnector {
 
     // If we're in debug mode, we look for the engine as compiled in the repo
     if (kDebugMode) {
-      var projectRoot = Platform.script;
-
-      // Don't use the repo engine if Dart is running in AOT compiled mode
-      if (projectRoot.pathSegments.last.endsWith('.dart')) {
-        while (projectRoot.path.length > 1 &&
-            !(await File.fromUri(
-              projectRoot.resolve('./pubspec.yaml'),
-            ).exists())) {
-          projectRoot = projectRoot.resolve('../');
-        }
-
-        var enginePath = projectRoot.resolve(
-          './engine/build/AnthemEngine_artefacts/Debug/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
-        );
-        if (await File.fromUri(enginePath).exists()) {
-          developmentEnginePath = enginePath.toFilePath(
-            windows: Platform.isWindows,
-          );
-        }
-      }
+      // debugEnginePath comes from a generated file
+      developmentEnginePath = debugEnginePath;
     }
 
     final anthemPathStr =

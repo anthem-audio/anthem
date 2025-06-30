@@ -9,3 +9,6 @@ targets:
         generate_for:
           - lib/*
           - lib/**/*
+      anthem_codegen|debugEnginePathGeneratorBuilder:
+        generate_for:
+          - lib/engine_api/engine_connector.dart
