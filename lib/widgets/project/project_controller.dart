@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:io';
+
 import 'package:anthem/commands/arrangement_commands.dart';
 import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/commands/project_commands.dart';
@@ -169,10 +171,25 @@ class ProjectController {
   }
 
   void addVst3Generator() async {
+    String initialDirectory;
+
+    if (Platform.isWindows) {
+      initialDirectory = 'C:\\Program Files\\Common Files\\VST3';
+    } else if (Platform.isMacOS) {
+      initialDirectory = '/Library/Audio/Plug-Ins/VST3';
+    } else if (Platform.isLinux) {
+      initialDirectory = '~/';
+    } else {
+      throw UnsupportedError(
+        'Unsupported platform: ${Platform.operatingSystem}',
+      );
+    }
+
     final result = await FilePicker.platform.pickFiles(
       dialogTitle: 'Choose a plugin (VST3)',
       allowedExtensions: ['vst3'],
-      initialDirectory: 'C:\\Program Files\\Common Files\\VST3',
+      initialDirectory: initialDirectory,
+      type: FileType.custom,
     );
 
     final path = result?.files[0].path;
