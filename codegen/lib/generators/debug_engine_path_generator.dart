@@ -58,7 +58,7 @@ class DebugEnginePathGeneratorBuilder extends Builder {
 
     // Create the path to the debug engine executable
     var enginePath = projectRoot.resolve(
-      './engine/build/AnthemEngine_artefacts/${Platform.isMacOS ? '' : 'Debug/'}AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+      './engine/build/AnthemEngine_artefacts/Debug/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
     );
 
     // Write the path to the output file
