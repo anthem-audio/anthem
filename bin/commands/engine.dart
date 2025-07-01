@@ -166,9 +166,7 @@ to generate the files, then run this script again.''')..red(),
         ..lightGreen(),
     );
     final engineBinaryPath = packageRootPath.resolve(
-      Platform.isMacOS
-          ? 'engine/build/AnthemEngine_artefacts/AnthemEngine'
-          : 'engine/build/AnthemEngine_artefacts${argResults!['debug'] ? '/Debug' : '/Release'}/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+      'engine/build/AnthemEngine_artefacts${argResults!['debug'] ? '/Debug' : '/Release'}/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
     );
     final flutterAssetsDirPath = packageRootPath.resolve('assets/engine/');
 
@@ -316,16 +314,16 @@ Future<void> _buildCmakeTarget(
   final cmakeProcess = await Process.start(
     'cmake',
     [
-      // Note: On Linux, if you get an error like:
-      // CMake Warning:
-      //   Manually-specified variables were not used by the project:
+      // Note: On Linux, if you get an error like: CMake Warning:
+      // Manually-specified variables were not used by the project:
       //
       //     CMAKE_BUILD_TYPE
       //
       // Then you may need to set the debug/release flag in the same way that
-      // Windows (and eventually macOS) does below in the build command. E.g.:
-      //    cmake --build . --config (Release/Debug)
-      if (Platform.isLinux) '-DCMAKE_BUILD_TYPE=${debug ? 'Debug' : 'Release'}',
+      // Windows does below in the build command. E.g.:
+      //     cmake --build . --config (Release/Debug)
+      if (Platform.isLinux || Platform.isMacOS)
+        '-DCMAKE_BUILD_TYPE=${debug ? 'Debug' : 'Release'}',
 
       if (addressSanitizer) '-DCMAKE_C_FLAGS="-fsanitize=address"',
       if (addressSanitizer) '-DCMAKE_CXX_FLAGS="-fsanitize=address"',
@@ -355,6 +353,8 @@ Future<void> _buildCmakeTarget(
       '.',
       '--target',
       target,
+      // For macOS, I think these are ignored, but they don't seem to break
+      // anything.
       if (Platform.isWindows || Platform.isMacOS) '--config',
       if (Platform.isWindows || Platform.isMacOS) debug ? 'Debug' : 'Release',
     ],
