@@ -71,14 +71,6 @@ jobs:
         run: flutter doctor
       
       # --------------------------------------------------------------
-      # Install CocoaPods (macOS)
-      # --------------------------------------------------------------
-      - name: Install CocoaPods (macOS)
-        if: contains(matrix.os, 'macos')
-        run: |
-          brew install cocoapods
-
-      # --------------------------------------------------------------
       # Get dependencies
       # --------------------------------------------------------------
       - name: Get dependencies
