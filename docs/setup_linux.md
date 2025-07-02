@@ -4,7 +4,7 @@ _Note: These instructions were created on Ubuntu and match our Ubuntu CI builds.
 
 ### Prerequisites
 
-Anthem is developed with the Flutter framework. [You can see instructions for installing Flutter for Linux here.](https://docs.flutter.dev/get-started/install/linux)
+Anthem is developed with the Flutter framework. [You can see instructions for installing Flutter for Linux here.](https://docs.flutter.dev/get-started/install/linux/desktop)
 
 In addition to Flutter, Anthem needs the following:
 

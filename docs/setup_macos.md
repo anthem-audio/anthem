@@ -1,12 +1,17 @@
-## Setup on Windows
+## Setup on macOS
 
 ### Prerequisites
 
-Anthem is developed with the Flutter framework. [You can see instructions for installing Flutter for Windows here.](https://docs.flutter.dev/get-started/install/windows/desktop)
+Anthem is developed with the Flutter framework. [You can see instructions for installing Flutter for macOS here.](https://docs.flutter.dev/get-started/install/macos/desktop)
+
+Homebrew is recommended for installing CocoaPods. You can get Homebrew [here](https://brew.sh/). To install CocoaPods with Homebrew, you can use the following command:
+
+```sh
+brew install cocoapods
+```
 
 In addition to Flutter, Anthem needs the following:
 
-- **The MSVC C++ compiler**: Already required by Flutter for Windows development.
 - **CMake**: Required to build the C++ components of Anthem. Download and install CMake from [here](https://cmake.org/).
 
 ### Instructions
