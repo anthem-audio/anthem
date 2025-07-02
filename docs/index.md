@@ -25,6 +25,10 @@ Anthem is developed with cross-platform technologies, and is designed to run on 
 
 [Setup instructions for Linux](./setup_linux.md)
 
+### macOS
+
+[Setup instructions for macOS](./setup_macos.md)
+
 ## Architecture
 
 Anthem has two main components, the UI and the engine, which live in separate processes. The UI process handles most of the logic, while the engine process wraps and controls Tracktion Engine based on commands from the UI. These processes communicate using an IPC channel, with messages encoded using JSON.
