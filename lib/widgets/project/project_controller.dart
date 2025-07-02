@@ -187,14 +187,20 @@ class ProjectController {
 
     final result = await FilePicker.platform.pickFiles(
       dialogTitle: 'Choose a plugin (VST3)',
-      allowedExtensions: ['vst3'],
+      allowedExtensions: Platform.isMacOS ? null : ['vst3'],
       initialDirectory: initialDirectory,
-      type: FileType.custom,
+      type: Platform.isMacOS ? FileType.custom : FileType.any,
     );
 
     final path = result?.files[0].path;
 
     if (path == null) return;
+
+    // TODO: This will only happen on macOS due to a limitation in the file
+    // picker. We should show a dialog here with an error.
+    if (!path.toLowerCase().endsWith('.vst3')) {
+      return;
+    }
 
     addGenerator(
       name: 'VST Plugin',
