@@ -22,6 +22,12 @@ jobs:
             arch: x64
           - os: ubuntu-24.04-arm
             arch: arm64
+          - os: macos-latest
+            arch: x64
+          - os: macos-latest
+            arch: arm64
+          - os: macos-13
+            arch: x64
 
     steps:
       - name: Check out code
@@ -52,10 +58,10 @@ jobs:
           Add-Content $env:GITHUB_PATH "$env:RUNNER_TEMP\flutter\bin"
 
       # --------------------------------------------------------------
-      # Clone + set up Flutter (Linux)
+      # Clone + set up Flutter (Linux and macOS)
       # --------------------------------------------------------------
       - name: Clone Flutter (Linux)
-        if: contains(matrix.os, 'ubuntu')
+        if: contains(matrix.os, 'ubuntu') || contains(matrix.os, 'macos')
         run: |
           git clone --branch stable https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
           echo "$RUNNER_TEMP/flutter/bin" >> $GITHUB_PATH
@@ -65,6 +71,14 @@ jobs:
       # --------------------------------------------------------------
       - name: Install Flutter
         run: flutter doctor
+      
+      # --------------------------------------------------------------
+      # Install CocoaPods (macOS)
+      # --------------------------------------------------------------
+      - name: Install CocoaPods (macOS)
+        if: contains(matrix.os, 'macos')
+        run: |
+          brew install cocoapods
 
       # --------------------------------------------------------------
       # Get dependencies
@@ -94,10 +108,10 @@ jobs:
           dart analyze --fatal-infos
       
       # --------------------------------------------------------------
-      # Lint (Linux)
+      # Lint (Linux, macOS)
       # --------------------------------------------------------------
       - name: Lint code
-        if: contains(matrix.os, 'ubuntu')
+        if: contains(matrix.os, 'ubuntu') || contains(matrix.os, 'macos')
         run: |
           mkdir -p assets/engine
           dart analyze --fatal-infos
@@ -120,19 +134,26 @@ jobs:
       - name: Run Flutter tests
         run: flutter test .
 
-        # --------------------------------------------------------------
-        # Build Flutter (Windows)
-        # --------------------------------------------------------------
+      # --------------------------------------------------------------
+      # Build Flutter (Windows)
+      # --------------------------------------------------------------
       - name: Build Flutter (Windows)
         if: contains(matrix.os, 'windows')
         run: flutter build windows --verbose --release
         
-        # --------------------------------------------------------------
-        # Build Flutter (Linux)
-        # --------------------------------------------------------------
+      # --------------------------------------------------------------
+      # Build Flutter (Linux)
+      # --------------------------------------------------------------
       - name: Build Flutter (Linux)
         if: contains(matrix.os, 'ubuntu')
         run: flutter build linux --verbose --release
+      
+      # --------------------------------------------------------------
+      # Build Flutter (macOS)
+      # --------------------------------------------------------------
+      - name: Build Flutter (macOS)
+        if: contains(matrix.os, 'macos')
+        run: flutter build macos --verbose --release
 
       # --------------------------------------------------------------
       # Upload artifacts (Windows)
@@ -153,3 +174,13 @@ jobs:
         with:
           name: anthem-linux-${{ matrix.arch }}
           path: ${{ github.workspace }}/${{ matrix.arch == 'x64' && 'build/linux/x64/release/bundle' || 'build/linux/arm64/release/bundle' }}
+
+      # --------------------------------------------------------------
+      # Upload artifacts (macOS)
+      # --------------------------------------------------------------
+      - name: Upload artifact (macOS)
+        if: contains(matrix.os, 'macos')
+        uses: actions/upload-artifact@v4
+        with:
+          name: anthem-macos-${{ matrix.arch }}
+          path: ${{ github.workspace }}/build/macos/Build/Products/Release/Anthem.app
