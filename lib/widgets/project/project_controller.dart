@@ -178,7 +178,7 @@ class ProjectController {
     } else if (Platform.isMacOS) {
       initialDirectory = '/Library/Audio/Plug-Ins/VST3';
     } else if (Platform.isLinux) {
-      initialDirectory = '~/';
+      initialDirectory = Platform.environment['HOME'] ?? '/';
     } else {
       throw UnsupportedError(
         'Unsupported platform: ${Platform.operatingSystem}',
