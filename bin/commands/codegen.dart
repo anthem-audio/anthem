@@ -247,7 +247,7 @@ class _CodegenGenerateCommand extends Command<dynamic> {
         ).lightGreen(),
       );
 
-      diffChecker?.save();
+      await diffChecker?.save();
 
       final process = await Process.start(
         'dart',
@@ -267,8 +267,8 @@ class _CodegenGenerateCommand extends Command<dynamic> {
       }
 
       print(Colorize('\nChecking for C++ file changes...').lightGreen());
-      diffChecker?.restore();
-      diffChecker?.cleanup();
+      await diffChecker?.restore();
+      await diffChecker?.cleanup();
     }
 
     // The new Dart 3.7 formatter isn't applied to code generated files for some
@@ -348,63 +348,77 @@ class _DiffChecker {
     _noop = !_generatedDir.existsSync();
   }
 
-  void save() {
+  Future<void> save() async {
     if (_noop) return;
 
-    _backupDir.createSync(recursive: true);
+    await _backupDir.create(recursive: true);
 
-    _generatedDir.listSync(recursive: true).forEach((file) {
-      if (file is! File) return;
+    List<Future<void>> futures = [];
 
-      final relativePath = file.path.replaceFirst(_generatedDir.path, '');
-      final backupFile = File('${_backupDir.path}/$relativePath');
-      backupFile.createSync(recursive: true);
-      file.copySync(backupFile.path);
-    });
+    await for (final file in _generatedDir.list(recursive: true)) {
+      futures.add(
+        (() async {
+          if (file is! File) return;
+
+          final relativePath = file.path.replaceFirst(_generatedDir.path, '');
+          final backupFile = File('${_backupDir.path}/$relativePath');
+          await backupFile.create(recursive: true);
+          await file.copy(backupFile.path);
+        })(),
+      );
+    }
   }
 
-  void restore() {
+  Future<void> restore() async {
     if (_noop) return;
 
-    if (!_backupDir.existsSync()) {
+    if (!await _backupDir.exists()) {
       throw Exception('Backup directory does not exist.');
     }
 
     int count = 0;
 
-    _backupDir.listSync(recursive: true).forEach((file) {
-      if (file is! File) return;
+    List<Future<void>> futures = [];
 
-      final relativePath = file.path.replaceFirst(_backupDir.path, '');
-      final generatedFile = File('${_generatedDir.path}/$relativePath');
+    await for (final file in _backupDir.list(recursive: true)) {
+      futures.add(
+        (() async {
+          if (file is! File) return;
 
-      // If the file used to exist but doesn't exist anymore, we can ignore it.
-      if (!generatedFile.existsSync()) {
-        return;
-      }
+          final relativePath = file.path.replaceFirst(_backupDir.path, '');
+          final generatedFile = File('${_generatedDir.path}/$relativePath');
 
-      final backupBytes = file.readAsBytesSync();
-      final backupHash = sha256.convert(backupBytes);
-      final generatedBytes = generatedFile.readAsBytesSync();
-      final generatedHash = sha256.convert(generatedBytes);
+          // If the file used to exist but doesn't exist anymore, we can ignore it.
+          if (!await generatedFile.exists()) {
+            return;
+          }
 
-      if (backupHash == generatedHash) {
-        // If the files are identical, we want to copy from the backup to the
-        // generated file.
-        file.copySync(generatedFile.path);
-      } else {
-        count++;
-      }
-    });
+          final backupBytes = await file.readAsBytes();
+          final backupHash = sha256.convert(backupBytes);
+          final generatedBytes = await generatedFile.readAsBytes();
+          final generatedHash = sha256.convert(generatedBytes);
+
+          if (backupHash == generatedHash) {
+            // If the files are identical, we want to copy from the backup to the
+            // generated file.
+            file.copySync(generatedFile.path);
+          } else {
+            count++;
+          }
+        })(),
+      );
+    }
+
+    await Future.wait(futures);
 
     print(
       Colorize('$count ${count == 1 ? 'file' : 'files'} changed.').lightGreen(),
     );
   }
 
-  void cleanup() {
+  Future<void> cleanup() async {
     if (_noop) return;
 
-    _backupDir.deleteSync(recursive: true);
+    await _backupDir.delete(recursive: true);
   }
 }
