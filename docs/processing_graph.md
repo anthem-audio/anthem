@@ -1,6 +1,6 @@
 # Graph Model for Audio Processing
 
-Anthem uses a node graph to route audio, control and note data between plugins and through to a master audio output node. This graph has two components: nodes and connections. Nodes can take zero or more inputs and produce zero or more outputs in three different data types: note commands (on, off, etc.), audio samples, and audio-rate control values.
+Anthem uses a node graph to route audio, control and note data between plugins and through to a master audio output node. This graph has two components: nodes and connections. Nodes can take zero or more inputs and produce zero or more outputs in three different data types: events (note on, note off, etc.), audio samples, and audio-rate control values.
 
 Processors in Anthem are defined as nodes in this graph. Processors can take inputs in any of the three data types, define processing routines for operating on these inputs and/or synthesizing new data, and produce outputs in any of the three data types.
 
@@ -22,7 +22,7 @@ Anthem's processing graph does not yet support this.
 
 ## Audio
 
-Nodes in the processing graph can generate and consume audio streams. Audio outputs can go to multiple inputs, and multiple outputs can go to the same input. When multiple audio streams are routed into the same port, they are summed together additively before being given to the corresponding processor to process.
+Nodes in the processing graph can generate and consume audio streams. One audio output can go to multiple inputs, and multiple outputs can go to the same input. When multiple audio streams are routed into the same port, they are summed together additively before being given to the corresponding processor to process.
 
 Consider the following graph:
 
@@ -70,12 +70,10 @@ If a control input port has a connection, the control values that come through o
 
 During playback, if the static value on a port is changed, it will override any connection value until playback is stopped and starts again.
 
-## Note commands
+## Events
 
-Input and output ports for note commands are not yet supported by Anthem's processing graph.
+Similar to the above data types, processors in Anthem can receive and output events. The most common of these events are note events. Notes coming from the sequencer may be sent directly to an instrument, or they may be transformed by another processor first.
 
 <!-- ## Unique challenges -->
-
-<!-- Open question: can plugins change their delay during processing? -->
 
 <!-- Must the graph always be acyclic? It seems good to do this for audio, but what about the output of a peak controller? -->
