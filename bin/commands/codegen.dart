@@ -23,6 +23,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:colorize/colorize.dart';
+import 'package:crypto/crypto.dart';
 
 import '../util/misc.dart';
 
@@ -199,8 +200,6 @@ class _CodegenGenerateCommand extends Command<dynamic> {
 
   @override
   Future<void> run() async {
-    print(Colorize('Generating code...\n\n').lightGreen());
-
     final packageRootPath = getPackageRootPath();
 
     // If we're watching, run the build_runner in watch mode, and just run in
@@ -231,11 +230,24 @@ class _CodegenGenerateCommand extends Command<dynamic> {
           ? packageRootPath
           : packageRootPath.resolve(subpath);
 
+      _DiffChecker? diffChecker;
+
+      if (subpath == null) {
+        diffChecker = _DiffChecker(
+          Directory.fromUri(workingDirectory.resolve('engine/src/generated/')),
+          Directory.fromUri(
+            workingDirectory.resolve('engine/src/generated/.backup/'),
+          ),
+        );
+      }
+
       print(
         Colorize(
           'Generating code in ${workingDirectory.toFilePath(windows: Platform.isWindows)}...',
         ).lightGreen(),
       );
+
+      await diffChecker?.save();
 
       final process = await Process.start(
         'dart',
@@ -250,8 +262,13 @@ class _CodegenGenerateCommand extends Command<dynamic> {
 
       if (exitCode != 0) {
         print(Colorize('\n\nError: Code generation failed.').red());
+        diffChecker?.cleanup();
         exit(exitCode);
       }
+
+      print(Colorize('\nChecking for C++ file changes...').lightGreen());
+      await diffChecker?.restore();
+      await diffChecker?.cleanup();
     }
 
     // The new Dart 3.7 formatter isn't applied to code generated files for some
@@ -287,5 +304,121 @@ class _CodegenGenerateCommand extends Command<dynamic> {
     }
 
     print(Colorize('\n\nCode generation complete.').lightGreen());
+  }
+}
+
+/// Backs up an existing folder with generated files, and replaces new generated
+/// with the backed up files if they haven't changed.
+///
+/// When the C++ compiler checks whether to rebuild something, it will check for
+/// changes to the input files. These checks are done by comparing the
+/// modification times of the files, and if they haven't changed, it won't
+/// rebuild them.
+///
+/// When we run the code generator, no matter what files have acutally changed,
+/// the C++ compiler must rebuild all of the generated files, which cascades
+/// into a rebuild of most of the engine since most of the engine depends on the
+/// generated files.
+///
+/// This class prevents this by allowing us to back up the engine's generated
+/// files before code generation runs. Then, after code generation is complete,
+/// we can check if the contents of the new files are actually different. If any
+/// of the new files are identical, we can replace the new file with the old
+/// file, so the compiler doesn't think the files have changed and doesn't
+/// rebuild them.
+class _DiffChecker {
+  final Directory _generatedDir;
+  final Directory _backupDir;
+
+  /// If true, the diff checker will not perform any operations. This will happen
+  /// on a fresh build.
+  late bool _noop;
+
+  _DiffChecker(this._generatedDir, this._backupDir) {
+    if (_backupDir.existsSync()) {
+      print(
+        Colorize(
+          'Backup directory must not already exist. You will need to manually delete the folder at ${_backupDir.path}.',
+        ).red(),
+      );
+
+      throw Exception('Backup directory must not already exist.');
+    }
+
+    _noop = !_generatedDir.existsSync();
+  }
+
+  Future<void> save() async {
+    if (_noop) return;
+
+    await _backupDir.create(recursive: true);
+
+    List<Future<void>> futures = [];
+
+    await for (final file in _generatedDir.list(recursive: true)) {
+      futures.add(
+        (() async {
+          if (file is! File) return;
+
+          final relativePath = file.path.replaceFirst(_generatedDir.path, '');
+          final backupFile = File('${_backupDir.path}/$relativePath');
+          await backupFile.create(recursive: true);
+          await file.copy(backupFile.path);
+        })(),
+      );
+    }
+  }
+
+  Future<void> restore() async {
+    if (_noop) return;
+
+    if (!await _backupDir.exists()) {
+      throw Exception('Backup directory does not exist.');
+    }
+
+    int count = 0;
+
+    List<Future<void>> futures = [];
+
+    await for (final file in _backupDir.list(recursive: true)) {
+      futures.add(
+        (() async {
+          if (file is! File) return;
+
+          final relativePath = file.path.replaceFirst(_backupDir.path, '');
+          final generatedFile = File('${_generatedDir.path}/$relativePath');
+
+          // If the file used to exist but doesn't exist anymore, we can ignore it.
+          if (!await generatedFile.exists()) {
+            return;
+          }
+
+          final backupBytes = await file.readAsBytes();
+          final backupHash = sha256.convert(backupBytes);
+          final generatedBytes = await generatedFile.readAsBytes();
+          final generatedHash = sha256.convert(generatedBytes);
+
+          if (backupHash == generatedHash) {
+            // If the files are identical, we want to copy from the backup to the
+            // generated file.
+            file.copySync(generatedFile.path);
+          } else {
+            count++;
+          }
+        })(),
+      );
+    }
+
+    await Future.wait(futures);
+
+    print(
+      Colorize('$count ${count == 1 ? 'file' : 'files'} changed.').lightGreen(),
+    );
+  }
+
+  Future<void> cleanup() async {
+    if (_noop) return;
+
+    await _backupDir.delete(recursive: true);
   }
 }

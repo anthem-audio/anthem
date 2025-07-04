@@ -19,7 +19,7 @@
 
 #include "runtime_sequence_store.h"
 
-#include "modules/core/anthem.h";
+#include "modules/core/anthem.h"
 
 SequenceEventList::SequenceEventList() {
   events = new std::vector<AnthemSequenceEvent>();

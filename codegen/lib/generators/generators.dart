@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,6 +22,7 @@ import 'package:source_gen/source_gen.dart';
 
 import 'dart/anthem_model_generator.dart';
 import 'cpp/cpp_model_builder.dart';
+import 'debug_engine_path_generator.dart';
 
 Builder anthemDartModelGeneratorBuilder(BuilderOptions options) =>
     SharedPartBuilder([
@@ -29,3 +30,6 @@ Builder anthemDartModelGeneratorBuilder(BuilderOptions options) =>
     ], 'anthem_model_generator');
 
 Builder cppModelBuilder(BuilderOptions options) => CppModelBuilder();
+
+Builder debugEnginePathGeneratorBuilder(BuilderOptions options) =>
+    DebugEnginePathGeneratorBuilder();

@@ -26,14 +26,11 @@ AnthemProcessContext::AnthemProcessContext(std::shared_ptr<Node>& graphNode, Are
 
   auto bufferSize = currentDevice->getCurrentBufferSizeSamples();
 
-  auto numChannelsMask = currentDevice->getActiveInputChannels();
-  auto numInputChannels = numChannelsMask.countNumberOfSetBits();
-
   auto numOutputChannelsMask = currentDevice->getActiveOutputChannels();
   auto numOutputChannels = numOutputChannelsMask.countNumberOfSetBits();
 
   for (auto& port : *graphNode->audioInputPorts()) {
-    inputAudioBuffers[port->id()] = juce::AudioSampleBuffer(numInputChannels, bufferSize);
+    inputAudioBuffers[port->id()] = juce::AudioSampleBuffer(numOutputChannels, bufferSize);
   }
 
   for (auto& port : *graphNode->audioOutputPorts()) {

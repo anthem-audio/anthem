@@ -133,9 +133,10 @@ mixin _ArrangementCompilerMixin on _ArrangementModel {
               );
 
               if (isOffsetChange) {
+                operation as RawFieldUpdate;
                 _invalidationRangeCollector.addRange(
-                  (operation as RawFieldUpdate).oldValueAs<int>(),
-                  clip.offset + newWidth,
+                  operation.oldValueAs<int>(),
+                  operation.oldValueAs<int>() + newWidth,
                 );
               }
 

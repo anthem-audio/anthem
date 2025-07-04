@@ -23,3 +23,11 @@ builders:
     }
     build_to: source
     auto_apply: dependents
+  debugEnginePathGeneratorBuilder:
+    import: 'package:anthem_codegen/codegen.dart'
+    builder_factories: ['debugEnginePathGeneratorBuilder']
+    build_extensions: {
+      ".dart": [".debug_engine_path.g.dart"],
+    }
+    build_to: source
+    auto_apply: dependents
