@@ -30,7 +30,7 @@ The project model is created in Dart, and augmented using code generation. We ge
 - C++ models that match the Dart models, so the engine can read from the project model directly from memory
 - Methods on the Dart model to automatically generate model update messages, and methods on the generated C++ model to handle these messages, so the C++ model is always up-to-date
 
-We also use code generation to significantly reduce boilerplate and duplicate code for communication between the UI and engine. The message classes in `lib/engine_api/messages/` have matching generated C++ classes, and can be trivially serialized to and from JSON on both ends. See [Message Flow](#Message-Flow) below for more on how this is used.
+We also use code generation to significantly reduce boilerplate and duplicate code for communication between the UI and engine. The message classes in `lib/engine_api/messages/` have matching generated C++ classes, and can be trivially serialized to and from JSON on both ends. See [Message Flow](#Message-Flow) below for more on how this is used. For a deep dive, see [Communication Between UI and Engine](./architecture/communication_between_ui_and_engine.md).
 
 ### Authority
 
