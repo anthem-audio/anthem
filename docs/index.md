@@ -1,3 +1,16 @@
+# Anthem Docs
+
+## Page Index
+
+- Architecture
+  - [Communication Between UI and Engine](./architecture/communication_between_ui_and_engine.md)
+  - [Processing Graph](./architecture/processing_graph.md)
+  - [Sequencer](./architecture/sequencer.md)
+  - [State Synchronization](./architecture/state_synchronization.md)
+- [Setup on Linux](./setup_linux.md)
+- [Setup on macOS](./setup_macos.md)
+- [Setup on Windows](./setup_windows.md)
+
 ## Introduction
 
 Anthem is a modern, multi-workflow digital audio workstation (DAW) designed for creating and editing audio content. It works on Windows, macOS, and Linux.
