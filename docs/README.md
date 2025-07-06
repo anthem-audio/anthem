@@ -7,6 +7,8 @@
   - [Processing Graph](./architecture/processing_graph.md)
   - [Sequencer](./architecture/sequencer.md)
   - [State Synchronization](./architecture/state_synchronization.md)
+- Design
+  - [Composable Sequences](./design/composable_sequences.md)
 - [Setup on Linux](./setup_linux.md)
 - [Setup on macOS](./setup_macos.md)
 - [Setup on Windows](./setup_windows.md)
