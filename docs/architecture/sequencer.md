@@ -23,7 +23,7 @@ The sequencer in Anthem is the module responsible for coordinating the propagati
 
 What this means is that audio cannot be generated in chunks that are longer than the tick length, and that audio generator state must be updated before each chunk of audio is generated. This ties the generation of audio to the tick frequency of the sequencer, and also means that the sequencer must drive the audio processing routine, even when the transport is not moving, to allow for live state changes.
 
-The system audio callback delegates to the sequencer, which is the first step in audio processing. The sequener has two roles: the first is to compile the project sequence model into a highly simplified event list for each channel, and the second is to provide these events to the processing graph via a dedicated sequencer node.
+The system audio callback delegates to the sequencer, which is the first step in audio processing. The sequencer has two roles: the first is to compile the project sequence model into a highly simplified event list for each channel, and the second is to provide these events to the processing graph via a dedicated sequencer node.
 
 When compiling the project sequence, the goal is to produce an event list for each channel that is sorted by offset, and to do so for every pattern and for every arrangement. The goal of this step is to decouple the complexity of the UI from the audio thread. The audio thread should not need to wrangle details of specific user-centric arrangement features.
 
