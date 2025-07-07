@@ -20,25 +20,57 @@ For example, if you only ever want to do multi-track audio recording or editing,
 
 Most DAWs have mixers, so if you're used to this workflow you might expect me to intuit the solution here (route each new channel to the same mixer track, then change the mixer track volume); but most DAWs also allow you to record multiple audio clips into a single track, and add effects directly onto that track. And what if this is my first time picking up a DAW? It's hard to overstate how much complexity a pattern-based DAW requires you to learn before it stops getting in your way.
 
-However, if what you're creating relies on heavy and/or creative use of the sequencer, a strictly linear workflow likely won't be the most productive. There are many ways to augment a linear workflow from a composition standpoint (track folders are a great exmaple), but there is a flexibility to a pattern-based workflow that is indispensible for some people. If anything can go anywhere in the sequencer timeline, and if any sound or automation source can route to any destination, it creates a flexibility that is incredibly useful for advanced, sound-design-heavy workflows.
+However, if what you're creating relies on heavy and/or creative use of the sequencer, a strictly linear workflow likely won't be the most productive. There are many ways to augment a linear workflow from a composition standpoint (track folders are a great example), but there is a flexibility to a pattern-based workflow that is indispensable for some people. If anything can go anywhere in the sequencer timeline, and if any sound or automation source can route to any destination, it creates a flexibility that is incredibly useful for advanced, sound-design-heavy workflows.
 
 ### Limitations of pattern-based workflows
 
 For all the difficulty given above to the new user experience of pattern-based workflows, DAWs with this workflow have a particularly difficult usability challenge. If you must place an event in a pattern, then a pattern in an arrangement in order to do anything useful with the sequencer, then many common actions become disjointed and difficult to reason about.
 
-For example, suppose that all automation must live in a pattern, and can only be edited within the pattern context. In this case, if I want to add a single automation lane for a global control in my arrangement (e.g. a gain pararmeter on the master channel), I cannot modify the events for that from within the arrangement, and so I cannot see and edit the automation changes in context with the rest of the events in the project. In cases like this, a purist pattern-style workflow would kill usability.
+For example, suppose that all automation must live in a pattern, and can only be edited within the pattern context. In this case, if I want to add a single automation lane for a global control in my arrangement (e.g. a gain parameter on the master channel), I cannot modify the events for that from within the arrangement, and so I cannot see and edit the automation changes in context with the rest of the events in the project. In cases like this, a purist pattern-style workflow would kill usability.
 
 As of writing, the most popular pattern-based DAW is FL Studio. FL Studio solves this by restricting what content can go in patterns. While some kinds of automation can end up in a regular pattern, there are special patterns for audio and automation, and these patterns can only contain events for a single channel. With these limitations, FL Studio enables workflow enhancements that turn what would be a clunky-but-powerful workflow into something that is both powerful and highly efficient to work in, once you learn it.
 
 However, these limitations limit the degree to which similar events can be grouped into containers. If the primary way I sequence audio is through single-shot audio patterns, there is no way to group multiple recordings together from a sequence perspective. This requires me to do all my chopping and resampling within the arrangement context instead of the pattern context. This is usually beneficial as it removes unnecessary steps; however, sometimes a given set of audio clips, a complex drum beat for example, may get to a level of complexity to where I want to put it in a container, and FL Studio just doesn't effectively enable this at a certain level.
 
-And this could extend to other event types like notes and automation as well. Maybe I have a complex sequence of automation clips that only goes with a given set of notes. If I later want to move just those notes, I have to remember which automation clips go with which other events, otherwise I will break my sequence. Besides providing the ability to group my arrangement clips in a way that might allow me to remmeber what goes with what, FL Studio doesn't provide an effective way to manage this problem. Past a certain level of arrangement complexity, this poses a usability issue that FL Studio cannot effectively solve.
+And this could extend to other event types like notes and automation as well. Maybe I have a complex sequence of automation clips that only goes with a given set of notes. If I later want to move just those notes, I have to remember which automation clips go with which other events, otherwise I will break my sequence. Besides providing the ability to group my arrangement clips in a way that might allow me to remember what goes with what, FL Studio doesn't provide an effective way to manage this problem. Past a certain level of arrangement complexity, this poses a usability issue that FL Studio cannot effectively solve.
 
 ### The philosophy behind Anthem's sequencer design
 
-Anthem's sequencer could be considered fundamentally pattern-based at its core, though its workflow does not fall under the definitiion of pattern-based as [defined above](#defining-pattern-based-workflow).
+Anthem's sequencer could be considered fundamentally pattern-based at its core, though its workflow does not fall under the definition of pattern-based as [defined above](#defining-pattern-based-workflow).
 
 Instead of embracing sequence composition as the primary workflow (as in FL Studio's sequence-in-sequence workflow of putting patterns inside arrangements), Anthem presents sequence composition as an advanced workflow that can be simply ignored if the user does not prefer to work this way. This design has a couple distinct advantages:
 
-1. Linear workflow is easier for many people to learn and work in, especially for those doing multi-track recording or stem mixing. By fully enabling this workflow, Anthem can provide enhancments like comping to the audio recording workflow. Comping is critical for some workflows, but it's something FL Studio has traditionally struggled with.
+1. Linear workflow is easier for many people to learn and work in, especially for those doing multi-track recording or stem mixing. By fully enabling this workflow, Anthem can provide enhancements like comping to the audio recording workflow. Comping is critical for some workflows, but it's something FL Studio has traditionally struggled with.
 2. By embracing sequence composition as an advanced workflow, Anthem can dramatically expand the scope of what patterns can do without harming core usability stories. To take the example of project-wide automation above, if I want a global automation clip for a gain control, I can simply add a new linear track for it. With this in mind, automation in patterns can be reserved for complex use-cases where it is most helpful.
+
+## Design
+
+Anthem sets out to achieve a few ambitious goals with its sequencer:
+
+1. 
+
+### Core design principles
+
+### Workflow design concepts
+
+Below are a few specific workflow stories that are enabled by Anthem's core sequencer design. None of these should be taken as feature commitments at this stage; they are instead intended to exercise the possibilities enabled by Anthem's unique sequencer design.
+
+#### Tracks, and multi-track sequences
+
+#### Linear editing
+
+#### Comping
+
+#### Linked clips
+
+#### Shaping your sequencer views
+
+#### Multi-track sequence quick expansion and editing
+
+Traditional patterns become unwieldy very quickly. It becomes difficult to reason about the content of a clip once it contains overlapping content of the same type for different sources, such as multiple distinct automation lanes. This would discourage some important use-cases, and so should be mitigated.
+
+Given a clip that contains content for multiple different channels, an option could be given to "expand" this clip. This would:
+1. Highlight the clip itself
+2. (Maybe) Highlight the time region that the clip occupies (or regions, in the case of linked clips)
+3. Beneath the track that the clip occupies, expand new track rows for each track in the clip that actually contains content
+4. Allow granular editing of the content within those tracks. If one of those tracks itself contains such a multi-content clip, it could possibly itself be further expanded.
