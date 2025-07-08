@@ -8,9 +8,13 @@ Anthem has usability as a core design goal. For this reason, Anthem presents a l
 
 If you have only used DAWs with this linear workflow style, this may seem obvious; however, at its core Anthem's sequencer is fundamentally non-linear, which makes its default linear workflow unique. If you are instead already used to a pattern-based or similar workflow, you may not immediately see the point in presenting a linear workflow at all.
 
+### Defining linear workflow
+
+For the purpose of this document, "linear workflow" means that each instrument occupies a single track and creates a single mixer channel. Strictly speaking, a linear workflow would only allow events destined for a given channel to be placed within that channel's row in any sequencer view. This may differ from the way the term is used elsewhere, so it is worth defining here.
+
 ### Defining pattern-based workflow
 
-For the purpose of this document, a pattern-based workflow is one where there are two types of sequence, patterns and arrangements. Patterns are containers that can hold timestamped events for any channel, and pattern instances (sometimes called clips) can be placed at various start times in the arrangement.
+For the purpose of this document, a pattern-based workflow is one where there are two types of sequence, patterns and arrangements. Patterns are containers that can hold timestamped events for any kind of track (audio, instrument plug-in, automation), and pattern instances (sometimes called clips) can be placed at various start times in the arrangement.
 
 ### Anthem, a multi-workflow DAW
 
@@ -45,9 +49,14 @@ Instead of embracing sequence composition as the primary workflow (as in FL Stud
 
 ## Design
 
-Anthem sets out to achieve a few ambitious goals with its sequencer:
+Anthem's sequencer presents a linear workflow, but has advanced features that allow users to break out of this if and when they prefer.
 
-1. 
+Anthem's linear workflow has the following characteristics:
+
+- A new instrument means a new track, and a track shows up as a first-class element everywhere that a track is relevant (all sequence editors, the mixer, etc.)
+- Clips supply events to a single track by default, and it shouldn't be easy to break out of this workflow by accident
+
+Anthem's linear workflow is designed to support advanced linear features, like track comping. When editing the contents of a single audio track, Anthem has the option to present any kind of workflow enhancement, due to its flexible internal design.
 
 ### Core design principles
 
@@ -59,7 +68,7 @@ Below are a few specific workflow stories that are enabled by Anthem's core sequ
 
 #### Linear editing
 
-#### Comping
+#### Folders and comping
 
 #### Linked clips
 
