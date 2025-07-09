@@ -49,30 +49,44 @@ Instead of embracing sequence composition as the primary workflow (as in FL Stud
 
 ## Design
 
-Anthem's sequencer presents a linear workflow, but has advanced features that allow users to break out of this if and when they prefer.
+Anthem's sequencer presents a linear workflow (see [the definition above](#defining-linear-workflow)), but has advanced features that allow users to break out of this if and when they prefer.
 
 Anthem's linear workflow has the following characteristics:
 
 - A new instrument means a new track, and a track shows up as a first-class element everywhere that a track is relevant (all sequence editors, the mixer, etc.)
 - Clips supply events to a single track by default, and it shouldn't be easy to break out of this workflow by accident
 
-Anthem's linear workflow is designed to support advanced linear features, like track comping. When editing the contents of a single audio track, Anthem has the option to present any kind of workflow enhancement, due to its flexible internal design.
+Anthem's linear workflow is designed to support advanced linear features, like track comping. When editing the contents of a single audio track, Anthem has the option to present any kind of workflow enhancement that would be common in this environment, due to its flexible internal design.
 
-### Core design principles
+There are two primary features that work together to enable more advanced workflows in Anthem.
+
+The first is that internally, any sequence in Anthem can contain events for any channel. For example, when you create a midi clip for a channel in a linear workflow, there is a real sequence underneath, and Anthem's UI is artificially limiting what you are allowed to put in that. Anthem has a special kind of track, called a "free track", that allows clips for any kind of sequence. This includes sequences that contain content for multiple real destinations, called "channels".
+
+The second is that sequences can contain clips of other sequences. This is called "sequence composition", and is used to enable a number of features both in the ordinary linear workflow as well as the more free-form sequence composition workflow.
+
+A full anything-can-go-anywhere workflow is available to users if they choose; however, sequence composition is used as a way to implement advanced features in the linear workflow as well. For example, every midi clip is a window into a completely separate sequence. When the piano roll is opened for that clip, it is editing the underlying sequence. This allows the clip to be resized and repositioned without affecting the source of truth for the piano roll.
+
+This separation of clips from the underlying sequence also enables a traditional pattern-based workflow. Anthem does not enable this by default - instead, copying a clip also duplicates the sequence underneath. However, Anthem does support "linked clips", in which multiple clips can point to the same underlying sequence. Anthem intends this to be obvious to the user at every level; when the user edits the content of a sequence and it propagates to multiple clips in a different sequence, it should not be a surprise.
 
 ### Workflow design concepts
 
 Below are a few specific workflow stories that are enabled by Anthem's core sequencer design. None of these should be taken as feature commitments at this stage; they are instead intended to exercise the possibilities enabled by Anthem's unique sequencer design.
 
-#### Tracks, and multi-track sequences
+#### Creating a new composed sequence from an group of clips
 
-#### Linear editing
+One of the benefits of sequence composition as a workflow is that it allows you to compose highly complex projects out of simpler building blocks.
 
-#### Folders and comping
+Let's say I want to make a drum loop, and I want to compose it of many samples across multiple channels. From a workflow perspective, I likely do not care about the detailed sequencing of this loop when viewing the project timeline. In most DAWs, my options are limited here. I can bounce the drum loop to audio, but this is a destructive action that makes it harder to modify the loop later.
 
-#### Linked clips
+In Anthem, if working in a linear workflow, I may prefer to use a more linear-centric feature like track folders. However, if I am currently sequencing in free tracks, one option Anthem could provide is a right-click option or shortcut to create a composed sequence out of a selected group of clips. This would be similar to "grouping" in vector graphics editors.
 
-#### Shaping your sequencer views
+How this would interact with content from regular tracks is unclear. It may be that it must be moved to a free track before this is possible, otherwise it may feel too arbitrary, and it would be difficult to manually reverse.
+
+#### Shaping your arrangement views
+
+Taking the drum loop example from above, let's say I already have a sequence that contains my drum loop. If I am editing that sequence, I may only care about content from a few channels when editing that sequence. It may be helpful to have an option to limit the current sequencer view to only tracks that are currently in use.
+
+It may also be useful to completely separate regular tracks from free tracks. This one is less clear to me though - I could imagine a workflow where someone puts only a handful of intentionally-placed free tracks within a large project, and I could see that being a very useful workflow. However, in this case, the user likely does not want to see all tracks, just the ones with content. This is another argument for hiding tracks that don't contribute to the active sequence.
 
 #### Multi-track sequence quick expansion and editing
 
