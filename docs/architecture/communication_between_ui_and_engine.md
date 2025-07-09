@@ -1,6 +1,6 @@
 # Communication Between UI and Engine
 
-Anthem’s UI and engine each run in their own process—Flutter/Dart for the interface, and C++/JUCE for audio processing—and communicate over a local TCP socket. Mmessages use a request–response pattern with unique IDs, so a “request” (from UI to engine) pairs with a matching “response” (from engine to UI), though some requests have no response.
+Anthem’s UI and engine each run in their own process—Flutter/Dart for the interface, and C++/JUCE for audio processing—and communicate over a local TCP socket. Messages use a request–response pattern with unique IDs, so a “request” (from UI to engine) pairs with a matching “response” (from engine to UI), though some requests have no response and some responses come through as unsolicited events.
 
 The messages are defined as classes in Dart. Anthem’s code generator inspects these Dart classes to automatically generate the corresponding C++ structs and serialization code, ensuring type-safe, two-way data flow from a single source of truth and with minimal boilerplate.
 

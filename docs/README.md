@@ -1,6 +1,21 @@
+# Anthem Docs
+
+## Page Index
+
+- Architecture
+  - [Communication Between UI and Engine](./architecture/communication_between_ui_and_engine.md)
+  - [Processing Graph](./architecture/processing_graph.md)
+  - [Sequencer](./architecture/sequencer.md)
+  - [State Synchronization](./architecture/state_synchronization.md)
+- Design
+  - [Composable Sequences](./design/composable_sequences.md)
+- [Setup on Linux](./setup_linux.md)
+- [Setup on macOS](./setup_macos.md)
+- [Setup on Windows](./setup_windows.md)
+
 ## Introduction
 
-Anthem is a modern, multi-workflow digital audio workstation (DAW) designed for creating and editing audio content. It is built to be compatible with Windows, macOS, and Linux.
+Anthem is a modern, multi-workflow digital audio workstation (DAW) designed for creating and editing audio content. It works on Windows, macOS, and Linux.
 
 Anthem is developed and maintained by volunteers, with a focus on maintainability, beautiful UI design, and strong usability. This has influenced several key architectural decisions, including:
 
@@ -15,23 +30,26 @@ Anthem is developed and maintained by volunteers, with a focus on maintainabilit
 
 ## Getting Started
 
-Anthem is developed with cross-platform technologies, and is designed to run on Windows, macOS and Linux. However, it is currently not tested on macOS, and so may not work correctly there. If you have any trouble compiling for or running on macOS, please open an issue.
+The setup guides below give instructions for setting up Anthem development on your preferred platform.
 
-### Windows
-
-[Setup instructions for Windows](./setup_windows.md)
-
-### Linux
-
-[Setup instructions for Linux](./setup_linux.md)
-
-### macOS
-
-[Setup instructions for macOS](./setup_macos.md)
+- [Setup instructions for Windows](./setup_windows.md)
+- [Setup instructions for Linux](./setup_linux.md)
+- [Setup instructions for macOS](./setup_macos.md)
 
 ## Architecture
 
-Anthem has two main components, the UI and the engine, which live in separate processes. The UI process handles most of the logic, while the engine process wraps and controls Tracktion Engine based on commands from the UI. These processes communicate using an IPC channel, with messages encoded using JSON.
+Anthem has two main components, the UI and the engine, which live in separate processes. These processes communicate using a local TCP socket, with messages encoded using JSON.
+
+The project model is created in Dart, and augmented using code generation. We generate the following code based on the project model:
+- Serialization and deserialization methods, for saving project files based on the project model
+- C++ models that match the Dart models, so the engine can read from the project model directly from memory
+- Methods on the Dart model to automatically generate model update messages, and methods on the generated C++ model to handle these messages, so the C++ model is always up-to-date
+
+We also use code generation to significantly reduce boilerplate and duplicate code for communication between the UI and engine. The message classes in `lib/engine_api/messages/` have matching generated C++ classes, and can be trivially serialized to and from JSON on both ends. See [Message Flow](#Message-Flow) below for more on how this is used. For a deep dive, see [Communication Between UI and Engine](./architecture/communication_between_ui_and_engine.md).
+
+### Authority
+
+The UI is considered authoritative. It owns the project model, and it is the only one allowed to mutate it. Decisions originate from the UI whenever possible, which is the vast majority of the time; the engine simply exists to produce audio based on the project.
 
 ### Message Flow
 
