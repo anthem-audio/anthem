@@ -132,7 +132,41 @@ class Engine {
     visualizationApi = VisualizationApi(this);
   }
 
+  void _scheduleNodeStateUpdate(String nodeId) {
+    project.processingGraph.nodes[nodeId]?.scheduleStateUpdate();
+  }
+
   void _onReply(Response response) {
+    switch (response) {
+      case VisualizationUpdateEvent e:
+        project.visualizationProvider.processVisualizationUpdate(e);
+        return;
+      case AudioReadyEvent _:
+        isAudioReady = true;
+        return;
+      case PluginChangedEvent e:
+        _scheduleNodeStateUpdate(e.nodeId);
+        return;
+      case PluginParameterChangedEvent e:
+        _scheduleNodeStateUpdate(e.nodeId);
+        return;
+      case PluginLoadedEvent e:
+        final node = project.processingGraph.nodes[e.nodeId];
+        if (node == null) {
+          return;
+        }
+
+        final completer = node.pluginLoadedCompleter;
+
+        // This shouldn't happen, but we can't risk throwing here so safety first
+        if (completer.isCompleted) return;
+
+        completer.complete();
+        return;
+      default:
+        break;
+    }
+
     if (response is VisualizationUpdateEvent) {
       project.visualizationProvider.processVisualizationUpdate(response);
       return;

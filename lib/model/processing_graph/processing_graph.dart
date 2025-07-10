@@ -46,6 +46,18 @@ class ProcessingGraphModel extends _ProcessingGraphModel
     onModelAttached(() async {
       await project.waitForFirstSync();
       await project.engine.processingGraphApi.compile();
+
+      // Forward engine state changes to all nodes
+      //
+      // I don't want to add this listener in the node itself because that would
+      // require me to add model lifecycle methods to the entire model, or
+      // otherwise always remember to clean up the node's listeners when
+      // removing a node, neither of which I want to do.
+      project.engine.engineStateStream.listen((state) {
+        for (final node in nodes.values) {
+          node.handleEngineStateChange(state);
+        }
+      });
     });
   }
 
