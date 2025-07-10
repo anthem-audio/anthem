@@ -126,16 +126,14 @@ String createSerializerForCustomType({
 }) {
   // There are two cases for this:
   // 1. This serializer is being output in the context of a toJson method, in
-  //    which case the parameter includeFieldsForEngine will be provided as an
-  //    argument
+  //    which case the parameter forEngine will be provided as an argument
   // 2. This serializer is being output in the context of a generated setter,
   //    and the serialized value is being sent to the engine as part of a model
-  //    change event. In this case, there will be no includeFieldsForEngine
-  //    parameter, and we need to include the engine-only fields.
-  final includeFieldsForEngine = alwaysIncludeEngineOnlyFields
-      ? 'true'
-      : 'includeFieldsForEngine';
-  return '$accessor${type.isNullable ? '?' : ''}.toJson(includeFieldsForEngine: $includeFieldsForEngine)';
+  //    change event. In this case, there will be no forEngine parameter, and we
+  //    need to include the engine-only fields.
+  final forEngine = alwaysIncludeEngineOnlyFields ? 'true' : 'forEngine';
+  final forProjectFile = alwaysIncludeEngineOnlyFields ? 'false' : '!forEngine';
+  return '$accessor${type.isNullable ? '?' : ''}.toJson(forEngine: $forEngine, forProjectFile: $forProjectFile)';
 }
 
 String createSerializerForUnion({

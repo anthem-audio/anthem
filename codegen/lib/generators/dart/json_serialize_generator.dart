@@ -37,7 +37,7 @@ String generateJsonSerializationCode({required ModelClassInfo context}) {
   result.write('''// ignore: duplicate_ignore
 // ignore: non_constant_identifier_names
 ${(context.annotation?.generateModelSync == true) ? '@override' : ''}
-Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
+Map<String, dynamic> toJson({bool forEngine = false, bool forProjectFile = true}) {
   final map = <String, dynamic>{};
 ''');
 
@@ -56,7 +56,11 @@ Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
     }
 
     if (fieldBehavior == _FieldBehavior.serializeForEngineOnly) {
-      result.write('if (includeFieldsForEngine) {\n');
+      result.write('if (forEngine) {\n');
+    }
+
+    if (fieldBehavior == _FieldBehavior.serializeForProjectOnly) {
+      result.write('if (forProjectFile) {\n');
     }
 
     result.write(
@@ -68,6 +72,10 @@ Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
     );
 
     if (fieldBehavior == _FieldBehavior.serializeForEngineOnly) {
+      result.write('}\n');
+    }
+
+    if (fieldBehavior == _FieldBehavior.serializeForProjectOnly) {
       result.write('}\n');
     }
   }
@@ -104,7 +112,11 @@ Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
         }
 
         if (fieldBehavior == _FieldBehavior.serializeForEngineOnly) {
-          result.write('if (includeFieldsForEngine) {\n');
+          result.write('if (forEngine) {\n');
+        }
+
+        if (fieldBehavior == _FieldBehavior.serializeForProjectOnly) {
+          result.write('if (forProjectFile) {\n');
         }
 
         result.write(
@@ -117,6 +129,10 @@ Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
         );
 
         if (fieldBehavior == _FieldBehavior.serializeForEngineOnly) {
+          result.write('}\n');
+        }
+
+        if (fieldBehavior == _FieldBehavior.serializeForProjectOnly) {
           result.write('}\n');
         }
       }
@@ -135,7 +151,12 @@ Map<String, dynamic> toJson({bool includeFieldsForEngine = false}) {
   return result.toString();
 }
 
-enum _FieldBehavior { skip, alwaysSerialize, serializeForEngineOnly }
+enum _FieldBehavior {
+  skip,
+  alwaysSerialize,
+  serializeForEngineOnly,
+  serializeForProjectOnly,
+}
 
 /// Gets the behavior of a field in the context of JSON serialization. This is
 /// based on the @Hide annotation. The options are:
@@ -160,6 +181,8 @@ _FieldBehavior _getFieldBehavior(FieldElement field) {
     return _FieldBehavior.serializeForEngineOnly;
   } else if (!hide.cpp && !hide.serialization) {
     return _FieldBehavior.alwaysSerialize;
+  } else if (hide.cpp && !hide.serialization) {
+    return _FieldBehavior.serializeForProjectOnly;
   }
 
   return _FieldBehavior.skip;

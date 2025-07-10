@@ -283,7 +283,8 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     engine.modelSyncApi.initModel(
       jsonEncode(
         (this as _$ProjectModelAnthemModelMixin).toJson(
-          includeFieldsForEngine: true,
+          forEngine: true,
+          forProjectFile: false,
         ),
       ),
     );
