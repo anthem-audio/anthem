@@ -128,6 +128,13 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
       return;
     }
 
+    // If the parent is null, then we can't attach parent properties yet. When
+    // this model itself is attached, then setParentPropertiesOnChildren will be
+    // called which will attach children.
+    if (parent == null) {
+      return;
+    }
+
     element.setParentProperties(
       parent: this,
       fieldType: FieldType.list,
@@ -196,6 +203,13 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
   void _setParentPropertiesOnValue(K key) {
     final value = this[key];
     if (value is! AnthemModelBase) {
+      return;
+    }
+
+    // If the parent is null, then we can't attach parent properties yet. When
+    // this model itself is attached, then setParentPropertiesOnChildren will be
+    // called which will attach children.
+    if (parent == null) {
       return;
     }
 
