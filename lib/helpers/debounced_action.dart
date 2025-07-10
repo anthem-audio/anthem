@@ -42,3 +42,54 @@ class MicrotaskDebouncedAction {
     _future = null;
   }
 }
+
+/// Executes [action] immediately if it has never run before or if at least
+/// [cooldown] has elapsed since the last run.
+///
+/// If `execute()` is called *again* during the cooldown window, the action
+/// is guaranteed to run once more — as soon as the remaining cooldown time
+/// has passed — but it will not be scheduled repeatedly for every call.
+class TimerDebouncedAction {
+  TimerDebouncedAction(this.action, this.cooldown);
+
+  /// The work to perform.
+  final void Function() action;
+
+  /// Minimum time that must elapse between two executions.
+  final Duration cooldown;
+
+  DateTime? _lastRun; // When the action actually ran last.
+  Timer? _pendingTimer; // One pending run, if needed.
+
+  /// Request that the action execute, observing the debounce rules.
+  void execute() {
+    final now = DateTime.now();
+
+    // First run ever, or outside the cooldown window → run immediately.
+    if (_lastRun == null || now.difference(_lastRun!) >= cooldown) {
+      _run(now);
+      return;
+    }
+
+    // We’re inside the cooldown window. If nothing is already scheduled,
+    // queue exactly one run for the earliest legal moment.
+    if (_pendingTimer == null || !_pendingTimer!.isActive) {
+      final remaining = cooldown - now.difference(_lastRun!);
+      _pendingTimer = Timer(remaining, () => _run(DateTime.now()));
+    }
+  }
+
+  /// Cancels any scheduled run and releases resources.
+  void dispose() {
+    _pendingTimer?.cancel();
+    _pendingTimer = null;
+  }
+
+  void _run(DateTime timestamp) {
+    _pendingTimer?.cancel();
+    _pendingTimer = null;
+
+    _lastRun = timestamp;
+    action();
+  }
+}
