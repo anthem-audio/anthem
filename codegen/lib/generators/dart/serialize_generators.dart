@@ -68,7 +68,7 @@ String createSerializerForPrimitive({required String accessor}) {
 /// Each value is stored as an integer between 0 and 255.
 String createSerializerForColor({required String accessor}) {
   return '''
-{'a': ($accessor.a * 255).round(), 'r': $accessor.r.round(), 'g': $accessor.g.round(), 'b': $accessor.b.round()}
+{'a': ($accessor.a * 255).round(), 'r': ($accessor.r * 255).round(), 'g': ($accessor.g * 255).round(), 'b': ($accessor.b * 255).round()}
 ''';
 }
 
