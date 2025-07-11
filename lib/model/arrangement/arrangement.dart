@@ -41,13 +41,7 @@ class ArrangementModel extends _ArrangementModel
         _$ArrangementModel,
         _$ArrangementModelAnthemModelMixin,
         _ArrangementCompilerMixin {
-  ArrangementModel({required super.name, required super.id}) {
-    _init();
-  }
-
-  ArrangementModel.uninitialized() : super(name: '', id: '') {
-    _init();
-  }
+  ArrangementModel.uninitialized() : super(name: '', id: '');
 
   ArrangementModel.create({required super.name, required super.id})
     : super.create() {

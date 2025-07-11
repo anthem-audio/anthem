@@ -80,7 +80,7 @@ class MainWindowController {
     if (path == null) return null;
     final file = await File(path).readAsString();
 
-    final project = ProjectModel.fromJson(json.decode(file))..hydrate();
+    final project = ProjectModel.fromJson(json.decode(file));
     _addProject(project);
 
     return project.id;

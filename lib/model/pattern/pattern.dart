@@ -66,9 +66,7 @@ class PatternModel extends _PatternModel
     project.engine.sequencerApi.updateLoopPoints(id);
   });
 
-  PatternModel() : super() {
-    _init();
-  }
+  PatternModel() : super();
 
   PatternModel.create({required super.name}) : super.create() {
     _init();
