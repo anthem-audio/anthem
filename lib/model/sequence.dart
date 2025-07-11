@@ -37,12 +37,15 @@ part 'sequence.g.dart';
 )
 class SequenceModel extends _SequenceModel
     with _$SequenceModel, _$SequenceModelAnthemModelMixin {
-  SequenceModel() : super();
   SequenceModel.uninitialized() : super();
   SequenceModel.create() : super.create();
 
-  factory SequenceModel.fromJson(Map<String, dynamic> json) =>
-      _$SequenceModelAnthemModelMixin.fromJson(json);
+  factory SequenceModel.fromJson(Map<String, dynamic> json) {
+    final sequence = _$SequenceModelAnthemModelMixin.fromJson(json);
+    sequence.activePatternID = sequence.patternOrder.firstOrNull;
+    sequence.activeArrangementID = sequence.arrangementOrder.firstOrNull;
+    return sequence;
+  }
 }
 
 abstract class _SequenceModel with Store, AnthemModelBase {
