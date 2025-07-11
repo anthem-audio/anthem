@@ -165,8 +165,8 @@ String _createGetterForField({
 
   return switch (type) {
     StringModelType() => '$getter as String$q',
-    IntModelType() => '$getter as int$q',
-    DoubleModelType() => '$getter as double$q',
+    IntModelType() => '($getter as num$q)$q.toInt()',
+    DoubleModelType() => '($getter as num$q)$q.toDouble()',
     NumModelType() => '$getter as num$q',
     BoolModelType() => '$getter as bool$q',
     ColorModelType() =>
