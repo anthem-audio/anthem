@@ -41,12 +41,13 @@ class ProcessingGraphModel extends _ProcessingGraphModel
     addNode(masterOutputNode);
     masterOutputNodeId = masterOutputNode.id;
 
+    _init();
+  }
+
+  void _init() {
     // Send a message to compile the processing graph after the model has been
     // sent to the engine
     onModelAttached(() async {
-      await project.waitForFirstSync();
-      await project.engine.processingGraphApi.compile();
-
       // Forward engine state changes to all nodes
       //
       // I don't want to add this listener in the node itself because that would
@@ -61,8 +62,11 @@ class ProcessingGraphModel extends _ProcessingGraphModel
     });
   }
 
-  factory ProcessingGraphModel.fromJson(Map<String, dynamic> json) =>
-      _$ProcessingGraphModelAnthemModelMixin.fromJson(json);
+  factory ProcessingGraphModel.fromJson(Map<String, dynamic> json) {
+    final graph = _$ProcessingGraphModelAnthemModelMixin.fromJson(json);
+    graph._init();
+    return graph;
+  }
 
   void addNode(NodeModel node) {
     nodes[node.id] = node;
