@@ -92,6 +92,9 @@ class MainWindowController {
     final project = ProjectModel.fromJson(json.decode(file));
     _addProject(project);
 
+    project.filePath = path;
+    project.isSaved = true;
+
     return project.id;
   }
 
