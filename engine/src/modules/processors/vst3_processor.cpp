@@ -139,7 +139,8 @@ void VST3Processor::tryInitializePlugin() {
         }
       };
 
-      AnthemComms::getInstance().writeString(rfl::json::write(event));
+      auto eventString = rfl::json::write(event);
+      Anthem::getInstance().comms.send(eventString);
 
       showPluginGUI();
     }
@@ -200,7 +201,7 @@ void VST3Processor::audioProcessorParameterChanged(juce::AudioProcessor* process
     };
 
     auto eventString = rfl::json::write(event);
-    AnthemComms::getInstance().writeString(eventString);
+    Anthem::getInstance().comms.send(eventString);
   });
 }
 
@@ -218,7 +219,7 @@ void VST3Processor::audioProcessorChanged(juce::AudioProcessor* processor, const
     };
 
     auto eventString = rfl::json::write(event);
-    AnthemComms::getInstance().writeString(eventString);
+    Anthem::getInstance().comms.send(eventString);
   });
 }
 

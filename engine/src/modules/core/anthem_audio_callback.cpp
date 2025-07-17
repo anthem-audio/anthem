@@ -132,7 +132,7 @@ void AnthemAudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIO
     };
     
     auto responseText = rfl::json::write(response);
-    AnthemComms::getInstance().writeString(responseText);
+    Anthem::getInstance().comms.send(responseText);
   });
 }
 

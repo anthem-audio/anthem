@@ -21,6 +21,8 @@
 
 #include "messages/messages.h"
 
+#include "modules/core/anthem.h"
+
 VisualizationBroker::VisualizationBroker() {
   this->updateIntervalMs = 15.0;
   this->startTimerHz(static_cast<int>(1000.0 / this->updateIntervalMs));
@@ -98,5 +100,5 @@ void VisualizationBroker::timerCallback() {
   };
 
   auto responseText = rfl::json::write(visualizationUpdate);
-  AnthemComms::getInstance().writeString(responseText);
+  Anthem::getInstance().comms.send(responseText);
 }

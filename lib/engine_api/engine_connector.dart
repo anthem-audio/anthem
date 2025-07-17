@@ -272,17 +272,17 @@ class EngineConnector {
       if (_messageBuffer.buffer.length >= 8 + messageLength) {
         // Extract the full message
         final messageStart = 8;
-        final messsageEnd = messageStart + messageLength;
+        final messageEnd = messageStart + messageLength;
         final fullMessage = _messageBuffer.buffer.sublist(
           messageStart,
-          messsageEnd,
+          messageEnd,
         );
 
         Response response;
         try {
           response = Response.fromJson(jsonDecode(utf8.decode(fullMessage)));
         } on FormatException catch (_) {
-          // If we can't deocde, then something is fatally wrong. This is
+          // If we can't decode, then something is fatally wrong. This is
           // probably a bug, so we should shut down the engine and report the
           // error.
           _shutdown();

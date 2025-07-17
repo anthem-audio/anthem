@@ -25,7 +25,6 @@
 #include <string>
 #include "visualization_provider.h"
 #include "juce_events/juce_events.h"
-#include "comms.h"
 
 // This class coordinates visualization subscriptions.
 //
@@ -44,7 +43,7 @@
 //
 // The UI can then subscribe to any of these data providers. Whatever
 // subscriptions are active will determine which data providers have their data
-// queryed and sent to the UI.
+// queried and sent to the UI.
 class VisualizationBroker : private juce::Timer {
 private:
   // Private constructor for singleton pattern

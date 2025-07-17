@@ -70,6 +70,7 @@ class EngineSocketServer {
 
         late StreamSubscription<Uint8List> sub;
 
+        final idHeader = Uint8List(8);
         final id = Uint8List(8);
         var writePtr = 0;
         bool idFound = false;
@@ -80,22 +81,47 @@ class EngineSocketServer {
               final writePtrStart = writePtr;
 
               var messagePtr = 0;
-              while (writePtr < 8 && messagePtr < message.length) {
-                id[writePtr] = message[messagePtr];
+              while (writePtr < 16 && messagePtr < message.length) {
+                if (writePtr < 8) {
+                  // Read the first 8 bytes as the ID header.
+                  idHeader[writePtr] = message[messagePtr];
+                } else {
+                  // Read the next 8 bytes as the engine ID.
+                  id[writePtr - 8] = message[messagePtr];
+                }
                 writePtr++;
                 messagePtr++;
               }
 
-              // If the first message didn't contain the full 8-byte id, wait for
-              // the next message.
-              if (writePtr < 8) return;
+              // If the first message didn't contain the full 8-byte header and
+              // 8-byte id, wait for the next message.
+              if (writePtr < 16) return;
 
-              idFound = true;
+              // ID header data
+              final headerByteData = ByteData.sublistView(idHeader);
 
               // Get the ID of the engine from the first message of each socket, and
               // use it to assign the socket to our map of server connections.
-              final byteData = ByteData.sublistView(id);
-              engineId = byteData.getUint64(0, Endian.host);
+              final idByteData = ByteData.sublistView(id);
+
+              // Every message is preceded by an 8-byte header that contains the
+              // size of the upcoming message. The first message from the engine
+              // is the engine ID, which itself is 8 bytes. If the size is not
+              // 8, we close the socket and throw an error.
+
+              final engineIdMessageSize = headerByteData.getUint64(
+                0,
+                Endian.host,
+              );
+              if (engineIdMessageSize != 8) {
+                socket.close();
+                throw Exception(
+                  'EngineSocketServer: Invalid engine ID message size: $engineIdMessageSize',
+                );
+              }
+              engineId = idByteData.getInt64(0, Endian.host);
+              idFound = true;
+
               _engineConnectionSubs[engineId] = sub;
               _engineConnections[engineId] = socket;
 
