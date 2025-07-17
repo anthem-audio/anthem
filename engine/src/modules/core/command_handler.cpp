@@ -27,6 +27,22 @@
 #include "modules/command_handlers/sequencer_command_handler.h"
 #include "modules/command_handlers/visualization_command_handler.h"
 
+void HeartbeatThread::run() {
+  while (!threadShouldExit()) {
+    // Sleep for 10 seconds
+    wait(10000);
+
+    if (!gotMessageSinceLastHeartbeatCheck) {
+      juce::Logger::writeToLog("No heartbeat or message received in the last 10 seconds. Exiting...");
+      juce::MessageManager::callAsync([]() {
+        juce::JUCEApplication::quit();
+      });
+    } else {
+      gotMessageSinceLastHeartbeatCheck = false;
+    }
+  }
+}
+
 void CommandHandler::addCommandBytesToQueue(juce::MemoryBlock bytes) {
   juce::ScopedLock lock(commandQueueMutex);
   commandQueue.push(std::move(bytes));

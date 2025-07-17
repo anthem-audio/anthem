@@ -32,21 +32,7 @@ public:
   volatile bool gotMessageSinceLastHeartbeatCheck = false;
   HeartbeatThread() : juce::Thread("HeartbeatThread") {}
 
-  void run() override {
-    while (!threadShouldExit()) {
-      // Sleep for a second
-      wait(10000);
-
-      if (!gotMessageSinceLastHeartbeatCheck) {
-        juce::Logger::writeToLog("No heartbeat or message received in the last 10 seconds. Exiting...");
-        juce::MessageManager::callAsync([]() {
-          juce::JUCEApplication::quit();
-        });
-      } else {
-        gotMessageSinceLastHeartbeatCheck = false;
-      }
-    }
-  }
+  void run() override;
 };
 
 class CommandHandler {
@@ -58,7 +44,7 @@ private:
 
 public:
   void startHeartbeatThread() {
-    // heartbeatThread.startThread();
+    heartbeatThread.startThread();
   }
 
   // Called from the socket thread
