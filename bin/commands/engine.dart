@@ -18,6 +18,7 @@
 */
 
 // ignore_for_file: avoid_print
+// cspell:ignore DCMAKE fsanitize
 
 import 'dart:io';
 
@@ -31,7 +32,7 @@ class EngineCommand extends Command<dynamic> {
   String get name => 'engine';
 
   @override
-  String get description => 'Utilities for devleoping the Anthem engine.';
+  String get description => 'Utilities for developing the Anthem engine.';
 
   EngineCommand() {
     addSubcommand(_BuildEngineCommand());
@@ -72,14 +73,6 @@ class _BuildEngineCommand extends Command<dynamic> {
 
   @override
   Future<void> run() async {
-    if (Platform.isWindows && argResults!['address-sanitizer']) {
-      print(
-        Colorize('Error: Address sanitizer is not supported on Windows.')
-          ..red(),
-      );
-      return;
-    }
-
     if (argResults!['release'] && argResults!['debug']) {
       print(
         Colorize('Error: Cannot build in both release and debug mode.')..red(),
@@ -232,10 +225,17 @@ class _CleanEngineCommand extends Command<dynamic> {
 
     final packageRootPath = getPackageRootPath();
     final buildDirPath = packageRootPath.resolve('engine/build/');
+    final buildAsanDirPath = packageRootPath.resolve('engine/build_asan/');
     final buildDir = Directory.fromUri(buildDirPath);
+    final buildAsanDir = Directory.fromUri(buildAsanDirPath);
 
     print(Colorize('Deleting build directory...')..lightGreen());
-    buildDir.deleteSync(recursive: true);
+    if (buildDir.existsSync()) {
+      buildDir.deleteSync(recursive: true);
+    }
+    if (buildAsanDir.existsSync()) {
+      buildAsanDir.deleteSync(recursive: true);
+    }
 
     print(Colorize('Clean complete.').lightGreen());
   }
@@ -305,8 +305,10 @@ Future<void> _buildCmakeTarget(
 }) async {
   final packageRootPath = getPackageRootPath();
 
+  final buildDirName = addressSanitizer ? 'build_asan' : 'build';
+
   print(Colorize('Creating build directory...')..lightGreen());
-  final buildDirPath = packageRootPath.resolve('engine/build/');
+  final buildDirPath = packageRootPath.resolve('engine/$buildDirName/');
   final buildDir = Directory.fromUri(buildDirPath);
   buildDir.createSync();
 
@@ -325,9 +327,26 @@ Future<void> _buildCmakeTarget(
       if (Platform.isLinux || Platform.isMacOS)
         '-DCMAKE_BUILD_TYPE=${debug ? 'Debug' : 'Release'}',
 
-      if (addressSanitizer) '-DCMAKE_C_FLAGS="-fsanitize=address"',
-      if (addressSanitizer) '-DCMAKE_CXX_FLAGS="-fsanitize=address"',
-      if (addressSanitizer) '-DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address"',
+      if (addressSanitizer && (Platform.isLinux || Platform.isMacOS)) ...[
+        '-DCMAKE_C_FLAGS=-fsanitize=address',
+        '-DCMAKE_CXX_FLAGS=-fsanitize=address',
+        '-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address',
+        '-DCMAKE_C_FLAGS_DEBUG=-fsanitize=address',
+        '-DCMAKE_CXX_FLAGS_DEBUG=-fsanitize=address',
+        '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-fsanitize=address',
+        '-DCMAKE_C_FLAGS_DEBUG=-fno-omit-frame-pointer',
+        '-DCMAKE_CXX_FLAGS_DEBUG=-fno-omit-frame-pointer',
+        '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-fno-omit-frame-pointer',
+        '-DCMAKE_C_FLAGS_DEBUG=-g',
+        '-DCMAKE_CXX_FLAGS_DEBUG=-g',
+        '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-g',
+        '-DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address',
+      ],
+
+      if (addressSanitizer && Platform.isWindows) ...[
+        r'-DCMAKE_C_FLAGS="/fsanitize=address"',
+        r'-DCMAKE_CXX_FLAGS="/fsanitize=address"',
+      ],
 
       '..',
     ],
