@@ -165,4 +165,9 @@ void CommandHandler::processNextCommand() {
 
     Anthem::getInstance().comms.send(responseStr);
   }
+
+  if (isExit) {
+    juce::Logger::writeToLog("Engine received exit command. Exiting...");
+    juce::JUCEApplication::quit();
+  }
 }
