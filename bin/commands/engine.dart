@@ -303,6 +303,24 @@ Future<void> _buildCmakeTarget(
   bool addressSanitizer = false,
   bool debug = false,
 }) async {
+  if (addressSanitizer) {
+    print(
+      Colorize(
+        'WARNING: Address sanitizer is enabled. The UI will not automatically run this build. You will need to modify engine_connector.dart to do one of the following:',
+      )..yellow(),
+    );
+    print(
+      Colorize(
+        ' - Use the `./engine/build_asan/...` directory as the engine binary location.',
+      )..yellow(),
+    );
+    print(
+      Colorize(
+        ' - Not actually run the engine binary, but instead just output the arguments to the console, to allow you to start it manually.',
+      )..yellow(),
+    );
+  }
+
   final packageRootPath = getPackageRootPath();
 
   final buildDirName = addressSanitizer ? 'build_asan' : 'build';
