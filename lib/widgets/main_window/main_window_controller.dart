@@ -118,6 +118,13 @@ class MainWindowController {
         path += '.anthem';
       }
 
+      // Load the latest for all plugin states before saving
+      await Future.wait(
+        project.processingGraph.nodes.values.map((node) {
+          return node.updateStateFromEngine();
+        }),
+      );
+
       await File(path).writeAsString(json.encode(project.toJson()));
 
       project.isSaved = true;

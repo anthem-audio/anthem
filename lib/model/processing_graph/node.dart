@@ -165,18 +165,21 @@ abstract class _NodeModel with Store, AnthemModelBase {
   ///
   /// This sends a request to the engine to get the current state of the
   /// processor. This is be debounced to avoid excessive requests.
-  void scheduleStateUpdate() async {
-    await stateIsSentToEngineCompleter.future;
-
+  void scheduleDebouncedStateUpdate() async {
     _stateUpdateDebouncedAction ??= TimerDebouncedAction(() async {
-      if (!project.engine.isRunning) return;
-
-      // Send the current state of the processor to the engine.
-      processorState = await project.engine.processingGraphApi.getPluginState(
-        id,
-      );
+      await updateStateFromEngine();
     }, Duration(seconds: 1));
     _stateUpdateDebouncedAction!.execute();
+  }
+
+  Future<void> updateStateFromEngine() async {
+    if (!project.engine.isRunning) {
+      return;
+    }
+
+    await stateIsSentToEngineCompleter.future;
+
+    processorState = await project.engine.processingGraphApi.getPluginState(id);
   }
 
   /// Sends the current state of the processor to the engine.

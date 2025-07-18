@@ -133,7 +133,7 @@ class Engine {
   }
 
   void _scheduleNodeStateUpdate(String nodeId) {
-    project.processingGraph.nodes[nodeId]?.scheduleStateUpdate();
+    project.processingGraph.nodes[nodeId]?.scheduleDebouncedStateUpdate();
   }
 
   void _onReply(Response response) {
