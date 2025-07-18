@@ -101,4 +101,10 @@ public:
 
   void send(std::string& message);
   void sendRaw(juce::MemoryBlock& message);
+
+  // Stops the socket thread, after all messages have been sent.
+  //
+  // THIS IS BLOCKING. This should only be called on application exit, when
+  // there's definitely no more data to send or receive.
+  void closeSocketThread();
 };

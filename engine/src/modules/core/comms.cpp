@@ -257,3 +257,17 @@ void AnthemComms::send(std::string& message) {
   juce::MemoryBlock messageBlock(message.data(), message.size());
   sendRaw(messageBlock);
 }
+
+void AnthemComms::closeSocketThread() {
+  int i = 0;
+  while (socketThread.messageQueueHasMessages()) {
+    juce::Thread::sleep(100);
+    i++;
+    if (i > 100) {
+      juce::Logger::writeToLog("Socket thread is taking too long to close. Forcing exit.");
+      break;
+    }
+  }
+
+  socketThread.stopThread(1000);
+}

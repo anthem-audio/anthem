@@ -186,14 +186,9 @@ class Engine {
   }
 
   Future<void> _exit() async {
-    final id = _getRequestId();
-
-    final request = Exit(id: id);
-
+    final request = Exit(id: _getRequestId());
     await _request(request);
 
-    // This force-kills the engine... Maybe we should give it some time to
-    // shut down? Not sure how to tell when the process stops.
     _engineConnector.dispose();
 
     _setEngineState(EngineState.stopped);

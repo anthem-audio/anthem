@@ -86,4 +86,6 @@ public:
   void unregisterDataProvider(const std::string& name) {
     dataProviders.erase(name);
   }
+
+  void dispose();
 };

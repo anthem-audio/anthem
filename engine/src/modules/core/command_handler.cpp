@@ -22,6 +22,8 @@
 #include <rfl/json.hpp>
 #include <rfl.hpp>
 
+#include "modules/core/visualization/visualization_broker.h"
+
 #include "modules/command_handlers/model_sync_command_handler.h"
 #include "modules/command_handlers/processing_graph_command_handler.h"
 #include "modules/command_handlers/sequencer_command_handler.h"
@@ -168,6 +170,10 @@ void CommandHandler::processNextCommand() {
 
   if (isExit) {
     juce::Logger::writeToLog("Engine received exit command. Exiting...");
+
+    VisualizationBroker::getInstance().dispose();
+
+    Anthem::getInstance().comms.closeSocketThread();
     juce::JUCEApplication::quit();
   }
 }

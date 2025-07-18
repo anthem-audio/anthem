@@ -102,3 +102,9 @@ void VisualizationBroker::timerCallback() {
   auto responseText = rfl::json::write(visualizationUpdate);
   Anthem::getInstance().comms.send(responseText);
 }
+
+void VisualizationBroker::dispose() {
+  this->stopTimer();
+  this->dataProviders.clear();
+  this->subscriptions.clear();
+}
