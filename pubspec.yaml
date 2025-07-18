@@ -34,7 +34,7 @@ dependencies:
   pointer_lock:
     git:
       url: https://github.com/helgoboss/pointer_lock.git
-      ref: fc8b626
+      ref: 11322c2
   mockito: ^5.4.5
   window_manager: ^0.5.0
 
