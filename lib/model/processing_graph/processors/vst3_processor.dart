@@ -47,6 +47,7 @@ class VST3ProcessorModel extends _VST3ProcessorModel
     final id = 'vst3-processor-${getId()}';
 
     return NodeModel(
+      isThirdPartyPlugin: true,
       id: id,
       processor: VST3ProcessorModel(nodeId: id, vst3Path: vst3Path),
       eventInputPorts: AnthemObservableList.of([

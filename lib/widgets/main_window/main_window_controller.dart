@@ -73,15 +73,27 @@ class MainWindowController {
   /// Returns the ID of the loaded project, or null if the project load failed
   /// or was cancelled.
   Future<Id?> loadProject() async {
+    String? home;
+    Map<String, String> envVars = Platform.environment;
+    if (Platform.isMacOS || Platform.isLinux) {
+      home = envVars['HOME'];
+    } else if (Platform.isWindows) {
+      home = envVars['UserProfile'];
+    }
+
     final path = (await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['anthem'],
+      initialDirectory: home,
     ))?.files[0].path;
     if (path == null) return null;
     final file = await File(path).readAsString();
 
-    final project = ProjectModel.fromJson(json.decode(file))..hydrate();
+    final project = ProjectModel.fromJson(json.decode(file));
     _addProject(project);
+
+    project.filePath = path;
+    project.isSaved = true;
 
     return project.id;
   }
@@ -105,6 +117,13 @@ class MainWindowController {
       if (!path.endsWith('.anthem')) {
         path += '.anthem';
       }
+
+      // Load the latest for all plugin states before saving
+      await Future.wait(
+        project.processingGraph.nodes.values.map((node) {
+          return node.updateStateFromEngine();
+        }),
+      );
 
       await File(path).writeAsString(json.encode(project.toJson()));
 

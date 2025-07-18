@@ -181,6 +181,10 @@ const hide = Hide.all();
 /// serialization, but still generates C++ code and model sync code for it.
 const hideFromSerialization = Hide(serialization: true);
 
+/// Shorthand for @Hide(cpp: true) - hides the field from C++ generation,
+/// but still serializes it and generates model sync code for it.
+const hideFromCpp = Hide(cpp: true);
+
 /// An annotation that marks a field as a MobX observable.
 ///
 /// This must be used instead of `@observable` if Anthem is also generating

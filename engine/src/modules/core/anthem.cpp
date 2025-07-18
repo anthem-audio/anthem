@@ -28,12 +28,15 @@ Anthem::Anthem() {
 }
 
 void Anthem::initialize() {
-  graphProcessor = std::make_unique<AnthemGraphProcessor>();
-  sequenceStore = std::make_unique<AnthemRuntimeSequenceStore>();
+  this->graphProcessor = std::make_unique<AnthemGraphProcessor>();
+  this->sequenceStore = std::make_unique<AnthemRuntimeSequenceStore>();
   transport = std::make_unique<Transport>();
   globalVisualizationSources = std::make_unique<GlobalVisualizationSources>();
 
   audioPluginFormatManager.addDefaultFormats();
+
+  comms.init();
+  commandHandler.startHeartbeatThread();
 }
 
 void Anthem::shutdown() {

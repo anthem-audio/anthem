@@ -43,3 +43,96 @@ class CompileProcessingGraphResponse extends Response {
     super.id = id;
   }
 }
+
+class PluginChangedEvent extends Response {
+  late String nodeId;
+
+  late bool latencyChanged;
+  late bool parameterInfoChanged;
+  late bool programChanged;
+  late bool nonParameterStateChanged;
+
+  PluginChangedEvent.uninitialized();
+
+  PluginChangedEvent({
+    required int id,
+    required this.nodeId,
+    required this.latencyChanged,
+    required this.parameterInfoChanged,
+    required this.programChanged,
+    required this.nonParameterStateChanged,
+  }) {
+    super.id = id;
+  }
+}
+
+class PluginParameterChangedEvent extends Response {
+  late String nodeId;
+  late int parameterIndex;
+  late double newValue;
+
+  PluginParameterChangedEvent.uninitialized();
+
+  PluginParameterChangedEvent({
+    required int id,
+    required this.nodeId,
+    required this.parameterIndex,
+    required this.newValue,
+  }) {
+    super.id = id;
+  }
+}
+
+class GetPluginStateRequest extends Request {
+  late String nodeId;
+
+  GetPluginStateRequest.uninitialized();
+
+  GetPluginStateRequest({required int id, required this.nodeId}) {
+    super.id = id;
+  }
+}
+
+class GetPluginStateResponse extends Response {
+  late String state;
+  late bool isValid;
+
+  GetPluginStateResponse.uninitialized();
+
+  GetPluginStateResponse({
+    required int id,
+    required this.state,
+    required this.isValid,
+  }) {
+    super.id = id;
+  }
+}
+
+class SetPluginStateRequest extends Request {
+  late String nodeId;
+  late String state;
+
+  SetPluginStateRequest.uninitialized();
+
+  SetPluginStateRequest({
+    required int id,
+    required this.nodeId,
+    required this.state,
+  }) {
+    super.id = id;
+  }
+}
+
+/// An event that is fired when a third-party plugin is loaded for the given
+/// node.
+///
+/// This will only fire for nodes that load third-party plugins.
+class PluginLoadedEvent extends Response {
+  late String nodeId;
+
+  PluginLoadedEvent.uninitialized();
+
+  PluginLoadedEvent({required int id, required this.nodeId}) {
+    super.id = id;
+  }
+}

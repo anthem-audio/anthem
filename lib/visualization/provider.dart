@@ -134,10 +134,15 @@ class VisualizationProvider {
   void dispose() {
     _engineStateChangeSub.cancel();
 
-    for (final subscriptions in _subscriptions.values) {
-      for (final subscription in subscriptions) {
+    while (_subscriptions.isNotEmpty) {
+      final groupKey = _subscriptions.keys.first;
+      final group = _subscriptions[groupKey]!;
+      while (group.isNotEmpty) {
+        final subscription = group.last;
         subscription.dispose();
+        group.removeLast();
       }
+      _subscriptions.remove(groupKey);
     }
 
     _subscriptions.clear();

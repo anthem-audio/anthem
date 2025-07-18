@@ -47,9 +47,7 @@ enum ProjectLayoutKind { arrange, edit, mix }
 )
 class ProjectModel extends _ProjectModel
     with _$ProjectModel, _$ProjectModelAnthemModelMixin {
-  ProjectModel() : super() {
-    _init();
-  }
+  ProjectModel() : super();
 
   ProjectModel.create([super._enginePathOverride]) : super.create() {
     _init();
@@ -61,6 +59,7 @@ class ProjectModel extends _ProjectModel
       // This is the top model in the tree. setParentPropertiesOnChildren will not
       // work correctly if we don't set this.
       ..isTopLevelModel = true;
+    project.hydrate();
     project._init();
     return project;
   }
@@ -212,7 +211,6 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     isTopLevelModel = true;
 
     _commandStack = CommandStack(this as ProjectModel);
-    visualizationProvider = VisualizationProvider(this as ProjectModel);
   }
 
   @hide
@@ -283,7 +281,8 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     engine.modelSyncApi.initModel(
       jsonEncode(
         (this as _$ProjectModelAnthemModelMixin).toJson(
-          includeFieldsForEngine: true,
+          forEngine: true,
+          forProjectFile: false,
         ),
       ),
     );

@@ -49,4 +49,23 @@ class ProcessingGraphApi {
       throw Exception('compile(): engine returned an error: ${response.error}');
     }
   }
+
+  void setPluginState(Id nodeId, String state) async {
+    final id = _engine._getRequestId();
+
+    final request = SetPluginStateRequest(id: id, nodeId: nodeId, state: state);
+
+    _engine._requestNoReply(request);
+  }
+
+  Future<String> getPluginState(Id nodeId) async {
+    final id = _engine._getRequestId();
+
+    final request = GetPluginStateRequest(id: id, nodeId: nodeId);
+
+    final response =
+        (await _engine._request(request)) as GetPluginStateResponse;
+
+    return response.state;
+  }
 }

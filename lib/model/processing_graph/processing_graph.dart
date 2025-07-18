@@ -41,16 +41,32 @@ class ProcessingGraphModel extends _ProcessingGraphModel
     addNode(masterOutputNode);
     masterOutputNodeId = masterOutputNode.id;
 
+    _init();
+  }
+
+  void _init() {
     // Send a message to compile the processing graph after the model has been
     // sent to the engine
     onModelAttached(() async {
-      await project.waitForFirstSync();
-      await project.engine.processingGraphApi.compile();
+      // Forward engine state changes to all nodes
+      //
+      // I don't want to add this listener in the node itself because that would
+      // require me to add model lifecycle methods to the entire model, or
+      // otherwise always remember to clean up the node's listeners when
+      // removing a node, neither of which I want to do.
+      project.engine.engineStateStream.listen((state) {
+        for (final node in nodes.values) {
+          node.handleEngineStateChange(state);
+        }
+      });
     });
   }
 
-  factory ProcessingGraphModel.fromJson(Map<String, dynamic> json) =>
-      _$ProcessingGraphModelAnthemModelMixin.fromJson(json);
+  factory ProcessingGraphModel.fromJson(Map<String, dynamic> json) {
+    final graph = _$ProcessingGraphModelAnthemModelMixin.fromJson(json);
+    graph._init();
+    return graph;
+  }
 
   void addNode(NodeModel node) {
     nodes[node.id] = node;

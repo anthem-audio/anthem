@@ -215,6 +215,13 @@ class _GeneratorRowState extends State<GeneratorRow> {
                           GeneratorType.instrument => EditorKind.detail,
                           GeneratorType.automation => EditorKind.automation,
                         };
+
+                    if (generator.generatorType == GeneratorType.instrument) {
+                      project.activeInstrumentID = widget.generatorID;
+                    } else if (generator.generatorType ==
+                        GeneratorType.automation) {
+                      project.activeAutomationGeneratorID = widget.generatorID;
+                    }
                   },
                   child: Container(
                     height: 30,

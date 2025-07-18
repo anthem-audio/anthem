@@ -279,7 +279,7 @@ mixin AnthemModelBase {
   /// parent model is a collection, this will be null.
   String? parentFieldName;
 
-  /// A write will be reported to tihs atom when this model or any descendant
+  /// A write will be reported to this atom when this model or any descendant
   /// model is changed.
   final Atom _allChangesAtom = Atom();
 
@@ -353,7 +353,7 @@ mixin AnthemModelBase {
   _listeners = [];
 
   /// Serializes the model to a JSON representation.
-  dynamic toJson({bool includeFieldsForEngine = false});
+  dynamic toJson({bool forEngine = false, bool forProjectFile = true});
 
   void notifyFieldChanged({
     required FieldOperation operation,

@@ -45,7 +45,7 @@ private:
   std::function<void()> closeCallback;
 };
 
-class VST3Processor : public AnthemProcessor, public VST3ProcessorModelBase {
+class VST3Processor : public AnthemProcessor, public VST3ProcessorModelBase, public juce::AudioProcessorListener {
 private:
   juce::PluginDescription pluginDescription;
 
@@ -76,4 +76,10 @@ public:
   void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override;
 
   void tryInitializePlugin();
+
+  void audioProcessorParameterChanged(juce::AudioProcessor* processor, int parameterIndex, float newValue) override;
+  void audioProcessorChanged(juce::AudioProcessor* processor, const juce::AudioProcessor::ChangeDetails& details) override;
+
+  void getState(juce::MemoryBlock& target) override;
+  void setState(const juce::MemoryBlock& state) override;
 };

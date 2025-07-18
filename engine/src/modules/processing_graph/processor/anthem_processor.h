@@ -22,6 +22,8 @@
 #include <string>
 #include <memory>
 
+#include <juce_core/juce_core.h>
+
 class AnthemGraphNode;
 class AnthemProcessContext;
 
@@ -52,4 +54,10 @@ public:
   // This method is called by the processing graph to process audio, event and
   // control data. It is called once per processing block.
   virtual void process(AnthemProcessContext& context, int numSamples) = 0;
+
+  // Gets the state of the processor
+  virtual void getState(juce::MemoryBlock& target) {}
+
+  // Loads the state of the processor from a value exported by getState()
+  virtual void setState(const juce::MemoryBlock& state) {}
 };

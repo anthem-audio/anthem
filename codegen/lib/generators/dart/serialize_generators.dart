@@ -68,7 +68,7 @@ String createSerializerForPrimitive({required String accessor}) {
 /// Each value is stored as an integer between 0 and 255.
 String createSerializerForColor({required String accessor}) {
   return '''
-{'a': ($accessor.a * 255).round(), 'r': $accessor.r.round(), 'g': $accessor.g.round(), 'b': $accessor.b.round()}
+{'a': ($accessor.a * 255).round(), 'r': ($accessor.r * 255).round(), 'g': ($accessor.g * 255).round(), 'b': ($accessor.b * 255).round()}
 ''';
 }
 
@@ -126,16 +126,14 @@ String createSerializerForCustomType({
 }) {
   // There are two cases for this:
   // 1. This serializer is being output in the context of a toJson method, in
-  //    which case the parameter includeFieldsForEngine will be provided as an
-  //    argument
+  //    which case the parameter forEngine will be provided as an argument
   // 2. This serializer is being output in the context of a generated setter,
   //    and the serialized value is being sent to the engine as part of a model
-  //    change event. In this case, there will be no includeFieldsForEngine
-  //    parameter, and we need to include the engine-only fields.
-  final includeFieldsForEngine = alwaysIncludeEngineOnlyFields
-      ? 'true'
-      : 'includeFieldsForEngine';
-  return '$accessor${type.isNullable ? '?' : ''}.toJson(includeFieldsForEngine: $includeFieldsForEngine)';
+  //    change event. In this case, there will be no forEngine parameter, and we
+  //    need to include the engine-only fields.
+  final forEngine = alwaysIncludeEngineOnlyFields ? 'true' : 'forEngine';
+  final forProjectFile = alwaysIncludeEngineOnlyFields ? 'false' : '!forEngine';
+  return '$accessor${type.isNullable ? '?' : ''}.toJson(forEngine: $forEngine, forProjectFile: $forProjectFile)';
 }
 
 String createSerializerForUnion({

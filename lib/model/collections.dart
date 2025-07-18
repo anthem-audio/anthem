@@ -33,7 +33,11 @@ import 'anthem_model_base_mixin.dart';
 ///
 /// For Anthem models, it will call `toJson()` on the model, which will give
 /// back a map, or a list if the model is an AnthemObservableList.
-Object? _serializeValue(Object? value, {required bool includeFieldsForEngine}) {
+Object? _serializeValue(
+  Object? value, {
+  required bool forEngine,
+  required bool forProjectFile,
+}) {
   if (value is String) {
     return value;
   } else if (value is int) {
@@ -45,7 +49,7 @@ Object? _serializeValue(Object? value, {required bool includeFieldsForEngine}) {
   } else if (value is Enum) {
     return value.name;
   } else if (value is AnthemModelBase) {
-    return value.toJson(includeFieldsForEngine: includeFieldsForEngine);
+    return value.toJson(forEngine: forEngine, forProjectFile: forProjectFile);
   } else if (value == null) {
     return null;
   } else {
@@ -87,7 +91,8 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
                 value: elementChange.newValue,
                 valueSerialized: _serializeValue(
                   elementChange.newValue,
-                  includeFieldsForEngine: true,
+                  forEngine: true,
+                  forProjectFile: false,
                 ),
               ),
               accessorChain: accessorChain,
@@ -111,7 +116,8 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
                 newValue: elementChange.newValue,
                 newValueSerialized: _serializeValue(
                   elementChange.newValue,
-                  includeFieldsForEngine: true,
+                  forEngine: true,
+                  forProjectFile: false,
                 ),
               ),
               accessorChain: accessorChain,
@@ -125,6 +131,13 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
   void _setParentPropertiesOnIndex(int index) {
     final element = elementAt(index);
     if (element is! AnthemModelBase) {
+      return;
+    }
+
+    // If the parent is null, then we can't attach parent properties yet. When
+    // this model itself is attached, then setParentPropertiesOnChildren will be
+    // called which will attach children.
+    if (parent == null) {
       return;
     }
 
@@ -143,9 +156,13 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
   }
 
   @override
-  List<Object?> toJson({bool includeFieldsForEngine = false}) {
+  List<Object?> toJson({bool forEngine = false, bool forProjectFile = true}) {
     return map(
-      (e) => _serializeValue(e, includeFieldsForEngine: includeFieldsForEngine),
+      (e) => _serializeValue(
+        e,
+        forEngine: forEngine,
+        forProjectFile: forProjectFile,
+      ),
     ).toList();
   }
 }
@@ -175,7 +192,8 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
             newValue: change.newValue,
             newValueSerialized: _serializeValue(
               change.newValue,
-              includeFieldsForEngine: true,
+              forEngine: true,
+              forProjectFile: false,
             ),
           ),
           accessorChain: accessorChain,
@@ -199,6 +217,13 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
       return;
     }
 
+    // If the parent is null, then we can't attach parent properties yet. When
+    // this model itself is attached, then setParentPropertiesOnChildren will be
+    // called which will attach children.
+    if (parent == null) {
+      return;
+    }
+
     value.setParentProperties(parent: this, fieldType: FieldType.map, key: key);
   }
 
@@ -210,11 +235,22 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
   }
 
   @override
-  Map<Object?, Object?> toJson({bool includeFieldsForEngine = false}) {
+  Map<Object?, Object?> toJson({
+    bool forEngine = false,
+    bool forProjectFile = true,
+  }) {
     return map(
       (key, value) => MapEntry(
-        _serializeValue(key, includeFieldsForEngine: includeFieldsForEngine),
-        _serializeValue(value, includeFieldsForEngine: includeFieldsForEngine),
+        _serializeValue(
+          key,
+          forEngine: forEngine,
+          forProjectFile: forProjectFile,
+        ),
+        _serializeValue(
+          value,
+          forEngine: forEngine,
+          forProjectFile: forProjectFile,
+        ),
       ),
     );
   }

@@ -272,7 +272,7 @@ class _CodegenGenerateCommand extends Command<dynamic> {
     }
 
     // The new Dart 3.7 formatter isn't applied to code generated files for some
-    // resaon, so we have to apply it manually.
+    // reason, so we have to apply it manually.
     //
     // This should be removed later, as this will probably be fixed soon after
     // the time of writing.
@@ -315,7 +315,7 @@ class _CodegenGenerateCommand extends Command<dynamic> {
 /// modification times of the files, and if they haven't changed, it won't
 /// rebuild them.
 ///
-/// When we run the code generator, no matter what files have acutally changed,
+/// When we run the code generator, no matter what files have actually changed,
 /// the C++ compiler must rebuild all of the generated files, which cascades
 /// into a rebuild of most of the engine since most of the engine depends on the
 /// generated files.
@@ -336,13 +336,7 @@ class _DiffChecker {
 
   _DiffChecker(this._generatedDir, this._backupDir) {
     if (_backupDir.existsSync()) {
-      print(
-        Colorize(
-          'Backup directory must not already exist. You will need to manually delete the folder at ${_backupDir.path}.',
-        ).red(),
-      );
-
-      throw Exception('Backup directory must not already exist.');
+      _backupDir.deleteSync(recursive: true);
     }
 
     _noop = !_generatedDir.existsSync();

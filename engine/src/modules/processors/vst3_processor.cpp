@@ -130,6 +130,17 @@ void VST3Processor::tryInitializePlugin() {
       hasEditor = instance->hasEditor();
       instance->prepareToPlay(sampleRate, bufferSize);
       pluginInstance = std::move(instance);
+      pluginInstance->addListener(this);
+
+      Response event = PluginLoadedEvent {
+        .nodeId = this->nodeId(),
+        .responseBase = ResponseBase {
+          .id = -1,
+        }
+      };
+
+      auto eventString = rfl::json::write(event);
+      Anthem::getInstance().comms.send(eventString);
 
       showPluginGUI();
     }
@@ -176,4 +187,50 @@ void VST3Processor::hidePluginGUI() {
     editorWindow.reset();
   }
   pluginEditor.reset();
+}
+
+void VST3Processor::audioProcessorParameterChanged(juce::AudioProcessor* processor, int parameterIndex, float newValue) {
+  juce::MessageManager::callAsync([this, parameterIndex, newValue]() {
+    Response event = PluginParameterChangedEvent {
+      .nodeId = this->nodeId(),
+      .parameterIndex = parameterIndex,
+      .newValue = newValue,
+      .responseBase = ResponseBase {
+        .id = -1,
+      }
+    };
+
+    auto eventString = rfl::json::write(event);
+    Anthem::getInstance().comms.send(eventString);
+  });
+}
+
+void VST3Processor::audioProcessorChanged(juce::AudioProcessor* processor, const juce::AudioProcessor::ChangeDetails& details) {
+  juce::MessageManager::callAsync([this, details]() {
+    Response event = PluginChangedEvent {
+      .nodeId = this->nodeId(),
+      .latencyChanged = details.latencyChanged,
+      .parameterInfoChanged = details.parameterInfoChanged,
+      .programChanged = details.programChanged,
+      .nonParameterStateChanged = details.nonParameterStateChanged,
+      .responseBase = ResponseBase {
+        .id = -1,
+      }
+    };
+
+    auto eventString = rfl::json::write(event);
+    Anthem::getInstance().comms.send(eventString);
+  });
+}
+
+void VST3Processor::getState(juce::MemoryBlock& target) {
+  if (pluginInstance) {
+    return pluginInstance->getStateInformation(target);
+  }
+}
+
+void VST3Processor::setState(const juce::MemoryBlock& state) {
+  if (pluginInstance) {
+    pluginInstance->setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+  }
 }
