@@ -20,6 +20,7 @@
 import 'dart:convert';
 
 import 'package:anthem/commands/sequence_commands.dart';
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/visualization/visualization.dart';
@@ -196,13 +197,29 @@ class _RightGroup extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         VisualizationBuilder.double(
-          builder: (context, value) {
-            value ??= 0;
+          builder: (context, cpuValue) {
+            return Observer(
+              builder: (context) {
+                var value = cpuValue ?? 0;
+                bool engineIsRunning = true;
 
-            return HorizontalMeterSimple(
-              width: 60,
-              value: value,
-              label: '${(value * 100).round()}%',
+                final projectModel = Provider.of<ProjectModel>(
+                  context,
+                  listen: false,
+                );
+                if (projectModel.engineState != EngineState.running) {
+                  // If the engine is not running, we don't want to show the CPU usage
+                  // as it will be 0 and misleading.
+                  value = 0;
+                  engineIsRunning = false;
+                }
+
+                return HorizontalMeterSimple(
+                  width: 60,
+                  value: value,
+                  label: engineIsRunning ? '${(value * 100).round()}%' : '--%',
+                );
+              },
             );
           },
           config: VisualizationSubscriptionConfig.max('cpu'),
