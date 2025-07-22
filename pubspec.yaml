@@ -26,7 +26,7 @@ dependencies:
   flutter_shaders: ^0.1.3
   flutter_svg: ^2.0.16
   fuzzywuzzy: ^1.2.0
-  mobx: ^2.1.4
+  mobx: ^2.5.0
   nanoid: ^1.0.0
   provider: ^6.0.2
   vector_math: ^2.1.2
@@ -39,12 +39,16 @@ dependencies:
   window_manager: ^0.5.0
 
 dev_dependencies:
-  analyzer: ^7.4.5
-  build_runner: ^2.4.15
-  build: ^2.4.2
+  analyzer: ^7.7.0
+  build_runner: ^2.6.0
+  build: ^3.0.0
   flutter_lints: ^6.0.0
-  mobx_codegen: ^2.6.0
-  source_gen: ^2.0.0
+  mobx_codegen:
+    git:
+      url: https://github.com/josh-audio/mobx.dart
+      ref: analyzer-7.4.0
+      path: mobx_codegen
+  source_gen: ^3.0.0
 
 flutter:
   uses-material-design: false
