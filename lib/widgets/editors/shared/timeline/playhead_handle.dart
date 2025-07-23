@@ -94,12 +94,14 @@ class PlayheadPositioner extends StatelessWidget {
       final timeViewStart = timeViewStartAnimation.value;
       final timeViewEnd = timeViewEndAnimation.value;
 
-      final playheadX = timeToPixels(
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        viewPixelWidth: timelineSize.width,
-        time: playheadPosition ?? 0,
-      );
+      final playheadX =
+          timeToPixels(
+            timeViewStart: timeViewStart,
+            timeViewEnd: timeViewEnd,
+            viewPixelWidth: timelineSize.width,
+            time: playheadPosition ?? 0,
+          ) +
+          0.5;
 
       return Positioned(
         left: playheadX - (_playheadHandleSize.width) / 2,

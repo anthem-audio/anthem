@@ -103,8 +103,9 @@ class _PlayheadPainter extends CustomPainter {
 
     final lineX =
         size.width *
-        (transportPosition - timeViewStart) /
-        (timeViewEnd - timeViewStart);
+            (transportPosition - timeViewStart) /
+            (timeViewEnd - timeViewStart) +
+        0.5;
     final lineWidth = 1.0;
 
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
