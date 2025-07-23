@@ -127,8 +127,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
       );
     }
 
-    if (!project.sequence.isPlaying &&
-        project.sequence.playbackStartPosition != targetTime) {
+    if (project.sequence.playbackStartPosition != targetTime) {
       project.sequence.playbackStartPosition = targetTime;
     }
 
