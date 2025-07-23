@@ -560,7 +560,6 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                       builder: (context) {
                         return Visibility(
                           visible:
-                              project.sequence.isPlaying &&
                               activeSequenceId != null &&
                               (widget.patternID == activeSequenceId ||
                                   widget.arrangementID == activeSequenceId),
