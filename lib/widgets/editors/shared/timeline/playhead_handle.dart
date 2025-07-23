@@ -75,41 +75,56 @@ class PlayheadPositioner extends StatelessWidget {
   final Animation<double> timeViewStartAnimation;
   final Animation<double> timeViewEndAnimation;
   final Size timelineSize;
+  final double? playheadTimeOverride;
+  final bool isStartMarker;
 
   const PlayheadPositioner({
     required this.timeViewAnimationController,
     required this.timeViewStartAnimation,
     required this.timeViewEndAnimation,
     required this.timelineSize,
+    this.playheadTimeOverride,
+    this.isStartMarker = false,
     super.key,
   });
 
   @override
   Widget build(BuildContext context) {
+    Widget buildPlayheadAtPosition(double? playheadPosition) {
+      final timeViewStart = timeViewStartAnimation.value;
+      final timeViewEnd = timeViewEndAnimation.value;
+
+      final playheadX = timeToPixels(
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: timelineSize.width,
+        time: playheadPosition ?? 0,
+      );
+
+      return Positioned(
+        left: playheadX - (_playheadHandleSize.width) / 2,
+        top: timelineSize.height - _playheadHandleSize.height,
+        child: CustomPaint(
+          size: _playheadHandleSize,
+          painter: _PlayheadHandlePainter(
+            hide: playheadPosition == null,
+            isStartMarker: isStartMarker,
+          ),
+        ),
+      );
+    }
+
     return AnimatedBuilder(
       animation: timeViewAnimationController,
       builder: (context, child) {
+        if (playheadTimeOverride != null) {
+          return buildPlayheadAtPosition(playheadTimeOverride);
+        }
+
         return VisualizationBuilder.double(
           config: VisualizationSubscriptionConfig.latest('playhead_position'),
           builder: (context, playheadPosition) {
-            final timeViewStart = timeViewStartAnimation.value;
-            final timeViewEnd = timeViewEndAnimation.value;
-
-            final playheadX = timeToPixels(
-              timeViewStart: timeViewStart,
-              timeViewEnd: timeViewEnd,
-              viewPixelWidth: timelineSize.width,
-              time: playheadPosition ?? 0,
-            );
-
-            return Positioned(
-              left: playheadX - (_playheadHandleSize.width) / 2,
-              top: timelineSize.height - _playheadHandleSize.height,
-              child: CustomPaint(
-                size: _playheadHandleSize,
-                painter: _PlayheadHandlePainter(hide: playheadPosition == null),
-              ),
-            );
+            return buildPlayheadAtPosition(playheadPosition);
           },
         );
       },
@@ -119,7 +134,9 @@ class PlayheadPositioner extends StatelessWidget {
 
 class _PlayheadHandlePainter extends CustomPainter {
   bool hide;
-  _PlayheadHandlePainter({this.hide = false});
+  bool isStartMarker;
+
+  _PlayheadHandlePainter({this.hide = false, this.isStartMarker = false});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -127,19 +144,28 @@ class _PlayheadHandlePainter extends CustomPainter {
       return;
     }
 
-    final handlePaint = Paint()
-      ..color = Color(0xFFFFFFFF).withAlpha(255 * 4 ~/ 10)
-      ..style = PaintingStyle.fill;
+    // This is 0xFFFFFFFF with an alpha of 255 * 4 ~/ 10, mixed with the
+    // timeline background. Baking it into a single color prevents overlapping
+    // markers from looking messy.
+    const mainHandleColor = Color(0xFF898989);
+    final startMarkerColor = mainHandleColor.withAlpha(150);
 
-    final linePaint = Paint()
-      ..color = Color(0xFFD9D9D9)
+    final handlePaint = Paint()
+      ..color = isStartMarker ? startMarkerColor : mainHandleColor
       ..style = PaintingStyle.fill;
 
     canvas.drawPath(_playheadHandlePath, handlePaint);
-    canvas.drawRect(
-      Rect.fromLTWH((size.width - 1) / 2, 0, 1, size.height),
-      linePaint,
-    );
+
+    if (!isStartMarker) {
+      final linePaint = Paint()
+        ..color = Color(0xFFD9D9D9)
+        ..style = PaintingStyle.fill;
+
+      canvas.drawRect(
+        Rect.fromLTWH((size.width - 1) / 2, 0, 1, size.height),
+        linePaint,
+      );
+    }
   }
 
   @override

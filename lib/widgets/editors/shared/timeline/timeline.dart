@@ -550,6 +550,41 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                     );
                   },
                 ),
+
+                // Playhead positioner for the playback start position
+                VisualizationBuilder.string(
+                  config: VisualizationSubscriptionConfig.latest(
+                    'playhead_sequence_id',
+                  ),
+                  builder: (context, activeSequenceId) {
+                    return Observer(
+                      builder: (context) {
+                        return Visibility(
+                          visible:
+                              project.sequence.isPlaying &&
+                              activeSequenceId != null &&
+                              (widget.patternID == activeSequenceId ||
+                                  widget.arrangementID == activeSequenceId),
+                          child: PlayheadPositioner(
+                            isStartMarker: true,
+                            playheadTimeOverride: project
+                                .sequence
+                                .playbackStartPosition
+                                .toDouble(),
+                            timeViewAnimationController:
+                                widget.timeViewAnimationController,
+                            timeViewStartAnimation:
+                                widget.timeViewStartAnimation,
+                            timeViewEndAnimation: widget.timeViewEndAnimation,
+                            timelineSize: constraints.biggest,
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+
+                // Playhead positioner for the actual playhead
                 VisualizationBuilder.string(
                   // This pulls the latest visualization value for the active
                   // sequence ID.
@@ -575,18 +610,23 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                     'playhead_sequence_id',
                   ),
                   builder: (context, activeSequenceId) {
-                    return Visibility(
-                      visible:
-                          activeSequenceId != null &&
-                          (widget.patternID == activeSequenceId ||
-                              widget.arrangementID == activeSequenceId),
-                      child: PlayheadPositioner(
-                        timeViewAnimationController:
-                            widget.timeViewAnimationController,
-                        timeViewStartAnimation: widget.timeViewStartAnimation,
-                        timeViewEndAnimation: widget.timeViewEndAnimation,
-                        timelineSize: constraints.biggest,
-                      ),
+                    return Observer(
+                      builder: (context) {
+                        return Visibility(
+                          visible:
+                              activeSequenceId != null &&
+                              (widget.patternID == activeSequenceId ||
+                                  widget.arrangementID == activeSequenceId),
+                          child: PlayheadPositioner(
+                            timeViewAnimationController:
+                                widget.timeViewAnimationController,
+                            timeViewStartAnimation:
+                                widget.timeViewStartAnimation,
+                            timeViewEndAnimation: widget.timeViewEndAnimation,
+                            timelineSize: constraints.biggest,
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
