@@ -158,16 +158,19 @@ class _PlayheadHandlePainter extends CustomPainter {
 
     canvas.drawPath(_playheadHandlePath, handlePaint);
 
-    if (!isStartMarker) {
-      final linePaint = Paint()
-        ..color = Color(0xFFD9D9D9)
-        ..style = PaintingStyle.fill;
+    const lineColor = Color(0xFFD9D9D9);
+    final startMarkerLineColor = lineColor.withAlpha(100);
 
-      canvas.drawRect(
-        Rect.fromLTWH((size.width - 1) / 2, 0, 1, size.height),
-        linePaint,
-      );
-    }
+    final linePaint = Paint()
+      ..color = isStartMarker ? startMarkerLineColor : lineColor
+      ..style = PaintingStyle.fill;
+
+    final lineHeight = isStartMarker ? size.height - 1 : size.height;
+
+    canvas.drawRect(
+      Rect.fromLTWH((size.width - 1) / 2, 0, 1, lineHeight),
+      linePaint,
+    );
   }
 
   @override
