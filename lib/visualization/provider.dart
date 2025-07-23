@@ -27,6 +27,8 @@ class VisualizationProvider {
 
   final Map<String, List<VisualizationSubscription>> _subscriptions = {};
 
+  bool _enabled = true;
+
   VisualizationProvider(this._project) {
     if (_project.engine.engineState == EngineState.running) {
       _sendUpdateIntervalToEngine();
@@ -109,10 +111,23 @@ class VisualizationProvider {
 
   bool _isSubscriptionListUpdatePending = false;
 
+  /// Sets whether the visualization provider is enabled.
+  ///
+  /// This is meant to be used when switching between tabs. If a tab is not on
+  /// screen, then we don't need to be streaming visualization data for it.
+  void setEnabled(bool enabled) {
+    if (_enabled == enabled) {
+      return;
+    }
+
+    _enabled = enabled;
+    _scheduleSubscriptionListUpdate();
+  }
+
   /// Schedules an update to the subscription list in the engine.
   ///
   /// This allows many updates to happen to the subscription list while
-  /// geenrating only one update.
+  /// generating only one update.
   void _scheduleSubscriptionListUpdate() {
     if (_isSubscriptionListUpdatePending) {
       return;
@@ -125,7 +140,7 @@ class VisualizationProvider {
       await _project.engine.readyForMessages;
 
       _project.engine.visualizationApi.setSubscriptions(
-        _subscriptions.keys.toList(),
+        _enabled ? _subscriptions.keys.toList() : [],
       );
       _isSubscriptionListUpdatePending = false;
     });

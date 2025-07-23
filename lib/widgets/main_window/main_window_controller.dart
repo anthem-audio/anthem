@@ -50,8 +50,13 @@ class MainWindowController {
     return project.id;
   }
 
-  void switchTab(Id newTabID) {
-    AnthemStore.instance.activeProjectId = newTabID;
+  void switchTab(Id projectId) {
+    AnthemStore.instance.activeProjectId = projectId;
+
+    // Only enable visualizations for the selected project tab
+    for (final project in AnthemStore.instance.projects.values) {
+      project.visualizationProvider.setEnabled(projectId == project.id);
+    }
   }
 
   void closeProject(Id projectId) {
