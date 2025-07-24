@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -204,9 +204,9 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         startLengths = {pressedNote.id: pressedNote.length};
         smallestStartLength = pressedNote.length;
         smallestNoteId = pressedNote.id;
-
-        setCursorNoteParameters(pressedNote);
       }
+
+      setCursorNoteParameters(pressedNote);
 
       _noteResizeActionData = _NoteResizeActionData(
         pointerStartOffset: event.offset,
@@ -691,7 +691,8 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
           note.length = _noteResizeActionData!.startLengths[note.id]! + diff;
         }
 
-        if (_eventHandlingState == EventHandlingState.resizingSingleNote) {
+        if (_eventHandlingState == EventHandlingState.resizingSingleNote ||
+            _eventHandlingState == EventHandlingState.resizingSelection) {
           setCursorNoteParameters(_noteResizeActionData!.pressedNote);
         }
 
@@ -769,7 +770,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
     } else if (_eventHandlingState == EventHandlingState.resizingSingleNote ||
         _eventHandlingState == EventHandlingState.resizingSelection) {
       final diff =
-          _noteResizeActionData!.pressedNote.length -
+          _noteResizeActionData!.pressedNote.length - //
           _noteResizeActionData!.startLengths[_noteResizeActionData!
               .pressedNote
               .id]!;
