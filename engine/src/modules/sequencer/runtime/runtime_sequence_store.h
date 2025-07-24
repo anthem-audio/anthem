@@ -101,7 +101,7 @@ struct SequenceEventListCollection {
   // flow is as follows:
   //   1. The main thread wants to replace the events for a sequence, so it
   //      first clones the AnthemRuntimeSequenceStore::eventLists map below.
-  //      Note that this does not result in any of the acutal sequence data
+  //      Note that this does not result in any of the actual sequence data
   //      being cloned, since each SequenceEventListCollection just holds a
   //      pointer to its channel map. That pointer remains the same for every
   //      cloned SequenceEventListCollection.

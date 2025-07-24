@@ -152,7 +152,7 @@ double Transport::rt_getPlayheadAfterAdvance(int numSamples) {
     double timePointer = rt_playhead;
     double incrementRemaining = ticks;
     double loopStart = rt_config.loopStart;
-    double loopEnd = rt_config.loopEnd; // This will be inifinite if no loop is set
+    double loopEnd = rt_config.loopEnd; // This will be infinite if no loop is set
 
     while (incrementRemaining > 0.0) {
       double incrementAmount = incrementRemaining;

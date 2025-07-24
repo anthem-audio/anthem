@@ -111,7 +111,7 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
 
   double incrementRemaining = ticks;
   double loopStart = config.loopStart;
-  double loopEnd = config.loopEnd; // This will be inifinite if no loop is set
+  double loopEnd = config.loopEnd; // This will be infinite if no loop is set
 
   while (incrementRemaining > 0.0) {
     double incrementAmount = incrementRemaining;
