@@ -185,10 +185,14 @@ mixin _ArrangementCompilerMixin on _ArrangementModel {
                         .oldValueAs<int>();
                     final newEnd = operation.newValueAs<int>();
 
+                    final start = clip.timeView!.start;
+
+                    final oldLength = oldEnd - start;
+                    final newLength = newEnd - start;
+
                     _invalidationRangeCollector.addRange(
-                      clip.offset,
-                      clip.offset +
-                          (max(oldEnd, newEnd) - clip.timeView!.start),
+                      clip.offset + min(oldLength, newLength),
+                      clip.offset + max(oldLength, newLength),
                     );
                   }
                 }
