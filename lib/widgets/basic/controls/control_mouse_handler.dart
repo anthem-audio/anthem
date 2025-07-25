@@ -28,8 +28,17 @@ import 'package:window_manager/window_manager.dart';
 class ControlMouseEvent {
   Offset delta;
   Offset absolute;
+  PointerDeviceKind kind;
 
-  ControlMouseEvent({required this.delta, required this.absolute});
+  /// Whether this event comes from a scroll (e.g. mouse wheel) or a drag.
+  bool isScroll;
+
+  ControlMouseEvent({
+    required this.delta,
+    required this.absolute,
+    required this.kind,
+    required this.isScroll,
+  });
 }
 
 class ControlMouseHandler extends StatefulWidget {
@@ -69,6 +78,8 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
 
   MouseCursorManager manager = MouseCursorManager(SystemMouseCursors.basic);
 
+  PointerDeviceKind? pointerDeviceKind;
+
   void onPointerDown(PointerEvent e) async {
     final mediaQuery = MediaQuery.of(context);
     devicePixelRatio = mediaQuery.devicePixelRatio;
@@ -93,6 +104,8 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
     mostRecentMouseY = mousePos.dy;
 
     widget.onStart?.call();
+
+    pointerDeviceKind = e.kind;
   }
 
   void onPointerMove(PointerLockMoveEvent e) {
@@ -103,6 +116,8 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
       ControlMouseEvent(
         delta: Offset(e.delta.dx, -e.delta.dy),
         absolute: Offset(accumulatorX, -accumulatorY),
+        kind: pointerDeviceKind!,
+        isScroll: false,
       ),
     );
   }
@@ -112,11 +127,14 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
       ControlMouseEvent(
         delta: const Offset(0, 0),
         absolute: Offset(accumulatorX, accumulatorY),
+        kind: pointerDeviceKind!,
+        isScroll: false,
       ),
     );
 
     accumulatorX = 0;
     accumulatorY = 0;
+    pointerDeviceKind = null;
   }
 
   void onPointerSignal(PointerEvent e) {
@@ -135,6 +153,8 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
       final event = ControlMouseEvent(
         delta: Offset(dx, dy),
         absolute: Offset(dx, dy),
+        kind: e.kind,
+        isScroll: true,
       );
 
       widget.onStart?.call();
