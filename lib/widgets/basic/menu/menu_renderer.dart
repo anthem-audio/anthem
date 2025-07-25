@@ -23,6 +23,7 @@ import 'dart:math';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/measure_text.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
@@ -67,6 +68,8 @@ class MenuRenderer extends StatefulWidget {
 
 class _MenuRendererState extends State<MenuRenderer> {
   bool isMouseInside = false;
+
+  int? hintId;
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +116,10 @@ class _MenuRendererState extends State<MenuRenderer> {
         setState(() {
           isMouseInside = false;
         });
-        widget.projectController.clearHintText();
+        if (hintId != null) {
+          HintStore.instance.removeHint(hintId!);
+          hintId = null;
+        }
       },
       child: Container(
         decoration: BoxDecoration(
@@ -132,6 +138,18 @@ class _MenuRendererState extends State<MenuRenderer> {
                     menuItem: child,
                     isMouseInMenu: isMouseInside,
                     projectController: widget.projectController,
+                    updateHintId: (id) {
+                      if (hintId != null) {
+                        HintStore.instance.removeHint(hintId!);
+                      }
+                      hintId = id;
+                    },
+                    removeHint: () {
+                      if (hintId != null) {
+                        HintStore.instance.removeHint(hintId!);
+                        hintId = null;
+                      }
+                    },
                   ),
                 )
                 .toList(),
@@ -147,11 +165,16 @@ class MenuItemRenderer extends StatefulWidget {
   final bool isMouseInMenu;
   final ProjectController projectController;
 
+  final void Function(int) updateHintId;
+  final void Function() removeHint;
+
   const MenuItemRenderer({
     super.key,
     required this.menuItem,
     required this.isMouseInMenu,
     required this.projectController,
+    required this.updateHintId,
+    required this.removeHint,
   });
 
   @override
@@ -251,9 +274,11 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
           }
 
           if (item.hint != null) {
-            widget.projectController.setHintText(item.hint!);
+            widget.updateHintId(
+              HintStore.instance.addHint([HintSection('', item.hint!)]),
+            );
           } else {
-            widget.projectController.clearHintText();
+            widget.removeHint();
           }
 
           cancelSubmenuCloseTimer();
@@ -275,7 +300,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
 
             if (item.submenu == null) {
               screenOverlayController.clear();
-              widget.projectController.clearHintText();
+              widget.removeHint();
             } else {
               openSubmenu(
                 screenOverlayController: screenOverlayController,

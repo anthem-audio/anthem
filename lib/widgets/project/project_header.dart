@@ -27,6 +27,7 @@ import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/controls/digit_control.dart';
 import 'package:anthem/widgets/basic/controls/time_signature_control.dart';
+import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/horizontal_meter_simple.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
@@ -84,7 +85,7 @@ class _LeftGroup extends StatelessWidget {
           onPress: () {
             projectController.undo();
           },
-          hint: 'Undo (Ctrl+Z)',
+          hint: [HintSection('click', 'Undo (Ctrl+Z)')],
         ),
         const SizedBox(width: 4),
         Button(
@@ -92,7 +93,7 @@ class _LeftGroup extends StatelessWidget {
           onPress: () {
             projectController.redo();
           },
-          hint: 'Redo (Ctrl+Shift+Z)',
+          hint: [HintSection('click', 'Redo (Ctrl+Shift+Z)')],
         ),
       ],
     );
@@ -119,7 +120,7 @@ class _MiddleGroup extends StatelessWidget {
           height: 24,
           width: 24,
           contentPadding: EdgeInsets.all(3),
-          hint: 'Play',
+          hint: [HintSection('click', 'Play')],
           onPress: () {
             final projectModel = Provider.of<ProjectModel>(
               context,
@@ -133,7 +134,7 @@ class _MiddleGroup extends StatelessWidget {
           height: 24,
           width: 24,
           contentPadding: EdgeInsets.all(3),
-          hint: 'Stop',
+          hint: [HintSection('click', 'Stop')],
           onPress: () {
             final projectModel = Provider.of<ProjectModel>(
               context,
@@ -340,7 +341,7 @@ class _ProjectMenu extends StatelessWidget {
         onPress: () {
           menuController.open();
         },
-        hint: 'File...',
+        hint: [HintSection('click', 'File...')],
       ),
     );
   }

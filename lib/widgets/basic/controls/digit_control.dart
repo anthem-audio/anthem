@@ -21,9 +21,8 @@ import 'dart:math';
 
 import 'package:anthem/widgets/basic/controls/control_mouse_handler.dart';
 import 'package:anthem/widgets/basic/digit_display.dart';
-import 'package:anthem/widgets/project/project_view_model.dart';
+import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:flutter/widgets.dart';
-import 'package:provider/provider.dart';
 
 export 'package:anthem/widgets/basic/digit_display.dart' show DigitDisplaySize;
 
@@ -65,6 +64,9 @@ class _DigitControlState extends State<DigitControl> {
   double startValue = 0;
   double incrementSize = 0;
 
+  int? mainHintId;
+  int? digitChangeHintId;
+
   void increment(double pixelDelta, int minimumHintPrecision) {
     var valueDelta = pixelDelta * 0.05 * incrementSize;
     valueDelta = (valueDelta / incrementSize).round() * incrementSize;
@@ -87,8 +89,15 @@ class _DigitControlState extends State<DigitControl> {
       valueText = valueText.substring(0, valueText.length - 1);
     }
 
-    Provider.of<ProjectViewModel>(context, listen: false).hintText =
-        '$valueText ${widget.hintUnits ?? ''}';
+    final hint = [
+      HintSection('click + drag', '$valueText ${widget.hintUnits ?? ''}'),
+    ];
+
+    if (digitChangeHintId != null) {
+      HintStore.instance.updateHint(digitChangeHintId!, hint);
+    } else {
+      digitChangeHintId = HintStore.instance.addHint(hint);
+    }
   }
 
   @override
@@ -116,9 +125,10 @@ class _DigitControlState extends State<DigitControl> {
         onEnd: (e) {
           widget.onEnd?.call();
 
-          // If there is hint text, we should reset back to it
-          Provider.of<ProjectViewModel>(context, listen: false).hintText =
-              widget.hint ?? '';
+          if (digitChangeHintId != null) {
+            HintStore.instance.removeHint(digitChangeHintId!);
+            digitChangeHintId = null;
+          }
         },
         child: Container(
           width: i == 0 ? null : digitWidth,
@@ -150,11 +160,15 @@ class _DigitControlState extends State<DigitControl> {
 
     return MouseRegion(
       onEnter: (e) {
-        Provider.of<ProjectViewModel>(context, listen: false).hintText =
-            widget.hint!;
+        mainHintId = HintStore.instance.addHint([
+          HintSection('click + drag', widget.hint!),
+        ]);
       },
       onExit: (e) {
-        Provider.of<ProjectViewModel>(context, listen: false).hintText = '';
+        if (mainHintId != null) {
+          HintStore.instance.removeHint(mainHintId!);
+          mainHintId = null;
+        }
       },
       child: digitDisplay,
     );

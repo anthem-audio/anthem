@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,11 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/widgets/project/project_controller.dart';
+import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
-import 'package:collection/collection.dart';
-import 'package:provider/provider.dart';
 
 import 'button.dart';
 import 'icon.dart';
@@ -59,28 +57,6 @@ class Dropdown extends StatefulWidget {
 class _DropdownState extends State<Dropdown> {
   String? localSelectedID;
   bool hovered = false;
-
-  @override
-  void didUpdateWidget(Dropdown oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    if (hovered && oldWidget.selectedID != widget.selectedID) {
-      final item = widget.items.firstWhereOrNull(
-        (element) => element.id == widget.selectedID,
-      );
-
-      final projectController = Provider.of<ProjectController>(
-        context,
-        listen: false,
-      );
-
-      if (item != null) {
-        projectController.setHintText(item.hint ?? '');
-      } else {
-        projectController.clearHintText();
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -183,7 +159,7 @@ class _DropdownState extends State<Dropdown> {
                 ],
               );
             },
-            hint: widget.hint,
+            hint: [if (widget.hint != null) HintSection('click', widget.hint!)],
           ),
         ),
       ),

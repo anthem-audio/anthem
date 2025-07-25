@@ -137,14 +137,6 @@ class ProjectController {
     }
   }
 
-  void setHintText(String text) {
-    viewModel.hintText = text;
-  }
-
-  void clearHintText() {
-    viewModel.hintText = '';
-  }
-
   void addGenerator({
     required NodeModel node,
     required String name,
