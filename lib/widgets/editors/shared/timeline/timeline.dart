@@ -449,7 +449,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
           },
           onPointerSignal: (event) {
             if (event is PointerScrollEvent) {
-              handleScroll(event.scrollDelta.dy, event.localPosition.dx);
+              handleScroll(event.scrollDelta.dy * 1.5, event.localPosition.dx);
             }
           },
           onPointerDown: handlePointerDown,
@@ -608,23 +608,18 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                     'playhead_sequence_id',
                   ),
                   builder: (context, activeSequenceId) {
-                    return Observer(
-                      builder: (context) {
-                        return Visibility(
-                          visible:
-                              activeSequenceId != null &&
-                              (widget.patternID == activeSequenceId ||
-                                  widget.arrangementID == activeSequenceId),
-                          child: PlayheadPositioner(
-                            timeViewAnimationController:
-                                widget.timeViewAnimationController,
-                            timeViewStartAnimation:
-                                widget.timeViewStartAnimation,
-                            timeViewEndAnimation: widget.timeViewEndAnimation,
-                            timelineSize: constraints.biggest,
-                          ),
-                        );
-                      },
+                    return Visibility(
+                      visible:
+                          activeSequenceId != null &&
+                          (widget.patternID == activeSequenceId ||
+                              widget.arrangementID == activeSequenceId),
+                      child: PlayheadPositioner(
+                        timeViewAnimationController:
+                            widget.timeViewAnimationController,
+                        timeViewStartAnimation: widget.timeViewStartAnimation,
+                        timeViewEndAnimation: widget.timeViewEndAnimation,
+                        timelineSize: constraints.biggest,
+                      ),
                     );
                   },
                 ),
