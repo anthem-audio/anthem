@@ -119,6 +119,7 @@ class _MiddleGroup extends StatelessWidget {
           height: 24,
           width: 24,
           contentPadding: EdgeInsets.all(3),
+          hint: 'Play',
           onPress: () {
             final projectModel = Provider.of<ProjectModel>(
               context,
@@ -132,6 +133,7 @@ class _MiddleGroup extends StatelessWidget {
           height: 24,
           width: 24,
           contentPadding: EdgeInsets.all(3),
+          hint: 'Stop',
           onPress: () {
             final projectModel = Provider.of<ProjectModel>(
               context,
