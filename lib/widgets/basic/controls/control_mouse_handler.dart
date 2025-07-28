@@ -165,6 +165,11 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
     accumulatorX = 0;
     accumulatorY = 0;
     pointerDeviceKind = null;
+
+    if (changeHintId != null) {
+      HintStore.instance.removeHint(changeHintId!);
+      changeHintId = null;
+    }
   }
 
   void onPointerSignal(PointerEvent e) {
