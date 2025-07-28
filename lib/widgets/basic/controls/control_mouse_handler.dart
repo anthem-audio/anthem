@@ -239,6 +239,10 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
         }
       },
       onExit: (e) {
+        if (changeHintId != null) {
+          return;
+        }
+
         if (baseHintId != null) {
           HintStore.instance.removeHint(baseHintId!);
           baseHintId = null;
