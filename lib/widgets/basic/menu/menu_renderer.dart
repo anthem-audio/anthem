@@ -275,7 +275,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
 
           if (item.hint != null) {
             widget.updateHintId(
-              HintStore.instance.addHint([HintSection('', item.hint!)]),
+              HintStore.instance.addHint([HintSection('click', item.hint!)]),
             );
           } else {
             widget.removeHint();
