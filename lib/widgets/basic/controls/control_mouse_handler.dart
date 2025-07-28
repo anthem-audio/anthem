@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
@@ -49,6 +50,15 @@ class ControlMouseHandler extends StatefulWidget {
 
   final MouseCursor cursor;
 
+  /// Base hint text to display when the mouse is over this control.
+  final String? baseHint;
+
+  /// Optional function to provide a dynamic hint text during mouse interaction.
+  ///
+  /// If provided, this function will be called to get the hint text immediately
+  /// after each onStart and onChange event.
+  final String Function()? getHintText;
+
   const ControlMouseHandler({
     super.key,
     this.child,
@@ -56,6 +66,8 @@ class ControlMouseHandler extends StatefulWidget {
     this.onEnd,
     this.onChange,
     this.cursor = MouseCursor.defer,
+    this.baseHint,
+    this.getHintText,
   });
 
   @override
@@ -79,6 +91,9 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
   MouseCursorManager manager = MouseCursorManager(SystemMouseCursors.basic);
 
   PointerDeviceKind? pointerDeviceKind;
+
+  int? baseHintId;
+  int? changeHintId;
 
   void onPointerDown(PointerEvent e) async {
     final mediaQuery = MediaQuery.of(context);
@@ -105,6 +120,15 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
 
     widget.onStart?.call();
 
+    if (widget.getHintText != null) {
+      final hintText = widget.getHintText!();
+      if (hintText.isNotEmpty) {
+        changeHintId = HintStore.instance.addHint([
+          HintSection('click + drag', hintText),
+        ]);
+      }
+    }
+
     pointerDeviceKind = e.kind;
   }
 
@@ -120,6 +144,12 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
         isScroll: false,
       ),
     );
+
+    if (widget.getHintText != null && changeHintId != null) {
+      HintStore.instance.updateHint(changeHintId!, [
+        HintSection('click + drag', widget.getHintText!()),
+      ]);
+    }
   }
 
   void onPointerUp(PointerEvent e) {
@@ -188,6 +218,27 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
       child: listener,
     );
 
-    return MouseRegion(cursor: widget.cursor, child: lock);
+    return MouseRegion(
+      cursor: widget.cursor,
+      child: lock,
+      onEnter: (e) {
+        if (baseHintId != null) {
+          HintStore.instance.removeHint(baseHintId!);
+          baseHintId = null;
+        }
+
+        if (widget.baseHint != null) {
+          baseHintId = HintStore.instance.addHint([
+            HintSection('click + drag', widget.baseHint!),
+          ]);
+        }
+      },
+      onExit: (e) {
+        if (baseHintId != null) {
+          HintStore.instance.removeHint(baseHintId!);
+          baseHintId = null;
+        }
+      },
+    );
   }
 }

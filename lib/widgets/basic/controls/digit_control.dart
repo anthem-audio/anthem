@@ -64,7 +64,6 @@ class _DigitControlState extends State<DigitControl> {
   double startValue = 0;
   double incrementSize = 0;
 
-  int? mainHintId;
   int? digitChangeHintId;
 
   void increment(double pixelDelta, int minimumHintPrecision) {
@@ -73,31 +72,6 @@ class _DigitControlState extends State<DigitControl> {
 
     final newValue = startValue + valueDelta;
     widget.onChanged?.call(newValue);
-
-    var valueText = widget.value.toStringAsFixed(widget.decimalPlaces);
-
-    final decimalIndex = valueText.indexOf('.');
-
-    if (decimalIndex != -1) {
-      while (valueText.endsWith('0') &&
-          valueText.length > decimalIndex + 1 + minimumHintPrecision) {
-        valueText = valueText.substring(0, valueText.length - 1);
-      }
-    }
-
-    if (valueText.endsWith('.')) {
-      valueText = valueText.substring(0, valueText.length - 1);
-    }
-
-    final hint = [
-      HintSection('click + drag', '$valueText ${widget.hintUnits ?? ''}'),
-    ];
-
-    if (digitChangeHintId != null) {
-      HintStore.instance.updateHint(digitChangeHintId!, hint);
-    } else {
-      digitChangeHintId = HintStore.instance.addHint(hint);
-    }
   }
 
   @override
@@ -130,6 +104,25 @@ class _DigitControlState extends State<DigitControl> {
             digitChangeHintId = null;
           }
         },
+        baseHint: widget.hint,
+        getHintText: () {
+          var valueText = widget.value.toStringAsFixed(widget.decimalPlaces);
+
+          final decimalIndex = valueText.indexOf('.');
+
+          if (decimalIndex != -1) {
+            while (valueText.endsWith('0') &&
+                valueText.length > decimalIndex + 1 + i) {
+              valueText = valueText.substring(0, valueText.length - 1);
+            }
+          }
+
+          if (valueText.endsWith('.')) {
+            valueText = valueText.substring(0, valueText.length - 1);
+          }
+
+          return '$valueText ${widget.hintUnits ?? ''}';
+        },
         child: Container(
           width: i == 0 ? null : digitWidth,
           // color: i % 2 == 0 ? Color(0xFFFF0000).withAlpha(20) : Color(0xFF00FF00).withAlpha(20),
@@ -158,19 +151,6 @@ class _DigitControlState extends State<DigitControl> {
       return digitDisplay;
     }
 
-    return MouseRegion(
-      onEnter: (e) {
-        mainHintId = HintStore.instance.addHint([
-          HintSection('click + drag', widget.hint!),
-        ]);
-      },
-      onExit: (e) {
-        if (mainHintId != null) {
-          HintStore.instance.removeHint(mainHintId!);
-          mainHintId = null;
-        }
-      },
-      child: digitDisplay,
-    );
+    return digitDisplay;
   }
 }
