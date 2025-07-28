@@ -51,14 +51,6 @@ class _HintDisplayState extends State<HintDisplay> {
       alignment: Alignment.centerLeft,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10),
-        // child: Text(
-        //   HintStore.instance.getActiveHint()?.firstOrNull?.text ?? '',
-        //   style: TextStyle(
-        //     fontSize: 11,
-        //     color: Theme.text.main,
-        //     overflow: TextOverflow.ellipsis,
-        //   ),
-        // ),
         child: Row(
           children:
               HintStore.instance

@@ -17,15 +17,42 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:flutter/material.dart';
 
-class Hint extends StatelessWidget {
+class Hint extends StatefulWidget {
   final Widget? child;
+  final List<HintSection> hint;
 
-  const Hint({super.key, this.child});
+  const Hint({super.key, this.child, this.hint = const []});
+
+  @override
+  State<Hint> createState() => _HintState();
+}
+
+class _HintState extends State<Hint> {
+  int? hintId;
 
   @override
   Widget build(BuildContext context) {
-    return Container(child: child);
+    return MouseRegion(
+      onEnter: (e) {
+        if (hintId != null) {
+          HintStore.instance.removeHint(hintId!);
+          hintId = null;
+        }
+
+        if (widget.hint.isNotEmpty) {
+          hintId = HintStore.instance.addHint(widget.hint);
+        }
+      },
+      onExit: (e) {
+        if (hintId != null) {
+          HintStore.instance.removeHint(hintId!);
+          hintId = null;
+        }
+      },
+      child: widget.child,
+    );
   }
 }
