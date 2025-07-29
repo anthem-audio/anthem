@@ -17,11 +17,15 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/model/project.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/visualization_builder.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:provider/provider.dart';
 
-class PlayheadLine extends StatelessWidget {
+class PlayheadLine extends StatelessObserverWidget {
   final AnimationController timeViewAnimationController;
   final Animation<double> timeViewStartAnimation;
   final Animation<double> timeViewEndAnimation;
@@ -39,6 +43,14 @@ class PlayheadLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final project = Provider.of<ProjectModel>(context);
+
+    double? transportPositionOverride;
+    if (project.engineState != EngineState.running) {
+      transportPositionOverride = project.sequence.playbackStartPosition
+          .toDouble();
+    }
+
     return Builder(
       builder: (context) {
         return VisualizationBuilder.string(
@@ -60,7 +72,10 @@ class PlayheadLine extends StatelessWidget {
                         painter: _PlayheadPainter(
                           timeViewStart: timeViewStartAnimation.value,
                           timeViewEnd: timeViewEndAnimation.value,
-                          transportPosition: transportPosition ?? 0,
+                          transportPosition:
+                              transportPositionOverride ??
+                              transportPosition ??
+                              0,
                           isVisible: transportPosition != null && isVisible,
                         ),
                       );

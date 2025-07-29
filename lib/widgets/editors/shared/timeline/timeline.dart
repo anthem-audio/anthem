@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/pattern/pattern.dart';
@@ -608,18 +609,28 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                     'playhead_sequence_id',
                   ),
                   builder: (context, activeSequenceId) {
-                    return Visibility(
-                      visible:
-                          activeSequenceId != null &&
-                          (widget.patternID == activeSequenceId ||
-                              widget.arrangementID == activeSequenceId),
-                      child: PlayheadPositioner(
-                        timeViewAnimationController:
-                            widget.timeViewAnimationController,
-                        timeViewStartAnimation: widget.timeViewStartAnimation,
-                        timeViewEndAnimation: widget.timeViewEndAnimation,
-                        timelineSize: constraints.biggest,
-                      ),
+                    return Observer(
+                      builder: (context) {
+                        return Visibility(
+                          visible:
+                              activeSequenceId != null &&
+                              (widget.patternID == activeSequenceId ||
+                                  widget.arrangementID == activeSequenceId),
+                          child: PlayheadPositioner(
+                            playheadTimeOverride:
+                                project.engineState == EngineState.running
+                                ? null
+                                : project.sequence.playbackStartPosition
+                                      .toDouble(),
+                            timeViewAnimationController:
+                                widget.timeViewAnimationController,
+                            timeViewStartAnimation:
+                                widget.timeViewStartAnimation,
+                            timeViewEndAnimation: widget.timeViewEndAnimation,
+                            timelineSize: constraints.biggest,
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
