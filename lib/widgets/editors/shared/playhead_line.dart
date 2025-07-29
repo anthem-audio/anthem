@@ -51,6 +51,11 @@ class PlayheadLine extends StatelessObserverWidget {
           .toDouble();
     }
 
+    String? activeSequenceIdOverride;
+    if (project.engineState != EngineState.running) {
+      activeSequenceIdOverride = project.sequence.activeTransportSequenceID;
+    }
+
     return Builder(
       builder: (context) {
         return VisualizationBuilder.string(
@@ -59,7 +64,9 @@ class PlayheadLine extends StatelessObserverWidget {
           ),
           builder: (context, activeSequenceId) {
             return Visibility(
-              visible: activeSequenceId == editorActiveSequenceId,
+              visible:
+                  (activeSequenceIdOverride ?? activeSequenceId) ==
+                  editorActiveSequenceId,
               child: VisualizationBuilder.double(
                 config: VisualizationSubscriptionConfig.latest(
                   'playhead_position',
@@ -76,7 +83,11 @@ class PlayheadLine extends StatelessObserverWidget {
                               transportPositionOverride ??
                               transportPosition ??
                               0,
-                          isVisible: transportPosition != null && isVisible,
+                          isVisible:
+                              (transportPositionOverride ??
+                                      transportPosition) !=
+                                  null &&
+                              isVisible,
                         ),
                       );
                     },

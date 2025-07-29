@@ -556,9 +556,18 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                   config: VisualizationSubscriptionConfig.latest(
                     'playhead_sequence_id',
                   ),
-                  builder: (context, activeSequenceId) {
+                  builder: (context, activeSequenceIdFromEngine) {
                     return Observer(
                       builder: (context) {
+                        final activeSequenceIdOverride =
+                            project.engineState != EngineState.running
+                            ? project.sequence.activeTransportSequenceID
+                            : null;
+
+                        final activeSequenceId =
+                            activeSequenceIdOverride ??
+                            activeSequenceIdFromEngine;
+
                         return Visibility(
                           visible:
                               activeSequenceId != null &&
@@ -608,9 +617,18 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                   config: VisualizationSubscriptionConfig.latest(
                     'playhead_sequence_id',
                   ),
-                  builder: (context, activeSequenceId) {
+                  builder: (context, activeSequenceIdFromEngine) {
                     return Observer(
                       builder: (context) {
+                        final activeSequenceIdOverride =
+                            project.engineState != EngineState.running
+                            ? project.sequence.activeTransportSequenceID
+                            : null;
+
+                        final activeSequenceId =
+                            activeSequenceIdOverride ??
+                            activeSequenceIdFromEngine;
+
                         return Visibility(
                           visible:
                               activeSequenceId != null &&
