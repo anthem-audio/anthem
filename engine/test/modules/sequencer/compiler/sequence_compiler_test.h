@@ -69,10 +69,9 @@ public:
         .ticks = 0,
         .fraction = 0.
       },
-      .event = AnthemEvent {
-        .type = AnthemEventType::NoteOn,
-        .noteOn = AnthemNoteOnEvent()
-      }
+      .event = AnthemEvent(
+        AnthemNoteOnEvent()
+      )
     });
 
     eventList.push_back(AnthemSequenceEvent {
@@ -80,10 +79,9 @@ public:
         .ticks = 1,
         .fraction = 0.5
       },
-      .event = AnthemEvent {
-        .type = AnthemEventType::NoteOn,
-        .noteOn = AnthemNoteOnEvent()
-      }
+      .event = AnthemEvent(
+        AnthemNoteOnEvent()
+      )
     });
 
     eventList.push_back(AnthemSequenceEvent {
@@ -91,10 +89,9 @@ public:
         .ticks = 1,
         .fraction = 0.
       },
-      .event = AnthemEvent {
-        .type = AnthemEventType::NoteOn,
-        .noteOn = AnthemNoteOnEvent()
-      }
+      .event = AnthemEvent(
+        AnthemNoteOnEvent()
+      )
     });
 
     AnthemSequenceCompiler::sortEventList(eventList);
@@ -279,14 +276,14 @@ public:
       .pan = 0.0
     }));
 
-    // We're mimicing the behavior of the generated model sync code here, so we
+    // We're mimicking the behavior of the generated model sync code here, so we
     // need to initialize models that we create.
     //
     // This is a cheap way to make sure that the whole model is initialized,
-    // since this is recursive. However, doing this repeatedly in the test
-    // meaans we are going to double-initialize the model. Maybe this is fine,
-    // but it's not what would happen in the application, so if something needs
-    // to rely on only initializing once, then we'll need to change this.
+    // since this is recursive. However, doing this repeatedly in the test means
+    // we are going to double-initialize the model. Maybe this is fine, but it's
+    // not what would happen in the application, so if something needs to rely
+    // on only initializing once, then we'll need to change this.
     anthem.project->initialize(
       anthem.project,
       nullptr
@@ -484,14 +481,14 @@ public:
       })
     );
 
-    // We're mimicing the behavior of the generated model sync code here, so we
+    // We're mimicking the behavior of the generated model sync code here, so we
     // need to initialize models that we create.
     //
     // This is a cheap way to make sure that the whole model is initialized,
-    // since this is recursive. However, doing this repeatedly in the test
-    // meaans we are going to double-initialize the model. Maybe this is fine,
-    // but it's not what would happen in the application, so if something needs
-    // to rely on only initializing once, then we'll need to change this.
+    // since this is recursive. However, doing this repeatedly in the test means
+    // we are going to double-initialize the model. Maybe this is fine, but it's
+    // not what would happen in the application, so if something needs to rely
+    // on only initializing once, then we'll need to change this.
     anthem.project->initialize(
       anthem.project,
       nullptr

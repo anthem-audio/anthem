@@ -325,16 +325,15 @@ void Transport::addStartEventsForPattern(
         auto& events = collector[channelId];
         events.push_back(AnthemLiveEvent{
           .time = 0,
-          .event = AnthemEvent {
-            .type = AnthemEventType::NoteOn,
-            .noteOn = AnthemNoteOnEvent(
+          .event = AnthemEvent(
+            AnthemNoteOnEvent(
               static_cast<int16_t>(note->key()),
               static_cast<int16_t>(0),
               static_cast<float>(note->velocity()),
               0.f,
               static_cast<int32_t>(-1)
             )
-          }
+          )
         });
       }
     }

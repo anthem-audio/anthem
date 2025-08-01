@@ -47,6 +47,11 @@ struct AnthemEvent {
     AnthemNoteOffEvent noteOff;
     AnthemAllVoicesOffEvent allVoicesOff;
   };
+
+  AnthemEvent() : type(AllVoicesOff), allVoicesOff{} {}
+  AnthemEvent(AnthemNoteOnEvent noteOn) : type(NoteOn), noteOn(noteOn) {}
+  AnthemEvent(AnthemNoteOffEvent noteOff) : type(NoteOff), noteOff(noteOff) {}
+  AnthemEvent(AnthemAllVoicesOffEvent allVoicesOff) : type(AllVoicesOff), allVoicesOff(allVoicesOff) {}
 };
 
 struct AnthemSequenceEvent {

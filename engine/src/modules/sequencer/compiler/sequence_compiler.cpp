@@ -208,29 +208,27 @@ void AnthemSequenceCompiler::getChannelNoteEventsForPattern(
 
     events.push_back(AnthemSequenceEvent {
       .offset = startWithOffset,
-      .event = AnthemEvent {
-        .type = AnthemEventType::NoteOn,
-        .noteOn = AnthemNoteOnEvent(
+      .event = AnthemEvent(
+        AnthemNoteOnEvent(
           static_cast<int16_t>(note->key()),
           static_cast<int16_t>(0),
           static_cast<float>(note->velocity()),
           0.f,
           static_cast<int32_t>(-1)
         )
-      }
+      )
     });
 
     events.push_back(AnthemSequenceEvent {
       .offset = endWithOffset,
-      .event = AnthemEvent {
-        .type = AnthemEventType::NoteOff,
-        .noteOff = AnthemNoteOffEvent(
+      .event = AnthemEvent(
+        AnthemNoteOffEvent(
           static_cast<int16_t>(note->key()),
           static_cast<int16_t>(0),
           0.f,
           static_cast<int32_t>(-1)
         )
-      }
+      )
     });
   }
 }

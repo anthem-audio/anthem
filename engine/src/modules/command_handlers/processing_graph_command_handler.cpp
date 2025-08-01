@@ -20,6 +20,7 @@
 #include "processing_graph_command_handler.h"
 
 #include "modules/core/anthem.h"
+#include "modules/processors/live_event_provider.h"
 
 std::optional<Response>
 handleProcessingGraphCommand(Request& request) {
@@ -141,6 +142,64 @@ handleProcessingGraphCommand(Request& request) {
       juce::Logger::writeToLog("Error setting plugin state: " + std::string(e.what()));
       return std::nullopt;
     }
+  } else if (rfl::holds_alternative<SendLiveEventRequest>(request.variant())) {
+    auto& sendLiveEventRequest = rfl::get<SendLiveEventRequest>(request.variant());
+
+    // Get the node that is the live event provider
+    auto& nodes = *Anthem::getInstance().project->processingGraph()->nodes();
+    auto nodeIter = nodes.find(sendLiveEventRequest.liveEventProviderNodeId);
+    auto node = nodeIter != nodes.end() ? nodeIter->second : nullptr;
+
+    if (node == nullptr) {
+      juce::Logger::writeToLog("Node " + sendLiveEventRequest.liveEventProviderNodeId + " not found in processing graph.");
+      return std::nullopt;
+    }
+
+    auto processorOpt = node->getProcessor();
+
+    if (!processorOpt) {
+      juce::Logger::writeToLog("Node " + sendLiveEventRequest.liveEventProviderNodeId + " does not have a processor.");
+      return std::nullopt;
+    }
+
+    auto& processor = processorOpt.value();
+
+    // Check if processor is a live event provider
+    auto liveEventProvider = std::dynamic_pointer_cast<LiveEventProviderProcessor>(processor);
+    if (liveEventProvider) {
+      rfl::visit([liveEventProvider](const auto& field) {
+        using EventType = std::decay_t<decltype(field)>;
+        if constexpr (std::is_same_v<EventType, rfl::Field<"LiveEventRequestNoteOnEvent", std::shared_ptr<LiveEventRequestNoteOnEvent>>>) {
+          auto& eventFromRequest = field.value();
+          AnthemLiveEvent liveEvent = AnthemLiveEvent {
+            .time = 0.0, // Handle as soon as possible
+            .event = AnthemEvent(AnthemNoteOnEvent())
+          };
+          liveEvent.event.noteOn.pitch = eventFromRequest->pitch;
+          liveEvent.event.noteOn.velocity = eventFromRequest->velocity;
+          // liveEvent.event.noteOn.pan = eventFromRequest.pan;
+
+          liveEventProvider->addLiveEvent(std::move(liveEvent));
+        } else if constexpr (std::is_same_v<EventType, rfl::Field<"LiveEventRequestNoteOffEvent", std::shared_ptr<LiveEventRequestNoteOffEvent>>>) {
+          auto& eventFromRequest = field.value();
+          AnthemLiveEvent liveEvent = AnthemLiveEvent {
+            .time = 0.0, // Handle as soon as possible
+            .event = AnthemEvent(AnthemNoteOffEvent())
+          };
+
+          liveEvent.event.noteOff.pitch = eventFromRequest->pitch;
+
+          liveEventProvider->addLiveEvent(liveEvent);
+        } else {
+          jassertfalse; // unhandled event
+        }
+      }, sendLiveEventRequest.event);
+    } else {
+      jassertfalse;
+      return std::nullopt;
+    }
+
+    return std::nullopt;
   }
 
   return std::nullopt;

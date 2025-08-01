@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/live_event_manager.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:flutter/material.dart';
@@ -46,6 +47,7 @@ class GeneratorModel extends _GeneratorModel
         gainNodeId: null,
         // midiGenNodeId: null,
         sequenceNoteProviderNodeId: null,
+        liveEventProviderNodeId: null,
       );
 
   GeneratorModel({
@@ -57,10 +59,14 @@ class GeneratorModel extends _GeneratorModel
     required super.gainNodeId,
     // required super.midiGenNodeId,
     required super.sequenceNoteProviderNodeId,
+    required super.liveEventProviderNodeId,
   });
 
   factory GeneratorModel.fromJson(Map<String, dynamic> json) =>
       _$GeneratorModelAnthemModelMixin.fromJson(json);
+
+  @hide
+  late final LiveEventManager liveEventManager = LiveEventManager(this);
 }
 
 abstract class _GeneratorModel with Store, AnthemModelBase {
@@ -81,7 +87,7 @@ abstract class _GeneratorModel with Store, AnthemModelBase {
 
   /// The ID of the gain node that this generator outputs to.
   ///
-  /// The singal flow is as follows:
+  /// The signal flow is as follows:
   ///     plugin -> gainNode -> (some target)
   ///
   /// The gain node is used for the volume knobs on the generator row.
@@ -94,6 +100,9 @@ abstract class _GeneratorModel with Store, AnthemModelBase {
   @anthemObservable
   String? sequenceNoteProviderNodeId;
 
+  @anthemObservable
+  String? liveEventProviderNodeId;
+
   _GeneratorModel({
     required this.id,
     required this.name,
@@ -103,5 +112,6 @@ abstract class _GeneratorModel with Store, AnthemModelBase {
     required this.gainNodeId,
     // required this.midiGenNodeId,
     required this.sequenceNoteProviderNodeId,
+    required this.liveEventProviderNodeId,
   }) : super();
 }
