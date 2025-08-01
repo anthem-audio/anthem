@@ -257,6 +257,9 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
       }
 
       if (state == EngineState.stopped) {
+        // Make sure the engine isn't playing when it starts again
+        sequence.isPlaying = false;
+
         if (_fieldChangedListener != null) {
           // Unhook the model change stream from the engine
           (this as AnthemModelBase).removeFieldChangedListener(

@@ -126,6 +126,11 @@ class _MiddleGroup extends StatelessWidget {
               context,
               listen: false,
             );
+
+            if (projectModel.engineState != EngineState.running) {
+              return;
+            }
+
             projectModel.sequence.isPlaying = true;
           },
         ),
