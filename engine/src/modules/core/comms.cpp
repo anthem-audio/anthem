@@ -43,6 +43,7 @@ void AnthemSocketThread::run() {
     if (writeResult < 0) {
       // Fatal error, kill the application
       juce::MessageManager::callAsync([]() {
+        jassertfalse;
         juce::JUCEApplication::quit();
       });
       break;
@@ -58,6 +59,7 @@ void AnthemSocketThread::run() {
     if (readReadyResult < 0) {
       // Fatal error, kill the application
       juce::MessageManager::callAsync([]() {
+        jassertfalse;
         juce::JUCEApplication::quit();
       });
       break;
@@ -76,6 +78,7 @@ void AnthemSocketThread::run() {
     if (bytesRead < 0) {
       // Fatal error, kill the application
       juce::MessageManager::callAsync([]() {
+        jassertfalse;
         juce::JUCEApplication::quit();
       });
       break;
