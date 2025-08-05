@@ -23,6 +23,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
+import 'raw_key_event_singleton.dart';
+
 /// This class describes which modifier keys are currently pressed. It is
 /// provided by [ShortcutProvider].
 class KeyboardModifiers with ChangeNotifier, DiagnosticableTreeMixin {
@@ -81,12 +83,12 @@ class _ShortcutProviderState extends State<ShortcutProvider> {
   @override
   void initState() {
     super.initState();
-    ServicesBinding.instance.keyboard.addHandler(_onKey);
+    RawKeyEventSingleton.instance.addListener(_onKey);
   }
 
   @override
   dispose() {
-    ServicesBinding.instance.keyboard.removeHandler(_onKey);
+    RawKeyEventSingleton.instance.removeListener(_onKey);
     super.dispose();
   }
 

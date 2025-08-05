@@ -38,7 +38,14 @@ class ShortcutConsumer extends StatefulWidget {
   /// This function will be called when this consumer receives a shortcut.
   final void Function(LogicalKeySet shortcut)? shortcutHandler;
 
-  /// This function will be called when this consumer receives a shortcut.
+  /// A raw key handler.
+  ///
+  /// This function will be called when this consumer receives a key press.
+  ///
+  /// Raw key handlers receive raw key events. These handlers are processed
+  /// before shortcut handlers. Raw key handlers must return a value indicating
+  /// if the key event has been handled. If the event has been handled, then it
+  /// will not be processed as part of a shortcut.
   final bool Function(KeyEvent event)? rawKeyHandler;
 
   /// If true, this handler will always be called when a shortcut is triggered.
