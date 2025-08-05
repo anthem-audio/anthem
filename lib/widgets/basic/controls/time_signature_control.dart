@@ -26,7 +26,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 /// A widget for controlling the time signature of the project sequence.
-class TimeSignatureControl extends StatefulObserverWidget {
+class TimeSignatureControl extends StatefulWidget {
   const TimeSignatureControl({super.key});
 
   @override
