@@ -18,7 +18,6 @@
 */
 
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
 
 typedef RawKeyEventListener = bool Function(KeyEvent event);
 

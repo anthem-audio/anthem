@@ -119,7 +119,7 @@ class _NoteMoveActionData {
 
 /// Tracks notes that are sent to the engine during editing.
 class _LiveNotes {
-  Map<int, ({double velocity, double pan})> _notes = {};
+  final Map<int, ({double velocity, double pan})> _notes = {};
   ProjectModel project;
 
   _LiveNotes(this.project);
