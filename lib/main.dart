@@ -31,11 +31,6 @@ import 'widgets/main_window/main_window.dart';
 GlobalKey mainWindowKey = GlobalKey();
 
 void main() async {
-  runApp(const App());
-
-  await windowManager.ensureInitialized();
-  await windowManager.setAsFrameless();
-
   final store = AnthemStore.instance;
 
   // Note: This code for creating a new project is duplicated in
@@ -46,6 +41,11 @@ void main() async {
   store.projects[projectModel.id] = projectModel;
   store.projectOrder.add(projectModel.id);
   store.activeProjectId = projectModel.id;
+
+  runApp(const App());
+
+  await windowManager.ensureInitialized();
+  await windowManager.setAsFrameless();
 }
 
 class App extends StatefulWidget {
