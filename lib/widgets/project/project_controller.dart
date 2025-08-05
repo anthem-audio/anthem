@@ -22,6 +22,7 @@ import 'dart:io';
 import 'package:anthem/commands/arrangement_commands.dart';
 import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/commands/project_commands.dart';
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/pattern/pattern.dart';
@@ -134,6 +135,16 @@ class ProjectController {
           ),
         )) {
       redo();
+    }
+    // Play / stop
+    else if (shortcut.matches(LogicalKeySet(LogicalKeyboardKey.space))) {
+      togglePlayback();
+    }
+  }
+
+  void togglePlayback() {
+    if (project.engineState == EngineState.running) {
+      project.sequence.isPlaying = !project.sequence.isPlaying;
     }
   }
 
