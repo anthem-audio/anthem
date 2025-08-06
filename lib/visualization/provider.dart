@@ -39,6 +39,20 @@ class VisualizationProvider {
         _sendUpdateIntervalToEngine();
         _scheduleSubscriptionListUpdate();
       }
+
+      // If the engine isn't running, the visualization subscriptions shouldn't
+      // check for updates.
+      if (state == EngineState.stopped || state == EngineState.running) {
+        for (var subscriptions in _subscriptions.values) {
+          for (final subscription in subscriptions) {
+            if (state == EngineState.stopped) {
+              subscription._engineStopped();
+            } else {
+              subscription._engineStarted();
+            }
+          }
+        }
+      }
     });
   }
 

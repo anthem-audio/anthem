@@ -137,7 +137,10 @@ class VisualizationSubscription {
           _config.type == VisualizationSubscriptionType.lastNValues
           ? RingBuffer<String>(_config.bufferSize!)
           : null {
-    _ticker = Ticker(_onTick)..start();
+    _ticker = Ticker(_onTick);
+    if (_parent._project.engineState == EngineState.running) {
+      _ticker.start();
+    }
   }
 
   /// Called when the [_ticker] ticks.
@@ -204,6 +207,22 @@ class VisualizationSubscription {
     }
 
     _isUpdateStale = true;
+  }
+
+  void _engineStarted() {
+    if (_ticker.isActive) {
+      return;
+    }
+
+    _ticker.start();
+  }
+
+  void _engineStopped() {
+    if (!_ticker.isActive) {
+      return;
+    }
+
+    _ticker.stop();
   }
 
   void dispose() {
