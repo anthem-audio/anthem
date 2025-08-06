@@ -52,4 +52,26 @@ class RawKeyEventSingleton {
     }
     return handled;
   }
+
+  /// This method must be called when the main window loses focus.
+  ///
+  /// See [onWindowBlur] in main.dart.
+  void onBlur() {
+    for (final (physicalKey, logicalKey) in [
+      (PhysicalKeyboardKey.altLeft, LogicalKeyboardKey.altLeft),
+      (PhysicalKeyboardKey.altRight, LogicalKeyboardKey.altRight),
+      (PhysicalKeyboardKey.controlLeft, LogicalKeyboardKey.controlLeft),
+      (PhysicalKeyboardKey.controlRight, LogicalKeyboardKey.controlRight),
+      (PhysicalKeyboardKey.shiftLeft, LogicalKeyboardKey.shiftLeft),
+      (PhysicalKeyboardKey.shiftRight, LogicalKeyboardKey.shiftRight),
+    ]) {
+      _dispatchEvent(
+        KeyUpEvent(
+          physicalKey: physicalKey,
+          logicalKey: logicalKey,
+          timeStamp: Duration(),
+        ),
+      );
+    }
+  }
 }
