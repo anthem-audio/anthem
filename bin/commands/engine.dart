@@ -148,10 +148,15 @@ to generate the files, then run this script again.''')..red(),
       return;
     }
 
+    final buildDirectoryName = argResults!['address-sanitizer']
+        ? 'build_asan'
+        : (argResults!['debug'] ? 'build' : 'build_release');
+
     await _buildCmakeTarget(
       'AnthemEngine',
       addressSanitizer: argResults!['address-sanitizer'],
       debug: argResults!['debug'],
+      buildDirectoryName: buildDirectoryName,
     );
 
     print(
@@ -159,7 +164,7 @@ to generate the files, then run this script again.''')..red(),
         ..lightGreen(),
     );
     final engineBinaryPath = packageRootPath.resolve(
-      'engine/build/AnthemEngine_artefacts${argResults!['debug'] ? '/Debug' : '/Release'}/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+      'engine/$buildDirectoryName/AnthemEngine_artefacts${argResults!['debug'] ? '/Debug' : '/Release'}/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
     );
     final flutterAssetsDirPath = packageRootPath.resolve('assets/engine/');
 
@@ -302,6 +307,7 @@ Future<void> _buildCmakeTarget(
   String target, {
   bool addressSanitizer = false,
   bool debug = false,
+  String buildDirectoryName = 'build',
 }) async {
   if (addressSanitizer) {
     print(
@@ -323,10 +329,8 @@ Future<void> _buildCmakeTarget(
 
   final packageRootPath = getPackageRootPath();
 
-  final buildDirName = addressSanitizer ? 'build_asan' : 'build';
-
   print(Colorize('Creating build directory...')..lightGreen());
-  final buildDirPath = packageRootPath.resolve('engine/$buildDirName/');
+  final buildDirPath = packageRootPath.resolve('engine/$buildDirectoryName/');
   final buildDir = Directory.fromUri(buildDirPath);
   buildDir.createSync();
 
