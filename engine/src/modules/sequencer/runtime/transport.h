@@ -89,7 +89,6 @@ private:
   PlayheadJumpEvent createPlayheadJumpEvent(double playheadPosition);
 
   void updateLoopPoints(bool send);
-  void updatePlayheadJumpEventForStart(bool send);
   void clearLoopPoints();
 
   void sendConfigToAudioThread();
@@ -134,6 +133,7 @@ public:
   // transport is stopped, making it the place that playback will start from
   // when the transport is started again.
   void setPlayheadStart(double playheadPosition);
+  void updatePlayheadJumpEventForStart(bool send = true);
 
   // Jumps the playhead to the given position.
   void jumpTo(double playheadPosition);

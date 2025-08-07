@@ -49,6 +49,12 @@ std::optional<Response> handleSequencerCommand(Request& request) {
 				// Compile the entire pattern
 				AnthemSequenceCompiler::compilePattern(compileSequenceRequest.patternId.value());
       }
+
+      if (Anthem::getInstance().transport->config.activeSequenceId == compileSequenceRequest.patternId.value()) {
+        // Update the events that play when the playhead starts, since they
+        // may have changed
+        Anthem::getInstance().transport->updatePlayheadJumpEventForStart(true);
+      }
     }
     else if (compileSequenceRequest.arrangementId.has_value()) {
       if (compileSequenceRequest.channelsToRebuild.has_value()) {
@@ -71,6 +77,12 @@ std::optional<Response> handleSequencerCommand(Request& request) {
       else {
         // Compile the entire arrangement
         AnthemSequenceCompiler::compileArrangement(compileSequenceRequest.arrangementId.value());
+      }
+
+      if (Anthem::getInstance().transport->config.activeSequenceId == compileSequenceRequest.arrangementId.value()) {
+        // Update the events that play when the playhead starts, since they
+        // may have changed
+        Anthem::getInstance().transport->updatePlayheadJumpEventForStart(true);
       }
     }
   }
