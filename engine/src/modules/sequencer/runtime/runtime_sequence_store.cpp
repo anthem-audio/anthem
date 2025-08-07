@@ -70,8 +70,8 @@ void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
     playheadStart = transport.rt_playhead;
     playheadEnd = playheadStart + advanceAmount;
 
-    if (playheadEnd >= transport.rt_config.loopEnd) {
-      loopStartRangeBegin = transport.rt_config.loopStart;
+    if (playheadEnd >= transport.rt_config->loopEnd) {
+      loopStartRangeBegin = transport.rt_config->loopStart;
       loopStartRangeEnd = loopStartRangeBegin + advanceAmount;
     }
   }

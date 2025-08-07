@@ -22,11 +22,10 @@
 #include "modules/core/anthem.h"
 
 Transport::Transport() : rt_playhead{0.0} {
-  config.loopStart = 0.0;
-  config.loopEnd = std::numeric_limits<double>::infinity();
+  rt_config = new TransportConfig();
 
   // Initialize the transport with default values
-  configBufferedValue.set(config);
+  sendConfigToAudioThread();
 
   rt_playheadJumpEvent = nullptr;
   rt_playheadJumpEventForSeek = nullptr;
@@ -37,6 +36,28 @@ Transport::Transport() : rt_playhead{0.0} {
   this->startTimer(100);
 }
 
+void Transport::setIsPlaying(bool isPlaying) {
+  config.isPlaying = isPlaying;
+  sendConfigToAudioThread();
+}
+
+void Transport::setActiveSequenceId(std::optional<std::string>& sequenceId) {
+  config.activeSequenceId = sequenceId;
+  updateLoopPoints(false);
+  updatePlayheadJumpEventForStart(false);
+  sendConfigToAudioThread();
+}
+
+void Transport::setTicksPerQuarter(int64_t ticksPerQuarter) {
+  config.ticksPerQuarter = ticksPerQuarter;
+  sendConfigToAudioThread();
+}
+
+void Transport::setBeatsPerMinute(double beatsPerMinute) {
+  config.beatsPerMinute = beatsPerMinute;
+  sendConfigToAudioThread();
+}
+
 void Transport::prepareToProcess() {
   auto* currentDevice = Anthem::getInstance().audioDeviceManager.getCurrentAudioDevice();
   jassert(currentDevice != nullptr);
@@ -45,41 +66,43 @@ void Transport::prepareToProcess() {
 
 void Transport::rt_prepareForProcessingBlock() {
   // Get the current transport state
-  auto newConfig = configBufferedValue.rt_get();
+  auto newConfigOpt = configBuffer.read();
 
-  // Check if the transport state has changed
-
-  // Check for stop
-  if (!newConfig.isPlaying && rt_config.isPlaying) {
-    rt_playhead = newConfig.playheadStart;
-
-    // Provides a signal that instruments need to stop playing any active voices
-    rt_playheadJumpOrPauseOccurred = true;
-  }
-
-  // Check for play
-  if (newConfig.isPlaying && !rt_config.isPlaying) {
-    // We should set the pointer that allows consumers to read any events we
-    // want to post on start
-    if (newConfig.playheadJumpEventForStart != nullptr) {
-      rt_playheadJumpEventForStart = newConfig.playheadJumpEventForStart;
+  // If there are multiple new configs, we want the most recent one
+  while (true) {
+    auto newerConfigOpt = configBuffer.read();
+    if (newerConfigOpt.has_value()) {
+      configDeleteBuffer.add(newConfigOpt.value());
+      newConfigOpt = newerConfigOpt;
+    } else {
+      break;
     }
   }
 
-  // Check for change to start event list, and clean up the old one if necessary
-  if (newConfig.playheadJumpEventForStart != rt_config.playheadJumpEventForStart &&
-      rt_config.playheadJumpEventForStart != nullptr) {
-    playheadJumpEventDeleteBuffer.add(rt_config.playheadJumpEventForStart);
-  }
+  if (newConfigOpt.has_value()) {
+    auto* newConfig = newConfigOpt.value();
 
-  // Check for change to loop jump event list, and clean up the old one if necessary
-  if (newConfig.playheadJumpEventForLoop != rt_config.playheadJumpEventForLoop &&
-      rt_config.playheadJumpEventForLoop != nullptr) {
-    playheadJumpEventDeleteBuffer.add(rt_config.playheadJumpEventForLoop);
-  }
+    // Check if the transport state has changed
 
-  // Update the real-time transport state
-  rt_config = newConfig;
+    // Check for stop
+    if (!newConfig->isPlaying && rt_config->isPlaying) {
+      rt_playhead = newConfig->playheadStart;
+
+      // Provides a signal that instruments need to stop playing any active voices
+      rt_playheadJumpOrPauseOccurred = true;
+    }
+
+    // Check for play
+    if (newConfig->isPlaying && !rt_config->isPlaying) {
+      // We should set the pointer that allows consumers to read any events we
+      // want to post on start
+      rt_playheadJumpEventForStart = &newConfig->playheadJumpEventForStart;
+    }
+   
+    // Update the real-time transport state
+    configDeleteBuffer.add(rt_config);
+    rt_config = newConfig;
+  }
 
   // Check if there are any playhead jump events to process
   while (auto event = playheadJumpEventBuffer.read()) {
@@ -96,7 +119,7 @@ void Transport::rt_prepareForProcessingBlock() {
 
   // If we're not playing, then we do not want downstream consumers to pick up
   // any sequencer events that this object might have contained
-  if (!rt_config.isPlaying) {
+  if (!rt_config->isPlaying) {
     playheadJumpEventDeleteBuffer.add(rt_playheadJumpEventForSeek);
     rt_playheadJumpEventForSeek = nullptr;
   }
@@ -127,15 +150,15 @@ void Transport::rt_advancePlayhead(int numSamples) {
     rt_playheadJumpEventForSeek = nullptr;
   }
 
-  rt_playheadJumpEventForStart = nullptr; // This is cleaned up elsewhere
+  rt_playheadJumpEventForStart = nullptr;
 }
 
 double Transport::rt_getPlayheadAdvanceAmount(int numSamples) {
-  if (!rt_config.isPlaying) {
+  if (!rt_config->isPlaying) {
     return 0.0;
   }
-  auto ticksPerQuarter = rt_config.ticksPerQuarter;
-  auto beatsPerMinute = rt_config.beatsPerMinute;
+  auto ticksPerQuarter = rt_config->ticksPerQuarter;
+  auto beatsPerMinute = rt_config->beatsPerMinute;
   auto ticksPerMinute = ticksPerQuarter * beatsPerMinute;
   auto ticksPerSecond = ticksPerMinute / 60.0;
   auto ticksPerSample = ticksPerSecond / sampleRate;
@@ -143,7 +166,7 @@ double Transport::rt_getPlayheadAdvanceAmount(int numSamples) {
 }
 
 double Transport::rt_getPlayheadAfterAdvance(int numSamples) {
-  if (rt_config.isPlaying) {
+  if (rt_config->isPlaying) {
     auto ticks = rt_getPlayheadAdvanceAmount(numSamples);
 
     // Because we're using floating point math, the math operations here must
@@ -151,8 +174,8 @@ double Transport::rt_getPlayheadAfterAdvance(int numSamples) {
     // drop or double-count events.
     double timePointer = rt_playhead;
     double incrementRemaining = ticks;
-    double loopStart = rt_config.loopStart;
-    double loopEnd = rt_config.loopEnd; // This will be infinite if no loop is set
+    double loopStart = rt_config->loopStart;
+    double loopEnd = rt_config->loopEnd; // This will be infinite if no loop is set
 
     while (incrementRemaining > 0.0) {
       double incrementAmount = incrementRemaining;
@@ -176,17 +199,17 @@ double Transport::rt_getPlayheadAfterAdvance(int numSamples) {
   return rt_playhead;
 }
 
-PlayheadJumpEvent* Transport::createPlayheadJumpEvent(double playheadPosition) {
-  auto* event = new PlayheadJumpEvent();
+PlayheadJumpEvent Transport::createPlayheadJumpEvent(double playheadPosition) {
+  auto event = PlayheadJumpEvent();
 
-  event->newPlayheadPosition = playheadPosition;
+  event.newPlayheadPosition = playheadPosition;
 
   if (config.activeSequenceId.has_value()) {
     auto& patterns = *Anthem::getInstance().project->sequence()->patterns();
     if (patterns.find(config.activeSequenceId.value()) != patterns.end()) {
       auto& pattern = *patterns.at(config.activeSequenceId.value());
-      event->eventsToPlayAtJump.clear();
-      addStartEventsForPattern(config.activeSequenceId.value(), playheadPosition, event->eventsToPlayAtJump);
+      event.eventsToPlayAtJump.clear();
+      addStartEventsForPattern(config.activeSequenceId.value(), playheadPosition, event.eventsToPlayAtJump);
     }
 
     auto& arrangements = *Anthem::getInstance().project->sequence()->arrangements();
@@ -209,11 +232,11 @@ PlayheadJumpEvent* Transport::createPlayheadJumpEvent(double playheadPosition) {
           }
 
           addStartEventsForPattern(
-            clip.patternId(), playheadPosition - clipOffset + start, event->eventsToPlayAtJump);
+            clip.patternId(), playheadPosition - clipOffset + start, event.eventsToPlayAtJump);
         }
         else {
           addStartEventsForPattern(
-            clip.patternId(), playheadPosition - clipOffset, event->eventsToPlayAtJump);
+            clip.patternId(), playheadPosition - clipOffset, event.eventsToPlayAtJump);
         }
       }
     }
@@ -222,12 +245,24 @@ PlayheadJumpEvent* Transport::createPlayheadJumpEvent(double playheadPosition) {
   return event;
 }
 
+void Transport::updatePlayheadJumpEventForStart(bool send) {
+  if (!config.activeSequenceId.has_value()) {
+    return;
+  }
+
+  config.playheadJumpEventForStart = createPlayheadJumpEvent(config.playheadStart);
+
+  if (send) {
+    sendConfigToAudioThread();
+  }
+}
+
 void Transport::setPlayheadStart(double playheadStart) {
-  auto* event = createPlayheadJumpEvent(playheadStart);
+  auto event = createPlayheadJumpEvent(playheadStart);
 
   config.playheadStart = playheadStart;
-  config.playheadJumpEventForStart = event;
-  configBufferedValue.set(config);
+  config.playheadJumpEventForStart = std::move(event);
+  sendConfigToAudioThread();
 }
 
 void Transport::jumpTo(double playheadPosition) {
@@ -236,9 +271,10 @@ void Transport::jumpTo(double playheadPosition) {
     playheadPosition = config.loopStart + mod;
   }
 
-  auto* event = createPlayheadJumpEvent(playheadPosition);
+  auto event = createPlayheadJumpEvent(playheadPosition);
+  auto eventPtr = new PlayheadJumpEvent(event);
 
-  playheadJumpEventBuffer.add(event);
+  playheadJumpEventBuffer.add(eventPtr);
 }
 
 void Transport::clearLoopPoints() {
@@ -251,7 +287,7 @@ void Transport::clearLoopPoints() {
   config.loopEnd = std::numeric_limits<double>::infinity();
 
   // The audio thread will release this into the delete buffer when it picks up the new config
-  config.playheadJumpEventForLoop = nullptr;
+  config.playheadJumpEventForLoop = std::nullopt;
 }
 
 void Transport::updateLoopPoints(bool send) {
@@ -259,7 +295,7 @@ void Transport::updateLoopPoints(bool send) {
     clearLoopPoints();
 
     if (send) {
-      configBufferedValue.set(config);
+      sendConfigToAudioThread();
     }
 
     return;
@@ -282,7 +318,7 @@ void Transport::updateLoopPoints(bool send) {
     clearLoopPoints();
 
     if (send) {
-      configBufferedValue.set(config);
+      sendConfigToAudioThread();
     }
 
     return;
@@ -293,7 +329,7 @@ void Transport::updateLoopPoints(bool send) {
   config.loopEnd = static_cast<double>(loopPoints->end());
   config.playheadJumpEventForLoop = createPlayheadJumpEvent(static_cast<double>(config.loopStart));
 
-  configBufferedValue.set(config);
+  sendConfigToAudioThread();
 }
 
 void Transport::timerCallback() {
@@ -302,6 +338,16 @@ void Transport::timerCallback() {
   while (auto event = playheadJumpEventDeleteBuffer.read()) {
     delete event.value();
   }
+
+  // Same, but for configs
+  while (auto config = configDeleteBuffer.read()) {
+    delete config.value();
+  }
+}
+
+void Transport::sendConfigToAudioThread() {
+  TransportConfig* configCopy = new TransportConfig(config);
+  configBuffer.add(configCopy);
 }
 
 void Transport::addStartEventsForPattern(
