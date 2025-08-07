@@ -430,9 +430,10 @@ mixin AnthemModelBase {
     setParentPropertiesOnChildren();
 
     // Run any attach actions that have been queued up
-    for (final action in _onAttachActions) {
+    for (final action in _onFirstAttachActions) {
       action();
     }
+    _onFirstAttachActions.clear();
   }
 
   void setParentPropertiesOnChildren();
@@ -470,15 +471,15 @@ mixin AnthemModelBase {
     throw Exception('Could not find ancestor model of type $T');
   }
 
-  final List<void Function()> _onAttachActions = [];
+  final List<void Function()> _onFirstAttachActions = [];
 
-  /// Schedules work to be done when this model is attached to the tree.
-  void onModelAttached(void Function() onModelAttached) {
+  /// Schedules work to be done when this model is first attached to the tree.
+  void onModelFirstAttached(void Function() onModelAttached) {
     if (parent != null) {
       throw Exception('Model is already attached');
     }
 
-    _onAttachActions.add(onModelAttached);
+    _onFirstAttachActions.add(onModelAttached);
   }
 }
 

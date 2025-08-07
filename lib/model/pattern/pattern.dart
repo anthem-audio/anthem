@@ -71,7 +71,7 @@ class PatternModel extends _PatternModel
   PatternModel.create({required super.name}) : super.create() {
     _init();
 
-    onModelAttached(() {
+    onModelFirstAttached(() {
       // I had a todo comment to remove this, but I have no idea why, so I'm
       // leaving this comment instead. ¯\_(ツ)_/¯
       for (final generator in project.generators.values.where(
@@ -89,7 +89,7 @@ class PatternModel extends _PatternModel
   }
 
   void _init() {
-    onModelAttached(() {
+    onModelFirstAttached(() {
       incrementClipUpdateSignal = Action(() {
         clipNotesUpdateSignal.value =
             (clipNotesUpdateSignal.value + 1) % 0xFFFFFFFF;

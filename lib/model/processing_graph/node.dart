@@ -233,7 +233,7 @@ abstract class _NodeModel with Store, AnthemModelBase {
     required this.processor,
     required this.isThirdPartyPlugin,
   }) {
-    onModelAttached(() {
+    onModelFirstAttached(() {
       if (!isThirdPartyPlugin) return;
       if (!project.engine.isRunning) return;
 
