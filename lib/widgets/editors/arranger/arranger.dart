@@ -239,8 +239,8 @@ class _ArrangerState extends State<Arranger> {
                                             })
                                             .toList(),
                                         onChanged: (selectedID) {
-                                          project.sequence.activeArrangementID =
-                                              selectedID;
+                                          projectController
+                                              .setActiveArrangement(selectedID);
                                         },
                                       );
                                     },

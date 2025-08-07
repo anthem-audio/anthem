@@ -221,6 +221,27 @@ class ProjectController {
       ),
     );
   }
+
+  void setActiveArrangement(Id? id) {
+    project.sequence.setActiveArrangement(id);
+    _updateTransportSequenceID(id);
+  }
+
+  void setActivePattern(Id? id) {
+    project.sequence.setActivePattern(id);
+    _updateTransportSequenceID(id);
+  }
+
+  void _updateTransportSequenceID(Id? id) {
+    project.sequence.activeTransportSequenceID = id;
+    if (id != null) {
+      project.visualizationProvider.overrideValue(
+        id: 'playhead_sequence_id',
+        stringValue: id,
+        duration: const Duration(milliseconds: 500),
+      );
+    }
+  }
 }
 
 var nextHue = 0.0;

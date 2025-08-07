@@ -121,7 +121,7 @@ class _PatternEditorState extends State<PatternEditor> {
                             selectedID: project.sequence.activePatternID
                                 ?.toString(),
                             onChanged: (id) {
-                              project.sequence.activePatternID = id;
+                              projectController.setActivePattern(id);
                             },
                           );
                         },
