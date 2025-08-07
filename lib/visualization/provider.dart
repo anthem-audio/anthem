@@ -160,6 +160,35 @@ class VisualizationProvider {
     });
   }
 
+  /// Overrides the value for a specific visualization item for a certain
+  /// duration.
+  ///
+  /// If an action in the UI triggers a UI update, it usually renders in the
+  /// next frame. However, if the UI is dependent on a visualization value for
+  /// an update, then the update usually occurs at least a frame later. If a
+  /// given action in the UI contains both types of updates, then there can be a
+  /// visible desync between the two updates.
+  ///
+  /// This method can be used to override a visualization value with the
+  /// expected update value before the engine can send the update, which can
+  /// prevent this desync.
+  void overrideValue({
+    required String id,
+    double? doubleValue,
+    String? stringValue,
+    required Duration duration,
+  }) {
+    final subscriptions =
+        _subscriptions[id] ?? Iterable<VisualizationSubscription>.empty();
+    for (final sub in subscriptions) {
+      sub.setOverride(
+        valueDouble: doubleValue,
+        valueString: stringValue,
+        duration: duration,
+      );
+    }
+  }
+
   void dispose() {
     _engineStateChangeSub.cancel();
 
