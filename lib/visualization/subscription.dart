@@ -200,6 +200,7 @@ class VisualizationSubscription {
         _overrideDuration = null;
         _overrideDouble = null;
         _overrideString = null;
+        _isUpdateStale = true;
       }
     }
   }
