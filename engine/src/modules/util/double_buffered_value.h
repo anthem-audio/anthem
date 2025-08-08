@@ -21,6 +21,8 @@
 
 #include <atomic>
 #include <optional>
+
+#include <juce_core/juce_core.h>
 #include <juce_events/juce_events.h>
 
 // This is a value that can be sent from the main thread to the audio thread.
@@ -50,6 +52,7 @@
 template <typename T>
 class DoubleBufferedValue {
 private:
+  JUCE_LEAK_DETECTOR(DoubleBufferedValue<T>)
   // If true, then mutations to fields in this class are not allowed.
   //
   // This is used to prevent either thread from trying to mutate when the other
@@ -135,7 +138,7 @@ public:
   // Gets the latest value.
   //
   // A newer value may exist in the inactive target. In this case, rt_get() will
-  // udpate the active target and read the latest value.
+  // update the active target and read the latest value.
   //
   // If the other thread is currently mutating the non-active value, then this
   // method will load the stale value.

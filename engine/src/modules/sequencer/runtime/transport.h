@@ -37,12 +37,18 @@
 // new playhead position. For example, if we jump into the middle of a note, we
 // want to start playing that note.
 class PlayheadJumpEvent {
+private:
+  JUCE_LEAK_DETECTOR(PlayheadJumpEvent)
+
 public:
   double newPlayheadPosition = 0.0;
   std::unordered_map<std::string, std::vector<AnthemLiveEvent>> eventsToPlayAtJump;
 };
 
 class TransportConfig {
+private:
+  JUCE_LEAK_DETECTOR(TransportConfig)
+
 public:
   std::optional<std::string> activeSequenceId;
   int64_t ticksPerQuarter = 96;
@@ -50,18 +56,28 @@ public:
   bool isPlaying = false;
   double playheadStart = 0.0;
 
-  PlayheadJumpEvent* playheadJumpEventForStart = nullptr;
+  PlayheadJumpEvent playheadJumpEventForStart;
 
   bool hasLoop = false;
-  PlayheadJumpEvent* playheadJumpEventForLoop = nullptr;
-  double loopStart = 0.0;
-  double loopEnd = 0.0;
+  std::optional<PlayheadJumpEvent> playheadJumpEventForLoop;
+  double loopStart;
+  double loopEnd;
+
+  TransportConfig() {
+    loopStart = 0.0;
+    loopEnd = std::numeric_limits<double>::infinity();
+  }
 };
 
 class Transport : private juce::Timer {
 private:
+  JUCE_LEAK_DETECTOR(Transport)
+
   // The audio thread reads the transport state from here
-  DoubleBufferedValue<TransportConfig> configBufferedValue;
+  RingBuffer<TransportConfig*, 64> configBuffer;
+
+  // The audio thread sends old configs back to be deleted here
+  RingBuffer<TransportConfig*, 64> configDeleteBuffer;
 
   // Playhead jump events are sent to the audio thread through this buffer.
   RingBuffer<PlayheadJumpEvent*, 64> playheadJumpEventBuffer;
@@ -78,10 +94,12 @@ private:
   void addStartEventsForPattern(
     std::string patternId, double offset, std::unordered_map<std::string, std::vector<AnthemLiveEvent>>& collector);
 
-  PlayheadJumpEvent* createPlayheadJumpEvent(double playheadPosition);
+  PlayheadJumpEvent createPlayheadJumpEvent(double playheadPosition);
 
   void updateLoopPoints(bool send);
   void clearLoopPoints();
+
+  void sendConfigToAudioThread();
 
   double sampleRate;
 
@@ -101,7 +119,7 @@ public:
   // The transport state, as seen by the audio thread.
   //
   // This should be read at the start of every processing block.
-  TransportConfig rt_config;
+  TransportConfig* rt_config;
 
   // This will be true if a stop or jump was requested for the current
   // processing block.
@@ -112,23 +130,10 @@ public:
 
   Transport();
 
-  void setIsPlaying(bool isPlaying) {
-    config.isPlaying = isPlaying;
-    configBufferedValue.set(config);
-  }
-  void setActiveSequenceId(std::optional<std::string>& sequenceId) {
-    config.activeSequenceId = sequenceId;
-    updateLoopPoints(false);
-    configBufferedValue.set(config);
-  }
-  void setTicksPerQuarter(int64_t ticksPerQuarter) {
-    config.ticksPerQuarter = ticksPerQuarter;
-    configBufferedValue.set(config);
-  }
-  void setBeatsPerMinute(double beatsPerMinute) {
-    config.beatsPerMinute = beatsPerMinute;
-    configBufferedValue.set(config);
-  }
+  void setIsPlaying(bool isPlaying);
+  void setActiveSequenceId(std::optional<std::string>& sequenceId);
+  void setTicksPerQuarter(int64_t ticksPerQuarter);
+  void setBeatsPerMinute(double beatsPerMinute);
 
   // Sets the start point for the playhead.
   //
@@ -136,6 +141,7 @@ public:
   // transport is stopped, making it the place that playback will start from
   // when the transport is started again.
   void setPlayheadStart(double playheadPosition);
+  void updatePlayheadJumpEventForStart(bool send = true);
 
   // Jumps the playhead to the given position.
   void jumpTo(double playheadPosition);

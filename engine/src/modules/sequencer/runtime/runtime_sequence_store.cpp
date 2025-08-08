@@ -60,7 +60,7 @@ void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
   // -1. These represent a range starting at the loop start and extending for
   // the total distance that the playhead will advance this block. If there is a
   // jump, then this will usually be past the playhead's actual end position.
-  // The playhead will never go past loopStartRegionEnd in this block.
+  // The playhead will never go past loopStartRangeEnd in this block.
   double loopStartRangeBegin = -1;
   double loopStartRangeEnd = -1;
 
@@ -70,8 +70,8 @@ void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
     playheadStart = transport.rt_playhead;
     playheadEnd = playheadStart + advanceAmount;
 
-    if (playheadEnd >= transport.rt_config.loopEnd) {
-      loopStartRangeBegin = transport.rt_config.loopStart;
+    if (playheadEnd >= transport.rt_config->loopEnd) {
+      loopStartRangeBegin = transport.rt_config->loopStart;
       loopStartRangeEnd = loopStartRangeBegin + advanceAmount;
     }
   }
@@ -139,11 +139,11 @@ void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
             // If the playhead is within the invalidation range, we need to
             // mark this channel as invalid for the current processing block.
 
-            bool isWithinMainRange = playheadStart < std::get<1>(range) &&
-              playheadEnd > std::get<0>(range);
+            bool isWithinMainRange = playheadStart <= std::get<1>(range) &&
+              playheadEnd >= std::get<0>(range);
             bool isWithinLoopRange = loopStartRangeBegin != -1.0 && (
-              loopStartRangeBegin < std::get<1>(range) &&
-              loopStartRangeEnd > std::get<0>(range));
+              loopStartRangeBegin <= std::get<1>(range) &&
+              loopStartRangeEnd >= std::get<0>(range));
 
             if (isWithinMainRange || isWithinLoopRange) {
               channelListObj.invalidationOccurred = true;

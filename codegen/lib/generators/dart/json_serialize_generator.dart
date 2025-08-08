@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/dart/element/element2.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:source_gen/source_gen.dart';
@@ -164,7 +164,7 @@ enum _FieldBehavior {
 /// - alwaysSerialize: The field should always be serialized
 /// - serializeForEngineOnly: The field should be serialized only when sending
 ///   the model to the engine
-_FieldBehavior _getFieldBehavior(FieldElement field) {
+_FieldBehavior _getFieldBehavior(FieldElement2 field) {
   final hideAnnotation = const TypeChecker.fromRuntime(
     Hide,
   ).firstAnnotationOf(field);

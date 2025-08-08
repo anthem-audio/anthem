@@ -68,4 +68,28 @@ class ProcessingGraphApi {
 
     return response.state;
   }
+
+  /// Sends a live event to the given LiveEventProviderProcessor node in the
+  /// engine.
+  ///
+  /// The [event] parameter takes an object that is serialized as part of the
+  /// message, and is defined inline with the message definition. See
+  /// lib/engine_api/messages/processing_graph.dart for valid event types.
+  void sendLiveEvent(Id liveEventProviderNodeId, Object event) async {
+    assert(
+      event is LiveEventRequestNoteOnEvent ||
+          event is LiveEventRequestNoteOffEvent,
+      'sendLiveEvent() requires a valid live event type.',
+    );
+
+    final id = _engine._getRequestId();
+
+    final request = SendLiveEventRequest(
+      id: id,
+      liveEventProviderNodeId: liveEventProviderNodeId,
+      event: event,
+    );
+
+    _engine._requestNoReply(request);
+  }
 }

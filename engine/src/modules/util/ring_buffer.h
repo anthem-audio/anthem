@@ -19,8 +19,9 @@
 
 #pragma once
 
-#include <juce_core/juce_core.h>
 #include <optional>
+
+#include <juce_core/juce_core.h>
 
 // A thread- and realtime-safe queue for storing items of type T
 template <
@@ -29,6 +30,10 @@ template <
 >
 class RingBuffer
 {
+private:
+  using This = RingBuffer<T, size>;
+  JUCE_LEAK_DETECTOR(This)
+
 public:
   RingBuffer() : fifo(size) {}
 

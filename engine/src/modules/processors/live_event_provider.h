@@ -21,27 +21,26 @@
 
 #include "generated/lib/model/model.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
-#include "modules/sequencer/runtime/transport.h"
 #include "modules/processing_graph/processor/anthem_event_buffer.h"
-#include "modules/processing_graph/compiler/anthem_process_context.h"
+#include "modules/sequencer/events/event.h"
+#include "modules/util/ring_buffer.h"
 
-// This processor is a bridge between the sequencer and the node graph. It's a
-// special node that the sequencer can use to send notes from the sequence to the
-// node graph as note events.
-class SequenceNoteProviderProcessor : public AnthemProcessor, public SequenceNoteProviderProcessorModelBase {
+#include <memory>
+
+class LiveEventProviderProcessor : public AnthemProcessor, public LiveEventProviderProcessorModelBase {
 private:
-  uint64_t rt_nextIndexToRead;
+  std::unique_ptr<RingBuffer<AnthemLiveEvent, 4096>> liveEventBuffer;
 
-  void addEventsForJump(std::unique_ptr<AnthemEventBuffer>& targetBuffer, PlayheadJumpEvent& event);
+  void addLiveEventsToBuffer(std::unique_ptr<AnthemEventBuffer>& targetBuffer);
 public:
-  SequenceNoteProviderProcessor(const SequenceNoteProviderProcessorModelImpl& _impl);
-  ~SequenceNoteProviderProcessor() override;
+  LiveEventProviderProcessor(const LiveEventProviderProcessorModelImpl& _impl);
+  ~LiveEventProviderProcessor() override;
 
-  SequenceNoteProviderProcessor(const SequenceNoteProviderProcessor&) = delete;
-  SequenceNoteProviderProcessor& operator=(const SequenceNoteProviderProcessor&) = delete;
+  LiveEventProviderProcessor(const LiveEventProviderProcessor&) = delete;
+  LiveEventProviderProcessor& operator=(const LiveEventProviderProcessor&) = delete;
 
-  SequenceNoteProviderProcessor(SequenceNoteProviderProcessor&&) noexcept = default;
-  SequenceNoteProviderProcessor& operator=(SequenceNoteProviderProcessor&&) noexcept = default;
+  LiveEventProviderProcessor(LiveEventProviderProcessor&&) noexcept = default;
+  LiveEventProviderProcessor& operator=(LiveEventProviderProcessor&&) noexcept = default;
 
   int getOutputPortIndex() {
     return 0;
@@ -49,4 +48,8 @@ public:
 
   void prepareToProcess() override;
   void process(AnthemProcessContext& context, int numSamples) override;
+
+  // Adds a live event to be picked up by this processor and sent to the
+  // downstream node(s).
+  void addLiveEvent(AnthemLiveEvent event);
 };

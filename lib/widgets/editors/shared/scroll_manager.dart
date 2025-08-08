@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -142,7 +142,12 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
   }
 
   void handleScroll(PointerScrollEvent e) {
-    final delta = e.scrollDelta.dy;
+    var delta = e.scrollDelta.dy;
+
+    if (e.kind == PointerDeviceKind.mouse) {
+      // Mouse wheel feels better a bit faster
+      delta *= 1.5;
+    }
 
     final modifiers = Provider.of<KeyboardModifiers>(context, listen: false);
     final contentRenderBox = context.findRenderObject() as RenderBox;

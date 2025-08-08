@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -117,22 +117,86 @@ class _NoteMoveActionData {
   });
 }
 
+/// Tracks notes that are sent to the engine during editing.
+class _LiveNotes {
+  final Map<int, ({double velocity, double pan})> _notes = {};
+  ProjectModel project;
+
+  _LiveNotes(this.project);
+
+  bool hasNoteForKey(int key) {
+    return _notes.containsKey(key);
+  }
+
+  void addNote({
+    required int key,
+    required double velocity,
+    required double pan,
+  }) {
+    final generatorModel = project.generators[project.activeInstrumentID];
+    if (generatorModel == null) {
+      return;
+    }
+
+    final liveEventManager = generatorModel.liveEventManager;
+
+    if (_notes.containsKey(key)) {
+      liveEventManager.noteOff(pitch: key);
+    }
+
+    liveEventManager.noteOn(pitch: key, velocity: velocity, pan: pan);
+
+    _notes[key] = (velocity: velocity, pan: pan);
+  }
+
+  void removeNote(int key) {
+    final generatorModel = project.generators[project.activeInstrumentID];
+    if (generatorModel == null) {
+      return;
+    }
+
+    final liveEventManager = generatorModel.liveEventManager;
+
+    if (_notes.containsKey(key)) {
+      liveEventManager.noteOff(pitch: key);
+      _notes.remove(key);
+    }
+  }
+
+  void removeAll() {
+    final generatorModel = project.generators[project.activeInstrumentID];
+    if (generatorModel == null) {
+      return;
+    }
+
+    final liveEventManager = generatorModel.liveEventManager;
+
+    for (final key in _notes.keys) {
+      liveEventManager.noteOff(pitch: key);
+    }
+    _notes.clear();
+  }
+}
+
 mixin _PianoRollPointerEventsMixin on _PianoRollController {
   // Fields for event handling
 
   var _eventHandlingState = EventHandlingState.idle;
 
-  // Data for note moves
+  /// Data for note moves
   _NoteMoveActionData? _noteMoveActionData;
 
-  // Data for note resize
+  /// Data for note resize
   _NoteResizeActionData? _noteResizeActionData;
 
-  // Data for deleting notes
+  /// Data for deleting notes
   _DeleteActionData? _deleteActionData;
 
-  // Data for selection box
+  /// Data for selection box
   _SelectionBoxActionData? _selectionBoxActionData;
+
+  /// Live notes for sending note on/off events to the engine
+  late final _LiveNotes _liveNotes = _LiveNotes(project);
 
   void leftPointerDown(PianoRollPointerDownEvent event) {
     final pattern =
@@ -204,9 +268,9 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         startLengths = {pressedNote.id: pressedNote.length};
         smallestStartLength = pressedNote.length;
         smallestNoteId = pressedNote.id;
-
-        setCursorNoteParameters(pressedNote);
       }
+
+      setCursorNoteParameters(pressedNote);
 
       _noteResizeActionData = _NoteResizeActionData(
         pointerStartOffset: event.offset,
@@ -266,6 +330,12 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         _noteMoveActionData!.keyOfTopNote = noteUnderCursor.key;
         _noteMoveActionData!.keyOfBottomNote = noteUnderCursor.key;
       }
+
+      _liveNotes.addNote(
+        key: noteUnderCursor.key,
+        velocity: noteUnderCursor.velocity,
+        pan: noteUnderCursor.pan,
+      );
     }
 
     if (event.noteUnderCursor != null) {
@@ -513,6 +583,17 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
               (!shift && ctrl ? 0 : timeOffsetFromEventStart);
         }
 
+        // Update the live note
+        final noteUnderCursor = _noteMoveActionData!.noteUnderCursor;
+        if (!_liveNotes.hasNoteForKey(noteUnderCursor.key)) {
+          _liveNotes.removeAll();
+          _liveNotes.addNote(
+            key: noteUnderCursor.key,
+            velocity: noteUnderCursor.velocity,
+            pan: noteUnderCursor.pan,
+          );
+        }
+
         break;
       case EventHandlingState.creatingAdditiveSelectionBox:
       case EventHandlingState.creatingSubtractiveSelectionBox:
@@ -691,7 +772,8 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
           note.length = _noteResizeActionData!.startLengths[note.id]! + diff;
         }
 
-        if (_eventHandlingState == EventHandlingState.resizingSingleNote) {
+        if (_eventHandlingState == EventHandlingState.resizingSingleNote ||
+            _eventHandlingState == EventHandlingState.resizingSelection) {
           setCursorNoteParameters(_noteResizeActionData!.pressedNote);
         }
 
@@ -719,9 +801,9 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
                 )
                 .toList();
 
-      // We already moved these note to their target positions. Now, we create
-      // a command to move it from its original position to the target
-      // position, which will be used for undo/redo.
+      // We already moved these notes to their target positions. Now, we create
+      // a command to move it from its original position to the target position,
+      // which will be used for undo/redo.
       final offsetCommands = relevantNotes.map((note) {
         return SetNoteAttributeCommand(
           patternID: pattern.id,
@@ -789,6 +871,9 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
       project.push(command);
     }
+
+    // No matter what, we need to reset the playing notes
+    _liveNotes.removeAll();
 
     project.commitJournalPage();
 

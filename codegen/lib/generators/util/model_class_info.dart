@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/dart/element/element2.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:build/build.dart';
@@ -35,7 +35,7 @@ import 'package:source_gen/source_gen.dart';
 /// behavior if it leaks into the next step. This should be done at the
 /// beginning of each builder's `build()` function, if that builder uses this
 /// cache.
-Map<ClassElement, ModelClassInfo> _modelClassInfoCache = {};
+Map<ClassElement2, ModelClassInfo> _modelClassInfoCache = {};
 
 /// Clears the cache for model items.
 ///
@@ -53,9 +53,9 @@ void cleanModelClassInfoCache() {
 /// across the code generators.
 class ModelClassInfo {
   LibraryReader libraryReader;
-  ClassElement annotatedClass;
+  ClassElement2 annotatedClass;
 
-  ClassElement? _baseClass;
+  ClassElement2? _baseClass;
 
   /// Represents the base class for this model class, e.g. `_MyClass` in the
   /// following case:
@@ -108,10 +108,10 @@ class ModelClassInfo {
   ///   // ...
   /// }
   /// ```
-  ClassElement get baseClass {
+  ClassElement2 get baseClass {
     if (_baseClass == null) {
       final String invalidSetupHelp =
-          '''Base class not found for ${annotatedClass.name}.
+          '''Base class not found for ${annotatedClass.name3}.
 
 Model items in Anthem must have a super class with a mixin, and a matching base class:
 
@@ -137,9 +137,11 @@ class _MyModel {
 
   AnthemModel? annotation;
 
+  /// Creates a new ModelClassInfo instance for the given class and
+  /// [LibraryReader] context, or pulls from the cache if one already exists.
   factory ModelClassInfo(
     LibraryReader libraryReader,
-    ClassElement annotatedClass,
+    ClassElement2 annotatedClass,
   ) {
     return _modelClassInfoCache[annotatedClass] ??
         ModelClassInfo._create(libraryReader, annotatedClass);
@@ -185,13 +187,15 @@ class _MyModel {
 
     final libraryAndImportedClasses = [
       libraryReader.classes,
-      libraryReader.element.importedLibraries
+      libraryReader.element.fragments
+          .map((lib) => lib.importedLibraries2)
+          .expand((e) => e)
           .map((lib) => LibraryReader(lib).classes)
           .expand((e) => e),
     ].expand((e) => e);
 
     _baseClass = libraryAndImportedClasses
-        .where((e) => e.name == '_${annotatedClass.name}')
+        .where((e) => e.name3 == '_${annotatedClass.name3}')
         .firstOrNull;
 
     // The code below just doesn't work. I think it's because the mixin isn't
@@ -208,14 +212,14 @@ class _MyModel {
     //   continue;
     // }
 
-    for (final field in _baseClass?.fields ?? <FieldElement>[]) {
+    for (final field in _baseClass?.fields2 ?? <FieldElement2>[]) {
       // If the field doesn't have a setter, it's not something we can
       // deserialize, so we won't include it. This can happen if the field is
       // final, or if the field is a getter.
       //
       // The only exception to this is if the field is a static const field, in
       // which case we will include it as a constant.
-      if (field.setter == null) {
+      if (field.setter2 == null) {
         // We treat static const fields as constants, if they are primitive types
         // (e.g. string, number, bool). If the field is static and/or const but
         // not both, or if it's not a primitive type, we will just skip over it.
@@ -235,7 +239,7 @@ class _MyModel {
       // Check for skip annotation
       if (_skipAll(field)) continue;
 
-      fields[field.name] = ModelFieldInfo(
+      fields[field.name3!] = ModelFieldInfo(
         fieldElement: field,
         libraryReader: libraryReader,
         annotatedClass: annotatedClass,
@@ -244,10 +248,10 @@ class _MyModel {
 
     isSealed = annotatedClass.isSealed;
 
-    final List<ClassElement> subclasses = [];
+    final List<ClassElement2> subclasses = [];
 
     for (var element in libraryReader.classes) {
-      if (element.supertype?.element == annotatedClass) {
+      if (element.supertype?.element3 == annotatedClass) {
         subclasses.add(element);
       }
     }
@@ -261,20 +265,20 @@ class _MyModel {
 }
 
 class SealedSubclassInfo {
-  ClassElement subclass;
+  ClassElement2 subclass;
   Map<String, ModelFieldInfo> fields = {};
-  String get name => subclass.name;
+  String get name => subclass.name3!;
 
   SealedSubclassInfo(this.subclass, ModelClassInfo baseClassInfo) {
-    for (final field in subclass.fields) {
+    for (final field in subclass.fields2) {
       // If the field doesn't have a setter, it's not something we can
       // deserialize, so we won't include it. This can happen if the field is
       // final, or if the field is a getter.
-      if (field.setter == null) continue;
+      if (field.setter2 == null) continue;
 
       if (_skipAll(field)) continue;
 
-      fields[field.name] = ModelFieldInfo(
+      fields[field.name3!] = ModelFieldInfo(
         fieldElement: field,
         libraryReader: baseClassInfo.libraryReader,
         annotatedClass: subclass,
@@ -286,7 +290,7 @@ class SealedSubclassInfo {
 /// Represents a parsed field in an Anthem model.
 class ModelFieldInfo {
   /// The field element for this field.
-  final FieldElement fieldElement;
+  final FieldElement2 fieldElement;
 
   /// The parsed type info for this field.
   final ModelType typeInfo;
@@ -313,7 +317,7 @@ class ModelFieldInfo {
   ModelFieldInfo({
     required this.fieldElement,
     required LibraryReader libraryReader,
-    required ClassElement annotatedClass,
+    required ClassElement2 annotatedClass,
   }) : typeInfo = getModelType(
          fieldElement.type,
          annotatedClass,
@@ -366,7 +370,7 @@ class ModelFieldInfo {
 
 /// Returns true if the field should be skipped during code generation, based on
 /// the @Hide annotation.
-bool _skipAll(FieldElement field) {
+bool _skipAll(FieldElement2 field) {
   final hideAnnotation = const TypeChecker.fromRuntime(
     Hide,
   ).firstAnnotationOf(field);

@@ -21,10 +21,14 @@
 
 #include <memory>
 
+#include <juce_core/juce_core.h>
+
 #include "modules/processing_graph/compiler/actions/anthem_graph_compiler_action.h"
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 
 class ClearBuffersAction : public AnthemGraphCompilerAction {
+private:
+  JUCE_LEAK_DETECTOR(ClearBuffersAction)
 public:
   AnthemProcessContext* context;
 

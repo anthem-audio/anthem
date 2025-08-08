@@ -66,7 +66,7 @@ class ArrangementModel extends _ArrangementModel
   });
 
   void _init() {
-    onModelAttached(() {
+    onModelFirstAttached(() {
       _compileInEngine();
 
       updateViewWidthAction.execute();

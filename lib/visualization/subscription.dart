@@ -71,6 +71,11 @@ class VisualizationSubscription {
   double _valueDouble = 0;
   String? _valueString;
 
+  DateTime? _overrideSetTime;
+  Duration? _overrideDuration;
+  double? _overrideDouble;
+  String? _overrideString;
+
   bool _shouldReset = false;
 
   bool _isUpdateStale = false;
@@ -93,7 +98,7 @@ class VisualizationSubscription {
   /// For all other subscription types, this will return the latest value.
   double readValue() {
     _shouldReset = true;
-    return _valueDouble;
+    return _overrideDouble ?? _valueDouble;
   }
 
   /// Read the latest value as a string for this visualization item.
@@ -105,7 +110,10 @@ class VisualizationSubscription {
   /// a numeric value, and is instead the ID of the sequence as a string.
   String readValueString() {
     _shouldReset = true;
-    return _valueString ?? _valueDouble.toString();
+    return _overrideString ??
+        _overrideDouble?.toString() ??
+        _valueString ??
+        _valueDouble.toString();
   }
 
   /// Read the last N values for this visualization item.
@@ -114,6 +122,11 @@ class VisualizationSubscription {
   /// values, this will return the result of [readValue] as a single-item list.
   Iterable<double> readValues() {
     _shouldReset = true;
+
+    if (_overrideDouble != null) {
+      return [_overrideDouble!];
+    }
+
     return _ringBufferDouble?.values ?? [_valueDouble];
   }
 
@@ -124,8 +137,38 @@ class VisualizationSubscription {
   /// list.
   Iterable<String> readValuesString() {
     _shouldReset = true;
+
+    if (_overrideString != null) {
+      return [_overrideString!];
+    }
+
     return _ringBufferString?.values ??
         [_valueString ?? _valueDouble.toString()];
+  }
+
+  /// Sets an override value for this subscription, with a duration.
+  ///
+  /// The override value will be used in place of any incoming values from
+  /// the engine until the duration has elapsed. This is for values that are
+  /// expected to change to a specific known value, and where an immediate update
+  /// is desired (e.g. when it would prevent a flicker in the UI).
+  void setOverride({
+    double? valueDouble,
+    String? valueString,
+    required Duration duration,
+  }) {
+    if (valueDouble == null && valueString == null) {
+      throw ArgumentError(
+        'Either valueDouble or valueString must be provided.',
+      );
+    }
+
+    _overrideSetTime = DateTime.now();
+    _overrideDuration = duration;
+    _overrideDouble = valueDouble;
+    _overrideString = valueString;
+
+    _isUpdateStale = true;
   }
 
   VisualizationSubscription(this._config, this._parent)
@@ -137,7 +180,10 @@ class VisualizationSubscription {
           _config.type == VisualizationSubscriptionType.lastNValues
           ? RingBuffer<String>(_config.bufferSize!)
           : null {
-    _ticker = Ticker(_onTick)..start();
+    _ticker = Ticker(_onTick);
+    if (_parent._project.engineState == EngineState.running) {
+      _ticker.start();
+    }
   }
 
   /// Called when the [_ticker] ticks.
@@ -145,6 +191,17 @@ class VisualizationSubscription {
     if (_isUpdateStale) {
       _isUpdateStale = false;
       _updateController.add(null);
+    }
+
+    if (_overrideSetTime != null && _overrideDuration != null) {
+      final elapsed = DateTime.now().difference(_overrideSetTime!);
+      if (elapsed >= _overrideDuration!) {
+        _overrideSetTime = null;
+        _overrideDuration = null;
+        _overrideDouble = null;
+        _overrideString = null;
+        _isUpdateStale = true;
+      }
     }
   }
 
@@ -204,6 +261,22 @@ class VisualizationSubscription {
     }
 
     _isUpdateStale = true;
+  }
+
+  void _engineStarted() {
+    if (_ticker.isActive) {
+      return;
+    }
+
+    _ticker.start();
+  }
+
+  void _engineStopped() {
+    if (!_ticker.isActive) {
+      return;
+    }
+
+    _ticker.stop();
   }
 
   void dispose() {

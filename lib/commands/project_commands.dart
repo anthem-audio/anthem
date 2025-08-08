@@ -33,6 +33,7 @@ void _addGenerator(
   required NodeModel gainNode,
   // required NodeModel midiGenNode,
   required NodeModel sequenceNoteProviderNode,
+  required NodeModel liveEventProviderNode,
 
   Map<Id, AnthemObservableList<NoteModel>>? notes,
   Map<Id, AutomationLaneModel>? automationLanes,
@@ -54,6 +55,7 @@ void _addGenerator(
   project.processingGraph.addNode(gainNode);
   // project.processingGraph.addNode(midiGenNode);
   project.processingGraph.addNode(sequenceNoteProviderNode);
+  project.processingGraph.addNode(liveEventProviderNode);
 
   // project.processingGraph.addConnection(
   //   NodeConnectionModel(
@@ -94,6 +96,15 @@ void _addGenerator(
           .id,
     ),
   );
+  project.processingGraph.addConnection(
+    NodeConnectionModel(
+      id: getId(),
+      sourceNodeId: liveEventProviderNode.id,
+      sourcePortId: liveEventProviderNode.eventOutputPorts[0].id,
+      destinationNodeId: generatorNode.id,
+      destinationPortId: generatorNode.eventInputPorts[0].id,
+    ),
+  );
 
   // Add back sequence data for this generator to all patterns
   for (final pattern in project.sequence.patterns.values) {
@@ -125,6 +136,7 @@ void _removeGenerator(ProjectModel project, Id generatorID) {
   project.processingGraph.removeNode(generator.gainNodeId!);
   // project.processingGraph.removeNode(generator.midiGenNodeId!);
   project.processingGraph.removeNode(generator.sequenceNoteProviderNodeId!);
+  project.processingGraph.removeNode(generator.liveEventProviderNodeId!);
 
   // Remove sequence data for this generator from all patterns
   for (final pattern in project.sequence.patterns.values) {
@@ -176,6 +188,9 @@ class AddGeneratorCommand extends Command {
     // final midiGenNode = SimpleMidiGeneratorProcessorModel.createNode();
     final sequencerNoteProviderNode =
         SequenceNoteProviderProcessorModel.createNode(generatorId);
+    final liveEventProviderNode = LiveEventProviderProcessorModel.createNode(
+      generatorId,
+    );
 
     final generator = GeneratorModel(
       id: generatorId,
@@ -186,6 +201,7 @@ class AddGeneratorCommand extends Command {
       gainNodeId: gainNode.id,
       // midiGenNodeId: midiGenNode.id,
       sequenceNoteProviderNodeId: sequencerNoteProviderNode.id,
+      liveEventProviderNodeId: liveEventProviderNode.id,
     );
 
     _addGenerator(
@@ -193,6 +209,7 @@ class AddGeneratorCommand extends Command {
       generator,
       generatorNode: node,
       gainNode: gainNode,
+      liveEventProviderNode: liveEventProviderNode,
 
       // midiGenNode: midiGenNode,
       sequenceNoteProviderNode: sequencerNoteProviderNode,
@@ -211,6 +228,7 @@ class RemoveGeneratorCommand extends Command {
   NodeModel gainNode;
   // NodeModel midiGenNode;
   NodeModel sequenceNoteProviderNode;
+  NodeModel liveEventProviderNode;
   late int index;
 
   /// Map of pattern ID to notes for this generator.
@@ -228,7 +246,9 @@ class RemoveGeneratorCommand extends Command {
        //  midiGenNode = project.processingGraph.nodes[generator.midiGenNodeId]!
        sequenceNoteProviderNode =
            project.processingGraph.nodes[generator // what is this formatting
-               .sequenceNoteProviderNodeId]! {
+               .sequenceNoteProviderNodeId]!,
+       liveEventProviderNode =
+           project.processingGraph.nodes[generator.liveEventProviderNodeId]! {
     index = project.generatorOrder.indexOf(generator.id);
 
     notes = {};
@@ -261,6 +281,7 @@ class RemoveGeneratorCommand extends Command {
       gainNode: gainNode,
       // midiGenNode: midiGenNode,
       sequenceNoteProviderNode: sequenceNoteProviderNode,
+      liveEventProviderNode: liveEventProviderNode,
 
       notes: notes,
       automationLanes: automationLanes,

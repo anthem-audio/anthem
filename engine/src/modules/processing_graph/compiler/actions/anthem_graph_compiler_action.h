@@ -19,7 +19,11 @@
 
 #pragma once
 
+#include <juce_core/juce_core.h>
+
 class AnthemGraphCompilerAction {
+private:
+  JUCE_LEAK_DETECTOR(AnthemGraphCompilerAction)
 public:
   virtual void execute(int numSamples) = 0;
   virtual void debugPrint() = 0;

@@ -21,12 +21,16 @@
 
 #include <memory>
 
+#include <juce_core/juce_core.h>
+
 #include "generated/lib/model/model.h"
 #include "modules/processing_graph/model/node_connection.h"
 
 class AnthemGraphNodeConnection;
 
 class AnthemGraphCompilerEdge {
+private:
+  JUCE_LEAK_DETECTOR(AnthemGraphCompilerEdge)
 public:
   // The edge in the node graph
   std::shared_ptr<NodeConnection> edgeSource;

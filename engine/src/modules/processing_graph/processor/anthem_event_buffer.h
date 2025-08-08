@@ -21,11 +21,16 @@
 
 #include <stdexcept>
 
+#include <juce_core/juce_core.h>
+
 #include "modules/util/arena_allocator.h"
 #include "modules/sequencer/events/event.h"
 
 class AnthemEventBuffer {
-  // ALlocator for this buffer. This allocator maintains a huge buffer of memory
+private:
+  JUCE_LEAK_DETECTOR(AnthemEventBuffer)
+
+  // Allocator for this buffer. This allocator maintains a huge buffer of memory
   // that can be used to reallocate our buffer if it gets too big, without
   // having to allocate from the OS, which allows this class to be real-time
   // safe.

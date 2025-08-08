@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/model/project.dart';
+import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:flutter/widgets.dart';
 
@@ -161,7 +162,7 @@ class _PatternPickerState extends State<PatternPicker> {
                           height: 17,
                           variant: ButtonVariant.ghost,
                           contentPadding: const EdgeInsets.all(0),
-                          hint: 'Create a new pattern',
+                          hint: [HintSection('click', 'Create a new pattern')],
                           onPress: () {
                             projectController.addPattern();
                           },

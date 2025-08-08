@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/dart/element/element2.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:anthem_codegen/generators/util/model_class_info.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
@@ -29,7 +29,7 @@ String generateJsonDeserializationCode({required ModelClassInfo context}) {
 
   result.write('''// ignore: duplicate_ignore
 // ignore: non_constant_identifier_names
-static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
+static ${context.annotatedClass.name3} fromJson(Map<String, dynamic> json) {
 ''');
 
   // If the class is not sealed, we can just create an instance of the class
@@ -37,15 +37,15 @@ static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
     // If the class has a special uninitialized constructor, we use that. If
     // this constructor does not exist, then there must be a default constructor
     // with no arguments.
-    if (context.annotatedClass.getNamedConstructor('uninitialized') != null) {
+    if (context.annotatedClass.getNamedConstructor2('uninitialized') != null) {
       result.write(
-        'final result = ${context.annotatedClass.name}.uninitialized();\n',
+        'final result = ${context.annotatedClass.name3}.uninitialized();\n',
       );
     } else {
-      result.write('final result = ${context.annotatedClass.name}();\n');
+      result.write('final result = ${context.annotatedClass.name3}();\n');
     }
   } else {
-    result.write('late final ${context.annotatedClass.name} result;');
+    result.write('late final ${context.annotatedClass.name3} result;');
 
     bool isFirst = true;
     for (final subclass in context.sealedSubclasses) {
@@ -57,7 +57,7 @@ static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
       // If the class has a special uninitialized constructor, we use that. If
       // this constructor does not exist, then there must be a default
       // constructor with no arguments.
-      if (subclass.subclass.getNamedConstructor('uninitialized') != null) {
+      if (subclass.subclass.getNamedConstructor2('uninitialized') != null) {
         result.write(
           'final subclassResult = ${subclass.name}.uninitialized();\n',
         );
@@ -124,7 +124,7 @@ static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
 
 /// Checks if a field should be skipped when generating JSON serialization code,
 /// based on the @Hide annotation.
-bool _shouldSkip(FieldElement field) {
+bool _shouldSkip(FieldElement2 field) {
   final hideAnnotation = const TypeChecker.fromRuntime(
     Hide,
   ).firstAnnotationOf(field);
@@ -189,7 +189,7 @@ String _createGetterForField({
       getter: getter,
     ),
     CustomModelType() =>
-      '${type.isNullable ? '$getter == null ? null : ' : ''}${type.modelClassInfo.annotatedClass.name}.fromJson($getter)',
+      '${type.isNullable ? '$getter == null ? null : ' : ''}${type.modelClassInfo.annotatedClass.name3}.fromJson($getter)',
     UnionModelType() => _generateUnionGetter(
       type: type,
       fieldName: fieldName,

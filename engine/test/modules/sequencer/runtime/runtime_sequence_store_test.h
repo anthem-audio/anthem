@@ -54,10 +54,9 @@ public:
           .ticks = 0,
           .fraction = 0.
         },
-        .event = AnthemEvent {
-          .type = AnthemEventType::NoteOn,
-          .noteOn = AnthemNoteOnEvent()
-        }
+        .event = AnthemEvent(
+          AnthemNoteOnEvent()
+        )
       });
 
       sequence.channels->insert_or_assign("channel1", eventList1);

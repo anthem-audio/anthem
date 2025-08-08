@@ -31,6 +31,7 @@ export 'pattern/note.dart';
 export 'pattern/pattern.dart';
 
 export 'processing_graph/processors/gain.dart';
+export 'processing_graph/processors/live_event_provider.dart';
 export 'processing_graph/processors/master_output.dart';
 export 'processing_graph/processors/sequence_note_provider.dart';
 export 'processing_graph/processors/simple_midi_generator.dart';

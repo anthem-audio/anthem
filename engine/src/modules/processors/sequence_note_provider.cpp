@@ -21,6 +21,8 @@
 
 #include "modules/core/anthem.h"
 
+#include <optional>
+
 SequenceNoteProviderProcessor::SequenceNoteProviderProcessor(
   const SequenceNoteProviderProcessorModelImpl& _impl
 ) : AnthemProcessor("SequenceNoteProvider"), SequenceNoteProviderProcessorModelBase(_impl) {
@@ -31,10 +33,10 @@ SequenceNoteProviderProcessor::~SequenceNoteProviderProcessor() {
   // Nothing to do here
 }
 
-void SequenceNoteProviderProcessor::addEventsForJump(std::unique_ptr<AnthemEventBuffer>& targetBuffer, PlayheadJumpEvent* event) {
+void SequenceNoteProviderProcessor::addEventsForJump(std::unique_ptr<AnthemEventBuffer>& targetBuffer, PlayheadJumpEvent& event) {
   auto& channelId = this->channelId();
 
-  auto& eventsForJump = event->eventsToPlayAtJump;
+  auto& eventsForJump = event.eventsToPlayAtJump;
   if (eventsForJump.find(channelId) != eventsForJump.end()) {
     auto& events = eventsForJump.at(channelId);
     for (auto& event : events) {
@@ -55,7 +57,7 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
   auto& channelId = this->channelId();
 
   auto& transport = Anthem::getInstance().transport;
-  auto& config = transport->rt_config;
+  auto* config = transport->rt_config;
 
   // If the transport jumped for any reason, we need to send a stop event to the
   // downstream device.
@@ -68,15 +70,15 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
   }
 
   if (transport->rt_playheadJumpEvent != nullptr) {
-    addEventsForJump(outputEventBuffer, transport->rt_playheadJumpEvent);
+    addEventsForJump(outputEventBuffer, *transport->rt_playheadJumpEvent);
   }
 
-  if (!config.isPlaying) {
+  if (!config->isPlaying) {
     return;
   }
 
   auto& sequenceStore = *Anthem::getInstance().sequenceStore;
-  auto activeSequenceId = transport->config.activeSequenceId;
+  auto activeSequenceId = config->activeSequenceId;
 
   // If the active sequence is not set, we don't need to do anything.
   if (!activeSequenceId) {
@@ -110,8 +112,8 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
   double ticks = transport->rt_getPlayheadAdvanceAmount(numSamples);
 
   double incrementRemaining = ticks;
-  double loopStart = config.loopStart;
-  double loopEnd = config.loopEnd; // This will be inifinite if no loop is set
+  double loopStart = config->loopStart;
+  double loopEnd = config->loopEnd; // This will be infinite if no loop is set
 
   while (incrementRemaining > 0.0) {
     double incrementAmount = incrementRemaining;
@@ -164,7 +166,9 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
       outputEventBuffer->addEvent(liveEvent);
 
       // Then play the events for loop start
-      addEventsForJump(outputEventBuffer, config.playheadJumpEventForLoop);
+      if (config->playheadJumpEventForLoop.has_value()) {
+        addEventsForJump(outputEventBuffer, config->playheadJumpEventForLoop.value());
+      }
     }
   }
 }

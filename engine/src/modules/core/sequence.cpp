@@ -22,8 +22,6 @@
 #include "modules/core/anthem.h"
 
 void Sequence::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) {
-  SequenceModelBase::initialize(self, parent);
-
   auto& transport = *Anthem::getInstance().transport;
 
   // Write initial values to transport
@@ -31,6 +29,8 @@ void Sequence::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr
   transport.setBeatsPerMinute(this->beatsPerMinuteRaw() / 100.0);
   transport.setActiveSequenceId(this->activeTransportSequenceID());
   transport.setIsPlaying(this->isPlaying());
+
+  transport.jumpTo(this->playbackStartPosition());
 
   addBeatsPerMinuteRawObserver([this](int64_t value) {
     auto beatsPerMinute = static_cast<double>(value) / 100.0;
@@ -60,4 +60,6 @@ void Sequence::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr
   addPlaybackStartPositionObserver([this](double value) {
     Anthem::getInstance().transport->setPlayheadStart(value);
   });
+
+  SequenceModelBase::initialize(self, parent);
 }

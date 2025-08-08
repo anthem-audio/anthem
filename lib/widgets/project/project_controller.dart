@@ -22,6 +22,7 @@ import 'dart:io';
 import 'package:anthem/commands/arrangement_commands.dart';
 import 'package:anthem/commands/pattern_commands.dart';
 import 'package:anthem/commands/project_commands.dart';
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/pattern/pattern.dart';
@@ -135,14 +136,16 @@ class ProjectController {
         )) {
       redo();
     }
+    // Play / stop
+    else if (shortcut.matches(LogicalKeySet(LogicalKeyboardKey.space))) {
+      togglePlayback();
+    }
   }
 
-  void setHintText(String text) {
-    viewModel.hintText = text;
-  }
-
-  void clearHintText() {
-    viewModel.hintText = '';
+  void togglePlayback() {
+    if (project.engineState == EngineState.running) {
+      project.sequence.isPlaying = !project.sequence.isPlaying;
+    }
   }
 
   void addGenerator({
@@ -217,6 +220,27 @@ class ProjectController {
         generator: project.generators[generatorID]!,
       ),
     );
+  }
+
+  void setActiveArrangement(Id? id) {
+    project.sequence.setActiveArrangement(id);
+    _updateTransportSequenceID(id);
+  }
+
+  void setActivePattern(Id? id) {
+    project.sequence.setActivePattern(id);
+    _updateTransportSequenceID(id);
+  }
+
+  void _updateTransportSequenceID(Id? id) {
+    project.sequence.activeTransportSequenceID = id;
+    if (id != null) {
+      project.visualizationProvider.overrideValue(
+        id: 'playhead_sequence_id',
+        stringValue: id,
+        duration: const Duration(milliseconds: 500),
+      );
+    }
   }
 }
 

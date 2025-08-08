@@ -136,3 +136,67 @@ class PluginLoadedEvent extends Response {
     super.id = id;
   }
 }
+
+@AnthemModel(serializable: true, generateCpp: true)
+class LiveEventRequestNoteOnEvent extends _LiveEventRequestNoteOnEvent
+    with _$LiveEventRequestNoteOnEventAnthemModelMixin {
+  LiveEventRequestNoteOnEvent.uninitialized()
+    : super(pitch: 0, velocity: 0.0, pan: 0.0);
+
+  LiveEventRequestNoteOnEvent({
+    required super.pitch,
+    required super.velocity,
+    required super.pan,
+  });
+
+  factory LiveEventRequestNoteOnEvent.fromJson(Map<String, dynamic> json) =>
+      _$LiveEventRequestNoteOnEventAnthemModelMixin.fromJson(json);
+}
+
+abstract class _LiveEventRequestNoteOnEvent {
+  int pitch;
+  double velocity;
+  double pan;
+
+  _LiveEventRequestNoteOnEvent({
+    required this.pitch,
+    required this.velocity,
+    required this.pan,
+  });
+}
+
+@AnthemModel(serializable: true, generateCpp: true)
+class LiveEventRequestNoteOffEvent extends _LiveEventRequestNoteOffEvent
+    with _$LiveEventRequestNoteOffEventAnthemModelMixin {
+  LiveEventRequestNoteOffEvent.uninitialized() : super(pitch: 0);
+
+  LiveEventRequestNoteOffEvent({required super.pitch});
+
+  factory LiveEventRequestNoteOffEvent.fromJson(Map<String, dynamic> json) =>
+      _$LiveEventRequestNoteOffEventAnthemModelMixin.fromJson(json);
+}
+
+abstract class _LiveEventRequestNoteOffEvent {
+  int pitch;
+
+  _LiveEventRequestNoteOffEvent({required this.pitch});
+}
+
+/// Sends a live event to the engine, which will be picked up by the given
+/// LiveEventProviderProcessor node.
+class SendLiveEventRequest extends Request {
+  late String liveEventProviderNodeId;
+
+  @Union([LiveEventRequestNoteOnEvent, LiveEventRequestNoteOffEvent])
+  late Object event;
+
+  SendLiveEventRequest.uninitialized();
+
+  SendLiveEventRequest({
+    required int id,
+    required this.liveEventProviderNodeId,
+    required this.event,
+  }) {
+    super.id = id;
+  }
+}

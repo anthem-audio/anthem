@@ -18,7 +18,7 @@
 */
 
 import 'package:anthem/commands/sequence_commands.dart';
-import 'package:anthem/model/project.dart';
+import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/basic/controls/control_mouse_handler.dart';
 import 'package:anthem/widgets/basic/digit_display.dart';
 import 'package:flutter/widgets.dart';
@@ -26,7 +26,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 /// A widget for controlling the time signature of the project sequence.
-class TimeSignatureControl extends StatefulObserverWidget {
+class TimeSignatureControl extends StatefulWidget {
   const TimeSignatureControl({super.key});
 
   @override
@@ -39,18 +39,25 @@ class _TimeSignatureControlState extends State<TimeSignatureControl> {
 
   final List<int> validDenominators = const [1, 2, 4, 8, 16, 32];
 
+  ProjectModel get projectModel {
+    return Provider.of<ProjectModel>(context, listen: false);
+  }
+
+  TimeSignatureModel get timeSignature {
+    return projectModel.sequence.defaultTimeSignature;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final projectModel = Provider.of<ProjectModel>(context);
-
-    final timeSignature = projectModel.sequence.defaultTimeSignature;
-
-    final numeratorString = timeSignature.numerator.toString().padLeft(2);
-    final denominatorString = timeSignature.denominator.toString().padRight(2);
+    const String baseHint = 'Set the time signature';
+    String getDynamicHint() {
+      final timeSignature = projectModel.sequence.defaultTimeSignature;
+      return '${timeSignature.numerator}/${timeSignature.denominator}';
+    }
 
     return Stack(
       children: [
-        DigitDisplay(text: '$numeratorString / $denominatorString'),
+        const _TimeSignatureDisplay(),
         Positioned.fill(
           child: Row(
             spacing: 8,
@@ -62,11 +69,12 @@ class _TimeSignatureControlState extends State<TimeSignatureControl> {
                     startNumerator = timeSignature.numerator;
                   },
                   onChange: (event) {
-                    final newNumerator =
-                        (startNumerator + event.absolute.dy / 50).round().clamp(
-                          1,
-                          32,
-                        );
+                    final delta =
+                        event.absolute.dy / (event.isScroll ? 25 : 50);
+                    final newNumerator = (startNumerator + delta).round().clamp(
+                      1,
+                      32,
+                    );
 
                     timeSignature.numerator = newNumerator;
                   },
@@ -84,6 +92,8 @@ class _TimeSignatureControlState extends State<TimeSignatureControl> {
 
                     projectModel.push(command);
                   },
+                  baseHint: baseHint,
+                  getHintText: getDynamicHint,
                 ),
               ),
               Expanded(
@@ -95,10 +105,11 @@ class _TimeSignatureControlState extends State<TimeSignatureControl> {
                     );
                   },
                   onChange: (event) {
-                    final newDenominatorIndex =
-                        (startDenominatorIndex + event.absolute.dy / 50)
-                            .round()
-                            .clamp(0, validDenominators.length - 1);
+                    final delta =
+                        event.absolute.dy / (event.isScroll ? 25 : 50);
+                    final newDenominatorIndex = (startDenominatorIndex + delta)
+                        .round()
+                        .clamp(0, validDenominators.length - 1);
 
                     timeSignature.denominator =
                         validDenominators[newDenominatorIndex];
@@ -118,6 +129,8 @@ class _TimeSignatureControlState extends State<TimeSignatureControl> {
 
                     projectModel.push(command);
                   },
+                  baseHint: baseHint,
+                  getHintText: getDynamicHint,
                 ),
               ),
             ],
@@ -125,5 +138,21 @@ class _TimeSignatureControlState extends State<TimeSignatureControl> {
         ),
       ],
     );
+  }
+}
+
+class _TimeSignatureDisplay extends StatelessObserverWidget {
+  const _TimeSignatureDisplay();
+
+  @override
+  Widget build(BuildContext context) {
+    final projectModel = Provider.of<ProjectModel>(context);
+
+    final timeSignature = projectModel.sequence.defaultTimeSignature;
+
+    final numeratorString = timeSignature.numerator.toString().padLeft(2);
+    final denominatorString = timeSignature.denominator.toString().padRight(2);
+
+    return DigitDisplay(text: '$numeratorString / $denominatorString');
   }
 }

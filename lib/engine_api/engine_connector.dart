@@ -192,10 +192,16 @@ class EngineConnector {
       }
     } else {
       _setEngineProcess(
-        await Process.start(anthemPathStr, [
-          EngineSocketServer.instance.port.toString(),
-          _id.toString(),
-        ]),
+        await Process.start(
+          anthemPathStr,
+          [EngineSocketServer.instance.port.toString(), _id.toString()],
+
+          // I'm not sure why this is necessary, but the process doesn't start
+          // correctly without it on Windows without this.
+          mode: Platform.isWindows
+              ? ProcessStartMode.inheritStdio
+              : ProcessStartMode.normal,
+        ),
       );
     }
 

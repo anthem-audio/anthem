@@ -101,7 +101,7 @@ mixin _PatternCompilerMixin on _PatternModel {
 
           _channelsToCompile.add(channelId);
           _patternInvalidationRangeCollector.addRange(
-            note.offset,
+            note.offset + min(oldValue, newValue),
             note.offset + max(oldValue, newValue),
           );
 

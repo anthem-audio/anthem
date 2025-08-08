@@ -64,14 +64,14 @@ String getModelSyncFn(ModelClassInfo context) {
       : '';
 
   writer.writeLine(
-    'void ${context.annotatedClass.name}$baseSuffix::handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {',
+    'void ${context.annotatedClass.name3}$baseSuffix::handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {',
   );
   writer.incrementWhitespace();
 
   writer.writeLine('if (self.expired()) {');
   writer.incrementWhitespace();
   writer.writeLine(
-    'std::cout << "Error updating model \\"${context.annotatedClass.name}\\": model has been deleted." << std::endl;',
+    'std::cout << "Error updating model \\"${context.annotatedClass.name3}\\": model has been deleted." << std::endl;',
   );
   writer.writeLine('return;');
   writer.decrementWhitespace();
@@ -87,7 +87,7 @@ String getModelSyncFn(ModelClassInfo context) {
   writer.writeLine('if (!fieldNameNullable.has_value()) {');
   writer.incrementWhitespace();
   writer.writeLine(
-    'std::cout << "Error updating model \\"${context.annotatedClass.name}\\": field name is null." << std::endl;',
+    'std::cout << "Error updating model \\"${context.annotatedClass.name3}\\": field name is null." << std::endl;',
   );
   writer.writeLine('return;');
   writer.decrementWhitespace();
@@ -144,7 +144,7 @@ String getModelSyncFn(ModelClassInfo context) {
     writer.writeLine('else {');
     writer.incrementWhitespace();
     writer.writeLine(
-      'std::cout << "Unexpected field name \\"" << fieldName << "\\" on model \\"${context.annotatedClass.name}\\". This update will be ignored." << std::endl;',
+      'std::cout << "Unexpected field name \\"" << fieldName << "\\" on model \\"${context.annotatedClass.name3}\\". This update will be ignored." << std::endl;',
     );
     writer.decrementWhitespace();
     writer.writeLine('}');
@@ -163,7 +163,7 @@ void _writeInvalidAccessWarning({
   required String fieldAccessExpression,
 }) {
   writer.writeLine(
-    'std::cout << "Invalid field access: \\"$fieldAccessExpression\\", on model \\"${context.annotatedClass.name}\\"" << std::endl;',
+    'std::cout << "Invalid field access: \\"$fieldAccessExpression\\", on model \\"${context.annotatedClass.name3}\\"" << std::endl;',
   );
   writer.writeLine(
     'std::cout << "The accessor \\"$fieldAccessExpression\\" does not point to an Anthem model or collection of Anthem models, so the update could not be forwarded." << std::endl;',
@@ -181,7 +181,7 @@ void _writeSerializedValueNullCheck({
   writer.writeLine('if (!request.serializedValue.has_value()) {');
   writer.incrementWhitespace();
   writer.writeLine(
-    'std::cout << "Error updating accessor \\"$fieldAccessExpression\\" on model \\"${context.annotatedClass.name}\\"." << std::endl;',
+    'std::cout << "Error updating accessor \\"$fieldAccessExpression\\" on model \\"${context.annotatedClass.name3}\\"." << std::endl;',
   );
   writer.writeLine(
     'std::cout << "Serialized value is null, but shouldn\'t be in this context." << std::endl;',
@@ -221,7 +221,7 @@ void _writeUpdateTypeInvalidError({
   required String fieldAccessExpression,
 }) {
   writer.writeLine(
-    'std::cout << "Invalid update type for accessor \\"$fieldAccessExpression\\" on model \\"${context.annotatedClass.name}\\"" << std::endl;',
+    'std::cout << "Invalid update type for accessor \\"$fieldAccessExpression\\" on model \\"${context.annotatedClass.name3}\\"" << std::endl;',
   );
   writer.writeLine(
     'std::cout << "Update type \\"$updateKind\\" is not valid for field \\"$fieldAccessExpression\\" of type ${type.toString()}." << std::endl;',
@@ -239,7 +239,7 @@ void _writeJsonResultCheck({
   writer.writeLine('if (!$resultVariable.has_value()) {');
   writer.incrementWhitespace();
   writer.writeLine(
-    'std::cout << "Error deserializing to field \\"$fieldAccessExpression\\" in model \\"${context.annotatedClass.name}\\":" << std::endl << $resultVariable.error().what() << std::endl;',
+    'std::cout << "Error deserializing to field \\"$fieldAccessExpression\\" in model \\"${context.annotatedClass.name3}\\":" << std::endl << $resultVariable.error().what() << std::endl;',
   );
   writer.writeLine('return;');
   writer.decrementWhitespace();
@@ -887,7 +887,7 @@ void _writeParentSettersForInitializeFn({
 String getInitializeFn(ModelClassInfo context) {
   final writer = Writer();
 
-  final className = context.annotatedClass.name;
+  final className = context.annotatedClass.name3;
   final baseSuffix = context.annotation?.cppBehaviorClassName != null
       ? 'Base'
       : '';

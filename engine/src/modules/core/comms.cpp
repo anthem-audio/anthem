@@ -43,6 +43,7 @@ void AnthemSocketThread::run() {
     if (writeResult < 0) {
       // Fatal error, kill the application
       juce::MessageManager::callAsync([]() {
+        jassertfalse;
         juce::JUCEApplication::quit();
       });
       break;
@@ -58,6 +59,7 @@ void AnthemSocketThread::run() {
     if (readReadyResult < 0) {
       // Fatal error, kill the application
       juce::MessageManager::callAsync([]() {
+        jassertfalse;
         juce::JUCEApplication::quit();
       });
       break;
@@ -76,6 +78,7 @@ void AnthemSocketThread::run() {
     if (bytesRead < 0) {
       // Fatal error, kill the application
       juce::MessageManager::callAsync([]() {
+        jassertfalse;
         juce::JUCEApplication::quit();
       });
       break;
@@ -119,6 +122,7 @@ int AnthemSocketThread::writePendingBytes() {
   auto result = socket.waitUntilReady(false, SOCKET_TIMEOUT_MS);
 
   if (result < 0) {
+    jassertfalse;
     return -1; // Error state
   }
 
@@ -130,7 +134,8 @@ int AnthemSocketThread::writePendingBytes() {
     // Write the header
     auto bytesToWrite = HEADER_SIZE - writeIndex;
     auto bytesWritten = socket.write(((char *) pendingHeader.getData()) + writeIndex, bytesToWrite);
-    if (bytesWritten <= 0) {
+    if (bytesWritten < 0) {
+      jassertfalse;
       return -1; // Error state
     }
     writeIndex += bytesWritten;
@@ -143,8 +148,20 @@ int AnthemSocketThread::writePendingBytes() {
   auto writeIndexInPendingBytes = writeIndex - HEADER_SIZE;
   auto bytesToWrite = pendingBytes.getSize() - writeIndexInPendingBytes;
 
+  result = socket.waitUntilReady(false, SOCKET_TIMEOUT_MS);
+
+  if (result < 0) {
+    jassertfalse;
+    return -1; // Error state
+  }
+
+  if (result == 0) {
+    return 1; // Timeout
+  }
+
   auto bytesWritten = socket.write(((char *) pendingBytes.getData()) + writeIndexInPendingBytes, bytesToWrite);
   if (bytesWritten < 0) {
+    jassertfalse;
     return -1; // Error state
   }
   writeIndex += bytesWritten;

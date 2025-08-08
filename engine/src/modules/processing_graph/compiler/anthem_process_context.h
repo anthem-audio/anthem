@@ -23,6 +23,7 @@
 #include <vector>
 #include <unordered_map>
 
+#include <juce_core/juce_core.h>
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_events/juce_events.h>
 
@@ -36,6 +37,8 @@
 // the inputs and outputs of the node associated with that processor.
 class AnthemProcessContext {
 private:
+  JUCE_LEAK_DETECTOR(AnthemProcessContext)
+
   std::unordered_map<int32_t, juce::AudioSampleBuffer> inputAudioBuffers;
   std::unordered_map<int32_t, juce::AudioSampleBuffer> outputAudioBuffers;
 

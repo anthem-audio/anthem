@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/pattern/pattern.dart';
@@ -127,8 +128,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
       );
     }
 
-    if (!project.sequence.isPlaying &&
-        project.sequence.playbackStartPosition != targetTime) {
+    if (project.sequence.playbackStartPosition != targetTime) {
       project.sequence.playbackStartPosition = targetTime;
     }
 
@@ -450,7 +450,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
           },
           onPointerSignal: (event) {
             if (event is PointerScrollEvent) {
-              handleScroll(event.scrollDelta.dy, event.localPosition.dx);
+              handleScroll(event.scrollDelta.dy * 1.5, event.localPosition.dx);
             }
           },
           onPointerDown: handlePointerDown,
@@ -550,6 +550,49 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                     );
                   },
                 ),
+
+                // Playhead positioner for the playback start position
+                VisualizationBuilder.string(
+                  config: VisualizationSubscriptionConfig.latest(
+                    'playhead_sequence_id',
+                  ),
+                  builder: (context, activeSequenceIdFromEngine) {
+                    return Observer(
+                      builder: (context) {
+                        final activeSequenceIdOverride =
+                            project.engineState != EngineState.running
+                            ? project.sequence.activeTransportSequenceID
+                            : null;
+
+                        final activeSequenceId =
+                            activeSequenceIdOverride ??
+                            activeSequenceIdFromEngine;
+
+                        return Visibility(
+                          visible:
+                              activeSequenceId != null &&
+                              (widget.patternID == activeSequenceId ||
+                                  widget.arrangementID == activeSequenceId),
+                          child: PlayheadPositioner(
+                            isStartMarker: true,
+                            playheadTimeOverride: project
+                                .sequence
+                                .playbackStartPosition
+                                .toDouble(),
+                            timeViewAnimationController:
+                                widget.timeViewAnimationController,
+                            timeViewStartAnimation:
+                                widget.timeViewStartAnimation,
+                            timeViewEndAnimation: widget.timeViewEndAnimation,
+                            timelineSize: constraints.biggest,
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+
+                // Playhead positioner for the actual playhead
                 VisualizationBuilder.string(
                   // This pulls the latest visualization value for the active
                   // sequence ID.
@@ -574,19 +617,38 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                   config: VisualizationSubscriptionConfig.latest(
                     'playhead_sequence_id',
                   ),
-                  builder: (context, activeSequenceId) {
-                    return Visibility(
-                      visible:
-                          activeSequenceId != null &&
-                          (widget.patternID == activeSequenceId ||
-                              widget.arrangementID == activeSequenceId),
-                      child: PlayheadPositioner(
-                        timeViewAnimationController:
-                            widget.timeViewAnimationController,
-                        timeViewStartAnimation: widget.timeViewStartAnimation,
-                        timeViewEndAnimation: widget.timeViewEndAnimation,
-                        timelineSize: constraints.biggest,
-                      ),
+                  builder: (context, activeSequenceIdFromEngine) {
+                    return Observer(
+                      builder: (context) {
+                        final activeSequenceIdOverride =
+                            project.engineState != EngineState.running
+                            ? project.sequence.activeTransportSequenceID
+                            : null;
+
+                        final activeSequenceId =
+                            activeSequenceIdOverride ??
+                            activeSequenceIdFromEngine;
+
+                        return Visibility(
+                          visible:
+                              activeSequenceId != null &&
+                              (widget.patternID == activeSequenceId ||
+                                  widget.arrangementID == activeSequenceId),
+                          child: PlayheadPositioner(
+                            playheadTimeOverride:
+                                project.engineState == EngineState.running
+                                ? null
+                                : project.sequence.playbackStartPosition
+                                      .toDouble(),
+                            timeViewAnimationController:
+                                widget.timeViewAnimationController,
+                            timeViewStartAnimation:
+                                widget.timeViewStartAnimation,
+                            timeViewEndAnimation: widget.timeViewEndAnimation,
+                            timelineSize: constraints.biggest,
+                          ),
+                        );
+                      },
                     );
                   },
                 ),

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2024 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,6 +22,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
+import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
@@ -120,7 +121,7 @@ class _PatternEditorState extends State<PatternEditor> {
                             selectedID: project.sequence.activePatternID
                                 ?.toString(),
                             onChanged: (id) {
-                              project.sequence.activePatternID = id;
+                              projectController.setActivePattern(id);
                             },
                           );
                         },
@@ -192,7 +193,9 @@ class _PatternEditorState extends State<PatternEditor> {
                             width: 105,
                             contentPadding: EdgeInsets.zero,
                             icon: Icons.add,
-                            hint: 'Add a new instrument',
+                            hint: [
+                              HintSection('click', 'Add a new instrument'),
+                            ],
                             onPress: () {
                               addChannelMenuController.open();
                             },

@@ -20,12 +20,14 @@
 import 'dart:convert';
 
 import 'package:anthem/commands/sequence_commands.dart';
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/controls/digit_control.dart';
 import 'package:anthem/widgets/basic/controls/time_signature_control.dart';
+import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/horizontal_meter_simple.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
@@ -83,7 +85,7 @@ class _LeftGroup extends StatelessWidget {
           onPress: () {
             projectController.undo();
           },
-          hint: 'Undo (Ctrl+Z)',
+          hint: [HintSection('click', 'Undo (Ctrl+Z)')],
         ),
         const SizedBox(width: 4),
         Button(
@@ -91,7 +93,7 @@ class _LeftGroup extends StatelessWidget {
           onPress: () {
             projectController.redo();
           },
-          hint: 'Redo (Ctrl+Shift+Z)',
+          hint: [HintSection('click', 'Redo (Ctrl+Shift+Z)')],
         ),
       ],
     );
@@ -118,11 +120,17 @@ class _MiddleGroup extends StatelessWidget {
           height: 24,
           width: 24,
           contentPadding: EdgeInsets.all(3),
+          hint: [HintSection('click', 'Play')],
           onPress: () {
             final projectModel = Provider.of<ProjectModel>(
               context,
               listen: false,
             );
+
+            if (projectModel.engineState != EngineState.running) {
+              return;
+            }
+
             projectModel.sequence.isPlaying = true;
           },
         ),
@@ -131,6 +139,7 @@ class _MiddleGroup extends StatelessWidget {
           height: 24,
           width: 24,
           contentPadding: EdgeInsets.all(3),
+          hint: [HintSection('click', 'Stop')],
           onPress: () {
             final projectModel = Provider.of<ProjectModel>(
               context,
@@ -196,13 +205,29 @@ class _RightGroup extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         VisualizationBuilder.double(
-          builder: (context, value) {
-            value ??= 0;
+          builder: (context, cpuValue) {
+            return Observer(
+              builder: (context) {
+                var value = cpuValue ?? 0;
+                bool engineIsRunning = true;
 
-            return HorizontalMeterSimple(
-              width: 60,
-              value: value,
-              label: '${(value * 100).round()}%',
+                final projectModel = Provider.of<ProjectModel>(
+                  context,
+                  listen: false,
+                );
+                if (projectModel.engineState != EngineState.running) {
+                  // If the engine is not running, we don't want to show the CPU usage
+                  // as it will be 0 and misleading.
+                  value = 0;
+                  engineIsRunning = false;
+                }
+
+                return HorizontalMeterSimple(
+                  width: 60,
+                  value: value,
+                  label: engineIsRunning ? '${(value * 100).round()}%' : '--%',
+                );
+              },
             );
           },
           config: VisualizationSubscriptionConfig.max('cpu'),
@@ -321,7 +346,7 @@ class _ProjectMenu extends StatelessWidget {
         onPress: () {
           menuController.open();
         },
-        hint: 'File...',
+        hint: [HintSection('click', 'File...')],
       ),
     );
   }

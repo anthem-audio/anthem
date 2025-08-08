@@ -70,7 +70,7 @@ class AnthemModelGenerator extends Generator {
       final context = ModelClassInfo(library, libraryClass);
 
       result.write(
-        'mixin _\$${libraryClass.name}AnthemModelMixin on ${context.baseClass.name}${context.annotation!.generateModelSync ? ', AnthemModelBase' : ''} {\n',
+        'mixin _\$${libraryClass.name3}AnthemModelMixin on ${context.baseClass.name3}${context.annotation!.generateModelSync ? ', AnthemModelBase' : ''} {\n',
       );
 
       if (context.annotation!.serializable) {

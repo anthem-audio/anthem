@@ -23,6 +23,8 @@
 #include <map>
 #include <vector>
 
+#include <juce_core/juce_core.h>
+
 #include "modules/processing_graph/compiler/anthem_graph_compiler_edge.h"
 
 #include "generated/lib/model/model.h"
@@ -60,4 +62,6 @@ private:
     std::vector<std::shared_ptr<AnthemGraphCompilerEdge>>& edgeContainer,
     std::shared_ptr<NodeConnection>& connection
   );
+
+  JUCE_LEAK_DETECTOR(AnthemGraphCompilerNode)
 };

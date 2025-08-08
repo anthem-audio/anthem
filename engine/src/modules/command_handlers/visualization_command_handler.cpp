@@ -25,22 +25,11 @@ std::optional<Response> handleVisualizationCommand(Request& request) {
   if (rfl::holds_alternative<SetVisualizationSubscriptionsRequest>(request.variant())) {
     auto& setVisualizationSubscriptionsRequest = rfl::get<SetVisualizationSubscriptionsRequest>(request.variant());
 
-    // subscriptions is a list of strings
-    // debug print:
-    std::cout << "SetVisualizationSubscriptionsRequest: ";
-    for (const auto& subscription : *setVisualizationSubscriptionsRequest.subscriptions) {
-      std::cout << subscription << ", ";
-    }
-    std::cout << std::endl;
-
     VisualizationBroker::getInstance().setSubscriptions(
       *setVisualizationSubscriptionsRequest.subscriptions
     );
   } else if (rfl::holds_alternative<SetVisualizationUpdateIntervalRequest>(request.variant())) {
     auto& setVisualizationUpdateIntervalRequest = rfl::get<SetVisualizationUpdateIntervalRequest>(request.variant());
-
-    // intervalMilliseconds is a double
-    std::cout << "SetVisualizationUpdateIntervalRequest: " << setVisualizationUpdateIntervalRequest.intervalMilliseconds << std::endl;
 
     VisualizationBroker::getInstance().setUpdateInterval(
       setVisualizationUpdateIntervalRequest.intervalMilliseconds

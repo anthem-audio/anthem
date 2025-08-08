@@ -17,11 +17,15 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/model/project.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/visualization_builder.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:provider/provider.dart';
 
-class PlayheadLine extends StatelessWidget {
+class PlayheadLine extends StatelessObserverWidget {
   final AnimationController timeViewAnimationController;
   final Animation<double> timeViewStartAnimation;
   final Animation<double> timeViewEndAnimation;
@@ -39,6 +43,19 @@ class PlayheadLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final project = Provider.of<ProjectModel>(context);
+
+    double? transportPositionOverride;
+    if (project.engineState != EngineState.running) {
+      transportPositionOverride = project.sequence.playbackStartPosition
+          .toDouble();
+    }
+
+    String? activeSequenceIdOverride;
+    if (project.engineState != EngineState.running) {
+      activeSequenceIdOverride = project.sequence.activeTransportSequenceID;
+    }
+
     return Builder(
       builder: (context) {
         return VisualizationBuilder.string(
@@ -47,7 +64,9 @@ class PlayheadLine extends StatelessWidget {
           ),
           builder: (context, activeSequenceId) {
             return Visibility(
-              visible: activeSequenceId == editorActiveSequenceId,
+              visible:
+                  (activeSequenceIdOverride ?? activeSequenceId) ==
+                  editorActiveSequenceId,
               child: VisualizationBuilder.double(
                 config: VisualizationSubscriptionConfig.latest(
                   'playhead_position',
@@ -60,8 +79,15 @@ class PlayheadLine extends StatelessWidget {
                         painter: _PlayheadPainter(
                           timeViewStart: timeViewStartAnimation.value,
                           timeViewEnd: timeViewEndAnimation.value,
-                          transportPosition: transportPosition ?? 0,
-                          isVisible: transportPosition != null && isVisible,
+                          transportPosition:
+                              transportPositionOverride ??
+                              transportPosition ??
+                              0,
+                          isVisible:
+                              (transportPositionOverride ??
+                                      transportPosition) !=
+                                  null &&
+                              isVisible,
                         ),
                       );
                     },
@@ -103,8 +129,9 @@ class _PlayheadPainter extends CustomPainter {
 
     final lineX =
         size.width *
-        (transportPosition - timeViewStart) /
-        (timeViewEnd - timeViewStart);
+            (transportPosition - timeViewStart) /
+            (timeViewEnd - timeViewStart) +
+        0.5;
     final lineWidth = 1.0;
 
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));

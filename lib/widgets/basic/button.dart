@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,7 +18,7 @@
 */
 
 import 'dart:math';
-import 'package:anthem/widgets/project/project_controller.dart';
+import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:provider/provider.dart';
 import 'package:vector_math/vector_math_64.dart';
 
@@ -132,7 +132,7 @@ class Button extends StatefulWidget {
   final Function? onPress;
   final bool? toggleState;
 
-  final String? hint;
+  final List<HintSection>? hint;
 
   const Button({
     super.key,
@@ -163,16 +163,23 @@ class _ButtonState extends State<Button> {
   var hovered = false;
   var pressed = false;
 
+  int? hintId;
+
   _ButtonState();
 
   @override
   void didUpdateWidget(Button oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (hovered && oldWidget.hint != widget.hint) {
-      Provider.of<ProjectController>(
-        context,
-        listen: false,
-      ).setHintText(widget.hint ?? '');
+      if (hintId != null) {
+        HintStore.instance.removeHint(hintId!);
+      }
+
+      if (widget.hint != null) {
+        hintId = HintStore.instance.addHint(widget.hint!);
+      } else {
+        hintId = null;
+      }
     }
   }
 
@@ -267,10 +274,7 @@ class _ButtonState extends State<Button> {
           hovered = true;
         });
         if (widget.hint != null) {
-          Provider.of<ProjectController>(
-            context,
-            listen: false,
-          ).setHintText(widget.hint!);
+          hintId = HintStore.instance.addHint(widget.hint!);
         }
       },
       onExit: (e) {
@@ -278,11 +282,8 @@ class _ButtonState extends State<Button> {
         setState(() {
           hovered = false;
         });
-        if (widget.hint != null) {
-          Provider.of<ProjectController>(
-            context,
-            listen: false,
-          ).clearHintText();
+        if (widget.hint != null && hintId != null) {
+          HintStore.instance.removeHint(hintId!);
         }
       },
       child: Listener(

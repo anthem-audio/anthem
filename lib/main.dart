@@ -19,6 +19,7 @@
 
 import 'package:anthem/theme.dart' as anthem_theme;
 import 'package:anthem/widgets/basic/background.dart';
+import 'package:anthem/widgets/basic/shortcuts/raw_key_event_singleton.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -31,11 +32,6 @@ import 'widgets/main_window/main_window.dart';
 GlobalKey mainWindowKey = GlobalKey();
 
 void main() async {
-  runApp(const App());
-
-  await windowManager.ensureInitialized();
-  await windowManager.setAsFrameless();
-
   final store = AnthemStore.instance;
 
   // Note: This code for creating a new project is duplicated in
@@ -46,6 +42,11 @@ void main() async {
   store.projects[projectModel.id] = projectModel;
   store.projectOrder.add(projectModel.id);
   store.activeProjectId = projectModel.id;
+
+  runApp(const App());
+
+  await windowManager.ensureInitialized();
+  await windowManager.setAsFrameless();
 }
 
 class App extends StatefulWidget {
@@ -100,6 +101,13 @@ class _AppState extends State<App> with WindowListener {
     // }
 
     await windowManager.destroy();
+  }
+
+  @override
+  onWindowBlur() {
+    // This will send key-up events for modifier keys (alt, ctrl, shift) when
+    // the window loses focus, so they don't remain stuck in the pressed state.
+    RawKeyEventSingleton.instance.onBlur();
   }
 
   @override

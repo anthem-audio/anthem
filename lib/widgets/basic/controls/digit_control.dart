@@ -21,9 +21,8 @@ import 'dart:math';
 
 import 'package:anthem/widgets/basic/controls/control_mouse_handler.dart';
 import 'package:anthem/widgets/basic/digit_display.dart';
-import 'package:anthem/widgets/project/project_view_model.dart';
+import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:flutter/widgets.dart';
-import 'package:provider/provider.dart';
 
 export 'package:anthem/widgets/basic/digit_display.dart' show DigitDisplaySize;
 
@@ -65,30 +64,14 @@ class _DigitControlState extends State<DigitControl> {
   double startValue = 0;
   double incrementSize = 0;
 
+  int? digitChangeHintId;
+
   void increment(double pixelDelta, int minimumHintPrecision) {
     var valueDelta = pixelDelta * 0.05 * incrementSize;
     valueDelta = (valueDelta / incrementSize).round() * incrementSize;
 
     final newValue = startValue + valueDelta;
     widget.onChanged?.call(newValue);
-
-    var valueText = widget.value.toStringAsFixed(widget.decimalPlaces);
-
-    final decimalIndex = valueText.indexOf('.');
-
-    if (decimalIndex != -1) {
-      while (valueText.endsWith('0') &&
-          valueText.length > decimalIndex + 1 + minimumHintPrecision) {
-        valueText = valueText.substring(0, valueText.length - 1);
-      }
-    }
-
-    if (valueText.endsWith('.')) {
-      valueText = valueText.substring(0, valueText.length - 1);
-    }
-
-    Provider.of<ProjectViewModel>(context, listen: false).hintText =
-        '$valueText ${widget.hintUnits ?? ''}';
   }
 
   @override
@@ -116,9 +99,29 @@ class _DigitControlState extends State<DigitControl> {
         onEnd: (e) {
           widget.onEnd?.call();
 
-          // If there is hint text, we should reset back to it
-          Provider.of<ProjectViewModel>(context, listen: false).hintText =
-              widget.hint ?? '';
+          if (digitChangeHintId != null) {
+            HintStore.instance.removeHint(digitChangeHintId!);
+            digitChangeHintId = null;
+          }
+        },
+        baseHint: widget.hint,
+        getHintText: () {
+          var valueText = widget.value.toStringAsFixed(widget.decimalPlaces);
+
+          final decimalIndex = valueText.indexOf('.');
+
+          if (decimalIndex != -1) {
+            while (valueText.endsWith('0') &&
+                valueText.length > decimalIndex + 1 + i) {
+              valueText = valueText.substring(0, valueText.length - 1);
+            }
+          }
+
+          if (valueText.endsWith('.')) {
+            valueText = valueText.substring(0, valueText.length - 1);
+          }
+
+          return '$valueText ${widget.hintUnits ?? ''}';
         },
         child: Container(
           width: i == 0 ? null : digitWidth,
@@ -148,15 +151,6 @@ class _DigitControlState extends State<DigitControl> {
       return digitDisplay;
     }
 
-    return MouseRegion(
-      onEnter: (e) {
-        Provider.of<ProjectViewModel>(context, listen: false).hintText =
-            widget.hint!;
-      },
-      onExit: (e) {
-        Provider.of<ProjectViewModel>(context, listen: false).hintText = '';
-      },
-      child: digitDisplay,
-    );
+    return digitDisplay;
   }
 }

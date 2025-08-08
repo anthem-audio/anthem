@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,8 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+import 'package:provider/provider.dart';
 
 import '../helpers.dart';
 
@@ -52,10 +55,96 @@ class _PianoControlState extends State<PianoControl> {
   double startTopKeyValue = -1.0;
   double startKeyHeightValue = -1.0;
 
+  final GlobalKey _containerKey = GlobalKey();
+
+  int? activeKey;
+
+  void setActiveKey(int key) {
+    if (activeKey == key) {
+      return;
+    }
+
+    final project = Provider.of<ProjectModel>(context, listen: false);
+    final activeInstrumentId = project.activeInstrumentID;
+
+    if (activeInstrumentId == null) {
+      return;
+    }
+
+    clearActiveKey();
+
+    activeKey = key;
+
+    project.generators[activeInstrumentId]?.liveEventManager.noteOn(
+      pitch: key,
+      velocity: 80,
+      pan: 0,
+    );
+  }
+
+  void clearActiveKey() {
+    final project = Provider.of<ProjectModel>(context, listen: false);
+    final activeInstrumentId = project.activeInstrumentID;
+
+    if (activeInstrumentId == null) {
+      return;
+    }
+
+    if (activeKey == null) {
+      return;
+    }
+
+    project.generators[activeInstrumentId]?.liveEventManager.noteOff(
+      pitch: activeKey!,
+    );
+
+    activeKey = null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
+      key: _containerKey,
       builder: (context, constraints) {
+        // This code does a hit test, then searches for either a _WhiteKey or
+        // _BlackKey widget in the hit test result.
+        int? findKeyAtPosition(Offset position) {
+          final RenderBox renderBox =
+              _containerKey.currentContext?.findRenderObject() as RenderBox;
+          final result = BoxHitTestResult();
+
+          if (renderBox.hitTest(result, position: position)) {
+            bool found = false;
+            int? keyNumber;
+            void visit(Element element) {
+              if (found) return;
+
+              if (element.widget is! _WhiteKey &&
+                  element.widget is! _BlackKey) {
+                element.visitChildElements(visit);
+                return;
+              }
+
+              for (final entry in result.path) {
+                if (found) return;
+                if (element.renderObject == entry.target) {
+                  found = true;
+                  if (element.widget is _WhiteKey) {
+                    keyNumber = (element.widget as _WhiteKey).keyNumber;
+                  } else if (element.widget is _BlackKey) {
+                    keyNumber = (element.widget as _BlackKey).keyNumber;
+                  }
+                }
+              }
+            }
+
+            context.visitChildElements(visit);
+
+            return keyNumber;
+          }
+          return null;
+        }
+
         final keysOnScreen = constraints.maxHeight / widget.keyHeight;
 
         final keyValueAtBottom = (widget.keyValueAtTop - keysOnScreen).floor();
@@ -91,16 +180,40 @@ class _PianoControlState extends State<PianoControl> {
           return LayoutId(id: note, child: child);
         }).toList();
 
-        return ClipRect(
-          child: CustomMultiChildLayout(
-            delegate: KeyLayoutDelegate(
-              keyHeight: widget.keyHeight,
-              keyValueAtTop: widget.keyValueAtTop,
-              notes: notes,
-              parentHeight: constraints.maxHeight,
+        return Listener(
+          child: ClipRect(
+            child: CustomMultiChildLayout(
+              delegate: KeyLayoutDelegate(
+                keyHeight: widget.keyHeight,
+                keyValueAtTop: widget.keyValueAtTop,
+                notes: notes,
+                parentHeight: constraints.maxHeight,
+              ),
+              children: noteWidgets,
             ),
-            children: noteWidgets,
           ),
+          onPointerDown: (e) {
+            final key = findKeyAtPosition(e.localPosition);
+            if (key != null) {
+              setActiveKey(key);
+            } else {
+              clearActiveKey();
+            }
+          },
+          onPointerMove: (e) {
+            final key = findKeyAtPosition(e.localPosition);
+            if (key != null) {
+              setActiveKey(key);
+            } else {
+              clearActiveKey();
+            }
+          },
+          onPointerUp: (e) {
+            clearActiveKey();
+          },
+          onPointerCancel: (e) {
+            clearActiveKey();
+          },
         );
       },
     );
@@ -133,7 +246,6 @@ class KeyLayoutDelegate extends MultiChildLayoutDelegate {
             keyHeight: keyHeight,
           ) -
           keyHeight +
-          // this is why I want Dart support for Prettier
           1;
 
       if (keyType == KeyType.white &&
@@ -164,7 +276,7 @@ class _WhiteKey extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final showKeyText = keyHeight > 25 && (keyNumber - 3) % 12 == 0;
+    final showKeyText = keyHeight > 25 && keyNumber % 12 == 0;
 
     final notchType = getNotchType(keyNumber);
     final widgetHeight = notchType == NotchType.both

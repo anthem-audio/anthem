@@ -25,6 +25,7 @@ import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/processors/gain.dart';
+import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
 import 'package:anthem/model/processing_graph/processors/simple_midi_generator.dart';
 import 'package:anthem/model/processing_graph/processors/simple_volume_lfo.dart';
@@ -211,6 +212,7 @@ abstract class _NodeModel with Store, AnthemModelBase {
 
   @Union([
     GainProcessorModel,
+    LiveEventProviderProcessorModel,
     MasterOutputProcessorModel,
     SequenceNoteProviderProcessorModel,
     SimpleMidiGeneratorProcessorModel,
@@ -231,7 +233,7 @@ abstract class _NodeModel with Store, AnthemModelBase {
     required this.processor,
     required this.isThirdPartyPlugin,
   }) {
-    onModelAttached(() {
+    onModelFirstAttached(() {
       if (!isThirdPartyPlugin) return;
       if (!project.engine.isRunning) return;
 

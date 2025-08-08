@@ -23,12 +23,16 @@
 #include <vector>
 #include <iostream>
 
+#include <juce_core/juce_core.h>
+
 #include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 #include "modules/sequencer/events/event.h"
 
 // This class is used to represent the result of compiling a processing graph.
 class AnthemGraphCompilationResult {
+private:
+  JUCE_LEAK_DETECTOR(AnthemGraphCompilationResult)
 public:
   // All actions in a given group can be executed in parallel.
   // 

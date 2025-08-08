@@ -241,6 +241,9 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         smallestClipId = pressedClip.id;
       }
 
+      viewModel.cursorPattern = pressedClip.patternId;
+      viewModel.cursorTimeRange = pressedClip.timeView?.clone();
+
       _clipResizeActionData = _ClipResizeActionData(
         pointerStartOffset: event.offset,
         pressedClip: pressedClip,
@@ -769,7 +772,8 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
           }
         }
 
-        if (_eventHandlingState == EventHandlingState.resizingSingleClip) {
+        if (_eventHandlingState == EventHandlingState.resizingSingleClip ||
+            _eventHandlingState == EventHandlingState.resizingSelection) {
           // Update cursor pattern and time range
           viewModel.cursorPattern =
               _clipResizeActionData!.pressedClip.patternId;
