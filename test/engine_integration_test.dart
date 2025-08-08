@@ -42,7 +42,7 @@ void main() {
   }
 
   final releaseEnginePath = path.resolve(
-    'engine/build/AnthemEngine_artefacts/Release/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+    'engine/build_release/AnthemEngine_artefacts/Release/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
   );
 
   final debugEnginePath = path.resolve(
