@@ -17,7 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#pragma once
+
 #include <memory>
+
+#include <juce_core/juce_core.h>
 
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 #include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
@@ -28,6 +32,8 @@
 // The output value is expected to be normalized from 0 to 1. When copying, the
 // value is scaled to the range defined by the associated parameter value.
 class CopyControlBufferAction : public AnthemGraphCompilerAction {
+private:
+  JUCE_LEAK_DETECTOR(CopyControlBufferAction)
 public:
   AnthemProcessContext* source;
   int32_t sourcePortId;

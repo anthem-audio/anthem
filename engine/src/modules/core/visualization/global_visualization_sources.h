@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <juce_core/juce_core.h>
+
 #include <atomic>
 #include <memory>
 #include <vector>
@@ -33,6 +35,8 @@
 
 class CpuVisualizationProvider : public VisualizationDataProvider {
 private:
+  JUCE_LEAK_DETECTOR(CpuVisualizationProvider)
+
   std::atomic<double> cpuBurden;
   std::atomic<bool> overwriteNextUpdate;
 
@@ -46,6 +50,8 @@ public:
 
 class PlayheadPositionVisualizationProvider : public VisualizationDataProvider {
 private:
+  JUCE_LEAK_DETECTOR(PlayheadPositionVisualizationProvider)
+
   std::atomic<double> playheadPosition;
 
 public:
@@ -58,6 +64,8 @@ public:
 
 class PlayheadSequenceIdVisualizationProvider : public VisualizationDataProvider {
 private:
+  JUCE_LEAK_DETECTOR(PlayheadSequenceIdVisualizationProvider)
+
   RingBuffer<std::array<char, 16>, 3> playheadSequenceIdBuffer;
   std::string lastSentId;
 
@@ -72,6 +80,9 @@ public:
 };
 
 class GlobalVisualizationSources {
+private:
+  JUCE_LEAK_DETECTOR(GlobalVisualizationSources)
+
 public:
   // Measures the processing time relative to the buffer size.
   std::shared_ptr<CpuVisualizationProvider> cpuBurdenProvider;

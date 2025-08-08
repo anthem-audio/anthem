@@ -17,8 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#pragma once
+
+#include <juce_core/juce_core.h>
+
 class LinearParameterSmoother {
 private:
+  JUCE_LEAK_DETECTOR(LinearParameterSmoother)
   float targetValue;
   float currentValue;
   float duration;

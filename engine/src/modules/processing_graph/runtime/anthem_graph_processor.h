@@ -21,6 +21,7 @@
 
 #include <memory>
 
+#include <juce_core/juce_core.h>
 #include <juce_events/juce_events.h>
 
 #include "modules/processing_graph/compiler/anthem_graph_compilation_result.h"
@@ -36,6 +37,8 @@
 // from the main thread.
 class AnthemGraphProcessor {
 private:
+  JUCE_LEAK_DETECTOR(AnthemGraphProcessor)
+
   AnthemGraphCompilationResult* processingSteps;
   RingBuffer<AnthemGraphCompilationResult*, 512> processingStepsQueue;
   RingBuffer<AnthemGraphCompilationResult*, 512> processingStepsDeletionQueue;

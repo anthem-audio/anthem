@@ -19,11 +19,12 @@
 
 #pragma once
 
-#include <juce_events/juce_events.h>
-
 #include <unordered_map>
 #include <vector>
 #include <memory>
+
+#include <juce_core/juce_core.h>
+#include <juce_events/juce_events.h>
 
 #include "modules/sequencer/events/event.h"
 #include "modules/util/ring_buffer.h"
@@ -49,7 +50,11 @@
 //
 // There will be at least one of these per sequence (pattern or arrangement),
 // unless the sequence is completely empty.
-struct SequenceEventList {
+class SequenceEventList {
+private:
+  JUCE_LEAK_DETECTOR(SequenceEventList)
+
+public:
   // List of events for this channel.
   std::vector<AnthemSequenceEvent>* events;
 
@@ -80,7 +85,11 @@ struct SequenceEventList {
 };
 
 // Stores a set of events for a given sequence (either pattern or arrangement).
-struct SequenceEventListCollection {
+class SequenceEventListCollection {
+private:
+  JUCE_LEAK_DETECTOR(SequenceEventListCollection)
+
+public:
   // Map of channel ID to list of events for that channel. If there is no entry
   // for a given channel, it means that there are no events for that channel.
   std::unordered_map<std::string, SequenceEventList>* channels;
@@ -147,6 +156,8 @@ class AnthemRuntimeSequenceStore {
 friend class RuntimeSequenceStoreTest;
 
 private:
+  JUCE_LEAK_DETECTOR(AnthemRuntimeSequenceStore)
+
   typedef std::unordered_map<std::string, SequenceEventListCollection> SequenceIdToEventsMap;
 
   // Map of sequence ID to a set of event lists for that sequence.

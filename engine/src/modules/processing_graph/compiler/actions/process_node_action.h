@@ -21,11 +21,15 @@
 
 #include <memory>
 
+#include <juce_core/juce_core.h>
+
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 #include "modules/processing_graph/compiler/actions/anthem_graph_compiler_action.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
 
 class ProcessNodeAction : public AnthemGraphCompilerAction {
+private:
+  JUCE_LEAK_DETECTOR(ProcessNodeAction)
 public:
   AnthemProcessContext* context;
   AnthemProcessor* processor;

@@ -37,12 +37,18 @@
 // new playhead position. For example, if we jump into the middle of a note, we
 // want to start playing that note.
 class PlayheadJumpEvent {
+private:
+  JUCE_LEAK_DETECTOR(PlayheadJumpEvent)
+
 public:
   double newPlayheadPosition = 0.0;
   std::unordered_map<std::string, std::vector<AnthemLiveEvent>> eventsToPlayAtJump;
 };
 
 class TransportConfig {
+private:
+  JUCE_LEAK_DETECTOR(TransportConfig)
+
 public:
   std::optional<std::string> activeSequenceId;
   int64_t ticksPerQuarter = 96;
@@ -65,6 +71,8 @@ public:
 
 class Transport : private juce::Timer {
 private:
+  JUCE_LEAK_DETECTOR(Transport)
+
   // The audio thread reads the transport state from here
   RingBuffer<TransportConfig*, 64> configBuffer;
 

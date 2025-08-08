@@ -17,7 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#pragma once
+
 #include <memory>
+
+#include <juce_core/juce_core.h>
 
 #include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
 #include "modules/processing_graph/compiler/anthem_process_context.h"
@@ -30,6 +34,8 @@
 // when the node is processed.
 class WriteParametersToControlInputsAction : public AnthemGraphCompilerAction {
 private:
+  JUCE_LEAK_DETECTOR(WriteParametersToControlInputsAction)
+
   AnthemProcessContext* processContext;
   float sampleRate;
 public:

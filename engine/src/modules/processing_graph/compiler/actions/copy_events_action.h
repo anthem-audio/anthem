@@ -17,10 +17,16 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#pragma once
+
+#include <juce_core/juce_core.h>
+
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 #include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
 
 class CopyEventsAction : public AnthemGraphCompilerAction {
+private:
+  JUCE_LEAK_DETECTOR(CopyEventsAction)
 public:
   AnthemProcessContext* source;
   int32_t sourcePortId;
