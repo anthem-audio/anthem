@@ -133,7 +133,7 @@ class _PianoControlState extends State<PianoControl> {
                     keyNumber = (element.widget as _WhiteKey).keyNumber;
                   } else if (element.widget is _BlackKey) {
                     keyNumber = (element.widget as _BlackKey).keyNumber;
-                  } else {}
+                  }
                 }
               }
             }

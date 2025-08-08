@@ -69,7 +69,7 @@ class RawKeyEventSingleton {
         KeyUpEvent(
           physicalKey: physicalKey,
           logicalKey: logicalKey,
-          timeStamp: Duration(),
+          timeStamp: Duration.zero,
         ),
       );
     }

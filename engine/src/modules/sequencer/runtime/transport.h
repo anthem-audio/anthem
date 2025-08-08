@@ -76,7 +76,7 @@ private:
   // The audio thread reads the transport state from here
   RingBuffer<TransportConfig*, 64> configBuffer;
 
-  // THe audio thread sends pold configs back to be deleted here
+  // The audio thread sends old configs back to be deleted here
   RingBuffer<TransportConfig*, 64> configDeleteBuffer;
 
   // Playhead jump events are sent to the audio thread through this buffer.

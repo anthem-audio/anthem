@@ -851,7 +851,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
     } else if (_eventHandlingState == EventHandlingState.resizingSingleNote ||
         _eventHandlingState == EventHandlingState.resizingSelection) {
       final diff =
-          _noteResizeActionData!.pressedNote.length - //
+          _noteResizeActionData!.pressedNote.length -
           _noteResizeActionData!.startLengths[_noteResizeActionData!
               .pressedNote
               .id]!;
