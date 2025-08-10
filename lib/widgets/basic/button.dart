@@ -19,15 +19,13 @@
 
 import 'dart:math';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
-import 'package:provider/provider.dart';
 import 'package:vector_math/vector_math_64.dart';
 
 import 'package:flutter/widgets.dart';
 
-import 'background.dart';
 import 'icon.dart';
 
-enum ButtonVariant { light, dark, label, ghost }
+enum ButtonVariant { main, label, ghost }
 
 class _ButtonColors {
   late Color base;
@@ -62,27 +60,18 @@ class _ButtonTheme {
 }
 
 final _textColors = _ButtonColors(
-  base: const Color(0xFF9DB9CC),
-  hover: const Color(0xFF9DB9CC),
+  base: const Color(0xFFCFCFCF),
+  hover: const Color(0xFFEFEFEF),
   press: const Color(0xFF25C29D),
 );
 
-final _lightTheme = _ButtonTheme(
+final _mainTheme = _ButtonTheme(
   background: _ButtonColors(
-    base: const Color(0xFF4C5A63),
-    hover: const Color(0xFF505F69),
-    press: const Color(0xFF505F69),
+    base: const Color(0xFF5A5A5A),
+    hover: const Color(0xFF686868),
+    press: const Color(0xFF4E4E4E),
   ),
-  border: _ButtonColors.all(const Color(0xFF293136)),
-  content: _textColors,
-);
-final _darkTheme = _ButtonTheme(
-  background: _ButtonColors(
-    base: const Color(0xFF414C54),
-    hover: const Color(0xFF455159),
-    press: const Color(0xFF455159),
-  ),
-  border: _ButtonColors.all(const Color(0xFF293136)),
+  border: _ButtonColors.all(const Color(0xFF2F2F2F)),
   content: _textColors,
 );
 final _labelTheme = _ButtonTheme(
@@ -93,18 +82,18 @@ final _labelTheme = _ButtonTheme(
   ),
   border: _ButtonColors(
     base: const Color(0x00000000),
-    hover: const Color(0xFF293136),
-    press: const Color(0xFF293136),
+    hover: const Color(0xFF2F2F2F),
+    press: const Color(0xFF2F2F2F),
   ),
   content: _textColors,
 );
 final _ghostTheme = _ButtonTheme(
   background: _ButtonColors(
     base: const Color(0x00000000),
-    hover: const Color(0xFF3C484F),
-    press: const Color(0xFF3C484F),
+    hover: const Color(0xFF4E4E4E),
+    press: const Color(0xFF4E4E4E),
   ),
-  border: _ButtonColors.all(const Color(0xFF293136)),
+  border: _ButtonColors.all(const Color(0xFF2F2F2F)),
   content: _textColors,
 );
 
@@ -187,20 +176,13 @@ class _ButtonState extends State<Button> {
   Widget build(BuildContext context) {
     _ButtonTheme theme;
 
-    final backgroundType = Provider.of<BackgroundType>(context);
-
     final variant =
         widget.variant ??
-        (backgroundType == BackgroundType.light
-            ? ButtonVariant.light
-            : ButtonVariant.dark);
+        ButtonVariant.main;
 
     switch (variant) {
-      case ButtonVariant.light:
-        theme = _lightTheme;
-        break;
-      case ButtonVariant.dark:
-        theme = _darkTheme;
+      case ButtonVariant.main:
+        theme = _mainTheme;
         break;
       case ButtonVariant.label:
         theme = _labelTheme;

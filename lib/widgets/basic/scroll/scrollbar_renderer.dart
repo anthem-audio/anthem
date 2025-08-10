@@ -205,7 +205,7 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
               hideBorder: true,
               expand: true,
               borderRadius: BorderRadius.circular(1),
-              variant: isDisabled ? ButtonVariant.label : ButtonVariant.dark,
+              variant: isDisabled ? ButtonVariant.label : ButtonVariant.main,
             ),
           ),
           border,
