@@ -42,9 +42,9 @@ class HorizontalMeterSimple extends StatelessWidget {
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
-                color: Theme.control.background,
+                color: AnthemTheme.control.background,
                 borderRadius: BorderRadius.circular(3),
-                border: Border.all(color: Theme.control.border, width: 1),
+                border: Border.all(color: AnthemTheme.control.border, width: 1),
               ),
             ),
           ),
@@ -57,7 +57,7 @@ class HorizontalMeterSimple extends StatelessWidget {
               clipper: _RectangularProgressClipper(value: value),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Theme.primary.subtleBorder,
+                  color: AnthemTheme.primary.subtleBorder,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -68,7 +68,7 @@ class HorizontalMeterSimple extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                  color: Theme
+                  color: AnthemTheme
                       .text
                       .main, // Should be an accent color when we restyle everything
                   fontSize: 12,

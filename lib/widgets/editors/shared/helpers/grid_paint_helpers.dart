@@ -35,10 +35,10 @@ void paintTimeGrid({
   required double timeViewStart,
   required double timeViewEnd,
 }) {
-  final shadedPaint = Paint()..color = Theme.grid.shaded;
-  final accentLinePaint = Paint()..color = Theme.grid.accent;
-  final majorLinePaint = Paint()..color = Theme.grid.major;
-  final minorLinePaint = Paint()..color = Theme.grid.minor;
+  final shadedPaint = Paint()..color = AnthemTheme.grid.shaded;
+  final accentLinePaint = Paint()..color = AnthemTheme.grid.accent;
+  final majorLinePaint = Paint()..color = AnthemTheme.grid.major;
+  final minorLinePaint = Paint()..color = AnthemTheme.grid.minor;
 
   final minorDivisionChanges = getDivisionChanges(
     viewWidthInPixels: size.width,

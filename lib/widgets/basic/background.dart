@@ -48,8 +48,8 @@ class Background extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: type == BackgroundType.dark
-              ? Theme.panel.main
-              : Theme.panel.accent,
+              ? AnthemTheme.panel.main
+              : AnthemTheme.panel.accent,
           border: border,
           borderRadius: borderRadius,
         ),

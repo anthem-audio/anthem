@@ -45,8 +45,8 @@ class _HintDisplayState extends State<HintDisplay> {
     return Container(
       width: 304,
       decoration: BoxDecoration(
-        border: Border.all(color: Theme.panel.border),
-        color: Theme.panel.accentDark,
+        border: Border.all(color: AnthemTheme.panel.border),
+        color: AnthemTheme.panel.background,
       ),
       alignment: Alignment.centerLeft,
       child: Padding(
@@ -62,7 +62,7 @@ class _HintDisplayState extends State<HintDisplay> {
                           hint.action.toUpperCase(),
                           style: TextStyle(
                             fontSize: 11,
-                            color: Theme.text.accent,
+                            color: AnthemTheme.text.accent,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -71,7 +71,7 @@ class _HintDisplayState extends State<HintDisplay> {
                         hint.text,
                         style: TextStyle(
                           fontSize: 11,
-                          color: Theme.text.main,
+                          color: AnthemTheme.text.main,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),

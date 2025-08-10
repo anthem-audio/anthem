@@ -45,7 +45,7 @@ class _ArrangementDetailViewState extends State<ArrangementDetailView> {
       children: [
         Container(
           decoration: BoxDecoration(
-            color: Theme.panel.main,
+            color: AnthemTheme.panel.main,
             borderRadius: BorderRadius.circular(4),
           ),
           padding: const EdgeInsets.all(6),
@@ -54,7 +54,7 @@ class _ArrangementDetailViewState extends State<ArrangementDetailView> {
             children: [
               Text(
                 'ARRANGEMENT',
-                style: TextStyle(color: Theme.text.main, fontSize: 10),
+                style: TextStyle(color: AnthemTheme.text.main, fontSize: 10),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 6),
@@ -78,7 +78,7 @@ class _ArrangementDetailViewState extends State<ArrangementDetailView> {
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              color: Theme.panel.main,
+              color: AnthemTheme.panel.main,
               borderRadius: BorderRadius.circular(4),
             ),
           ),

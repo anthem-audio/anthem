@@ -110,7 +110,7 @@ class _ScrollbarState extends State<Scrollbar> {
     final border = Container(
       width: isHorizontal ? 1 : null,
       height: isVertical ? 1 : null,
-      color: Theme.panel.border,
+      color: AnthemTheme.panel.border,
     );
 
     flexChildren.addAll([
@@ -131,7 +131,7 @@ class _ScrollbarState extends State<Scrollbar> {
       width: isVertical ? widget.crossAxisSize : null,
       height: isHorizontal ? widget.crossAxisSize : null,
       decoration: BoxDecoration(
-        border: Border.all(color: Theme.panel.border),
+        border: Border.all(color: AnthemTheme.panel.border),
         borderRadius: const BorderRadius.all(Radius.circular(1)),
       ),
       child: Stack(

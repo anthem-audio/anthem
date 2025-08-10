@@ -47,9 +47,9 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
 
   @override
   void observablePaint(Canvas canvas, Size size) {
-    // final accentLinePaint = Paint()..color = Theme.grid.accent;
-    final majorLinePaint = Paint()..color = Theme.grid.major;
-    // final minorLinePaint = Paint()..color = Theme.grid.minor;
+    // final accentLinePaint = Paint()..color = AnthemTheme.grid.accent;
+    final majorLinePaint = Paint()..color = AnthemTheme.grid.major;
+    // final minorLinePaint = Paint()..color = AnthemTheme.grid.minor;
 
     // Horizontal lines
 

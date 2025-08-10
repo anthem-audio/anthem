@@ -37,7 +37,7 @@ class _ChannelRackState extends State<ChannelRack> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Theme.panel.main,
+        color: AnthemTheme.panel.main,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Padding(
@@ -69,18 +69,18 @@ class __ProcessorListState extends State<_ProcessorList> {
 
     if (activeInstrumentId == null) {
       return Container(
-        color: Theme.panel.accentDark,
+        color: AnthemTheme.panel.background,
         child: Center(
           child: Text(
             'No instrument selected',
-            style: TextStyle(color: Theme.text.main),
+            style: TextStyle(color: AnthemTheme.text.main),
           ),
         ),
       );
     }
 
     return Container(
-      color: Theme.panel.accentDark,
+      color: AnthemTheme.panel.background,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
         child: Row(
@@ -88,7 +88,7 @@ class __ProcessorListState extends State<_ProcessorList> {
             Container(
               width: 28,
               decoration: BoxDecoration(
-                color: Theme.panel.main,
+                color: AnthemTheme.panel.main,
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(4),
                   bottomLeft: Radius.circular(4),

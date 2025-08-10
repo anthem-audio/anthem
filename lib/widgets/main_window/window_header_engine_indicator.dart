@@ -67,8 +67,8 @@ class EngineIndicator extends StatelessObserverWidget {
           indicator = SvgIcon(
             icon: Icons.anthem,
             color: activeProject?.engineState == EngineState.running
-                ? Theme.primary.main
-                : Theme.text.main,
+                ? AnthemTheme.primary.main
+                : AnthemTheme.text.main,
           );
         }
 

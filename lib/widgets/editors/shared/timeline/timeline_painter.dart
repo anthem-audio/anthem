@@ -45,11 +45,11 @@ class TimelinePainter extends CustomPainter {
     // Draw a bottom border - we don't make this a separate widget because we
     // want to draw the playhead line on top of it.
     final borderPaint = Paint()
-      ..color = Theme.panel.border
+      ..color = AnthemTheme.panel.border
       ..style = PaintingStyle.fill;
 
     final markerPaint = Paint()
-      ..color = Theme.grid.minor
+      ..color = AnthemTheme.grid.minor
       ..style = PaintingStyle.fill;
 
     canvas.drawRect(
@@ -159,7 +159,7 @@ class TimelinePainter extends CustomPainter {
           // Bar number
           TextSpan span = TextSpan(
             style: TextStyle(
-              color: Theme.text.main,
+              color: AnthemTheme.text.main,
               fontSize: 11,
               fontWeight: FontWeight.w500,
             ),

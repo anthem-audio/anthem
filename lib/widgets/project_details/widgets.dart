@@ -29,7 +29,7 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: TextStyle(color: Theme.text.main, fontSize: 10),
+      style: TextStyle(color: AnthemTheme.text.main, fontSize: 10),
       textAlign: TextAlign.center,
     );
   }
@@ -45,7 +45,7 @@ class Section extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Theme.panel.main,
+        color: AnthemTheme.panel.main,
         borderRadius: BorderRadius.circular(4),
       ),
       padding: const EdgeInsets.all(6),

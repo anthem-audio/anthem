@@ -44,8 +44,8 @@ class _ColorPickerState extends State<ColorPicker> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Theme.panel.accentDark,
-        border: Border.all(color: Theme.panel.border),
+        color: AnthemTheme.panel.background,
+        border: Border.all(color: AnthemTheme.panel.border),
         borderRadius: BorderRadius.circular(4),
       ),
       padding: const EdgeInsets.all(padding),

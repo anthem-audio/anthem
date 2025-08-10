@@ -69,7 +69,7 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              border: Border.all(color: Theme.panel.border),
+              border: Border.all(color: AnthemTheme.panel.border),
               borderRadius: const BorderRadius.all(Radius.circular(4)),
             ),
             child: Row(
@@ -111,7 +111,7 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
                     ),
                   ),
                 ),
-                Container(width: 1, color: Theme.panel.border),
+                Container(width: 1, color: AnthemTheme.panel.border),
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
@@ -194,7 +194,7 @@ class PianoRollAttributePainter extends CustomPainterObserver {
 
   @override
   void observablePaint(Canvas canvas, Size size) {
-    final minorLinePaint = Paint()..color = Theme.grid.minor;
+    final minorLinePaint = Paint()..color = AnthemTheme.grid.minor;
 
     const selectedNoteColor = HSLColor.fromAHSL(1, 166, 0.37, 0.37);
     const noteColor = HSLColor.fromAHSL(1, 166, 0.46, 0.31);

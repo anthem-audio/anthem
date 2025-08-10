@@ -78,7 +78,7 @@ class _WindowHandleAndControls extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 1),
       child: Container(
         decoration: BoxDecoration(
-          color: Theme.panel.main,
+          color: AnthemTheme.panel.main,
           borderRadius: const BorderRadius.only(
             topRight: Radius.circular(4),
             topLeft: Radius.circular(2),
@@ -181,7 +181,9 @@ class _TabState extends State<_Tab> {
         child: Container(
           width: 115,
           decoration: BoxDecoration(
-            color: widget.isSelected ? Theme.panel.accent : Theme.panel.main,
+            color: widget.isSelected
+                ? AnthemTheme.panel.accent
+                : AnthemTheme.panel.main,
             borderRadius: widget.isSelected
                 ? const BorderRadius.only(
                     topLeft: Radius.circular(2),
@@ -204,7 +206,7 @@ class _TabState extends State<_Tab> {
                   child: Text(
                     widget.title,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Theme.text.main),
+                    style: TextStyle(color: AnthemTheme.text.main),
                   ),
                 ),
                 Button(

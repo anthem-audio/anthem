@@ -41,7 +41,7 @@ class ProjectDetails extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Theme.panel.main,
+        color: AnthemTheme.panel.main,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Center(
@@ -49,7 +49,7 @@ class ProjectDetails extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: Text(
             'This is the detail view. Click on something to view and edit its details.',
-            style: TextStyle(color: Theme.text.main, fontSize: 12),
+            style: TextStyle(color: AnthemTheme.text.main, fontSize: 12),
             textAlign: TextAlign.center,
           ),
         ),

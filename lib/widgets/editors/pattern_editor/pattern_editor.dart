@@ -71,7 +71,7 @@ class _PatternEditorState extends State<PatternEditor> {
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(4),
-              color: Theme.panel.main,
+              color: AnthemTheme.panel.main,
             ),
             child: Padding(
               padding: const EdgeInsets.all(6.0),
@@ -137,7 +137,7 @@ class _PatternEditorState extends State<PatternEditor> {
                         Expanded(
                           child: Background(
                             type: BackgroundType.light,
-                            border: Border.all(color: Theme.panel.border),
+                            border: Border.all(color: AnthemTheme.panel.border),
                             borderRadius: const BorderRadius.all(
                               Radius.circular(2),
                             ),

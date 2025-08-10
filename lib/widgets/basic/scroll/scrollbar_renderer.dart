@@ -189,7 +189,7 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
         final border = Container(
           width: isHorizontal ? 1 : null,
           height: isVertical ? 1 : null,
-          color: Theme.panel.border,
+          color: AnthemTheme.panel.border,
         );
 
         final isDisabled =
@@ -223,7 +223,7 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
                 bottom: 0,
                 child: Container(
                   decoration: BoxDecoration(
-                    border: Border.all(color: Theme.panel.border),
+                    border: Border.all(color: AnthemTheme.panel.border),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -240,8 +240,12 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
                   height: isVertical ? _mainAxisButtonSize : null,
                   decoration: BoxDecoration(
                     border: isHorizontal
-                        ? Border(right: BorderSide(color: Theme.panel.border))
-                        : Border(bottom: BorderSide(color: Theme.panel.border)),
+                        ? Border(
+                            right: BorderSide(color: AnthemTheme.panel.border),
+                          )
+                        : Border(
+                            bottom: BorderSide(color: AnthemTheme.panel.border),
+                          ),
                   ),
                   child: Button(
                     hideBorder: true,
@@ -274,8 +278,12 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
                   height: isVertical ? _mainAxisButtonSize : null,
                   decoration: BoxDecoration(
                     border: isHorizontal
-                        ? Border(left: BorderSide(color: Theme.panel.border))
-                        : Border(top: BorderSide(color: Theme.panel.border)),
+                        ? Border(
+                            left: BorderSide(color: AnthemTheme.panel.border),
+                          )
+                        : Border(
+                            top: BorderSide(color: AnthemTheme.panel.border),
+                          ),
                   ),
                   child: Button(
                     hideBorder: true,

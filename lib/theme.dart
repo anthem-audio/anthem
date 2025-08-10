@@ -24,7 +24,7 @@ import 'package:flutter/widgets.dart';
 const white = Color(0xFFFFFFFF);
 const black = Color(0xFF000000);
 
-class Theme {
+class AnthemTheme {
   static _Panel panel = _Panel();
   static _Primary primary = _Primary();
   static _Control control = _Control();
@@ -34,10 +34,10 @@ class Theme {
 }
 
 class _Panel {
-  Color main = const Color(0xFF353E45);
-  Color accent = const Color(0xFF3D484F);
-  Color accentDark = const Color(0xFF313A40);
-  Color border = const Color(0xFF293136);
+  Color border = const Color(0xFF313131);
+  Color background = const Color(0XFF3F3F3F);
+  Color main = const Color(0XFF4F4F4F);
+  Color accent = const Color(0XFF585858);
 }
 
 class _Primary {
@@ -48,21 +48,21 @@ class _Primary {
 
 class _Control {
   _ByBackgroundType main = _ByBackgroundType(
-    dark: const Color(0xFF414C54),
-    light: const Color(0xFF4C5A63),
+    dark: const Color(0xFF4F4F4F),
+    light: const Color(0xFF585858),
   );
   _ByBackgroundType hover = _ByBackgroundType(
-    dark: const Color(0xFF4B5861),
-    light: const Color(0xFF505F69),
+    dark: const Color(0xFF585858),
+    light: const Color(0xFF636363),
   );
   Color active = const Color(0xFF25C29D);
-  Color border = const Color(0xFF293136);
+  Color border = const Color(0xFF2F2F2F);
 
   // Not from the original theme
   Color background = const Color.fromARGB(255, 46, 53, 58);
 }
 
-const _textMain = Color(0xFF9DB9CC);
+const _textMain = Color(0xFFCFCFCF);
 
 class _Text {
   Color main = _textMain;
@@ -79,10 +79,10 @@ class _ByBackgroundType {
 
 // For grid lines in editors
 class _Grid {
-  Color major = const Color(0xFF242A2E);
-  Color minor = const Color(0xFF2B3237);
-  Color accent = const Color(0xFF0F1113);
-  Color backgroundLight = const Color(0xFF394349);
-  Color backgroundDark = const Color(0xFF333D43);
+  Color minor = const Color(0xFF3E3E3E);
+  Color major = const Color(0xFF2E2E2E);
+  Color accent = const Color(0xFF1A1A1A);
+  Color backgroundLight = const Color(0xFF494949);
+  Color backgroundDark = const Color(0xFF434343);
   Color shaded = const Color(0x11000000);
 }

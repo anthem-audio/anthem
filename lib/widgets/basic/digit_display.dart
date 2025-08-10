@@ -65,9 +65,9 @@ class DigitDisplay extends StatelessWidget {
       height: calculateHeight(size),
       width: width?.toDouble(),
       decoration: BoxDecoration(
-        border: Border.all(color: Theme.separator),
+        border: Border.all(color: AnthemTheme.separator),
         borderRadius: BorderRadius.circular(3),
-        color: Theme.control.background,
+        color: AnthemTheme.control.background,
       ),
       child: Stack(
         children: [
@@ -92,7 +92,7 @@ class DigitDisplay extends StatelessWidget {
                 fontFamily: monospace ? 'RobotoMono' : null,
                 fontSize: calculateFontSize(size),
                 fontWeight: FontWeight.w700,
-                color: Theme.primary.main,
+                color: AnthemTheme.primary.main,
               ),
             ),
           ),

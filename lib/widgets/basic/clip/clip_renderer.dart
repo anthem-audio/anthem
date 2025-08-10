@@ -58,7 +58,7 @@ void paintClip({
 
   final rectPaint = Paint()..color = color;
   final rectStrokePaint = Paint()
-    ..color = Theme.grid.accent
+    ..color = AnthemTheme.grid.accent
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1.0;
 

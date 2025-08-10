@@ -175,7 +175,7 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              border: Border.all(color: Theme.panel.border),
+              border: Border.all(color: AnthemTheme.panel.border),
               borderRadius: const BorderRadius.all(Radius.circular(4)),
             ),
             child: ClipRRect(

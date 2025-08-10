@@ -110,7 +110,7 @@ class _ArrangerState extends State<Arranger> {
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(4),
-                color: Theme.panel.main,
+                color: AnthemTheme.panel.main,
               ),
               child: Padding(
                 padding: const EdgeInsets.all(6),
@@ -447,7 +447,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
 
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: Theme.panel.border),
+        border: Border.all(color: AnthemTheme.panel.border),
         borderRadius: BorderRadius.circular(4),
       ),
       child: ClipRRect(
@@ -463,11 +463,14 @@ class _ArrangerContentState extends State<_ArrangerContent>
                     width: trackHeaderWidth,
                     decoration: BoxDecoration(
                       border: Border(
-                        bottom: BorderSide(color: Theme.panel.border, width: 1),
+                        bottom: BorderSide(
+                          color: AnthemTheme.panel.border,
+                          width: 1,
+                        ),
                       ),
                     ),
                   ),
-                  Container(width: 1, color: Theme.panel.border),
+                  Container(width: 1, color: AnthemTheme.panel.border),
                   Expanded(
                     child: Observer(
                       builder: (context) {
@@ -502,7 +505,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
                       },
                     ),
                   ),
-                  Container(width: 1, color: Theme.panel.border),
+                  Container(width: 1, color: AnthemTheme.panel.border),
                   Expanded(
                     child: _ArrangerCanvas(
                       timeViewStartAnimation: timeViewStartAnimItem.animation,

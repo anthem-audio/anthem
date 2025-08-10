@@ -154,8 +154,11 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Theme.panel.accentDark,
-                        border: Border.all(color: Theme.panel.border, width: 1),
+                        color: AnthemTheme.panel.background,
+                        border: Border.all(
+                          color: AnthemTheme.panel.border,
+                          width: 1,
+                        ),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Observer(

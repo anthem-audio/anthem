@@ -79,7 +79,7 @@ class PatternDetailView extends StatelessObserverWidget {
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              color: Theme.panel.main,
+              color: AnthemTheme.panel.main,
               borderRadius: BorderRadius.circular(4),
             ),
           ),

@@ -158,7 +158,7 @@ class _ProjectState extends State<Project> {
                       sizeBehavior: PanelSizeBehavior.pixels,
                       panelStartSize: 200,
                       // Right side-panel content
-                      panelContent: Container(color: Theme.panel.main),
+                      panelContent: Container(color: AnthemTheme.panel.main),
 
                       child: Panel(
                         orientation: PanelOrientation.bottom,
@@ -220,7 +220,7 @@ class _PanelOverlay extends StatelessWidget {
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(3),
-                color: Theme.panel.main,
+                color: AnthemTheme.panel.main,
               ),
             ),
           ),

@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/theme.dart' as anthem_theme;
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/shortcuts/raw_key_event_singleton.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
@@ -114,10 +114,10 @@ class _AppState extends State<App> with WindowListener {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Anthem',
-      color: anthem_theme.Theme.primary.main,
+      color: AnthemTheme.primary.main,
       theme: ThemeData(
         textSelectionTheme: TextSelectionThemeData(
-          selectionColor: anthem_theme.Theme.primary.subtleBorder.withAlpha(50),
+          selectionColor: AnthemTheme.primary.subtleBorder.withAlpha(50),
         ),
       ),
       builder: (context, widget) {
@@ -140,7 +140,7 @@ class _AppState extends State<App> with WindowListener {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      Container(color: anthem_theme.Theme.panel.border),
+                      Container(color: AnthemTheme.panel.border),
                       MainWindow(key: mainWindowKey),
                     ],
                   ),

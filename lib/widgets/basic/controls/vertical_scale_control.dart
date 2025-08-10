@@ -52,12 +52,12 @@ class _VerticalScaleControlState extends State<VerticalScaleControl> {
 
   @override
   Widget build(BuildContext context) {
-    Color handleColor = Theme.control.main.light;
+    Color handleColor = AnthemTheme.control.main.light;
 
     if (isPressed) {
-      handleColor = Theme.control.hover.dark;
+      handleColor = AnthemTheme.control.hover.dark;
     } else if (isOver) {
-      handleColor = Theme.control.hover.light;
+      handleColor = AnthemTheme.control.hover.light;
     }
 
     return LayoutBuilder(
@@ -106,7 +106,7 @@ class _VerticalScaleControlState extends State<VerticalScaleControl> {
                     right: 0,
                     child: Container(
                       decoration: BoxDecoration(
-                        border: Border.all(color: Theme.control.border),
+                        border: Border.all(color: AnthemTheme.control.border),
                         borderRadius: const BorderRadius.all(
                           Radius.circular(3),
                         ),
@@ -118,7 +118,7 @@ class _VerticalScaleControlState extends State<VerticalScaleControl> {
                   Positioned.fill(
                     child: Container(
                       decoration: BoxDecoration(
-                        border: Border.all(color: Theme.control.border),
+                        border: Border.all(color: AnthemTheme.control.border),
                         borderRadius: const BorderRadius.all(
                           Radius.circular(4),
                         ),

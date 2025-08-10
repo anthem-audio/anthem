@@ -123,8 +123,8 @@ class _MenuRendererState extends State<MenuRenderer> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: Theme.panel.accentDark,
-          border: Border.all(color: Theme.panel.border),
+          color: AnthemTheme.panel.background,
+          border: Border.all(color: AnthemTheme.panel.border),
           borderRadius: const BorderRadius.all(Radius.circular(4)),
         ),
         width: widest + (_Constants.padding + 1) * 4,
@@ -231,10 +231,10 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
           isHovered || (isSubmenuOpen && !widget.isMouseInMenu);
 
       final textColor = showHoverState
-          ? Theme.primary.main
+          ? AnthemTheme.primary.main
           : item.disabled
-          ? Theme.text.disabled
-          : Theme.text.main;
+          ? AnthemTheme.text.disabled
+          : AnthemTheme.text.main;
 
       final rowChildren = [
         Text(
@@ -310,10 +310,10 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
           },
           child: Container(
             decoration: BoxDecoration(
-              color: showHoverState ? Theme.primary.subtle : null,
+              color: showHoverState ? AnthemTheme.primary.subtle : null,
               // This adds 2px to the width of the menu
               border: showHoverState
-                  ? Border.all(color: Theme.primary.subtleBorder)
+                  ? Border.all(color: AnthemTheme.primary.subtleBorder)
                   : Border.all(color: const Color(0x00000000)),
               borderRadius: BorderRadius.circular(4),
             ),
@@ -341,7 +341,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
             horizontal: _Constants.padding,
             vertical: (_Constants.separatorHeight / 2).floor().toDouble(),
           ),
-          child: Container(color: Theme.separator),
+          child: Container(color: AnthemTheme.separator),
         ),
       );
     }

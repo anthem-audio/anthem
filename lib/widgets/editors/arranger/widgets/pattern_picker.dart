@@ -109,8 +109,11 @@ class _PatternPickerState extends State<PatternPicker> {
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: Theme.panel.border, width: 1),
-                        color: Theme.panel.accentDark,
+                        border: Border.all(
+                          color: AnthemTheme.panel.border,
+                          width: 1,
+                        ),
+                        color: AnthemTheme.panel.background,
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),

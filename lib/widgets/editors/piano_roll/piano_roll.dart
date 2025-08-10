@@ -102,7 +102,7 @@ class _PianoRollState extends State<PianoRoll> {
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(4),
-              color: Theme.panel.main,
+              color: AnthemTheme.panel.main,
             ),
             child: Padding(
               padding: const EdgeInsets.all(6),
@@ -337,7 +337,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
           child: Row(
             children: [
               const SizedBox(width: pianoControlWidth),
-              Container(color: Theme.panel.border, width: 1),
+              Container(color: AnthemTheme.panel.border, width: 1),
               Expanded(
                 child: TimelineNotificationHandler(
                   timelineKind: TimelineKind.pattern,
@@ -561,7 +561,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        border: Border.all(color: Theme.panel.border),
+                        border: Border.all(color: AnthemTheme.panel.border),
                         borderRadius: const BorderRadius.all(
                           Radius.circular(4),
                         ),
@@ -579,7 +579,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
                                 children: [
                                   pianoControl,
                                   Container(
-                                    color: Theme.panel.border,
+                                    color: AnthemTheme.panel.border,
                                     width: 1,
                                   ),
                                   noteRenderArea,

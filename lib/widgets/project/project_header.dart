@@ -52,7 +52,7 @@ class ProjectHeader extends StatelessWidget {
       height: 40,
       decoration: BoxDecoration(
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4)),
-        color: Theme.panel.accent,
+        color: AnthemTheme.panel.accent,
       ),
       child: Padding(
         padding: const EdgeInsets.all(7),
