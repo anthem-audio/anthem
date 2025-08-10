@@ -63,27 +63,28 @@ flutter:
 
   assets:
   - assets/engine/
-  - assets/icons/
-  - assets/icons/add/
-  - assets/icons/arranger/
-  - assets/icons/arranger/clip/
-  - assets/icons/audio_editor/
-  - assets/icons/automation_editor/
-  - assets/icons/bottom_bar/
-  - assets/icons/channel/
-  - assets/icons/channel_rack/
-  - assets/icons/controller_rack/
-  - assets/icons/device_panel/
-  - assets/icons/edit/
-  - assets/icons/instrument_and_effect_rack/
-  - assets/icons/main/
-  - assets/icons/main_toolbar/
-  - assets/icons/misc/
-  - assets/icons/mixer/
-  - assets/icons/not_clickable/
-  - assets/icons/note_editor/
-  - assets/icons/options/
-  - assets/icons/scrollbar/
-  - assets/icons/small/
-  - assets/icons/tools/
-  - assets/icons/topbar/
+
+  - assets/icons_old/
+  - assets/icons_old/add/
+  - assets/icons_old/arranger/
+  - assets/icons_old/arranger/clip/
+  - assets/icons_old/audio_editor/
+  - assets/icons_old/automation_editor/
+  - assets/icons_old/bottom_bar/
+  - assets/icons_old/channel/
+  - assets/icons_old/channel_rack/
+  - assets/icons_old/controller_rack/
+  - assets/icons_old/device_panel/
+  - assets/icons_old/edit/
+  - assets/icons_old/instrument_and_effect_rack/
+  - assets/icons_old/main/
+  - assets/icons_old/main_toolbar/
+  - assets/icons_old/misc/
+  - assets/icons_old/mixer/
+  - assets/icons_old/not_clickable/
+  - assets/icons_old/note_editor/
+  - assets/icons_old/options/
+  - assets/icons_old/scrollbar/
+  - assets/icons_old/small/
+  - assets/icons_old/tools/
+  - assets/icons_old/topbar/
