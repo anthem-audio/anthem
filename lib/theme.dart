@@ -59,7 +59,7 @@ class _Control {
   Color border = const Color(0xFF2F2F2F);
 
   // Not from the original theme
-  Color background = const Color.fromARGB(255, 46, 53, 58);
+  Color background = const Color(0xFF3D3D3D);
 }
 
 const _textMain = Color(0xFFCFCFCF);
