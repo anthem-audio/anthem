@@ -176,9 +176,7 @@ class _ButtonState extends State<Button> {
   Widget build(BuildContext context) {
     _ButtonTheme theme;
 
-    final variant =
-        widget.variant ??
-        ButtonVariant.main;
+    final variant = widget.variant ?? ButtonVariant.main;
 
     switch (variant) {
       case ButtonVariant.main:
