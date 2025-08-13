@@ -78,12 +78,12 @@ class _WindowHandleAndControls extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 1),
       child: Container(
         decoration: BoxDecoration(
-          color: AnthemTheme.panel.main,
+          color: AnthemTheme.panel.background,
           borderRadius: const BorderRadius.only(
             topRight: Radius.circular(4),
-            topLeft: Radius.circular(2),
-            bottomLeft: Radius.circular(1),
-            bottomRight: Radius.circular(1),
+            topLeft: Radius.zero,
+            bottomLeft: Radius.zero,
+            bottomRight: Radius.zero,
           ),
         ),
         child: Align(alignment: Alignment.centerRight, child: _WindowButtons()),
@@ -183,18 +183,7 @@ class _TabState extends State<_Tab> {
           decoration: BoxDecoration(
             color: widget.isSelected
                 ? AnthemTheme.panel.accent
-                : AnthemTheme.panel.main,
-            borderRadius: widget.isSelected
-                ? const BorderRadius.only(
-                    topLeft: Radius.circular(2),
-                    topRight: Radius.circular(2),
-                  )
-                : const BorderRadius.only(
-                    topLeft: Radius.circular(1),
-                    topRight: Radius.circular(1),
-                    bottomRight: Radius.circular(1),
-                    bottomLeft: Radius.circular(1),
-                  ),
+                : AnthemTheme.panel.background,
           ),
           child: Padding(
             padding: EdgeInsets.only(bottom: widget.isSelected ? 1 : 0),

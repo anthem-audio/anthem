@@ -153,6 +153,9 @@ class _TimeSignatureDisplay extends StatelessObserverWidget {
     final numeratorString = timeSignature.numerator.toString().padLeft(2);
     final denominatorString = timeSignature.denominator.toString().padRight(2);
 
-    return DigitDisplay(text: '$numeratorString / $denominatorString');
+    return DigitDisplay(
+      size: DigitDisplaySize.large,
+      text: '$numeratorString / $denominatorString',
+    );
   }
 }

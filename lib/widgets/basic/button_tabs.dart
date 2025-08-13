@@ -84,7 +84,7 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
         for (final tab in widget.tabs) {
           final isSelected = tab.id == (widget.selected ?? selectedFallback);
           final color = isSelected
-              ? AnthemTheme.primary.main
+              ? AnthemTheme.text.accent
               : AnthemTheme.text.main;
 
           final Widget content;

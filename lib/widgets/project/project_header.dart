@@ -49,13 +49,13 @@ class ProjectHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 40,
+      height: 32,
       decoration: BoxDecoration(
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4)),
         color: AnthemTheme.panel.accent,
       ),
       child: Padding(
-        padding: const EdgeInsets.all(7),
+        padding: const EdgeInsets.all(4),
         child: Row(
           children: [
             Expanded(flex: 1, child: _LeftGroup()),
@@ -82,6 +82,7 @@ class _LeftGroup extends StatelessWidget {
         const SizedBox(width: 4),
         Button(
           icon: Icons.undo,
+          width: 24,
           onPress: () {
             projectController.undo();
           },
@@ -90,6 +91,7 @@ class _LeftGroup extends StatelessWidget {
         const SizedBox(width: 4),
         Button(
           icon: Icons.redo,
+          width: 24,
           onPress: () {
             projectController.redo();
           },
@@ -168,6 +170,7 @@ class _TempoControlState extends State<_TempoControl> {
     final projectModel = Provider.of<ProjectModel>(context);
 
     return DigitControl(
+      size: DigitDisplaySize.large,
       decimalPlaces: 2,
       minCharacterCount: 6,
       hint: 'Set the tempo',
@@ -342,6 +345,7 @@ class _ProjectMenu extends StatelessWidget {
       ),
       child: Button(
         icon: Icons.hamburger,
+        width: 24,
         showMenuIndicator: true,
         onPress: () {
           menuController.open();

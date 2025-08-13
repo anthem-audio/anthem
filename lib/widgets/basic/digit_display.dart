@@ -72,19 +72,19 @@ class DigitDisplay extends StatelessWidget {
       child: Stack(
         children: [
           Container(
-            padding: const EdgeInsets.only(
+            padding: EdgeInsets.only(
               left: 8,
               right: 8,
               // We need to add 1 to the top padding to make the text align,
               // since it's trying to vertically center it as if there are
               // letters that go below the baseline. We only want to display
               // numbers.
-              top: 1,
+              top: monospace ? 1 : 0,
             ),
 
-            // If we set the alignnment when the width is not defined, then it
-            // tries to take all the available space, so we only set it when
-            // the width is defined.
+            // If we set the alignment when the width is not defined, then it
+            // tries to take all the available space, so we only set it when the
+            // width is defined.
             alignment: width != null ? Alignment.centerRight : null,
             child: Text(
               text,

@@ -67,7 +67,7 @@ const _textMain = Color(0xFFCFCFCF);
 class _Text {
   Color main = _textMain;
   Color disabled = _textMain.withAlpha(125);
-  Color accent = const Color(0xFFD6D6D6);
+  Color accent = const Color(0xFFE6E6E6);
 }
 
 class _ByBackgroundType {
