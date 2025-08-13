@@ -1,0 +1,24 @@
+<!--
+  Copyright (C) 2021 - 2024 Budislav Stepanov
+
+  This file is part of Anthem.
+
+  Anthem is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Anthem is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+-->
+
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M4.91465 4C4.70873 4.5826 4.15311 5 3.5 5C2.67157 5 2 4.32843 2 3.5C2 2.67157 2.67157 2 3.5 2C4.15311 2 4.70873 2.4174 4.91465 3H15V4H4.91465Z" fill="#CFCFCF"/>
+<path d="M7.91465 9C7.70873 9.5826 7.15311 10 6.5 10C5.67157 10 5 9.32843 5 8.5C5 7.67157 5.67157 7 6.5 7C7.15311 7 7.70873 7.4174 7.91465 8H15V9H7.91465Z" fill="#CFCFCF"/>
+<path d="M9.5 15C10.1531 15 10.7087 14.5826 10.9146 14H15V13H10.9146C10.7087 12.4174 10.1531 12 9.5 12C8.67157 12 8 12.6716 8 13.5C8 14.3284 8.67157 15 9.5 15Z" fill="#CFCFCF"/>
+</svg>

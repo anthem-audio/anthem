@@ -1,0 +1,31 @@
+<!--
+  Copyright (C) 2021 - 2024 Budislav Stepanov
+
+  This file is part of Anthem.
+
+  Anthem is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Anthem is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+-->
+
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M11.5355 11.5355C10.5979 12.4732 9.32608 13 8 13L8 12C9.06087 12 10.0783 11.5786 10.8284 10.8284C11.5786 10.0783 12 9.06087 12 8C12 6.93913 11.5786 5.92172 10.8284 5.17157C10.0783 4.42143 9.06087 4 8 4L8 3C9.32608 3 10.5979 3.52678 11.5355 4.46447C12.4732 5.40215 13 6.67392 13 8C13 9.32608 12.4732 10.5979 11.5355 11.5355Z" fill="#D9D9D9"/>
+<rect x="8" y="3" width="1" height="3" transform="rotate(90 8 3)" fill="#D9D9D9"/>
+<rect x="8" y="4" width="1" height="3" transform="rotate(90 8 4)" fill="#D9D9D9"/>
+<rect x="8" y="11" width="1" height="3" transform="rotate(90 8 11)" fill="#D9D9D9"/>
+<rect x="8" y="12" width="1" height="3" transform="rotate(90 8 12)" fill="#D9D9D9"/>
+<rect x="6" y="4" width="1" height="1" transform="rotate(90 6 4)" fill="#D9D9D9"/>
+<rect x="4" y="3" width="2" height="1" transform="rotate(90 4 3)" fill="#D9D9D9"/>
+<rect x="4" y="11" width="2" height="1" transform="rotate(90 4 11)" fill="#D9D9D9"/>
+<rect x="6" y="11" width="1" height="1" transform="rotate(90 6 11)" fill="#D9D9D9"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M9.53074 4.30448C9.04543 4.10346 8.52529 4 8 4V5C9.65686 5 11 6.34315 11 8C11 9.65685 9.65686 11 8 11L8 12C8.52529 12 9.04543 11.8965 9.53073 11.6955C10.016 11.4945 10.457 11.1999 10.8284 10.8284C11.1999 10.457 11.4945 10.016 11.6955 9.53073C11.8965 9.04543 12 8.52529 12 8C12 7.47471 11.8965 6.95457 11.6955 6.46927C11.4945 5.98396 11.1999 5.54301 10.8284 5.17157C10.457 4.80014 10.016 4.5055 9.53074 4.30448Z" fill="#D9D9D9"/>
+</svg>

@@ -88,3 +88,19 @@ flutter:
   - assets/icons_old/small/
   - assets/icons_old/tools/
   - assets/icons_old/topbar/
+
+  - assets/icons/
+  - assets/icons/add/
+  - assets/icons/arranger/
+  - assets/icons/audio_editor/
+  - assets/icons/automation_editor/
+  - assets/icons/bottom_bar/
+  - assets/icons/channel_rack/
+  - assets/icons/edit/
+  - assets/icons/icon/
+  - assets/icons/instrument_and_effect_rack/
+  - assets/icons/main_toolbar/
+  - assets/icons/misc/
+  - assets/icons/mixer/
+  - assets/icons/note_editor/
+  - assets/icons/options/
