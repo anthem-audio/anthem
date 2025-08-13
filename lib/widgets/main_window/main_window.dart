@@ -59,14 +59,19 @@ class _MainWindowState extends State<MainWindow> {
             padding: const EdgeInsets.all(3),
             child: Observer(
               builder: (context) {
-                final tabs = store.projectOrder
-                    .map<TabDef>(
-                      (projectId) => TabDef(
-                        id: projectId,
-                        title: store.projects[projectId]!.id,
-                      ),
-                    )
-                    .toList();
+                final tabs = store.projectOrder.map<TabDef>((projectId) {
+                  final projectPath = store.projects[projectId]?.filePath;
+                  final titleFromPath = projectPath
+                      ?.split(RegExp('[/\\\\]'))
+                      .last
+                      .split('.')
+                      .first;
+
+                  return TabDef(
+                    id: projectId,
+                    title: titleFromPath ?? 'New Project',
+                  );
+                }).toList();
 
                 return Column(
                   children: [
