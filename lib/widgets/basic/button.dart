@@ -155,7 +155,7 @@ class Button extends StatefulWidget {
     this.width,
     this.height,
     this.expand,
-    this.contentPadding = const EdgeInsets.only(left: 5, right: 5),
+    this.contentPadding = const EdgeInsets.only(left: 3, right: 3),
     this.showMenuIndicator,
     this.backgroundGradient,
     this.backgroundHoverGradient,
@@ -297,7 +297,7 @@ class _ButtonState extends State<Button> {
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            borderRadius: widget.borderRadius ?? BorderRadius.circular(4),
+            borderRadius: widget.borderRadius ?? BorderRadius.circular(3),
             border: widget.hideBorder == true
                 ? null
                 : Border.all(color: theme.border.getColor(hovered, pressed)),
