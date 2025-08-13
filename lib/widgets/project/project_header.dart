@@ -117,40 +117,62 @@ class _MiddleGroup extends StatelessWidget {
         // provided by the Row
         SizedBox(width: 8),
 
-        Button(
-          icon: Icons.play,
-          height: 24,
-          width: 24,
-          contentPadding: EdgeInsets.all(3),
-          hint: [HintSection('click', 'Play')],
-          onPress: () {
-            final projectModel = Provider.of<ProjectModel>(
-              context,
-              listen: false,
-            );
-
-            if (projectModel.engineState != EngineState.running) {
-              return;
-            }
-
-            projectModel.sequence.isPlaying = true;
-          },
-        ),
-        Button(
-          icon: Icons.stop,
-          height: 24,
-          width: 24,
-          contentPadding: EdgeInsets.all(3),
-          hint: [HintSection('click', 'Stop')],
-          onPress: () {
-            final projectModel = Provider.of<ProjectModel>(
-              context,
-              listen: false,
-            );
-            projectModel.sequence.isPlaying = false;
-          },
-        ),
+        _PlayStopButtonGroup(),
       ],
+    );
+  }
+}
+
+class _PlayStopButtonGroup extends StatelessWidget {
+  const _PlayStopButtonGroup();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(3),
+        border: Border.all(color: AnthemTheme.control.border),
+      ),
+      child: Row(
+        children: [
+          Button(
+            hideBorder: true,
+            icon: Icons.play,
+            height: 24,
+            width: 24,
+            contentPadding: EdgeInsets.all(3),
+            hint: [HintSection('click', 'Play')],
+            onPress: () {
+              final projectModel = Provider.of<ProjectModel>(
+                context,
+                listen: false,
+              );
+
+              if (projectModel.engineState != EngineState.running) {
+                return;
+              }
+
+              projectModel.sequence.isPlaying = true;
+            },
+          ),
+          Container(width: 1, color: AnthemTheme.control.border),
+          Button(
+            hideBorder: true,
+            icon: Icons.stop,
+            height: 24,
+            width: 24,
+            contentPadding: EdgeInsets.all(3),
+            hint: [HintSection('click', 'Stop')],
+            onPress: () {
+              final projectModel = Provider.of<ProjectModel>(
+                context,
+                listen: false,
+              );
+              projectModel.sequence.isPlaying = false;
+            },
+          ),
+        ],
+      ),
     );
   }
 }
