@@ -341,7 +341,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
             horizontal: _Constants.padding,
             vertical: (_Constants.separatorHeight / 2).floor().toDouble(),
           ),
-          child: Container(color: AnthemTheme.separator),
+          child: Container(color: AnthemTheme.control.border),
         ),
       );
     }

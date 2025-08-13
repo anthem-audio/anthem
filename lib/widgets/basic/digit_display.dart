@@ -65,7 +65,7 @@ class DigitDisplay extends StatelessWidget {
       height: calculateHeight(size),
       width: width?.toDouble(),
       decoration: BoxDecoration(
-        border: Border.all(color: AnthemTheme.separator),
+        border: Border.all(color: AnthemTheme.control.border),
         borderRadius: BorderRadius.circular(3),
         color: AnthemTheme.control.background,
       ),

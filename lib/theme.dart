@@ -29,7 +29,6 @@ class AnthemTheme {
   static _Primary primary = _Primary();
   static _Control control = _Control();
   static _Text text = _Text();
-  static Color separator = const Color(0xFF2B3338);
   static _Grid grid = _Grid();
 }
 
@@ -56,7 +55,7 @@ class _Control {
     light: const Color(0xFF636363),
   );
   Color active = const Color(0xFF25C29D);
-  Color border = const Color(0xFF2F2F2F);
+  Color border = const Color(0xFF323232);
 
   // Not from the original theme
   Color background = const Color(0xFF3D3D3D);
