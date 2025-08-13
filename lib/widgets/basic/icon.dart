@@ -49,11 +49,9 @@ class Icons {
   static IconDef detailEditor = const IconDef(
     'assets/icons_old/bottom_bar/detail_editor.svg',
   );
-  static IconDef hamburger = const IconDef(
-    'assets/icons_old/misc/hamburgner.svg',
-  );
+  static IconDef hamburger = const IconDef('assets/icons/misc/hamburgner.svg');
   static IconDef file = const IconDef('assets/icons_old/file.svg');
-  static IconDef kebab = const IconDef('assets/icons_old/misc.svg');
+  static IconDef kebab = const IconDef('assets/icons/misc.svg');
   static IconDef maximize = const IconDef(
     'assets/icons_old/small/maximize.svg',
   );
@@ -66,15 +64,15 @@ class Icons {
   static IconDef patternEditor = const IconDef(
     'assets/icons_old/bottom_bar/pattern_editor.svg',
   );
-  static IconDef play = const IconDef('assets/icons_old/main_toolbar/play.svg');
+  static IconDef play = const IconDef('assets/icons/main_toolbar/play.svg');
   static IconDef plugin = const IconDef('assets/icons_old/plugin.svg');
   static IconDef projectPanel = const IconDef(
     'assets/icons_old/bottom_bar/project_panel_2.svg',
   );
-  static IconDef redo = const IconDef('assets/icons_old/edit/redo.svg');
+  static IconDef redo = const IconDef('assets/icons/edit/redo.svg');
   static IconDef save = const IconDef('assets/icons_old/edit/save.svg');
-  static IconDef stop = const IconDef('assets/icons_old/main_toolbar/stop.svg');
-  static IconDef undo = const IconDef('assets/icons_old/edit/undo.svg');
+  static IconDef stop = const IconDef('assets/icons/main_toolbar/stop.svg');
+  static IconDef undo = const IconDef('assets/icons/edit/undo.svg');
   static _ScrollbarIcons scrollbar = _ScrollbarIcons();
   static _ToolIcons tools = _ToolIcons();
   static _MainToolbarIcons mainToolbar = _MainToolbarIcons();
