@@ -1,7 +1,7 @@
 targets:
   $default:
     builders:
-      anthem_codegen|anthemDartModelGeneratorBuilder:
+      anthem_codegen:anthemDartModelGeneratorBuilder:
         generate_for:
           - test/*
           - test/**/*
@@ -14,7 +14,7 @@ builders:
     build_extensions: {'.dart': ['.anthem_model_generator.g.part']}
     auto_apply: dependents
     build_to: source
-    applies_builders: ['source_gen|combining_builder']
+    applies_builders: ['source_gen:combining_builder']
   cppModelBuilder: 
     import: 'package:anthem_codegen/codegen.dart'
     builder_factories: ['cppModelBuilder']
