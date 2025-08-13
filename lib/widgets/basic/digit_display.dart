@@ -46,7 +46,8 @@ class DigitDisplay extends StatelessWidget {
   final DigitDisplaySize size;
   final bool monospace;
 
-  final String text;
+  final String? text;
+  final Widget Function(BuildContext context)? contentBuilder;
 
   final Widget? overlay;
 
@@ -54,13 +55,20 @@ class DigitDisplay extends StatelessWidget {
     super.key,
     this.width,
     this.size = DigitDisplaySize.normal,
-    required this.text,
+    this.text,
+    this.contentBuilder,
     this.monospace = false,
     this.overlay,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (text == null && contentBuilder == null) {
+      throw ArgumentError(
+        'Either text or contentBuilder must be provided to DigitDisplay',
+      );
+    }
+
     return Container(
       height: calculateHeight(size),
       width: width?.toDouble(),
@@ -86,15 +94,17 @@ class DigitDisplay extends StatelessWidget {
             // tries to take all the available space, so we only set it when the
             // width is defined.
             alignment: width != null ? Alignment.centerRight : null,
-            child: Text(
-              text,
-              style: TextStyle(
-                fontFamily: monospace ? 'RobotoMono' : null,
-                fontSize: calculateFontSize(size),
-                fontWeight: FontWeight.w700,
-                color: AnthemTheme.primary.main,
-              ),
-            ),
+            child: text != null
+                ? Text(
+                    text!,
+                    style: TextStyle(
+                      fontFamily: monospace ? 'RobotoMono' : null,
+                      fontSize: calculateFontSize(size),
+                      fontWeight: FontWeight.w700,
+                      color: AnthemTheme.primary.main,
+                    ),
+                  )
+                : contentBuilder!(context),
           ),
           if (overlay != null) Positioned.fill(child: overlay!),
         ],

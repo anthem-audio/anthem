@@ -19,6 +19,7 @@
 
 import 'package:anthem/commands/sequence_commands.dart';
 import 'package:anthem/model/model.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/controls/control_mouse_handler.dart';
 import 'package:anthem/widgets/basic/digit_display.dart';
 import 'package:flutter/widgets.dart';
@@ -153,9 +154,44 @@ class _TimeSignatureDisplay extends StatelessObserverWidget {
     final numeratorString = timeSignature.numerator.toString().padLeft(2);
     final denominatorString = timeSignature.denominator.toString().padRight(2);
 
+    final textStyle = TextStyle(
+      fontFamily: 'RobotoMono',
+      fontSize: 14,
+      fontWeight: FontWeight.w700,
+      color: AnthemTheme.primary.main,
+    );
+
     return DigitDisplay(
       size: DigitDisplaySize.large,
-      text: '$numeratorString / $denominatorString',
+      monospace: true,
+      contentBuilder: (context) {
+        return SizedBox(
+          height: 20,
+          width: 46,
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  numeratorString,
+                  textAlign: TextAlign.right,
+                  style: textStyle,
+                ),
+              ),
+              SizedBox(
+                width: 11,
+                child: Center(child: Text('/', style: textStyle)),
+              ),
+              Expanded(
+                child: Text(
+                  denominatorString,
+                  textAlign: TextAlign.left,
+                  style: textStyle,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
