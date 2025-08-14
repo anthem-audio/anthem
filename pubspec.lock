@@ -465,11 +465,10 @@ packages:
   mobx_codegen:
     dependency: "direct dev"
     description:
-      path: mobx_codegen
-      ref: "analyzer-7.4.0"
-      resolved-ref: bfb4f8d673a53b49724b7bcdf2aaf52f8faafaeb
-      url: "https://github.com/josh-audio/mobx.dart"
-    source: git
+      name: mobx_codegen
+      sha256: "7c956996d3105e28995d9f91b24ac037657534398b5e70cdacc3f95d8f68cdae"
+      url: "https://pub.dev"
+    source: hosted
     version: "2.7.2"
   mockito:
     dependency: "direct main"
