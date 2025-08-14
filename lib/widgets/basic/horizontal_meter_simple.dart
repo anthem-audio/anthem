@@ -57,7 +57,7 @@ class HorizontalMeterSimple extends StatelessWidget {
               clipper: _RectangularProgressClipper(value: value),
               child: Container(
                 decoration: BoxDecoration(
-                  color: AnthemTheme.primary.subtleBorder,
+                  color: AnthemTheme.control.activeBackground,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),

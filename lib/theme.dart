@@ -55,6 +55,7 @@ class _Control {
     light: const Color(0xFF636363),
   );
   Color active = const Color(0xFF25C29D);
+  Color activeBackground = const Color(0xFF357869);
   Color border = const Color(0xFF323232);
 
   // Not from the original theme
