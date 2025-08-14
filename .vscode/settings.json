@@ -39,6 +39,7 @@
     "pubspec",
     "recompiles",
     "relayout",
+    "roboto",
     "scrollbars",
     "stepanov",
     "stod",
@@ -51,6 +52,7 @@
     "topbar",
     "tracktion",
     "unfocus",
+    "unmaximize",
     "Unregisters",
     "vsync"
   ],
