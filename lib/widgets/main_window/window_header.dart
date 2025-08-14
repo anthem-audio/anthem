@@ -92,8 +92,45 @@ class _WindowHandleAndControls extends StatelessWidget {
   }
 }
 
-class _WindowButtons extends StatelessWidget {
+/// Renders the window buttons (minimize, maximize, close) for Windows and
+/// Linux.
+///
+/// This is a stateful widget because it must determine whether the window is
+/// maximized or not. This isn't something the rest of the window header needs
+/// to care about.
+class _WindowButtons extends StatefulWidget {
   const _WindowButtons();
+
+  @override
+  State<_WindowButtons> createState() => _WindowButtonsState();
+}
+
+class _WindowButtonsState extends State<_WindowButtons> with WindowListener {
+  bool isMaximized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateMaximizedState();
+
+    windowManager.addListener(this);
+  }
+
+  @override
+  void onWindowEvent(String event) {
+    if (event == 'maximize' || event == 'unmaximize') {
+      _updateMaximizedState();
+    }
+  }
+
+  void _updateMaximizedState() async {
+    final isMaximized = await windowManager.isMaximized();
+    if (this.isMaximized != isMaximized) {
+      setState(() {
+        this.isMaximized = isMaximized;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -101,13 +138,15 @@ class _WindowButtons extends StatelessWidget {
       children: [
         const Expanded(child: SizedBox()),
         Padding(
-          padding: const EdgeInsets.only(top: 4, right: 4, bottom: 4),
+          padding: const EdgeInsets.only(top: 4, bottom: 4),
           child: Button(
-            width: 20,
+            width: 32,
             height: 20,
             contentPadding: const EdgeInsets.all(2),
+            borderRadius: BorderRadius.circular(4),
             variant: ButtonVariant.ghost,
             hideBorder: true,
+            backgroundHoverGradient: (Color(0xFF555555), Color(0xFF555555)),
             icon: Icons.minimize,
             onPress: () {
               windowManager.minimize();
@@ -115,16 +154,18 @@ class _WindowButtons extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.only(top: 4, right: 4, bottom: 4),
+          padding: const EdgeInsets.only(top: 4, bottom: 4),
           child: Button(
-            width: 20,
+            width: 32,
             height: 20,
             contentPadding: const EdgeInsets.all(2),
+            borderRadius: BorderRadius.circular(4),
             variant: ButtonVariant.ghost,
             hideBorder: true,
-            icon: Icons.maximize,
+            backgroundHoverGradient: (Color(0xFF555555), Color(0xFF555555)),
+            icon: isMaximized ? Icons.restoreDown : Icons.maximize,
             onPress: () async {
-              if (await windowManager.isMaximized()) {
+              if (isMaximized) {
                 await windowManager.unmaximize();
               } else {
                 await windowManager.maximize();
@@ -133,19 +174,22 @@ class _WindowButtons extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.only(top: 4, right: 4, bottom: 4),
+          padding: const EdgeInsets.only(top: 4, bottom: 4),
           child: Button(
-            width: 20,
+            width: 32,
             height: 20,
             contentPadding: const EdgeInsets.all(2),
+            borderRadius: BorderRadius.circular(4),
             variant: ButtonVariant.ghost,
             hideBorder: true,
+            backgroundHoverGradient: (Color(0xFFBA322B), Color(0xFFBA322B)),
             icon: Icons.close,
             onPress: () {
               windowManager.close();
             },
           ),
         ),
+        SizedBox(width: 4),
       ],
     );
   }

@@ -45,20 +45,16 @@ class Icons {
   static IconDef channelRack = const IconDef(
     'assets/icons_old/bottom_bar/instruments_effects_panel.svg',
   );
-  static IconDef close = const IconDef('assets/icons_old/small/close.svg');
+  static IconDef close = const IconDef('assets/icons/small/close.svg');
   static IconDef detailEditor = const IconDef(
     'assets/icons_old/bottom_bar/detail_editor.svg',
   );
   static IconDef hamburger = const IconDef('assets/icons/misc/hamburgner.svg');
   static IconDef file = const IconDef('assets/icons_old/file.svg');
   static IconDef kebab = const IconDef('assets/icons/misc.svg');
-  static IconDef maximize = const IconDef(
-    'assets/icons_old/small/maximize.svg',
-  );
+  static IconDef maximize = const IconDef('assets/icons/small/maximize.svg');
   static IconDef midi = const IconDef('assets/icons_old/midi.svg');
-  static IconDef minimize = const IconDef(
-    'assets/icons_old/small/minimize.svg',
-  );
+  static IconDef minimize = const IconDef('assets/icons/small/minimize.svg');
   static IconDef mixer = const IconDef('assets/icons_old/bottom_bar/mixer.svg');
   static IconDef mute = const IconDef('assets/icons_old/power.svg');
   static IconDef patternEditor = const IconDef(
@@ -70,6 +66,9 @@ class Icons {
     'assets/icons_old/bottom_bar/project_panel_2.svg',
   );
   static IconDef redo = const IconDef('assets/icons/edit/redo.svg');
+  static IconDef restoreDown = const IconDef(
+    'assets/icons/small/restore_down.svg',
+  );
   static IconDef save = const IconDef('assets/icons_old/edit/save.svg');
   static IconDef stop = const IconDef('assets/icons/main_toolbar/stop.svg');
   static IconDef undo = const IconDef('assets/icons/edit/undo.svg');
