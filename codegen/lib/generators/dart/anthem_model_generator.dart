@@ -58,8 +58,9 @@ class AnthemModelGenerator extends Generator {
     // Looks for @AnthemModel on each class in the file, and generates the
     // appropriate code
     for (final libraryClass in library.classes) {
-      final annotationFromAnalyzer = const TypeChecker.fromRuntime(
+      final annotationFromAnalyzer = const TypeChecker.typeNamed(
         AnthemModel,
+        inPackage: 'anthem_codegen',
       ).firstAnnotationOf(libraryClass);
 
       // If there is no annotation on this class, don't do anything

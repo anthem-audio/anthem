@@ -165,8 +165,9 @@ enum _FieldBehavior {
 /// - serializeForEngineOnly: The field should be serialized only when sending
 ///   the model to the engine
 _FieldBehavior _getFieldBehavior(FieldElement2 field) {
-  final hideAnnotation = const TypeChecker.fromRuntime(
+  final hideAnnotation = const TypeChecker.typeNamed(
     Hide,
+    inPackage: 'anthem_codegen',
   ).firstAnnotationOf(field);
 
   if (hideAnnotation == null) return _FieldBehavior.alwaysSerialize;

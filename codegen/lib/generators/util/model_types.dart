@@ -239,7 +239,10 @@ ModelType getModelType(
     _ => (() {
       final unionAnnotation = field == null
           ? null
-          : const TypeChecker.fromRuntime(Union).firstAnnotationOf(field);
+          : const TypeChecker.typeNamed(
+              Union,
+              inPackage: 'anthem_codegen',
+            ).firstAnnotationOf(field);
 
       // Check if this is a list
       if (element is ClassElement2 &&
@@ -320,8 +323,9 @@ ModelType getModelType(
       // Check for custom type
       else if (element is ClassElement2) {
         // If this is a custom type, it should be annotated as an Anthem model
-        final anthemModelAnnotation = const TypeChecker.fromRuntime(
+        final anthemModelAnnotation = const TypeChecker.typeNamed(
           AnthemModel,
+          inPackage: 'anthem_codegen',
         ).firstAnnotationOf(element);
         if (anthemModelAnnotation == null) {
           return UnknownModelType(

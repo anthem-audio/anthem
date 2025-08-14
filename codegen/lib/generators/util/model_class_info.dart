@@ -148,8 +148,9 @@ class _MyModel {
   }
 
   ModelClassInfo._create(this.libraryReader, this.annotatedClass) {
-    final annotationElement = const TypeChecker.fromRuntime(
+    final annotationElement = const TypeChecker.typeNamed(
       AnthemModel,
+      inPackage: 'anthem_codegen',
     ).firstAnnotationOf(annotatedClass);
 
     if (annotationElement != null) {
@@ -324,8 +325,9 @@ class ModelFieldInfo {
          field: fieldElement,
        ),
        isObservable = (() {
-         final hideAnnotation = const TypeChecker.fromRuntime(
+         final hideAnnotation = const TypeChecker.typeNamed(
            AnthemObservable,
+           inPackage: 'anthem_codegen',
          ).firstAnnotationOf(fieldElement);
 
          if (hideAnnotation == null) return false;
@@ -333,8 +335,9 @@ class ModelFieldInfo {
          return true;
        })(),
        hideAnnotation = (() {
-         final hideAnnotation = const TypeChecker.fromRuntime(
+         final hideAnnotation = const TypeChecker.typeNamed(
            Hide,
+           inPackage: 'anthem_codegen',
          ).firstAnnotationOf(fieldElement);
 
          if (hideAnnotation == null) return null;
@@ -371,8 +374,9 @@ class ModelFieldInfo {
 /// Returns true if the field should be skipped during code generation, based on
 /// the @Hide annotation.
 bool _skipAll(FieldElement2 field) {
-  final hideAnnotation = const TypeChecker.fromRuntime(
+  final hideAnnotation = const TypeChecker.typeNamed(
     Hide,
+    inPackage: 'anthem_codegen',
   ).firstAnnotationOf(field);
 
   if (hideAnnotation == null) return false;
@@ -383,8 +387,9 @@ bool _skipAll(FieldElement2 field) {
     cpp: hideAnnotation.getField('cpp')?.toBoolValue() ?? false,
   );
 
-  final observableAnnotation = const TypeChecker.fromRuntime(
+  final observableAnnotation = const TypeChecker.typeNamed(
     AnthemObservable,
+    inPackage: 'anthem_codegen',
   ).firstAnnotationOf(field);
 
   return observableAnnotation == null && hide.serialization && hide.cpp;
