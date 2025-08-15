@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -158,6 +158,7 @@ class _PanelState extends State<Panel> {
         }
 
         return Stack(
+          fit: StackFit.expand,
           children: [
             // Panel
             Positioned(
