@@ -82,13 +82,64 @@ class _PanelState extends State<Panel> {
   double startPos = -1;
   double startSize = -1;
 
+  void onResizePointerDown(PointerDownEvent e, double panelSize) {
+    if (isResizeActive) return;
+    final horizontal = _isLeftOrRight(widget.orientation);
+    isResizeActive = true;
+    resizeActive = true;
+    startPos = (horizontal ? e.position.dx : e.position.dy);
+    startSize = panelSize;
+  }
+
+  void onResizePointerUp(PointerUpEvent e) {
+    resizeActive = false;
+    isResizeActive = false;
+  }
+
+  void onResizePointerCancel(PointerCancelEvent e) {
+    resizeActive = false;
+    isResizeActive = false;
+  }
+
+  void onResizePointerMove(
+    PointerMoveEvent e,
+    BoxConstraints constraints,
+    double mainAxisSize,
+  ) {
+    if (!resizeActive) return;
+
+    final isHorizontal = _isLeftOrRight(widget.orientation);
+    final isPanelFirst = _isPanelFirst(widget.orientation);
+
+    final delta =
+        ((isHorizontal ? e.position.dx : e.position.dy) - startPos) *
+        (isPanelFirst ? 1 : -1);
+    setState(() {
+      final pixelPanelSizeRaw = startSize + delta;
+      final pixelContentSizeRaw =
+          (isHorizontal ? constraints.maxWidth : constraints.maxHeight) -
+          pixelPanelSizeRaw;
+
+      final pixelContentSizeClamped = pixelContentSizeRaw.clamp(
+        widget.contentMinSize,
+        widget.contentMaxSize,
+      );
+
+      pixelPanelSize =
+          (pixelPanelSizeRaw + (pixelContentSizeRaw - pixelContentSizeClamped))
+              .clamp(widget.panelMinSize, widget.panelMaxSize);
+
+      flexPanelSize = pixelPanelSize / mainAxisSize;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final horizontal = _isLeftOrRight(widget.orientation);
+        final isHorizontal = _isLeftOrRight(widget.orientation);
 
-        final mainAxisSize = (horizontal
+        final mainAxisSize = (isHorizontal
             ? constraints.maxWidth
             : constraints.maxHeight);
 
@@ -114,24 +165,24 @@ class _PanelState extends State<Panel> {
         panelSize = panelSize.round().toDouble();
         panelSize /= queryData.devicePixelRatio;
 
-        final panelFirst = _isPanelFirst(widget.orientation);
+        final isPanelFirst = _isPanelFirst(widget.orientation);
 
-        final panelHidden = widget.hidden ?? false;
+        final isPanelHidden = widget.hidden ?? false;
 
-        final panelHugLeft = !horizontal || panelFirst;
-        final panelHugRight = !horizontal || !panelFirst;
-        final panelHugTop = horizontal || panelFirst;
-        final panelHugBottom = horizontal || !panelFirst;
+        final panelHugLeft = !isHorizontal || isPanelFirst;
+        final panelHugRight = !isHorizontal || !isPanelFirst;
+        final panelHugTop = isHorizontal || isPanelFirst;
+        final panelHugBottom = isHorizontal || !isPanelFirst;
 
-        var contentHugLeft = !horizontal || !panelFirst;
-        var contentHugRight = !horizontal || panelFirst;
-        var contentHugTop = horizontal || !panelFirst;
-        var contentHugBottom = horizontal || panelFirst;
+        var contentHugLeft = !isHorizontal || !isPanelFirst;
+        var contentHugRight = !isHorizontal || isPanelFirst;
+        var contentHugTop = isHorizontal || !isPanelFirst;
+        var contentHugBottom = isHorizontal || isPanelFirst;
 
-        contentHugLeft |= panelHidden;
-        contentHugRight |= panelHidden;
-        contentHugTop |= panelHidden;
-        contentHugBottom |= panelHidden;
+        contentHugLeft |= isPanelHidden;
+        contentHugRight |= isPanelHidden;
+        contentHugTop |= isPanelHidden;
+        contentHugBottom |= isPanelHidden;
 
         final separatorSize = widget.separatorSize ?? 3.0;
         const handleSize = 10.0;
@@ -149,7 +200,7 @@ class _PanelState extends State<Panel> {
             ? panelSize - handleSize / 2 + separatorSize / 2
             : null;
 
-        if (horizontal) {
+        if (isHorizontal) {
           handleTop = 0;
           handleBottom = 0;
         } else {
@@ -168,10 +219,10 @@ class _PanelState extends State<Panel> {
               bottom: panelHugBottom ? 0 : null,
               child: Visibility(
                 maintainState: true,
-                visible: !panelHidden,
+                visible: !isPanelHidden,
                 child: SizedBox(
-                  width: horizontal ? panelSize : null,
-                  height: !horizontal ? panelSize : null,
+                  width: isHorizontal ? panelSize : null,
+                  height: !isHorizontal ? panelSize : null,
                   child: widget.panelContent,
                 ),
               ),
@@ -188,68 +239,26 @@ class _PanelState extends State<Panel> {
 
             // Draggable separator
             Visibility(
-              visible: !panelHidden,
+              visible: !isPanelHidden,
               child: Positioned(
                 left: handleLeft,
                 right: handleRight,
                 top: handleTop,
                 bottom: handleBottom,
                 child: MouseRegion(
-                  cursor: horizontal
+                  cursor: isHorizontal
                       ? SystemMouseCursors.resizeLeftRight
                       : SystemMouseCursors.resizeUpDown,
                   opaque: false,
                   child: Listener(
-                    onPointerDown: (e) {
-                      if (isResizeActive) return;
-                      isResizeActive = true;
-                      resizeActive = true;
-                      startPos = (horizontal ? e.position.dx : e.position.dy);
-                      startSize = panelSize;
-                    },
-                    onPointerUp: (e) {
-                      resizeActive = false;
-                      isResizeActive = false;
-                    },
-                    onPointerCancel: (e) {
-                      resizeActive = false;
-                      isResizeActive = false;
-                    },
-                    onPointerMove: (e) {
-                      if (!resizeActive) return;
-                      final delta =
-                          ((horizontal ? e.position.dx : e.position.dy) -
-                              startPos) *
-                          (panelFirst ? 1 : -1);
-                      setState(() {
-                        final pixelPanelSizeRaw = startSize + delta;
-                        final pixelContentSizeRaw =
-                            (horizontal
-                                ? constraints.maxWidth
-                                : constraints.maxHeight) -
-                            pixelPanelSizeRaw;
-
-                        final pixelContentSizeClamped = pixelContentSizeRaw
-                            .clamp(
-                              widget.contentMinSize,
-                              widget.contentMaxSize,
-                            );
-
-                        pixelPanelSize =
-                            (pixelPanelSizeRaw +
-                                    (pixelContentSizeRaw -
-                                        pixelContentSizeClamped))
-                                .clamp(
-                                  widget.panelMinSize,
-                                  widget.panelMaxSize,
-                                );
-
-                        flexPanelSize = pixelPanelSize / mainAxisSize;
-                      });
-                    },
+                    onPointerDown: (e) => onResizePointerDown(e, panelSize),
+                    onPointerUp: onResizePointerUp,
+                    onPointerCancel: onResizePointerCancel,
+                    onPointerMove: (e) =>
+                        onResizePointerMove(e, constraints, mainAxisSize),
                     child: Container(
-                      width: horizontal ? handleSize : null,
-                      height: !horizontal ? handleSize : null,
+                      width: isHorizontal ? handleSize : null,
+                      height: !isHorizontal ? handleSize : null,
                       // this is not clickable unless it has a color and I have no idea why
                       color: const Color(0x00FFFFFF),
                     ),
