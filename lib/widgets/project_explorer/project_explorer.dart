@@ -21,7 +21,6 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/button_tabs.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
@@ -114,9 +113,11 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
           .toList(),
     );
 
-    return Background(
-      type: BackgroundType.dark,
-      borderRadius: const BorderRadius.all(Radius.circular(4)),
+    return Container(
+      decoration: BoxDecoration(
+        color: AnthemTheme.panel.background,
+        borderRadius: BorderRadius.circular(4),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(6),
         child: Column(

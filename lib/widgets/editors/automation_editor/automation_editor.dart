@@ -19,7 +19,6 @@
 
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
@@ -64,9 +63,11 @@ class AutomationEditorState extends State<AutomationEditor> {
       value: viewModel!,
       child: Provider.value(
         value: controller!,
-        child: const Background(
-          type: BackgroundType.dark,
-          borderRadius: BorderRadius.all(Radius.circular(4)),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AnthemTheme.panel.background,
+            borderRadius: BorderRadius.all(Radius.circular(4)),
+          ),
           child: Padding(
             padding: EdgeInsets.all(6),
             child: Column(

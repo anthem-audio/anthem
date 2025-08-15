@@ -18,7 +18,6 @@
 */
 
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/shortcuts/raw_key_event_singleton.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/material.dart';
@@ -130,7 +129,6 @@ class _AppState extends State<App> with WindowListener {
                 ChangeNotifierProvider(
                   create: (context) => KeyboardModifiers(),
                 ),
-                Provider(create: (context) => BackgroundType.dark),
               ],
               child: ScrollConfiguration(
                 behavior: ScrollConfiguration.of(
