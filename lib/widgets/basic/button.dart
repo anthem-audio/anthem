@@ -31,17 +31,20 @@ class _ButtonColors {
   final Color idle;
   final Color hover;
   final Color press;
+  final Color toggleActive;
 
   const _ButtonColors({
     required this.idle,
     required this.hover,
     required this.press,
+    required this.toggleActive,
   });
 
   const _ButtonColors.all(Color color)
-    : this(idle: color, hover: color, press: color);
+    : this(idle: color, hover: color, press: color, toggleActive: color);
 
-  Color getColor(bool hovered, bool pressed) {
+  Color getColor(bool hovered, bool pressed, bool toggled) {
+    if (toggled) return toggleActive;
     if (pressed) return press;
     if (hovered) return hover;
     return idle;
@@ -52,19 +55,23 @@ class _ButtonGradientColors {
   final (Color, Color) idle;
   final (Color, Color) hover;
   final (Color, Color) press;
+  final (Color, Color) active;
 
   const _ButtonGradientColors({
     required this.idle,
     required this.hover,
     required this.press,
+    required this.active,
   });
 
   _ButtonGradientColors.all((Color, Color) colors)
     : idle = colors,
       hover = colors,
-      press = colors;
+      press = colors,
+      active = colors;
 
-  (Color, Color) getColor(bool hovered, bool pressed) {
+  (Color, Color) getColor(bool hovered, bool pressed, bool toggled) {
+    if (toggled) return active;
     if (pressed) return press;
     if (hovered) return hover;
     return idle;
@@ -86,7 +93,8 @@ class _ButtonTheme {
 const _textColors = _ButtonColors(
   idle: Color(0xFFCFCFCF),
   hover: Color(0xFFEFEFEF),
-  press: Color(0xFF25C29D),
+  press: Color(0xFFAFAFAF),
+  toggleActive: Color(0xFF25C29D),
 );
 
 final _mainTheme = _ButtonTheme(
@@ -94,6 +102,7 @@ final _mainTheme = _ButtonTheme(
     idle: (Color(0xFF5F5F5F), Color(0xFF585858)),
     hover: (Color(0xFF686868), Color(0xFF585858)),
     press: (Color(0xFF4E4E4E), Color(0xFF585858)),
+    active: (Color(0xFF4E4E4E), Color(0xFF585858)),
   ),
   border: const _ButtonColors.all(Color(0xFF2F2F2F)),
   content: _textColors,
@@ -107,6 +116,7 @@ final _labelTheme = _ButtonTheme(
     idle: const Color(0x00000000),
     hover: const Color(0xFF2F2F2F),
     press: const Color(0xFF2F2F2F),
+    toggleActive: const Color(0xFF2F2F2F),
   ),
   content: _textColors,
 );
@@ -115,6 +125,7 @@ final _ghostTheme = _ButtonTheme(
     idle: (Color(0x00000000), Color(0x00000000)),
     hover: (Color(0xFF464646), Color(0xFF464646)),
     press: (Color(0xFF464646), Color(0xFF464646)),
+    active: (Color(0xFF464646), Color(0xFF464646)),
   ),
   border: _ButtonColors.all(const Color(0xFF2F2F2F)),
   content: _textColors,
@@ -138,6 +149,7 @@ class Button extends StatefulWidget {
   final (Color, Color)? backgroundGradient;
   final (Color, Color)? backgroundHoverGradient;
   final (Color, Color)? backgroundPressGradient;
+  final (Color, Color)? backgroundToggleActiveGradient;
   final bool? hideBorder;
   final BorderRadius? borderRadius;
 
@@ -160,6 +172,7 @@ class Button extends StatefulWidget {
     this.backgroundGradient,
     this.backgroundHoverGradient,
     this.backgroundPressGradient,
+    this.backgroundToggleActiveGradient,
     this.hideBorder,
     this.borderRadius,
     this.onPress,
@@ -213,23 +226,34 @@ class _ButtonState extends State<Button> {
         break;
     }
 
-    final toggleState = pressed || (widget.toggleState ?? false);
+    final toggled = (widget.toggleState ?? false);
 
-    var backgroundGradient = theme.background.getColor(hovered, toggleState);
+    var backgroundGradient = theme.background.getColor(
+      hovered,
+      pressed,
+      toggled,
+    );
 
-    if (!hovered && !toggleState && widget.backgroundGradient != null) {
+    if (!hovered && !pressed && !toggled && widget.backgroundGradient != null) {
       backgroundGradient = widget.backgroundGradient!;
     }
 
-    if (hovered && !toggleState && widget.backgroundHoverGradient != null) {
+    if (hovered &&
+        !pressed &&
+        !toggled &&
+        widget.backgroundHoverGradient != null) {
       backgroundGradient = widget.backgroundHoverGradient!;
     }
 
-    if (toggleState && widget.backgroundPressGradient != null) {
+    if (pressed && !toggled && widget.backgroundPressGradient != null) {
       backgroundGradient = widget.backgroundPressGradient!;
     }
 
-    final contentColor = theme.content.getColor(hovered, toggleState);
+    if (toggled && widget.backgroundToggleActiveGradient != null) {
+      backgroundGradient = widget.backgroundToggleActiveGradient!;
+    }
+
+    final contentColor = theme.content.getColor(hovered, pressed, toggled);
 
     Widget? buttonContent;
 
@@ -302,7 +326,9 @@ class _ButtonState extends State<Button> {
             borderRadius: widget.borderRadius ?? BorderRadius.circular(3),
             border: widget.hideBorder == true
                 ? null
-                : Border.all(color: theme.border.getColor(hovered, pressed)),
+                : Border.all(
+                    color: theme.border.getColor(hovered, pressed, toggled),
+                  ),
             gradient: LinearGradient(
               colors: [backgroundGradient.$1, backgroundGradient.$2],
               begin: Alignment.topCenter,
