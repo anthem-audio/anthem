@@ -236,12 +236,14 @@ class _ButtonState extends State<Button> {
     if (widget.contentBuilder != null) {
       buttonContent = widget.contentBuilder!(context, contentColor);
     } else if (widget.text != null) {
-      buttonContent = Text(
-        widget.text!,
-        style: TextStyle(
-          color: contentColor,
-          fontSize: 11,
-          overflow: TextOverflow.ellipsis,
+      buttonContent = Center(
+        child: Text(
+          widget.text!,
+          style: TextStyle(
+            color: contentColor,
+            fontSize: 11,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       );
     } else if (widget.icon != null) {
