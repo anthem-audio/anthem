@@ -334,7 +334,7 @@ class _ProjectMenu extends StatelessWidget {
                   ),
                   AnthemMenuItem(
                     text: 'Print project JSON (engine)',
-                    hint: 'Print the project as JSON as reported by the engine',
+                    hint: 'Print the project JSON as reported by the engine',
                     onSelected: () async {
                       // ignore: avoid_print
                       print(
