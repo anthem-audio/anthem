@@ -284,7 +284,8 @@ class _ButtonState extends State<Button> {
           right: 0,
           bottom: 0,
           child: Transform(
-            transform: Matrix4.rotationZ(pi / 4)..translate(Vector3(8, -4, 0)),
+            transform: Matrix4.rotationZ(pi / 4)
+              ..translateByVector3(Vector3(8, -4, 0)),
             child: Container(
               width: 6 * sqrt2,
               height: 6 * sqrt2,

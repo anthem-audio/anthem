@@ -23,6 +23,7 @@ import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/visualization_builder.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:flutter/widgets.dart';
+import 'package:vector_math/vector_math_64.dart';
 
 const _playheadHandleSize = Size(15, 15);
 
@@ -57,9 +58,9 @@ Path _getPlayheadHandlePath() {
 
   // Build a 4×4 rotation matrix about `center`
   final rotationMatrix = Matrix4.identity()
-    ..translate(center.dx, center.dy)
+    ..translateByVector3(Vector3(center.dx, center.dy, 0))
     ..rotateZ(angle)
-    ..translate(-center.dx, -center.dy);
+    ..translateByVector3(Vector3(-center.dx, -center.dy, 0));
 
   return Path.combine(
     PathOperation.union,
