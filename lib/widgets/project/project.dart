@@ -114,56 +114,32 @@ class _ProjectState extends State<Project> {
                   );
 
                   return Panel(
-                    hidden: !projectModel.isProjectExplorerVisible,
+                    hidden: !projectModel.isDetailViewOpen,
                     orientation: PanelOrientation.left,
                     sizeBehavior: PanelSizeBehavior.pixels,
                     panelStartSize: 200,
                     panelMinSize: 200,
                     // Left side-panel content
-                    panelContent: Stack(
-                      children: [
-                        Positioned.fill(
-                          child: Visibility(
-                            maintainAnimation: false,
-                            maintainInteractivity: false,
-                            maintainSemantics: false,
-                            maintainSize: false,
-                            maintainState: true,
-                            visible: !projectModel.isDetailViewSelected,
-                            child: const ProjectExplorer(),
-                          ),
-                        ),
-                        Positioned.fill(
-                          child: Visibility(
-                            maintainAnimation: false,
-                            maintainInteractivity: false,
-                            maintainSemantics: false,
-                            maintainSize: false,
-                            maintainState: true,
-                            visible: projectModel.isDetailViewSelected,
-                            child: RepaintBoundary(
-                              child: ProjectDetails(
-                                selectedProjectDetails: projectModel
-                                    .getSelectedDetailView(),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                    panelContent: RepaintBoundary(
+                      child: ProjectDetails(
+                        selectedProjectDetails: projectModel
+                            .getSelectedDetailView(),
+                      ),
                     ),
 
                     child: Panel(
-                      hidden: true,
+                      hidden: !projectModel.isProjectExplorerOpen,
                       orientation: PanelOrientation.right,
                       sizeBehavior: PanelSizeBehavior.pixels,
                       panelStartSize: 200,
                       // Right side-panel content
-                      panelContent: Container(color: AnthemTheme.panel.main),
+                      panelContent: const ProjectExplorer(),
 
                       child: Panel(
                         orientation: PanelOrientation.bottom,
                         panelMinSize: 300,
                         contentMinSize: 300,
+                        hidden: viewModel.selectedEditor == null,
                         // Bottom panel content (selected editor)
                         panelContent: RepaintBoundary(child: selectedEditor),
                         child: _PanelOverlay(

@@ -18,13 +18,10 @@
 */
 
 import 'package:anthem/model/project.dart';
-import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/button_tabs.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/hint/hint_display.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/icon.dart';
-import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -36,62 +33,55 @@ class ProjectFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final projectController = Provider.of<ProjectController>(context);
     final projectModel = Provider.of<ProjectModel>(context);
     final viewModel = Provider.of<ProjectViewModel>(context);
 
-    return Container(
-      height: 44,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(4),
-        color: AnthemTheme.panel.main,
-      ),
+    return SizedBox(
+      height: 32,
       child: Padding(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 3),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.max,
           children: [
             Observer(
               builder: (context) {
-                return ButtonTabs(
-                  tabs: [
-                    ButtonTabDef.withIcon(icon: Icons.projectPanel, id: false),
-                    ButtonTabDef.withIcon(icon: Icons.detailEditor, id: true),
-                  ],
-                  selected: projectModel.isDetailViewSelected,
-                  onChange: (selected) {
-                    projectController.setActiveDetailView(selected);
+                return Button(
+                  icon: Icons.browserPanel,
+                  variant: ButtonVariant.label,
+                  toggleState: projectModel.isDetailViewOpen,
+                  onPress: () {
+                    projectModel.isDetailViewOpen =
+                        !projectModel.isDetailViewOpen;
                   },
                 );
               },
             ),
-            // Button(
-            //   startIcon: Icons.projectPanel,
-            //   toggleState: state.isProjectExplorerVisible,
-            //   onPress: () => projectCubit.setIsProjectExplorerVisible(
-            //     !state.isProjectExplorerVisible,
-            //   ),
-            // ),
-            const SizedBox(width: 8),
-            ButtonTabs(
-              // selected: ProjectLayoutKind.arrange,
-              tabs: [
-                ButtonTabDef.withText(
-                  text: 'ARRANGE',
-                  id: ProjectLayoutKind.arrange,
-                ),
-                ButtonTabDef.withText(text: 'EDIT', id: ProjectLayoutKind.edit),
-                ButtonTabDef.withText(text: 'MIX', id: ProjectLayoutKind.mix),
-              ],
+            const SizedBox(width: 6),
+            _Separator(),
+            Button(
+              variant: ButtonVariant.label,
+              text: 'ARRANGE',
+              toggleState: true,
+              contentPadding: EdgeInsets.symmetric(horizontal: 8),
             ),
-            const SizedBox(width: 8),
+            Button(
+              variant: ButtonVariant.label,
+              text: 'EDIT',
+              contentPadding: EdgeInsets.symmetric(horizontal: 8),
+            ),
+            Button(
+              variant: ButtonVariant.label,
+              text: 'MIX',
+              contentPadding: EdgeInsets.symmetric(horizontal: 8),
+            ),
+            _Separator(),
+            const SizedBox(width: 6),
             Observer(
               builder: (context) {
                 return Button(
+                  variant: ButtonVariant.label,
                   icon: Icons.patternEditor,
-                  width: 32,
-                  height: 32,
                   toggleState: projectModel.isPatternEditorVisible,
                   onPress: () => projectModel.isPatternEditorVisible =
                       !projectModel.isPatternEditorVisible,
@@ -101,42 +91,111 @@ class ProjectFooter extends StatelessWidget {
                 );
               },
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
+            _Separator(),
+            const SizedBox(width: 6),
+
             Observer(
               builder: (context) {
-                return ButtonTabs(
-                  selected: viewModel.selectedEditor,
-                  onChange: (editorKind) {
-                    viewModel.selectedEditor = editorKind;
+                return Button(
+                  variant: ButtonVariant.label,
+                  icon: Icons.detailEditor,
+                  toggleState: viewModel.selectedEditor == EditorKind.detail,
+                  onPress: () {
+                    if (viewModel.selectedEditor == EditorKind.detail) {
+                      viewModel.selectedEditor = null;
+                    } else {
+                      viewModel.selectedEditor = EditorKind.detail;
+                    }
                   },
-                  tabs: [
-                    ButtonTabDef.withIcon(
-                      icon: Icons.detailEditor,
-                      id: EditorKind.detail,
-                    ),
-                    ButtonTabDef.withIcon(
-                      icon: Icons.automation,
-                      id: EditorKind.automation,
-                    ),
-                    ButtonTabDef.withIcon(
-                      icon: Icons.channelRack,
-                      id: EditorKind.channelRack,
-                    ),
-                    ButtonTabDef.withIcon(
-                      icon: Icons.mixer,
-                      id: EditorKind.mixer,
-                    ),
-                  ],
                 );
               },
             ),
-            const Expanded(child: SizedBox()),
+            const SizedBox(width: 6),
+            Observer(
+              builder: (context) {
+                return Button(
+                  variant: ButtonVariant.label,
+                  icon: Icons.automationEditor,
+                  toggleState:
+                      viewModel.selectedEditor == EditorKind.automation,
+                  onPress: () {
+                    if (viewModel.selectedEditor == EditorKind.automation) {
+                      viewModel.selectedEditor = null;
+                    } else {
+                      viewModel.selectedEditor = EditorKind.automation;
+                    }
+                  },
+                );
+              },
+            ),
+            const SizedBox(width: 6),
+            Observer(
+              builder: (context) {
+                return Button(
+                  variant: ButtonVariant.label,
+                  icon: Icons.channelRack,
+                  toggleState:
+                      viewModel.selectedEditor == EditorKind.channelRack,
+                  onPress: () {
+                    if (viewModel.selectedEditor == EditorKind.channelRack) {
+                      viewModel.selectedEditor = null;
+                    } else {
+                      viewModel.selectedEditor = EditorKind.channelRack;
+                    }
+                  },
+                );
+              },
+            ),
+            const SizedBox(width: 6),
+            Observer(
+              builder: (context) {
+                return Button(
+                  variant: ButtonVariant.label,
+                  icon: Icons.mixer,
+                  toggleState: viewModel.selectedEditor == EditorKind.mixer,
+                  onPress: () {
+                    if (viewModel.selectedEditor == EditorKind.mixer) {
+                      viewModel.selectedEditor = null;
+                    } else {
+                      viewModel.selectedEditor = EditorKind.mixer;
+                    }
+                  },
+                );
+              },
+            ),
+            const SizedBox(width: 6),
+            _Separator(),
+            const SizedBox(width: 6),
             HintDisplay(),
-            const SizedBox(width: 8),
-            Button(icon: Icons.automationMatrixPanel, width: 32, height: 32),
+
+            const Expanded(child: SizedBox()),
+            Observer(
+              builder: (context) {
+                return Button(
+                  icon: Icons.browserPanel,
+                  variant: ButtonVariant.label,
+                  toggleState: projectModel.isProjectExplorerOpen,
+                  onPress: () {
+                    projectModel.isProjectExplorerOpen =
+                        !projectModel.isProjectExplorerOpen;
+                  },
+                );
+              },
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _Separator extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Container(color: const Color(0xFF5E5E5E), width: 2, height: 24),
     );
   }
 }

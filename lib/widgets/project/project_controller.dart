@@ -58,8 +58,10 @@ class ProjectController {
   }
 
   void setActiveDetailView(bool isVisible, [DetailViewKind? detailView]) {
-    project.setSelectedDetailView(detailView);
-    project.isDetailViewSelected = isVisible;
+    if (detailView != null) {
+      project.setSelectedDetailView(detailView);
+    }
+    project.isDetailViewOpen = isVisible;
   }
 
   void setActiveGeneratorID(Id id) {

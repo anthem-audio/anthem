@@ -79,7 +79,7 @@ class _PatternPickerState extends State<PatternPicker> {
                           id: PatternFilterKind.audio,
                         ),
                         ButtonTabDef.withIcon(
-                          icon: Icons.automation,
+                          icon: Icons.automationEditor,
                           id: PatternFilterKind.automation,
                         ),
                       ],
