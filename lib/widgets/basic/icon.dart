@@ -62,6 +62,9 @@ class Icons {
   static IconDef patternEditor = const IconDef(
     'assets/icons_old/bottom_bar/pattern_editor.svg',
   );
+  static IconDef pianoRollAttributes = const IconDef(
+    'assets/icons/note_editor/control.svg',
+  );
   static IconDef play = const IconDef('assets/icons/main_toolbar/play.svg');
   static IconDef plugin = const IconDef('assets/icons_old/plugin.svg');
   static IconDef projectPanel = const IconDef(

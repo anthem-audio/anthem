@@ -23,6 +23,7 @@ import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
 import 'package:anthem/widgets/editors/piano_roll/attribute_editor_controller.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
@@ -61,7 +62,6 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final project = Provider.of<ProjectModel>(context);
     final viewModel = Provider.of<PianoRollViewModel>(context);
 
     return Row(
@@ -70,7 +70,6 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
           child: Container(
             decoration: BoxDecoration(
               border: Border.all(color: AnthemTheme.panel.border),
-              borderRadius: const BorderRadius.all(Radius.circular(4)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -113,68 +112,107 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
                 ),
                 Container(width: 1, color: AnthemTheme.panel.border),
                 Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      AttributeEditorPointerEvent createEditorPointerEvent(
-                        PointerEvent rawEvent,
-                      ) {
-                        return AttributeEditorPointerEvent(
-                          offset: pixelsToTime(
-                            timeViewStart: viewModel.timeView.start,
-                            timeViewEnd: viewModel.timeView.end,
-                            viewPixelWidth: constraints.maxWidth,
-                            pixelOffsetFromLeft: rawEvent.localPosition.dx,
-                          ),
-                          normalizedY:
-                              (1 -
-                                      (rawEvent.localPosition.dy /
-                                          constraints.maxHeight))
-                                  .clamp(0, 1),
-                          viewSize: constraints.biggest,
-                        );
-                      }
-
-                      return Listener(
-                        onPointerDown: (e) {
-                          controller.pointerDown(createEditorPointerEvent(e));
-                        },
-                        onPointerMove: (e) {
-                          controller.pointerMove(createEditorPointerEvent(e));
-                        },
-                        onPointerUp: (e) {
-                          controller.pointerUp(createEditorPointerEvent(e));
-                        },
-                        onPointerCancel: (e) {
-                          controller.pointerUp(createEditorPointerEvent(e));
-                        },
-                        child: AnimatedBuilder(
-                          animation: widget.timeViewAnimationController,
-                          builder: (context, child) {
-                            return ClipRect(
-                              child: CustomPaintObserver(
-                                painterBuilder: () => PianoRollAttributePainter(
-                                  viewModel: viewModel,
-                                  project: project,
-                                  timeViewStart:
-                                      widget.timeViewStartAnimation.value,
-                                  timeViewEnd:
-                                      widget.timeViewEndAnimation.value,
-                                ),
-                              ),
-                            );
-                          },
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: _AttributeRenderArea(
+                          timeViewAnimationController:
+                              widget.timeViewAnimationController,
+                          timeViewStartAnimation: widget.timeViewStartAnimation,
+                          timeViewEndAnimation: widget.timeViewEndAnimation,
+                          controller: controller,
                         ),
-                      );
-                    },
+                      ),
+                      // If the attribute editor is open, then it should always
+                      // show the scrollbar, since it's the item on the bottom
+                      // of the view
+                      PianoRollHorizontalScrollbar(),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
         ),
-        const SizedBox(width: 4),
         const SizedBox(width: 17),
       ],
+    );
+  }
+}
+
+class _AttributeRenderArea extends StatelessWidget {
+  final AnimationController timeViewAnimationController;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
+  final AttributeEditorController controller;
+
+  const _AttributeRenderArea({
+    required this.timeViewAnimationController,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+    required this.controller,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = Provider.of<PianoRollViewModel>(context);
+    final project = Provider.of<ProjectModel>(context);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        AttributeEditorPointerEvent createEditorPointerEvent(
+          PointerEvent rawEvent,
+        ) {
+          return AttributeEditorPointerEvent(
+            offset: pixelsToTime(
+              timeViewStart: viewModel.timeView.start,
+              timeViewEnd: viewModel.timeView.end,
+              viewPixelWidth: constraints.maxWidth,
+              pixelOffsetFromLeft: rawEvent.localPosition.dx,
+            ),
+            normalizedY:
+                (1 - (rawEvent.localPosition.dy / constraints.maxHeight)).clamp(
+                  0,
+                  1,
+                ),
+            viewSize: constraints.biggest,
+          );
+        }
+
+        return SizedBox(
+          width: constraints.maxWidth,
+          height: constraints.maxHeight,
+          child: Listener(
+            onPointerDown: (e) {
+              controller.pointerDown(createEditorPointerEvent(e));
+            },
+            onPointerMove: (e) {
+              controller.pointerMove(createEditorPointerEvent(e));
+            },
+            onPointerUp: (e) {
+              controller.pointerUp(createEditorPointerEvent(e));
+            },
+            onPointerCancel: (e) {
+              controller.pointerUp(createEditorPointerEvent(e));
+            },
+            child: AnimatedBuilder(
+              animation: timeViewAnimationController,
+              builder: (context, child) {
+                return ClipRect(
+                  child: CustomPaintObserver(
+                    painterBuilder: () => PianoRollAttributePainter(
+                      viewModel: viewModel,
+                      project: project,
+                      timeViewStart: timeViewStartAnimation.value,
+                      timeViewEnd: timeViewEndAnimation.value,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }
