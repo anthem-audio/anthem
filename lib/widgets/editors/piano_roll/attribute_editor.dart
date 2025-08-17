@@ -69,7 +69,11 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              border: Border.all(color: AnthemTheme.panel.border),
+              border: Border(
+                top: BorderSide(color: AnthemTheme.panel.border),
+                right: BorderSide(color: AnthemTheme.panel.border),
+                bottom: BorderSide(color: AnthemTheme.panel.border),
+              ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -134,7 +138,14 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
             ),
           ),
         ),
-        const SizedBox(width: 17),
+        Container(
+          width: 15,
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(width: 1, color: AnthemTheme.panel.border),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -179,7 +190,8 @@ class _AttributeRenderArea extends StatelessWidget {
           );
         }
 
-        return SizedBox(
+        return Container(
+          color: AnthemTheme.grid.backgroundLight,
           width: constraints.maxWidth,
           height: constraints.maxHeight,
           child: Listener(
@@ -200,7 +212,7 @@ class _AttributeRenderArea extends StatelessWidget {
               builder: (context, child) {
                 return ClipRect(
                   child: CustomPaintObserver(
-                    painterBuilder: () => PianoRollAttributePainter(
+                    painterBuilder: () => _PianoRollAttributePainter(
                       viewModel: viewModel,
                       project: project,
                       timeViewStart: timeViewStartAnimation.value,
@@ -217,13 +229,13 @@ class _AttributeRenderArea extends StatelessWidget {
   }
 }
 
-class PianoRollAttributePainter extends CustomPainterObserver {
+class _PianoRollAttributePainter extends CustomPainterObserver {
   PianoRollViewModel viewModel;
   ProjectModel project;
   double timeViewStart;
   double timeViewEnd;
 
-  PianoRollAttributePainter({
+  _PianoRollAttributePainter({
     required this.viewModel,
     required this.project,
     required this.timeViewStart,
