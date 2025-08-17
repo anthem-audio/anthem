@@ -34,14 +34,20 @@ class LiveEventManager {
     required double velocity,
     required double pan,
   }) {
-    generator.project.engine.processingGraphApi.sendLiveEvent(
+    final project = generator.project;
+    if (!project.engine.isRunning) return;
+
+    project.engine.processingGraphApi.sendLiveEvent(
       generator.liveEventProviderNodeId!,
       LiveEventRequestNoteOnEvent(pitch: pitch, velocity: velocity, pan: pan),
     );
   }
 
   void noteOff({required int pitch}) {
-    generator.project.engine.processingGraphApi.sendLiveEvent(
+    final project = generator.project;
+    if (!project.engine.isRunning) return;
+
+    project.engine.processingGraphApi.sendLiveEvent(
       generator.liveEventProviderNodeId!,
       LiveEventRequestNoteOffEvent(pitch: pitch),
     );
