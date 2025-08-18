@@ -17,10 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/color_shifter.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
 import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
@@ -115,6 +117,8 @@ class PianoRollPainter extends CustomPainterObserver {
   ) {
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
+    final colorShifter = AnthemColorShifter(166);
+
     for (final note in notes) {
       final keyHeight = viewModel.keyHeight;
       final key = note.key;
@@ -150,25 +154,23 @@ class PianoRollPainter extends CustomPainterObserver {
       final isSelected = viewModel.selectedNotes.contains(note.id);
       final isHovered = viewModel.hoveredNote == note.id;
 
-      var saturation = isPressed
-          ? 0.6
-          : isSelected
-          ? 0.37
-          : 0.46;
-
-      var lightness = isPressed
-          ? 0.22
-          : isSelected
-          ? 0.37
-          : 0.31;
-
+      var color = colorShifter.noteBase;
       if (isHovered && !isPressed) {
-        saturation -= 0.06;
-        lightness += 0.04;
+        color = colorShifter.noteHovered;
+      } else if (isPressed) {
+        color = colorShifter.notePressed;
       }
 
-      final color = HSLColor.fromAHSL(1, 166, saturation, lightness).toColor();
-      final borderColor = const HSLColor.fromAHSL(1, 166, 0.35, 0.45).toColor();
+      var borderColor = colorShifter.noteBase;
+      if (isSelected) {
+        borderColor = colorShifter.noteSelectedBorder;
+        color = colorShifter.noteSelected;
+        if (isPressed) {
+          color = colorShifter.notePressed;
+        } else if (isHovered) {
+          color = colorShifter.noteBase; // Looks better with the select border
+        }
+      }
 
       final rect = RRect.fromRectAndRadius(
         Rect.fromLTWH(x, y, width, height),
@@ -202,12 +204,7 @@ class PianoRollPainter extends CustomPainterObserver {
         final cachedLabel = noteLabelImageCache.get(key);
         if (cachedLabel == null) return;
 
-        final textColor = HSLColor.fromAHSL(
-          1,
-          166,
-          (saturation * 0.6).clamp(0, 1),
-          (lightness * 2).clamp(0, 1),
-        ).toColor();
+        final textColor = white;
 
         final textX = x + 5;
         final textY = y + (keyHeight - noteLabelHeight) * 0.5 - 1;

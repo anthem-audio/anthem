@@ -33,6 +33,13 @@ class AnthemColorShifter {
   late final Color subtle;
   late final Color subtleBorder;
 
+  // For piano roll
+  late final Color noteBase;
+  late final Color noteHovered;
+  late final Color notePressed;
+  late final Color noteSelectedBorder;
+  late final Color noteSelected;
+
   AnthemColorShifter(this.hue) {
     const baseDartUiColorNoShift = Color(0xFF28D1AA);
     final baseColorNoShift = baseDartUiColorNoShift.toOkHsl();
@@ -41,5 +48,17 @@ class AnthemColorShifter {
     main = okBaseColor.toColor();
     subtle = main.withValues(alpha: 0.11);
     subtleBorder = main.withValues(alpha: 0.38);
+
+    final okNoteBase = okBaseColor.darker(0.33).desaturate(0.36);
+    final okNoteHovered = okNoteBase.lighter(0.2);
+    final okNotePressed = okNoteBase.darker(0.2);
+    final okNoteSelectedBorder = okNoteBase.lighter(0.35).saturate(0.1);
+    final okNoteSelected = okNoteBase.darker(0.15).desaturate(0.1);
+
+    noteBase = okNoteBase.toColor();
+    noteHovered = okNoteHovered.toColor();
+    notePressed = okNotePressed.toColor();
+    noteSelectedBorder = okNoteSelectedBorder.toColor();
+    noteSelected = okNoteSelected.toColor();
   }
 }
