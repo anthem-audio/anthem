@@ -19,14 +19,17 @@
 
 // ignore_for_file: library_private_types_in_public_api
 
+import 'package:anthem/color_shifter.dart';
 import 'package:flutter/widgets.dart';
 
 const white = Color(0xFFFFFFFF);
 const black = Color(0xFF000000);
 
 class AnthemTheme {
+  static final colorShifter = AnthemColorShifter(166);
+
   static _Panel panel = _Panel();
-  static _Primary primary = _Primary();
+  static _Primary primary = _Primary(colorShifter);
   static _Control control = _Control();
   static _Text text = _Text();
   static _Grid grid = _Grid();
@@ -40,9 +43,13 @@ class _Panel {
 }
 
 class _Primary {
-  Color main = const Color(0xFF28D1AA);
-  Color subtle = const Color(0xFF20A888).withValues(alpha: 0.11);
-  Color subtleBorder = const Color(0xFF25C29D).withValues(alpha: 0.38);
+  final AnthemColorShifter colorShifter;
+
+  _Primary(this.colorShifter);
+
+  Color get main => colorShifter.main;
+  Color get subtle => colorShifter.subtle;
+  Color get subtleBorder => colorShifter.subtleBorder;
 }
 
 class _Control {
@@ -80,7 +87,7 @@ class _ByBackgroundType {
 // For grid lines in editors
 class _Grid {
   Color minor = const Color(0xFF3E3E3E);
-  Color major = const Color(0xFF2E2E2E);
+  Color major = const Color(0xFF353535);
   Color accent = const Color(0xFF1A1A1A);
   Color backgroundLight = const Color(0xFF494949);
   Color backgroundDark = const Color(0xFF434343);
