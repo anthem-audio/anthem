@@ -18,6 +18,7 @@
 */
 
 import 'dart:math';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:vector_math/vector_math_64.dart';
 
@@ -90,11 +91,11 @@ class _ButtonTheme {
   });
 }
 
-const _textColors = _ButtonColors(
+final _textColors = _ButtonColors(
   idle: Color(0xFFCFCFCF),
   hover: Color(0xFFEFEFEF),
   press: Color(0xFFAFAFAF),
-  toggleActive: Color(0xFF25C29D),
+  toggleActive: AnthemTheme.primary.main,
 );
 
 final _mainTheme = _ButtonTheme(
