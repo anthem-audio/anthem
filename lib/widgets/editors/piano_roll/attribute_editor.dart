@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/color_shifter.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
@@ -246,16 +247,17 @@ class _PianoRollAttributePainter extends CustomPainterObserver {
   void observablePaint(Canvas canvas, Size size) {
     final minorLinePaint = Paint()..color = AnthemTheme.grid.minor;
 
-    const selectedNoteColor = HSLColor.fromAHSL(1, 166, 0.37, 0.37);
-    const noteColor = HSLColor.fromAHSL(1, 166, 0.46, 0.31);
-    const selectedNoteCircleColor = HSLColor.fromAHSL(1, 166, 0.41, 0.25);
-    const noteCircleColor = HSLColor.fromAHSL(1, 166, 0.51, 0.23);
+    final colorShifter = AnthemColorShifter(166);
 
-    final selectedNotePaint = Paint()..color = selectedNoteColor.toColor();
-    final notePaint = Paint()..color = noteColor.toColor();
-    final selectedNoteCirclePaint = Paint()
-      ..color = selectedNoteCircleColor.toColor();
-    final noteCirclePaint = Paint()..color = noteCircleColor.toColor();
+    final selectedNoteColor = colorShifter.noteHovered;
+    final noteColor = colorShifter.noteBase;
+    final selectedNoteCircleColor = colorShifter.noteBase;
+    final noteCircleColor = colorShifter.noteSelected;
+
+    final selectedNotePaint = Paint()..color = selectedNoteColor;
+    final notePaint = Paint()..color = noteColor;
+    final selectedNoteCirclePaint = Paint()..color = selectedNoteCircleColor;
+    final noteCirclePaint = Paint()..color = noteCircleColor;
 
     final activePattern =
         project.sequence.patterns[project.sequence.activePatternID];
