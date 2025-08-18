@@ -483,6 +483,10 @@ class _PianoRollContentState extends State<_PianoRollContent>
                           child: Column(
                             children: [
                               Expanded(child: noteRenderArea),
+                              Container(
+                                height: 1,
+                                color: AnthemTheme.panel.border,
+                              ),
                               // The scrollbar is always inset in the bottom. If
                               // the note attribute editor is open, it will be
                               // rendered in there; otherwise, it will be
@@ -498,7 +502,31 @@ class _PianoRollContentState extends State<_PianoRollContent>
                 ],
               ),
             ),
-            PianoRollVerticalScrollbar(),
+            Container(
+              width: 17,
+              decoration: BoxDecoration(
+                border: Border(
+                  left: BorderSide(color: AnthemTheme.panel.border),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    height: 38,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: AnthemTheme.panel.border),
+                        bottom: BorderSide(color: AnthemTheme.panel.border),
+                      ),
+                    ),
+                  ),
+                  Expanded(child: PianoRollVerticalScrollbar()),
+                  if (viewModel.noteAttributeEditorOpen)
+                    Container(height: 1, color: AnthemTheme.panel.border),
+                ],
+              ),
+            ),
           ],
         ),
       ),

@@ -73,7 +73,6 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
               border: Border(
                 top: BorderSide(color: AnthemTheme.panel.border),
                 right: BorderSide(color: AnthemTheme.panel.border),
-                bottom: BorderSide(color: AnthemTheme.panel.border),
               ),
             ),
             child: Row(
@@ -131,6 +130,7 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
                       // If the attribute editor is open, then it should always
                       // show the scrollbar, since it's the item on the bottom
                       // of the view
+                      Container(height: 1, color: AnthemTheme.panel.border),
                       PianoRollHorizontalScrollbar(),
                     ],
                   ),
@@ -140,7 +140,7 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
           ),
         ),
         Container(
-          width: 15,
+          width: 16,
           decoration: BoxDecoration(
             border: Border(
               top: BorderSide(width: 1, color: AnthemTheme.panel.border),

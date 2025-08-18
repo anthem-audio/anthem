@@ -40,6 +40,10 @@ class _Panel {
   Color background = const Color(0XFF3F3F3F);
   Color main = const Color(0XFF4F4F4F);
   Color accent = const Color(0XFF585858);
+
+  Color scrollbar = const Color(0xFF8C8C8C);
+  Color scrollbarHover = const Color(0xFFA3A3A3);
+  Color scrollbarPress = const Color(0xFF787878);
 }
 
 class _Primary {
