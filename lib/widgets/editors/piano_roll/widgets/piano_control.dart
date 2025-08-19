@@ -297,7 +297,7 @@ class _WhiteKey extends StatelessWidget {
     return Container(
       height: widgetHeight - 1,
       decoration: BoxDecoration(
-        borderRadius: const BorderRadius.horizontal(right: Radius.circular(1)),
+        borderRadius: const BorderRadius.all(Radius.circular(1)),
         color: _whiteKeyColor.withValues(alpha: opacity),
       ),
       child: showKeyText
@@ -332,7 +332,7 @@ class _BlackKey extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.horizontal(right: Radius.circular(4)),
+        borderRadius: BorderRadius.horizontal(right: Radius.circular(1)),
         border: Border.all(width: 1, color: _keyBorderColor),
         color: _blackKeyColor,
       ),
