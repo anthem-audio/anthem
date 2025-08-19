@@ -49,7 +49,7 @@ class TimelinePainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     final markerPaint = Paint()
-      ..color = AnthemTheme.grid.minor
+      ..color = const Color(0xFF696969)
       ..style = PaintingStyle.fill;
 
     canvas.drawRect(
@@ -159,7 +159,7 @@ class TimelinePainter extends CustomPainter {
           // Bar number
           TextSpan span = TextSpan(
             style: TextStyle(
-              color: AnthemTheme.text.main,
+              color: const Color(0xFFB4B4B4),
               fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
