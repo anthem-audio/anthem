@@ -171,7 +171,7 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
 
         canvas.drawRect(
           Rect.fromLTWH(0, y - keyHeight, size.width, keyHeight),
-          Paint()..color = Color(isBlackKey ? 0x0EFFFFFF : 0x07FFFFFF),
+          Paint()..color = Color(isBlackKey ? 0x16FFFFFF : 0x10FFFFFF),
         );
       }
     }
