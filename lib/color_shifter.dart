@@ -49,7 +49,7 @@ class AnthemColorShifter {
     subtle = main.withValues(alpha: 0.11);
     subtleBorder = main.withValues(alpha: 0.38);
 
-    final okNoteBase = okBaseColor.darker(0.33).desaturate(0.36);
+    final okNoteBase = okBaseColor.darker(0.33).desaturate(0.17);
     final okNoteHovered = okNoteBase.lighter(0.2);
     final okNotePressed = okNoteBase.darker(0.2);
     final okNoteSelectedBorder = okNoteBase.lighter(0.35).saturate(0.1);
