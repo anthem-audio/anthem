@@ -319,11 +319,15 @@ class _PianoRollContentState extends State<_PianoRollContent>
       child: AnimatedBuilder(
         animation: keyValueAtTopAnimationHelper!.animationController,
         builder: (context, child) {
-          return PianoControl(
-            keyValueAtTop: keyValueAtTopAnimItem.animation.value,
-            keyHeight: viewModel.keyHeight,
-            setKeyValueAtTop: (value) {
-              viewModel.keyValueAtTop = value;
+          return Observer(
+            builder: (context) {
+              return PianoControl(
+                keyValueAtTop: keyValueAtTopAnimItem.animation.value,
+                keyHeight: viewModel.keyHeight,
+                setKeyValueAtTop: (value) {
+                  viewModel.keyValueAtTop = value;
+                },
+              );
             },
           );
         },
