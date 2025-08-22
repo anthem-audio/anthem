@@ -268,6 +268,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
         LazyFollowItem(
           initialValue: 0,
           getTarget: () => viewModel.keyValueAtTop,
+          getShouldSnap: () => viewModel.keyValueAtTopAnimationShouldSnap,
         ),
       ],
     );

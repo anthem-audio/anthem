@@ -55,8 +55,14 @@ class LazyFollowAnimationHelper {
       return (item: item, target: target);
     }).toList();
 
-    for (final (:item, target: _) in itemsToUpdate) {
-      item.tween.begin = item.animation.value;
+    for (final (:item, :target) in itemsToUpdate) {
+      final shouldSnap = item.getShouldSnap?.call() ?? false;
+
+      if (shouldSnap) {
+        item.tween.begin = target;
+      } else {
+        item.tween.begin = item.animation.value;
+      }
     }
 
     animationController.reset();
@@ -79,6 +85,7 @@ class LazyFollowAnimationHelper {
 
 class LazyFollowItem {
   final double Function()? getTarget;
+  final bool Function()? getShouldSnap;
 
   double mostRecentValue;
   double target;
@@ -97,9 +104,12 @@ class LazyFollowItem {
     );
   }
 
-  LazyFollowItem({required double initialValue, this.getTarget})
-    : mostRecentValue = initialValue,
-      target = initialValue;
+  LazyFollowItem({
+    required double initialValue,
+    this.getTarget,
+    this.getShouldSnap,
+  }) : mostRecentValue = initialValue,
+       target = initialValue;
 
   void snapTo(double value) {
     tween.begin = value;

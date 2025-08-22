@@ -48,6 +48,8 @@ class EditorScrollManager extends StatefulWidget {
   final void Function(double pointerY)? onVerticalPanStart;
   final void Function(double pointerY)? onVerticalPanMove;
 
+  final void Function(double pointerY, double delta)? onVerticalZoom;
+
   const EditorScrollManager({
     super.key,
     this.child,
@@ -55,6 +57,7 @@ class EditorScrollManager extends StatefulWidget {
     this.onVerticalScrollChange,
     this.onVerticalPanStart,
     this.onVerticalPanMove,
+    this.onVerticalZoom,
   });
 
   @override
@@ -70,9 +73,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
           handleScroll(event);
         }
       },
-      onPointerPanZoomUpdate: (PointerPanZoomUpdateEvent event) {
-        handlePanZoomUpdate(event);
-      },
+      onPointerPanZoomUpdate: handlePanZoomUpdate,
       onPointerDown: (event) {
         final contentRenderBox = context.findRenderObject() as RenderBox;
         final pointerPos = contentRenderBox.globalToLocal(event.position);
@@ -152,7 +153,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
     final modifiers = Provider.of<KeyboardModifiers>(context, listen: false);
     final contentRenderBox = context.findRenderObject() as RenderBox;
 
-    // Zoom
+    // Horizontal zoom
     if (modifiers.ctrl) {
       final pointerPos = contentRenderBox.globalToLocal(e.position);
 
@@ -162,6 +163,15 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
         mouseX: pointerPos.dx,
         editorWidth: contentRenderBox.size.width,
       );
+
+      return;
+    }
+
+    // Vertical zoom
+    if (modifiers.alt) {
+      final pointerPos = contentRenderBox.globalToLocal(e.position);
+
+      widget.onVerticalZoom?.call(pointerPos.dy, -delta * 0.005);
 
       return;
     }
@@ -192,13 +202,37 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
     widget.onVerticalScrollChange?.call(delta);
   }
 
-  void handlePanZoomUpdate(PointerPanZoomUpdateEvent event) {
-    if (event.scale != 1) return;
+  void handlePanZoomUpdate(PointerPanZoomUpdateEvent e) {
+    if (e.scale != 1) return;
 
+    final modifiers = Provider.of<KeyboardModifiers>(context, listen: false);
     final contentRenderBox = context.findRenderObject() as RenderBox;
+
+    if (modifiers.ctrl) {
+      final pointerPos = contentRenderBox.globalToLocal(e.position);
+
+      // Horizontal zoom
+      zoomTimeView(
+        timeView: widget.timeView,
+        delta: -e.localPanDelta.dy * 0.8,
+        mouseX: pointerPos.dx,
+        editorWidth: contentRenderBox.size.width,
+      );
+
+      return;
+    }
+
+    if (modifiers.alt) {
+      final pointerPos = contentRenderBox.globalToLocal(e.position);
+
+      widget.onVerticalZoom?.call(pointerPos.dy, -e.localPanDelta.dy * 0.01);
+
+      return;
+    }
+
     final ticksPerPixel = widget.timeView.width / contentRenderBox.size.width;
 
-    final horizontalDelta = event.localPanDelta.dx;
+    final horizontalDelta = e.localPanDelta.dx;
 
     var horizontalDeltaTicks = -horizontalDelta * ticksPerPixel;
 
@@ -210,6 +244,6 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
     widget.timeView.end += horizontalDeltaTicks;
 
     // 1.5 feels right here
-    widget.onVerticalScrollChange?.call(-event.localPanDelta.dy * 1.5);
+    widget.onVerticalScrollChange?.call(-e.localPanDelta.dy * 1.5);
   }
 }

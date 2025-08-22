@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/events.dart';
@@ -192,6 +194,44 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
                           (boxConstraints.maxHeight / viewModel.keyHeight),
                       maxKeyValue,
                     );
+              },
+              onVerticalZoom: (pointerY, delta) {
+                final viewHeight = boxConstraints.maxHeight;
+
+                // Current state
+                final oldKeyHeight = viewModel.keyHeight;
+                final oldTop = viewModel.keyValueAtTop;
+
+                // Key under the pointer before zoom
+                final keyAtPointerBefore = oldTop - (pointerY / oldKeyHeight);
+
+                // Compute new key height
+                final keyHeightLog = log(oldKeyHeight);
+                final newKeyHeight = exp(keyHeightLog + delta * 0.4);
+
+                // Apply clamped key height
+                viewModel.keyHeight = clampDouble(
+                  newKeyHeight,
+                  minKeyHeight,
+                  maxKeyHeight,
+                );
+
+                final h = viewModel.keyHeight;
+                if (h == oldKeyHeight) return;
+
+                // Compute the new top so that the same key stays under the pointer
+                final newTopUnclamped = keyAtPointerBefore + (pointerY / h);
+
+                // Clamp top so the bottom doesn't go past min and the top past max
+                final minTop = minKeyValue + (viewHeight / h);
+                final maxTop = maxKeyValue;
+
+                viewModel.keyValueAtTop = clampDouble(
+                  newTopUnclamped,
+                  minTop,
+                  maxTop,
+                );
+                viewModel.keyValueAtTopAnimationShouldSnap = true;
               },
               child: Listener(
                 onPointerDown: (e) {
