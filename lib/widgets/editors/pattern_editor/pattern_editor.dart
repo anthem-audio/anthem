@@ -68,10 +68,7 @@ class _PatternEditorState extends State<PatternEditor> {
         },
         child: SizeChangedLayoutNotifier(
           child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              color: AnthemTheme.panel.main,
-            ),
+            decoration: BoxDecoration(color: AnthemTheme.panel.background),
             child: Padding(
               padding: const EdgeInsets.all(6.0),
               child: Column(
@@ -142,7 +139,7 @@ class _PatternEditorState extends State<PatternEditor> {
                               borderRadius: const BorderRadius.all(
                                 Radius.circular(2),
                               ),
-                              color: AnthemTheme.panel.background,
+                              color: AnthemTheme.panel.main,
                             ),
                             child: SingleChildScrollView(
                               controller: verticalScrollController,

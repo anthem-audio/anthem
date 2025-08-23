@@ -44,10 +44,7 @@ class Section extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: AnthemTheme.panel.main,
-        borderRadius: BorderRadius.circular(4),
-      ),
+      decoration: BoxDecoration(color: AnthemTheme.panel.background),
       padding: const EdgeInsets.all(6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

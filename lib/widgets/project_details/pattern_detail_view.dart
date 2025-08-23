@@ -78,10 +78,7 @@ class PatternDetailView extends StatelessObserverWidget {
         const SizedBox(height: 3),
         Expanded(
           child: Container(
-            decoration: BoxDecoration(
-              color: AnthemTheme.panel.main,
-              borderRadius: BorderRadius.circular(4),
-            ),
+            decoration: BoxDecoration(color: AnthemTheme.panel.background),
           ),
         ),
       ],
