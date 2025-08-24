@@ -368,7 +368,6 @@ class _ProjectMenu extends StatelessWidget {
       child: Button(
         icon: Icons.hamburger,
         width: 24,
-        showMenuIndicator: true,
         onPress: () {
           menuController.open();
         },
