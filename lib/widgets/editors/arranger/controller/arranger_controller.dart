@@ -88,7 +88,7 @@ abstract class _ArrangerController {
   }
 
   /// We need to snap the vertical scroll position animation when this happens.
-  final onBaseTrackHeightChanged = StreamController<void>();
+  final onBaseTrackHeightChanged = StreamController<void>.broadcast();
 
   void deleteSelected() {
     if (viewModel.selectedClips.isEmpty ||
