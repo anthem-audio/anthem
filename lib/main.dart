@@ -56,8 +56,13 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> with WindowListener {
+  bool isMaximized = false;
+
   Future<void> _initWindow() async {
     await windowManager.setPreventClose(true);
+
+    isMaximized = await windowManager.isMaximized();
+    setState(() {});
   }
 
   @override
@@ -110,6 +115,20 @@ class _AppState extends State<App> with WindowListener {
   }
 
   @override
+  onWindowMaximize() {
+    setState(() {
+      isMaximized = true;
+    });
+  }
+
+  @override
+  onWindowUnmaximize() {
+    setState(() {
+      isMaximized = false;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Anthem',
@@ -135,6 +154,7 @@ class _AppState extends State<App> with WindowListener {
                   context,
                 ).copyWith(scrollbars: false),
                 child: DragToResizeArea(
+                  enableResizeEdges: isMaximized ? [] : null,
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
