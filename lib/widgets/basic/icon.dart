@@ -32,7 +32,7 @@ class Icons {
   static IconDef add = const IconDef('assets/icons_old/scrollbar/add.svg');
   static IconDef anthem = const IconDef('assets/icons_old/main/anthem.svg');
   static IconDef arrowDown = const IconDef(
-    'assets/icons_old/misc/dropdown_arrow___down.svg',
+    'assets/icons/misc/dropdown_arrow___down.svg',
   );
   static IconDef audio = const IconDef('assets/icons_old/audio.svg');
   static IconDef automationEditor = const IconDef(
@@ -96,10 +96,10 @@ class _ScrollbarIcons {
 }
 
 class _ToolIcons {
-  IconDef cut = const IconDef('assets/icons_old/tools/cut.svg');
-  IconDef erase = const IconDef('assets/icons_old/tools/erase.svg');
-  IconDef pencil = const IconDef('assets/icons_old/tools/pencil.svg');
-  IconDef select = const IconDef('assets/icons_old/tools/select.svg');
+  IconDef cut = const IconDef('assets/icons/tools/cut.svg');
+  IconDef erase = const IconDef('assets/icons/tools/erase.svg');
+  IconDef pencil = const IconDef('assets/icons/tools/pencil.svg');
+  IconDef select = const IconDef('assets/icons/tools/select.svg');
 }
 
 class _MainToolbarIcons {

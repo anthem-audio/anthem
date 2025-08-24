@@ -200,7 +200,7 @@ class _Header extends StatelessWidget {
                   Observer(
                     builder: (context) {
                       return SizedBox(
-                        width: 39,
+                        width: 33,
                         child: Dropdown(
                           showNameOnButton: false,
                           allowNoSelection: false,
@@ -248,30 +248,28 @@ class _Header extends StatelessWidget {
                     },
                   ),
                   const SizedBox(width: 4),
-                  Flexible(
-                    fit: FlexFit.tight,
-                    child: Observer(
-                      builder: (context) {
-                        return Dropdown(
-                          hint: 'Change the active arrangement',
-                          selectedID: project.sequence.activeArrangementID,
-                          items: project.sequence.arrangementOrder
-                              .map<DropdownItem>((id) {
-                                final name =
-                                    project.sequence.arrangements[id]!.name;
-                                return DropdownItem(
-                                  id: id.toString(),
-                                  name: name,
-                                  hint: name,
-                                );
-                              })
-                              .toList(),
-                          onChanged: (selectedID) {
-                            projectController.setActiveArrangement(selectedID);
-                          },
-                        );
-                      },
-                    ),
+                  Observer(
+                    builder: (context) {
+                      return Dropdown(
+                        hint: 'Change the active arrangement',
+                        selectedID: project.sequence.activeArrangementID,
+                        horizontalExpand: false,
+                        items: project.sequence.arrangementOrder
+                            .map<DropdownItem>((id) {
+                              final name =
+                                  project.sequence.arrangements[id]!.name;
+                              return DropdownItem(
+                                id: id.toString(),
+                                name: name,
+                                hint: name,
+                              );
+                            })
+                            .toList(),
+                        onChanged: (selectedID) {
+                          projectController.setActiveArrangement(selectedID);
+                        },
+                      );
+                    },
                   ),
                   const SizedBox(width: 4),
                 ],

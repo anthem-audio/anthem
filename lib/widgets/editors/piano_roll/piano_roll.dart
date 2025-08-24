@@ -653,7 +653,7 @@ class _ToolPicker extends StatelessObserverWidget {
     final viewModel = Provider.of<PianoRollViewModel>(context);
 
     return SizedBox(
-      width: 39,
+      width: 41,
       child: Dropdown(
         showNameOnButton: false,
         allowNoSelection: false,
@@ -661,6 +661,7 @@ class _ToolPicker extends StatelessObserverWidget {
         selectedID: EditorTool.values
             .firstWhere((tool) => tool.name == viewModel.tool.name)
             .name,
+        contentPadding: EdgeInsets.symmetric(horizontal: 5),
         items: [
           DropdownItem(
             id: EditorTool.pencil.name,
