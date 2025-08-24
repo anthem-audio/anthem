@@ -157,124 +157,113 @@ class _Header extends StatelessWidget {
       child: SizedBox(
         height: 20,
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SizedBox(
-              width: 200,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+            Menu(
+              menuDef: MenuDef(
                 children: [
-                  Menu(
-                    menuDef: MenuDef(
+                  AnthemMenuItem(
+                    disabled: true,
+                    text: 'New arrangement',
+                    hint: 'Create a new arrangement',
+                    onSelected: () {
+                      projectController.addArrangement();
+                    },
+                  ),
+                  Separator(),
+                  AnthemMenuItem(
+                    text: 'Markers',
+                    submenu: MenuDef(
                       children: [
                         AnthemMenuItem(
-                          disabled: true,
-                          text: 'New arrangement',
-                          hint: 'Create a new arrangement',
-                          onSelected: () {
-                            projectController.addArrangement();
-                          },
-                        ),
-                        Separator(),
-                        AnthemMenuItem(
-                          text: 'Markers',
-                          submenu: MenuDef(
-                            children: [
-                              AnthemMenuItem(
-                                text: 'Add time signature change',
-                                hint: 'Add a time signature change',
-                              ),
-                            ],
-                          ),
+                          text: 'Add time signature change',
+                          hint: 'Add a time signature change',
                         ),
                       ],
                     ),
-                    menuController: menuController,
-                    child: Button(
-                      width: 20,
-                      contentPadding: EdgeInsets.all(2),
-                      icon: Icons.kebab,
-                      onPress: () => menuController.open(),
-                    ),
                   ),
-                  const SizedBox(width: 4),
-                  Observer(
-                    builder: (context) {
-                      return SizedBox(
-                        width: 33,
-                        child: Dropdown(
-                          showNameOnButton: false,
-                          allowNoSelection: false,
-                          hint: 'Change the active tool',
-                          selectedID: EditorTool.values
-                              .firstWhere(
-                                (tool) => tool.name == viewModel.tool.name,
-                              )
-                              .name,
-                          items: [
-                            DropdownItem(
-                              id: EditorTool.pencil.name,
-                              name: 'Pencil',
-                              hint:
-                                  'Pencil: left click to add clips, right click to delete',
-                              icon: Icons.tools.pencil,
-                            ),
-                            DropdownItem(
-                              id: EditorTool.eraser.name,
-                              name: 'Eraser',
-                              hint: 'Eraser: left click to delete clips',
-                              icon: Icons.tools.erase,
-                            ),
-                            DropdownItem(
-                              id: EditorTool.select.name,
-                              name: 'Select',
-                              hint:
-                                  'Select: left click and drag to select clips',
-                              icon: Icons.tools.select,
-                            ),
-                            DropdownItem(
-                              id: EditorTool.cut.name,
-                              name: 'Cut',
-                              hint: 'Cut: left click and drag to cut clips',
-                              icon: Icons.tools.cut,
-                            ),
-                          ],
-                          onChanged: (id) {
-                            viewModel.tool = EditorTool.values.firstWhere(
-                              (tool) => tool.name == id,
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 4),
-                  Observer(
-                    builder: (context) {
-                      return Dropdown(
-                        hint: 'Change the active arrangement',
-                        selectedID: project.sequence.activeArrangementID,
-                        horizontalExpand: false,
-                        items: project.sequence.arrangementOrder
-                            .map<DropdownItem>((id) {
-                              final name =
-                                  project.sequence.arrangements[id]!.name;
-                              return DropdownItem(
-                                id: id.toString(),
-                                name: name,
-                                hint: name,
-                              );
-                            })
-                            .toList(),
-                        onChanged: (selectedID) {
-                          projectController.setActiveArrangement(selectedID);
-                        },
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 4),
                 ],
               ),
+              menuController: menuController,
+              child: Button(
+                width: 20,
+                contentPadding: EdgeInsets.all(2),
+                icon: Icons.kebab,
+                onPress: () => menuController.open(),
+              ),
             ),
+            const SizedBox(width: 4),
+            Observer(
+              builder: (context) {
+                return SizedBox(
+                  width: 33,
+                  child: Dropdown(
+                    showNameOnButton: false,
+                    allowNoSelection: false,
+                    hint: 'Change the active tool',
+                    selectedID: EditorTool.values
+                        .firstWhere((tool) => tool.name == viewModel.tool.name)
+                        .name,
+                    items: [
+                      DropdownItem(
+                        id: EditorTool.pencil.name,
+                        name: 'Pencil',
+                        hint:
+                            'Pencil: left click to add clips, right click to delete',
+                        icon: Icons.tools.pencil,
+                      ),
+                      DropdownItem(
+                        id: EditorTool.eraser.name,
+                        name: 'Eraser',
+                        hint: 'Eraser: left click to delete clips',
+                        icon: Icons.tools.erase,
+                      ),
+                      DropdownItem(
+                        id: EditorTool.select.name,
+                        name: 'Select',
+                        hint: 'Select: left click and drag to select clips',
+                        icon: Icons.tools.select,
+                      ),
+                      DropdownItem(
+                        id: EditorTool.cut.name,
+                        name: 'Cut',
+                        hint: 'Cut: left click and drag to cut clips',
+                        icon: Icons.tools.cut,
+                      ),
+                    ],
+                    onChanged: (id) {
+                      viewModel.tool = EditorTool.values.firstWhere(
+                        (tool) => tool.name == id,
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 4),
+            Observer(
+              builder: (context) {
+                return Dropdown(
+                  hint: 'Change the active arrangement',
+                  selectedID: project.sequence.activeArrangementID,
+                  horizontalExpand: false,
+                  items: project.sequence.arrangementOrder.map<DropdownItem>((
+                    id,
+                  ) {
+                    final name = project.sequence.arrangements[id]!.name;
+                    return DropdownItem(
+                      id: id.toString(),
+                      name: name,
+                      hint: name,
+                    );
+                  }).toList(),
+                  onChanged: (selectedID) {
+                    projectController.setActiveArrangement(selectedID);
+                  },
+                );
+              },
+            ),
+            const SizedBox(width: 4),
           ],
         ),
       ),
