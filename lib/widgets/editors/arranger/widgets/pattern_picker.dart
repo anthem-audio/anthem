@@ -42,7 +42,21 @@ class PatternPicker extends StatefulObserverWidget {
 class _PatternPickerState extends State<PatternPicker> {
   double patternHeight = 50;
 
-  final ScrollController scrollController = ScrollController();
+  /// On first build, accessing some scrollController properties will throw.
+  /// This allows us to avoid that.
+  bool isScrollControllerAttached = false;
+
+  late final ScrollController scrollController = ScrollController(
+    onAttach: (e) {
+      // onAttach is called during build, so we need to delay the setState until
+      // after the build completes
+      Future(() {
+        setState(() {
+          isScrollControllerAttached = true;
+        });
+      });
+    },
+  );
 
   @override
   void initState() {
@@ -232,18 +246,21 @@ class _PatternPickerState extends State<PatternPicker> {
                         Expanded(
                           child: LayoutBuilder(
                             builder: (context, constraints) {
-                              final handleStart =
-                                  scrollController.position.extentBefore;
-                              final handleEnd =
-                                  scrollController.position.extentInside +
-                                  handleStart;
+                              final handleStart = isScrollControllerAttached
+                                  ? scrollController.position.extentBefore
+                                  : 0.0;
+                              final handleEnd = isScrollControllerAttached
+                                  ? scrollController.position.extentInside +
+                                        handleStart
+                                  : 1.0;
                               return SizedBox(
                                 width: constraints.maxWidth,
                                 height: constraints.maxHeight,
                                 child: ScrollbarRenderer(
                                   scrollRegionStart: 0,
-                                  scrollRegionEnd:
-                                      scrollController.position.extentTotal,
+                                  scrollRegionEnd: isScrollControllerAttached
+                                      ? scrollController.position.extentTotal
+                                      : 1.0,
                                   handleStart: handleStart,
                                   handleEnd: handleEnd,
                                   onChange: (e) {
