@@ -288,9 +288,12 @@ class _PianoRollContentState extends State<_PianoRollContent>
         final pattern = getPattern();
 
         return Container(
-          height: timelineHeight,
+          height: timelineHeight + 2,
           decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: AnthemTheme.panel.border)),
+            border: Border(
+              top: BorderSide(color: AnthemTheme.panel.border),
+              bottom: BorderSide(color: AnthemTheme.panel.border),
+            ),
           ),
           child: Row(
             children: [

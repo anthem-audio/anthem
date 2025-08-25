@@ -42,8 +42,6 @@ class TimelinePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Draw a bottom border - we don't make this a separate widget because we
-    // want to draw the playhead line on top of it.
     final borderPaint = Paint()
       ..color = AnthemTheme.panel.border
       ..style = PaintingStyle.fill;
@@ -51,11 +49,6 @@ class TimelinePainter extends CustomPainter {
     final markerPaint = Paint()
       ..color = const Color(0xFF696969)
       ..style = PaintingStyle.fill;
-
-    canvas.drawRect(
-      Rect.fromLTWH(0, size.height - 1, size.width, 1),
-      borderPaint,
-    );
 
     // Line to separate numbers and tick marks
     canvas.drawRect(
