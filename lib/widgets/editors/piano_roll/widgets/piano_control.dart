@@ -333,7 +333,6 @@ class _BlackKey extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.horizontal(right: Radius.circular(1)),
-        border: Border.all(width: 1, color: _keyBorderColor),
         color: _blackKeyColor,
       ),
       height: keyHeight - 1,
