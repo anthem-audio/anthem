@@ -38,6 +38,7 @@ class Clip extends StatelessWidget {
   final bool selected;
   final bool hasResizeHandles;
   final bool pressed;
+  final bool hideBorder;
 
   /// Creates a Clip widget tied to a ClipModel
   const Clip({
@@ -48,6 +49,7 @@ class Clip extends StatelessWidget {
     this.selected = false,
     this.hasResizeHandles = true,
     this.pressed = false,
+    this.hideBorder = false,
   }) : patternId = null;
 
   /// Creates a Clip widget tied to a PatternModel
@@ -57,6 +59,7 @@ class Clip extends StatelessWidget {
     required this.ticksPerPixel,
     this.hasResizeHandles = false,
     this.pressed = false,
+    this.hideBorder = false,
   }) : selected = false,
        clipId = null,
        arrangementId = null;
@@ -79,6 +82,7 @@ class Clip extends StatelessWidget {
           curveShader: shader,
           devicePixelRatio: View.of(context).devicePixelRatio,
           pattern: patternModel,
+          hideBorder: hideBorder,
         ),
       );
     });
@@ -90,12 +94,14 @@ class ClipPainter extends CustomPainterObserver {
   final double devicePixelRatio;
   final PatternModel pattern;
   final ClipModel? clip;
+  final bool hideBorder;
 
   ClipPainter({
     required this.curveShader,
     required this.devicePixelRatio,
     required this.pattern,
     this.clip,
+    this.hideBorder = false,
   });
 
   @override
@@ -112,6 +118,7 @@ class ClipPainter extends CustomPainterObserver {
       selected: false,
       pressed: false,
       devicePixelRatio: devicePixelRatio,
+      hideBorder: hideBorder,
     );
   }
 

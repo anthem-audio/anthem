@@ -47,6 +47,7 @@ void paintClip({
   required bool selected,
   required bool pressed,
   required double devicePixelRatio,
+  bool hideBorder = false,
 }) {
   // Container
 
@@ -62,10 +63,18 @@ void paintClip({
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1.0;
 
-  final rect = Rect.fromLTWH(x + 0.5, y + 0.5, width - 1, height - 1);
+  final rect = Rect.fromLTWH(
+    x + (hideBorder ? 0 : 0.5),
+    y + (hideBorder ? 0 : 0.5),
+    width - (hideBorder ? 0 : 1),
+    height - (hideBorder ? 0 : 1),
+  );
 
   canvas.drawRect(rect, rectPaint);
-  canvas.drawRect(rect, rectStrokePaint);
+
+  if (!hideBorder) {
+    canvas.drawRect(rect, rectStrokePaint);
+  }
 
   // Title
 

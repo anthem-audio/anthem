@@ -188,49 +188,39 @@ class _PatternPickerState extends State<PatternPicker> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: AnthemTheme.panel.border,
-                          width: 1,
-                        ),
-                        color: AnthemTheme.panel.background,
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: NotificationListener<ScrollMetricsNotification>(
-                          onNotification: (notification) {
-                            // After metrics change (e.g., items added/removed or size change),
-                            // rebuild so the ScrollbarRenderer reads updated extents immediately.
-                            scheduleMicrotask(() {
-                              if (mounted) setState(() {});
-                            });
-                            return true;
-                          },
-                          child: ListView.builder(
-                            controller: scrollController,
-                            itemCount: project.sequence.patternOrder.length,
-                            itemBuilder: (context, index) {
-                              final patternID =
-                                  project.sequence.patternOrder[index];
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 1),
-                                child: SizedBox(
-                                  height: patternHeight,
-                                  child: Clip.fromPattern(
-                                    patternId: patternID,
-                                    ticksPerPixel: 5,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
+                    child: NotificationListener<ScrollMetricsNotification>(
+                      onNotification: (notification) {
+                        // After metrics change (e.g., items added/removed or size change),
+                        // rebuild so the ScrollbarRenderer reads updated extents immediately.
+                        scheduleMicrotask(() {
+                          if (mounted) setState(() {});
+                        });
+                        return true;
+                      },
+                      child: ListView.separated(
+                        controller: scrollController,
+                        itemCount: project.sequence.patternOrder.length,
+                        separatorBuilder: (context, index) {
+                          return Container(
+                            height: 1,
+                            color: AnthemTheme.panel.border,
+                          );
+                        },
+                        itemBuilder: (context, index) {
+                          final patternID =
+                              project.sequence.patternOrder[index];
+                          return SizedBox(
+                            height: patternHeight,
+                            child: Clip.fromPattern(
+                              patternId: patternID,
+                              ticksPerPixel: 5,
+                              hideBorder: true,
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
-                  const SizedBox(width: 4),
                   Container(
                     decoration: BoxDecoration(
                       border: Border(
