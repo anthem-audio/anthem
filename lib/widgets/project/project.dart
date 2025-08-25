@@ -137,8 +137,8 @@ class _ProjectState extends State<Project> {
 
                       child: Panel(
                         orientation: PanelOrientation.bottom,
-                        panelMinSize: 300,
-                        contentMinSize: 300,
+                        panelMinSize: 200,
+                        contentMinSize: 150,
                         hidden: viewModel.selectedEditor == null,
                         // Bottom panel content (selected editor)
                         panelContent: RepaintBoundary(child: selectedEditor),
