@@ -110,19 +110,41 @@ class _ArrangerState extends State<Arranger> {
                         SizedBox(width: 126, child: PatternPicker()),
                         Container(width: 1, color: AnthemTheme.panel.border),
                         const Expanded(child: _ArrangerContent()),
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: Container(
-                            width: 17,
-                            decoration: BoxDecoration(
-                              border: Border(
-                                left: BorderSide(
-                                  color: AnthemTheme.panel.border,
-                                  width: 1,
+                        SizedBox(
+                          width: 17,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Container(
+                                height: _timelineHeight,
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    left: BorderSide(
+                                      color: AnthemTheme.panel.border,
+                                      width: 1,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                            child: _VerticalScrollbar(),
+                              Expanded(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      left: BorderSide(
+                                        color: AnthemTheme.panel.border,
+                                        width: 1,
+                                      ),
+                                      top: BorderSide(
+                                        color: AnthemTheme.panel.border,
+                                        width: 1,
+                                      ),
+                                    ),
+                                  ),
+                                  child: _VerticalScrollbar(),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+                            ],
                           ),
                         ),
                       ],
