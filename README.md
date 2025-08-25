@@ -2,7 +2,7 @@
 
 ## Anthem
 
-Anthem is a modern, cross-platform digital audio workstation (DAW) designed for creating and editing music and other audio content. It is desktop-first and works on Windows, macOS and Linux, with a browser-native WASM build coming soon.
+Anthem is a modern, cross-platform digital audio workstation designed for creating and editing music and other audio content. It is desktop-first and works on Windows, macOS and Linux, with a browser-native WASM build coming soon.
 
 Anthem is currently under active development and is missing key functionality and usability features. As such, it is not suitable for use.
 
@@ -12,7 +12,7 @@ Anthem is currently under active development and is missing key functionality an
 
 Prior to 2024, development on Anthem was UI-only, and focused on proving out Flutter as a UI solution for Anthem.
 
-Development in 2024 and early 2025 focused on building out Anthem's audio engine. Development during this time focused on building a sequencer and live audio graph, as well as a scalable solution for IPC and state synchronization between the Flutter UI and the C++ engine.
+Development in 2024 and the first half of 2025 focused on building out Anthem's audio engine. This primarily included building a sequencer and live audio graph, as well as a scalable solution for IPC and state synchronization between the Flutter UI and the C++ engine.
 
 ### 2025 & early 2026
 
