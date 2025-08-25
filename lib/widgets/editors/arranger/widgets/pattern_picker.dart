@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
@@ -48,12 +50,9 @@ class _PatternPickerState extends State<PatternPicker> {
 
   late final ScrollController scrollController = ScrollController(
     onAttach: (e) {
-      // onAttach is called during build, so we need to delay the setState until
-      // after the build completes
-      Future(() {
-        setState(() {
-          isScrollControllerAttached = true;
-        });
+      scheduleMicrotask(() {
+        if (!mounted) return;
+        setState(() => isScrollControllerAttached = true);
       });
     },
   );
@@ -82,7 +81,9 @@ class _PatternPickerState extends State<PatternPicker> {
 
     return NotificationListener<SizeChangedLayoutNotification>(
       onNotification: (notification) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
+        scheduleMicrotask(() {
+          // Guard: controller may not be attached yet
+          if (!mounted || !isScrollControllerAttached) return;
           scrollController.position.notifyListeners();
         });
         return true;
@@ -202,7 +203,7 @@ class _PatternPickerState extends State<PatternPicker> {
                           onNotification: (notification) {
                             // After metrics change (e.g., items added/removed or size change),
                             // rebuild so the ScrollbarRenderer reads updated extents immediately.
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                            scheduleMicrotask(() {
                               if (mounted) setState(() {});
                             });
                             return true;
