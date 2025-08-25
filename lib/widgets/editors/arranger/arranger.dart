@@ -469,17 +469,20 @@ class _ArrangerContentState extends State<_ArrangerContent>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
+        SizedBox(
+          // +1 for bottom border drawn by timeline
           height: _timelineHeight + 1,
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: AnthemTheme.panel.border, width: 1),
-            ),
-          ),
           child: Row(
             children: [
-              SizedBox(width: trackHeaderWidth),
-              Container(width: 1, color: AnthemTheme.panel.border),
+              Container(
+                width: trackHeaderWidth + 1,
+                decoration: BoxDecoration(
+                  border: Border(
+                    right: BorderSide(color: AnthemTheme.panel.border),
+                    bottom: BorderSide(color: AnthemTheme.panel.border),
+                  ),
+                ),
+              ),
               Expanded(
                 child: Observer(
                   builder: (context) {
