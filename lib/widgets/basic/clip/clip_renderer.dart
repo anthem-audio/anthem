@@ -63,13 +63,9 @@ void paintClip({
     ..strokeWidth = 1.0;
 
   final rect = Rect.fromLTWH(x + 0.5, y + 0.5, width - 1, height - 1);
-  final rRect = RRect.fromRectAndRadius(
-    Rect.fromLTWH(x + 0.5, y + 0.5, width - 1, height - 1),
-    const Radius.circular(3),
-  );
 
-  canvas.drawRRect(rRect, rectPaint);
-  canvas.drawRRect(rRect, rectStrokePaint);
+  canvas.drawRect(rect, rectPaint);
+  canvas.drawRect(rect, rectStrokePaint);
 
   // Title
 
@@ -183,7 +179,7 @@ void paintClip({
       // The vertices for the notes are in a coordinate system based on notes,
       // where X is time and Y is normalized. The transformations below
       // translate this to the correct position and scale it to convert it into
-      // pixel coordnates.
+      // pixel coordinates.
 
       final clipScaleFactor =
           (width - 1) /
