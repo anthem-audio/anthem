@@ -19,6 +19,7 @@
 
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
+import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:flutter/widgets.dart';
 
@@ -28,13 +29,12 @@ import 'package:anthem/widgets/basic/button_tabs.dart';
 import 'package:anthem/widgets/basic/clip/clip.dart';
 import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
 import 'package:anthem/widgets/basic/icon.dart';
-import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 enum PatternFilterKind { midi, audio, automation }
 
-class PatternPicker extends StatefulWidget {
+class PatternPicker extends StatefulObserverWidget {
   const PatternPicker({super.key});
 
   @override
@@ -45,6 +45,23 @@ class _PatternPickerState extends State<PatternPicker> {
   double patternHeight = 50;
 
   final ScrollController scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    scrollController.addListener(update);
+  }
+
+  @override
+  void dispose() {
+    scrollController.removeListener(update);
+    scrollController.dispose();
+    super.dispose();
+  }
+
+  void update() {
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -117,28 +134,30 @@ class _PatternPickerState extends State<PatternPicker> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
-                        child: SingleChildScrollView(
-                          controller: scrollController,
-                          child: Observer(
-                            builder: (context) {
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: project.sequence.patternOrder
-                                    .map(
-                                      (patternID) => Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 1,
-                                        ),
-                                        child: SizedBox(
-                                          height: patternHeight,
-                                          child: Clip.fromPattern(
-                                            patternId: patternID,
-                                            ticksPerPixel: 5,
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
+                        child: NotificationListener<ScrollMetricsNotification>(
+                          onNotification: (notification) {
+                            // After metrics change (e.g., items added/removed or size change),
+                            // rebuild so the ScrollbarRenderer reads updated extents immediately.
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted) setState(() {});
+                            });
+                            return true;
+                          },
+                          child: ListView.builder(
+                            controller: scrollController,
+                            itemCount: project.sequence.patternOrder.length,
+                            itemBuilder: (context, index) {
+                              final patternID =
+                                  project.sequence.patternOrder[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 1),
+                                child: SizedBox(
+                                  height: patternHeight,
+                                  child: Clip.fromPattern(
+                                    patternId: patternID,
+                                    ticksPerPixel: 5,
+                                  ),
+                                ),
                               );
                             },
                           ),
@@ -153,10 +172,28 @@ class _PatternPickerState extends State<PatternPicker> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Expanded(
-                          child: Scrollbar(
-                            controller: scrollController,
-                            crossAxisSize: 17,
-                            direction: ScrollbarDirection.vertical,
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final handleStart =
+                                  scrollController.position.extentBefore;
+                              final handleEnd =
+                                  scrollController.position.extentInside +
+                                  handleStart;
+                              return SizedBox(
+                                width: constraints.maxWidth,
+                                height: constraints.maxHeight,
+                                child: ScrollbarRenderer(
+                                  scrollRegionStart: 0,
+                                  scrollRegionEnd:
+                                      scrollController.position.extentTotal,
+                                  handleStart: handleStart,
+                                  handleEnd: handleEnd,
+                                  onChange: (e) {
+                                    scrollController.jumpTo(e.handleStart);
+                                  },
+                                ),
+                              );
+                            },
                           ),
                         ),
                         const SizedBox(height: 4),

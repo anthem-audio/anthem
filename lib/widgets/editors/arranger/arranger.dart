@@ -32,6 +32,7 @@ import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/arranger/content_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/event_listener.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
+import 'package:anthem/widgets/editors/arranger/widgets/pattern_picker.dart';
 import 'package:anthem/widgets/editors/arranger/widgets/track_header.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/playhead_line.dart';
@@ -47,7 +48,6 @@ import '../shared/helpers/time_helpers.dart';
 import 'widgets/grid.dart';
 import 'view_model.dart';
 import 'helpers.dart';
-import 'widgets/pattern_picker.dart';
 
 const _timelineHeight = 38.0;
 
