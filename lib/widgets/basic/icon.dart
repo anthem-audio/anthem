@@ -55,12 +55,26 @@ class Icons {
   static IconDef file = const IconDef('assets/icons_old/file.svg');
   static IconDef kebab = const IconDef('assets/icons/misc.svg');
   static IconDef maximize = const IconDef('assets/icons/small/maximize.svg');
-  static IconDef midi = const IconDef('assets/icons_old/midi.svg');
+  static IconDef midi = const IconDef(
+    'assets/icons_old/arranger/clip/note.svg',
+  );
   static IconDef minimize = const IconDef('assets/icons/small/minimize.svg');
   static IconDef mixer = const IconDef('assets/icons/bottom_bar/mixer.svg');
   static IconDef mute = const IconDef('assets/icons_old/power.svg');
   static IconDef patternEditor = const IconDef(
     'assets/icons_old/bottom_bar/pattern_editor.svg',
+  );
+  static IconDef patternPickerAudio = const IconDef(
+    'assets/icons/arranger/clip/audio.svg',
+  );
+  static IconDef patternPickerAutomation = const IconDef(
+    'assets/icons/arranger/clip/automations.svg',
+  );
+  static IconDef patternPickerHybrid = const IconDef(
+    'assets/icons/arranger/clip/hybrid.svg',
+  );
+  static IconDef patternPickerMidi = const IconDef(
+    'assets/icons/arranger/clip/note.svg',
   );
   static IconDef pianoRollAttributes = const IconDef(
     'assets/icons/note_editor/control.svg',

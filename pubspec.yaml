@@ -89,6 +89,7 @@ flutter:
   - assets/icons/
   - assets/icons/add/
   - assets/icons/arranger/
+  - assets/icons/arranger/clip/
   - assets/icons/audio_editor/
   - assets/icons/automation_editor/
   - assets/icons/bottom_bar/
@@ -102,3 +103,4 @@ flutter:
   - assets/icons/note_editor/
   - assets/icons/options/
   - assets/icons/small/
+  - assets/icons/tools/

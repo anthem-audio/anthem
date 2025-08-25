@@ -107,10 +107,7 @@ class _ArrangerState extends State<Arranger> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Padding(
-                          padding: EdgeInsets.only(top: 8),
-                          child: SizedBox(width: 126, child: PatternPicker()),
-                        ),
+                        SizedBox(width: 126, child: PatternPicker()),
                         Container(width: 1, color: AnthemTheme.panel.border),
                         const Expanded(child: _ArrangerContent()),
                         Padding(
@@ -451,7 +448,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(
-          height: _timelineHeight,
+          height: _timelineHeight + 1,
           child: Row(
             children: [
               Container(

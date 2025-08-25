@@ -25,9 +25,7 @@ import 'package:flutter/widgets.dart';
 
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
-import 'package:anthem/widgets/basic/button_tabs.dart';
 import 'package:anthem/widgets/basic/clip/clip.dart';
-import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -80,44 +78,96 @@ class _PatternPickerState extends State<PatternPicker> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(
-              height: 26,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: ButtonTabs(
-                      tabs: [
-                        ButtonTabDef.withIcon(
-                          icon: Icons.midi,
-                          id: PatternFilterKind.midi,
+              height: 38,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(3),
+                          border: Border.all(
+                            color: AnthemTheme.panel.border,
+                            width: 1,
+                          ),
+                          color: AnthemTheme.panel.background,
                         ),
-                        ButtonTabDef.withIcon(
-                          icon: Icons.audio,
-                          id: PatternFilterKind.audio,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: Button(
+                                icon: Icons.patternPickerHybrid,
+                                hideBorder: true,
+                                contentPadding: EdgeInsets.all(2),
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(2),
+                                  bottomLeft: Radius.circular(2),
+                                ),
+                                toggleState: true,
+                              ),
+                            ),
+                            Container(
+                              width: 1,
+                              color: AnthemTheme.panel.border,
+                            ),
+                            Expanded(
+                              child: Button(
+                                icon: Icons.patternPickerMidi,
+                                hideBorder: true,
+                                contentPadding: EdgeInsets.all(2),
+                                borderRadius: BorderRadius.circular(0),
+                              ),
+                            ),
+                            Container(
+                              width: 1,
+                              color: AnthemTheme.panel.border,
+                            ),
+                            Expanded(
+                              child: Button(
+                                icon: Icons.patternPickerAudio,
+                                hideBorder: true,
+                                contentPadding: EdgeInsets.all(2),
+                                borderRadius: BorderRadius.circular(0),
+                              ),
+                            ),
+                            Container(
+                              width: 1,
+                              color: AnthemTheme.panel.border,
+                            ),
+                            Expanded(
+                              child: Button(
+                                icon: Icons.patternPickerAutomation,
+                                hideBorder: true,
+                                contentPadding: EdgeInsets.all(2),
+                                borderRadius: BorderRadius.only(
+                                  topRight: Radius.circular(2),
+                                  bottomRight: Radius.circular(2),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        ButtonTabDef.withIcon(
-                          icon: Icons.automationEditor,
-                          id: PatternFilterKind.automation,
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  VerticalScaleControl(
-                    min: 25,
-                    max: 60,
-                    value: patternHeight,
-                    onChange: (value) {
-                      setState(() {
-                        patternHeight = value;
-                      });
-                      scrollController.position.notifyListeners();
-                    },
-                  ),
-                ],
+                    const SizedBox(width: 4),
+                    Button(
+                      icon: Icons.add,
+                      variant: ButtonVariant.ghost,
+                      contentPadding: const EdgeInsets.all(0),
+                      hint: [HintSection('click', 'Create a new pattern')],
+                      width: 20,
+                      onPress: () {
+                        projectController.addPattern();
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 4),
+            Container(height: 1, color: AnthemTheme.panel.border),
             Expanded(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -166,7 +216,15 @@ class _PatternPickerState extends State<PatternPicker> {
                     ),
                   ),
                   const SizedBox(width: 4),
-                  SizedBox(
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        left: BorderSide(
+                          color: AnthemTheme.panel.border,
+                          width: 1,
+                        ),
+                      ),
+                    ),
                     width: 17,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -195,17 +253,6 @@ class _PatternPickerState extends State<PatternPicker> {
                               );
                             },
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Button(
-                          icon: Icons.add,
-                          height: 17,
-                          variant: ButtonVariant.ghost,
-                          contentPadding: const EdgeInsets.all(0),
-                          hint: [HintSection('click', 'Create a new pattern')],
-                          onPress: () {
-                            projectController.addPattern();
-                          },
                         ),
                       ],
                     ),
