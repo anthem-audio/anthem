@@ -34,6 +34,8 @@ class Dropdown extends StatefulWidget {
   final void Function(String?)? onChanged;
   final bool showNameOnButton;
   final String? hint;
+  final EdgeInsets? contentPadding;
+  final bool horizontalExpand;
 
   /// Whether or not to add a (none) option to the dropdown
   final bool allowNoSelection;
@@ -48,6 +50,8 @@ class Dropdown extends StatefulWidget {
     this.showNameOnButton = true,
     this.allowNoSelection = true,
     this.hint,
+    this.contentPadding,
+    this.horizontalExpand = true,
   });
 
   @override
@@ -138,24 +142,39 @@ class _DropdownState extends State<Dropdown> {
             },
             width: widget.width,
             height: widget.height,
+            contentPadding:
+                widget.contentPadding ??
+                const EdgeInsets.symmetric(horizontal: 2),
             contentBuilder: (context, contentColor) {
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  if (selectedItem.icon != null)
-                    SvgIcon(icon: selectedItem.icon!, color: contentColor),
-                  Expanded(
-                    child: Text(
-                      (widget.showNameOnButton ? selectedItem.name : null) ??
-                          '',
+              final text = widget.showNameOnButton ? selectedItem.name : null;
+              final textWidget = text != null
+                  ? Text(
+                      text,
                       style: TextStyle(
                         color: contentColor,
                         fontSize: 11,
                         overflow: TextOverflow.ellipsis,
                       ),
+                    )
+                  : null;
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (selectedItem.icon != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 1),
+                      child: SvgIcon(
+                        icon: selectedItem.icon!,
+                        color: contentColor,
+                      ),
                     ),
-                  ),
+                  if (text != null) const SizedBox(width: 2),
+                  ?textWidget,
+                  if (widget.horizontalExpand) Expanded(child: SizedBox()),
+                  if (!widget.horizontalExpand) SizedBox(width: 4),
                   SvgIcon(icon: Icons.arrowDown, color: contentColor),
+                  SizedBox(width: 2),
                 ],
               );
             },

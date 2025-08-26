@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 0.0.1
 
 environment:
-  sdk: ">=3.8.0 <4.0.0"
+  sdk: ">=3.9.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -37,17 +37,14 @@ dependencies:
       ref: 11322c2
   mockito: ^5.4.5
   window_manager: ^0.5.0
+  okcolor: ^1.1.0
 
 dev_dependencies:
   analyzer: ^7.7.0
   build_runner: ^2.6.0
   build: ^3.0.0
   flutter_lints: ^6.0.0
-  mobx_codegen:
-    git:
-      url: https://github.com/josh-audio/mobx.dart
-      ref: analyzer-7.4.0
-      path: mobx_codegen
+  mobx_codegen: ^2.7.2
   source_gen: ^3.0.0
 
 flutter:
@@ -63,6 +60,32 @@ flutter:
 
   assets:
   - assets/engine/
+
+  - assets/icons_old/
+  - assets/icons_old/add/
+  - assets/icons_old/arranger/
+  - assets/icons_old/arranger/clip/
+  - assets/icons_old/audio_editor/
+  - assets/icons_old/automation_editor/
+  - assets/icons_old/bottom_bar/
+  - assets/icons_old/channel/
+  - assets/icons_old/channel_rack/
+  - assets/icons_old/controller_rack/
+  - assets/icons_old/device_panel/
+  - assets/icons_old/edit/
+  - assets/icons_old/instrument_and_effect_rack/
+  - assets/icons_old/main/
+  - assets/icons_old/main_toolbar/
+  - assets/icons_old/misc/
+  - assets/icons_old/mixer/
+  - assets/icons_old/not_clickable/
+  - assets/icons_old/note_editor/
+  - assets/icons_old/options/
+  - assets/icons_old/scrollbar/
+  - assets/icons_old/small/
+  - assets/icons_old/tools/
+  - assets/icons_old/topbar/
+
   - assets/icons/
   - assets/icons/add/
   - assets/icons/arranger/
@@ -70,20 +93,14 @@ flutter:
   - assets/icons/audio_editor/
   - assets/icons/automation_editor/
   - assets/icons/bottom_bar/
-  - assets/icons/channel/
   - assets/icons/channel_rack/
-  - assets/icons/controller_rack/
-  - assets/icons/device_panel/
   - assets/icons/edit/
+  - assets/icons/icon/
   - assets/icons/instrument_and_effect_rack/
-  - assets/icons/main/
   - assets/icons/main_toolbar/
   - assets/icons/misc/
   - assets/icons/mixer/
-  - assets/icons/not_clickable/
   - assets/icons/note_editor/
   - assets/icons/options/
-  - assets/icons/scrollbar/
   - assets/icons/small/
   - assets/icons/tools/
-  - assets/icons/topbar/

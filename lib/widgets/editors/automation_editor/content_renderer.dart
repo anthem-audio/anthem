@@ -133,7 +133,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
     for (var i = horizontalLineStep; i < size.height; i += horizontalLineStep) {
       canvas.drawRect(
         Rect.fromLTWH(0, i, size.width, 1),
-        Paint()..color = Theme.grid.major,
+        Paint()..color = AnthemTheme.grid.major,
       );
     }
 
@@ -209,7 +209,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
         secondPointValue: point.value,
         tension: point.tension,
         strokeWidth: strokeWidth,
-        color: Theme.primary.main,
+        color: AnthemTheme.primary.main,
         gradientOpacityTop: 0.2,
         gradientOpacityBottom: 0.03,
       );
@@ -246,13 +246,13 @@ class AutomationEditorPainter extends CustomPainterObserver {
       canvas.drawCircle(
         center,
         radius * radiusMultiplier,
-        Paint()..color = Theme.grid.backgroundDark,
+        Paint()..color = AnthemTheme.grid.backgroundDark,
       );
       canvas.drawCircle(
         center,
         radius * radiusMultiplier,
         Paint()
-          ..color = Theme.primary.main
+          ..color = AnthemTheme.primary.main
           ..style = PaintingStyle.stroke
           ..strokeWidth = strokeWidth,
       );
@@ -300,13 +300,13 @@ class AutomationEditorPainter extends CustomPainterObserver {
         canvas.drawCircle(
           center,
           radius * radiusMultiplier,
-          Paint()..color = Theme.grid.backgroundDark,
+          Paint()..color = AnthemTheme.grid.backgroundDark,
         );
         canvas.drawCircle(
           center,
           radius * radiusMultiplier,
           Paint()
-            ..color = Theme.primary.main
+            ..color = AnthemTheme.primary.main
             ..style = PaintingStyle.stroke
             ..strokeWidth = strokeWidth,
         );

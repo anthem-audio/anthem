@@ -49,13 +49,13 @@ class ProjectHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 40,
+      height: 32,
       decoration: BoxDecoration(
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4)),
-        color: Theme.panel.accent,
+        color: AnthemTheme.panel.accent,
       ),
       child: Padding(
-        padding: const EdgeInsets.all(7),
+        padding: const EdgeInsets.all(4),
         child: Row(
           children: [
             Expanded(flex: 1, child: _LeftGroup()),
@@ -82,6 +82,7 @@ class _LeftGroup extends StatelessWidget {
         const SizedBox(width: 4),
         Button(
           icon: Icons.undo,
+          width: 24,
           onPress: () {
             projectController.undo();
           },
@@ -90,6 +91,7 @@ class _LeftGroup extends StatelessWidget {
         const SizedBox(width: 4),
         Button(
           icon: Icons.redo,
+          width: 24,
           onPress: () {
             projectController.redo();
           },
@@ -115,40 +117,62 @@ class _MiddleGroup extends StatelessWidget {
         // provided by the Row
         SizedBox(width: 8),
 
-        Button(
-          icon: Icons.play,
-          height: 24,
-          width: 24,
-          contentPadding: EdgeInsets.all(3),
-          hint: [HintSection('click', 'Play')],
-          onPress: () {
-            final projectModel = Provider.of<ProjectModel>(
-              context,
-              listen: false,
-            );
-
-            if (projectModel.engineState != EngineState.running) {
-              return;
-            }
-
-            projectModel.sequence.isPlaying = true;
-          },
-        ),
-        Button(
-          icon: Icons.stop,
-          height: 24,
-          width: 24,
-          contentPadding: EdgeInsets.all(3),
-          hint: [HintSection('click', 'Stop')],
-          onPress: () {
-            final projectModel = Provider.of<ProjectModel>(
-              context,
-              listen: false,
-            );
-            projectModel.sequence.isPlaying = false;
-          },
-        ),
+        _PlayStopButtonGroup(),
       ],
+    );
+  }
+}
+
+class _PlayStopButtonGroup extends StatelessWidget {
+  const _PlayStopButtonGroup();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(3),
+        border: Border.all(color: AnthemTheme.control.border),
+      ),
+      child: Row(
+        children: [
+          Button(
+            hideBorder: true,
+            icon: Icons.play,
+            height: 24,
+            width: 24,
+            contentPadding: EdgeInsets.all(3),
+            hint: [HintSection('click', 'Play')],
+            onPress: () {
+              final projectModel = Provider.of<ProjectModel>(
+                context,
+                listen: false,
+              );
+
+              if (projectModel.engineState != EngineState.running) {
+                return;
+              }
+
+              projectModel.sequence.isPlaying = true;
+            },
+          ),
+          Container(width: 1, color: AnthemTheme.control.border),
+          Button(
+            hideBorder: true,
+            icon: Icons.stop,
+            height: 24,
+            width: 24,
+            contentPadding: EdgeInsets.all(3),
+            hint: [HintSection('click', 'Stop')],
+            onPress: () {
+              final projectModel = Provider.of<ProjectModel>(
+                context,
+                listen: false,
+              );
+              projectModel.sequence.isPlaying = false;
+            },
+          ),
+        ],
+      ),
     );
   }
 }
@@ -168,6 +192,7 @@ class _TempoControlState extends State<_TempoControl> {
     final projectModel = Provider.of<ProjectModel>(context);
 
     return DigitControl(
+      size: DigitDisplaySize.large,
       decimalPlaces: 2,
       minCharacterCount: 6,
       hint: 'Set the tempo',
@@ -309,7 +334,7 @@ class _ProjectMenu extends StatelessWidget {
                   ),
                   AnthemMenuItem(
                     text: 'Print project JSON (engine)',
-                    hint: 'Print the project as JSON as reported by the engine',
+                    hint: 'Print the project JSON as reported by the engine',
                     onSelected: () async {
                       // ignore: avoid_print
                       print(
@@ -342,7 +367,7 @@ class _ProjectMenu extends StatelessWidget {
       ),
       child: Button(
         icon: Icons.hamburger,
-        showMenuIndicator: true,
+        width: 24,
         onPress: () {
           menuController.open();
         },

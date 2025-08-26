@@ -150,20 +150,18 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// Sets the selected detail view. See getSelectedDetailView() for more info.
   void setSelectedDetailView(DetailViewKind? detailView) {
     _selectedDetailView = detailView;
-    if (detailView != null) isDetailViewSelected = true;
+    if (detailView != null) isDetailViewOpen = true;
   }
 
-  /// Whether the detail view is active. If false, the project explorer is
-  /// shown instead.
   @anthemObservable
   @hide
-  bool isDetailViewSelected = false;
+  bool isDetailViewOpen = false;
+
+  @anthemObservable
+  @hide
+  bool isProjectExplorerOpen = false;
 
   // Visual layout flags
-
-  @anthemObservable
-  @hide
-  bool isProjectExplorerVisible = true;
 
   @anthemObservable
   @hide

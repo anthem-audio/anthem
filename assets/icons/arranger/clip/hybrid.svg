@@ -1,25 +1,6 @@
-<!--
-  Copyright (C) 2022 Budislav Stepanov, Joshua Wade
-
-  This file is part of Anthem.
-
-  Anthem is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  Anthem is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-  General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with Anthem. If not, see <https://www.gnu.org/licenses/>.
--->
-
-<svg width="12" height="11" viewBox="0 0 12 11" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 9C1.22386 9 1 9.22386 1 9.5C1 9.77614 1.22386 10 1.5 10C1.77614 10 2 9.77614 2 9.5C2 9.22386 1.77614 9 1.5 9ZM0 9.5C0 8.67157 0.671573 8 1.5 8C2.15311 8 2.70873 8.4174 2.91465 9H9.08535C9.29127 8.4174 9.84689 8 10.5 8C11.3284 8 12 8.67157 12 9.5C12 10.3284 11.3284 11 10.5 11C9.84689 11 9.29127 10.5826 9.08535 10H2.91465C2.70873 10.5826 2.15311 11 1.5 11C0.671573 11 0 10.3284 0 9.5ZM10.5 9C10.2239 9 10 9.22386 10 9.5C10 9.77614 10.2239 10 10.5 10C10.7761 10 11 9.77614 11 9.5C11 9.22386 10.7761 9 10.5 9Z" fill="#9DB9CC"/>
-<path d="M0.5 5.50002L2 3.5L3.5 5.5L5.5 3.5L6.5 6.5L8.5 4.5L11.5 5.50002" stroke="#9DB9CC" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M0.5 0.5H7.5" stroke="#9DB9CC" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M9.5 2.5H11.5" stroke="#9DB9CC" stroke-linecap="round" stroke-linejoin="round"/>
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M3.5 11C3.22386 11 3 11.2239 3 11.5C3 11.7761 3.22386 12 3.5 12C3.77614 12 4 11.7761 4 11.5C4 11.2239 3.77614 11 3.5 11ZM2 11.5C2 10.6716 2.67157 10 3.5 10C4.15311 10 4.70873 10.4174 4.91465 11H11.0854C11.2913 10.4174 11.8469 10 12.5 10C13.3284 10 14 10.6716 14 11.5C14 12.3284 13.3284 13 12.5 13C11.8469 13 11.2913 12.5826 11.0854 12H4.91465C4.70873 12.5826 4.15311 13 3.5 13C2.67157 13 2 12.3284 2 11.5ZM12.5 11C12.2239 11 12 11.2239 12 11.5C12 11.7761 12.2239 12 12.5 12C12.7761 12 13 11.7761 13 11.5C13 11.2239 12.7761 11 12.5 11Z" fill="#CFCFCF"/>
+<path d="M2.5 7.50002L4 5.5L5.5 7.5L7.5 5.5L8.5 8.5L10.5 6.5L13.5 7.50002" stroke="#CFCFCF" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M2.5 2.5H9.5" stroke="#CFCFCF" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M11.5 4.5H13.5" stroke="#CFCFCF" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

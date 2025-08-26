@@ -29,7 +29,7 @@ class ProjectViewModel = _ProjectViewModel with _$ProjectViewModel;
 
 abstract class _ProjectViewModel with Store {
   @observable
-  EditorKind selectedEditor = EditorKind.detail;
+  EditorKind? selectedEditor = EditorKind.detail;
 
   // As of writing, MobX generates invalid codegen for the valid type here, which is:
   // Widget Function(BuildContext context)?

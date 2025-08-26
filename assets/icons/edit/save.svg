@@ -1,4 +1,22 @@
+<!--
+  Copyright (C) 2021 - 2024 Budislav Stepanov
+
+  This file is part of Anthem.
+
+  Anthem is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Anthem is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+-->
+
 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M1.5 12.5V14.5C1.5 15.0523 1.94772 15.5 2.5 15.5H14.5C15.0523 15.5 15.5 15.0523 15.5 14.5V12.5" stroke="#9DB9CC" stroke-linecap="round"/>
-<path fill-rule="evenodd" clip-rule="evenodd" d="M11.1464 5.14641C11.3417 4.95114 11.6583 4.95114 11.8536 5.14641C12.0488 5.34167 12.0488 5.65825 11.8536 5.85351L8.85355 8.85351C8.65829 9.04878 8.34171 9.04878 8.14645 8.85351L5.14645 5.85351C4.95118 5.65825 4.95118 5.34167 5.14645 5.14641C5.34171 4.95114 5.65829 4.95114 5.85355 5.14641L8 7.29285L8 0.5C8 0.223857 8.22386 -1.65061e-07 8.5 -1.5299e-07C8.77614 -1.4092e-07 9 0.223857 9 0.5L9 7.29285L11.1464 5.14641Z" fill="#9DB9CC"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M11.8536 6.14641C11.6583 5.95114 11.3417 5.95114 11.1464 6.14641L9 8.29285L9 1.5C9 1.22386 8.77614 1 8.5 1C8.22386 1 8 1.22386 8 1.5L8 8.29285L5.85355 6.14641C5.65829 5.95114 5.34171 5.95114 5.14645 6.14641C4.95118 6.34167 4.95118 6.65825 5.14645 6.85351L8.14645 9.85351C8.34171 10.0488 8.65829 10.0488 8.85355 9.85351L11.8536 6.85351C12.0488 6.65825 12.0488 6.34167 11.8536 6.14641ZM2 12.5C2 12.2239 1.77614 12 1.5 12C1.22386 12 1 12.2239 1 12.5V14.5C1 15.3284 1.67157 16 2.5 16H14.5C15.3284 16 16 15.3284 16 14.5V12.5C16 12.2239 15.7761 12 15.5 12C15.2239 12 15 12.2239 15 12.5V14.5C15 14.7761 14.7761 15 14.5 15H2.5C2.22386 15 2 14.7761 2 14.5V12.5Z" fill="#CFCFCF"/>
 </svg>

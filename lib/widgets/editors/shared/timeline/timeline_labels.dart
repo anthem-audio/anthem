@@ -164,7 +164,7 @@ class _TimelineLabelState extends State<TimelineLabel> {
                 height: 21,
                 child: Text(
                   widget.text,
-                  style: TextStyle(color: Theme.text.main),
+                  style: TextStyle(color: AnthemTheme.text.main),
                 ),
               ),
             ],

@@ -47,6 +47,7 @@ void paintClip({
   required bool selected,
   required bool pressed,
   required double devicePixelRatio,
+  bool hideBorder = false,
 }) {
   // Container
 
@@ -58,18 +59,28 @@ void paintClip({
 
   final rectPaint = Paint()..color = color;
   final rectStrokePaint = Paint()
-    ..color = Theme.grid.accent
+    ..color = AnthemTheme.grid.accent
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1.0;
 
-  final rect = Rect.fromLTWH(x + 0.5, y + 0.5, width - 1, height - 1);
-  final rRect = RRect.fromRectAndRadius(
-    Rect.fromLTWH(x + 0.5, y + 0.5, width - 1, height - 1),
-    const Radius.circular(3),
+  final rect = Rect.fromLTWH(
+    x + (hideBorder ? 0 : 0.5),
+    y + (hideBorder ? 0 : 0.5),
+    width - (hideBorder ? 0 : 1),
+    height - (hideBorder ? 0 : 1),
   );
 
-  canvas.drawRRect(rRect, rectPaint);
-  canvas.drawRRect(rRect, rectStrokePaint);
+  canvas.drawRect(rect, rectPaint);
+
+  if (!hideBorder) {
+    canvas.drawRect(rect, rectStrokePaint);
+  }
+
+  final contentColor = getContentColor(
+    color: pattern.color,
+    selected: selected,
+    pressed: pressed,
+  );
 
   // Title
 
@@ -83,12 +94,6 @@ void paintClip({
       : y + (height / 2) - (textHeight / 2);
 
   if (titleImage != null) {
-    final textColor = getTextColor(
-      color: pattern.color,
-      selected: selected,
-      pressed: pressed,
-    );
-
     final rect = Rect.fromLTWH(0, 0, (width - 2) * devicePixelRatio, height);
 
     canvas.drawAtlas(
@@ -104,7 +109,7 @@ void paintClip({
         ),
       ],
       [rect],
-      [textColor],
+      [contentColor],
       BlendMode.dstIn,
       null,
       Paint(),
@@ -154,13 +159,13 @@ void paintClip({
   pattern.clipNotesUpdateSignal.value;
 
   if (height > smallSizeThreshold) {
-    final noteColor = getTextColor(
+    final contentColor = getContentColor(
       color: pattern.color,
       selected: selected,
       pressed: pressed,
     );
 
-    final notePaint = Paint()..color = noteColor;
+    final notePaint = Paint()..color = contentColor;
 
     for (final clipNotesEntry in pattern.clipNotesRenderCache.values) {
       if (clipNotesEntry.renderedVertices == null) continue;
@@ -183,7 +188,7 @@ void paintClip({
       // The vertices for the notes are in a coordinate system based on notes,
       // where X is time and Y is normalized. The transformations below
       // translate this to the correct position and scale it to convert it into
-      // pixel coordnates.
+      // pixel coordinates.
 
       final clipScaleFactor =
           (width - 1) /
@@ -209,13 +214,6 @@ void paintClip({
 
       canvas.restore();
     }
-
-    // Automation
-    final contentColor = getContentColor(
-      color: pattern.color,
-      selected: selected,
-      pressed: pressed,
-    );
 
     canvas.save();
 
@@ -308,7 +306,7 @@ void drawPatternTitle({
   if (whiteText) {
     textColor = const Color(0xFFFFFFFF);
   } else {
-    textColor = getTextColor(
+    textColor = getContentColor(
       color: pattern.color,
       selected: selected,
       pressed: pressed,

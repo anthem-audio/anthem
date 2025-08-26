@@ -172,7 +172,7 @@ abstract class _PatternModel with Store, AnthemModelBase {
   _PatternModel();
 
   _PatternModel.create({required this.name}) {
-    color = AnthemColor(hue: 0, saturationMultiplier: 0);
+    color = AnthemColor(hue: 0, lightnessModifier: 2, saturationModifier: 0);
     timeSignatureChanges = AnthemObservableList();
   }
 

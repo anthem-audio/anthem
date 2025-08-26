@@ -1,5 +1,5 @@
 <!--
-  Copyright (C) 2022 Budislav Stepanov, Joshua Wade
+  Copyright (C) 2021 - 2024 Budislav Stepanov
 
   This file is part of Anthem.
 
@@ -18,8 +18,8 @@
 -->
 
 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect x="5" y="3" width="1" height="5" fill="#9DB9CC"/>
-<rect x="7" y="3" width="1" height="5" fill="#9DB9CC"/>
-<rect x="9" y="3" width="1" height="5" fill="#9DB9CC"/>
-<rect x="3.5" y="3.5" width="8" height="8" stroke="#9DB9CC"/>
+<rect x="5" y="4" width="1" height="5" fill="#CFCFCF"/>
+<rect x="7" y="4" width="1" height="5" fill="#CFCFCF"/>
+<rect x="9" y="4" width="1" height="5" fill="#CFCFCF"/>
+<rect x="3.5" y="4.5" width="8" height="8" stroke="#CFCFCF"/>
 </svg>

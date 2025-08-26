@@ -46,7 +46,8 @@ class DigitDisplay extends StatelessWidget {
   final DigitDisplaySize size;
   final bool monospace;
 
-  final String text;
+  final String? text;
+  final Widget Function(BuildContext context)? contentBuilder;
 
   final Widget? overlay;
 
@@ -54,47 +55,56 @@ class DigitDisplay extends StatelessWidget {
     super.key,
     this.width,
     this.size = DigitDisplaySize.normal,
-    required this.text,
+    this.text,
+    this.contentBuilder,
     this.monospace = false,
     this.overlay,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (text == null && contentBuilder == null) {
+      throw ArgumentError(
+        'Either text or contentBuilder must be provided to DigitDisplay',
+      );
+    }
+
     return Container(
       height: calculateHeight(size),
       width: width?.toDouble(),
       decoration: BoxDecoration(
-        border: Border.all(color: Theme.separator),
+        border: Border.all(color: AnthemTheme.control.border),
         borderRadius: BorderRadius.circular(3),
-        color: Theme.control.background,
+        color: AnthemTheme.control.background,
       ),
       child: Stack(
         children: [
           Container(
-            padding: const EdgeInsets.only(
+            padding: EdgeInsets.only(
               left: 8,
               right: 8,
               // We need to add 1 to the top padding to make the text align,
               // since it's trying to vertically center it as if there are
               // letters that go below the baseline. We only want to display
               // numbers.
-              top: 1,
+              top: monospace ? 1 : 0,
             ),
 
-            // If we set the alignnment when the width is not defined, then it
-            // tries to take all the available space, so we only set it when
-            // the width is defined.
+            // If we set the alignment when the width is not defined, then it
+            // tries to take all the available space, so we only set it when the
+            // width is defined.
             alignment: width != null ? Alignment.centerRight : null,
-            child: Text(
-              text,
-              style: TextStyle(
-                fontFamily: monospace ? 'RobotoMono' : null,
-                fontSize: calculateFontSize(size),
-                fontWeight: FontWeight.w700,
-                color: Theme.primary.main,
-              ),
-            ),
+            child: text != null
+                ? Text(
+                    text!,
+                    style: TextStyle(
+                      fontFamily: monospace ? 'RobotoMono' : null,
+                      fontSize: calculateFontSize(size),
+                      fontWeight: FontWeight.w700,
+                      color: AnthemTheme.primary.main,
+                    ),
+                  )
+                : contentBuilder!(context),
           ),
           if (overlay != null) Positioned.fill(child: overlay!),
         ],

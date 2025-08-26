@@ -135,11 +135,11 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
                 child: Container(
                   decoration: BoxDecoration(
                     color: isHovered || hasHighestScore
-                        ? Theme.primary.subtle
+                        ? AnthemTheme.primary.subtle
                         : null,
                     border: Border.all(
                       color: isHovered
-                          ? Theme.primary.subtleBorder
+                          ? AnthemTheme.primary.subtleBorder
                           : const Color(0x00000000),
                     ),
                     borderRadius: !isHovered && hasHighestScore
@@ -165,7 +165,7 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
                                 alignment: Alignment.center,
                                 child: SvgIcon(
                                   icon: Icons.arrowDown,
-                                  color: Theme.text.main,
+                                  color: AnthemTheme.text.main,
                                 ),
                               ),
                       ),
@@ -176,7 +176,7 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
                           textAlign: TextAlign.left,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: Theme.text.main,
+                            color: AnthemTheme.text.main,
                             fontSize: 11,
                           ),
                         ),

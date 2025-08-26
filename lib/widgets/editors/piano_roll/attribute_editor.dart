@@ -17,12 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/color_shifter.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
 import 'package:anthem/widgets/editors/piano_roll/attribute_editor_controller.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
@@ -61,7 +63,6 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final project = Provider.of<ProjectModel>(context);
     final viewModel = Provider.of<PianoRollViewModel>(context);
 
     return Row(
@@ -69,8 +70,10 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              border: Border.all(color: Theme.panel.border),
-              borderRadius: const BorderRadius.all(Radius.circular(4)),
+              border: Border(
+                top: BorderSide(color: AnthemTheme.panel.border),
+                right: BorderSide(color: AnthemTheme.panel.border),
+              ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -111,81 +114,129 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
                     ),
                   ),
                 ),
-                Container(width: 1, color: Theme.panel.border),
+                Container(width: 1, color: AnthemTheme.panel.border),
                 Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      AttributeEditorPointerEvent createEditorPointerEvent(
-                        PointerEvent rawEvent,
-                      ) {
-                        return AttributeEditorPointerEvent(
-                          offset: pixelsToTime(
-                            timeViewStart: viewModel.timeView.start,
-                            timeViewEnd: viewModel.timeView.end,
-                            viewPixelWidth: constraints.maxWidth,
-                            pixelOffsetFromLeft: rawEvent.localPosition.dx,
-                          ),
-                          normalizedY:
-                              (1 -
-                                      (rawEvent.localPosition.dy /
-                                          constraints.maxHeight))
-                                  .clamp(0, 1),
-                          viewSize: constraints.biggest,
-                        );
-                      }
-
-                      return Listener(
-                        onPointerDown: (e) {
-                          controller.pointerDown(createEditorPointerEvent(e));
-                        },
-                        onPointerMove: (e) {
-                          controller.pointerMove(createEditorPointerEvent(e));
-                        },
-                        onPointerUp: (e) {
-                          controller.pointerUp(createEditorPointerEvent(e));
-                        },
-                        onPointerCancel: (e) {
-                          controller.pointerUp(createEditorPointerEvent(e));
-                        },
-                        child: AnimatedBuilder(
-                          animation: widget.timeViewAnimationController,
-                          builder: (context, child) {
-                            return ClipRect(
-                              child: CustomPaintObserver(
-                                painterBuilder: () => PianoRollAttributePainter(
-                                  viewModel: viewModel,
-                                  project: project,
-                                  timeViewStart:
-                                      widget.timeViewStartAnimation.value,
-                                  timeViewEnd:
-                                      widget.timeViewEndAnimation.value,
-                                ),
-                              ),
-                            );
-                          },
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: _AttributeRenderArea(
+                          timeViewAnimationController:
+                              widget.timeViewAnimationController,
+                          timeViewStartAnimation: widget.timeViewStartAnimation,
+                          timeViewEndAnimation: widget.timeViewEndAnimation,
+                          controller: controller,
                         ),
-                      );
-                    },
+                      ),
+                      // If the attribute editor is open, then it should always
+                      // show the scrollbar, since it's the item on the bottom
+                      // of the view
+                      Container(height: 1, color: AnthemTheme.panel.border),
+                      PianoRollHorizontalScrollbar(),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
         ),
-        const SizedBox(width: 4),
-        const SizedBox(width: 17),
+        Container(
+          width: 16,
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(width: 1, color: AnthemTheme.panel.border),
+            ),
+          ),
+        ),
       ],
     );
   }
 }
 
-class PianoRollAttributePainter extends CustomPainterObserver {
+class _AttributeRenderArea extends StatelessWidget {
+  final AnimationController timeViewAnimationController;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
+  final AttributeEditorController controller;
+
+  const _AttributeRenderArea({
+    required this.timeViewAnimationController,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+    required this.controller,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = Provider.of<PianoRollViewModel>(context);
+    final project = Provider.of<ProjectModel>(context);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        AttributeEditorPointerEvent createEditorPointerEvent(
+          PointerEvent rawEvent,
+        ) {
+          return AttributeEditorPointerEvent(
+            offset: pixelsToTime(
+              timeViewStart: viewModel.timeView.start,
+              timeViewEnd: viewModel.timeView.end,
+              viewPixelWidth: constraints.maxWidth,
+              pixelOffsetFromLeft: rawEvent.localPosition.dx,
+            ),
+            normalizedY:
+                (1 - (rawEvent.localPosition.dy / constraints.maxHeight)).clamp(
+                  0,
+                  1,
+                ),
+            viewSize: constraints.biggest,
+          );
+        }
+
+        return Container(
+          color: AnthemTheme.grid.backgroundLight,
+          width: constraints.maxWidth,
+          height: constraints.maxHeight,
+          child: Listener(
+            onPointerDown: (e) {
+              controller.pointerDown(createEditorPointerEvent(e));
+            },
+            onPointerMove: (e) {
+              controller.pointerMove(createEditorPointerEvent(e));
+            },
+            onPointerUp: (e) {
+              controller.pointerUp(createEditorPointerEvent(e));
+            },
+            onPointerCancel: (e) {
+              controller.pointerUp(createEditorPointerEvent(e));
+            },
+            child: AnimatedBuilder(
+              animation: timeViewAnimationController,
+              builder: (context, child) {
+                return ClipRect(
+                  child: CustomPaintObserver(
+                    painterBuilder: () => _PianoRollAttributePainter(
+                      viewModel: viewModel,
+                      project: project,
+                      timeViewStart: timeViewStartAnimation.value,
+                      timeViewEnd: timeViewEndAnimation.value,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PianoRollAttributePainter extends CustomPainterObserver {
   PianoRollViewModel viewModel;
   ProjectModel project;
   double timeViewStart;
   double timeViewEnd;
 
-  PianoRollAttributePainter({
+  _PianoRollAttributePainter({
     required this.viewModel,
     required this.project,
     required this.timeViewStart,
@@ -194,18 +245,19 @@ class PianoRollAttributePainter extends CustomPainterObserver {
 
   @override
   void observablePaint(Canvas canvas, Size size) {
-    final minorLinePaint = Paint()..color = Theme.grid.minor;
+    final minorLinePaint = Paint()..color = AnthemTheme.grid.minor;
 
-    const selectedNoteColor = HSLColor.fromAHSL(1, 166, 0.37, 0.37);
-    const noteColor = HSLColor.fromAHSL(1, 166, 0.46, 0.31);
-    const selectedNoteCircleColor = HSLColor.fromAHSL(1, 166, 0.41, 0.25);
-    const noteCircleColor = HSLColor.fromAHSL(1, 166, 0.51, 0.23);
+    final colorShifter = AnthemColorShifter(166);
 
-    final selectedNotePaint = Paint()..color = selectedNoteColor.toColor();
-    final notePaint = Paint()..color = noteColor.toColor();
-    final selectedNoteCirclePaint = Paint()
-      ..color = selectedNoteCircleColor.toColor();
-    final noteCirclePaint = Paint()..color = noteCircleColor.toColor();
+    final selectedNoteColor = colorShifter.noteHovered;
+    final noteColor = colorShifter.noteBase;
+    final selectedNoteCircleColor = colorShifter.noteBase;
+    final noteCircleColor = colorShifter.noteSelected;
+
+    final selectedNotePaint = Paint()..color = selectedNoteColor;
+    final notePaint = Paint()..color = noteColor;
+    final selectedNoteCirclePaint = Paint()..color = selectedNoteCircleColor;
+    final noteCirclePaint = Paint()..color = noteCircleColor;
 
     final activePattern =
         project.sequence.patterns[project.sequence.activePatternID];

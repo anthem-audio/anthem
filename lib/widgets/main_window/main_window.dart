@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/model/store.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:anthem/widgets/main_window/main_window_controller.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -53,19 +54,24 @@ class _MainWindowState extends State<MainWindow> {
       value: controller,
       child: ScreenOverlay(
         child: Container(
-          color: const Color(0xFF2A3237),
+          color: AnthemTheme.panel.border,
           child: Padding(
             padding: const EdgeInsets.all(3),
             child: Observer(
               builder: (context) {
-                final tabs = store.projectOrder
-                    .map<TabDef>(
-                      (projectId) => TabDef(
-                        id: projectId,
-                        title: store.projects[projectId]!.id,
-                      ),
-                    )
-                    .toList();
+                final tabs = store.projectOrder.map<TabDef>((projectId) {
+                  final projectPath = store.projects[projectId]?.filePath;
+                  final titleFromPath = projectPath
+                      ?.split(RegExp('[/\\\\]'))
+                      .last
+                      .split('.')
+                      .first;
+
+                  return TabDef(
+                    id: projectId,
+                    title: titleFromPath ?? 'New Project',
+                  );
+                }).toList();
 
                 return Column(
                   children: [

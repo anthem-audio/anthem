@@ -92,10 +92,11 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
   void observablePaint(Canvas canvas, Size size) {
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
-    var minorLinePaint = Paint()..color = Theme.grid.minor;
+    var minorLinePaint = Paint()..color = AnthemTheme.grid.minor;
 
-    var lightBackgroundPaint = Paint()..color = Theme.grid.backgroundLight;
-    var darkBackgroundPaint = Paint()..color = Theme.grid.backgroundDark;
+    var lightBackgroundPaint = Paint()
+      ..color = AnthemTheme.grid.backgroundLight;
+    var darkBackgroundPaint = Paint()..color = AnthemTheme.grid.backgroundDark;
 
     // Background
 
@@ -170,7 +171,7 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
 
         canvas.drawRect(
           Rect.fromLTWH(0, y - keyHeight, size.width, keyHeight),
-          Paint()..color = Color(isBlackKey ? 0x0EFFFFFF : 0x07FFFFFF),
+          Paint()..color = Color(isBlackKey ? 0x16FFFFFF : 0x10FFFFFF),
         );
       }
     }

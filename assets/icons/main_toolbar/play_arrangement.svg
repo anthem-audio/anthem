@@ -1,5 +1,5 @@
 <!--
-  Copyright (C) 2022 Budislav Stepanov, Joshua Wade
+  Copyright (C) 2021 - 2024 Budislav Stepanov
 
   This file is part of Anthem.
 
@@ -17,16 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 -->
 
-<svg width="30" height="16" viewBox="0 0 30 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect x="1.5" y="1.5" width="12" height="12" rx="0.5" stroke="#9DB9CC"/>
-<rect x="2" y="4" width="11" height="1" fill="#9DB9CC"/>
-<rect x="2" y="7" width="11" height="1" fill="#9DB9CC"/>
-<rect x="2" y="10" width="11" height="1" fill="#9DB9CC"/>
-<rect x="4" y="13" width="11" height="1" transform="rotate(-90 4 13)" fill="#9DB9CC"/>
-<rect x="7" y="13" width="11" height="1" transform="rotate(-90 7 13)" fill="#9DB9CC"/>
-<rect x="10" y="13" width="11" height="1" transform="rotate(-90 10 13)" fill="#9DB9CC"/>
-<rect x="16.5" y="1.5" width="12" height="12" rx="0.5" stroke="#25C29D"/>
-<rect x="17" y="4" width="11" height="1" fill="#25C29D"/>
-<rect x="17" y="7" width="11" height="1" fill="#25C29D"/>
-<rect x="17" y="10" width="11" height="1" fill="#25C29D"/>
+<svg width="29" height="16" viewBox="0 0 29 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M4 3C3.44772 3 3 3.44772 3 4V12C3 12.5523 3.44772 13 4 13H12C12.5523 13 13 12.5523 13 12V4C13 3.44772 12.5523 3 12 3H4ZM6 4H4V6H6V4ZM7 4V6H9V4L7 4ZM7 7H9V9H7V7ZM10 7V9H12V7H10ZM12 10H10V12H12V10ZM12 4V6H10V4L12 4ZM7 10H9V12H7V10ZM6 7H4V9H6V7ZM6 10H4V12H6V10Z" fill="#CFCFCF"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M16 4C16 3.44772 16.4477 3 17 3H25C25.5523 3 26 3.44772 26 4V12C26 12.5523 25.5523 13 25 13H17C16.4477 13 16 12.5523 16 12V4ZM17 4H25V6H17V4ZM17 7V9H25V7H17ZM17 12V10H25V12H17Z" fill="#28D1AA"/>
 </svg>

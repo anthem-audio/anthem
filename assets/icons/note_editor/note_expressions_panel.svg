@@ -1,5 +1,5 @@
 <!--
-  Copyright (C) 2022 Budislav Stepanov, Joshua Wade
+  Copyright (C) 2021 - 2024 Budislav Stepanov
 
   This file is part of Anthem.
 
@@ -18,10 +18,10 @@
 -->
 
 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M6 8H12" stroke="#9DB9CC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M2 14L8 14" stroke="#9DB9CC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M10 2L15 2" stroke="#9DB9CC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="6" cy="8" r="2" fill="#9DB9CC"/>
-<circle cx="10" cy="2" r="2" fill="#9DB9CC"/>
-<circle cx="2" cy="14" r="2" fill="#9DB9CC"/>
+<path d="M6 8H12" stroke="#CFCFCF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M2 14L8 14" stroke="#CFCFCF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M10 2L15 2" stroke="#CFCFCF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="6" cy="8" r="2" fill="#CFCFCF"/>
+<circle cx="10" cy="2" r="2" fill="#CFCFCF"/>
+<circle cx="2" cy="14" r="2" fill="#CFCFCF"/>
 </svg>

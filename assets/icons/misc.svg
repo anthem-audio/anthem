@@ -1,5 +1,5 @@
 <!--
-  Copyright (C) 2022 Budislav Stepanov, Joshua Wade
+  Copyright (C) 2021 - 2024 Budislav Stepanov
 
   This file is part of Anthem.
 
@@ -17,8 +17,50 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 -->
 
+<!-- <svg width="16" height="21" viewBox="0 0 16 21" fill="none" xmlns="http://www.w3.org/2000/svg"> -->
 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="8" cy="3" r="1" fill="#9DB9CC"/>
-<circle cx="8" cy="8" r="1" fill="#9DB9CC"/>
-<circle cx="8" cy="13" r="1" fill="#9DB9CC"/>
+<!-- <g filter="url(#filter0_d_876_6829)"> -->
+<g>
+<path d="M9 12C9 12.5523 8.55228 13 8 13C7.44772 13 7 12.5523 7 12C7 11.4477 7.44772 11 8 11C8.55228 11 9 11.4477 9 12Z" fill="#CFCFCF"/>
+</g>
+<!-- <g filter="url(#filter1_d_876_6829)"> -->
+<g>
+<circle cx="8" cy="8" r="1" fill="#CFCFCF"/>
+</g>
+<!-- <g filter="url(#filter2_d_876_6829)"> -->
+<g>
+<circle cx="8" cy="4" r="1" fill="#CFCFCF"/>
+</g>
+<!-- <defs>
+<filter id="filter0_d_876_6829" x="3" y="11" width="10" height="10" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="4"/>
+<feGaussianBlur stdDeviation="2"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_876_6829"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_876_6829" result="shape"/>
+</filter>
+<filter id="filter1_d_876_6829" x="3" y="7" width="10" height="10" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="4"/>
+<feGaussianBlur stdDeviation="2"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_876_6829"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_876_6829" result="shape"/>
+</filter>
+<filter id="filter2_d_876_6829" x="3" y="3" width="10" height="10" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="4"/>
+<feGaussianBlur stdDeviation="2"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_876_6829"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_876_6829" result="shape"/>
+</filter>
+</defs> -->
 </svg>

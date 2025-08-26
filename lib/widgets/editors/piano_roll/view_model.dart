@@ -49,15 +49,25 @@ class PianoRollViewModel = _PianoRollViewModel with _$PianoRollViewModel;
 abstract class _PianoRollViewModel with Store {
   _PianoRollViewModel({
     required this.keyHeight,
-    required this.keyValueAtTop,
+    required double keyValueAtTop,
     required this.timeView,
-  });
+  }) : keyValueAtTopRaw = keyValueAtTop;
 
   @observable
   double keyHeight;
 
   @observable
-  double keyValueAtTop;
+  double keyValueAtTopRaw;
+
+  double get keyValueAtTop => keyValueAtTopRaw;
+  set keyValueAtTop(double value) {
+    keyValueAtTopRaw = value;
+    // Don't snap by default
+    keyValueAtTopAnimationShouldSnap = false;
+  }
+
+  @observable
+  bool keyValueAtTopAnimationShouldSnap = false;
 
   @observable
   TimeRange timeView;
@@ -79,6 +89,9 @@ abstract class _PianoRollViewModel with Store {
 
   @observable
   EditorTool tool = EditorTool.pencil;
+
+  @observable
+  bool noteAttributeEditorOpen = true;
 
   final visibleNotes = CanvasAnnotationSet<({Id id})>();
   final visibleResizeAreas = CanvasAnnotationSet<({Id id})>();

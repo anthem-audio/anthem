@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -49,33 +49,31 @@ class LazyFollowAnimationHelper {
   /// Should be called on build before widgets are returned. This updates the
   /// animation in case any values have changed.
   void update() {
-    final itemsToUpdate = <({LazyFollowItem item, double target})>[];
-
     // Updates the animation if the value has changed
-    for (final item in items) {
+    final itemsToUpdate = items.map((item) {
       final target = item.getTarget?.call() ?? item.target;
-      itemsToUpdate.add((item: item, target: target));
-    }
+      return (item: item, target: target);
+    }).toList();
 
-    for (final record in itemsToUpdate) {
-      final item = record.item;
+    for (final (:item, :target) in itemsToUpdate) {
+      final shouldSnap = item.getShouldSnap?.call() ?? false;
 
-      item.tween.begin = item.animation.value;
+      if (shouldSnap) {
+        item.tween.begin = target;
+      } else {
+        item.tween.begin = item.animation.value;
+      }
     }
 
     animationController.reset();
 
-    for (final record in itemsToUpdate) {
-      final item = record.item;
-      final target = record.target;
+    for (final (:item, :target) in itemsToUpdate) {
       item.tween.end = target;
     }
 
     animationController.forward();
 
-    for (final record in itemsToUpdate) {
-      final item = record.item;
-      final target = record.target;
+    for (final (:item, :target) in itemsToUpdate) {
       item.mostRecentValue = target;
     }
   }
@@ -87,6 +85,7 @@ class LazyFollowAnimationHelper {
 
 class LazyFollowItem {
   final double Function()? getTarget;
+  final bool Function()? getShouldSnap;
 
   double mostRecentValue;
   double target;
@@ -105,9 +104,12 @@ class LazyFollowItem {
     );
   }
 
-  LazyFollowItem({required double initialValue, this.getTarget})
-    : mostRecentValue = initialValue,
-      target = initialValue;
+  LazyFollowItem({
+    required double initialValue,
+    this.getTarget,
+    this.getShouldSnap,
+  }) : mostRecentValue = initialValue,
+       target = initialValue;
 
   void snapTo(double value) {
     tween.begin = value;

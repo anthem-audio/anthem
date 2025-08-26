@@ -90,8 +90,9 @@ class CppModelBuilder implements Builder {
 
     // Warn for enums that are not annotated with @AnthemEnum
     for (final classElement in libraryReader.classes) {
-      final annotation = const TypeChecker.fromRuntime(
+      final annotation = const TypeChecker.typeNamed(
         AnthemModel,
+        inPackage: 'anthem_codegen',
       ).firstAnnotationOf(classElement);
 
       if (annotation == null) continue;
@@ -102,12 +103,14 @@ class CppModelBuilder implements Builder {
         if (fieldInfo.typeInfo is! EnumModelType) continue;
 
         // Check for enum annotation
-        final enumAnnotation = const TypeChecker.fromRuntime(
+        final enumAnnotation = const TypeChecker.typeNamed(
           AnthemEnum,
+          inPackage: 'anthem_codegen',
         ).firstAnnotationOf(fieldInfo.fieldElement.type.element3!);
 
-        final hideAnnotation = const TypeChecker.fromRuntime(
+        final hideAnnotation = const TypeChecker.typeNamed(
           Hide,
+          inPackage: 'anthem_codegen',
         ).firstAnnotationOf(fieldInfo.fieldElement);
 
         // If the enum is not annotated with @anthemEnum, then some necessary
@@ -134,8 +137,9 @@ class CppModelBuilder implements Builder {
     ) = _generateEnumsForLibrary(
       libraryReader.enums
           .where((e) {
-            final annotation = const TypeChecker.fromRuntime(
+            final annotation = const TypeChecker.typeNamed(
               AnthemEnum,
+              inPackage: 'anthem_codegen',
             ).firstAnnotationOf(e);
             return annotation != null;
           })
@@ -151,8 +155,9 @@ class CppModelBuilder implements Builder {
     // Looks for @AnthemModel on each class in the file, and generates the
     // appropriate code
     for (final libraryClass in libraryReader.classes) {
-      final annotation = const TypeChecker.fromRuntime(
+      final annotation = const TypeChecker.typeNamed(
         AnthemModel,
+        inPackage: 'anthem_codegen',
       ).firstAnnotationOf(libraryClass);
 
       // If there is no annotation on this class, don't do anything
@@ -229,8 +234,9 @@ class CppModelBuilder implements Builder {
       List<EnumElement2> annotatedEnums = [];
 
       for (final classElement in importLibraryReader.classes) {
-        final annotation = const TypeChecker.fromRuntime(
+        final annotation = const TypeChecker.typeNamed(
           AnthemModel,
+          inPackage: 'anthem_codegen',
         ).firstAnnotationOf(classElement);
 
         if (annotation == null) {
@@ -246,8 +252,9 @@ class CppModelBuilder implements Builder {
       }
 
       for (final enumElement in importLibraryReader.enums) {
-        final annotation = const TypeChecker.fromRuntime(
+        final annotation = const TypeChecker.typeNamed(
           AnthemEnum,
+          inPackage: 'anthem_codegen',
         ).firstAnnotationOf(enumElement);
 
         if (annotation == null) {
@@ -807,8 +814,9 @@ _generateCppModuleFile(LibraryReader libraryReader) {
     List<DartObject> annotatedClasses = [];
 
     for (final classElement in exportLibraryReader.classes) {
-      final annotation = const TypeChecker.fromRuntime(
+      final annotation = const TypeChecker.typeNamed(
         AnthemModel,
+        inPackage: 'anthem_codegen',
       ).firstAnnotationOf(classElement);
 
       if (annotation == null) {
@@ -827,8 +835,9 @@ _generateCppModuleFile(LibraryReader libraryReader) {
     for (final enumElement in exportLibraryReader.enums) {
       if (hasAnyAnthemModel) break;
 
-      final annotation = const TypeChecker.fromRuntime(
+      final annotation = const TypeChecker.typeNamed(
         AnthemEnum,
+        inPackage: 'anthem_codegen',
       ).firstAnnotationOf(enumElement);
 
       if (annotation == null) {
@@ -866,8 +875,9 @@ _generateCppModuleFile(LibraryReader libraryReader) {
 /// Checks if a field should be skipped when generating C++ code, based on the
 /// @Hide annotation.
 bool _shouldSkip(FieldElement2 field) {
-  final hideAnnotation = const TypeChecker.fromRuntime(
+  final hideAnnotation = const TypeChecker.typeNamed(
     Hide,
+    inPackage: 'anthem_codegen',
   ).firstAnnotationOf(field);
 
   final hide = Hide(

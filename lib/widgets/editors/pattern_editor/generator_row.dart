@@ -170,9 +170,15 @@ class _GeneratorRowState extends State<GeneratorRow> {
                       child: Button(
                         width: 105,
                         height: 26,
-                        backgroundColor: generator.color,
-                        backgroundHoverColor: backgroundHoverColor,
-                        backgroundPressColor: backgroundHoverColor,
+                        backgroundGradient: (generator.color, generator.color),
+                        backgroundHoverGradient: (
+                          backgroundHoverColor,
+                          backgroundHoverColor,
+                        ),
+                        backgroundPressGradient: (
+                          backgroundHoverColor,
+                          backgroundHoverColor,
+                        ),
                         contentBuilder: (context, color) {
                           return Center(
                             child: Text(
@@ -200,7 +206,7 @@ class _GeneratorRowState extends State<GeneratorRow> {
                 height: 22,
                 decoration: BoxDecoration(
                   color: generator.color,
-                  border: Border.all(color: Theme.panel.border),
+                  border: Border.all(color: AnthemTheme.panel.border),
                 ),
               ),
               const SizedBox(width: 8),
@@ -226,9 +232,9 @@ class _GeneratorRowState extends State<GeneratorRow> {
                   child: Container(
                     height: 30,
                     decoration: BoxDecoration(
-                      border: Border.all(color: Theme.panel.border),
+                      border: Border.all(color: AnthemTheme.panel.border),
                       borderRadius: const BorderRadius.all(Radius.circular(1)),
-                      color: Theme.panel.main,
+                      color: AnthemTheme.panel.main,
                     ),
                     child: Observer(
                       builder: (context) {

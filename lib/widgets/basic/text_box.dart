@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/theme.dart' as anthem_theme;
+import 'package:anthem/theme.dart';
 import 'package:flutter/material.dart';
 
 class TextBox extends StatefulWidget {
@@ -44,9 +44,9 @@ class _TextBoxState extends State<TextBox> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: anthem_theme.Theme.panel.border),
+        border: Border.all(color: AnthemTheme.panel.border),
         borderRadius: BorderRadius.circular(4),
-        color: anthem_theme.Theme.panel.accentDark,
+        color: AnthemTheme.panel.background,
       ),
       padding: const EdgeInsets.only(left: 8, right: 8),
       height: widget.height,
@@ -57,8 +57,8 @@ class _TextBoxState extends State<TextBox> {
           focusNode: widget.focusNode,
           decoration: InputDecoration(border: InputBorder.none, isDense: true),
           maxLines: 1,
-          cursorColor: anthem_theme.Theme.text.main,
-          style: TextStyle(color: anthem_theme.Theme.text.main, fontSize: 11),
+          cursorColor: AnthemTheme.text.main,
+          style: TextStyle(color: AnthemTheme.text.main, fontSize: 11),
         ),
       ),
     );

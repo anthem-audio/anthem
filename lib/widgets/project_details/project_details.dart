@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -31,29 +31,33 @@ class ProjectDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (selectedProjectDetails is PatternDetailViewKind) {
-      return const PatternDetailView();
-    } else if (selectedProjectDetails is ArrangementDetailViewKind) {
-      return const ArrangementDetailView();
-    } else if (selectedProjectDetails is TimeSignatureChangeDetailViewKind) {
-      return const TimeSignatureChangeDetailView();
-    }
+    Widget child;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.panel.main,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            'This is the detail view. Click on something to view and edit its details.',
-            style: TextStyle(color: Theme.text.main, fontSize: 12),
-            textAlign: TextAlign.center,
+    if (selectedProjectDetails is PatternDetailViewKind) {
+      child = const PatternDetailView();
+    } else if (selectedProjectDetails is ArrangementDetailViewKind) {
+      child = const ArrangementDetailView();
+    } else if (selectedProjectDetails is TimeSignatureChangeDetailViewKind) {
+      child = const TimeSignatureChangeDetailView();
+    } else {
+      child = Container(
+        decoration: BoxDecoration(
+          color: AnthemTheme.panel.main,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'This is the detail view. Click on something to view and edit its details.',
+              style: TextStyle(color: AnthemTheme.text.main, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
-      ),
-    );
+      );
+    }
+
+    return ClipRRect(borderRadius: BorderRadius.circular(4), child: child);
   }
 }

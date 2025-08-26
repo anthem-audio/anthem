@@ -39,7 +39,7 @@ class _ToneGeneratorState extends State<ToneGenerator> {
     return Container(
       width: 92,
       decoration: BoxDecoration(
-        color: Theme.panel.accent,
+        color: AnthemTheme.panel.accent,
         borderRadius: const BorderRadius.only(
           topRight: Radius.circular(4),
           bottomRight: Radius.circular(4),
@@ -78,7 +78,7 @@ class _ToneGeneratorState extends State<ToneGenerator> {
                   );
                 },
               ),
-              Text('Pitch', style: TextStyle(color: Theme.text.main)),
+              Text('Pitch', style: TextStyle(color: AnthemTheme.text.main)),
               Observer(
                 builder: (context) {
                   final value =
@@ -106,7 +106,7 @@ class _ToneGeneratorState extends State<ToneGenerator> {
                   );
                 },
               ),
-              Text('Amp', style: TextStyle(color: Theme.text.main)),
+              Text('Amp', style: TextStyle(color: AnthemTheme.text.main)),
             ],
           ),
         ),

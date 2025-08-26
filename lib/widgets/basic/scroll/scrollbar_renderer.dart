@@ -20,11 +20,6 @@
 import 'package:flutter/widgets.dart';
 
 import '../../../theme.dart';
-import '../button.dart';
-import '../icon.dart';
-
-// Scroll forward/backward buttons (doesn't include divider)
-const double _mainAxisButtonSize = 16;
 
 enum ScrollbarDirection { horizontal, vertical }
 
@@ -85,10 +80,16 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
   double startHandleEnd = -1;
   double startPos = -1;
 
+  bool hovered = false;
+  bool pressed = false;
+
   void _handleDown(double pos) {
     startHandleStart = widget.handleStart;
     startHandleEnd = widget.handleEnd;
     startPos = pos;
+    setState(() {
+      pressed = true;
+    });
   }
 
   void _handleMove(double pos, double trackSize) {
@@ -129,10 +130,16 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
     );
   }
 
+  void _handleUp() {
+    setState(() {
+      pressed = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.scrollRegionEnd - widget.scrollRegionStart == 0) {
-      throw ArgumentError('Scroll region must have a nonzero size.');
+      return SizedBox();
     }
 
     return LayoutBuilder(
@@ -143,7 +150,7 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
         final mainAxisSize = isHorizontal
             ? constraints.maxWidth
             : constraints.maxHeight;
-        final trackSize = mainAxisSize - 2 * _mainAxisButtonSize;
+        final trackSize = mainAxisSize;
 
         // Calculate handle start & end position
 
@@ -154,9 +161,8 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
         final normalizedHandleEnd =
             (widget.handleEnd - widget.scrollRegionStart) / scrollRegionSize;
 
-        var handleStart =
-            trackSize * normalizedHandleStart + _mainAxisButtonSize;
-        var handleEnd = trackSize * normalizedHandleEnd + _mainAxisButtonSize;
+        var handleStart = trackSize * normalizedHandleStart;
+        var handleEnd = trackSize * normalizedHandleEnd;
 
         // Ensure handle size is at least the supplied minimum
         if (handleEnd - handleStart < widget.minHandlePixelSize) {
@@ -168,141 +174,53 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
         }
 
         // Correct for out of bounds
-        if (handleStart < _mainAxisButtonSize) {
-          handleStart = _mainAxisButtonSize;
+        if (handleStart < 0) {
+          handleStart = 0;
         }
-        if (handleEnd > _mainAxisButtonSize + trackSize) {
-          handleEnd = _mainAxisButtonSize + trackSize;
+        if (handleEnd > trackSize) {
+          handleEnd = trackSize;
         }
-        if (handleStart >
-            _mainAxisButtonSize + trackSize - widget.minHandlePixelSize) {
-          handleStart =
-              _mainAxisButtonSize + trackSize - widget.minHandlePixelSize;
+        if (handleStart > trackSize - widget.minHandlePixelSize) {
+          handleStart = trackSize - widget.minHandlePixelSize;
         }
-        if (handleEnd < _mainAxisButtonSize + widget.minHandlePixelSize) {
-          handleEnd = _mainAxisButtonSize + widget.minHandlePixelSize;
+        if (handleEnd < 0 + widget.minHandlePixelSize) {
+          handleEnd = 0 + widget.minHandlePixelSize;
         }
-
-        // Create flex children for handle
-        final flexChildren = <Widget>[];
-
-        final border = Container(
-          width: isHorizontal ? 1 : null,
-          height: isVertical ? 1 : null,
-          color: Theme.panel.border,
-        );
 
         final isDisabled =
             widget.disableAtFullSize &&
             (widget.handleStart <= widget.scrollRegionStart &&
                 widget.handleEnd >= widget.scrollRegionEnd);
 
-        flexChildren.addAll([
-          border,
-          Flexible(
-            flex: 1,
-            child: Button(
-              hideBorder: true,
-              expand: true,
-              borderRadius: BorderRadius.circular(1),
-              variant: isDisabled ? ButtonVariant.label : ButtonVariant.dark,
-            ),
-          ),
-          border,
-        ]);
+        var handleColor = AnthemTheme.panel.scrollbar;
+        if (isDisabled) {
+          handleColor = handleColor.withValues(alpha: 0.5);
+        } else if (hovered && !pressed) {
+          handleColor = AnthemTheme.panel.scrollbarHover;
+        } else if (pressed) {
+          handleColor = AnthemTheme.panel.scrollbarPress;
+        }
 
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: Stack(
-            children: [
-              // Border
-              Positioned(
-                left: 0,
-                right: 0,
-                top: 0,
-                bottom: 0,
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Theme.panel.border),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-              ),
-
-              // Start button
-              Positioned(
-                left: 1,
-                top: 1,
-                right: isVertical ? 1 : null,
-                bottom: isHorizontal ? 1 : null,
-                child: Container(
-                  width: isHorizontal ? _mainAxisButtonSize : null,
-                  height: isVertical ? _mainAxisButtonSize : null,
-                  decoration: BoxDecoration(
-                    border: isHorizontal
-                        ? Border(right: BorderSide(color: Theme.panel.border))
-                        : Border(bottom: BorderSide(color: Theme.panel.border)),
-                  ),
-                  child: Button(
-                    hideBorder: true,
-                    variant: ButtonVariant.ghost,
-                    icon: isHorizontal
-                        ? Icons.scrollbar.arrowLeft
-                        : Icons.scrollbar.arrowUp,
-                    contentPadding: EdgeInsets.zero,
-                    borderRadius: isHorizontal
-                        ? const BorderRadius.horizontal(
-                            left: Radius.circular(4),
-                            right: Radius.circular(1),
-                          )
-                        : const BorderRadius.vertical(
-                            top: Radius.circular(4),
-                            bottom: Radius.circular(1),
-                          ),
-                  ),
-                ),
-              ),
-
-              // End button
-              Positioned(
-                left: isVertical ? 1 : null,
-                top: isHorizontal ? 1 : null,
-                right: 1,
-                bottom: 1,
-                child: Container(
-                  width: isHorizontal ? _mainAxisButtonSize : null,
-                  height: isVertical ? _mainAxisButtonSize : null,
-                  decoration: BoxDecoration(
-                    border: isHorizontal
-                        ? Border(left: BorderSide(color: Theme.panel.border))
-                        : Border(top: BorderSide(color: Theme.panel.border)),
-                  ),
-                  child: Button(
-                    hideBorder: true,
-                    variant: ButtonVariant.ghost,
-                    icon: isHorizontal
-                        ? Icons.scrollbar.arrowRight
-                        : Icons.scrollbar.arrowDown,
-                    contentPadding: EdgeInsets.zero,
-                    borderRadius: isHorizontal
-                        ? const BorderRadius.horizontal(
-                            left: Radius.circular(1),
-                            right: Radius.circular(4),
-                          )
-                        : const BorderRadius.vertical(
-                            top: Radius.circular(1),
-                            bottom: Radius.circular(4),
-                          ),
-                  ),
-                ),
-              ),
-
-              // Scrollbar handle
-              Positioned(
-                left: isVertical ? 1 : handleStart,
-                right: isVertical ? 1 : mainAxisSize - handleEnd,
-                top: isHorizontal ? 1 : handleStart,
-                bottom: isHorizontal ? 1 : mainAxisSize - handleEnd,
+        return Stack(
+          children: [
+            // Scrollbar handle
+            Positioned(
+              left: isVertical ? 1 : handleStart,
+              right: isVertical ? 1 : mainAxisSize - handleEnd,
+              top: isHorizontal ? 1 : handleStart,
+              bottom: isHorizontal ? 1 : mainAxisSize - handleEnd,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                onEnter: (e) {
+                  setState(() {
+                    hovered = true;
+                  });
+                },
+                onExit: (e) {
+                  setState(() {
+                    hovered = false;
+                  });
+                },
                 child: Listener(
                   onPointerDown: (event) {
                     _handleDown(
@@ -319,19 +237,30 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
                       trackSize,
                     );
                   },
-                  child: isHorizontal
-                      ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: flexChildren,
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: flexChildren,
+                  onPointerUp: (event) {
+                    _handleUp();
+                  },
+                  onPointerCancel: (event) {
+                    _handleUp();
+                  },
+                  child: Container(
+                    // The mouse handlers won't recognize the padding area as
+                    // part of the handle without this
+                    color: Color(0x00000000),
+                    child: Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: handleColor,
+                          borderRadius: BorderRadius.circular(4),
                         ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );

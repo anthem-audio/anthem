@@ -25,6 +25,10 @@ import 'package:provider/provider.dart';
 
 import '../helpers.dart';
 
+const _whiteKeyColor = Color(0xFFC0C0C0);
+const _blackKeyColor = Color(0xFF444444);
+const _keyBorderColor = Color(0xFF303030);
+
 class DragInfo {
   double startX;
   double startY;
@@ -182,14 +186,17 @@ class _PianoControlState extends State<PianoControl> {
 
         return Listener(
           child: ClipRect(
-            child: CustomMultiChildLayout(
-              delegate: KeyLayoutDelegate(
-                keyHeight: widget.keyHeight,
-                keyValueAtTop: widget.keyValueAtTop,
-                notes: notes,
-                parentHeight: constraints.maxHeight,
+            child: Container(
+              color: _keyBorderColor,
+              child: CustomMultiChildLayout(
+                delegate: KeyLayoutDelegate(
+                  keyHeight: widget.keyHeight,
+                  keyValueAtTop: widget.keyValueAtTop,
+                  notes: notes,
+                  parentHeight: constraints.maxHeight,
+                ),
+                children: noteWidgets,
               ),
-              children: noteWidgets,
             ),
           ),
           onPointerDown: (e) {
@@ -290,8 +297,8 @@ class _WhiteKey extends StatelessWidget {
     return Container(
       height: widgetHeight - 1,
       decoration: BoxDecoration(
-        borderRadius: const BorderRadius.horizontal(right: Radius.circular(1)),
-        color: const Color(0xFFAAB7C0).withValues(alpha: opacity),
+        borderRadius: const BorderRadius.all(Radius.circular(1)),
+        color: _whiteKeyColor.withValues(alpha: opacity),
       ),
       child: showKeyText
           ? Center(
@@ -304,7 +311,7 @@ class _WhiteKey extends StatelessWidget {
                     top: keyHeight * 0.5 + 1,
                   ),
                   child: Text(
-                    style: const TextStyle(color: blackKeyColor),
+                    style: const TextStyle(color: _blackKeyColor),
                     keyToString(keyNumber),
                   ),
                 ),
@@ -315,8 +322,6 @@ class _WhiteKey extends StatelessWidget {
   }
 }
 
-const blackKeyColor = Color(0xFF3D484F);
-
 class _BlackKey extends StatelessWidget {
   const _BlackKey({required this.keyNumber, required this.keyHeight});
 
@@ -326,9 +331,9 @@ class _BlackKey extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        borderRadius: BorderRadius.horizontal(right: Radius.circular(4)),
-        color: blackKeyColor,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.horizontal(right: Radius.circular(1)),
+        color: _blackKeyColor,
       ),
       height: keyHeight - 1,
       margin: const EdgeInsets.only(right: notchWidth + 1),

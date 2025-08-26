@@ -19,7 +19,6 @@
 
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/background.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
@@ -69,10 +68,7 @@ class _PatternEditorState extends State<PatternEditor> {
         },
         child: SizeChangedLayoutNotifier(
           child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              color: Theme.panel.main,
-            ),
+            decoration: BoxDecoration(color: AnthemTheme.panel.background),
             child: Padding(
               padding: const EdgeInsets.all(6.0),
               child: Column(
@@ -135,11 +131,15 @@ class _PatternEditorState extends State<PatternEditor> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Expanded(
-                          child: Background(
-                            type: BackgroundType.light,
-                            border: Border.all(color: Theme.panel.border),
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(2),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: AnthemTheme.panel.border,
+                              ),
+                              borderRadius: const BorderRadius.all(
+                                Radius.circular(2),
+                              ),
+                              color: AnthemTheme.panel.main,
                             ),
                             child: SingleChildScrollView(
                               controller: verticalScrollController,

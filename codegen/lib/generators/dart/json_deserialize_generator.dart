@@ -125,8 +125,9 @@ static ${context.annotatedClass.name3} fromJson(Map<String, dynamic> json) {
 /// Checks if a field should be skipped when generating JSON serialization code,
 /// based on the @Hide annotation.
 bool _shouldSkip(FieldElement2 field) {
-  final hideAnnotation = const TypeChecker.fromRuntime(
+  final hideAnnotation = const TypeChecker.typeNamed(
     Hide,
+    inPackage: 'anthem_codegen',
   ).firstAnnotationOf(field);
 
   if (hideAnnotation == null) return false;

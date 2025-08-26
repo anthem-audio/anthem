@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 0.0.1
 
 environment:
-  sdk: ">=3.8.0 <4.0.0"
+  sdk: ">=3.9.0 <4.0.0"
 
 dependencies:
   analyzer: ^7.7.0
@@ -21,8 +21,4 @@ dev_dependencies:
   # us from upgrading packages in the past. This allows us to run `flutter pub
   # upgrade --major-versions` here without getting package versions that are
   # incompatible with the parent.
-  mobx_codegen:
-    git:
-      url: https://github.com/josh-audio/mobx.dart
-      ref: analyzer-7.4.0
-      path: mobx_codegen
+  mobx_codegen: ^2.7.2

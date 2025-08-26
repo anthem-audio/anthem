@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:flutter/widgets.dart';
 
@@ -42,46 +41,38 @@ class _HintDisplayState extends State<HintDisplay> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 304,
-      decoration: BoxDecoration(
-        border: Border.all(color: Theme.panel.border),
-        color: Theme.panel.accentDark,
-      ),
-      alignment: Alignment.centerLeft,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        child: Row(
-          children:
-              HintStore.instance
-                  .getActiveHint()
-                  ?.map((hint) {
-                    return [
-                      if (hint.action.isNotEmpty)
-                        Text(
-                          hint.action.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Theme.text.accent,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      if (hint.action.isNotEmpty) const SizedBox(width: 6),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Row(
+        children:
+            HintStore.instance
+                .getActiveHint()
+                ?.map((hint) {
+                  return [
+                    if (hint.action.isNotEmpty)
                       Text(
-                        hint.text,
+                        hint.action.toUpperCase(),
                         style: TextStyle(
                           fontSize: 11,
-                          color: Theme.text.main,
+                          color: const Color(0xFFD6D6D6),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(width: 16),
-                    ];
-                  })
-                  .expand((e) => e)
-                  .toList() ??
-              [],
-        ),
+                    if (hint.action.isNotEmpty) const SizedBox(width: 6),
+                    Text(
+                      hint.text,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: const Color(0xFFACACAC),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                  ];
+                })
+                .expand((e) => e)
+                .toList() ??
+            [],
       ),
     );
   }

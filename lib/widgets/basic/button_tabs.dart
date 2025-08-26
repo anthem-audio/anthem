@@ -83,7 +83,9 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
 
         for (final tab in widget.tabs) {
           final isSelected = tab.id == (widget.selected ?? selectedFallback);
-          final color = isSelected ? Theme.primary.main : Theme.text.main;
+          final color = isSelected
+              ? AnthemTheme.text.accent
+              : AnthemTheme.text.main;
 
           final Widget content;
 
@@ -131,7 +133,7 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
                     Positioned.fill(
                       child: Container(
                         decoration: BoxDecoration(
-                          border: Border.all(color: Theme.panel.border),
+                          border: Border.all(color: AnthemTheme.panel.border),
                           borderRadius: const BorderRadius.all(
                             Radius.circular(4),
                           ),
@@ -153,9 +155,9 @@ class _ButtonTabsState<T> extends State<ButtonTabs<T>> {
                           rowWidth - tabPixelPositions[selectedItemIndex + 1],
                       child: Container(
                         decoration: BoxDecoration(
-                          border: Border.all(color: Theme.panel.border),
+                          border: Border.all(color: AnthemTheme.panel.border),
                           borderRadius: BorderRadius.circular(4),
-                          color: Theme.panel.accent,
+                          color: AnthemTheme.panel.accent,
                         ),
                       ),
                     ),

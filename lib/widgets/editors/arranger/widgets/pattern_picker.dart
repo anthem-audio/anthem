@@ -17,24 +17,24 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
+import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:flutter/widgets.dart';
 
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
-import 'package:anthem/widgets/basic/button_tabs.dart';
 import 'package:anthem/widgets/basic/clip/clip.dart';
-import 'package:anthem/widgets/basic/controls/vertical_scale_control.dart';
 import 'package:anthem/widgets/basic/icon.dart';
-import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 enum PatternFilterKind { midi, audio, automation }
 
-class PatternPicker extends StatefulWidget {
+class PatternPicker extends StatefulObserverWidget {
   const PatternPicker({super.key});
 
   @override
@@ -44,7 +44,35 @@ class PatternPicker extends StatefulWidget {
 class _PatternPickerState extends State<PatternPicker> {
   double patternHeight = 50;
 
-  final ScrollController scrollController = ScrollController();
+  /// On first build, accessing some scrollController properties will throw.
+  /// This allows us to avoid that.
+  bool isScrollControllerAttached = false;
+
+  late final ScrollController scrollController = ScrollController(
+    onAttach: (e) {
+      scheduleMicrotask(() {
+        if (!mounted) return;
+        setState(() => isScrollControllerAttached = true);
+      });
+    },
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    scrollController.addListener(update);
+  }
+
+  @override
+  void dispose() {
+    scrollController.removeListener(update);
+    scrollController.dispose();
+    super.dispose();
+  }
+
+  void update() {
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +81,9 @@ class _PatternPickerState extends State<PatternPicker> {
 
     return NotificationListener<SizeChangedLayoutNotification>(
       onNotification: (notification) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
+        scheduleMicrotask(() {
+          // Guard: controller may not be attached yet
+          if (!mounted || !isScrollControllerAttached) return;
           scrollController.position.notifyListeners();
         });
         return true;
@@ -63,109 +93,174 @@ class _PatternPickerState extends State<PatternPicker> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(
-              height: 26,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: ButtonTabs(
-                      tabs: [
-                        ButtonTabDef.withIcon(
-                          icon: Icons.midi,
-                          id: PatternFilterKind.midi,
+              height: 38,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(3),
+                          border: Border.all(
+                            color: AnthemTheme.panel.border,
+                            width: 1,
+                          ),
+                          color: AnthemTheme.panel.background,
                         ),
-                        ButtonTabDef.withIcon(
-                          icon: Icons.audio,
-                          id: PatternFilterKind.audio,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: Button(
+                                icon: Icons.patternPickerHybrid,
+                                hideBorder: true,
+                                contentPadding: EdgeInsets.all(2),
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(2),
+                                  bottomLeft: Radius.circular(2),
+                                ),
+                                toggleState: true,
+                              ),
+                            ),
+                            Container(
+                              width: 1,
+                              color: AnthemTheme.panel.border,
+                            ),
+                            Expanded(
+                              child: Button(
+                                icon: Icons.patternPickerMidi,
+                                hideBorder: true,
+                                contentPadding: EdgeInsets.all(2),
+                                borderRadius: BorderRadius.circular(0),
+                              ),
+                            ),
+                            Container(
+                              width: 1,
+                              color: AnthemTheme.panel.border,
+                            ),
+                            Expanded(
+                              child: Button(
+                                icon: Icons.patternPickerAudio,
+                                hideBorder: true,
+                                contentPadding: EdgeInsets.all(2),
+                                borderRadius: BorderRadius.circular(0),
+                              ),
+                            ),
+                            Container(
+                              width: 1,
+                              color: AnthemTheme.panel.border,
+                            ),
+                            Expanded(
+                              child: Button(
+                                icon: Icons.patternPickerAutomation,
+                                hideBorder: true,
+                                contentPadding: EdgeInsets.all(2),
+                                borderRadius: BorderRadius.only(
+                                  topRight: Radius.circular(2),
+                                  bottomRight: Radius.circular(2),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        ButtonTabDef.withIcon(
-                          icon: Icons.automation,
-                          id: PatternFilterKind.automation,
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  VerticalScaleControl(
-                    min: 25,
-                    max: 60,
-                    value: patternHeight,
-                    onChange: (value) {
-                      setState(() {
-                        patternHeight = value;
-                      });
-                      scrollController.position.notifyListeners();
-                    },
-                  ),
-                ],
+                    const SizedBox(width: 4),
+                    Button(
+                      icon: Icons.add,
+                      variant: ButtonVariant.ghost,
+                      contentPadding: const EdgeInsets.all(0),
+                      hint: [HintSection('click', 'Create a new pattern')],
+                      width: 20,
+                      onPress: () {
+                        projectController.addPattern();
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 4),
+            Container(height: 1, color: AnthemTheme.panel.border),
             Expanded(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: Theme.panel.border, width: 1),
-                        color: Theme.panel.accentDark,
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: SingleChildScrollView(
-                          controller: scrollController,
-                          child: Observer(
-                            builder: (context) {
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: project.sequence.patternOrder
-                                    .map(
-                                      (patternID) => Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 1,
-                                        ),
-                                        child: SizedBox(
-                                          height: patternHeight,
-                                          child: Clip.fromPattern(
-                                            patternId: patternID,
-                                            ticksPerPixel: 5,
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                              );
-                            },
-                          ),
-                        ),
+                    child: NotificationListener<ScrollMetricsNotification>(
+                      onNotification: (notification) {
+                        // After metrics change (e.g., items added/removed or size change),
+                        // rebuild so the ScrollbarRenderer reads updated extents immediately.
+                        scheduleMicrotask(() {
+                          if (mounted) setState(() {});
+                        });
+                        return true;
+                      },
+                      child: ListView.separated(
+                        controller: scrollController,
+                        itemCount: project.sequence.patternOrder.length,
+                        separatorBuilder: (context, index) {
+                          return Container(
+                            height: 1,
+                            color: AnthemTheme.panel.border,
+                          );
+                        },
+                        itemBuilder: (context, index) {
+                          final patternID =
+                              project.sequence.patternOrder[index];
+                          return SizedBox(
+                            height: patternHeight,
+                            child: Clip.fromPattern(
+                              patternId: patternID,
+                              ticksPerPixel: 5,
+                              hideBorder: true,
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  SizedBox(
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        left: BorderSide(
+                          color: AnthemTheme.panel.border,
+                          width: 1,
+                        ),
+                      ),
+                    ),
                     width: 17,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Expanded(
-                          child: Scrollbar(
-                            controller: scrollController,
-                            crossAxisSize: 17,
-                            direction: ScrollbarDirection.vertical,
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final handleStart = isScrollControllerAttached
+                                  ? scrollController.position.extentBefore
+                                  : 0.0;
+                              final handleEnd = isScrollControllerAttached
+                                  ? scrollController.position.extentInside +
+                                        handleStart
+                                  : 1.0;
+                              return SizedBox(
+                                width: constraints.maxWidth,
+                                height: constraints.maxHeight,
+                                child: ScrollbarRenderer(
+                                  scrollRegionStart: 0,
+                                  scrollRegionEnd: isScrollControllerAttached
+                                      ? scrollController.position.extentTotal
+                                      : 1.0,
+                                  handleStart: handleStart,
+                                  handleEnd: handleEnd,
+                                  onChange: (e) {
+                                    scrollController.jumpTo(e.handleStart);
+                                  },
+                                ),
+                              );
+                            },
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Button(
-                          icon: Icons.add,
-                          height: 17,
-                          variant: ButtonVariant.ghost,
-                          contentPadding: const EdgeInsets.all(0),
-                          hint: [HintSection('click', 'Create a new pattern')],
-                          onPress: () {
-                            projectController.addPattern();
-                          },
                         ),
                       ],
                     ),

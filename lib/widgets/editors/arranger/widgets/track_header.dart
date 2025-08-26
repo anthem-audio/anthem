@@ -51,10 +51,7 @@ class TrackHeader extends StatelessWidget {
         );
 
         return Container(
-          decoration: BoxDecoration(
-            color: Theme.panel.accent,
-            borderRadius: BorderRadius.circular(1),
-          ),
+          color: AnthemTheme.panel.main,
           child: Stack(
             children: [
               Positioned(
@@ -65,7 +62,7 @@ class TrackHeader extends StatelessWidget {
                     return Text(
                       getTrack().name,
                       style: TextStyle(
-                        color: Theme.text.main,
+                        color: AnthemTheme.text.main,
                         fontSize: fontSize,
                       ),
                     );
@@ -83,7 +80,6 @@ class TrackHeader extends StatelessWidget {
                     vertical: verticalPadding,
                   ),
                   hideBorder: true,
-                  toggleState: true,
                 ),
               ),
             ],

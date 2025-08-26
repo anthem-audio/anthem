@@ -1,5 +1,5 @@
 <!--
-  Copyright (C) 2022 Budislav Stepanov, Joshua Wade
+  Copyright (C) 2021 - 2024 Budislav Stepanov
 
   This file is part of Anthem.
 
@@ -18,16 +18,6 @@
 -->
 
 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M6.5 13.5H3.5" stroke="#9DB9CC" stroke-linecap="round" stroke-linejoin="bevel"/>
-<path d="M13.5 13.5H10.5" stroke="#9DB9CC" stroke-linecap="round" stroke-linejoin="bevel"/>
-<path d="M6.5 11.5H3.5" stroke="#9DB9CC" stroke-linecap="round" stroke-linejoin="bevel"/>
-<path d="M13.5 11.5H10.5" stroke="#9DB9CC" stroke-linecap="round" stroke-linejoin="bevel"/>
-<path d="M6.5 9.5H3.5" stroke="#9DB9CC" stroke-linecap="round" stroke-linejoin="bevel"/>
-<path d="M13.5 9.5H10.5" stroke="#9DB9CC" stroke-linecap="round" stroke-linejoin="bevel"/>
-<path d="M6.5 7.5H3.5" stroke="#9DB9CC" stroke-linecap="round" stroke-linejoin="bevel"/>
-<path d="M13.5 7.5H10.5" stroke="#9DB9CC" stroke-linecap="round" stroke-linejoin="bevel"/>
-<path d="M6.5 5.5H3.5" stroke="#9DB9CC" stroke-linecap="round" stroke-linejoin="bevel"/>
-<path d="M13.5 5.5H10.5" stroke="#9DB9CC" stroke-linecap="round" stroke-linejoin="bevel"/>
-<path d="M6.5 3.5H3.5" stroke="#9DB9CC" stroke-linecap="round" stroke-linejoin="bevel"/>
-<path d="M13.5 3.5H10.5" stroke="#9DB9CC" stroke-linecap="round" stroke-linejoin="bevel"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M3.49999 9C3.77613 9 3.99999 9.22386 3.99999 9.5V13.2929L5.14644 12.1464C5.3417 11.9512 5.65828 11.9512 5.85355 12.1464C6.04881 12.3417 6.04881 12.6583 5.85355 12.8536L3.85355 14.8536C3.65828 15.0488 3.3417 15.0488 3.14644 14.8536L1.14644 12.8536C0.951177 12.6583 0.951177 12.3417 1.14644 12.1464C1.3417 11.9512 1.65828 11.9512 1.85355 12.1464L2.99999 13.2929V9.5C2.99999 9.22386 3.22385 9 3.49999 9Z" fill="#CFCFCF"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M11.5 8C11.7761 8 12 7.77614 12 7.5V3.70711L13.1464 4.85355C13.3417 5.04882 13.6583 5.04882 13.8535 4.85355C14.0488 4.65829 14.0488 4.34171 13.8535 4.14645L11.8535 2.14645C11.6583 1.95118 11.3417 1.95118 11.1464 2.14645L9.14644 4.14645C8.95118 4.34171 8.95118 4.65829 9.14644 4.85355C9.3417 5.04882 9.65828 5.04882 9.85355 4.85355L11 3.70711V7.5C11 7.77614 11.2238 8 11.5 8Z" fill="#CFCFCF"/>
 </svg>

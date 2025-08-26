@@ -24,7 +24,6 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem/model/shared/time_signature.dart';
-import 'package:anthem/theme.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/basic/visualization_builder.dart';
@@ -462,7 +461,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  color: Theme.panel.accent,
+                  color: const Color(0xFF3B3B3B),
                   child: ClipRect(
                     child: AnimatedBuilder(
                       animation: widget.timeViewAnimationController,
