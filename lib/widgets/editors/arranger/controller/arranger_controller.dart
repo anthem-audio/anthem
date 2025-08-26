@@ -68,7 +68,7 @@ abstract class _ArrangerController {
     patternCursorAutorunDispose();
   }
 
-  void setBaseTrackHeight(double trackHeight) {
+  void setBaseTrackHeight(double pointerY, double trackHeight) {
     final oldClampedTrackHeight = viewModel.baseTrackHeight.clamp(
       minTrackHeight,
       maxTrackHeight,
@@ -79,10 +79,14 @@ abstract class _ArrangerController {
       maxTrackHeight,
     );
 
+    final heightRatio = clampedTrackHeight / oldClampedTrackHeight;
+
     viewModel.baseTrackHeight = trackHeight;
     viewModel.verticalScrollPosition =
-        oldVerticalScrollPosition *
-        (clampedTrackHeight / oldClampedTrackHeight);
+        ((oldVerticalScrollPosition + pointerY) * heightRatio - pointerY).clamp(
+          0,
+          double.infinity,
+        );
 
     onBaseTrackHeightChanged.add(null);
   }

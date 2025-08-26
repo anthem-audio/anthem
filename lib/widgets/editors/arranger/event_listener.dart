@@ -74,6 +74,12 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
                 viewModel.verticalScrollPosition = (_panScrollPosStart + delta)
                     .clamp(0, double.infinity);
               },
+              onVerticalZoom: (pointerY, delta) {
+                controller.setBaseTrackHeight(
+                  pointerY,
+                  viewModel.baseTrackHeight + delta * 15,
+                );
+              },
               child: Listener(
                 onPointerDown: (event) {
                   controller.pointerDown(
