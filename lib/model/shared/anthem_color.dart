@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/color_shifter.dart';
 import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem_codegen/include/annotations.dart';
 import 'package:mobx/mobx.dart';
@@ -28,12 +29,12 @@ class AnthemColor extends _AnthemColor
     with _$AnthemColor, _$AnthemColorAnthemModelMixin {
   AnthemColor({
     required super.hue,
-    super.lightnessMultiplier = 1,
-    super.saturationMultiplier = 1,
+    super.lightnessModifier = 1,
+    super.saturationModifier = 1,
   });
 
   AnthemColor.uninitialized()
-    : super(hue: 0, lightnessMultiplier: 1, saturationMultiplier: 1);
+    : super(hue: 0, lightnessModifier: 1, saturationModifier: 1);
 
   factory AnthemColor.fromJson(Map<String, dynamic> json) =>
       _$AnthemColorAnthemModelMixin.fromJson(json);
@@ -44,14 +45,38 @@ abstract class _AnthemColor with Store, AnthemModelBase {
   double hue;
 
   @anthemObservable
-  double lightnessMultiplier; // 1 is normal, + is brighter, - is dimmer
+  double lightnessModifier; // 1 is normal, + is brighter, - is dimmer
 
   @anthemObservable
-  double saturationMultiplier; // 1 is normal, 0 is unsaturated
+  double saturationModifier; // 1 is normal, 0 is unsaturated
+
+  @hide
+  AnthemColorShifter _colorShifter;
+
+  @hide
+  (double, double, double) _colorShifterKey;
+
+  AnthemColorShifter get colorShifter {
+    if (_colorShifterKey != (hue, lightnessModifier, saturationModifier)) {
+      _colorShifter = AnthemColorShifter(
+        hue,
+        lightnessModifier: lightnessModifier,
+        saturationModifier: saturationModifier,
+      );
+      _colorShifterKey = (hue, lightnessModifier, saturationModifier);
+    }
+    return _colorShifter;
+  }
 
   _AnthemColor({
     required this.hue,
-    required this.lightnessMultiplier,
-    required this.saturationMultiplier,
-  }) : super();
+    required this.lightnessModifier,
+    required this.saturationModifier,
+  }) : _colorShifter = AnthemColorShifter(
+         hue,
+         lightnessModifier: lightnessModifier,
+         saturationModifier: saturationModifier,
+       ),
+       _colorShifterKey = (hue, lightnessModifier, saturationModifier),
+       super();
 }

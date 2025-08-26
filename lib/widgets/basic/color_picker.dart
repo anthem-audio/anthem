@@ -58,18 +58,18 @@ class _ColorPickerState extends State<ColorPicker> {
           return Expanded(
             child: Column(
               children: List.generate(3, (lightnessIndex) {
-                var lightnessMultiplier = 0.9 + (lightnessIndex - 1) * 0.5;
-                if (lightnessIndex == 0) lightnessMultiplier += 0.2;
+                var lightnessModifier = 0.9 + (lightnessIndex - 1) * 0.5;
+                if (lightnessIndex == 0) lightnessModifier += 0.2;
 
-                final saturationMultiplier =
+                final saturationModifier =
                     saturations[colorIndex] + (lightnessIndex - 1) * 0.5 - 0.2;
 
                 void onPointerUp(PointerEvent e) {
                   widget.onChange?.call(
                     AnthemColor(
                       hue: hue,
-                      saturationMultiplier: saturationMultiplier,
-                      lightnessMultiplier: lightnessMultiplier,
+                      saturationModifier: saturationModifier,
+                      lightnessModifier: lightnessModifier,
                     ),
                   );
                 }
@@ -83,8 +83,8 @@ class _ColorPickerState extends State<ColorPicker> {
                       color: HSLColor.fromAHSL(
                         1,
                         hue,
-                        (saturation * saturationMultiplier).clamp(0, 1),
-                        (0.5 * lightnessMultiplier).clamp(0, 1),
+                        (saturation * saturationModifier).clamp(0, 1),
+                        (0.5 * lightnessModifier).clamp(0, 1),
                       ).toColor(),
                     ),
                   ),

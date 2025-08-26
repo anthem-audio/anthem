@@ -17,9 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:ui';
-
+import 'package:flutter/rendering.dart';
 import 'package:okcolor/models/extensions.dart';
+import 'package:okcolor/models/okhsl.dart';
 
 /// Handles color shifting for Anthem, based on the Oklab color space.
 ///
@@ -27,7 +27,9 @@ import 'package:okcolor/models/extensions.dart';
 /// with all variations. It also produces color variations for colored items,
 /// such as colored channels, tracks, and clips.
 class AnthemColorShifter {
-  int hue;
+  double hue;
+  double lightnessModifier;
+  double saturationModifier;
 
   late final Color main;
   late final Color subtle;
@@ -40,11 +42,39 @@ class AnthemColorShifter {
   late final Color noteSelectedBorder;
   late final Color noteSelected;
 
-  AnthemColorShifter(this.hue) {
+  // For clips in arranger
+  late final OkHsl clipBase;
+  late final OkHsl clipText;
+
+  AnthemColorShifter(
+    this.hue, {
+    this.lightnessModifier = 1,
+    this.saturationModifier = 1,
+  }) {
+    final convertedHue = HSLColor.fromAHSL(
+      1,
+      hue,
+      1,
+      0.5,
+    ).toColor().toOkHsl().h;
+
     const baseDartUiColorNoShift = Color(0xFF28D1AA);
     final baseColorNoShift = baseDartUiColorNoShift.toOkHsl();
 
-    final okBaseColor = baseColorNoShift.withHue(hue / 360);
+    var okBaseColor = baseColorNoShift.withHue(convertedHue);
+
+    if (saturationModifier >= 1) {
+      okBaseColor = okBaseColor.saturate(saturationModifier - 1);
+    } else {
+      okBaseColor = okBaseColor.desaturate(1 - saturationModifier);
+    }
+
+    if (lightnessModifier >= 1) {
+      okBaseColor = okBaseColor.lighter(lightnessModifier - 1);
+    } else {
+      okBaseColor = okBaseColor.darker(1 - lightnessModifier);
+    }
+
     main = okBaseColor.toColor();
     subtle = main.withValues(alpha: 0.11);
     subtleBorder = main.withValues(alpha: 0.38);
@@ -60,5 +90,8 @@ class AnthemColorShifter {
     notePressed = okNotePressed.toColor();
     noteSelectedBorder = okNoteSelectedBorder.toColor();
     noteSelected = okNoteSelected.toColor();
+
+    clipBase = okBaseColor.darker(0.55).desaturate(0.13);
+    clipText = clipBase.lighter(0.7).saturate(clipBase.s == 0 ? 0 : 0.2);
   }
 }

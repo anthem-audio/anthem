@@ -76,6 +76,12 @@ void paintClip({
     canvas.drawRect(rect, rectStrokePaint);
   }
 
+  final contentColor = getContentColor(
+    color: pattern.color,
+    selected: selected,
+    pressed: pressed,
+  );
+
   // Title
 
   // Make sure we're observing both the name and the image cache
@@ -88,12 +94,6 @@ void paintClip({
       : y + (height / 2) - (textHeight / 2);
 
   if (titleImage != null) {
-    final textColor = getTextColor(
-      color: pattern.color,
-      selected: selected,
-      pressed: pressed,
-    );
-
     final rect = Rect.fromLTWH(0, 0, (width - 2) * devicePixelRatio, height);
 
     canvas.drawAtlas(
@@ -109,7 +109,7 @@ void paintClip({
         ),
       ],
       [rect],
-      [textColor],
+      [contentColor],
       BlendMode.dstIn,
       null,
       Paint(),
@@ -159,13 +159,13 @@ void paintClip({
   pattern.clipNotesUpdateSignal.value;
 
   if (height > smallSizeThreshold) {
-    final noteColor = getTextColor(
+    final contentColor = getContentColor(
       color: pattern.color,
       selected: selected,
       pressed: pressed,
     );
 
-    final notePaint = Paint()..color = noteColor;
+    final notePaint = Paint()..color = contentColor;
 
     for (final clipNotesEntry in pattern.clipNotesRenderCache.values) {
       if (clipNotesEntry.renderedVertices == null) continue;
@@ -214,13 +214,6 @@ void paintClip({
 
       canvas.restore();
     }
-
-    // Automation
-    final contentColor = getContentColor(
-      color: pattern.color,
-      selected: selected,
-      pressed: pressed,
-    );
 
     canvas.save();
 
@@ -313,7 +306,7 @@ void drawPatternTitle({
   if (whiteText) {
     textColor = const Color(0xFFFFFFFF);
   } else {
-    textColor = getTextColor(
+    textColor = getContentColor(
       color: pattern.color,
       selected: selected,
       pressed: pressed,

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,6 +19,7 @@
 
 import 'dart:ui';
 
+import 'package:anthem/color_shifter.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
@@ -130,46 +131,25 @@ class ClipPainter extends CustomPainterObserver {
       super.shouldRepaint(oldDelegate);
 }
 
+final _selectedColorShifter = AnthemColorShifter(
+  166,
+  lightnessModifier: 1.2,
+  saturationModifier: 1.0,
+);
+
 Color getBaseColor({
   required AnthemColor color,
   required bool selected,
   required bool pressed,
 }) {
-  final hue = selected ? 166.0 : color.hue;
-  var saturation = selected
-      ? 0.6
-      : (0.28 * color.saturationMultiplier).clamp(0.0, 1.0);
-  var lightness = selected
-      ? 0.31
-      : (0.49 * color.lightnessMultiplier).clamp(0.0, 0.92);
+  final shifter = selected ? _selectedColorShifter : color.colorShifter;
+  final okColor = shifter.clipBase;
 
   if (pressed) {
-    saturation = (saturation * 0.9).clamp(0.0, 1.0);
-    lightness = (lightness - 0.1).clamp(0.0, 1.0);
+    return okColor.darker(0.15).saturate(okColor.s > 0 ? 0.1 : 0).toColor();
   }
 
-  return HSLColor.fromAHSL(1, hue, saturation, lightness).toColor();
-}
-
-Color getTextColor({
-  required AnthemColor color,
-  required bool selected,
-  required bool pressed,
-}) {
-  final hue = selected ? 166.0 : color.hue;
-  var saturation = selected
-      ? 1.0
-      : (1 * color.saturationMultiplier).clamp(0.0, 1.0);
-  var lightness = selected
-      ? 0.92
-      : (0.92 * color.lightnessMultiplier).clamp(0.0, 0.92);
-
-  if (pressed) {
-    saturation = (saturation * 0.9).clamp(0.0, 1.0);
-    lightness = (lightness - 0.1).clamp(0.0, 1.0);
-  }
-
-  return HSLColor.fromAHSL(1, hue, saturation, lightness).toColor();
+  return okColor.toColor();
 }
 
 Color getContentColor({
@@ -177,18 +157,12 @@ Color getContentColor({
   required bool selected,
   required bool pressed,
 }) {
-  final hue = selected ? 166.0 : color.hue;
-  var saturation = selected
-      ? 0.7
-      : (0.7 * color.saturationMultiplier).clamp(0.0, 1.0);
-  var lightness = selected
-      ? 0.78
-      : (0.78 * color.lightnessMultiplier).clamp(0.0, 0.92);
+  final shifter = selected ? _selectedColorShifter : color.colorShifter;
+  final okColor = shifter.clipText;
 
   if (pressed) {
-    saturation = (saturation * 0.9).clamp(0.0, 1.0);
-    lightness = (lightness - 0.1).clamp(0.0, 1.0);
+    return okColor.darker(0.15).saturate(okColor.s > 0 ? 0.1 : 0).toColor();
   }
 
-  return HSLColor.fromAHSL(1, hue, saturation, lightness).toColor();
+  return okColor.toColor();
 }
