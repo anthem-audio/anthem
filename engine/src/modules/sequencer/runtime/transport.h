@@ -27,7 +27,6 @@
 
 #include "juce_events/juce_events.h"
 
-#include "modules/util/double_buffered_value.h"
 #include "modules/util/ring_buffer.h"
 #include "modules/sequencer/events/event.h"
 
