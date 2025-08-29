@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
@@ -69,6 +70,14 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
   Widget build(BuildContext context) {
     return Listener(
       onPointerSignal: (event) {
+        // Special case for web. See https://github.com/flutter/flutter/issues/174251
+        if (kIsWeb) {
+          if (event is PointerScrollEvent) {
+            handlePanZoomUpdate(event);
+          }
+          return;
+        }
+
         if (event is PointerScrollEvent) {
           handleScroll(event);
         }
@@ -202,8 +211,17 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
     widget.onVerticalScrollChange?.call(delta);
   }
 
-  void handlePanZoomUpdate(PointerPanZoomUpdateEvent e) {
-    if (e.scale != 1) return;
+  void handlePanZoomUpdate(PointerEvent e) {
+    // On web, the event will come through here as a scroll event - otherwise it
+    // will come as a PointerPanZoomUpdateEvent. See:
+    // https://github.com/flutter/flutter/issues/174251
+    final panZoomEvent = e is PointerPanZoomUpdateEvent ? e : null;
+    final scrollEvent = e is PointerScrollEvent ? e : null;
+
+    final dx = panZoomEvent?.localPanDelta.dx ?? -scrollEvent!.scrollDelta.dx;
+    final dy = panZoomEvent?.localPanDelta.dy ?? -scrollEvent!.scrollDelta.dy;
+
+    if ((panZoomEvent?.scale ?? 1) != 1) return;
 
     final modifiers = Provider.of<KeyboardModifiers>(context, listen: false);
     final contentRenderBox = context.findRenderObject() as RenderBox;
@@ -214,7 +232,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
       // Horizontal zoom
       zoomTimeView(
         timeView: widget.timeView,
-        delta: -e.localPanDelta.dy * 0.8,
+        delta: -dy * 0.8,
         mouseX: pointerPos.dx,
         editorWidth: contentRenderBox.size.width,
       );
@@ -225,16 +243,14 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
     if (modifiers.alt) {
       final pointerPos = contentRenderBox.globalToLocal(e.position);
 
-      widget.onVerticalZoom?.call(pointerPos.dy, -e.localPanDelta.dy * 0.01);
+      widget.onVerticalZoom?.call(pointerPos.dy, -dy * 0.01);
 
       return;
     }
 
     final ticksPerPixel = widget.timeView.width / contentRenderBox.size.width;
 
-    final horizontalDelta = e.localPanDelta.dx;
-
-    var horizontalDeltaTicks = -horizontalDelta * ticksPerPixel;
+    var horizontalDeltaTicks = -dx * ticksPerPixel;
 
     if (widget.timeView.start + horizontalDeltaTicks < 0) {
       horizontalDeltaTicks = -widget.timeView.start;
@@ -244,6 +260,6 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
     widget.timeView.end += horizontalDeltaTicks;
 
     // 1.5 feels right here
-    widget.onVerticalScrollChange?.call(-e.localPanDelta.dy * 1.5);
+    widget.onVerticalScrollChange?.call(-dy * 1.5);
   }
 }
