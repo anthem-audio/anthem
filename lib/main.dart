@@ -20,6 +20,7 @@
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/shortcuts/raw_key_event_singleton.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
@@ -44,8 +45,10 @@ void main() async {
 
   runApp(const App());
 
-  await windowManager.ensureInitialized();
-  await windowManager.setAsFrameless();
+  if (!kIsWeb) {
+    await windowManager.ensureInitialized();
+    await windowManager.setAsFrameless();
+  }
 }
 
 class App extends StatefulWidget {
@@ -68,13 +71,19 @@ class _AppState extends State<App> with WindowListener {
   @override
   void initState() {
     super.initState();
-    windowManager.addListener(this);
-    _initWindow();
+
+    if (!kIsWeb) {
+      windowManager.addListener(this);
+      _initWindow();
+    }
   }
 
   @override
   void dispose() {
-    windowManager.removeListener(this);
+    if (!kIsWeb) {
+      windowManager.removeListener(this);
+    }
+
     super.dispose();
   }
 
@@ -130,6 +139,21 @@ class _AppState extends State<App> with WindowListener {
 
   @override
   Widget build(BuildContext context) {
+    final contentStack = Stack(
+      fit: StackFit.expand,
+      children: [
+        Container(color: AnthemTheme.panel.border),
+        MainWindow(key: mainWindowKey),
+      ],
+    );
+
+    final windowResizeAreaWithContent = kIsWeb
+        ? contentStack
+        : DragToResizeArea(
+            enableResizeEdges: isMaximized ? [] : null,
+            child: contentStack,
+          );
+
     return MaterialApp(
       title: 'Anthem',
       color: AnthemTheme.primary.main,
@@ -153,16 +177,7 @@ class _AppState extends State<App> with WindowListener {
                 behavior: ScrollConfiguration.of(
                   context,
                 ).copyWith(scrollbars: false),
-                child: DragToResizeArea(
-                  enableResizeEdges: isMaximized ? [] : null,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Container(color: AnthemTheme.panel.border),
-                      MainWindow(key: mainWindowKey),
-                    ],
-                  ),
-                ),
+                child: windowResizeAreaWithContent,
               ),
             ),
           ),

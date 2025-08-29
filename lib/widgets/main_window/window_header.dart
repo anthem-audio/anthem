@@ -22,6 +22,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/main_window/window_header_engine_indicator.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
@@ -45,6 +46,19 @@ class WindowHeader extends StatefulWidget {
 class _WindowHeaderState extends State<WindowHeader> {
   @override
   Widget build(BuildContext context) {
+    final Widget windowHandleAndControls;
+
+    if (kIsWeb) {
+      windowHandleAndControls = Container(
+        decoration: BoxDecoration(
+          color: AnthemTheme.panel.background,
+          borderRadius: const BorderRadius.only(topRight: Radius.circular(4)),
+        ),
+      );
+    } else {
+      windowHandleAndControls = _WindowHandleAndControls();
+    }
+
     return SizedBox(
       height: 29,
       child: Row(
@@ -62,7 +76,7 @@ class _WindowHeaderState extends State<WindowHeader> {
               title: tab.title,
             ),
           ),
-          Expanded(child: DragToMoveArea(child: _WindowHandleAndControls())),
+          Expanded(child: windowHandleAndControls),
         ],
       ),
     );
@@ -74,19 +88,19 @@ class _WindowHandleAndControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 1),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AnthemTheme.panel.background,
-          borderRadius: const BorderRadius.only(
-            topRight: Radius.circular(4),
-            topLeft: Radius.zero,
-            bottomLeft: Radius.zero,
-            bottomRight: Radius.zero,
+    return DragToMoveArea(
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 1),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AnthemTheme.panel.background,
+            borderRadius: const BorderRadius.only(topRight: Radius.circular(4)),
+          ),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: _WindowButtons(),
           ),
         ),
-        child: Align(alignment: Alignment.centerRight, child: _WindowButtons()),
       ),
     );
   }
