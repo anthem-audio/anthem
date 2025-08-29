@@ -208,6 +208,10 @@ class Engine {
 
   /// Starts the engine process, and attaches to it.
   Future<void> start() async {
+    if (kIsWeb) {
+      return;
+    }
+
     if (_engineState != EngineState.stopped) {
       return;
     }
