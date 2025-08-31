@@ -234,7 +234,7 @@ class _CleanEngineCommand extends Command<dynamic> {
     final buildDir = Directory.fromUri(buildDirPath);
     final buildAsanDir = Directory.fromUri(buildAsanDirPath);
 
-    print(Colorize('Deleting build directory...')..lightGreen());
+    print(Colorize('Deleting build directories...')..lightGreen());
     if (buildDir.existsSync()) {
       buildDir.deleteSync(recursive: true);
     }
