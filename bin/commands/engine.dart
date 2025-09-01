@@ -18,7 +18,7 @@
 */
 
 // ignore_for_file: avoid_print
-// cspell:ignore DCMAKE fsanitize
+// cspell:ignore DCMAKE fsanitize emcmake
 
 import 'dart:io';
 
@@ -32,7 +32,7 @@ class EngineCommand extends Command<dynamic> {
   String get name => 'engine';
 
   @override
-  String get description => 'Utilities for developing the Anthem engine.';
+  String get description => 'Build, clean, or test the Anthem engine.';
 
   EngineCommand() {
     addSubcommand(_BuildEngineCommand());
@@ -66,32 +66,52 @@ class _BuildEngineCommand extends Command<dynamic> {
     argParser.addFlag(
       'address-sanitizer',
       defaultsTo: false,
+      help: 'Builds the engine with address sanitizer enabled.',
+    );
+
+    argParser.addFlag(
+      'wasm',
+      defaultsTo: false,
       help:
-          'Builds the engine with address sanitizer enabled. This does not work with MSVC.',
+          'Builds the engine with a WebAssembly target, and copies the output to the Flutter web directory. '
+          'This is only tested on Linux, though it is likely also possible on macOS. Windows users should use WSL2 for this.',
     );
   }
 
   @override
   Future<void> run() async {
-    if (argResults!['release'] && argResults!['debug']) {
+    final release = argResults!['release'] as bool;
+    final debug = argResults!['debug'] as bool;
+    final addressSanitizer = argResults!['address-sanitizer'] as bool;
+    final wasm = argResults!['wasm'] as bool;
+
+    if (release && debug) {
       print(
         Colorize('Error: Cannot build in both release and debug mode.')..red(),
       );
       return;
     }
 
-    if (!argResults!['release'] && !argResults!['debug']) {
+    if (!release && !debug) {
       print(
         Colorize('Error: Must build in either release or debug mode.')..red(),
       );
       return;
     }
 
-    if (argResults!['release'] && argResults!['address-sanitizer']) {
+    if (release && addressSanitizer) {
       print(
         Colorize(
           'Error: Cannot build in release mode with address sanitizer enabled.',
         )..red(),
+      );
+      return;
+    }
+
+    if (Platform.isWindows && wasm) {
+      print(
+        Colorize('Error: WebAssembly builds on Windows must be run under WSL2.')
+          ..red(),
       );
       return;
     }
@@ -148,41 +168,51 @@ to generate the files, then run this script again.''')..red(),
       return;
     }
 
-    final buildDirectoryName = argResults!['address-sanitizer']
-        ? 'build_asan'
-        : (argResults!['debug'] ? 'build' : 'build_release');
+    var buildDirectoryName = 'build';
+    if (wasm) buildDirectoryName += '_wasm';
+    if (release) buildDirectoryName += '_release';
+    if (addressSanitizer) buildDirectoryName += '_asan';
 
     await _buildCmakeTarget(
       'AnthemEngine',
-      addressSanitizer: argResults!['address-sanitizer'],
-      debug: argResults!['debug'],
+      wasm: wasm,
+      addressSanitizer: addressSanitizer,
+      debug: debug,
       buildDirectoryName: buildDirectoryName,
     );
 
-    print(
-      Colorize('Copying engine binary to Flutter assets directory...')
-        ..lightGreen(),
-    );
-    final engineBinaryPath = packageRootPath.resolve(
-      'engine/$buildDirectoryName/AnthemEngine_artefacts${argResults!['debug'] ? '/Debug' : '/Release'}/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
-    );
-    final flutterAssetsDirPath = packageRootPath.resolve('assets/engine/');
+    if (wasm) {
+      print(
+        Colorize('Copying engine binary to Flutter web directory...')
+          ..lightGreen(),
+      );
+      print(Colorize('(TODO: Unimplemented)')..yellow());
+    } else {
+      print(
+        Colorize('Copying engine binary to Flutter assets directory...')
+          ..lightGreen(),
+      );
+      final engineBinaryPath = packageRootPath.resolve(
+        'engine/$buildDirectoryName/AnthemEngine_artefacts${debug ? '/Debug' : '/Release'}/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+      );
+      final flutterAssetsDirPath = packageRootPath.resolve('assets/engine/');
 
-    // Create the engine directory in assets if it doesn't exist
-    final flutterAssetsDir = Directory.fromUri(flutterAssetsDirPath);
-    if (!flutterAssetsDir.existsSync()) {
-      flutterAssetsDir.createSync(recursive: true);
+      // Create the engine directory in assets if it doesn't exist
+      final flutterAssetsDir = Directory.fromUri(flutterAssetsDirPath);
+      if (!flutterAssetsDir.existsSync()) {
+        flutterAssetsDir.createSync(recursive: true);
+      }
+
+      // Copy the engine binary to the Flutter assets directory
+      final flutterEngineBinaryPath = flutterAssetsDirPath.resolve(
+        'AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+      );
+      File.fromUri(engineBinaryPath).copySync(
+        flutterEngineBinaryPath.toFilePath(windows: Platform.isWindows),
+      );
+
+      print(Colorize('Copy complete.').lightGreen());
     }
-
-    // Copy the engine binary to the Flutter assets directory
-    final flutterEngineBinaryPath = flutterAssetsDirPath.resolve(
-      'AnthemEngine${Platform.isWindows ? '.exe' : ''}',
-    );
-    File.fromUri(
-      engineBinaryPath,
-    ).copySync(flutterEngineBinaryPath.toFilePath(windows: Platform.isWindows));
-
-    print(Colorize('Copy complete.').lightGreen());
   }
 }
 
@@ -305,6 +335,7 @@ class _EngineUnitTestCommand extends Command<dynamic> {
 
 Future<void> _buildCmakeTarget(
   String target, {
+  bool wasm = false,
   bool addressSanitizer = false,
   bool debug = false,
   String buildDirectoryName = 'build',
@@ -336,8 +367,10 @@ Future<void> _buildCmakeTarget(
 
   print(Colorize('Running CMake...')..lightGreen());
   final cmakeProcess = await Process.start(
-    'cmake',
+    wasm ? 'emcmake' : 'cmake',
     [
+      if (wasm) 'cmake',
+
       // Note: On Linux, if you get an error like: CMake Warning:
       // Manually-specified variables were not used by the project:
       //
@@ -388,8 +421,10 @@ Future<void> _buildCmakeTarget(
 
   print(Colorize('Running build...')..lightGreen());
   final buildProcess = await Process.start(
-    'cmake',
+    wasm ? 'emcmake' : 'cmake',
     [
+      if (wasm) 'cmake',
+
       '--build',
       '.',
       '--target',
