@@ -1,9 +1,15 @@
 cmake_minimum_required(VERSION 3.23)
 
-project(AnthemEngine)
+project(AnthemEngine
+  VERSION 0.0.1
+  LANGUAGES CXX
+)
 
-set(CMAKE_CXX_STANDARD 20)
+add_library(project_options INTERFACE)
+target_compile_features(project_options INTERFACE cxx_std_20)
 
+# This cuts MSVC output by a factor of 10, due to warnings originating in
+# upstream packages.
 if(MSVC)
   # Disables a couple warnings about struct alignment (C4324, C4820), which
   # don't seem to indicate anything, though I may be wrong.
@@ -31,22 +37,16 @@ endif()
 
 add_subdirectory(include)
 
-include_directories(${CMAKE_SOURCE_DIR})
-
 # Add JUCE
 
 add_subdirectory(include/JUCE)
 
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
-
-include_directories(
-  ${CMAKE_SOURCE_DIR}
-
-  # Allows #include "messages/messages.h" for generated messages
-  ${CMAKE_SOURCE_DIR}/src/generated/lib/engine_api
-
+add_library(project_includes INTERFACE)
+target_include_directories(project_includes INTERFACE
+  # ${CMAKE_SOURCE_DIR}
   ${CMAKE_SOURCE_DIR}/src
   ${CMAKE_SOURCE_DIR}/src/modules
+  ${CMAKE_SOURCE_DIR}/src/generated/lib/engine_api
 )
 
 # Make this a JUCE console application
@@ -84,6 +84,9 @@ target_link_libraries(
   AnthemEngine
 
   PRIVATE
+  project_options
+  project_includes
+
   juce::juce_audio_processors
   juce::juce_audio_basics
   juce::juce_audio_devices
@@ -111,9 +114,13 @@ add_executable(AnthemTest test/test.cpp ${ANTHEM_ENGINE_SOURCES})
 
 target_link_libraries(AnthemTest
   PRIVATE
+    project_options
+    project_includes
+
     juce::juce_audio_basics
     juce::juce_audio_processors
     juce::juce_audio_devices
+
     reflectcpp
 )
 
