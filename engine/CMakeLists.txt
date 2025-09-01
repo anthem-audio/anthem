@@ -43,9 +43,7 @@ add_subdirectory(include/JUCE)
 
 add_library(project_includes INTERFACE)
 target_include_directories(project_includes INTERFACE
-  # ${CMAKE_SOURCE_DIR}
   ${CMAKE_SOURCE_DIR}/src
-  ${CMAKE_SOURCE_DIR}/src/modules
   ${CMAKE_SOURCE_DIR}/src/generated/lib/engine_api
 )
 
