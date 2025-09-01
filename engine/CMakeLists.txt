@@ -40,14 +40,15 @@ add_subdirectory(include/JUCE)     # JUCE
 
 add_library(project_includes INTERFACE)
 target_include_directories(project_includes INTERFACE
-  ${CMAKE_SOURCE_DIR}/src
-  ${CMAKE_SOURCE_DIR}/src/generated/lib/engine_api
+  ${PROJECT_SOURCE_DIR}/src
+  ${PROJECT_SOURCE_DIR}/src/generated/lib/engine_api
 )
 
 # Source files
 file(
   GLOB_RECURSE
   ANTHEM_ALL_SOURCES
+  CONFIGURE_DEPENDS
   ${PROJECT_SOURCE_DIR}/src/*.h
   ${PROJECT_SOURCE_DIR}/src/*.cpp
   ${PROJECT_SOURCE_DIR}/src/**/*.h
