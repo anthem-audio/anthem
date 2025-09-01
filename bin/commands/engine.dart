@@ -248,6 +248,14 @@ Future<bool> _isIpcOutdated() async {
 }
 
 class _CleanEngineCommand extends Command<dynamic> {
+  _CleanEngineCommand() {
+    argParser.addFlag(
+      'y',
+      defaultsTo: false,
+      help: 'Automatically confirm all prompts.',
+    );
+  }
+
   @override
   String get name => 'clean';
 
@@ -256,20 +264,54 @@ class _CleanEngineCommand extends Command<dynamic> {
 
   @override
   Future<void> run() async {
+    final skipPrompts = argResults!['y'] as bool;
+
     print(Colorize('Cleaning the Anthem engine build...')..lightGreen());
 
-    final packageRootPath = getPackageRootPath();
-    final buildDirPath = packageRootPath.resolve('engine/build/');
-    final buildAsanDirPath = packageRootPath.resolve('engine/build_asan/');
-    final buildDir = Directory.fromUri(buildDirPath);
-    final buildAsanDir = Directory.fromUri(buildAsanDirPath);
+    final engineDirPath = getPackageRootPath().resolve('engine/');
+
+    final folders = Directory.fromUri(engineDirPath)
+        .listSync()
+        .whereType<Directory>()
+        .where((dir) {
+          final pathSegments = dir.uri.pathSegments;
+          for (var i = pathSegments.length - 1; i >= 0; i--) {
+            if (pathSegments[i].isEmpty) continue;
+            return pathSegments[i].startsWith('build');
+          }
+          return false;
+        })
+        .toList();
+
+    if (folders.isEmpty) {
+      print(
+        Colorize('No build directories found, nothing to clean.')..lightGreen(),
+      );
+      return;
+    }
+
+    if (!skipPrompts) {
+      print(Colorize('This will remove the following directories:')..yellow());
+      for (final dir in folders) {
+        print(Colorize(' - ${dir.path}'));
+      }
+      print(Colorize('Are you sure you want to continue? (y/N)')..yellow());
+
+      final confirmation = stdin.readLineSync();
+      if (confirmation?.toLowerCase() != 'y') {
+        print(Colorize('Aborting clean operation.')..red());
+        return;
+      }
+    }
 
     print(Colorize('Deleting build directories...')..lightGreen());
-    if (buildDir.existsSync()) {
-      buildDir.deleteSync(recursive: true);
-    }
-    if (buildAsanDir.existsSync()) {
-      buildAsanDir.deleteSync(recursive: true);
+    for (final dir in folders) {
+      try {
+        dir.deleteSync(recursive: true);
+        print(Colorize('Deleted ${dir.path}'));
+      } catch (e) {
+        print(Colorize('Failed to delete ${dir.uri}: $e')..red());
+      }
     }
 
     print(Colorize('Clean complete.').lightGreen());
