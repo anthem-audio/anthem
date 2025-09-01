@@ -19,6 +19,7 @@
     "desync",
     "Diagnosticable",
     "dylib",
+    "emscripten",
     "endl",
     "frameless",
     "fuzzywuzzy",
