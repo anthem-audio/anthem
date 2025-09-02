@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.23)
 
 project(AnthemEngine
   VERSION 0.0.1
-  LANGUAGES CXX
+  LANGUAGES C CXX
 )
 
 set(IS_WASM FALSE)
