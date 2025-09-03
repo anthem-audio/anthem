@@ -282,7 +282,8 @@ class _CleanEngineCommand extends Command<dynamic> {
 
     print(Colorize('Cleaning the Anthem engine build...')..lightGreen());
 
-    final engineDirPath = getPackageRootPath().resolve('engine/');
+    final packageRoot = getPackageRootPath();
+    final engineDirPath = packageRoot.resolve('engine/');
 
     final folders = Directory.fromUri(engineDirPath)
         .listSync()
@@ -296,6 +297,11 @@ class _CleanEngineCommand extends Command<dynamic> {
           return false;
         })
         .toList();
+
+    final webEngineDir = Directory.fromUri(packageRoot.resolve('web/engine'));
+    if (webEngineDir.existsSync()) {
+      folders.add(webEngineDir);
+    }
 
     if (folders.isEmpty) {
       print(
