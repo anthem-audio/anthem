@@ -19,6 +19,9 @@
 
 #include <iostream>
 
+#include "../include/juce_core_wasm.h"
+
 int main() {
   std::cout << "Hello world from Anthem engine!" << std::endl;
+  std::cout << "Value from JUCE WASM header: " << getSomeValue() << std::endl;
 }

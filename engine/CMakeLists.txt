@@ -90,7 +90,12 @@ target_link_libraries(AnthemEngineLib
     reflectcpp
 )
 
-if (NOT IS_WASM)
+if (IS_WASM)
+  # target_link_libraries(AnthemEngineLib
+  #   PUBLIC
+  #     juce_core_wasm
+  # )
+else()
   target_link_libraries(AnthemEngineLib
     PUBLIC
       juce::juce_audio_processors
@@ -131,6 +136,14 @@ else()
   juce_add_console_app(AnthemEngine ANTHEM_ENGINE "Anthem Engine" VERSION "${PROJECT_VERSION}")
 
   target_sources(AnthemEngine PRIVATE ${APP_MAIN})
+endif()
+
+# Temporarily link WASM build to custom JUCE lib for testing
+if (IS_WASM)
+  target_link_libraries(AnthemEngine
+    PRIVATE
+      juce_core_wasm
+  )
 endif()
 
 # Tests rely on JUCE, so skipping for WASM for now
