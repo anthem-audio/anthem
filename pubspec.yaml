@@ -38,6 +38,9 @@ dependencies:
   mockito: ^5.4.5
   window_manager: ^0.5.0
   okcolor: ^1.1.0
+  web: ^1.1.1
+  shelf_proxy: ^1.0.4
+  shelf: ^1.4.2
 
 dev_dependencies:
   analyzer: ^7.7.0
