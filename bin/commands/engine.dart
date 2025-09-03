@@ -449,8 +449,8 @@ Future<void> _buildCmakeTarget(
     ],
     workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
     environment: {
-      if (Platform.isLinux) 'CC': '/usr/bin/clang',
-      if (Platform.isLinux) 'CXX': '/usr/bin/clang++',
+      if (Platform.isLinux && !wasm) 'CC': '/usr/bin/clang',
+      if (Platform.isLinux && !wasm) 'CXX': '/usr/bin/clang++',
     },
     mode: ProcessStartMode.inheritStdio,
   );
@@ -463,10 +463,8 @@ Future<void> _buildCmakeTarget(
 
   print(Colorize('Running build...')..lightGreen());
   final buildProcess = await Process.start(
-    wasm ? 'emcmake' : 'cmake',
+    'cmake',
     [
-      if (wasm) 'cmake',
-
       '--build',
       '.',
       '--target',
