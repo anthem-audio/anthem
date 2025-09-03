@@ -66,5 +66,6 @@
     "engine/include/*": true
   },
   "editor.tabSize": 2,
-  "C_Cpp.errorSquiggles": "disabled"
+  "C_Cpp.errorSquiggles": "disabled",
+  "cmake.sourceDirectory": "${workspaceFolder}/engine"
 }
