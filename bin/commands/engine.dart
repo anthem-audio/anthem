@@ -108,14 +108,6 @@ class _BuildEngineCommand extends Command<dynamic> {
       return;
     }
 
-    if (Platform.isWindows && wasm) {
-      print(
-        Colorize('Error: WebAssembly builds on Windows must be run under WSL2.')
-          ..red(),
-      );
-      return;
-    }
-
     print(Colorize('Building the Anthem engine...\n\n')..lightGreen());
 
     // Check for generated files. If there aren't any, provide an error.
@@ -200,6 +192,7 @@ to generate the files, then run this script again.''')..red(),
       }
 
       for (final path in paths) {
+        print('Copying ${path.path}...');
         final fileName = path.pathSegments.last;
         final flutterEngineBinaryPath = flutterWebDirPath.resolve(fileName);
         File.fromUri(path).copySync(
@@ -428,53 +421,73 @@ Future<void> _buildCmakeTarget(
   final buildDir = Directory.fromUri(buildDirPath);
   buildDir.createSync();
 
-  print(Colorize('Running CMake...')..lightGreen());
-  final cmakeProcess = await Process.start(
-    wasm ? 'emcmake' : 'cmake',
-    [
-      if (wasm) 'cmake',
+  final cmakeCommand = [
+    if (wasm) 'emcmake',
+    'cmake',
 
-      // Note: On Linux, if you get an error like: CMake Warning:
-      // Manually-specified variables were not used by the project:
-      //
-      //     CMAKE_BUILD_TYPE
-      //
-      // Then you may need to set the debug/release flag in the same way that
-      // Windows does below in the build command. E.g.:
-      //     cmake --build . --config (Release/Debug)
-      if (Platform.isLinux || Platform.isMacOS)
-        '-DCMAKE_BUILD_TYPE=${debug ? 'Debug' : 'Release'}',
+    // Note: On Linux, if you get an error like: CMake Warning:
+    // Manually-specified variables were not used by the project:
+    //
+    //     CMAKE_BUILD_TYPE
+    //
+    // Then you may need to set the debug/release flag in the same way that
+    // Windows does below in the build command. E.g.:
+    //     cmake --build . --config (Release/Debug)
+    if (Platform.isLinux || Platform.isMacOS)
+      '-DCMAKE_BUILD_TYPE=${debug ? 'Debug' : 'Release'}',
 
-      if (addressSanitizer && (Platform.isLinux || Platform.isMacOS)) ...[
-        '-DCMAKE_C_FLAGS=-fsanitize=address',
-        '-DCMAKE_CXX_FLAGS=-fsanitize=address',
-        '-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address',
-        '-DCMAKE_C_FLAGS_DEBUG=-fsanitize=address',
-        '-DCMAKE_CXX_FLAGS_DEBUG=-fsanitize=address',
-        '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-fsanitize=address',
-        '-DCMAKE_C_FLAGS_DEBUG=-fno-omit-frame-pointer',
-        '-DCMAKE_CXX_FLAGS_DEBUG=-fno-omit-frame-pointer',
-        '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-fno-omit-frame-pointer',
-        '-DCMAKE_C_FLAGS_DEBUG=-g',
-        '-DCMAKE_CXX_FLAGS_DEBUG=-g',
-        '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-g',
-        '-DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address',
-      ],
-
-      if (addressSanitizer && Platform.isWindows) ...[
-        r'-DCMAKE_C_FLAGS="/fsanitize=address"',
-        r'-DCMAKE_CXX_FLAGS="/fsanitize=address"',
-      ],
-
-      '..',
+    if (addressSanitizer && (Platform.isLinux || Platform.isMacOS)) ...[
+      '-DCMAKE_C_FLAGS=-fsanitize=address',
+      '-DCMAKE_CXX_FLAGS=-fsanitize=address',
+      '-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address',
+      '-DCMAKE_C_FLAGS_DEBUG=-fsanitize=address',
+      '-DCMAKE_CXX_FLAGS_DEBUG=-fsanitize=address',
+      '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-fsanitize=address',
+      '-DCMAKE_C_FLAGS_DEBUG=-fno-omit-frame-pointer',
+      '-DCMAKE_CXX_FLAGS_DEBUG=-fno-omit-frame-pointer',
+      '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-fno-omit-frame-pointer',
+      '-DCMAKE_C_FLAGS_DEBUG=-g',
+      '-DCMAKE_CXX_FLAGS_DEBUG=-g',
+      '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-g',
+      '-DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address',
     ],
-    workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
-    environment: {
-      if (Platform.isLinux && !wasm) 'CC': '/usr/bin/clang',
-      if (Platform.isLinux && !wasm) 'CXX': '/usr/bin/clang++',
-    },
-    mode: ProcessStartMode.inheritStdio,
-  );
+
+    if (addressSanitizer && Platform.isWindows) ...[
+      r'-DCMAKE_C_FLAGS="/fsanitize=address"',
+      r'-DCMAKE_CXX_FLAGS="/fsanitize=address"',
+    ],
+
+    '..',
+  ];
+
+  print(Colorize('Running CMake...')..lightGreen());
+  final Process cmakeProcess;
+
+  if (Platform.isWindows && wasm) {
+    cmakeProcess = await Process.start(
+      'wsl',
+      [
+        '--cd',
+        buildDirPath.toFilePath(windows: Platform.isWindows),
+        'bash',
+        '-lc',
+        cmakeCommand.map((e) => '"$e"').join(' '),
+      ],
+      // workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
+      mode: ProcessStartMode.inheritStdio,
+    );
+  } else {
+    cmakeProcess = await Process.start(
+      cmakeCommand.first,
+      cmakeCommand.skip(1).toList(),
+      workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
+      environment: {
+        if (Platform.isLinux && !wasm) 'CC': '/usr/bin/clang',
+        if (Platform.isLinux && !wasm) 'CXX': '/usr/bin/clang++',
+      },
+      mode: ProcessStartMode.inheritStdio,
+    );
+  }
 
   final cmakeExitCode = await cmakeProcess.exitCode;
   if (cmakeExitCode != 0) {
@@ -483,21 +496,37 @@ Future<void> _buildCmakeTarget(
   }
 
   print(Colorize('Running build...')..lightGreen());
-  final buildProcess = await Process.start(
+
+  final buildCommand = [
     'cmake',
-    [
-      '--build',
-      '.',
-      '--target',
-      target,
-      // For macOS, I think these are ignored, but they don't seem to break
-      // anything.
-      if (Platform.isWindows || Platform.isMacOS) '--config',
-      if (Platform.isWindows || Platform.isMacOS) debug ? 'Debug' : 'Release',
-    ],
-    workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
-    mode: ProcessStartMode.inheritStdio,
-  );
+    '--build',
+    '.',
+    '--target',
+    target,
+    // For macOS, I think these are ignored, but they don't seem to break
+    // anything.
+    if (Platform.isWindows || Platform.isMacOS) '--config',
+    if (Platform.isWindows || Platform.isMacOS) debug ? 'Debug' : 'Release',
+  ];
+
+  final Process buildProcess;
+
+  if (wasm) {
+    buildProcess = await Process.start('wsl', [
+      '--cd',
+      buildDirPath.toFilePath(windows: Platform.isWindows),
+      'bash',
+      '-lc',
+      buildCommand.map((e) => '"$e"').join(' '),
+    ], mode: ProcessStartMode.inheritStdio);
+  } else {
+    buildProcess = await Process.start(
+      buildCommand.first,
+      buildCommand.skip(1).toList(),
+      workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
+      mode: ProcessStartMode.inheritStdio,
+    );
+  }
 
   final buildExitCode = await buildProcess.exitCode;
   if (buildExitCode != 0) {
