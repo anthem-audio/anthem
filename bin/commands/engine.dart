@@ -186,7 +186,28 @@ to generate the files, then run this script again.''')..red(),
         Colorize('Copying engine binary to Flutter web directory...')
           ..lightGreen(),
       );
-      print(Colorize('(TODO: Unimplemented)')..yellow());
+
+      final paths = [
+        packageRootPath.resolve('engine/$buildDirectoryName/AnthemEngine.js'),
+        packageRootPath.resolve('engine/$buildDirectoryName/AnthemEngine.wasm'),
+      ];
+
+      final flutterWebDirPath = packageRootPath.resolve('web/engine/');
+      final flutterWebDir = Directory.fromUri(flutterWebDirPath);
+
+      if (!flutterWebDir.existsSync()) {
+        flutterWebDir.createSync(recursive: true);
+      }
+
+      for (final path in paths) {
+        final fileName = path.pathSegments.last;
+        final flutterEngineBinaryPath = flutterWebDirPath.resolve(fileName);
+        File.fromUri(path).copySync(
+          flutterEngineBinaryPath.toFilePath(windows: Platform.isWindows),
+        );
+      }
+
+      print(Colorize('Copy complete.').lightGreen());
     } else {
       print(
         Colorize('Copying engine binary to Flutter assets directory...')
