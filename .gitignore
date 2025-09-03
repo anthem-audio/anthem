@@ -57,6 +57,7 @@ app.*.map.json
 /engine_connector/build/
 /engine/build*/
 /engine/src/generated/
+/web/engine/
 
 # Visual Studio
 **/out/build/**
