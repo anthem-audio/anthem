@@ -24,4 +24,7 @@
 int main() {
   std::cout << "Hello world from Anthem engine!" << std::endl;
   std::cout << "Value from JUCE WASM header: " << getSomeValue() << std::endl;
+  #ifdef __EMSCRIPTEN_PTHREADS__
+  std::cout << "Running with Emscripten pthreads enabled." << std::endl;
+  #endif
 }

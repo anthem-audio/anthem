@@ -12,6 +12,29 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
   set(IS_WASM TRUE)
 endif()
 
+if (IS_WASM)
+  # Expose a knob for your worker pool size (can be an int or a JS expr)
+  set(WASM_PTHREAD_POOL_SIZE "navigator.hardwareConcurrency" CACHE STRING
+      "Initial Emscripten pthread pool size")
+
+  # CMake's Threads package maps to '-pthread' under Emscripten.
+  find_package(Threads REQUIRED)
+
+  # Collect all pthread-related flags in one place and make them transitive.
+  add_library(wasm_pthreads INTERFACE)
+
+  # Compile with pthreads enabled (needed for every object file).
+  target_compile_options(wasm_pthreads INTERFACE -pthread)
+
+  # Link with pthreads + optional pool and 'main-in-worker' mode.
+  # (Use SHELL: so CMake passes the flags verbatim to emcc.)
+  target_link_options(wasm_pthreads INTERFACE
+    -pthread
+    "SHELL:-sPTHREAD_POOL_SIZE=${WASM_PTHREAD_POOL_SIZE}"
+    "SHELL:-sPROXY_TO_PTHREAD=1"
+  )
+endif()
+
 add_library(project_options INTERFACE)
 target_compile_features(project_options INTERFACE cxx_std_20)
 
@@ -93,6 +116,8 @@ target_link_libraries(AnthemEngineLib
 if (IS_WASM)
   # target_link_libraries(AnthemEngineLib
   #   PUBLIC
+  #     wasm_pthreads
+  #     Threads::Threads
   #     juce_core_wasm
   # )
 else()
@@ -142,6 +167,8 @@ endif()
 if (IS_WASM)
   target_link_libraries(AnthemEngine
     PRIVATE
+      wasm_pthreads
+      Threads::Threads
       juce_core_wasm
   )
 endif()
