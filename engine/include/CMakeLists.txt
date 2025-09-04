@@ -60,4 +60,31 @@ if (IS_WASM)
       wasm_pthreads
       Threads::Threads
   )
+
+  # -----------
+  # juce_events
+  # -----------
+
+  set(JUCE_EVENTS_WASM_SOURCES
+    juce_events_wasm.h
+    juce_events_wasm.cpp
+  )
+
+  add_library(juce_events_wasm STATIC ${JUCE_EVENTS_WASM_SOURCES})
+
+  target_include_directories(juce_events_wasm
+    PUBLIC
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/JUCE/modules>
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/JUCE/modules/juce_events>
+  )
+
+  target_link_libraries(juce_events_wasm
+    PUBLIC
+      juce_wasm_config
+      juce_core_wasm
+      wasm_pthreads
+      Threads::Threads
+  )
+
 endif()
