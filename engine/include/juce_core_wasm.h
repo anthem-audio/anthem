@@ -1,12 +1,13 @@
 /*
   This file is modified from the original juce_core.h. Modifications are called
-  out below with comments like:
+  out below with comments matching the following:
 
   // Modified from juce_core.h
 
   This file is based on JUCE 8.0.8.
 
-  When updating this file, please also update the JUCE version number above.
+  When updating this file with content from a newer JUCE version, please also
+  update the JUCE version number above.
 */
 
 /*

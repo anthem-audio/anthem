@@ -170,6 +170,7 @@ if (IS_WASM)
       wasm_pthreads
       Threads::Threads
       juce_core_wasm
+      juce_audio_basics_wasm
   )
 endif()
 

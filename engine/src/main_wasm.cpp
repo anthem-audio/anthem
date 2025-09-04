@@ -22,10 +22,15 @@
 #define JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED 1
 
 #include "../include/juce_core_wasm.h"
+#include "../include/juce_audio_basics_wasm.h"
 
 int main() {
   std::cout << "Hello world from Anthem engine!" << std::endl;
   std::cout << "Min of 3 and 4, from JUCE: " << juce::jmin(3, 4) << std::endl;
+  juce::AudioSampleBuffer buffer;
+  buffer.setSize(2, 512);
+  buffer.clear();
+  std::cout << "Buffer size: " << buffer.getNumChannels() << "x" << buffer.getNumSamples() << std::endl;
   #ifdef __EMSCRIPTEN_PTHREADS__
   std::cout << "Running with Emscripten pthreads enabled." << std::endl;
   #endif
