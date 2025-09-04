@@ -41,7 +41,7 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
     final proxyPort = await getUnusedPort();
 
     print(
-      '${Colorize('The proxy server will be started at').lightGreen()} http://127.0.0.1:$proxyPort',
+      '${Colorize('The proxy server will be started at').lightGreen()} http://localhost:$proxyPort',
     );
     print(
       Colorize(
@@ -55,7 +55,7 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
     final flutterProc = await startDevelopmentServer(devServerPort);
 
     print(
-      'Proxy: http://127.0.0.1:$proxyPort  →  Flutter dev server: http://127.0.0.1:$devServerPort',
+      'Proxy: http://localhost:$proxyPort  →  Flutter dev server: http://localhost:$devServerPort',
     );
 
     // Pipe Flutter output to our console.
@@ -84,14 +84,14 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
       '--web-port',
       port.toString(),
       '--web-hostname',
-      '127.0.0.1',
+      'localhost',
     ];
     print('Starting: flutter ${args.join(' ')}');
     return await Process.start('flutter', args, runInShell: true);
   }
 
   Future<void> startProxyServer(int proxyPort, int devServerPort) async {
-    final target = 'http://127.0.0.1:$devServerPort';
+    final target = 'http://localhost:$devServerPort';
     final httpProxy = proxyHandler(target);
 
     // Inject COOP/COEP/CORP on every response.
