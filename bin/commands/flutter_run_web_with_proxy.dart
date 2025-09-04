@@ -108,10 +108,20 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
       },
     );
 
+    // Disable caching during dev
+    final noCache = createMiddleware(
+      responseHandler: (Response res) {
+        return res.change(
+          headers: {...res.headers, 'Cache-Control': 'no-store'},
+        );
+      },
+    );
+
     // Compose middlewares around the HTTP proxy handler.
     final handler = const Pipeline()
         .addMiddleware(logRequests())
         .addMiddleware(coopCoep)
+        .addMiddleware(noCache)
         .addHandler(httpProxy);
 
     final server = await shelf_io.serve(
