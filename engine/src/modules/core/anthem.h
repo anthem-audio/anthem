@@ -23,7 +23,6 @@
 #include <iostream>
 
 #include <juce_audio_devices/juce_audio_devices.h>
-#include <juce_audio_processors/juce_audio_processors.h>
 
 #include "modules/core/comms.h"
 #include "modules/core/command_handler.h"
