@@ -4,7 +4,7 @@
 
   // Modified from juce_events.h
 
-  This file is based on JUCE 8.0.8.
+  This file is based on JUCE 8.0.9.
 
   When updating this file with content from a newer JUCE version, please also
   update the JUCE version number above.
@@ -56,7 +56,7 @@
 
   ID:                 juce_events
   vendor:             juce
-  version:            8.0.8
+  version:            8.0.9
   name:               JUCE message and event handling classes
   description:        Classes for running an application's main event loop and sending/receiving messages, timers, etc.
   website:            http://www.juce.com/juce

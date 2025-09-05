@@ -4,7 +4,7 @@
 
   // Modified from juce_audio_basics_wasm.h
 
-  This file is based on JUCE 8.0.8.
+  This file is based on JUCE 8.0.9.
 
   When updating this file with content from a newer JUCE version, please also
   update the JUCE version number above.
@@ -56,7 +56,7 @@
 
   ID:                 juce_audio_basics
   vendor:             juce
-  version:            8.0.8
+  version:            8.0.9
   name:               JUCE audio and MIDI data classes
   description:        Classes for audio buffer manipulation, midi message handling, synthesis, etc.
   website:            http://www.juce.com/juce

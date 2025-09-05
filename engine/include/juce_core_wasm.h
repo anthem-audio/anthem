@@ -4,7 +4,7 @@
 
   // Modified from juce_core.h
 
-  This file is based on JUCE 8.0.8.
+  This file is based on JUCE 8.0.9.
 
   When updating this file with content from a newer JUCE version, please also
   update the JUCE version number above.
@@ -56,7 +56,7 @@
 
   ID:                 juce_core
   vendor:             juce
-  version:            8.0.8
+  version:            8.0.9
   name:               JUCE core classes
   description:        The essential set of basic JUCE classes, as required by all the other JUCE modules. Includes text, container, memory, threading and i/o functionality.
   website:            http://www.juce.com/juce
@@ -248,6 +248,7 @@ namespace juce
 }
 
 #include "misc/juce_EnumHelpers.h"
+#include "misc/juce_OrderedContainerHelpers.h"
 #include "memory/juce_Memory.h"
 #include "maths/juce_MathsFunctions.h"
 #include "memory/juce_ByteOrder.h"
@@ -405,7 +406,7 @@ JUCE_END_IGNORE_WARNINGS_MSVC
  #include "unit_tests/juce_UnitTestCategories.h"
 #endif
 
-#ifndef DOXYGEN
+/** @cond */
 namespace juce
 {
  /*
@@ -426,7 +427,7 @@ namespace juce
   static this_will_fail_to_link_if_some_of_your_compile_units_are_built_in_release_mode compileUnitMismatchSentinel;
  #endif
 }
-#endif
+/** @endcond */
 
 JUCE_END_IGNORE_WARNINGS_MSVC
 

@@ -4,7 +4,7 @@
 
   // Modified from juce_core.cpp
 
-  This file is based on JUCE 8.0.8.
+  This file is based on JUCE 8.0.9.
 
   When updating this file with content from a newer JUCE version, please also
   update the JUCE version number above.
@@ -94,6 +94,9 @@
  #endif
 
  #if JUCE_WASM
+  // Modified from juce_core.cpp
+  //
+  // Change: Added emscripten header
   #include <emscripten/emscripten.h>
   #include <stdio.h>
   #include <sys/types.h>
