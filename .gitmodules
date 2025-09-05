@@ -1,6 +1,6 @@
 [submodule "engine/include/JUCE"]
 	path = engine/include/JUCE
-	url = https://github.com/juce-framework/JUCE.git
+	url = https://github.com/anthem-audio/juce-with-wasm-subset.git
 [submodule "engine/include/reflect-cpp"]
 	path = engine/include/reflect-cpp
 	url = https://github.com/getml/reflect-cpp.git
