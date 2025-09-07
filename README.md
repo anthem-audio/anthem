@@ -38,6 +38,18 @@ This list reflects our current plans but does not represent a commitment of any 
 
 ## Contributing
 
-If you're interested in contributing, feel free to open an issue or a discussion thread.
+If you're interested in contributing, feel free to open a discussion thread on this repository, or submit a pull request. Please note that contributions are subject to relicensing; see the note on licensing below.
 
 There is documentation for developers [here](docs/index.md), which includes an architectural overview and setup instructions. There is also inline documentation which we intend to improve over time.
+
+### Source code licensing
+
+Anthem is dual-licensed under a GPL/proprietary license. This is entirely driven by our desire to release software that is compatible with ASIO drivers on Windows. We cannot do this if we license our Windows binaries under GPLv3.
+
+For this reason, Anthem's source code has the following additional constraints:
+- Any libraries we use must be compatible with a proprietary licensing model, e.g. they must either themselves have dual-licensing options (e.g. JUCE's free-tier commercial license), or they must be permissively licensed.
+- All contributors to Anthem must sign a contributor license agreement that allows relicensing of their contributions under a proprietary license owned by the primary author of Anthem.
+
+We believe that this is the best way to balance the benefit of distributing a truly free ASIO-compatible DAW with the drawbacks of proprietary licensing. In order to ensure that Anthem remains free software, we make the following commitments:
+- On platforms besides Windows, binaries will be released under the terms of GPLv3+.
+- The proprietary license will be used solely for distribution on Windows.
