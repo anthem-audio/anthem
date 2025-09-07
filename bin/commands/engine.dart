@@ -76,6 +76,13 @@ class _BuildEngineCommand extends Command<dynamic> {
           'Builds the engine with a WebAssembly target, and copies the output to the Flutter web directory. '
           'This is only tested on Linux, though it is likely also possible on macOS. Windows users should use WSL2 for this.',
     );
+
+    argParser.addFlag(
+      'skip-configuration',
+      defaultsTo: false,
+      help:
+          'Skips the configuration step (cmake ..). A regular build must have been run once for the same configuration, otherwise this will fail.',
+    );
   }
 
   @override
@@ -84,6 +91,7 @@ class _BuildEngineCommand extends Command<dynamic> {
     final debug = argResults!['debug'] as bool;
     final addressSanitizer = argResults!['address-sanitizer'] as bool;
     final wasm = argResults!['wasm'] as bool;
+    final skipConfiguration = argResults!['skip-configuration'] as bool;
 
     if (release && debug) {
       print(
@@ -171,6 +179,7 @@ to generate the files, then run this script again.''')..red(),
       addressSanitizer: addressSanitizer,
       debug: debug,
       buildDirectoryName: buildDirectoryName,
+      skipConfiguration: skipConfiguration,
     );
 
     if (wasm) {
@@ -400,6 +409,7 @@ Future<void> _buildCmakeTarget(
   bool wasm = false,
   bool addressSanitizer = false,
   bool debug = false,
+  bool skipConfiguration = false,
   String buildDirectoryName = 'build',
 }) async {
   if (addressSanitizer) {
@@ -422,83 +432,86 @@ Future<void> _buildCmakeTarget(
 
   final packageRootPath = getPackageRootPath();
 
-  print(Colorize('Creating build directory...')..lightGreen());
   final buildDirPath = packageRootPath.resolve('engine/$buildDirectoryName/');
-  final buildDir = Directory.fromUri(buildDirPath);
-  buildDir.createSync();
 
-  final cmakeCommand = [
-    if (wasm) 'emcmake',
-    'cmake',
+  if (!skipConfiguration) {
+    print(Colorize('Creating build directory...')..lightGreen());
+    final buildDir = Directory.fromUri(buildDirPath);
+    buildDir.createSync();
 
-    // Note: On Linux, if you get an error like: CMake Warning:
-    // Manually-specified variables were not used by the project:
-    //
-    //     CMAKE_BUILD_TYPE
-    //
-    // Then you may need to set the debug/release flag in the same way that
-    // Windows does below in the build command. E.g.:
-    //     cmake --build . --config (Release/Debug)
-    if (Platform.isLinux || Platform.isMacOS)
-      '-DCMAKE_BUILD_TYPE=${debug ? 'Debug' : 'Release'}',
+    final cmakeCommand = [
+      if (wasm) 'emcmake',
+      'cmake',
 
-    if (addressSanitizer && (Platform.isLinux || Platform.isMacOS)) ...[
-      '-DCMAKE_C_FLAGS=-fsanitize=address',
-      '-DCMAKE_CXX_FLAGS=-fsanitize=address',
-      '-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address',
-      '-DCMAKE_C_FLAGS_DEBUG=-fsanitize=address',
-      '-DCMAKE_CXX_FLAGS_DEBUG=-fsanitize=address',
-      '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-fsanitize=address',
-      '-DCMAKE_C_FLAGS_DEBUG=-fno-omit-frame-pointer',
-      '-DCMAKE_CXX_FLAGS_DEBUG=-fno-omit-frame-pointer',
-      '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-fno-omit-frame-pointer',
-      '-DCMAKE_C_FLAGS_DEBUG=-g',
-      '-DCMAKE_CXX_FLAGS_DEBUG=-g',
-      '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-g',
-      '-DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address',
-    ],
+      // Note: On Linux, if you get an error like: CMake Warning:
+      // Manually-specified variables were not used by the project:
+      //
+      //     CMAKE_BUILD_TYPE
+      //
+      // Then you may need to set the debug/release flag in the same way that
+      // Windows does below in the build command. E.g.:
+      //     cmake --build . --config (Release/Debug)
+      if (Platform.isLinux || Platform.isMacOS)
+        '-DCMAKE_BUILD_TYPE=${debug ? 'Debug' : 'Release'}',
 
-    if (addressSanitizer && Platform.isWindows) ...[
-      r'-DCMAKE_C_FLAGS="/fsanitize=address"',
-      r'-DCMAKE_CXX_FLAGS="/fsanitize=address"',
-    ],
-
-    '..',
-  ];
-
-  print(Colorize('Running CMake...')..lightGreen());
-  final Process cmakeProcess;
-
-  if (Platform.isWindows && wasm) {
-    cmakeProcess = await Process.start(
-      'wsl',
-      [
-        '--cd',
-        buildDirPath.toFilePath(windows: Platform.isWindows),
-        'bash',
-        '-lc',
-        cmakeCommand.map((e) => '"$e"').join(' '),
+      if (addressSanitizer && (Platform.isLinux || Platform.isMacOS)) ...[
+        '-DCMAKE_C_FLAGS=-fsanitize=address',
+        '-DCMAKE_CXX_FLAGS=-fsanitize=address',
+        '-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address',
+        '-DCMAKE_C_FLAGS_DEBUG=-fsanitize=address',
+        '-DCMAKE_CXX_FLAGS_DEBUG=-fsanitize=address',
+        '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-fsanitize=address',
+        '-DCMAKE_C_FLAGS_DEBUG=-fno-omit-frame-pointer',
+        '-DCMAKE_CXX_FLAGS_DEBUG=-fno-omit-frame-pointer',
+        '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-fno-omit-frame-pointer',
+        '-DCMAKE_C_FLAGS_DEBUG=-g',
+        '-DCMAKE_CXX_FLAGS_DEBUG=-g',
+        '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-g',
+        '-DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address',
       ],
-      // workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
-      mode: ProcessStartMode.inheritStdio,
-    );
-  } else {
-    cmakeProcess = await Process.start(
-      cmakeCommand.first,
-      cmakeCommand.skip(1).toList(),
-      workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
-      environment: {
-        if (Platform.isLinux && !wasm) 'CC': '/usr/bin/clang',
-        if (Platform.isLinux && !wasm) 'CXX': '/usr/bin/clang++',
-      },
-      mode: ProcessStartMode.inheritStdio,
-    );
-  }
 
-  final cmakeExitCode = await cmakeProcess.exitCode;
-  if (cmakeExitCode != 0) {
-    print(Colorize('\n\nError: CMake failed.').red());
-    exit(exitCode);
+      if (addressSanitizer && Platform.isWindows) ...[
+        r'-DCMAKE_C_FLAGS="/fsanitize=address"',
+        r'-DCMAKE_CXX_FLAGS="/fsanitize=address"',
+      ],
+
+      '..',
+    ];
+
+    print(Colorize('Running CMake...')..lightGreen());
+    final Process cmakeProcess;
+
+    if (Platform.isWindows && wasm) {
+      cmakeProcess = await Process.start(
+        'wsl',
+        [
+          '--cd',
+          buildDirPath.toFilePath(windows: Platform.isWindows),
+          'bash',
+          '-lc',
+          cmakeCommand.map((e) => '"$e"').join(' '),
+        ],
+        // workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
+        mode: ProcessStartMode.inheritStdio,
+      );
+    } else {
+      cmakeProcess = await Process.start(
+        cmakeCommand.first,
+        cmakeCommand.skip(1).toList(),
+        workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
+        environment: {
+          if (Platform.isLinux && !wasm) 'CC': '/usr/bin/clang',
+          if (Platform.isLinux && !wasm) 'CXX': '/usr/bin/clang++',
+        },
+        mode: ProcessStartMode.inheritStdio,
+      );
+    }
+
+    final cmakeExitCode = await cmakeProcess.exitCode;
+    if (cmakeExitCode != 0) {
+      print(Colorize('\n\nError: CMake failed.').red());
+      exit(exitCode);
+    }
   }
 
   print(Colorize('Running build...')..lightGreen());
