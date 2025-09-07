@@ -65,11 +65,13 @@ if (LINUX AND NOT IS_WASM)
   pkg_check_modules(WEBKIT2GTK REQUIRED webkit2gtk-4.1)
 endif()
 
-add_subdirectory(include)          # Third-party libraries excluding JUCE
-
-if (NOT IS_WASM)
-  add_subdirectory(include/JUCE)     # JUCE
+# Disables Juceaide. This is required when compiling under Emscripten.
+if (IS_WASM)
+  set(JUCE_MODULES_ONLY ON)
 endif()
+
+add_subdirectory(include)          # Third-party libraries excluding JUCE
+add_subdirectory(include/JUCE)     # JUCE (this is our fork with WASM support)
 
 add_library(project_includes INTERFACE)
 target_include_directories(project_includes INTERFACE
@@ -169,9 +171,9 @@ if (IS_WASM)
     PRIVATE
       wasm_pthreads
       Threads::Threads
-      juce_core_wasm
-      juce_audio_basics_wasm
-      juce_events_wasm
+      juce::juce_core
+      juce::juce_audio_basics
+      juce::juce_events
   )
 endif()
 

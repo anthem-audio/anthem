@@ -21,9 +21,9 @@
 
 #define JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED 1
 
-#include "../include/juce_core_wasm.h"
-#include "../include/juce_audio_basics_wasm.h"
-#include "../include/juce_events_wasm.h"
+#include <juce_core/juce_core.h>
+#include <juce_audio_basics/juce_audio_basics.h>
+#include <juce_events/juce_events.h>
 
 int main() {
   std::cout << "Hello world from Anthem engine!" << std::endl;
