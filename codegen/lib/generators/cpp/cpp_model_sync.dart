@@ -617,9 +617,27 @@ void _writeUpdate({
         );
 
         var isFirst = true;
+        final skipAnyOnWasm = type.subTypes.any(
+          (t) =>
+              (t is CustomModelType &&
+              t.modelClassInfo.annotation?.skipOnWasm == true),
+        );
+        if (skipAnyOnWasm) {
+          // Hack: Allow skipping any case just by omitting it
+          writer.writeLine('if (false) {}');
+        }
         for (final subType in type.subTypes) {
+          final skipOnWasm =
+              subType is CustomModelType &&
+              subType.modelClassInfo.annotation?.skipOnWasm == true;
+
+          if (skipOnWasm) {
+            writer.writeLine('#ifndef __EMSCRIPTEN__');
+            writer.incrementWhitespace();
+          }
+
           writer.writeLine(
-            '${isFirst ? '' : 'else '}if constexpr (std::is_same<Name, rfl::Literal<"${subType.dartName}">>()) {',
+            '${(isFirst && !skipAnyOnWasm) ? '' : 'else '}if constexpr (std::is_same<Name, rfl::Literal<"${subType.dartName}">>()) {',
           );
           writer.incrementWhitespace();
           writer.writeLine(
@@ -627,6 +645,11 @@ void _writeUpdate({
           );
           writer.decrementWhitespace();
           writer.writeLine('}');
+
+          if (skipOnWasm) {
+            writer.decrementWhitespace();
+            writer.writeLine('#endif');
+          }
 
           isFirst = false;
         }
@@ -810,7 +833,6 @@ void writeParentSetterForType({
       type is ListModelType ||
       type is MapModelType) {
     final valueFn = type.isNullable ? '.value()' : '';
-    writer.writeLine('// Custom model');
     writer.writeLine(
       '$fieldAccessor$valueFn->initialize($fieldAccessor$valueFn, $parentAccessor);',
     );

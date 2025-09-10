@@ -167,6 +167,8 @@ class _MyModel {
                 .getField('generateCppWrapperClass')
                 ?.toBoolValue() ??
             false,
+        skipOnWasm:
+            annotationElement.getField('skipOnWasm')?.toBoolValue() ?? false,
         cppBehaviorClassName: annotationElement
             .getField('cppBehaviorClassName')
             ?.toStringValue(),

@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:collection/collection.dart';
+
 import 'package:anthem_codegen/generators/util/model_types.dart';
 
 import '../util/model_class_info.dart';
@@ -37,7 +39,17 @@ String getCppType(ModelType type, ModelClassInfo context) {
     CustomModelType(dartName: final dartName) =>
       'std::shared_ptr<${type.modelClassInfo.annotation?.cppBehaviorClassName != null ? type.modelClassInfo.annotation!.cppBehaviorClassName : dartName}>',
     UnionModelType() =>
-      'rfl::Variant<${type.subTypes.map((subType) => 'rfl::Field<"${subType.dartName}", ${getCppType(subType, context)}>').join(', ')}>',
+      'rfl::Variant<${type.subTypes.mapIndexed((index, subType) {
+        final comma = index == 0 ? '' : ', ';
+
+        final type = '${comma}rfl::Field<"${subType.dartName}", ${getCppType(subType, context)}>';
+
+        if (subType is CustomModelType && subType.modelClassInfo.annotation?.skipOnWasm == true) {
+          return 'ANTHEM_IF_NOT_WASM($type)';
+        } else {
+          return type;
+        }
+      }).join('')}>',
     UnknownModelType() => 'TYPE_ERROR_UNKNOWN_TYPE',
   };
 
