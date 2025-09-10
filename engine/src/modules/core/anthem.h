@@ -83,8 +83,10 @@ public:
   // JUCE class for managing audio devices
   juce::AudioDeviceManager audioDeviceManager;
 
+  #ifndef __EMSCRIPTEN__
   // JUCE class for loading and managing plugins
   juce::AudioPluginFormatManager audioPluginFormatManager;
+  #endif // #ifndef __EMSCRIPTEN__
 
   // The UI communication layer. This is used to send and receive messages from
   // the UI.

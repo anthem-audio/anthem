@@ -33,7 +33,9 @@ void Anthem::initialize() {
   transport = std::make_unique<Transport>();
   globalVisualizationSources = std::make_unique<GlobalVisualizationSources>();
 
+  #ifndef __EMSCRIPTEN__
   audioPluginFormatManager.addDefaultFormats();
+  #endif // #ifndef __EMSCRIPTEN__
 
   comms.init();
   commandHandler.startHeartbeatThread();

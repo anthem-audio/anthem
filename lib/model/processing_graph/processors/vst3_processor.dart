@@ -29,6 +29,7 @@ part 'vst3_processor.g.dart';
 @AnthemModel.syncedModel(
   cppBehaviorClassName: 'VST3Processor',
   cppBehaviorClassIncludePath: 'modules/processors/vst3_processor.h',
+  skipOnWasm: true,
 )
 class VST3ProcessorModel extends _VST3ProcessorModel
     with _$VST3ProcessorModel, _$VST3ProcessorModelAnthemModelMixin {
