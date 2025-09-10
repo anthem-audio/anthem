@@ -44,7 +44,7 @@ void AnthemSocketThread::run() {
       // Fatal error, kill the application
       juce::MessageManager::callAsync([]() {
         jassertfalse;
-        juce::JUCEApplication::quit();
+        juce::JUCEApplicationBase::quit();
       });
       break;
     }
@@ -60,7 +60,7 @@ void AnthemSocketThread::run() {
       // Fatal error, kill the application
       juce::MessageManager::callAsync([]() {
         jassertfalse;
-        juce::JUCEApplication::quit();
+        juce::JUCEApplicationBase::quit();
       });
       break;
     }
@@ -79,7 +79,7 @@ void AnthemSocketThread::run() {
       // Fatal error, kill the application
       juce::MessageManager::callAsync([]() {
         jassertfalse;
-        juce::JUCEApplication::quit();
+        juce::JUCEApplicationBase::quit();
       });
       break;
     }
@@ -217,13 +217,13 @@ void AnthemSocketThread::prepareNextMessage() {
 }
 
 void AnthemComms::init() {
-  auto parameters = juce::JUCEApplication::getCommandLineParameters();
+  auto parameters = juce::JUCEApplicationBase::getCommandLineParameters();
 
   auto spaceIndex = parameters.indexOfChar(' ');
 
   if (spaceIndex == -1) {
     std::cerr << "Invalid command line args: " << parameters << " - Exiting..." << std::endl;
-    juce::JUCEApplication::quit();
+    juce::JUCEApplicationBase::quit();
     return;
   }
 
@@ -232,13 +232,13 @@ void AnthemComms::init() {
 
   if (portStr.length() == 0) {
     std::cerr << "Port was not provided. Args: " << parameters << " - Exiting..." << std::endl;
-    juce::JUCEApplication::quit();
+    juce::JUCEApplicationBase::quit();
     return;
   }
 
   if (idStr.length() == 0) {
     std::cerr << "Engine ID was not provided. Args: " << parameters << " - Exiting..." << std::endl;
-    juce::JUCEApplication::quit();
+    juce::JUCEApplicationBase::quit();
     return;
   }
 
@@ -250,7 +250,7 @@ void AnthemComms::init() {
   socketThread.socket.waitUntilReady(false, 1000); // should be unnecessary?
   if (!success) {
     std::cerr << "Socket failed to start. Exiting..." << std::endl;
-    juce::JUCEApplication::quit();
+    juce::JUCEApplicationBase::quit();
     return;
   }
   juce::Logger::writeToLog("Opened successfully.");
