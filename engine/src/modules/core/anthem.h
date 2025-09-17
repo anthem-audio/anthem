@@ -24,7 +24,12 @@
 
 #include <juce_audio_devices/juce_audio_devices.h>
 
-#include "modules/core/comms.h"
+#ifdef __EMSCRIPTEN__
+  #include "comms_wasm.h"
+#else
+  #include "comms_desktop.h"
+#endif // #ifdef __EMSCRIPTEN__
+
 #include "modules/core/command_handler.h"
 #include "modules/core/anthem_audio_callback.h"
 #include "modules/processing_graph/runtime/anthem_graph_processor.h"
@@ -90,7 +95,11 @@ public:
 
   // The UI communication layer. This is used to send and receive messages from
   // the UI.
-  AnthemComms comms;
+  #ifdef __EMSCRIPTEN__
+    AnthemCommsWasm comms;
+  #else
+    AnthemCommsDesktop comms;
+  #endif // #ifdef __EMSCRIPTEN__
 
   // Handles command messages from the UI.
   CommandHandler commandHandler;

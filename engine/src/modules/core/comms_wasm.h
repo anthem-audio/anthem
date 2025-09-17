@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,21 +19,21 @@
 
 #pragma once
 
-#ifndef __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
 
-#include <juce_gui_basics/juce_gui_basics.h>
-#include <juce_audio_processors/juce_audio_processors.h>
+#include "comms.h"
 
-class PluginWindow : public juce::DocumentWindow
-{
+class AnthemCommsWasm : public AnthemComms {
 public:
-  PluginWindow(juce::AudioProcessor* processor);
-  ~PluginWindow();
+  AnthemCommsWasm();
+  ~AnthemCommsWasm() = default;
 
-  void closeButtonPressed() override;
+  void init() override;
 
-private:
-  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginWindow)
+  void send(std::string& message) override;
+  void sendRaw(juce::MemoryBlock& message) override;
+
+  void closeSocketThread() override;
 };
 
-#endif // #ifndef __EMSCRIPTEN__
+#endif // #ifdef __EMSCRIPTEN__

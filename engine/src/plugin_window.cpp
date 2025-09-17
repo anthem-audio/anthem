@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#ifndef __EMSCRIPTEN__
+
 #include "plugin_window.h"
 
 PluginWindow::PluginWindow(juce::AudioProcessor* processor)
@@ -49,3 +51,5 @@ void PluginWindow::closeButtonPressed()
 {
   setVisible(false);
 }
+
+#endif // #ifndef __EMSCRIPTEN__

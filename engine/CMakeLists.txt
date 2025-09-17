@@ -13,24 +13,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
 endif()
 
 if (IS_WASM)
-  # Expose a knob for your worker pool size (can be an int or a JS expr)
-  set(WASM_PTHREAD_POOL_SIZE "navigator.hardwareConcurrency" CACHE STRING
-      "Initial Emscripten pthread pool size")
-
   # CMake's Threads package maps to '-pthread' under Emscripten.
   find_package(Threads REQUIRED)
 
-  # Collect all pthread-related flags in one place and make them transitive.
-  add_library(wasm_pthreads INTERFACE)
-
-  # Compile with pthreads enabled (needed for every object file).
-  target_compile_options(wasm_pthreads INTERFACE -pthread)
-
-  # Link with pthreads + optional pool and 'main-in-worker' mode.
-  # (Use SHELL: so CMake passes the flags verbatim to emcc.)
-  target_link_options(wasm_pthreads INTERFACE
+  add_compile_options(-pthread)
+  
+  add_link_options(
     -pthread
-    "SHELL:-sPTHREAD_POOL_SIZE=${WASM_PTHREAD_POOL_SIZE}"
+    # The value 3 here maps to 3 threads in the engine:
+    # - Message thread
+    # - Audio thread
+    # - Comms thread (not implemented as of writing)
+    "SHELL:-sPTHREAD_POOL_SIZE=3"
     "SHELL:-sPROXY_TO_PTHREAD=1"
   )
 endif()
@@ -100,7 +94,7 @@ list(REMOVE_ITEM ANTHEM_ENGINE_SOURCES ${APP_MAIN})
 list(REMOVE_ITEM ANTHEM_ENGINE_SOURCES ${APP_MAIN_WASM})
 
 # Skip AnthemEngineLib for WASM for now while we work out JUCE issues.
-if (NOT IS_WASM)
+# if (NOT IS_WASM)
 
 # Build a reusable library target
 add_library(AnthemEngineLib STATIC
@@ -116,17 +110,22 @@ target_link_libraries(AnthemEngineLib
 )
 
 if (IS_WASM)
-  # target_link_libraries(AnthemEngineLib
-  #   PUBLIC
-  #     wasm_pthreads
-  #     Threads::Threads
-  #     juce_core_wasm
-  # )
+  target_link_libraries(AnthemEngineLib
+    PUBLIC
+      Threads::Threads
+      juce::juce_core
+      juce::juce_events
+      juce::juce_audio_basics
+      # juce::juce_audio_processors
+      juce::juce_audio_devices
+  )
 else()
   target_link_libraries(AnthemEngineLib
     PUBLIC
-      juce::juce_audio_processors
+      juce::juce_core
+      juce::juce_events
       juce::juce_audio_basics
+      juce::juce_audio_processors
       juce::juce_audio_devices
 
       juce::juce_recommended_config_flags
@@ -148,7 +147,7 @@ else()
 endif()
 
 # End AnthemEngineLib skip for WASM
-endif()
+# endif()
 
 
 # -------------------------------------------------------------------
@@ -157,7 +156,8 @@ endif()
 
 if (IS_WASM)
   add_executable(AnthemEngine
-    ${APP_MAIN_WASM}
+    # ${APP_MAIN_WASM}
+    ${APP_MAIN}
   )
 else()
   juce_add_console_app(AnthemEngine ANTHEM_ENGINE "Anthem Engine" VERSION "${PROJECT_VERSION}")
@@ -169,11 +169,8 @@ endif()
 if (IS_WASM)
   target_link_libraries(AnthemEngine
     PRIVATE
-      wasm_pthreads
       Threads::Threads
-      juce::juce_core
-      juce::juce_audio_basics
-      juce::juce_events
+      AnthemEngineLib
   )
 endif()
 

@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#ifndef __EMSCRIPTEN__
+
 #include "comms.h"
 
 #include "modules/core/anthem.h"
@@ -216,7 +218,7 @@ void AnthemSocketThread::prepareNextMessage() {
   pendingBytesReadyAndNotFinished = true;
 }
 
-void AnthemComms::init() {
+void AnthemCommsDesktop::init() {
   auto parameters = juce::JUCEApplicationBase::getCommandLineParameters();
 
   auto spaceIndex = parameters.indexOfChar(' ');
@@ -265,17 +267,17 @@ void AnthemComms::init() {
   socketThread.startThread();
 }
 
-void AnthemComms::sendRaw(juce::MemoryBlock& message) {
+void AnthemCommsDesktop::sendRaw(juce::MemoryBlock& message) {
   juce::ScopedLock lock(socketThread.queueLock);
   socketThread.messageQueue.push(message);
 }
 
-void AnthemComms::send(std::string& message) {
+void AnthemCommsDesktop::send(std::string& message) {
   juce::MemoryBlock messageBlock(message.data(), message.size());
   sendRaw(messageBlock);
 }
 
-void AnthemComms::closeSocketThread() {
+void AnthemCommsDesktop::closeSocketThread() {
   int i = 0;
   while (socketThread.messageQueueHasMessages()) {
     juce::Thread::sleep(100);
@@ -288,3 +290,5 @@ void AnthemComms::closeSocketThread() {
 
   socketThread.stopThread(1000);
 }
+
+#endif // #ifndef __EMSCRIPTEN__
