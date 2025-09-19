@@ -26,7 +26,7 @@ import 'package:anthem/engine_api/engine_socket_server.dart';
 import 'package:anthem/engine_api/memory_block.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 
-part 'engine_connector.debug_engine_path.g.dart';
+part 'engine_connector_desktop.debug_engine_path.g.dart';
 
 final mainExecutablePath = File(Platform.resolvedExecutable);
 

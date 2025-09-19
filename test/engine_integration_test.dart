@@ -29,7 +29,7 @@ import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/model/model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:anthem/engine_api/engine_connector.dart';
+import 'package:anthem/engine_api/engine_connector_desktop.dart';
 
 var id = 0;
 int getId() => id++;

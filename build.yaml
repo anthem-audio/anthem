@@ -11,4 +11,4 @@ targets:
           - lib/**/*
       anthem_codegen:debugEnginePathGeneratorBuilder:
         generate_for:
-          - lib/engine_api/engine_connector.dart
+          - lib/engine_api/engine_connector_desktop.dart

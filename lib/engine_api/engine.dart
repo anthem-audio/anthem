@@ -20,7 +20,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:anthem/engine_api/engine_connector.dart';
+import 'package:anthem/engine_api/engine_connector_desktop.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
