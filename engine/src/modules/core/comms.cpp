@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef __EMSCRIPTEN__
-
 #include "comms.h"
 
 #include "modules/core/anthem.h"
@@ -218,7 +216,15 @@ void AnthemSocketThread::prepareNextMessage() {
   pendingBytesReadyAndNotFinished = true;
 }
 
-void AnthemCommsDesktop::init() {
+void AnthemComms::init() {
+  #ifdef __EMSCRIPTEN__
+
+  // In WASM we currently have only one engine instance per browser tab.
+  juce::String portStr = "0";
+  juce::String idStr = "0";
+
+  #else // #ifdef __EMSCRIPTEN__
+
   auto parameters = juce::JUCEApplicationBase::getCommandLineParameters();
 
   auto spaceIndex = parameters.indexOfChar(' ');
@@ -244,6 +250,8 @@ void AnthemCommsDesktop::init() {
     return;
   }
 
+  #endif // #ifdef __EMSCRIPTEN__
+
   juce::Logger::writeToLog("Opening socket connection to UI at port " + portStr + "...");
 
   int port = std::stoi(portStr.toStdString());
@@ -267,17 +275,17 @@ void AnthemCommsDesktop::init() {
   socketThread.startThread();
 }
 
-void AnthemCommsDesktop::sendRaw(juce::MemoryBlock& message) {
+void AnthemComms::sendRaw(juce::MemoryBlock& message) {
   juce::ScopedLock lock(socketThread.queueLock);
   socketThread.messageQueue.push(message);
 }
 
-void AnthemCommsDesktop::send(std::string& message) {
+void AnthemComms::send(std::string& message) {
   juce::MemoryBlock messageBlock(message.data(), message.size());
   sendRaw(messageBlock);
 }
 
-void AnthemCommsDesktop::closeSocketThread() {
+void AnthemComms::closeSocketThread() {
   int i = 0;
   while (socketThread.messageQueueHasMessages()) {
     juce::Thread::sleep(100);
@@ -290,5 +298,3 @@ void AnthemCommsDesktop::closeSocketThread() {
 
   socketThread.stopThread(1000);
 }
-
-#endif // #ifndef __EMSCRIPTEN__

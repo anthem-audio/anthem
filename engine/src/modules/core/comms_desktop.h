@@ -19,20 +19,19 @@
 
 #pragma once
 
-#ifndef __EMSCRIPTEN__
-
 #include <queue>
 #include <string>
 
 #include <juce_core/juce_core.h>
 #include <juce_events/juce_events.h>
 
+#include "comms_pipe_wasm.h"
 #include "comms.h"
 
 class Anthem;
 
 class AnthemSocketThread : public juce::Thread {
-  friend class AnthemCommsDesktop;
+  friend class AnthemComms;
 
 private:
   static constexpr size_t HEADER_SIZE = sizeof(uint64_t);
@@ -48,7 +47,11 @@ private:
 
   static constexpr int THREAD_SLEEP_MS = 1;
 
+  #ifdef __EMSCRIPTEN__
+  AnthemPipeWasm socket;
+  #else // #ifdef __EMSCRIPTEN__
   juce::StreamingSocket socket;
+  #endif // #ifdef __EMSCRIPTEN__
 
   // Tries writing the current message to the socket. This may complete without
   // sending everything.
@@ -91,14 +94,14 @@ public:
 };
 
 // This class manages communication with the UI.
-class AnthemCommsDesktop : public AnthemComms {
+class AnthemComms {
 private:
   AnthemSocketThread socketThread;
 public:
-  AnthemCommsDesktop() : AnthemComms(), socketThread() {
-    juce::Logger::writeToLog("AnthemCommsDesktop initialized.");
+  AnthemComms() : socketThread() {
+    juce::Logger::writeToLog("AnthemComms initialized.");
   }
-  ~AnthemCommsDesktop() = default;
+  ~AnthemComms() = default;
 
   void init();
 
@@ -111,5 +114,3 @@ public:
   // there's definitely no more data to send or receive.
   void closeSocketThread();
 };
-
-#endif // #ifndef __EMSCRIPTEN__
