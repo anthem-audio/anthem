@@ -451,10 +451,11 @@ Future<void> _buildCmakeTarget(
       // Then you may need to set the debug/release flag in the same way that
       // Windows does below in the build command. E.g.:
       //     cmake --build . --config (Release/Debug)
-      if (Platform.isLinux || Platform.isMacOS)
+      if (Platform.isLinux || Platform.isMacOS || wasm)
         '-DCMAKE_BUILD_TYPE=${debug ? 'Debug' : 'Release'}',
 
-      if (addressSanitizer && (Platform.isLinux || Platform.isMacOS)) ...[
+      if (addressSanitizer &&
+          (Platform.isLinux || Platform.isMacOS || wasm)) ...[
         '-DCMAKE_C_FLAGS=-fsanitize=address',
         '-DCMAKE_CXX_FLAGS=-fsanitize=address',
         '-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address',
