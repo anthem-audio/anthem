@@ -20,7 +20,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:anthem/engine_api/engine_connector_desktop.dart';
+import 'package:anthem/engine_api/engine_connector.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
@@ -208,10 +208,6 @@ class Engine {
 
   /// Starts the engine process, and attaches to it.
   Future<void> start() async {
-    if (kIsWeb) {
-      return;
-    }
-
     if (_engineState != EngineState.stopped) {
       return;
     }

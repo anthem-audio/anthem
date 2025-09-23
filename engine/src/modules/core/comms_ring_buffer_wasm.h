@@ -21,6 +21,9 @@
 
 #ifdef __EMSCRIPTEN__
 
+#include <bit>
+#include <cstdint>
+
 #include "emscripten.h"
 #include "emscripten/atomic.h"
 
@@ -35,6 +38,7 @@ public:
   uint32_t tail;
   uint32_t capacity;
   uint32_t mask;
+  int32_t ticket;
 
   juce::MemoryBlock buffer;
 
@@ -42,7 +46,8 @@ public:
     head(0),
     tail(0),
     capacity(capacityPow2),
-    mask(capacityPow2 - 1)
+    mask(capacityPow2 - 1),
+    ticket(0)
   {
     buffer.setSize(capacity);
     buffer.fillWith(0);
@@ -55,6 +60,8 @@ public:
   }
 
   bool tryEnqueue(uint8_t value) {
+    incrementTicket();
+
     uint32_t currentHead = emscripten_atomic_load_u32((uint32_t*)&head);
     uint32_t currentTail = emscripten_atomic_load_u32((uint32_t*)&tail);
     if (((currentHead + 1) & mask) == (currentTail & mask)) {
@@ -64,8 +71,11 @@ public:
 
     uint32_t nextHead = (currentHead + 1) & mask;
     uint8_t* bufferPtr = static_cast<uint8_t*>(buffer.getData());
-    bufferPtr[currentHead & mask] = value;
+    emscripten_atomic_store_u8((uint8_t*)&bufferPtr[currentHead], value);
     emscripten_atomic_store_u32((uint32_t*)&head, nextHead);
+
+    notifyTicketChange();
+
     return true;
   }
 
@@ -79,9 +89,25 @@ public:
 
     uint32_t nextTail = (currentTail + 1) & mask;
     uint8_t* bufferPtr = static_cast<uint8_t*>(buffer.getData());
-    value = bufferPtr[currentTail & mask];
+    value = emscripten_atomic_load_u8((uint8_t*)&bufferPtr[currentTail]);
     emscripten_atomic_store_u32((uint32_t*)&tail, nextTail);
     return true;
+  }
+
+  int32_t getTicketValue() const {
+    return std::bit_cast<int32_t>(emscripten_atomic_load_u32((uint32_t*)&ticket));
+  }
+
+  void waitForTicketSignal(int32_t lastSeenTicket) const {
+    emscripten_atomic_wait_u32((uint32_t*)&ticket, std::bit_cast<uint32_t>(lastSeenTicket), -1);
+  }
+
+  void incrementTicket() {
+    emscripten_atomic_add_u32(&ticket, 1);
+  }
+
+  void notifyTicketChange() {
+    emscripten_atomic_notify(&ticket, 1);
   }
 };
 

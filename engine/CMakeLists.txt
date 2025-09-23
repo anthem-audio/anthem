@@ -13,6 +13,27 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
 endif()
 
 if (IS_WASM)
+  set(EXPORTED_FUNCTIONS
+    _main
+    _isCommsReady
+
+    _getWriteBufferHeadPtr
+    _getWriteBufferTailPtr
+    _getWriteBufferCapacity
+    _getWriteBufferMask
+    _getWriteBufferDataPtr
+    _getWriteBufferTicketPtr
+
+    _getReadBufferHeadPtr
+    _getReadBufferTailPtr
+    _getReadBufferCapacity
+    _getReadBufferMask
+    _getReadBufferDataPtr
+    _getReadBufferTicketPtr
+  )
+
+  string(JOIN "," EXPORTED_FUNCTIONS_STRING ${EXPORTED_FUNCTIONS})
+
   # CMake's Threads package maps to '-pthread' under Emscripten.
   find_package(Threads REQUIRED)
 
@@ -23,9 +44,17 @@ if (IS_WASM)
     # The value 3 here maps to 3 threads in the engine:
     # - Message thread
     # - Audio thread
-    # - Comms thread (not implemented as of writing)
+    # - Comms thread
     "SHELL:-sPTHREAD_POOL_SIZE=3"
     "SHELL:-sPROXY_TO_PTHREAD=1"
+
+    "SHELL:-INITIAL_HEAP=268435456" # 256MB
+    "SHELL:-sALLOW_MEMORY_GROWTH=1"
+
+    "SHELL:-sMODULARIZE=1"
+    "SHELL:-sEXPORT_NAME=AnthemEngine"
+    "SHELL:-sEXPORTED_FUNCTIONS='[${EXPORTED_FUNCTIONS_STRING}]'"
+    "SHELL:-sEXPORTED_RUNTIME_METHODS='[\"HEAPU8\", \"HEAPU32\", \"HEAP32\"]'"
   )
 endif()
 

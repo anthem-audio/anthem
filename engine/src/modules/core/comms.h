@@ -65,7 +65,7 @@ private:
 
   juce::MemoryBlock pendingHeader;
   juce::MemoryBlock pendingBytes;
-  
+
   // The header is 8 bytes. This indexes into (header, pendingBytes). If the
   // index is 0 - 7, we are reading from the header. If it is 8 or more, we are
   // reading from pendingBytes. For example if writeIndex is 8, we are reading from
@@ -107,6 +107,16 @@ public:
 
   void send(std::string& message);
   void sendRaw(juce::MemoryBlock& message);
+
+  #ifdef __EMSCRIPTEN__
+  AnthemPipeWasm& getSocketOrPipe() {
+    return socketThread.socket;
+  }
+  #else // #ifdef __EMSCRIPTEN__
+  juce::StreamingSocket& getSocketOrPipe() {
+    return socketThread.socket;
+  }
+  #endif // #ifdef __EMSCRIPTEN__
 
   // Stops the socket thread, after all messages have been sent.
   //

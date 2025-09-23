@@ -18,13 +18,11 @@
 */
 
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/engine_socket_server.dart';
-import 'package:anthem/engine_api/memory_block.dart';
-import 'package:anthem/engine_api/messages/messages.dart';
 
 part 'engine_connector_desktop.debug_engine_path.g.dart';
 
@@ -58,16 +56,7 @@ final mainExecutablePath = File(Platform.resolvedExecutable);
 ///
 /// engineConnector.send(requestBytes);
 /// ```
-class EngineConnector {
-  var requestIdGen = 0;
-
-  int getRequestId() {
-    if (requestIdGen > 0x7FFFFFFFFFFFFFFE) {
-      requestIdGen = 0;
-    }
-    return requestIdGen++;
-  }
-
+class EngineConnector extends EngineConnectorBase {
   /// This ID is sent to the engine as an argument on launch. The engine will
   /// send this ID back as the first message to the socket when it connects,
   /// which allows us to figure out which engine is associated with a given
@@ -76,10 +65,8 @@ class EngineConnector {
 
   Process? _engineProcess;
 
-  final void Function(Response reply)? _onReply;
   final void Function()? _onExit;
 
-  late final Future<bool> onInit;
   bool _initialized = false;
 
   /// If any requests are sent before the engine starts and IPC is set up, this
@@ -87,37 +74,19 @@ class EngineConnector {
   /// point they will all be sent.
   final List<Uint8List> _bufferedRequests = [];
 
-  /// Timer that sends a heartbeat message to the engine every 5 seconds. If
-  /// the engine doesn't receive one after 10 seconds, it will stop itself.
-  Timer? _engineHeartbeatTimer;
-
-  bool _heartbeatReceived = true;
-  Timer? _heartbeatCheckTimer;
-
   /// Stream subscription for socket messages from the engine.
   StreamSubscription<Uint8List>? _engineReplySub;
-
-  /// Should be set to kDebugMode from Flutter, or false if not running in a
-  /// Flutter environment.
-  ///
-  /// kDebugMode comes from Flutter, and we can't import anything from Flutter
-  /// into our engine integration tests. Since we use this class to talk to the
-  /// engine in our engine integration tests, we need to pass this in.
-  final bool kDebugMode;
-
-  final bool noHeartbeat;
 
   final String? enginePathOverride;
 
   EngineConnector(
     this._id, {
-    required this.kDebugMode,
-    void Function(Response)? onReply,
+    required super.kDebugMode,
+    super.onReply,
     void Function()? onExit,
-    this.noHeartbeat = false,
+    super.noHeartbeat = false,
     this.enginePathOverride,
-  }) : _onExit = onExit,
-       _onReply = onReply {
+  }) : _onExit = onExit {
     onInit = _init();
 
     // If any requests came in before the engine was started, send them now.
@@ -137,7 +106,7 @@ class EngineConnector {
     await EngineSocketServer.instance.init;
 
     EngineSocketServer.instance.onMessage(_id, (message) {
-      _onReceive(message);
+      onReceive(message);
     });
 
     // Set up a completer to complete when the engine has connected.
@@ -158,13 +127,12 @@ class EngineConnector {
     }
 
     final anthemPathStr =
-        enginePathOverride ??
-        (developmentEnginePath ??
-            mainExecutablePath.parent.uri
-                .resolve(
-                  './data/flutter_assets/assets/engine/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
-                )
-                .toFilePath(windows: Platform.isWindows));
+        developmentEnginePath ??
+        mainExecutablePath.parent.uri
+            .resolve(
+              './data/flutter_assets/assets/engine/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+            )
+            .toFilePath(windows: Platform.isWindows);
 
     if (!await File(anthemPathStr).exists()) {
       return false;
@@ -206,29 +174,7 @@ class EngineConnector {
     }
 
     if (!noHeartbeat) {
-      _heartbeatCheckTimer = Timer.periodic(
-        // Maybe a bit long if this is our only way to tell if the engine died
-        const Duration(seconds: 10),
-        (_) {
-          if (!_heartbeatReceived) {
-            _shutdown();
-          }
-
-          _heartbeatReceived = false;
-        },
-      );
-
-      _engineHeartbeatTimer = Timer.periodic(const Duration(seconds: 5), (
-        timer,
-      ) {
-        final id = getRequestId();
-
-        final heartbeat = Heartbeat(id: id);
-
-        final encoder = JsonUtf8Encoder();
-
-        send(encoder.convert(heartbeat.toJson()) as Uint8List);
-      });
+      startHeartbeatTimer();
     }
 
     // Wait for the engine to connect before setting our initialized state to
@@ -243,6 +189,7 @@ class EngineConnector {
   }
 
   /// Sends the given bytes to the engine.
+  @override
   void send(Uint8List bytes) {
     if (!_initialized) {
       _bufferedRequests.add(bytes);
@@ -258,79 +205,19 @@ class EngineConnector {
     EngineSocketServer.instance.send(_id, bytes);
   }
 
-  final _messageBuffer = MemoryBlock();
-
-  void _onReceive(Uint8List message) {
-    if (_onReply == null) return;
-
-    // Append incoming data to the buffer
-    _messageBuffer.append(message);
-
-    // Process the buffer to extract complete messages
-    while (_messageBuffer.buffer.length >= 8) {
-      // Extract the message length (8 bytes, 64-bit integer)
-      final byteData = ByteData.sublistView(
-        Uint8List.fromList(_messageBuffer.buffer),
-      );
-      final messageLength = byteData.getUint64(0, Endian.host);
-
-      // Check if the buffer contains the full message
-      if (_messageBuffer.buffer.length >= 8 + messageLength) {
-        // Extract the full message
-        final messageStart = 8;
-        final messageEnd = messageStart + messageLength;
-        final fullMessage = _messageBuffer.buffer.sublist(
-          messageStart,
-          messageEnd,
-        );
-
-        Response response;
-        try {
-          response = Response.fromJson(jsonDecode(utf8.decode(fullMessage)));
-        } on FormatException catch (_) {
-          // If we can't decode, then something is fatally wrong. This is
-          // probably a bug, so we should shut down the engine and report the
-          // error.
-          _shutdown();
-
-          rethrow;
-        }
-
-        // Handle heartbeat reply
-        if (response is HeartbeatReply) {
-          _heartbeatReceived = true;
-        } else {
-          _onReply(response);
-        }
-
-        // Remove the processed message from the buffer
-        _messageBuffer.removeRange(0, 8 + messageLength);
-      } else {
-        // Not enough data for a full message yet
-        break;
-      }
-    }
-  }
-
   void _shutdown() {
-    // Stop the heartbeat check timer
-    _heartbeatCheckTimer?.cancel();
-
     // Kill engine process
     _engineProcess?.kill();
 
-    // Stop the timer that sends heartbeat messages to the engine
-    _engineHeartbeatTimer?.cancel();
-
     // Unsubscribe from engine replies
     _engineReplySub?.cancel();
-
-    _heartbeatReceived = false;
   }
 
   /// Stops the engine process, and cleans up the messaging infrastructure.
+  @override
   void dispose() {
     _shutdown();
+    super.dispose();
   }
 
   /// Sets the engine process, and attaches a listener when it stops.

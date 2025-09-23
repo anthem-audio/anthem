@@ -24,7 +24,7 @@
 
 #pragma once
 
-// #ifdef __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
 
 #include "emscripten.h"
 
@@ -35,18 +35,12 @@
 class AnthemPipeWasm {
 private:
   bool isConnectedFlag = false;
-
+public:
   CommsRingBufferWasm readBuffer;
   CommsRingBufferWasm writeBuffer;
 
-  bool initMemory();
-public:
-  AnthemPipeWasm() : readBuffer(65536), writeBuffer(65536) {
-    std::cout << "AnthemPipeWasm constructor called." << std::endl;
-  }
-  ~AnthemPipeWasm() {
-    std::cout << "AnthemPipeWasm destructor called." << std::endl;
-  }
+  AnthemPipeWasm() : readBuffer(65536), writeBuffer(65536) {}
+  ~AnthemPipeWasm() {}
 
   int connect(juce::String address, int port, int timeoutMs = 0);
   
@@ -59,4 +53,4 @@ public:
   bool isConnected() const;
 };
 
-// #endif // #ifdef __EMSCRIPTEN__
+#endif // #ifdef __EMSCRIPTEN__

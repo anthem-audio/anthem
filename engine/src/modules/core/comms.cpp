@@ -73,6 +73,10 @@ void AnthemSocketThread::run() {
 
     // Read data from the socket
     uint8_t buffer[4096];
+
+    // debug: zero the buffer
+    std::memset(buffer, 0, sizeof(buffer));
+
     auto bytesRead = socket.read(buffer, sizeof(buffer), false);
 
     if (bytesRead < 0) {
@@ -98,6 +102,7 @@ void AnthemSocketThread::run() {
 
       if (messageBuffer.getSize() >= sizeof(uint64_t) + messageLength) {
         processIncomingMessage(messageLength);
+        didReadOrWrite = true;
       } else {
         // Not enough data for a complete message yet
         break;
@@ -192,7 +197,7 @@ bool AnthemSocketThread::messageQueueHasMessages() {
 }
 
 void AnthemSocketThread::prepareNextMessage() {
-  // Narrower block scope so that we unlock as soon as possible
+  // Narrow block scope so that we unlock as soon as possible
   {
     juce::ScopedLock lock(queueLock);
 

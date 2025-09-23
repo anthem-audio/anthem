@@ -17,43 +17,46 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-// #ifdef __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
 
 #include "comms_pipe_wasm.h"
 
-bool AnthemPipeWasm::initMemory() {
-  readBuffer.tryEnqueue(1);
-  readBuffer.tryEnqueue(2);
-  writeBuffer.tryEnqueue(3);
-
-  EM_ASM({
-    console.log("AnthemPipeWasm readBuffer.size(): " + $0);
-    console.log("AnthemPipeWasm writeBuffer.size(): " + $1);
-  }, readBuffer.size(), writeBuffer.size());
-
-  return true;
-}
-
 int AnthemPipeWasm::connect(juce::String address, int port, int timeoutMs) {
-  initMemory();
   isConnectedFlag = true;
-  return 0;
+  return 1;
 }
 
 int AnthemPipeWasm::waitUntilReady(bool forRead, int timeoutMs) {
-  return 0;
+  return 1; // always ready
 }
 
 int AnthemPipeWasm::read(void* destBuffer, int maxBytesToRead, bool shouldBlock) {
-  return 0;
+  int bytesWritten = 0;
+
+  while (bytesWritten < maxBytesToRead) {
+    uint8_t byte;
+    if (!readBuffer.tryDequeue(byte)) {
+      break;
+    }
+    ((uint8_t*)destBuffer)[bytesWritten] = byte;
+    bytesWritten++;
+  }
+  
+  return bytesWritten;
 }
 
 int AnthemPipeWasm::write(const void* sourceBuffer, int numBytesToWrite) {
-  return 0;
+  for (int i = 0; i < numBytesToWrite; i++) {
+    if (!writeBuffer.tryEnqueue(((const uint8_t*)sourceBuffer)[i])) {
+      return i; // Return number of bytes successfully written
+    }
+  }
+
+  return numBytesToWrite;
 }
 
 bool AnthemPipeWasm::isConnected() const {
   return isConnectedFlag;
 }
 
-// #endif // #ifdef __EMSCRIPTEN__
+#endif // #ifdef __EMSCRIPTEN__
