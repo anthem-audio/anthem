@@ -80,11 +80,11 @@ class _TimelineNotificationHandlerState
                     ? 0
                     : startTime.floor()),
             divisionChanges: divisionChanges,
-          ).clamp(0, 0x7FFFFFFFFFFFFFFF);
+          ).clamp(0, 0x0001_FFFF_FFFF_FFFF); // Max safe integer for web
 
           if (notification is TimelineLabelPointerDownNotification) {
             startTime = notification.time;
-            snapOffset = notification.time.floor() - snappedPos;
+            snapOffset = notification.time.floor().toInt() - snappedPos;
           } else if (notification is TimelineLabelPointerMoveNotification) {
             hasMoved = true;
             project.execute(

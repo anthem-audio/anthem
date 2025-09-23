@@ -35,7 +35,8 @@ abstract class EngineConnectorBase {
   Timer? _engineHeartbeatTimer;
 
   int getRequestId() {
-    if (requestIdGen > 0x7FFFFFFFFFFFFFFE) {
+    // 0x0001_FFFF_FFFF_FFFF is the max safe integer in JavaScript.
+    if (requestIdGen > 0x0001_FFFF_FFFF_FFFF) {
       requestIdGen = 0;
     }
     return requestIdGen++;

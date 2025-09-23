@@ -222,7 +222,7 @@ void paintPhraseShading({
 
     final nextTimeSignatureChangeOffset =
         timeSignatureIndex + 1 >= timeSignatures.length
-        ? 0x7FFFFFFFFFFFFFFF
+        ? 0x0001_FFFF_FFFF_FFFF // Max safe integer for web
         : timeSignatures[timeSignatureIndex + 1].offset;
 
     var phraseWidth = barSize * 4;
