@@ -21,6 +21,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:anthem/engine_api/engine.dart';
+import 'package:flutter/foundation.dart';
 
 /// A high-performance store for invalidation ranges.
 ///
@@ -57,9 +58,9 @@ class InvalidationRangeCollector {
 
   /// The inner array that stores the start and end times of the
   /// invalidation ranges.
-  final Int64List _array;
+  final TypedDataList<int> _array;
 
-  Int64List get rawData => _array;
+  TypedDataList<int> get rawData => _array;
 
   /// A high-performance store for invalidation ranges.
   ///
@@ -68,7 +69,12 @@ class InvalidationRangeCollector {
   InvalidationRangeCollector([this.maxSize = 64])
     // We add one extra slot at the end which will be used when inserting items
     // to a full list
-    : _array = Int64List(maxSize * 2 + 2) {
+    : _array = kIsWeb && !kIsWasm
+          // Non-wasm web builds don't support 64-bit integer lists. In the
+          // future we need to convert all our time to double, which will remove
+          // this hack.
+          ? Int32List(maxSize * 2 + 2)
+          : Int64List(maxSize * 2 + 2) {
     reset();
   }
 

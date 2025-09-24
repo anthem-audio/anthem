@@ -21,6 +21,7 @@ import 'dart:typed_data';
 
 import 'package:anthem/engine_api/engine_emscripten_interface.dart';
 import 'package:anthem/engine_api/engine_connector_base.dart';
+import 'package:flutter/foundation.dart';
 
 class EngineConnector extends EngineConnectorBase {
   late EngineEmscriptenInterface engineInterface = EngineEmscriptenInterface(
@@ -71,9 +72,22 @@ class EngineConnector extends EngineConnectorBase {
     }
 
     // Send the length of the request
-    final bytesList = Uint64List(1);
+    final bytesList = !kIsWasm ? Uint32List(1) : Uint64List(1);
     bytesList[0] = bytes.length;
-    engineInterface.sendMessage(bytesList.buffer.asUint8List());
+    if (kIsWasm) {
+      engineInterface.sendMessage(bytesList.buffer.asUint8List());
+    } else {
+      final len32 = bytesList.buffer.asUint8List();
+      Uint8List len64 = Uint8List(8);
+      final endianValue = Endian.host == Endian.little ? 0 : 4;
+      for (var i = 0; i < 4; i++) {
+        len64[i + endianValue] = len32[i];
+      }
+      engineInterface.sendMessage(
+        // Uint8List.fromList([0, 0, 0, 0].followedBy(len32).toList()),
+        Uint8List.fromList(len32.followedBy([0, 0, 0, 0]).toList()),
+      );
+    }
 
     engineInterface.sendMessage(bytes);
   }
