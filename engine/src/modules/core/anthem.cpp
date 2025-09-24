@@ -38,7 +38,25 @@ void Anthem::initialize() {
   #endif // #ifndef __EMSCRIPTEN__
 
   comms.init();
+
+  // On desktop, we use a heartbeat to make sure that we have an active
+  // connection to the UI. While it shouldn't be possible due to how we start
+  // the engine from the Dart side, this is a last resort to make sure that we
+  // don't have a dangling engine process if something goes wrong.
+  //
+  // On web, we don't need this for two reasons: First, the web version is
+  // self-contained within the browser tab; if something is wrong, the tab can
+  // just be closed. Second, the connection between the UI and engine is much
+  // more direct on web, since the UI gets an object to puppeteer the engine
+  // directly, and the risk of losing track of the engine is much lower.
+  //
+  // The other reason this is removed on web is that when the browser loses
+  // focus, it may throttle or pause background tasks, which causes the UI to
+  // stop sending heartbeats. We could fix this, but since it's not needed on
+  // web anyway, it's simpler to just disable it.
+  #ifndef __EMSCRIPTEN__
   commandHandler.startHeartbeatThread();
+  #endif // #ifndef __EMSCRIPTEN__
 }
 
 void Anthem::shutdown() {

@@ -55,7 +55,19 @@ class EngineConnector extends EngineConnectorBase {
     }
     _pendingMessages.clear();
 
-    startHeartbeatTimer();
+    // We don't do this on web, and on web the engine won't listen for it.
+    //
+    // On desktop, we use the heartbeat mechanism to make sure that, if
+    // something goes very wrong, the engine will eventually time out and exit
+    // itself in the worst case.
+    //
+    // This isn't necessary on web, but on web our timer is also throttled when
+    // the browser tab is not active, so it trips a heartbeat timeout under
+    // regular use. Since it doesn't work (without modification) and we don't
+    // need it anyway, we disable it on web.
+    if (!kIsWeb) {
+      startHeartbeatTimer();
+    }
 
     _isInitialized = true;
 
