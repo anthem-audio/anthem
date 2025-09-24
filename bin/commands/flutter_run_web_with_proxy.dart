@@ -38,6 +38,12 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
           'Serve (packageRoot)/build/web with dhttpd behind the proxy instead of running "flutter run".',
       negatable: false,
     );
+
+    argParser.addFlag(
+      'no-wasm',
+      help: 'Run flutter web without --wasm, which will build with dart2js.',
+      negatable: false,
+    );
   }
 
   @override
@@ -69,8 +75,17 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
 
     final useExistingBuild =
         (argResults?['serve-existing-build'] as bool?) ?? false;
+    final noWasm = (argResults?['no-wasm'] as bool?) ?? false;
 
     if (useExistingBuild) {
+      if (noWasm) {
+        print(
+          Colorize(
+            'Warning: --no-wasm has no effect when serving an existing build.',
+          ).yellow(),
+        );
+      }
+
       // Find package root and validate build/web.
       final packageRoot = await _findPackageRoot(Directory.current);
       final buildWebDir = Directory(
@@ -99,7 +114,7 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
       final code = await dhttpdProc.exitCode;
       exit(code);
     } else {
-      final flutterProc = await startDevelopmentServer(devServerPort);
+      final flutterProc = await startDevelopmentServer(devServerPort, noWasm);
 
       print(
         'Proxy: http://localhost:$proxyPort  →  Flutter dev server: http://localhost:$devServerPort',
@@ -122,13 +137,13 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
     return port;
   }
 
-  Future<Process> startDevelopmentServer(int port) async {
+  Future<Process> startDevelopmentServer(int port, bool noWasm) async {
     // Use --web-port (HTTP server) rather than --dds-port (VM service).
     final args = [
       'run',
       '-d',
       'web-server',
-      '--wasm',
+      if (!noWasm) '--wasm',
       '--web-port',
       port.toString(),
       '--web-hostname',
