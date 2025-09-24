@@ -17,8 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+// cspell:ignore dhttpd
+
 // ignore_for_file: avoid_print
 
+// ... existing imports ...
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
@@ -28,6 +31,15 @@ import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_proxy/shelf_proxy.dart';
 
 class FlutterRunWebWithProxyCommand extends Command<dynamic> {
+  FlutterRunWebWithProxyCommand() {
+    argParser.addFlag(
+      'serve-existing-build',
+      help:
+          'Serve (packageRoot)/build/web with dhttpd behind the proxy instead of running "flutter run".',
+      negatable: false,
+    );
+  }
+
   @override
   String get description =>
       'Runs "flutter run -d web-server --wasm" behind a proxy for COOP/COEP, which allows the engine to run without errors.';
@@ -37,6 +49,9 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
 
   @override
   Future<void> run() async {
+    // Always ensure dhttpd is available.
+    await _ensureDhttpdActivated();
+
     final devServerPort = await getUnusedPort();
     final proxyPort = await getUnusedPort();
 
@@ -52,19 +67,52 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
 
     await startProxyServer(proxyPort, devServerPort);
 
-    final flutterProc = await startDevelopmentServer(devServerPort);
+    final useExistingBuild =
+        (argResults?['serve-existing-build'] as bool?) ?? false;
 
-    print(
-      'Proxy: http://localhost:$proxyPort  →  Flutter dev server: http://localhost:$devServerPort',
-    );
+    if (useExistingBuild) {
+      // Find package root and validate build/web.
+      final packageRoot = await _findPackageRoot(Directory.current);
+      final buildWebDir = Directory(
+        '${packageRoot.path}${Platform.pathSeparator}build${Platform.pathSeparator}web',
+      );
 
-    // Pipe Flutter output to our console.
-    flutterProc.stdout.listen(stdout.add);
-    flutterProc.stderr.listen(stderr.add);
+      if (!buildWebDir.existsSync()) {
+        stderr.writeln(
+          'Error: Expected directory not found: ${buildWebDir.path}\n'
+          'Build your web app first (e.g., "flutter build web"), or omit --serve-existing-build.',
+        );
+        exitCode = 2;
+        return;
+      }
 
-    // Exit when Flutter exits.
-    final code = await flutterProc.exitCode;
-    exit(code);
+      final dhttpdProc = await _startDhttpd(devServerPort, buildWebDir);
+
+      print(
+        'Proxy: http://localhost:$proxyPort  →  dhttpd (static build): http://localhost:$devServerPort',
+      );
+
+      // Pipe dhttpd output to console.
+      dhttpdProc.stdout.listen(stdout.add);
+      dhttpdProc.stderr.listen(stderr.add);
+
+      final code = await dhttpdProc.exitCode;
+      exit(code);
+    } else {
+      final flutterProc = await startDevelopmentServer(devServerPort);
+
+      print(
+        'Proxy: http://localhost:$proxyPort  →  Flutter dev server: http://localhost:$devServerPort',
+      );
+
+      // Pipe Flutter output to console.
+      flutterProc.stdout.listen(stdout.add);
+      flutterProc.stderr.listen(stderr.add);
+
+      // Exit when Flutter exits.
+      final code = await flutterProc.exitCode;
+      exit(code);
+    }
   }
 
   Future<int> getUnusedPort() async {
@@ -133,5 +181,67 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
     print(
       'Reverse proxy listening at http://${server.address.host}:${server.port}',
     );
+  }
+
+  // --- Added helpers below ---
+
+  Future<void> _ensureDhttpdActivated() async {
+    // Always activate to ensure it's installed/up-to-date.
+    final result = await Process.run('dart', [
+      'pub',
+      'global',
+      'activate',
+      'dhttpd',
+    ], runInShell: true);
+    // Forward output for visibility.
+    if ((result.stdout as Object?) != null &&
+        result.stdout.toString().isNotEmpty) {
+      stdout.write(result.stdout);
+    }
+    if ((result.stderr as Object?) != null &&
+        result.stderr.toString().isNotEmpty) {
+      stderr.write(result.stderr);
+    }
+    if (result.exitCode != 0) {
+      stderr.writeln(
+        'Failed to activate dhttpd (exit code ${result.exitCode}).',
+      );
+      exit(result.exitCode);
+    }
+  }
+
+  Future<Process> _startDhttpd(int port, Directory root) async {
+    final args = [
+      'pub',
+      'global',
+      'run',
+      'dhttpd',
+      '--host',
+      'localhost',
+      '--port',
+      port.toString(),
+      '--path',
+      root.path,
+    ];
+    print('Starting: dart ${args.join(' ')}');
+    return await Process.start('dart', args, runInShell: true);
+  }
+
+  Future<Directory> _findPackageRoot(Directory start) async {
+    Directory current = start.absolute;
+    while (true) {
+      final pubspec = File(
+        '${current.path}${Platform.pathSeparator}pubspec.yaml',
+      );
+      if (pubspec.existsSync()) {
+        return current;
+      }
+      final parent = current.parent;
+      if (parent.path == current.path) {
+        // Reached filesystem root; default to starting directory.
+        return start.absolute;
+      }
+      current = parent;
+    }
   }
 }
