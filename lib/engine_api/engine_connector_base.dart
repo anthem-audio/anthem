@@ -19,10 +19,10 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:anthem/engine_api/memory_block.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
+import 'package:flutter/foundation.dart';
 
 abstract class EngineConnectorBase {
   var requestIdGen = 0;
@@ -106,7 +106,31 @@ abstract class EngineConnectorBase {
       final byteData = ByteData.sublistView(
         Uint8List.fromList(_messageBuffer.buffer),
       );
-      final messageLength = byteData.getUint64(0, Endian.host);
+
+      var messageLength = 0;
+
+      if (kIsWeb && !kIsWasm) {
+        // Read two 32-bit words and combine safely using BigInt to avoid JS 32-bit shifts.
+        final lowOffset = Endian.host == Endian.little ? 0 : 4;
+        final highOffset = Endian.host == Endian.little ? 4 : 0;
+
+        final low = byteData.getUint32(lowOffset, Endian.host);
+        final high = byteData.getUint32(highOffset, Endian.host);
+
+        final bigLen = (BigInt.from(high) << 32) | BigInt.from(low);
+
+        // Guard against values that exceed JS safe integer range.
+        const maxSafe = 0x001F_FFFF_FFFF_FFFF; // 2^53 - 1
+        if (bigLen > BigInt.from(maxSafe)) {
+          throw StateError(
+            'Message length exceeds JS safe integer range: $bigLen',
+          );
+        }
+
+        messageLength = bigLen.toInt();
+      } else {
+        messageLength = byteData.getUint64(0, Endian.host);
+      }
 
       // Check if the buffer contains the full message
       if (_messageBuffer.buffer.length >= 8 + messageLength) {
