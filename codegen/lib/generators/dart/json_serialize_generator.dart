@@ -81,13 +81,6 @@ Map<String, dynamic> toJson({bool forEngine = false, bool forProjectFile = true}
   }
 
   if (context.isSealed) {
-    // For sealed classes, we figure out which subclass we're dealing with and
-    // use the name of that subclass to inform a field in the JSON map. This
-    // allows us to determine the correct base class when deserializing.
-    result.write('map[\'__type\'] = runtimeType.toString();\n');
-
-    // Then, we output code to determine which fields to serialize depending on
-    // the current subtype
     var isFirst = true;
     for (final subclass in context.sealedSubclasses) {
       if (isFirst) {
@@ -97,6 +90,13 @@ Map<String, dynamic> toJson({bool forEngine = false, bool forProjectFile = true}
         result.write('else if (this is ${subclass.name}) {\n');
       }
 
+      // For sealed classes, we use the name of the subclass to inform a field
+      // in the JSON map. This allows us to determine the correct type when
+      // deserializing.
+      result.write('map[\'__type\'] = \'${subclass.name}\';\n');
+
+      // Then, we output code to determine which fields to serialize depending
+      // on the current subtype.
       for (final field in subclass.fields.entries) {
         final name = field.key;
         final fieldInfo = field.value;
