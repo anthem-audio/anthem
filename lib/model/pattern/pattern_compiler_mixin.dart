@@ -178,7 +178,7 @@ mixin _PatternCompilerMixin on _PatternModel {
             var clipTimeViewStart = 0;
             // Max safe integer for web. We need to convert to double for
             // everything, but this is a hack for now for web compatibility.
-            var clipTimeViewEnd = 0x0001_FFFF_FFFF_FFFF;
+            var clipTimeViewEnd = 0x001F_FFFF_FFFF_FFFF;
 
             if (clip.timeView != null) {
               clipTimeViewStart = clip.timeView!.start;

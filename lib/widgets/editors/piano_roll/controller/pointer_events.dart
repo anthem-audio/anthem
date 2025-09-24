@@ -19,7 +19,7 @@
 
 part of 'piano_roll_controller.dart';
 
-const maxSafeIntWeb = 0x0001_FFFF_FFFF_FFFF;
+const maxSafeIntWeb = 0x001F_FFFF_FFFF_FFFF;
 
 /// These are the possible states that the piano roll can have during event
 /// handing. The current state tells the controller how to handle incoming

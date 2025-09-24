@@ -80,7 +80,7 @@ class _TimelineNotificationHandlerState
                     ? 0
                     : startTime.floor()),
             divisionChanges: divisionChanges,
-          ).clamp(0, 0x0001_FFFF_FFFF_FFFF); // Max safe integer for web
+          ).clamp(0, 0x001F_FFFF_FFFF_FFFF); // Max safe integer for web
 
           if (notification is TimelineLabelPointerDownNotification) {
             startTime = notification.time;
