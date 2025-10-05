@@ -37,7 +37,11 @@ if (IS_WASM)
   # CMake's Threads package maps to '-pthread' under Emscripten.
   find_package(Threads REQUIRED)
 
-  add_compile_options(-pthread)
+  add_compile_options(
+    -pthread
+
+    # "SHELL:-fsanitize=address"
+  )
   
   add_link_options(
     -pthread
@@ -54,8 +58,15 @@ if (IS_WASM)
     "SHELL:-sMODULARIZE=1"
     "SHELL:-sEXPORT_NAME=AnthemEngine"
     "SHELL:-sEXPORTED_FUNCTIONS='[${EXPORTED_FUNCTIONS_STRING}]'"
-    "SHELL:-sEXPORTED_RUNTIME_METHODS='[\"HEAPU8\", \"HEAPU32\", \"HEAP32\"]'"
+    "SHELL:-sEXPORTED_RUNTIME_METHODS='[\"HEAPU8\", \"HEAPU32\", \"HEAP32\", \"HEAPF32\"]'"
   )
+
+  if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_link_options(
+      "SHELL:-gsource-map"
+      "SHELL:-g"
+    )
+  endif()
 endif()
 
 add_library(project_options INTERFACE)
