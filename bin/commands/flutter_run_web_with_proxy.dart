@@ -21,7 +21,6 @@
 
 // ignore_for_file: avoid_print
 
-// ... existing imports ...
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
@@ -29,6 +28,7 @@ import 'package:colorize/colorize.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_proxy/shelf_proxy.dart';
+import 'package:shelf_static/shelf_static.dart';
 
 class FlutterRunWebWithProxyCommand extends Command<dynamic> {
   FlutterRunWebWithProxyCommand() {
@@ -61,6 +61,14 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
     final devServerPort = await getUnusedPort();
     final proxyPort = await getUnusedPort();
 
+    // Parse flags early so we can decide how to wire the proxy.
+    final useExistingBuild =
+        (argResults?['serve-existing-build'] as bool?) ?? false;
+    final noWasm = (argResults?['no-wasm'] as bool?) ?? false;
+
+    // Resolve package root (used for static mounts and/or build/web).
+    final packageRoot = await _findPackageRoot(Directory.current);
+
     print(
       '${Colorize('The proxy server will be started at').lightGreen()} http://localhost:$proxyPort',
     );
@@ -71,11 +79,13 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
     );
     stdin.readLineSync();
 
-    await startProxyServer(proxyPort, devServerPort);
-
-    final useExistingBuild =
-        (argResults?['serve-existing-build'] as bool?) ?? false;
-    final noWasm = (argResults?['no-wasm'] as bool?) ?? false;
+    // When serving the dev server (useExistingBuild == false), also mount /src and /include.
+    await startProxyServer(
+      proxyPort: proxyPort,
+      devServerPort: devServerPort,
+      packageRoot: packageRoot,
+      mountEngineDirs: !useExistingBuild,
+    );
 
     if (useExistingBuild) {
       if (noWasm) {
@@ -86,8 +96,7 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
         );
       }
 
-      // Find package root and validate build/web.
-      final packageRoot = await _findPackageRoot(Directory.current);
+      // Validate build/web.
       final buildWebDir = Directory(
         '${packageRoot.path}${Platform.pathSeparator}build${Platform.pathSeparator}web',
       );
@@ -118,6 +127,13 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
 
       print(
         'Proxy: http://localhost:$proxyPort  →  Flutter dev server: http://localhost:$devServerPort',
+      );
+      print('Mounted static paths:');
+      print(
+        '  /src     → ${packageRoot.path}${Platform.pathSeparator}engine${Platform.pathSeparator}src',
+      );
+      print(
+        '  /include → ${packageRoot.path}${Platform.pathSeparator}engine${Platform.pathSeparator}include',
       );
 
       // Pipe Flutter output to console.
@@ -153,9 +169,32 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
     return await Process.start('flutter', args, runInShell: true);
   }
 
-  Future<void> startProxyServer(int proxyPort, int devServerPort) async {
+  Future<void> startProxyServer({
+    required int proxyPort,
+    required int devServerPort,
+    required Directory packageRoot,
+    required bool mountEngineDirs,
+  }) async {
     final target = 'http://localhost:$devServerPort';
     final httpProxy = proxyHandler(target);
+
+    // Optional static mounts (only when running the dev server).
+    final mounts = <Handler>[];
+    if (mountEngineDirs) {
+      final srcDir = Directory(
+        '${packageRoot.path}${Platform.pathSeparator}engine${Platform.pathSeparator}src',
+      );
+      final includeDir = Directory(
+        '${packageRoot.path}${Platform.pathSeparator}engine${Platform.pathSeparator}include',
+      );
+
+      if (srcDir.existsSync()) {
+        mounts.add(_staticMount('/src', srcDir));
+      }
+      if (includeDir.existsSync()) {
+        mounts.add(_staticMount('/include', includeDir));
+      }
+    }
 
     // Inject COOP/COEP/CORP on every response.
     final coopCoep = createMiddleware(
@@ -180,12 +219,20 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
       },
     );
 
-    // Compose middlewares around the HTTP proxy handler.
+    // Build a cascade: static mounts first, then the reverse proxy.
+    var cascade = Cascade();
+    for (final h in mounts) {
+      cascade = cascade.add(h);
+    }
+    cascade = cascade.add(httpProxy);
+    final composed = cascade.handler;
+
+    // Compose middlewares around the pipeline.
     final handler = const Pipeline()
         .addMiddleware(logRequests())
         .addMiddleware(coopCoep)
         .addMiddleware(noCache)
-        .addHandler(httpProxy);
+        .addHandler(composed);
 
     final server = await shelf_io.serve(
       handler,
@@ -198,7 +245,35 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
     );
   }
 
-  // --- Added helpers below ---
+  /// Mounts [dir] at [urlPrefix] (e.g., "/src" or "/include").
+  /// If the request path is exactly the prefix or starts with "<prefix>/",
+  /// the prefix is *consumed* via `req.change(path: <prefix>)` and the request
+  /// is delegated to the static handler with the remaining subpath.
+  Handler _staticMount(String urlPrefix, Directory dir) {
+    // Normalize to a bare segment without leading/trailing slashes: e.g. "src"
+    final mounted = urlPrefix.replaceAll(RegExp(r'^/+|/+$'), '');
+
+    final staticHandler = createStaticHandler(
+      dir.path,
+      listDirectories: true,
+      defaultDocument: null,
+      useHeaderBytesForContentType: true,
+    );
+
+    return (Request req) {
+      final path = req.url.path; // e.g. "src/main.cpp" or "include/foo/bar.h"
+
+      if (path == mounted || path.startsWith('$mounted/')) {
+        // Consume the mount prefix. After this, forwarded.url.path is the
+        // remainder (e.g. "main.cpp"), and handlerPath is advanced to "/src/".
+        final forwarded = req.change(path: mounted);
+        return staticHandler(forwarded);
+      }
+
+      // Not our prefix; let Cascade try the next handler.
+      return Response.notFound('Not Found');
+    };
+  }
 
   Future<void> _ensureDhttpdActivated() async {
     // Always activate to ensure it's installed/up-to-date.
