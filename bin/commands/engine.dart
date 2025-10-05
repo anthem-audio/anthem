@@ -191,6 +191,9 @@ to generate the files, then run this script again.''')..red(),
       final paths = [
         packageRootPath.resolve('engine/$buildDirectoryName/AnthemEngine.js'),
         packageRootPath.resolve('engine/$buildDirectoryName/AnthemEngine.wasm'),
+        packageRootPath.resolve(
+          'engine/$buildDirectoryName/AnthemEngine.wasm.map',
+        ),
       ];
 
       final flutterWebDirPath = packageRootPath.resolve('web/engine/');
@@ -204,6 +207,10 @@ to generate the files, then run this script again.''')..red(),
         print('Copying ${path.path}...');
         final fileName = path.pathSegments.last;
         final flutterEngineBinaryPath = flutterWebDirPath.resolve(fileName);
+        if (!File.fromUri(path).existsSync()) {
+          print('${path.path} not found.');
+          continue;
+        }
         File.fromUri(path).copySync(
           flutterEngineBinaryPath.toFilePath(windows: Platform.isWindows),
         );
@@ -412,7 +419,7 @@ Future<void> _buildCmakeTarget(
   bool skipConfiguration = false,
   String buildDirectoryName = 'build',
 }) async {
-  if (addressSanitizer) {
+  if (addressSanitizer && !wasm) {
     print(
       Colorize(
         'WARNING: Address sanitizer is enabled. The UI will not automatically run this build. You will need to modify engine_connector.dart to do one of the following:',
@@ -454,8 +461,7 @@ Future<void> _buildCmakeTarget(
       if (Platform.isLinux || Platform.isMacOS || wasm)
         '-DCMAKE_BUILD_TYPE=${debug ? 'Debug' : 'Release'}',
 
-      if (addressSanitizer &&
-          (Platform.isLinux || Platform.isMacOS || wasm)) ...[
+      if (addressSanitizer && (Platform.isLinux || Platform.isMacOS)) ...[
         '-DCMAKE_C_FLAGS=-fsanitize=address',
         '-DCMAKE_CXX_FLAGS=-fsanitize=address',
         '-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address',
@@ -471,11 +477,10 @@ Future<void> _buildCmakeTarget(
         '-DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address',
       ],
 
-      if (addressSanitizer && Platform.isWindows) ...[
+      if (addressSanitizer && Platform.isWindows && !wasm) ...[
         r'-DCMAKE_C_FLAGS="/fsanitize=address"',
         r'-DCMAKE_CXX_FLAGS="/fsanitize=address"',
       ],
-
       '..',
     ];
 
