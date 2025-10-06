@@ -126,12 +126,10 @@ file(
 
 # Identify the application entry point so it is NOT compiled into the library.
 set(APP_MAIN ${PROJECT_SOURCE_DIR}/src/main.cpp)
-set(APP_MAIN_WASM ${PROJECT_SOURCE_DIR}/src/main_wasm.cpp)
 
 # Build the engine/library sources by excluding the app main file.
 set(ANTHEM_ENGINE_SOURCES ${ANTHEM_ALL_SOURCES})
 list(REMOVE_ITEM ANTHEM_ENGINE_SOURCES ${APP_MAIN})
-list(REMOVE_ITEM ANTHEM_ENGINE_SOURCES ${APP_MAIN_WASM})
 
 # Skip AnthemEngineLib for WASM for now while we work out JUCE issues.
 # if (NOT IS_WASM)
@@ -196,7 +194,6 @@ endif()
 
 if (IS_WASM)
   add_executable(AnthemEngine
-    # ${APP_MAIN_WASM}
     ${APP_MAIN}
   )
 else()
