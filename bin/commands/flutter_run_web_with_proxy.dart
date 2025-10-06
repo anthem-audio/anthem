@@ -245,10 +245,10 @@ class FlutterRunWebWithProxyCommand extends Command<dynamic> {
     );
   }
 
-  /// Mounts [dir] at [urlPrefix] (e.g., "/src" or "/include").
-  /// If the request path is exactly the prefix or starts with "<prefix>/",
-  /// the prefix is *consumed* via `req.change(path: <prefix>)` and the request
-  /// is delegated to the static handler with the remaining subpath.
+  /// Mounts [dir] at [urlPrefix] (e.g., "/src" or "/include"). If the request
+  /// path is exactly the prefix or starts with "(prefix)/", the prefix is
+  /// *consumed* via `req.change(path: (prefix))` and the request is delegated
+  /// to the static handler with the remaining subpath.
   Handler _staticMount(String urlPrefix, Directory dir) {
     // Normalize to a bare segment without leading/trailing slashes: e.g. "src"
     final mounted = urlPrefix.replaceAll(RegExp(r'^/+|/+$'), '');
