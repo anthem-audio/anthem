@@ -26,6 +26,8 @@ jobs:
             arch: arm64
           - os: macos-13
             arch: x64
+          - os: ubuntu-latest
+            arch: wasm
 
     steps:
       - name: Check out code
@@ -107,21 +109,28 @@ jobs:
           dart analyze --fatal-infos
 
       # --------------------------------------------------------------
-      # Build engine
+      # Build engine (desktop)
       # --------------------------------------------------------------
-      - name: Build engine
+      - name: Build engine (desktop)
+        if: matrix.arch != 'wasm'
         run: dart run anthem:cli engine build --release
+
+      - name: Build engine (WASM)
+        if: matrix.arch == 'wasm'
+        run: dart run anthem:cli engine build --release --wasm
 
       # --------------------------------------------------------------
       # Engine unit tests
       # --------------------------------------------------------------
       - name: Run engine unit tests
+        if: matrix.arch != 'wasm'
         run: dart run anthem:cli engine unit-test
 
       # --------------------------------------------------------------
       # Flutter unit + integration tests
       # --------------------------------------------------------------
       - name: Run Flutter tests
+        if: matrix.arch != 'wasm'
         run: flutter test .
 
       # --------------------------------------------------------------
@@ -135,7 +144,7 @@ jobs:
       # Build Flutter (Linux)
       # --------------------------------------------------------------
       - name: Build Flutter (Linux)
-        if: contains(matrix.os, 'ubuntu')
+        if: contains(matrix.os, 'ubuntu') && matrix.arch != 'wasm'
         run: flutter build linux --verbose --release
       
       # --------------------------------------------------------------
@@ -144,6 +153,13 @@ jobs:
       - name: Build Flutter (macOS)
         if: contains(matrix.os, 'macos')
         run: flutter build macos --verbose --release
+
+      # --------------------------------------------------------------
+      # Build Flutter (WASM)
+      # --------------------------------------------------------------
+      - name: Build Flutter (WASM)
+        if: matrix.arch == 'wasm'
+        run: flutter build web --verbose --release --wasm
 
       # --------------------------------------------------------------
       # Upload artifacts (Windows)
@@ -159,7 +175,7 @@ jobs:
       # Upload artifacts (Linux)
       # --------------------------------------------------------------
       - name: Upload artifact (Linux)
-        if: contains(matrix.os, 'ubuntu')
+        if: contains(matrix.os, 'ubuntu') && matrix.arch != 'wasm'
         uses: actions/upload-artifact@v4
         with:
           name: anthem-linux-${{ matrix.arch }}
@@ -174,3 +190,14 @@ jobs:
         with:
           name: anthem-macos-${{ matrix.arch }}
           path: ${{ github.workspace }}/build/macos/Build/Products/Release/Anthem.app
+
+      # --------------------------------------------------------------
+      # Deploy web build
+      # --------------------------------------------------------------
+      - name: Deploy web build to CloudFlare Pages
+        if: matrix.arch == 'wasm'
+        run: |
+          CLOUDFLARE_API_TOKEN=${{ secrets.CLOUDFLARE_API_TOKEN }}
+        
+          npm i -g wrangler@latest
+          wrangler pages publish build/web --project-name=anthem-audio --branch=${{ github.ref_name }}
