@@ -77,6 +77,7 @@ class EngineConnector extends EngineConnectorBase {
   /// Stream subscription for socket messages from the engine.
   StreamSubscription<Uint8List>? _engineReplySub;
 
+  /// Used for integration tests to specify the path to the engine binary.
   final String? enginePathOverride;
 
   EngineConnector(
@@ -127,6 +128,7 @@ class EngineConnector extends EngineConnectorBase {
     }
 
     final anthemPathStr =
+        enginePathOverride ??
         developmentEnginePath ??
         mainExecutablePath.parent.uri
             .resolve(
