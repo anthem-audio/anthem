@@ -536,7 +536,7 @@ Future<void> _buildCmakeTarget(
 
   final Process buildProcess;
 
-  if (wasm) {
+  if (Platform.isWindows && wasm) {
     buildProcess = await Process.start('wsl', [
       '--cd',
       buildDirPath.toFilePath(windows: Platform.isWindows),
