@@ -30,6 +30,10 @@ jobs:
             arch: wasm
 
     steps:
+      - name: Set up Emscripten
+        if: matrix.arch == 'wasm'
+        uses: mymindstorm/setup-emsdk@v14
+
       - name: Check out code
         uses: actions/checkout@v4
         with:
