@@ -201,7 +201,7 @@ jobs:
       - name: Deploy web build to CloudFlare Pages
         if: matrix.arch == 'wasm'
         run: |
-          CLOUDFLARE_API_TOKEN=${{ secrets.CLOUDFLARE_API_TOKEN }}
+          export CLOUDFLARE_API_TOKEN=${{ secrets.CLOUDFLARE_API_TOKEN }}
         
           npm i -g wrangler@latest
           wrangler pages publish build/web --project-name=anthem-audio --branch=${{ github.ref_name }}
