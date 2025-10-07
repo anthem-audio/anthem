@@ -131,6 +131,23 @@ class WasmSharedMemoryRingBuffer {
     return _atomicLoad(heapI32, _ticketPtr ~/ 4);
   }
 
+  /// Returns a future that completes when the memory address at the ticket
+  /// pointer is notified.
+  ///
+  /// See [the Atomics api
+  /// documentation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Atomics)
+  /// for more information.
+  ///
+  /// This is unused. The jitter for this appears to be in in the tens of
+  /// milliseconds in the worst case, which causes choppy updates for
+  /// visualization items in the UI (e.g. the playhead position). It also
+  /// suffers from low priority in the browser scheduler when compared with e.g.
+  /// mouse events, and so user interaction can cause visualizations to almost
+  /// grind to a halt.
+  ///
+  /// Instead of this method, we read data from the engine-to-UI ring buffer on
+  /// a frame timer (via a [Ticker] from Flutter). We don't need data any more
+  /// often than this, and this guarantees essentially zero jitter on this side.
   Future<void> waitForTicketSignal(JSInt32Array heapI32, int lastSeenTicket) {
     final atomicObject = window.getProperty('Atomics'.toJS) as JSObject;
 

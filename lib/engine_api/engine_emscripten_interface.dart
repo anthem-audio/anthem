@@ -24,6 +24,7 @@ import 'dart:typed_data';
 
 import 'package:anthem/engine_api/memory_block.dart';
 import 'package:anthem/engine_api/wasm_shared_memory_ring_buffer.dart';
+import 'package:flutter/scheduler.dart';
 
 class EngineEmscriptenInterface {
   final String exportName;
@@ -35,6 +36,8 @@ class EngineEmscriptenInterface {
   List<MemoryBlock> outgoingMessages = [];
 
   void Function(Uint8List bytes)? onMessageReceived;
+
+  late final Ticker _readTicker;
 
   EngineEmscriptenInterface(this.exportName, {this.onMessageReceived});
 
@@ -248,7 +251,7 @@ class EngineEmscriptenInterface {
       ticketPtr: writeBufferTicketPtr.toDartInt,
     );
 
-    _startReadLoop();
+    _setUpReadTicker();
   }
 
   void sendMessage(Uint8List bytes) {
@@ -295,6 +298,14 @@ class EngineEmscriptenInterface {
     _isSendActive = false;
   }
 
+  /// Starts a loop that asynchronously reads from the read buffer whenever
+  /// there is new data.
+  ///
+  /// This is unused, but is left here as an alternative to the [Ticker] method
+  /// that is used in this file. See
+  /// [WasmSharedMemoryRingBuffer.waitForTicketSignal] for more documentation on
+  /// why this method is not used.
+  // ignore:unused_element
   void _startReadLoop() async {
     while (true) {
       final heapI32 = readBuffer.getHeapI32();
@@ -304,6 +315,15 @@ class EngineEmscriptenInterface {
 
       await readBuffer.waitForTicketSignal(heapI32, ticketValue);
     }
+  }
+
+  /// Uses a [Ticker] to read from the read buffer on each frame.
+  void _setUpReadTicker() {
+    _readTicker = Ticker((elapsed) {
+      _tryRead();
+    });
+
+    _readTicker.start();
   }
 
   var _introBytesSkipped = 0;
