@@ -173,7 +173,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: anthem-windows-${{ matrix.arch }}
-          path: ${{ github.workspace }}/${{ matrix.arch == 'x64' && 'build/windows/x64/runner/Release' || 'build/windows/arm64/runner/Release' }}
+          # As of writing, Flutter on Windows currently builds x64, as Dart does
+          # not support arm64 on Windows yet. So, both the x64 and arm64 builds
+          # are built as x64, and are output to the x64 folder. If (hopefully
+          # when) this changes, the path here would look like the Linux path
+          # below.
+          path: ${{ github.workspace }}/build/windows/x64/runner/Release
 
       # --------------------------------------------------------------
       # Upload artifacts (Linux)
