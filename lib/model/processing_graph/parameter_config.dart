@@ -17,8 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 part 'parameter_config.g.dart';
@@ -63,7 +63,8 @@ class ParameterConfigModel extends _ParameterConfigModel
       _$ParameterConfigModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _ParameterConfigModel with Store, AnthemModelBase {
+abstract class _ParameterConfigModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
   /// The ID associated with this parameter.
   ///
   /// This must be unique within a plugin. This is analogous to the VST3

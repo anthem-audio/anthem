@@ -21,12 +21,12 @@ import 'dart:math';
 
 import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/collections.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/sequence.dart';
 import 'package:anthem/model/shared/invalidation_range_collector.dart';
 import 'package:anthem/model/shared/loop_points.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 import 'clip.dart';
@@ -85,7 +85,8 @@ class ArrangementModel extends _ArrangementModel
   }
 }
 
-abstract class _ArrangementModel with Store, AnthemModelBase {
+abstract class _ArrangementModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
   Id id;
 
   @anthemObservable

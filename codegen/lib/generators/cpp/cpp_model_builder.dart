@@ -22,7 +22,7 @@ import 'dart:async';
 import 'package:analyzer/dart/constant/value.dart';
 import 'package:analyzer/dart/element/element2.dart';
 import 'package:anthem_codegen/generators/cpp/cpp_model_sync.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 

@@ -18,8 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 part 'time_signature.g.dart';

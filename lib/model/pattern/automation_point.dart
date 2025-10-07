@@ -18,8 +18,8 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 part 'automation_point.g.dart';
@@ -44,7 +44,8 @@ class AutomationPointModel extends _AutomationPointModel
       _$AutomationPointModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _AutomationPointModel with Store, AnthemModelBase {
+abstract class _AutomationPointModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
   late final Id id;
 
   @anthemObservable

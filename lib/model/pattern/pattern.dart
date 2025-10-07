@@ -24,16 +24,16 @@ import 'dart:ui';
 import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/main.dart';
-import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/generator.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/shared/invalidation_range_collector.dart';
 import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes_render_cache.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:flutter/widgets.dart' as widgets;
 import 'package:mobx/mobx.dart';
 
@@ -141,7 +141,8 @@ class PatternModel extends _PatternModel
       notes.keys.followedBy(automationLanes.keys);
 }
 
-abstract class _PatternModel with Store, AnthemModelBase {
+abstract class _PatternModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
   Id id = getId();
 
   @anthemObservable

@@ -20,7 +20,7 @@
 import 'package:analyzer/dart/element/element2.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 

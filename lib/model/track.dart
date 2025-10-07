@@ -17,8 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 import 'package:anthem/helpers/id.dart';
@@ -36,7 +36,8 @@ class TrackModel extends _TrackModel
       _$TrackModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _TrackModel with Store, AnthemModelBase {
+abstract class _TrackModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
   Id id;
 
   @anthemObservable

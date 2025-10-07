@@ -18,13 +18,13 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/parameter_config.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 part 'gain.g.dart';
@@ -88,7 +88,8 @@ class GainProcessorModel extends _GainProcessorModel
   static int get gainPortId => _GainProcessorModel.gainPortId;
 }
 
-abstract class _GainProcessorModel with Store, AnthemModelBase {
+abstract class _GainProcessorModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
   static const int audioInputPortId = 0;
   static const int audioOutputPortId = 1;
   static const int gainPortId = 2;

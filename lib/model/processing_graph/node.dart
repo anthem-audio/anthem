@@ -21,7 +21,6 @@ import 'dart:async';
 
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/debounced_action.dart';
-import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/processors/gain.dart';
@@ -30,7 +29,8 @@ import 'package:anthem/model/processing_graph/processors/sequence_note_provider.
 import 'package:anthem/model/processing_graph/processors/simple_midi_generator.dart';
 import 'package:anthem/model/processing_graph/processors/simple_volume_lfo.dart';
 import 'package:anthem/model/processing_graph/processors/vst3_processor.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 import 'processors/master_output.dart';
@@ -111,7 +111,7 @@ class NodeModel extends _NodeModel
   }
 }
 
-abstract class _NodeModel with Store, AnthemModelBase {
+abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   String id;
 
   AnthemObservableList<NodePortModel> audioInputPorts;

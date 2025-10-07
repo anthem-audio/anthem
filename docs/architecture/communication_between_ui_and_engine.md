@@ -83,7 +83,7 @@ class AddResponse extends Response {
 In `lib/engine_api/messages/messages.dart`, we need a matching `part` declaration, like so:
 
 ```dart
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem_codegen/include.dart';
 
 part 'example.dart'; // <-- here, since this list is alphabetically sorted
 part 'model_sync.dart';

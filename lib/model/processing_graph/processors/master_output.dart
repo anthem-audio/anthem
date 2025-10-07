@@ -17,12 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 part 'master_output.g.dart';
@@ -66,7 +66,8 @@ class MasterOutputProcessorModel extends _MasterOutputProcessorModel
   }
 }
 
-abstract class _MasterOutputProcessorModel with Store, AnthemModelBase {
+abstract class _MasterOutputProcessorModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
   static const int inputPortId = 0;
 
   late String nodeId;

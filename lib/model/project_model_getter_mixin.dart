@@ -17,29 +17,26 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/project.dart';
 import 'package:anthem_codegen/include.dart';
-import 'package:mobx/mobx.dart';
 
-part 'loop_points.g.dart';
+mixin ProjectModelGetterMixin on AnthemModelBase {
+  ProjectModel? _project;
+  ProjectModel get project {
+    if (_project != null) {
+      return _project!;
+    }
 
-/// Describes loop points for a pattern or arrangement.
-@AnthemModel.syncedModel()
-class LoopPointsModel extends _LoopPointsModel
-    with _$LoopPointsModel, _$LoopPointsModelAnthemModelMixin {
-  LoopPointsModel(super.start, super.end);
+    var model = parent;
+    while (model != null) {
+      if (model is ProjectModel) {
+        _project = model;
+        return model;
+      }
 
-  LoopPointsModel.uninitialized() : super(0, 0);
+      model = model.parent;
+    }
 
-  factory LoopPointsModel.fromJson(Map<String, dynamic> json) =>
-      _$LoopPointsModelAnthemModelMixin.fromJson(json);
-}
-
-abstract class _LoopPointsModel with Store, AnthemModelBase {
-  @anthemObservable
-  int start;
-
-  @anthemObservable
-  int end;
-
-  _LoopPointsModel(this.start, this.end) : super();
+    throw Exception('Could not find project model');
+  }
 }

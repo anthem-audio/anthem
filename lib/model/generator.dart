@@ -18,8 +18,8 @@
 */
 
 import 'package:anthem/logic/live_event_manager.dart';
-import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:flutter/material.dart';
 import 'package:mobx/mobx.dart';
 
@@ -69,7 +69,8 @@ class GeneratorModel extends _GeneratorModel
   late final LiveEventManager liveEventManager = LiveEventManager(this);
 }
 
-abstract class _GeneratorModel with Store, AnthemModelBase {
+abstract class _GeneratorModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
   String id;
 
   @anthemObservable

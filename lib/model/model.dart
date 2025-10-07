@@ -20,7 +20,7 @@
 @GenerateCppModuleFile()
 library;
 
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem_codegen/include.dart';
 
 export 'arrangement/arrangement.dart';
 export 'arrangement/clip.dart';
