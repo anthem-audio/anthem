@@ -349,7 +349,7 @@ mixin AnthemModelBase {
   final List<
     void Function(Iterable<FieldAccessor> accessors, FieldOperation operation)
   >
-  _listeners = [];
+  _rawListeners = [];
 
   /// Serializes the model to a JSON representation.
   dynamic toJson({bool forEngine = false, bool forProjectFile = true});
@@ -360,7 +360,7 @@ mixin AnthemModelBase {
   }) {
     final accessorChainNotNull = accessorChain ?? [];
 
-    for (final listener in _listeners) {
+    for (final listener in _rawListeners) {
       listener(accessorChainNotNull.reversed, operation);
     }
 
@@ -393,19 +393,19 @@ mixin AnthemModelBase {
   }
 
   /// Adds a listener that is notified when a field is changed.
-  void addFieldChangedListener(
+  void addRawFieldChangedListener(
     void Function(Iterable<FieldAccessor> accessors, FieldOperation operation)
     listener,
   ) {
-    _listeners.add(listener);
+    _rawListeners.add(listener);
   }
 
   /// Removes a listener that is notified when a field is changed.
-  void removeFieldChangedListener(
+  void removeRawFieldChangedListener(
     void Function(Iterable<FieldAccessor> accessors, FieldOperation operation)
     listener,
   ) {
-    _listeners.remove(listener);
+    _rawListeners.remove(listener);
   }
 
   /// Sets properties that describe the position of this model on its parent

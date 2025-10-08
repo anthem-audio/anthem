@@ -71,12 +71,12 @@ class ArrangementModel extends _ArrangementModel
 
       updateViewWidthAction.execute();
 
-      clips.addFieldChangedListener((fieldAccessors, operation) {
+      clips.addRawFieldChangedListener((fieldAccessors, operation) {
         _recompileModifiedClips(fieldAccessors, operation);
         updateViewWidthAction.execute();
       });
 
-      addFieldChangedListener((fieldAccessors, operation) {
+      addRawFieldChangedListener((fieldAccessors, operation) {
         if (fieldAccessors.first.fieldName == 'loopPoints') {
           _updateLoopPointsAction.execute();
         }

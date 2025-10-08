@@ -74,7 +74,7 @@ void main() {
 
     List<(Iterable<FieldAccessor> accessors, FieldOperation operation)>
     changes = [];
-    model.addFieldChangedListener((accessors, operation) {
+    model.addRawFieldChangedListener((accessors, operation) {
       changes.add((accessors, operation));
     });
 
@@ -175,7 +175,7 @@ void main() {
 
       List<(Iterable<FieldAccessor> accessors, FieldOperation operation)>
       changes2 = [];
-      model2.addFieldChangedListener((accessors, operation) {
+      model2.addRawFieldChangedListener((accessors, operation) {
         changes2.add((accessors, operation));
       });
 

@@ -109,20 +109,20 @@ class PatternModel extends _PatternModel
       // When notes are changed in the pattern, we need to:
       //   1. Update the clip notes render cache.
       //   2. Tell the engine to re-compile all relevant sequences.
-      notes.addFieldChangedListener((fieldAccessors, operation) {
+      notes.addRawFieldChangedListener((fieldAccessors, operation) {
         scheduleClipNotesRenderCacheUpdate();
         _clipAutoWidthUpdateAction.execute();
 
         _recompileModifiedNotes(fieldAccessors, operation);
       });
 
-      automationLanes.addFieldChangedListener((fieldAccessors, operation) {
+      automationLanes.addRawFieldChangedListener((fieldAccessors, operation) {
         _clipAutoWidthUpdateAction.execute();
       });
 
       // When the pattern title is changed, we need to update the clip title
       // render cache.
-      addFieldChangedListener((fieldAccessors, operation) {
+      addRawFieldChangedListener((fieldAccessors, operation) {
         // The notes field might be entirely replaced instead of just updated.
         // In this case we also need to update the clip notes render cache.
         if (fieldAccessors.elementAtOrNull(1) == null &&

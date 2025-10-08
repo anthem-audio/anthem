@@ -69,7 +69,7 @@ class ProjectModel extends _ProjectModel
     // is the top level, we need to call it ourselves.
     setParentPropertiesOnChildren();
 
-    generators.addFieldChangedListener((fieldAccessors, operation) {
+    generators.addRawFieldChangedListener((fieldAccessors, operation) {
       // If there is only one item, then this change is directly related to the
       // generators map itself.
       if (fieldAccessors.elementAtOrNull(1) == null) {
@@ -259,7 +259,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
 
         if (_fieldChangedListener != null) {
           // Unhook the model change stream from the engine
-          (this as AnthemModelBase).removeFieldChangedListener(
+          (this as AnthemModelBase).removeRawFieldChangedListener(
             _fieldChangedListener!,
           );
           _fieldChangedListener = null;
@@ -377,7 +377,9 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     };
 
     // Hook up the model change stream to the engine
-    (this as AnthemModelBase).addFieldChangedListener(_fieldChangedListener!);
+    (this as AnthemModelBase).addRawFieldChangedListener(
+      _fieldChangedListener!,
+    );
   }
 
   /// Executes the given command on the project and pushes it to the undo/redo
