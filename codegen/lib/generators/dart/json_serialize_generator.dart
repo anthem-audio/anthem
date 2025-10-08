@@ -197,16 +197,16 @@ String _createSetterForField({
 }) {
   accessor ??= fieldName;
 
-  // Fix conflict with "value" local variable below
-  if (accessor == 'value') {
-    accessor = 'this.value';
-  }
-
   final converter = createSerializerForField(type: type, accessor: accessor);
 
   // If the field is nullable, we need to check if the value we're adding to the
   // JSON map is null before adding it
   if (type.isNullable) {
+    // Fix conflict with "value" local variable below
+    if (accessor == 'value') {
+      accessor = 'this.value';
+    }
+
     return '''{
     final value = $converter;
     if (value != null) {
