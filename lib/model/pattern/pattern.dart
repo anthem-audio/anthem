@@ -25,7 +25,6 @@ import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/main.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
-import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/shared/anthem_color.dart';

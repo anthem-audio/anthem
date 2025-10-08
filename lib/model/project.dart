@@ -25,7 +25,6 @@ import 'package:anthem/commands/command_stack.dart';
 import 'package:anthem/commands/journal_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/sequence.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem_codegen/include.dart';

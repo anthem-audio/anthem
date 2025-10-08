@@ -20,8 +20,8 @@
 import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/model.dart';
+import 'package:anthem_codegen/include.dart';
 
 import 'command.dart';
 

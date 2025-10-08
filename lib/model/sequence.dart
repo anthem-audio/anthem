@@ -18,7 +18,6 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';

@@ -21,7 +21,6 @@ import 'dart:math';
 
 import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/sequence.dart';
 import 'package:anthem/model/shared/invalidation_range_collector.dart';

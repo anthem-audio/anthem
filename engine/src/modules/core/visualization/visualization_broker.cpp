@@ -37,8 +37,6 @@ void VisualizationBroker::setSubscriptions(
 void VisualizationBroker::setUpdateInterval(
   double updateIntervalMs
 ) {
-  std::cout << "Setting update interval to: " << updateIntervalMs << " ms" << std::endl;
-
   this->updateIntervalMs = updateIntervalMs;
 
   this->stopTimer();

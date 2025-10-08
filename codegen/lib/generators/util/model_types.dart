@@ -340,9 +340,7 @@ ModelType getModelType(
         } catch (e) {
           log.warning('Error parsing custom type: ${element.name}');
           log.warning('This may be because the type is not formed correctly.');
-          log.warning(
-            '${element.name} is a field on ${annotatedClass.name}.',
-          );
+          log.warning('${element.name} is a field on ${annotatedClass.name}.');
           return UnknownModelType(
             dartName: element.name!,
             isNullable: isNullable,
