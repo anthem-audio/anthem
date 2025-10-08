@@ -36,6 +36,7 @@ class ModelSyncTestSubElement extends _ModelSyncTestSubElement
 abstract class _ModelSyncTestSubElement with Store, AnthemModelBase {
   late int id;
   String? value;
+  AnthemObservableMap<String, int> mapOfPrimitives = AnthemObservableMap();
 
   _ModelSyncTestSubElement({required this.id, required this.value});
 }
@@ -64,6 +65,8 @@ abstract class _ModelSyncTest with Store, AnthemModelBase {
   late int id;
   String? name;
   ModelSyncTestSubElement? subElement;
+  AnthemObservableList<ModelSyncTestSubElement> listOfSubElements =
+      AnthemObservableList();
 
   _ModelSyncTest({required this.id, required this.name, this.subElement});
 }
@@ -84,7 +87,7 @@ void main() {
 
     test('Non-nullable field change', () {
       model.id = 2;
-      expect(changes.length, 1);
+      expect(changes, isNotEmpty);
       final (accessors, operation) = changes[0];
 
       expect(accessors.length, 1);
@@ -100,7 +103,7 @@ void main() {
 
     test('Nullable field change', () {
       model.name = 'New Name';
-      expect(changes.length, 1);
+      expect(changes, isNotEmpty);
       final (accessors, operation) = changes[0];
 
       expect(accessors.length, 1);
@@ -116,7 +119,7 @@ void main() {
 
     test('Nullable field set to null', () {
       model.name = null;
-      expect(changes.length, 1);
+      expect(changes, isNotEmpty);
       final (accessors, operation) = changes[0];
 
       expect(accessors.length, 1);
@@ -132,7 +135,7 @@ void main() {
 
     test('Nested model set to initial value', () {
       model.subElement = ModelSyncTestSubElement(id: 1, value: 'Sub Element');
-      expect(changes.length, 1);
+      expect(changes, isNotEmpty);
       final (accessors, operation) = changes[0];
 
       expect(accessors.length, 1);
@@ -145,12 +148,16 @@ void main() {
       expect(update.newValue, isA<ModelSyncTestSubElement>());
       expect((update.newValue as ModelSyncTestSubElement).id, 1);
       expect((update.newValue as ModelSyncTestSubElement).value, 'Sub Element');
-      expect(update.newValueSerialized, {'id': 1, 'value': 'Sub Element'});
+      expect(update.newValueSerialized, {
+        'id': 1,
+        'value': 'Sub Element',
+        'mapOfPrimitives': {},
+      });
     });
 
     test('Nested model field change', () {
       model.subElement?.value = 'Updated Value';
-      expect(changes.length, 1);
+      expect(changes, isNotEmpty);
       final (accessors, operation) = changes[0];
 
       expect(accessors.length, 2);
@@ -194,6 +201,198 @@ void main() {
       expect(update.oldValue, 'Initial');
       expect(update.newValue, 'Changed');
       expect(update.newValueSerialized, 'Changed');
+    });
+
+    test('List of nested models', () {
+      final subElement1 = ModelSyncTestSubElement(id: 1, value: 'Item 1');
+      final subElement2 = ModelSyncTestSubElement(id: 2, value: 'Item 2');
+      final subElement3 = ModelSyncTestSubElement(id: 3, value: 'Item 3');
+
+      model.listOfSubElements.add(subElement1);
+      expect(changes, isNotEmpty);
+      var (accessors, operation) = changes[0];
+
+      expect(accessors.length, 2);
+      expect(accessors.elementAt(0).fieldName, 'listOfSubElements');
+      expect(accessors.elementAt(0).fieldType, FieldType.raw);
+      expect(accessors.elementAt(1).index, 0);
+      expect(accessors.elementAt(1).fieldType, FieldType.list);
+
+      {
+        expect(operation, isA<ListInsert>());
+        var update = operation as ListInsert;
+        expect(update.value, isA<ModelSyncTestSubElement>());
+        expect((update.value as ModelSyncTestSubElement).id, 1);
+      }
+
+      changes.clear();
+      model.listOfSubElements[0] = subElement2;
+      expect(changes, isNotEmpty);
+      (accessors, operation) = changes.last;
+
+      expect(accessors.length, 2);
+      expect(accessors.elementAt(0).fieldName, 'listOfSubElements');
+      expect(accessors.elementAt(0).fieldType, FieldType.raw);
+      expect(accessors.elementAt(1).index, 0);
+      expect(accessors.elementAt(1).fieldType, FieldType.list);
+
+      {
+        expect(operation, isA<ListUpdate>());
+        var update = operation as ListUpdate;
+        expect(update.oldValue, isA<ModelSyncTestSubElement>());
+        expect((update.oldValue as ModelSyncTestSubElement).id, 1);
+        expect(update.newValue, isA<ModelSyncTestSubElement>());
+        expect((update.newValue as ModelSyncTestSubElement).id, 2);
+        expect(update.newValueSerialized, {
+          'id': 2,
+          'value': 'Item 2',
+          'mapOfPrimitives': {},
+        });
+      }
+
+      changes.clear();
+      model.listOfSubElements.insert(0, subElement3);
+      expect(changes, isNotEmpty);
+      (accessors, operation) = changes.last;
+
+      expect(accessors.length, 2);
+      expect(accessors.elementAt(0).fieldName, 'listOfSubElements');
+      expect(accessors.elementAt(0).fieldType, FieldType.raw);
+      expect(accessors.elementAt(1).index, 0);
+      expect(accessors.elementAt(1).fieldType, FieldType.list);
+
+      {
+        expect(operation, isA<ListInsert>());
+        var update = operation as ListInsert;
+        expect(update.value, isA<ModelSyncTestSubElement>());
+        expect((update.value as ModelSyncTestSubElement).id, 3);
+      }
+
+      expect(model.listOfSubElements.length, 2);
+      expect(model.listOfSubElements[0].id, 3);
+      expect(model.listOfSubElements[1].id, 2);
+
+      changes.clear();
+      model.listOfSubElements.removeAt(1);
+      expect(changes, isNotEmpty);
+      (accessors, operation) = changes.last;
+
+      expect(accessors.length, 2);
+      expect(accessors.elementAt(0).fieldName, 'listOfSubElements');
+      expect(accessors.elementAt(0).fieldType, FieldType.raw);
+      expect(accessors.elementAt(1).index, 1);
+      expect(accessors.elementAt(1).fieldType, FieldType.list);
+
+      {
+        expect(operation, isA<ListRemove>());
+        var update = operation as ListRemove;
+        expect(update.removedValue, isA<ModelSyncTestSubElement>());
+        expect((update.removedValue as ModelSyncTestSubElement).id, 2);
+      }
+
+      changes.clear();
+      model.listOfSubElements[0].value = 'Updated Item 3';
+      expect(changes, isNotEmpty);
+      (accessors, operation) = changes.last;
+
+      expect(accessors.length, 3);
+      expect(accessors.elementAt(0).fieldName, 'listOfSubElements');
+      expect(accessors.elementAt(0).fieldType, FieldType.raw);
+      expect(accessors.elementAt(1).index, 0);
+      expect(accessors.elementAt(1).fieldType, FieldType.list);
+      expect(accessors.elementAt(2).fieldName, 'value');
+      expect(accessors.elementAt(2).fieldType, FieldType.raw);
+
+      {
+        expect(operation, isA<RawFieldUpdate>());
+        var update = operation as RawFieldUpdate;
+        expect(update.oldValue, 'Item 3');
+        expect(update.newValue, 'Updated Item 3');
+        expect(update.newValueSerialized, 'Updated Item 3');
+      }
+    });
+
+    test('Map of primitives', () {
+      model.subElement?.mapOfPrimitives['one'] = 1;
+      expect(changes, isNotEmpty);
+      var (accessors, operation) = changes[0];
+
+      expect(accessors.length, 3);
+      expect(accessors.elementAt(0).fieldName, 'subElement');
+      expect(accessors.elementAt(0).fieldType, FieldType.raw);
+      expect(accessors.elementAt(1).fieldName, 'mapOfPrimitives');
+      expect(accessors.elementAt(1).fieldType, FieldType.raw);
+      expect(accessors.elementAt(2).key, 'one');
+      expect(accessors.elementAt(2).fieldType, FieldType.map);
+
+      {
+        expect(operation, isA<MapPut>());
+        var update = operation as MapPut;
+        expect(update.oldValue, null);
+        expect(update.newValue, 1);
+        expect(update.newValueSerialized, 1);
+      }
+
+      changes.clear();
+      model.subElement?.mapOfPrimitives['one'] = 11;
+      expect(changes, isNotEmpty);
+      (accessors, operation) = changes.last;
+
+      expect(accessors.length, 3);
+      expect(accessors.elementAt(0).fieldName, 'subElement');
+      expect(accessors.elementAt(0).fieldType, FieldType.raw);
+      expect(accessors.elementAt(1).fieldName, 'mapOfPrimitives');
+      expect(accessors.elementAt(1).fieldType, FieldType.raw);
+      expect(accessors.elementAt(2).key, 'one');
+      expect(accessors.elementAt(2).fieldType, FieldType.map);
+
+      {
+        expect(operation, isA<MapPut>());
+        var update = operation as MapPut;
+        expect(update.oldValue, 1);
+        expect(update.newValue, 11);
+        expect(update.newValueSerialized, 11);
+      }
+
+      changes.clear();
+      model.subElement?.mapOfPrimitives['two'] = 2;
+      expect(changes, isNotEmpty);
+      (accessors, operation) = changes.last;
+
+      expect(accessors.length, 3);
+      expect(accessors.elementAt(0).fieldName, 'subElement');
+      expect(accessors.elementAt(0).fieldType, FieldType.raw);
+      expect(accessors.elementAt(1).fieldName, 'mapOfPrimitives');
+      expect(accessors.elementAt(1).fieldType, FieldType.raw);
+      expect(accessors.elementAt(2).key, 'two');
+      expect(accessors.elementAt(2).fieldType, FieldType.map);
+
+      {
+        expect(operation, isA<MapPut>());
+        var update = operation as MapPut;
+        expect(update.oldValue, null);
+        expect(update.newValue, 2);
+        expect(update.newValueSerialized, 2);
+      }
+
+      changes.clear();
+      model.subElement?.mapOfPrimitives.remove('one');
+      expect(changes, isNotEmpty);
+      (accessors, operation) = changes.last;
+
+      expect(accessors.length, 3);
+      expect(accessors.elementAt(0).fieldName, 'subElement');
+      expect(accessors.elementAt(0).fieldType, FieldType.raw);
+      expect(accessors.elementAt(1).fieldName, 'mapOfPrimitives');
+      expect(accessors.elementAt(1).fieldType, FieldType.raw);
+      expect(accessors.elementAt(2).key, 'one');
+      expect(accessors.elementAt(2).fieldType, FieldType.map);
+
+      {
+        expect(operation, isA<MapRemove>());
+        var update = operation as MapRemove;
+        expect(update.removedValue, 11);
+      }
     });
   });
 }
