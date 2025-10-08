@@ -17,14 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:analyzer/dart/element/element2.dart';
+import 'package:analyzer/dart/element/element.dart';
 
 /// This class contains info about a given enum.
 class EnumInfo {
   final String name;
   final List<String> values;
 
-  EnumInfo(EnumElement2 element)
-    : name = element.name3!,
-      values = element.fields2.map((field) => field.name3!).toList();
+  EnumInfo(EnumElement element)
+    : name = element.name!,
+      values = element.fields.map((field) => field.name!).toList();
 }

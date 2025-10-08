@@ -31,7 +31,7 @@ String generateMobXAtoms({required ModelClassInfo context}) {
 
     result.write('late final _\$${fieldName}Atom = \n');
     result.write(
-      "    Atom(name: '${context.baseClass.name3}.$fieldName', context: context);\n",
+      "    Atom(name: '${context.baseClass.name}.$fieldName', context: context);\n",
     );
   }
 

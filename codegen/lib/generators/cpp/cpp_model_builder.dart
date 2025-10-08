@@ -20,7 +20,7 @@
 import 'dart:async';
 
 import 'package:analyzer/dart/constant/value.dart';
-import 'package:analyzer/dart/element/element2.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:anthem_codegen/generators/cpp/cpp_model_sync.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:build/build.dart';
@@ -47,7 +47,7 @@ class CppModelBuilder implements Builder {
     final inputId = buildStep.inputId;
     if (inputId.extension != '.dart') return;
 
-    final LibraryElement2 library;
+    final LibraryElement library;
     try {
       library = await buildStep.resolver.libraryFor(inputId);
     } catch (ex) {
@@ -72,10 +72,10 @@ class CppModelBuilder implements Builder {
     // annotation.
 
     // Looks for @GenerateCppModuleFile on this library.
-    final libraryAnnotation = library.metadata2.annotations
+    final libraryAnnotation = library.metadata.annotations
         .where(
           (annotation) =>
-              annotation.element2?.enclosingElement2?.name3 ==
+              annotation.element?.enclosingElement?.name ==
               'GenerateCppModuleFile',
         )
         .firstOrNull;
@@ -106,7 +106,7 @@ class CppModelBuilder implements Builder {
         final enumAnnotation = const TypeChecker.typeNamed(
           AnthemEnum,
           inPackage: 'anthem_codegen',
-        ).firstAnnotationOf(fieldInfo.fieldElement.type.element3!);
+        ).firstAnnotationOf(fieldInfo.fieldElement.type.element!);
 
         final hideAnnotation = const TypeChecker.typeNamed(
           Hide,
@@ -121,10 +121,10 @@ class CppModelBuilder implements Builder {
           if (hideAnnotation == null ||
               hideAnnotation.getField('cpp')?.toBoolValue() == false) {
             log.warning(
-              'Enum ${fieldInfo.fieldElement.type.element3?.name3} is not annotated with @anthemEnum. This is required for enums that are used by Anthem models.',
+              'Enum ${fieldInfo.fieldElement.type.element?.name} is not annotated with @anthemEnum. This is required for enums that are used by Anthem models.',
             );
             log.warning(
-              'The enum ${fieldInfo.fieldElement.type.element3?.name3} is used in a field called ${fieldInfo.fieldElement.name3} on ${classElement.name3}.',
+              'The enum ${fieldInfo.fieldElement.type.element?.name} is used in a field called ${fieldInfo.fieldElement.name} on ${classElement.name}.',
             );
           }
         }
@@ -212,7 +212,7 @@ class CppModelBuilder implements Builder {
         );
       }
 
-      codeBlocks.add('// ${modelClassInfo.annotatedClass.name3}\n\n');
+      codeBlocks.add('// ${modelClassInfo.annotatedClass.name}\n\n');
 
       // Generate the code for this class
       final (
@@ -235,13 +235,13 @@ class CppModelBuilder implements Builder {
     }
 
     final libraryImports = library.fragments
-        .map((fragment) => fragment.libraryImports2)
+        .map((fragment) => fragment.libraryImports)
         .expand((e) => e);
 
     // Checks the imports of this library for any that themselves contain Anthem
     // models, and generates the appropriate imports for the C++ module file.
     for (final importElement in libraryImports) {
-      final importLibrary = importElement.importedLibrary2;
+      final importLibrary = importElement.importedLibrary;
 
       if (importLibrary == null) {
         continue;
@@ -249,8 +249,8 @@ class CppModelBuilder implements Builder {
 
       final importLibraryReader = LibraryReader(importLibrary);
 
-      List<ClassElement2> annotatedClasses = [];
-      List<EnumElement2> annotatedEnums = [];
+      List<ClassElement> annotatedClasses = [];
+      List<EnumElement> annotatedEnums = [];
 
       for (final classElement in importLibraryReader.classes) {
         final annotation = const TypeChecker.typeNamed(
@@ -558,10 +558,10 @@ _generateStructsForModel(ModelClassInfo modelClassInfo) {
   // class", and all subclasses will use rfl::Flatten to include this struct.
 
   forwardDeclarations.add(
-    'struct ${modelClassInfo.annotatedClass.name3}$baseText;',
+    'struct ${modelClassInfo.annotatedClass.name}$baseText;',
   );
 
-  writer.writeLine('struct ${modelClassInfo.annotatedClass.name3}$baseText {');
+  writer.writeLine('struct ${modelClassInfo.annotatedClass.name}$baseText {');
   writer.incrementWhitespace();
 
   for (final MapEntry(key: fieldName, value: fieldInfo)
@@ -600,7 +600,7 @@ _generateStructsForModel(ModelClassInfo modelClassInfo) {
   // If we need to generate a wrapper class for this model, do so now.
 
   if (generateWrapper) {
-    final className = modelClassInfo.annotatedClass.name3;
+    final className = modelClassInfo.annotatedClass.name;
     final baseSuffix = modelClassInfo.annotation?.cppBehaviorClassName != null
         ? 'Base'
         : '';
@@ -625,7 +625,7 @@ _generateStructsForModel(ModelClassInfo modelClassInfo) {
 
       final type = getCppType(field.typeInfo, modelClassInfo);
       writer.writeLine(
-        'static const $type ${field.fieldElement.name3} = ${field.constantValue};',
+        'static const $type ${field.fieldElement.name} = ${field.constantValue};',
       );
     }
 
@@ -764,7 +764,7 @@ _generateStructsForModel(ModelClassInfo modelClassInfo) {
       writer.writeLine('$type $fieldName;');
     }
 
-    final baseClassName = modelClassInfo.annotatedClass.name3!;
+    final baseClassName = modelClassInfo.annotatedClass.name!;
     writer.writeLine(
       'rfl::Flatten<${baseClassName}Base> ${baseClassName[0].toLowerCase() + baseClassName.substring(1)}Base;',
     );
@@ -785,7 +785,7 @@ _generateStructsForModel(ModelClassInfo modelClassInfo) {
     final usingWriter = Writer();
 
     usingWriter.writeLine(
-      'using ${modelClassInfo.annotatedClass.name3} = rfl::TaggedUnion<',
+      'using ${modelClassInfo.annotatedClass.name} = rfl::TaggedUnion<',
     );
     usingWriter.incrementWhitespace();
     usingWriter.writeLine('"__type",');
@@ -825,7 +825,7 @@ _generateCppModuleFile(LibraryReader libraryReader) {
   final library = libraryReader.element;
 
   final libraryExports = library.fragments
-      .map((fragment) => fragment.libraryExports2)
+      .map((fragment) => fragment.libraryExports)
       .expand((e) => e);
 
   for (final export in libraryExports.where(
@@ -839,11 +839,11 @@ _generateCppModuleFile(LibraryReader libraryReader) {
     }
 
     // Don't try to parse this if the exported library can't be resolved
-    if (export.exportedLibrary2 == null) {
+    if (export.exportedLibrary == null) {
       continue;
     }
 
-    final exportLibraryReader = LibraryReader(export.exportedLibrary2!);
+    final exportLibraryReader = LibraryReader(export.exportedLibrary!);
 
     // If the exported library doesn't have any Anthem model classes, then we
     // don't generate an import for it
@@ -911,7 +911,7 @@ _generateCppModuleFile(LibraryReader libraryReader) {
 
 /// Checks if a field should be skipped when generating C++ code, based on the
 /// @Hide annotation.
-bool _shouldSkip(FieldElement2 field) {
+bool _shouldSkip(FieldElement field) {
   final hideAnnotation = const TypeChecker.typeNamed(
     Hide,
     inPackage: 'anthem_codegen',
