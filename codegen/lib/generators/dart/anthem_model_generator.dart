@@ -19,16 +19,16 @@
 
 import 'dart:async';
 
-import 'package:anthem_codegen/generators/dart/serialize_generators.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:anthem_codegen/include.dart';
-import 'package:anthem_codegen/generators/dart/json_deserialize_generator.dart';
-import 'package:anthem_codegen/generators/dart/mobx_generator.dart';
 import 'package:anthem_codegen/generators/util/model_class_info.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
+import 'json_deserialize_generator.dart';
 import 'json_serialize_generator.dart';
+import 'field_serializers.dart';
+import 'mobx_generator.dart';
 
 /// Provides code generation for Anthem models.
 ///
