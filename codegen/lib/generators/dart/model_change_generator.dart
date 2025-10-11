@@ -66,7 +66,15 @@ String generateFilterBuilders({required ModelClassInfo context}) {
           return ${fieldInfo.typeInfo.dartName}ModelFilterBuilder(context);
         }
       ''',
-      UnionModelType() => '',
+      UnionModelType() =>
+        '''
+        GenericModelFilterBuilder get $fieldName {
+          context.addNode(ModelFilterFieldNode(
+            fieldName: '$fieldName',
+          ));
+          return GenericModelFilterBuilder(context);
+        }
+      ''',
       UnknownModelType() => throw UnimplementedError(),
     };
 
@@ -125,6 +133,8 @@ String _generateListType(ListModelType typeInfo) {
   } else if (itemType is MapModelType) {
     final nestedMapType = _generateMapType(itemType);
     return 'ListModelFilterBuilder<$nestedMapType>';
+  } else if (itemType is UnionModelType) {
+    return 'ListModelFilterBuilder<GenericModelFilterBuilder>';
   } else if (itemType is StringModelType ||
       itemType is IntModelType ||
       itemType is DoubleModelType ||
@@ -152,6 +162,8 @@ String _generateListTGenerator(ListModelType typeInfo) {
     final nestedTGenerator = _generateMapVGenerator(itemType);
     final nestedMapType = _generateMapType(itemType);
     return '(context) => $nestedMapType(context: context, valueGenerator: $nestedTGenerator)';
+  } else if (typeInfo.itemType is UnionModelType) {
+    return '(context) => GenericModelFilterBuilder(context)';
   } else if (typeInfo.itemType is StringModelType ||
       typeInfo.itemType is IntModelType ||
       typeInfo.itemType is DoubleModelType ||
@@ -192,6 +204,8 @@ String _generateMapType(MapModelType typeInfo) {
   } else if (valueType is MapModelType) {
     final nestedMapType = _generateMapType(valueType);
     return 'MapModelFilterBuilder<$nestedMapType>';
+  } else if (valueType is UnionModelType) {
+    return 'MapModelFilterBuilder<GenericModelFilterBuilder>';
   } else if (valueType is StringModelType ||
       valueType is IntModelType ||
       valueType is DoubleModelType ||
@@ -218,6 +232,8 @@ String _generateMapVGenerator(MapModelType typeInfo) {
     final nestedMapType = _generateMapType(valueType);
     final nestedValueGenerator = _generateMapVGenerator(valueType);
     return '(context) => $nestedMapType(context: context, valueGenerator: $nestedValueGenerator)';
+  } else if (valueType is UnionModelType) {
+    return '(context) => GenericModelFilterBuilder(context)';
   } else if (valueType is StringModelType ||
       valueType is IntModelType ||
       valueType is DoubleModelType ||
