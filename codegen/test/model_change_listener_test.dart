@@ -69,10 +69,22 @@ abstract class _Model with Store, AnthemModelBase {
       AnthemObservableList();
 
   AnthemObservableList<AnthemObservableList<ModelSubElement>>
-    listOfListOfSubElements = AnthemObservableList();
+  listOfListOfSubElements = AnthemObservableList();
 
   AnthemObservableList<AnthemObservableList<int>> listOfListOfInts =
-    AnthemObservableList();
+      AnthemObservableList();
+
+  AnthemObservableMap<String, ModelSubElement> mapOfSubElements =
+      AnthemObservableMap();
+
+  AnthemObservableMap<String, AnthemObservableList<ModelSubElement>>
+  mapOfListOfSubElements = AnthemObservableMap();
+
+  AnthemObservableList<AnthemObservableMap<String, ModelSubElement>>
+  listOfMapOfSubElements = AnthemObservableList();
+
+  AnthemObservableMap<String, AnthemObservableList<int>> mapOfListOfInts =
+      AnthemObservableMap();
 
   _Model({required this.id, required this.name, this.subElement});
 }
@@ -295,5 +307,109 @@ void main() {
 
     expect(changes.length, 3);
     expect(changes[2].operation, isA<ListRemove>());
+  });
+
+  test('Listen for map value changes', () {
+    final model = Model(id: 0, name: 'name');
+
+    List<ModelFilterEvent> changes = [];
+    model.onChange((b) => b.mapOfSubElements.anyValue.value, (e) {
+      changes.add(e);
+    });
+
+    final subElement = ModelSubElement(id: 1, value: 'value');
+    model.mapOfSubElements['one'] = subElement;
+    subElement.value = 'new value';
+    subElement.value = null;
+    model.mapOfSubElements.remove('one');
+
+    expect(changes.length, 2);
+    expect(changes[0].operation.oldValue, 'value');
+    expect(changes[0].operation.newValue, 'new value');
+    expect(changes[1].operation.oldValue, 'new value');
+    expect(changes[1].operation.newValue, null);
+  });
+
+  test('Listen for nested map list model field changes', () {
+    final model = Model(id: 0, name: 'name');
+
+    List<ModelFilterEvent> changes = [];
+    model.onChange((b) => b.mapOfListOfSubElements.anyValue.anyElement.value, (
+      e,
+    ) {
+      changes.add(e);
+    });
+
+    final innerList = AnthemObservableList.of([
+      ModelSubElement(id: 1, value: 'value'),
+    ]);
+
+    model.mapOfListOfSubElements['one'] = innerList;
+
+    innerList[0].value = 'new value';
+    innerList[0].value = null;
+
+    model.mapOfListOfSubElements.remove('one');
+
+    expect(changes.length, 2);
+    expect(changes[0].operation.oldValue, 'value');
+    expect(changes[0].operation.newValue, 'new value');
+    expect(changes[1].operation.oldValue, 'new value');
+    expect(changes[1].operation.newValue, null);
+  });
+
+  test('Listen for list of map model field changes', () {
+    final model = Model(id: 0, name: 'name');
+
+    List<ModelFilterEvent> changes = [];
+    model.onChange((b) => b.listOfMapOfSubElements.anyElement.anyValue.value, (
+      e,
+    ) {
+      changes.add(e);
+    });
+
+    final innerMap = AnthemObservableMap.of({
+      'one': ModelSubElement(id: 1, value: 'value'),
+    });
+
+    model.listOfMapOfSubElements.add(innerMap);
+
+    innerMap['one']!.value = 'new value';
+    innerMap['one']!.value = null;
+
+    model.listOfMapOfSubElements.removeAt(0);
+
+    expect(changes.length, 2);
+    expect(changes[0].operation.oldValue, 'value');
+    expect(changes[0].operation.newValue, 'new value');
+    expect(changes[1].operation.oldValue, 'new value');
+    expect(changes[1].operation.newValue, null);
+  });
+
+  test('Filter by change type (map)', () {
+    final model = Model(id: 0, name: 'name');
+
+    List<ModelFilterEvent> changes = [];
+    model.onChange(
+      (b) => b.mapOfListOfInts.filterByChangeType([
+        ModelFilterChangeType.mapPut,
+        ModelFilterChangeType.mapRemove,
+      ]),
+      (e) {
+        changes.add(e);
+      },
+    );
+
+    final innerList = AnthemObservableList.of([1, 2]);
+
+    model.mapOfListOfInts['one'] = innerList;
+
+    expect(changes.length, 1);
+    expect(changes[0].operation, isA<MapPut>());
+
+    model.mapOfListOfInts.remove('one');
+
+    expect(changes.length, 2);
+    expect(changes[1].operation, isA<MapRemove>());
   });
 }

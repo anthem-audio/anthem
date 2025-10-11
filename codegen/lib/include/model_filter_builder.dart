@@ -310,6 +310,21 @@ class ListModelFilterBuilder<T> extends GenericModelFilterBuilder {
   }
 }
 
+/// A builder for map fields.
+class MapModelFilterBuilder<V> extends GenericModelFilterBuilder {
+  final V Function(ModelFilterBuilderContext context) valueGenerator;
+
+  MapModelFilterBuilder({
+    required ModelFilterBuilderContext context,
+    required this.valueGenerator,
+  }) : super(context);
+
+  V get anyValue {
+    context.addNode(ModelFilterPassthroughNode());
+    return valueGenerator(context);
+  }
+}
+
 /// Describes the types of changes that can occur.
 enum ModelFilterChangeType {
   fieldUpdate,

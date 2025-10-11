@@ -56,7 +56,7 @@ String generateFilterBuilders({required ModelClassInfo context}) {
         }
       ''',
       ListModelType() => _generateListFieldGetter(fieldName, fieldInfo),
-      MapModelType() => '',
+      MapModelType() => _generateMapFieldGetter(fieldName, fieldInfo),
       CustomModelType() =>
         '''
         ${fieldInfo.typeInfo.dartName}ModelFilterBuilder get $fieldName {
@@ -122,6 +122,9 @@ String _generateListType(ListModelType typeInfo) {
   } else if (itemType is ListModelType) {
     final nestedListType = _generateListType(itemType);
     return 'ListModelFilterBuilder<$nestedListType>';
+  } else if (itemType is MapModelType) {
+    final nestedMapType = _generateMapType(itemType);
+    return 'ListModelFilterBuilder<$nestedMapType>';
   } else if (itemType is StringModelType ||
       itemType is IntModelType ||
       itemType is DoubleModelType ||
@@ -144,6 +147,11 @@ String _generateListTGenerator(ListModelType typeInfo) {
     final nestedTGenerator = _generateListTGenerator(itemType);
     final nestedListType = _generateListType(itemType);
     return '(context) => $nestedListType(context: context, tGenerator: $nestedTGenerator)';
+  } else if (typeInfo.itemType is MapModelType) {
+    final itemType = typeInfo.itemType as MapModelType;
+    final nestedTGenerator = _generateMapVGenerator(itemType);
+    final nestedMapType = _generateMapType(itemType);
+    return '(context) => $nestedMapType(context: context, valueGenerator: $nestedTGenerator)';
   } else if (typeInfo.itemType is StringModelType ||
       typeInfo.itemType is IntModelType ||
       typeInfo.itemType is DoubleModelType ||
@@ -151,6 +159,72 @@ String _generateListTGenerator(ListModelType typeInfo) {
       typeInfo.itemType is BoolModelType ||
       typeInfo.itemType is EnumModelType ||
       typeInfo.itemType is ColorModelType) {
+    return '(context) {}';
+  } else {
+    throw UnimplementedError();
+  }
+}
+
+String _generateMapFieldGetter(String fieldName, ModelFieldInfo fieldInfo) {
+  final mapType = fieldInfo.typeInfo as MapModelType;
+  final mapTypeName = _generateMapType(mapType);
+  final valueGenerator = _generateMapVGenerator(mapType);
+
+  return '''
+    $mapTypeName get $fieldName {
+      context.addNode(ModelFilterFieldNode(fieldName: '$fieldName'));
+      return $mapTypeName(
+        context: context,
+        valueGenerator: $valueGenerator,
+      );
+    }
+  ''';
+}
+
+String _generateMapType(MapModelType typeInfo) {
+  final valueType = typeInfo.valueType;
+
+  if (valueType is CustomModelType) {
+    return 'MapModelFilterBuilder<${valueType.dartName}ModelFilterBuilder>';
+  } else if (valueType is ListModelType) {
+    final nestedListType = _generateListType(valueType);
+    return 'MapModelFilterBuilder<$nestedListType>';
+  } else if (valueType is MapModelType) {
+    final nestedMapType = _generateMapType(valueType);
+    return 'MapModelFilterBuilder<$nestedMapType>';
+  } else if (valueType is StringModelType ||
+      valueType is IntModelType ||
+      valueType is DoubleModelType ||
+      valueType is NumModelType ||
+      valueType is BoolModelType ||
+      valueType is EnumModelType ||
+      valueType is ColorModelType) {
+    return 'MapModelFilterBuilder<void>';
+  } else {
+    throw UnimplementedError();
+  }
+}
+
+String _generateMapVGenerator(MapModelType typeInfo) {
+  final valueType = typeInfo.valueType;
+
+  if (valueType is CustomModelType) {
+    return '(context) => ${valueType.dartName}ModelFilterBuilder(context)';
+  } else if (valueType is ListModelType) {
+    final nestedListType = _generateListType(valueType);
+    final nestedTGenerator = _generateListTGenerator(valueType);
+    return '(context) => $nestedListType(context: context, tGenerator: $nestedTGenerator)';
+  } else if (valueType is MapModelType) {
+    final nestedMapType = _generateMapType(valueType);
+    final nestedValueGenerator = _generateMapVGenerator(valueType);
+    return '(context) => $nestedMapType(context: context, valueGenerator: $nestedValueGenerator)';
+  } else if (valueType is StringModelType ||
+      valueType is IntModelType ||
+      valueType is DoubleModelType ||
+      valueType is NumModelType ||
+      valueType is BoolModelType ||
+      valueType is EnumModelType ||
+      valueType is ColorModelType) {
     return '(context) {}';
   } else {
     throw UnimplementedError();
