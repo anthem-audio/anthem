@@ -20,3 +20,4 @@
 export 'include/annotations.dart';
 export 'include/collections.dart';
 export 'include/model_base_mixin.dart';
+export 'include/model_filter_builder.dart';

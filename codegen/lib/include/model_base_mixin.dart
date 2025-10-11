@@ -33,7 +33,52 @@ String _stringifyValue(dynamic value) {
 }
 
 /// Represents an operation to a field, map, or list.
-sealed class FieldOperation {}
+sealed class FieldOperation {
+  bool get hasOldValue {
+    return this is RawFieldUpdate ||
+        this is ListUpdate ||
+        this is ListRemove ||
+        this is MapPut ||
+        this is MapRemove;
+  }
+
+  dynamic get oldValue {
+    if (this is RawFieldUpdate) {
+      return (this as RawFieldUpdate).oldValue;
+    } else if (this is ListUpdate) {
+      return (this as ListUpdate).oldValue;
+    } else if (this is ListRemove) {
+      return (this as ListRemove).removedValue;
+    } else if (this is MapPut) {
+      return (this as MapPut).oldValue;
+    } else if (this is MapRemove) {
+      return (this as MapRemove).removedValue;
+    }
+
+    return null;
+  }
+
+  bool get hasNewValue {
+    return this is RawFieldUpdate ||
+        this is ListInsert ||
+        this is ListUpdate ||
+        this is MapPut;
+  }
+
+  dynamic get newValue {
+    if (this is RawFieldUpdate) {
+      return (this as RawFieldUpdate).newValue;
+    } else if (this is ListInsert) {
+      return (this as ListInsert).value;
+    } else if (this is ListUpdate) {
+      return (this as ListUpdate).newValue;
+    } else if (this is MapPut) {
+      return (this as MapPut).newValue;
+    }
+
+    return null;
+  }
+}
 
 class RawFieldUpdate extends FieldOperation {
   /// This is the new value of the field. It is a serialized representation. It
@@ -54,6 +99,7 @@ class RawFieldUpdate extends FieldOperation {
   /// The value that was replaced, if any.
   ///
   /// This is the actual value, not a serialized representation.
+  @override
   final dynamic oldValue;
 
   T oldValueAs<T>() => oldValue as T;
@@ -61,6 +107,7 @@ class RawFieldUpdate extends FieldOperation {
   /// The new value of the field.
   ///
   /// This is the actual value, not a serialized representation.
+  @override
   final dynamic newValue;
 
   T newValueAs<T>() => newValue as T;
@@ -126,6 +173,7 @@ class ListUpdate extends FieldOperation {
   /// The value that was replaced, if any.
   ///
   /// This is the actual value, not a serialized representation.
+  @override
   final dynamic oldValue;
 
   T oldValueAs<T>() => oldValue as T;
@@ -133,6 +181,7 @@ class ListUpdate extends FieldOperation {
   /// The new value of the field.
   ///
   /// This is the actual value, not a serialized representation.
+  @override
   final dynamic newValue;
 
   T newValueAs<T>() => newValue as T;
@@ -159,6 +208,7 @@ class MapPut extends FieldOperation {
   /// The value that was replaced, if any.
   ///
   /// This is the actual value, not a serialized representation.
+  @override
   final dynamic oldValue;
 
   T oldValueAs<T>() => oldValue as T;
@@ -166,6 +216,7 @@ class MapPut extends FieldOperation {
   /// The value to be inserted.
   ///
   /// This is the actual value, not a serialized representation.
+  @override
   final dynamic newValue;
 
   T newValueAs<T>() => newValue as T;
@@ -347,7 +398,7 @@ mixin AnthemModelBase {
 
   /// Listeners that are notified when a field is changed.
   final List<
-    void Function(Iterable<FieldAccessor> accessors, FieldOperation operation)
+    void Function(List<FieldAccessor> accessors, FieldOperation operation)
   >
   _rawListeners = [];
 
@@ -361,7 +412,7 @@ mixin AnthemModelBase {
     final accessorChainNotNull = accessorChain ?? [];
 
     for (final listener in _rawListeners) {
-      listener(accessorChainNotNull.reversed, operation);
+      listener(accessorChainNotNull.reversed.toList(), operation);
     }
 
     // If the parent field is not set, then this model doesn't have a parent yet
@@ -394,7 +445,7 @@ mixin AnthemModelBase {
 
   /// Adds a listener that is notified when a field is changed.
   void addRawFieldChangedListener(
-    void Function(Iterable<FieldAccessor> accessors, FieldOperation operation)
+    void Function(List<FieldAccessor> accessors, FieldOperation operation)
     listener,
   ) {
     _rawListeners.add(listener);
@@ -402,7 +453,7 @@ mixin AnthemModelBase {
 
   /// Removes a listener that is notified when a field is changed.
   void removeRawFieldChangedListener(
-    void Function(Iterable<FieldAccessor> accessors, FieldOperation operation)
+    void Function(List<FieldAccessor> accessors, FieldOperation operation)
     listener,
   ) {
     _rawListeners.remove(listener);

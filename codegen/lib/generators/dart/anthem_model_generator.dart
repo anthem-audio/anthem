@@ -19,6 +19,7 @@
 
 import 'dart:async';
 
+import 'package:anthem_codegen/generators/dart/model_change_generator.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:anthem_codegen/generators/util/model_class_info.dart';
@@ -97,9 +98,17 @@ class AnthemModelGenerator extends Generator {
         result.write('\n  // Init function\n');
         result.write('\n');
         result.write(_generateInitFunction(context: context));
+
+        result.write('\n  // onChange method\n');
+        result.write(generateOnChangeMethod(context: context));
       }
 
       result.write('}\n');
+
+      if (context.annotation!.generateModelSync) {
+        result.write('\n');
+        result.write(generateFilterBuilders(context: context));
+      }
     }
 
     // The cache for parsed classes persists across files, so we need to clear

@@ -24,30 +24,29 @@ import 'package:mobx/mobx.dart';
 part 'model_sync_test.g.dart';
 
 @AnthemModel(serializable: true, generateModelSync: true)
-class ModelSyncTestSubElement extends _ModelSyncTestSubElement
-    with _$ModelSyncTestSubElement, _$ModelSyncTestSubElementAnthemModelMixin {
-  ModelSyncTestSubElement({required super.id, required super.value});
-  ModelSyncTestSubElement.uninitialized() : super(id: 0, value: '');
+class ModelSubElement extends _ModelSubElement
+    with _$ModelSubElement, _$ModelSubElementAnthemModelMixin {
+  ModelSubElement({required super.id, required super.value});
+  ModelSubElement.uninitialized() : super(id: 0, value: '');
 
-  factory ModelSyncTestSubElement.fromJson(Map<String, dynamic> json) =>
-      _$ModelSyncTestSubElementAnthemModelMixin.fromJson(json);
+  factory ModelSubElement.fromJson(Map<String, dynamic> json) =>
+      _$ModelSubElementAnthemModelMixin.fromJson(json);
 }
 
-abstract class _ModelSyncTestSubElement with Store, AnthemModelBase {
+abstract class _ModelSubElement with Store, AnthemModelBase {
   late int id;
   String? value;
   AnthemObservableMap<String, int> mapOfPrimitives = AnthemObservableMap();
 
-  _ModelSyncTestSubElement({required this.id, required this.value});
+  _ModelSubElement({required this.id, required this.value});
 }
 
 @AnthemModel(serializable: true, generateModelSync: true)
-class ModelSyncTest extends _ModelSyncTest
-    with _$ModelSyncTest, _$ModelSyncTestAnthemModelMixin {
-  ModelSyncTest({required super.id, required super.name, super.subElement}) {
+class Model extends _Model with _$Model, _$ModelAnthemModelMixin {
+  Model({required super.id, required super.name, super.subElement}) {
     _init();
   }
-  ModelSyncTest.uninitialized() : super(id: 0, name: '') {
+  Model.uninitialized() : super(id: 0, name: '') {
     _init();
   }
 
@@ -57,23 +56,23 @@ class ModelSyncTest extends _ModelSyncTest
     setParentPropertiesOnChildren();
   }
 
-  factory ModelSyncTest.fromJson(Map<String, dynamic> json) =>
-      _$ModelSyncTestAnthemModelMixin.fromJson(json);
+  factory Model.fromJson(Map<String, dynamic> json) =>
+      _$ModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _ModelSyncTest with Store, AnthemModelBase {
+abstract class _Model with Store, AnthemModelBase {
   late int id;
   String? name;
-  ModelSyncTestSubElement? subElement;
-  AnthemObservableList<ModelSyncTestSubElement> listOfSubElements =
+  ModelSubElement? subElement;
+  AnthemObservableList<ModelSubElement> listOfSubElements =
       AnthemObservableList();
 
-  _ModelSyncTest({required this.id, required this.name, this.subElement});
+  _Model({required this.id, required this.name, this.subElement});
 }
 
 void main() {
   group('Model change descriptions', () {
-    final model = ModelSyncTest(id: 1, name: 'Test Model');
+    final model = Model(id: 1, name: 'Test Model');
 
     List<(Iterable<FieldAccessor> accessors, FieldOperation operation)>
     changes = [];
@@ -134,7 +133,7 @@ void main() {
     });
 
     test('Nested model set to initial value', () {
-      model.subElement = ModelSyncTestSubElement(id: 1, value: 'Sub Element');
+      model.subElement = ModelSubElement(id: 1, value: 'Sub Element');
       expect(changes, isNotEmpty);
       final (accessors, operation) = changes[0];
 
@@ -145,9 +144,9 @@ void main() {
       expect(operation, isA<RawFieldUpdate>());
       final update = operation as RawFieldUpdate;
       expect(update.oldValue, null);
-      expect(update.newValue, isA<ModelSyncTestSubElement>());
-      expect((update.newValue as ModelSyncTestSubElement).id, 1);
-      expect((update.newValue as ModelSyncTestSubElement).value, 'Sub Element');
+      expect(update.newValue, isA<ModelSubElement>());
+      expect((update.newValue as ModelSubElement).id, 1);
+      expect((update.newValue as ModelSubElement).value, 'Sub Element');
       expect(update.newValueSerialized, {
         'id': 1,
         'value': 'Sub Element',
@@ -174,10 +173,10 @@ void main() {
     });
 
     test('Updates still work when subElement is provided in constructor', () {
-      final model2 = ModelSyncTest(
+      final model2 = Model(
         id: 3,
         name: 'Model 2',
-        subElement: ModelSyncTestSubElement(id: 2, value: 'Initial'),
+        subElement: ModelSubElement(id: 2, value: 'Initial'),
       );
 
       List<(Iterable<FieldAccessor> accessors, FieldOperation operation)>
@@ -204,9 +203,9 @@ void main() {
     });
 
     test('List of nested models', () {
-      final subElement1 = ModelSyncTestSubElement(id: 1, value: 'Item 1');
-      final subElement2 = ModelSyncTestSubElement(id: 2, value: 'Item 2');
-      final subElement3 = ModelSyncTestSubElement(id: 3, value: 'Item 3');
+      final subElement1 = ModelSubElement(id: 1, value: 'Item 1');
+      final subElement2 = ModelSubElement(id: 2, value: 'Item 2');
+      final subElement3 = ModelSubElement(id: 3, value: 'Item 3');
 
       model.listOfSubElements.add(subElement1);
       expect(changes, isNotEmpty);
@@ -221,8 +220,8 @@ void main() {
       {
         expect(operation, isA<ListInsert>());
         var update = operation as ListInsert;
-        expect(update.value, isA<ModelSyncTestSubElement>());
-        expect((update.value as ModelSyncTestSubElement).id, 1);
+        expect(update.value, isA<ModelSubElement>());
+        expect((update.value as ModelSubElement).id, 1);
       }
 
       changes.clear();
@@ -239,10 +238,10 @@ void main() {
       {
         expect(operation, isA<ListUpdate>());
         var update = operation as ListUpdate;
-        expect(update.oldValue, isA<ModelSyncTestSubElement>());
-        expect((update.oldValue as ModelSyncTestSubElement).id, 1);
-        expect(update.newValue, isA<ModelSyncTestSubElement>());
-        expect((update.newValue as ModelSyncTestSubElement).id, 2);
+        expect(update.oldValue, isA<ModelSubElement>());
+        expect((update.oldValue as ModelSubElement).id, 1);
+        expect(update.newValue, isA<ModelSubElement>());
+        expect((update.newValue as ModelSubElement).id, 2);
         expect(update.newValueSerialized, {
           'id': 2,
           'value': 'Item 2',
@@ -264,8 +263,8 @@ void main() {
       {
         expect(operation, isA<ListInsert>());
         var update = operation as ListInsert;
-        expect(update.value, isA<ModelSyncTestSubElement>());
-        expect((update.value as ModelSyncTestSubElement).id, 3);
+        expect(update.value, isA<ModelSubElement>());
+        expect((update.value as ModelSubElement).id, 3);
       }
 
       expect(model.listOfSubElements.length, 2);
@@ -286,8 +285,8 @@ void main() {
       {
         expect(operation, isA<ListRemove>());
         var update = operation as ListRemove;
-        expect(update.removedValue, isA<ModelSyncTestSubElement>());
-        expect((update.removedValue as ModelSyncTestSubElement).id, 2);
+        expect(update.removedValue, isA<ModelSubElement>());
+        expect((update.removedValue as ModelSubElement).id, 2);
       }
 
       changes.clear();
