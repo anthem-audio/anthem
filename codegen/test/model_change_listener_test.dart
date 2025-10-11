@@ -68,6 +68,12 @@ abstract class _Model with Store, AnthemModelBase {
   AnthemObservableList<ModelSubElement> listOfSubElements =
       AnthemObservableList();
 
+  AnthemObservableList<AnthemObservableList<ModelSubElement>>
+    listOfListOfSubElements = AnthemObservableList();
+
+  AnthemObservableList<AnthemObservableList<int>> listOfListOfInts =
+    AnthemObservableList();
+
   _Model({required this.id, required this.name, this.subElement});
 }
 
@@ -224,5 +230,70 @@ void main() {
     expect(changes[0].operation.newValue, 'new value');
     expect(changes[1].operation.oldValue, 'new value');
     expect(changes[1].operation.newValue, null);
+  });
+
+  test('Listen for nested list model field changes', () {
+    final model = Model(id: 0, name: 'name');
+
+    List<ModelFilterEvent> changes = [];
+    model.onChange(
+      (b) => b.listOfListOfSubElements.anyElement.anyElement.value,
+      (e) {
+        changes.add(e);
+      },
+    );
+
+    final innerList = AnthemObservableList.of([
+      ModelSubElement(id: 1, value: 'value'),
+    ]);
+
+    model.listOfListOfSubElements.add(innerList);
+
+    innerList[0].value = 'new value';
+    innerList[0].value = null;
+
+    model.listOfListOfSubElements.removeAt(0);
+
+    expect(changes.length, 2);
+    expect(changes[0].operation.oldValue, 'value');
+    expect(changes[0].operation.newValue, 'new value');
+    expect(changes[1].operation.oldValue, 'new value');
+    expect(changes[1].operation.newValue, null);
+  });
+
+  test('Listen for nested list primitive changes', () {
+    final model = Model(id: 0, name: 'name');
+
+    List<ModelFilterEvent> changes = [];
+    model.onChange(
+      (b) => b.listOfListOfInts.anyElement.filterByChangeType([
+        ModelFilterChangeType.listInsert,
+        ModelFilterChangeType.listUpdate,
+        ModelFilterChangeType.listRemove,
+      ]),
+      (e) {
+        changes.add(e);
+      },
+    );
+
+    final innerList = AnthemObservableList.of([1, 2]);
+
+    model.listOfListOfInts.add(innerList);
+
+    expect(changes.length, 1);
+    expect(changes[0].operation, isA<ListInsert>());
+
+    innerList[0] = 5;
+
+    expect(changes.length, 2);
+    expect(changes[1].operation, isA<ListUpdate>());
+    final listUpdate = changes[1].operation as ListUpdate;
+    expect(listUpdate.oldValue, 1);
+    expect(listUpdate.newValue, 5);
+
+    innerList.removeAt(0);
+
+    expect(changes.length, 3);
+    expect(changes[2].operation, isA<ListRemove>());
   });
 }
