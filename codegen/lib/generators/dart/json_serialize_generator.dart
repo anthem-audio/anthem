@@ -34,8 +34,7 @@ import 'field_serializers.dart';
 String generateJsonSerializationCode({required ModelClassInfo context}) {
   var result = StringBuffer();
 
-  result.write('''// ignore: duplicate_ignore
-// ignore: non_constant_identifier_names
+  result.write('''
 ${(context.annotation?.generateModelSync == true) ? '@override' : ''}
 Map<String, dynamic> toJson({bool forEngine = false, bool forProjectFile = true}) {
   final map = <String, dynamic>{};

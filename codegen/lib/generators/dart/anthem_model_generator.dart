@@ -56,6 +56,10 @@ class AnthemModelGenerator extends Generator {
   Future<String> generate(LibraryReader library, BuildStep buildStep) async {
     var result = StringBuffer();
 
+    result.write(
+      '// ignore_for_file: duplicate_ignore, unnecessary_overrides, non_constant_identifier_names\n',
+    );
+
     // Looks for @AnthemModel on each class in the file, and generates the
     // appropriate code
     for (final libraryClass in library.classes) {
@@ -188,8 +192,6 @@ String _generateGettersAndSetters({
     final typeQ = fieldInfo.typeInfo.isNullable ? '?' : '';
 
     result.write('@override\n');
-    result.write('// ignore: duplicate_ignore\n');
-    result.write('// ignore: unnecessary_overrides\n');
     result.write('${fieldInfo.typeInfo.dartName}$typeQ get $fieldName {\n');
     if (fieldInfo.isObservable) {
       result.write(generateMobXGetter(fieldName, fieldInfo));

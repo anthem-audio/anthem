@@ -27,8 +27,7 @@ import 'package:source_gen/source_gen.dart';
 String generateJsonDeserializationCode({required ModelClassInfo context}) {
   var result = StringBuffer();
 
-  result.write('''// ignore: duplicate_ignore
-// ignore: non_constant_identifier_names
+  result.write('''
 static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
 ''');
 
