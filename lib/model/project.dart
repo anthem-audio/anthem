@@ -68,18 +68,21 @@ class ProjectModel extends _ProjectModel
     // is the top level, we need to call it ourselves.
     setParentPropertiesOnChildren();
 
-    generators.addRawFieldChangedListener((fieldAccessors, operation) {
-      // If there is only one item, then this change is directly related to the
-      // generators map itself.
-      if (fieldAccessors.elementAtOrNull(1) == null) {
-        // If the operation is a remove, we need to notify the engine so it can
-        // clean up any compiled sequences for this channel.
-        if (operation is MapRemove) {
-          final generatorId = fieldAccessors.elementAt(0).key as Id;
-          engine.sequencerApi.cleanUpChannel(generatorId);
-        }
-      }
-    });
+    // We need to notify the engine when a generator is removed so it can clean
+    // up any compiled sequences for this channel.
+    onChange(
+      // This filter matches against removals from the generators map
+      (b) => b.generators.anyValue.filterByChangeType([
+        ModelFilterChangeType.mapRemove,
+      ]),
+      (e) {
+        // Field accessors are:
+        // 0: the generators field
+        // 1: accessing a value in the map by key
+        final generatorId = e.fieldAccessors[1].key as Id;
+        engine.sequencerApi.cleanUpChannel(generatorId);
+      },
+    );
   }
 }
 

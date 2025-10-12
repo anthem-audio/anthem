@@ -108,30 +108,45 @@ class PatternModel extends _PatternModel
       // When notes are changed in the pattern, we need to:
       //   1. Update the clip notes render cache.
       //   2. Tell the engine to re-compile all relevant sequences.
-      notes.addRawFieldChangedListener((fieldAccessors, operation) {
-        scheduleClipNotesRenderCacheUpdate();
-        _clipAutoWidthUpdateAction.execute();
 
-        _recompileModifiedNotes(fieldAccessors, operation);
+      // Notes added or removed
+      onChange((b) => b.notes.anyValue.anyElement, (e) {
+        _recompileOnNotesAddedOrRemoved(
+          e.fieldAccessors[1].key as String,
+          e.operation.oldValue as NoteModel?,
+          e.operation.newValue as NoteModel?,
+        );
       });
 
-      automationLanes.addRawFieldChangedListener((fieldAccessors, operation) {
+      // Note attributes changed
+      onChange((b) => b.notes.anyValue.anyElement.anyField, (e) {
+        _recompileOnNoteFieldChanged(e.fieldAccessors, e.operation);
+      });
+
+      // When notes change, we also need to update the clip notes render cache
+      // and the clip's default width.
+      onChange((b) => b.notes.withDescendants, (e) {
+        scheduleClipNotesRenderCacheUpdate();
+        _clipAutoWidthUpdateAction.execute();
+      });
+
+      onChange((b) => b.automationLanes.withDescendants, (e) {
         _clipAutoWidthUpdateAction.execute();
       });
 
       // When the pattern title is changed, we need to update the clip title
       // render cache.
-      addRawFieldChangedListener((fieldAccessors, operation) {
-        // The notes field might be entirely replaced instead of just updated.
-        // In this case we also need to update the clip notes render cache.
-        if (fieldAccessors.elementAtOrNull(1) == null &&
-            fieldAccessors.first.fieldName == 'notes') {
-          scheduleClipNotesRenderCacheUpdate();
-        } else if (fieldAccessors.first.fieldName == 'name') {
-          updateClipTitleCache();
-        } else if (fieldAccessors.first.fieldName == 'loopPoints') {
-          _updateLoopPointsAction.execute();
-        }
+      onChange((b) => b.name, (e) {
+        updateClipTitleCache();
+      });
+
+      // After updating loop points in the model, we inform the engine.
+      //
+      // We don't have a detailed model change observation system in the engine,
+      // so this is a simple way to allow the engine to perform necessary
+      // side-effects.
+      onChange((b) => b.loopPoints.withDescendants, (e) {
+        _updateLoopPointsAction.execute();
       });
     });
   }

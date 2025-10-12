@@ -20,11 +20,37 @@
 part of 'pattern.dart';
 
 mixin _PatternCompilerMixin on _PatternModel {
-  void _recompileModifiedNotes(
+  void _recompileOnNotesAddedOrRemoved(
+    String channelId,
+    NoteModel? oldNote,
+    NoteModel? newNote,
+  ) {
+    if (oldNote != null) {
+      _channelsToCompile.add(channelId);
+      _patternInvalidationRangeCollector.addRange(
+        oldNote.offset,
+        oldNote.offset + oldNote.length,
+      );
+
+      _schedulePatternCompile(true);
+    }
+
+    if (newNote != null) {
+      _channelsToCompile.add(channelId);
+      _patternInvalidationRangeCollector.addRange(
+        newNote.offset,
+        newNote.offset + newNote.length,
+      );
+
+      _schedulePatternCompile(true);
+    }
+  }
+
+  void _recompileOnNoteFieldChanged(
     Iterable<FieldAccessor> fieldAccessors,
     FieldOperation operation,
   ) {
-    final channelIdFieldAccessor = fieldAccessors.first;
+    final channelIdFieldAccessor = fieldAccessors.elementAt(1);
     final channelId = channelIdFieldAccessor.key;
 
     // Shouldn't happen, but safety first
@@ -32,90 +58,52 @@ mixin _PatternCompilerMixin on _PatternModel {
       return;
     }
 
-    // This is for adding, removing, or replacing notes
-    if (fieldAccessors.length == 2) {
-      final (oldNote, newNote) = switch (operation) {
-        RawFieldUpdate() => throw StateError(
-          'A raw field operation is not valid here',
-        ),
-        ListInsert() => (null, operation.valueAs<NoteModel>()),
-        ListRemove() => (operation.removedValueAs<NoteModel>(), null),
-        ListUpdate() => (
-          operation.oldValueAs<NoteModel>(),
-          operation.newValueAs<NoteModel>(),
-        ),
-        MapPut() => throw StateError('A map operation is not valid here'),
-        MapRemove() => throw StateError('A map operation is not valid here'),
-      };
-
-      if (oldNote != null) {
-        _channelsToCompile.add(channelId);
-        _patternInvalidationRangeCollector.addRange(
-          oldNote.offset,
-          oldNote.offset + oldNote.length,
-        );
-
-        _schedulePatternCompile(true);
-      }
-
-      if (newNote != null) {
-        _channelsToCompile.add(channelId);
-        _patternInvalidationRangeCollector.addRange(
-          newNote.offset,
-          newNote.offset + newNote.length,
-        );
-
-        _schedulePatternCompile(true);
-      }
-    }
     // This is for editing note attributes
-    else if (fieldAccessors.length == 3) {
-      final listAccessor = fieldAccessors.elementAt(1);
-      final accessor = fieldAccessors.elementAt(2);
+    final listAccessor = fieldAccessors.elementAt(2);
+    final accessor = fieldAccessors.elementAt(3);
 
-      if (accessor.fieldName == 'offset' ||
-          accessor.fieldName == 'length' ||
-          accessor.fieldName == 'key') {
-        final channel = notes[channelId]!;
-        final note = channel[listAccessor.index!];
-        operation as RawFieldUpdate;
+    if (accessor.fieldName == 'offset' ||
+        accessor.fieldName == 'length' ||
+        accessor.fieldName == 'key') {
+      final channel = notes[channelId]!;
+      final note = channel[listAccessor.index!];
+      operation as RawFieldUpdate;
 
-        if (accessor.fieldName == 'offset') {
-          final oldValue = operation.oldValueAs<int>();
-          final newValue = operation.newValueAs<int>();
+      if (accessor.fieldName == 'offset') {
+        final oldValue = operation.oldValueAs<int>();
+        final newValue = operation.newValueAs<int>();
 
-          _channelsToCompile.add(channelId);
-          _patternInvalidationRangeCollector.addRange(
-            oldValue,
-            oldValue + note.length,
-          );
-          _patternInvalidationRangeCollector.addRange(
-            newValue,
-            newValue + note.length,
-          );
+        _channelsToCompile.add(channelId);
+        _patternInvalidationRangeCollector.addRange(
+          oldValue,
+          oldValue + note.length,
+        );
+        _patternInvalidationRangeCollector.addRange(
+          newValue,
+          newValue + note.length,
+        );
 
-          _schedulePatternCompile(true);
-        } else if (accessor.fieldName == 'length') {
-          final oldValue = operation.oldValueAs<int>();
-          final newValue = operation.newValueAs<int>();
+        _schedulePatternCompile(true);
+      } else if (accessor.fieldName == 'length') {
+        final oldValue = operation.oldValueAs<int>();
+        final newValue = operation.newValueAs<int>();
 
-          _channelsToCompile.add(channelId);
-          _patternInvalidationRangeCollector.addRange(
-            note.offset + min(oldValue, newValue),
-            note.offset + max(oldValue, newValue),
-          );
+        _channelsToCompile.add(channelId);
+        _patternInvalidationRangeCollector.addRange(
+          note.offset + min(oldValue, newValue),
+          note.offset + max(oldValue, newValue),
+        );
 
-          _schedulePatternCompile(true);
-        } else if (accessor.fieldName == 'key') {
-          // If the key is changed, we need to recompile the pattern
-          _channelsToCompile.add(channelId);
-          _patternInvalidationRangeCollector.addRange(
-            note.offset,
-            note.offset + note.length,
-          );
+        _schedulePatternCompile(true);
+      } else if (accessor.fieldName == 'key') {
+        // If the key is changed, we need to recompile the pattern
+        _channelsToCompile.add(channelId);
+        _patternInvalidationRangeCollector.addRange(
+          note.offset,
+          note.offset + note.length,
+        );
 
-          _schedulePatternCompile(true);
-        }
+        _schedulePatternCompile(true);
       }
     }
   }
