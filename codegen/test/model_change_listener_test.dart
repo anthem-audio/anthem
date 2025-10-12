@@ -266,6 +266,29 @@ void main() {
     },
   );
 
+  test('Listening to an item with descendants', () {
+    final model = Model(id: 0, name: 'name');
+
+    List<ModelFilterEvent> changes = [];
+    model.onChange((b) => b.listOfSubElements.anyElement.withDescendants, (e) {
+      changes.add(e);
+    });
+
+    final subElement = ModelSubElement(id: 1, value: 'value');
+    model.listOfSubElements.add(subElement);
+    subElement.value = 'new value';
+    subElement.value = null;
+    model.listOfSubElements.removeAt(0);
+
+    expect(changes.length, 4);
+    expect(changes[0].operation, isA<ListInsert>());
+    expect(changes[1].operation.oldValue, 'value');
+    expect(changes[1].operation.newValue, 'new value');
+    expect(changes[2].operation.oldValue, 'new value');
+    expect(changes[2].operation.newValue, null);
+    expect(changes[3].operation, isA<ListRemove>());
+  });
+
   test('Listen for nested list model field changes', () {
     final model = Model(id: 0, name: 'name');
 

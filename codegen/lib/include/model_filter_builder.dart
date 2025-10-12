@@ -39,7 +39,7 @@ sealed class ModelFilterTreeBaseNode {
   /// Replaces the next node in the chain with [next].
   ///
   /// This is used to wrap existing nodes with modifier nodes, such as
-  /// [ModelFilterChangeTypeWrapperNode].
+  /// [ModelFilterChangeTypeModifierNode].
   void replaceNext(ModelFilterTreeBaseNode next);
 
   /// Matches this node and its children against a given change path.
@@ -208,11 +208,11 @@ class ModelFilterPassthroughNode extends ModelFilterTreeBaseNode {
 
 /// A node that wraps an existing node at the same level to modify it, and
 /// matches if the operation type matches one of the specified types.
-class ModelFilterChangeTypeWrapperNode extends ModelFilterTreeBaseNode {
+class ModelFilterChangeTypeModifierNode extends ModelFilterTreeBaseNode {
   final List<ModelFilterChangeType> types;
   ModelFilterTreeBaseNode child;
 
-  ModelFilterChangeTypeWrapperNode({required this.types, required this.child});
+  ModelFilterChangeTypeModifierNode({required this.types, required this.child});
 
   @override
   void chain(ModelFilterTreeBaseNode next) {
@@ -240,6 +240,31 @@ class ModelFilterChangeTypeWrapperNode extends ModelFilterTreeBaseNode {
     }
 
     return child.matches(accessors, operation);
+  }
+}
+
+class ModelFilterAllowDescendantsModifierNode extends ModelFilterTreeBaseNode {
+  ModelFilterTreeBaseNode child;
+
+  ModelFilterAllowDescendantsModifierNode({required this.child});
+
+  @override
+  void chain(ModelFilterTreeBaseNode next) {
+    child.chain(next);
+  }
+
+  @override
+  void replaceNext(ModelFilterTreeBaseNode next) {
+    child.replaceNext(next);
+  }
+
+  @override
+  bool matches(Iterable<FieldAccessor> accessors, FieldOperation operation) {
+    // We only give the first accessor to the child, which makes it think that
+    // the incoming change is for the current level. This means that if the
+    // child would have thrown away the change because it was for a sub-level,
+    // it will now match it.
+    return child.matches(accessors.take(1), operation);
   }
 }
 
@@ -298,10 +323,20 @@ class ModelFilterBuilderContext {
 class GenericModelFilterBuilder {
   final ModelFilterBuilderContext context;
 
-  void filterByChangeType(List<ModelFilterChangeType> types) {
+  GenericModelFilterBuilder filterByChangeType(
+    List<ModelFilterChangeType> types,
+  ) {
     context.replaceCurrent(
-      ModelFilterChangeTypeWrapperNode(types: types, child: context.current!),
+      ModelFilterChangeTypeModifierNode(types: types, child: context.current!),
     );
+    return this;
+  }
+
+  GenericModelFilterBuilder get withDescendants {
+    context.replaceCurrent(
+      ModelFilterAllowDescendantsModifierNode(child: context.current!),
+    );
+    return this;
   }
 
   GenericModelFilterBuilder(this.context);
