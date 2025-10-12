@@ -88,7 +88,7 @@ String generateFilterBuilders({required ModelClassInfo context}) {
   ''');
 
   result.write('''
-    void multiple(List<void Function($className b)> builders) {
+    GenericModelFilterBuilder multiple(List<void Function($className b)> builders) {
       context.addNode(ModelFilterOrNode(
         builders.map((b) {
           final localContext = ModelFilterBuilderContext();
@@ -97,6 +97,8 @@ String generateFilterBuilders({required ModelClassInfo context}) {
           return localContext.root ?? ModelFilterPassthroughNode();
         }).toList()
       ));
+
+      return GenericModelFilterBuilder(context);
     }
   ''');
 

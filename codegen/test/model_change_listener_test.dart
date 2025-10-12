@@ -173,7 +173,7 @@ void main() {
 
     List<ModelFilterEvent> changes = [];
     model.onChange(
-      (b) => b.listOfSubElements.filterByChangeType([
+      (b) => b.listOfSubElements.anyElement.filterByChangeType([
         ModelFilterChangeType.fieldUpdate,
         ModelFilterChangeType.listInsert,
       ]),
@@ -184,16 +184,16 @@ void main() {
 
     model.listOfSubElements = AnthemObservableList.of([]);
 
-    expect(changes.length, 1);
+    expect(changes.length, 0);
 
     model.listOfSubElements.add(ModelSubElement(id: 0, value: 'value'));
 
-    expect(changes.length, 2);
-    expect(changes[1].operation, isA<ListInsert>());
+    expect(changes.length, 1);
+    expect(changes[0].operation, isA<ListInsert>());
 
     model.listOfSubElements.removeAt(0);
 
-    expect(changes.length, 2);
+    expect(changes.length, 1);
   });
 
   test('Listen for sub-element field changes', () {
@@ -244,6 +244,28 @@ void main() {
     expect(changes[1].operation.newValue, null);
   });
 
+  test(
+    'Listening to an item should not automatically listen to distant descendant changes',
+    () {
+      final model = Model(id: 0, name: 'name');
+
+      List<ModelFilterEvent> changes = [];
+      model.onChange((b) => b.listOfSubElements.anyElement, (e) {
+        changes.add(e);
+      });
+
+      final subElement = ModelSubElement(id: 1, value: 'value');
+      model.listOfSubElements.add(subElement);
+      subElement.value = 'new value';
+      subElement.value = null;
+      model.listOfSubElements.removeAt(0);
+
+      expect(changes.length, 2);
+      expect(changes[0].operation, isA<ListInsert>());
+      expect(changes[1].operation, isA<ListRemove>());
+    },
+  );
+
   test('Listen for nested list model field changes', () {
     final model = Model(id: 0, name: 'name');
 
@@ -278,11 +300,16 @@ void main() {
 
     List<ModelFilterEvent> changes = [];
     model.onChange(
-      (b) => b.listOfListOfInts.anyElement.filterByChangeType([
-        ModelFilterChangeType.listInsert,
-        ModelFilterChangeType.listUpdate,
-        ModelFilterChangeType.listRemove,
-      ]),
+      (b) => b
+          .multiple([
+            (b) => b.listOfListOfInts.anyElement,
+            (b) => b.listOfListOfInts.anyElement.anyElement,
+          ])
+          .filterByChangeType([
+            ModelFilterChangeType.listInsert,
+            ModelFilterChangeType.listUpdate,
+            ModelFilterChangeType.listRemove,
+          ]),
       (e) {
         changes.add(e);
       },
@@ -391,7 +418,7 @@ void main() {
 
     List<ModelFilterEvent> changes = [];
     model.onChange(
-      (b) => b.mapOfListOfInts.filterByChangeType([
+      (b) => b.mapOfListOfInts.anyValue.filterByChangeType([
         ModelFilterChangeType.mapPut,
         ModelFilterChangeType.mapRemove,
       ]),

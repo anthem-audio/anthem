@@ -39,7 +39,7 @@ sealed class ModelFilterTreeBaseNode {
   /// Replaces the next node in the chain with [next].
   ///
   /// This is used to wrap existing nodes with modifier nodes, such as
-  /// [ModelFilterChangeTypeNode].
+  /// [ModelFilterChangeTypeWrapperNode].
   void replaceNext(ModelFilterTreeBaseNode next);
 
   /// Matches this node and its children against a given change path.
@@ -66,6 +66,10 @@ class ModelFilterOrNode extends ModelFilterTreeBaseNode {
 
   @override
   bool matches(Iterable<FieldAccessor> accessors, FieldOperation operation) {
+    if (accessors.isEmpty) {
+      return false;
+    }
+
     return children.any((child) => child.matches(accessors, operation));
   }
 }
@@ -138,14 +142,20 @@ class ModelFilterFieldNode extends ModelFilterTreeBaseNode {
       return false;
     }
 
+    // Check whether the field name matches
     final accessor = accessors.first;
     if (accessor.fieldName != fieldName) {
       return false;
     }
 
-    if (next == null) {
+    if (next == null && accessors.skip(1).isEmpty) {
       // If there's no next node, then this is a leaf node and we match
       return true;
+    } else if (next == null) {
+      // If there's no next node but there are still accessors left, then the
+      // change is for a sub-level but this filter is for this level, and so we
+      // don't match.
+      return false;
     }
 
     // Otherwise, we need to match the next node with the remaining accessors
@@ -177,9 +187,18 @@ class ModelFilterPassthroughNode extends ModelFilterTreeBaseNode {
 
   @override
   bool matches(Iterable<FieldAccessor> accessors, FieldOperation operation) {
-    if (next == null) {
+    if (accessors.isEmpty) {
+      return false;
+    }
+
+    if (next == null && accessors.skip(1).isEmpty) {
       // If there's no next node, then this is a leaf node and we match
       return true;
+    } else if (next == null) {
+      // If there's no next node but there are still accessors left, then the
+      // change is for a sub-level but this filter is for this level, and so we
+      // don't match.
+      return false;
     }
 
     // Otherwise, we need to match the next node with the remaining accessors
@@ -187,29 +206,22 @@ class ModelFilterPassthroughNode extends ModelFilterTreeBaseNode {
   }
 }
 
-/// A node that matches if the operation type matches one of the specified types.
-class ModelFilterChangeTypeNode extends ModelFilterTreeBaseNode {
+/// A node that wraps an existing node at the same level to modify it, and
+/// matches if the operation type matches one of the specified types.
+class ModelFilterChangeTypeWrapperNode extends ModelFilterTreeBaseNode {
   final List<ModelFilterChangeType> types;
-  ModelFilterTreeBaseNode? child;
+  ModelFilterTreeBaseNode child;
 
-  ModelFilterChangeTypeNode({required this.types, required this.child});
+  ModelFilterChangeTypeWrapperNode({required this.types, required this.child});
 
   @override
   void chain(ModelFilterTreeBaseNode next) {
-    if (child == null) {
-      child = next;
-    } else {
-      child!.chain(next);
-    }
+    child.chain(next);
   }
 
   @override
   void replaceNext(ModelFilterTreeBaseNode next) {
-    if (child == null) {
-      child = next;
-    } else {
-      child!.replaceNext(next);
-    }
+    child.replaceNext(next);
   }
 
   @override
@@ -227,7 +239,7 @@ class ModelFilterChangeTypeNode extends ModelFilterTreeBaseNode {
       return false;
     }
 
-    return child?.matches(accessors, operation) ?? true;
+    return child.matches(accessors, operation);
   }
 }
 
@@ -288,7 +300,7 @@ class GenericModelFilterBuilder {
 
   void filterByChangeType(List<ModelFilterChangeType> types) {
     context.replaceCurrent(
-      ModelFilterChangeTypeNode(types: types, child: context.current!),
+      ModelFilterChangeTypeWrapperNode(types: types, child: context.current!),
     );
   }
 
@@ -347,7 +359,7 @@ class ModelFilterListener {
 
 /// An event object that is passed into change handlers.
 class ModelFilterEvent {
-  Iterable<FieldAccessor> fieldAccessors;
+  List<FieldAccessor> fieldAccessors;
   FieldOperation operation;
 
   ModelFilterEvent({required this.fieldAccessors, required this.operation});
