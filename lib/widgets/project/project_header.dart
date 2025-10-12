@@ -311,7 +311,7 @@ class _ProjectMenu extends StatelessWidget {
               mainWindowController.saveProject(project.id, true);
             },
           ),
-          Separator(),
+          if (kDebugMode) Separator(),
           if (kDebugMode)
             AnthemMenuItem(
               text: 'Debug',
