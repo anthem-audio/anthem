@@ -29,6 +29,7 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/processors/vst3_processor.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:file_picker/file_picker.dart';
@@ -175,7 +176,7 @@ class ProjectController {
     }
   }
 
-  void addVst3Generator() async {
+  void addVst3Generator(DialogController dialogController) async {
     String initialDirectory;
 
     if (Platform.isWindows) {
@@ -199,11 +200,14 @@ class ProjectController {
 
     final path = result?.files[0].path;
 
-    if (path == null) return;
-
-    // TODO: This will only happen on macOS due to a limitation in the file
-    // picker. We should show a dialog here with an error.
-    if (!path.toLowerCase().endsWith('.vst3')) {
+    if (path?.toLowerCase().endsWith('.vst3') != true) {
+      dialogController.showTextDialog(
+        title: 'Error',
+        text:
+            'The selected plugin could not be loaded. It may '
+            'not be a valid VST3 plugin, or it may be incompatible.',
+        buttons: [DialogButton.ok()],
+      );
       return;
     }
 
@@ -211,7 +215,7 @@ class ProjectController {
       name: 'VST Plugin',
       generatorType: GeneratorType.instrument,
       color: getColor(),
-      node: VST3ProcessorModel.createNode(path),
+      node: VST3ProcessorModel.createNode(path!),
     );
   }
 
