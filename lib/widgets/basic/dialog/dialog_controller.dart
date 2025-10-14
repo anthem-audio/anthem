@@ -46,14 +46,33 @@ class DialogController {
 
   void showTextDialog({
     String? title,
-    required String text,
+    String? text,
+    TextSpan? textSpan,
     List<DialogButton>? buttons,
   }) {
+    if (text == null && textSpan == null) {
+      throw ArgumentError('Either text or textSpan must be provided.');
+    }
+
+    const maxWidth = 400.0;
+
+    if (textSpan != null) {
+      _impl?.showDialog(
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: maxWidth),
+          child: RichText(text: textSpan),
+        ),
+        title: title,
+        buttons: buttons,
+      );
+      return;
+    }
+
     _impl?.showDialog(
       ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 400),
+        constraints: const BoxConstraints(maxWidth: maxWidth),
         child: Text(
-          text,
+          text!,
           style: TextStyle(color: AnthemTheme.text.main, fontSize: 12),
         ),
       ),
