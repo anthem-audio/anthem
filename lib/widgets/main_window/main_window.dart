@@ -23,6 +23,8 @@ import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_renderer.dart';
 import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:anthem/widgets/main_window/main_window_controller.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
@@ -31,6 +33,8 @@ import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay.dart';
 import 'package:anthem/widgets/main_window/tab_content_switcher.dart';
 import 'package:anthem/widgets/main_window/window_header.dart';
+import 'package:url_launcher/url_launcher.dart';
+// import 'package:web/web.dart';
 
 class MainWindow extends StatefulWidget {
   const MainWindow({super.key});
@@ -45,8 +49,77 @@ class _MainWindowState extends State<MainWindow> {
   DialogController messageDialogController = DialogController();
   MainWindowController controller = MainWindowController();
 
+  bool firstBuild = true;
+
   @override
   Widget build(BuildContext context) {
+    if (firstBuild) {
+      firstBuild = false;
+
+      // On web, we show an intro dialog.
+      //
+      // This is because we expect that web users are less invested, and so are
+      // more likely to be turned off by Anthem's current complete lack of
+      // usability as a DAW, so hopefully this preempts that a bit.
+      //
+      // This also allows the web audio context to initialize, since it requires
+      // a user gesture.
+      if (kIsWeb) {
+        Future(() {
+          messageDialogController.showTextDialog(
+            title: 'Welcome',
+            textSpan: TextSpan(
+              style: TextStyle(color: AnthemTheme.text.main, fontSize: 12),
+              children: [
+                TextSpan(
+                  text:
+                      'This is an early preview of Anthem, a free and open-source digital audio workstation.\n\nAnthem is still ',
+                ),
+                TextSpan(
+                  text: 'in early development',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                TextSpan(text: ', and so '),
+                TextSpan(
+                  text: 'does not work',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                TextSpan(
+                  text: ' for most uses.\n\nFeel free to explore, and please',
+                ),
+                TextSpan(
+                  text: ' report any bugs on GitHub',
+                  style: TextStyle(decoration: TextDecoration.underline),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () {
+                      launchUrl(
+                        Uri.parse('https://github.com/anthem-audio/anthem'),
+                      );
+                    },
+                ),
+                TextSpan(
+                  text:
+                      '. For better performance, lower latency, and third-party plugin support, try the desktop version, available for Windows, macOS, and Linux from ',
+                ),
+                TextSpan(
+                  text: 'GitHub',
+                  style: TextStyle(decoration: TextDecoration.underline),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () {
+                      launchUrl(
+                        Uri.parse('https://github.com/anthem-audio/anthem'),
+                      );
+                    },
+                ),
+                TextSpan(text: '.'),
+              ],
+            ),
+            buttons: [DialogButton.ok()],
+          );
+        });
+      }
+    }
+
     if (!noteLabelImageCache.initialized) {
       noteLabelImageCache.init(View.of(context).devicePixelRatio);
     }
