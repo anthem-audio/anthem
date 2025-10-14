@@ -19,6 +19,8 @@
 
 import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
+import 'package:anthem/widgets/basic/dialog/dialog_renderer.dart';
 import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:anthem/widgets/main_window/main_window_controller.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -40,6 +42,7 @@ class MainWindow extends StatefulWidget {
 class _MainWindowState extends State<MainWindow> {
   bool isTestMenuOpen = false;
   AnthemMenuController menuController = AnthemMenuController();
+  DialogController messageDialogController = DialogController();
   MainWindowController controller = MainWindowController();
 
   @override
@@ -52,42 +55,45 @@ class _MainWindowState extends State<MainWindow> {
 
     return Provider.value(
       value: controller,
-      child: ScreenOverlay(
-        child: Container(
-          color: AnthemTheme.panel.border,
-          child: Padding(
-            padding: const EdgeInsets.all(3),
-            child: Observer(
-              builder: (context) {
-                final tabs = store.projectOrder.map<TabDef>((projectId) {
-                  final projectPath = store.projects[projectId]?.filePath;
-                  final titleFromPath = projectPath
-                      ?.split(RegExp('[/\\\\]'))
-                      .last
-                      .split('.')
-                      .first;
+      child: DialogRenderer(
+        controller: messageDialogController,
+        child: ScreenOverlay(
+          child: Container(
+            color: AnthemTheme.panel.border,
+            child: Padding(
+              padding: const EdgeInsets.all(3),
+              child: Observer(
+                builder: (context) {
+                  final tabs = store.projectOrder.map<TabDef>((projectId) {
+                    final projectPath = store.projects[projectId]?.filePath;
+                    final titleFromPath = projectPath
+                        ?.split(RegExp('[/\\\\]'))
+                        .last
+                        .split('.')
+                        .first;
 
-                  return TabDef(
-                    id: projectId,
-                    title: titleFromPath ?? 'New Project',
-                  );
-                }).toList();
+                    return TabDef(
+                      id: projectId,
+                      title: titleFromPath ?? 'New Project',
+                    );
+                  }).toList();
 
-                return Column(
-                  children: [
-                    WindowHeader(
-                      selectedTabId: store.activeProjectId,
-                      tabs: tabs,
-                    ),
-                    Expanded(
-                      child: TabContentSwitcher(
-                        tabs: tabs,
+                  return Column(
+                    children: [
+                      WindowHeader(
                         selectedTabId: store.activeProjectId,
+                        tabs: tabs,
                       ),
-                    ),
-                  ],
-                );
-              },
+                      Expanded(
+                        child: TabContentSwitcher(
+                          tabs: tabs,
+                          selectedTabId: store.activeProjectId,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ),
