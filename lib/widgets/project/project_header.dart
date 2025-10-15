@@ -27,6 +27,7 @@ import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/controls/digit_control.dart';
 import 'package:anthem/widgets/basic/controls/time_signature_control.dart';
+import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/horizontal_meter_simple.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
@@ -273,6 +274,11 @@ class _ProjectMenu extends StatelessWidget {
 
     final project = Provider.of<ProjectModel>(context);
 
+    final dialogController = Provider.of<DialogController>(
+      context,
+      listen: false,
+    );
+
     return Menu(
       menuController: menuController,
       menuDef: MenuDef(
@@ -297,18 +303,27 @@ class _ProjectMenu extends StatelessWidget {
             },
           ),
           Separator(),
+          if (!kIsWeb)
+            AnthemMenuItem(
+              text: 'Save',
+              hint: 'Save the active project',
+              onSelected: () {
+                mainWindowController.saveProject(
+                  project.id,
+                  false,
+                  dialogController: dialogController,
+                );
+              },
+            ),
           AnthemMenuItem(
-            text: 'Save',
-            hint: 'Save the active project',
-            onSelected: () {
-              mainWindowController.saveProject(project.id, false);
-            },
-          ),
-          AnthemMenuItem(
-            text: 'Save as...',
+            text: kIsWeb ? 'Download project...' : 'Save as...',
             hint: 'Save the active project to a new location',
             onSelected: () {
-              mainWindowController.saveProject(project.id, true);
+              mainWindowController.saveProject(
+                project.id,
+                true,
+                dialogController: dialogController,
+              );
             },
           ),
           if (kDebugMode) Separator(),

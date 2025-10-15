@@ -17,16 +17,21 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
+import 'package:anthem/widgets/basic/text_box.dart';
 import 'package:file_picker/file_picker.dart';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' hide TextBox;
 
 class MainWindowController {
   void _addProject(ProjectModel project) {
@@ -79,11 +84,17 @@ class MainWindowController {
   /// or was cancelled.
   Future<Id?> loadProject() async {
     String? home;
-    Map<String, String> envVars = Platform.environment;
-    if (Platform.isMacOS || Platform.isLinux) {
-      home = envVars['HOME'];
-    } else if (Platform.isWindows) {
-      home = envVars['UserProfile'];
+    Map<String, String> envVars = kIsWeb ? {} : Platform.environment;
+
+    // This throws on web due to dart:io usage
+    try {
+      if (Platform.isMacOS || Platform.isLinux) {
+        home = envVars['HOME'];
+      } else if (Platform.isWindows) {
+        home = envVars['UserProfile'];
+      }
+    } catch (e) {
+      home = null;
     }
 
     final path = (await FilePicker.platform.pickFiles(
@@ -103,11 +114,16 @@ class MainWindowController {
     return project.id;
   }
 
-  Future<void> saveProject(Id projectId, bool alwaysUseFilePicker) async {
-    try {
-      final project = AnthemStore.instance.projects[projectId]!;
+  Future<void> saveProject(
+    Id projectId,
+    bool alwaysUseFilePicker, {
+    required DialogController dialogController,
+  }) async {
+    final project = AnthemStore.instance.projects[projectId]!;
 
-      String? path;
+    String? path;
+
+    if (!kIsWeb) {
       if (alwaysUseFilePicker || !project.isSaved) {
         path = (await FilePicker.platform.saveFile(
           type: FileType.custom,
@@ -116,13 +132,71 @@ class MainWindowController {
       } else {
         path = project.filePath;
       }
+    }
 
-      if (path == null) return;
+    if (!kIsWeb && path == null) return;
 
-      if (!path.endsWith('.anthem')) {
-        path += '.anthem';
-      }
+    if (path != null && !path.endsWith('.anthem')) {
+      path += '.anthem';
+    }
 
+    dialogController.showDialog(
+      content: SizedBox(width: 50, height: 30, child: Center(child: TextBox())),
+      title: 'Save',
+    );
+
+    if (kIsWeb) {
+      // Dialog to ask for filename
+
+      final controller = TextEditingController();
+      final completer = Completer<String?>();
+
+      dialogController.showDialog(
+        content: SizedBox(
+          width: 300,
+          height: 70,
+          child: Column(
+            spacing: 12,
+            children: [
+              Text(
+                'Enter a filename for the project:',
+                style: TextStyle(fontSize: 12, color: AnthemTheme.text.main),
+              ),
+              SizedBox(
+                width: 161,
+                child: Center(
+                  child: TextBox(height: 26, controller: controller),
+                ),
+              ),
+            ],
+          ),
+        ),
+        title: 'Save',
+        buttons: [
+          DialogButton.cancel(),
+          DialogButton(
+            text: 'Download',
+            onPress: () {
+              completer.complete(controller.text);
+            },
+          ),
+        ],
+        onDismiss: () {
+          completer.complete(null);
+        },
+      );
+
+      final fileName = await completer.future;
+      if (fileName == null) return;
+
+      final bytes = utf8.encode(json.encode(project.toJson()));
+      await FilePicker.platform.saveFile(
+        fileName: '$fileName.anthem',
+        bytes: bytes,
+      );
+
+      project.isSaved = true;
+    } else {
       // Load the latest for all plugin states before saving
       await Future.wait(
         project.processingGraph.nodes.values.map((node) {
@@ -130,12 +204,10 @@ class MainWindowController {
         }),
       );
 
-      await File(path).writeAsString(json.encode(project.toJson()));
+      await File(path!).writeAsString(json.encode(project.toJson()));
 
       project.isSaved = true;
       project.filePath = path;
-    } catch (e) {
-      return;
     }
   }
 }
