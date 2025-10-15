@@ -40,6 +40,7 @@ class _DialogRendererState extends State<DialogRenderer>
   Widget? currentDialogContent;
   String? currentDialogTitle;
   List<DialogButton>? currentDialogButtons;
+  void Function()? onDismiss;
 
   @override
   void initState() {
@@ -58,11 +59,13 @@ class _DialogRendererState extends State<DialogRenderer>
     Widget content, {
     String? title,
     List<DialogButton>? buttons,
+    void Function()? onDismiss,
   }) {
     setState(() {
       currentDialogContent = content;
       currentDialogTitle = title;
       currentDialogButtons = buttons;
+      this.onDismiss = onDismiss;
     });
   }
 
@@ -83,7 +86,10 @@ class _DialogRendererState extends State<DialogRenderer>
     if (currentDialogContent != null) {
       blocker = Positioned.fill(
         child: GestureDetector(
-          onTap: closeDialog,
+          onTap: () {
+            closeDialog();
+            onDismiss?.call();
+          },
           child: Container(color: const Color(0x88000000)),
         ),
       );
@@ -153,7 +159,10 @@ class _DialogRendererState extends State<DialogRenderer>
                       variant: ButtonVariant.label,
                       hideBorder: true,
                       icon: Icons.close,
-                      onPress: closeDialog,
+                      onPress: () {
+                        closeDialog();
+                        onDismiss?.call();
+                      },
                     ),
                   ),
 

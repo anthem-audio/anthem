@@ -21,7 +21,12 @@ import 'package:anthem/theme.dart';
 import 'package:flutter/widgets.dart';
 
 abstract class DialogControllerImpl {
-  void showDialog(Widget content, {String? title, List<DialogButton>? buttons});
+  void showDialog(
+    Widget content, {
+    String? title,
+    List<DialogButton>? buttons,
+    void Function()? onDismiss,
+  });
   void closeDialog();
 }
 
@@ -40,8 +45,14 @@ class DialogController {
     String? title,
     required Widget content,
     List<DialogButton>? buttons,
+    void Function()? onDismiss,
   }) {
-    _impl?.showDialog(content, title: title, buttons: buttons);
+    _impl?.showDialog(
+      content,
+      title: title,
+      buttons: buttons,
+      onDismiss: onDismiss,
+    );
   }
 
   void showTextDialog({
@@ -89,9 +100,10 @@ class DialogController {
 class DialogButton {
   final String text;
   final void Function()? onPress;
+  final bool isDismissive;
 
-  DialogButton({required this.text, this.onPress});
+  DialogButton({required this.text, this.onPress, this.isDismissive = false});
 
-  DialogButton.ok({this.onPress}) : text = 'OK';
-  DialogButton.cancel({this.onPress}) : text = 'Cancel';
+  DialogButton.ok({this.onPress}) : text = 'OK', isDismissive = false;
+  DialogButton.cancel({this.onPress}) : text = 'Cancel', isDismissive = true;
 }
