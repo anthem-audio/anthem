@@ -85,10 +85,10 @@ class _MainWindowState extends State<MainWindow> {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 TextSpan(
-                  text: ' for most uses.\n\nFeel free to explore, and please',
+                  text: ' for most uses.\n\nFeel free to explore, and please ',
                 ),
                 TextSpan(
-                  text: ' report any bugs on GitHub',
+                  text: 'report any bugs on GitHub',
                   style: TextStyle(decoration: TextDecoration.underline),
                   recognizer: TapGestureRecognizer()
                     ..onTap = () {
