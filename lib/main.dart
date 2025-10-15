@@ -158,6 +158,7 @@ class _AppState extends State<App> with WindowListener {
       title: 'Anthem',
       color: AnthemTheme.primary.main,
       theme: ThemeData(
+        fontFamily: 'Roboto',
         textSelectionTheme: TextSelectionThemeData(
           selectionColor: AnthemTheme.primary.subtleBorder.withAlpha(50),
         ),
