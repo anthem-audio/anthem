@@ -163,24 +163,23 @@ class _AppState extends State<App> with WindowListener {
           selectionColor: AnthemTheme.primary.subtleBorder.withAlpha(50),
         ),
       ),
-      builder: (context, widget) {
+      home: Scaffold(
+        body: MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => KeyboardModifiers()),
+          ],
+          child: windowResizeAreaWithContent,
+        ),
+      ),
+      builder: (context, child) {
         return GestureDetector(
           // Un-focus text boxes when clicking elsewhere
           onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-          child: Scaffold(
-            body: MultiProvider(
-              providers: [
-                ChangeNotifierProvider(
-                  create: (context) => KeyboardModifiers(),
-                ),
-              ],
-              child: ScrollConfiguration(
-                behavior: ScrollConfiguration.of(
-                  context,
-                ).copyWith(scrollbars: false),
-                child: windowResizeAreaWithContent,
-              ),
-            ),
+          child: ScrollConfiguration(
+            behavior: ScrollConfiguration.of(
+              context,
+            ).copyWith(scrollbars: false),
+            child: child!,
           ),
         );
       },
