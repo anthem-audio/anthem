@@ -1,3 +1,8 @@
+# This is a _headers file for CloudFlare Pages. This applies response headers
+# that are needed to run the the audio engine, as well as to prevent Flutter
+# from falling back to the slower non-WASM build on browsers that support the
+# faster one.
+
 /*
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedder-Policy: require-corp
