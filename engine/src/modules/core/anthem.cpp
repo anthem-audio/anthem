@@ -62,6 +62,7 @@ void Anthem::initialize() {
 void Anthem::shutdown() {
   if (isAudioCallbackRunning) {
     audioDeviceManager.removeAudioCallback(audioCallback.get());
+    audioDeviceManager.closeAudioDevice();
   }
 }
 

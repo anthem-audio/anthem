@@ -174,6 +174,7 @@ void CommandHandler::processNextCommand() {
     VisualizationBroker::getInstance().dispose();
 
     Anthem::getInstance().comms.closeSocketThread();
+    Anthem::getInstance().shutdown();
     juce::JUCEApplicationBase::quit();
   }
 }
