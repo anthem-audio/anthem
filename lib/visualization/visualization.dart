@@ -34,5 +34,5 @@ import 'package:flutter/widgets.dart';
 
 import 'ring_buffer.dart';
 
-part 'provider.dart';
-part 'subscription.dart';
+part 'visualization_provider.dart';
+part 'visualization_subscription.dart';
