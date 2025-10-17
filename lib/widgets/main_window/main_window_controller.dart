@@ -151,11 +151,6 @@ class MainWindowController {
       path += '.anthem';
     }
 
-    dialogController.showDialog(
-      content: SizedBox(width: 50, height: 30, child: Center(child: TextBox())),
-      title: 'Save',
-    );
-
     if (kIsWeb) {
       // Dialog to ask for filename
 
