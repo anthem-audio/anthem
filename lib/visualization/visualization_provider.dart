@@ -195,10 +195,21 @@ class VisualizationProvider {
     while (_subscriptions.isNotEmpty) {
       final groupKey = _subscriptions.keys.first;
       final group = _subscriptions[groupKey]!;
-      while (group.isNotEmpty) {
+      var groupLength = group.length;
+      while (groupLength != 0) {
         final subscription = group.last;
+
+        // This should cause the subscription to be removed from the list.
         subscription.dispose();
-        group.removeLast();
+
+        groupLength--;
+        if (group.length != groupLength) {
+          // Prevents an infinite loop if the list length doesn't change due to
+          // future bugs here or in VisualizationSubscription.dispose().
+          throw StateError(
+            'Subscription list length mismatch when disposing VisualizationProvider.',
+          );
+        }
       }
       _subscriptions.remove(groupKey);
     }
