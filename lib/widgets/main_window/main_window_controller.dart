@@ -97,13 +97,24 @@ class MainWindowController {
       home = null;
     }
 
-    final path = (await FilePicker.platform.pickFiles(
+    final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['anthem'],
       initialDirectory: home,
-    ))?.files[0].path;
-    if (path == null) return null;
-    final file = await File(path).readAsString();
+    );
+
+    final String file;
+    String? path;
+
+    if (kIsWeb) {
+      final bytes = result?.files.firstOrNull?.bytes;
+      if (bytes == null) return null;
+      file = utf8.decode(bytes);
+    } else {
+      path = result?.files.firstOrNull?.path;
+      if (path == null) return null;
+      file = await File(path).readAsString();
+    }
 
     final project = ProjectModel.fromJson(json.decode(file));
     _addProject(project);
