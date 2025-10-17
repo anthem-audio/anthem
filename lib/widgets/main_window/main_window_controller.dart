@@ -210,7 +210,9 @@ class MainWindowController {
         }),
       );
 
-      await File(path!).writeAsString(json.encode(project.toJson()));
+      await File(
+        path!,
+      ).writeAsString(json.encode(project.toJson()), flush: true);
 
       project.isSaved = true;
       project.filePath = path;
