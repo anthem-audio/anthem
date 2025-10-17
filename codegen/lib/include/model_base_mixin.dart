@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:mobx/mobx.dart';
@@ -479,11 +480,16 @@ mixin AnthemModelBase {
     // we will assume that we can recursively initialize all children too.
     setParentPropertiesOnChildren();
 
-    // Run any attach actions that have been queued up
-    for (final action in _onFirstAttachActions) {
-      action();
-    }
-    _onFirstAttachActions.clear();
+    // Run any attach actions that have been queued up. This happens in a
+    // microtask because during deserialization it's usually desirable to run
+    // these actions after the model is fully deserialized, not in the middle of
+    // deserialization when the model is only partially constructed.
+    scheduleMicrotask(() {
+      for (final action in _onFirstAttachActions) {
+        action();
+      }
+      _onFirstAttachActions.clear();
+    });
   }
 
   void setParentPropertiesOnChildren();
