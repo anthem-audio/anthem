@@ -22,6 +22,7 @@ import 'package:anthem/widgets/basic/shortcuts/raw_key_event_singleton.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:pointer_lock/pointer_lock.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -32,6 +33,8 @@ import 'widgets/main_window/main_window.dart';
 GlobalKey mainWindowKey = GlobalKey();
 
 void main() async {
+  await pointerLock.ensureInitialized();
+
   final store = AnthemStore.instance;
 
   // Note: This code for creating a new project is duplicated in

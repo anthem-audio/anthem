@@ -133,6 +133,8 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
   }
 
   void onPointerMove(PointerLockMoveEvent e) {
+    if (pointerDeviceKind == null) return;
+
     accumulatorX += e.delta.dx;
     accumulatorY += e.delta.dy;
 
@@ -153,6 +155,8 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
   }
 
   void onPointerUp(PointerEvent e) {
+    if (pointerDeviceKind == null) return;
+
     widget.onEnd?.call(
       ControlMouseEvent(
         delta: const Offset(0, 0),

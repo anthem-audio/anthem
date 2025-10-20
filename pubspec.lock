@@ -530,9 +530,9 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: "11322c2"
-      resolved-ref: "11322c22059af6898412c171b093ee75a9716d89"
-      url: "https://github.com/helgoboss/pointer_lock.git"
+      ref: "798a197"
+      resolved-ref: "798a19750f3fa20d5b1a8ca3825f6cffcb5e8323"
+      url: "https://github.com/josh-audio/pointer_lock.git"
     source: git
     version: "0.0.2"
   pool:
