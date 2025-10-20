@@ -290,7 +290,7 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _HorizontalScrollbar extends StatelessWidget {
+class _HorizontalScrollbar extends StatelessObserverWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<ArrangerViewModel>(context);
@@ -303,30 +303,26 @@ class _HorizontalScrollbar extends StatelessWidget {
         arrangementModel?.viewWidth.toDouble() ??
         project.sequence.ticksPerQuarter * 4 * 4;
 
-    return Observer(
-      builder: (context) {
-        return Container(
-          height: 17,
-          decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(color: AnthemTheme.panel.border, width: 1),
-            ),
-            color: AnthemTheme.panel.background,
-          ),
-          child: ScrollbarRenderer(
-            scrollRegionStart: 0,
-            scrollRegionEnd: horizontalScrollRegionEnd,
-            handleStart: viewModel.timeView.start,
-            handleEnd: viewModel.timeView.end,
-            canScrollPastEnd: true,
-            disableAtFullSize: false,
-            onChange: (event) {
-              viewModel.timeView.start = event.handleStart;
-              viewModel.timeView.end = event.handleEnd;
-            },
-          ),
-        );
-      },
+    return Container(
+      height: 17,
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: AnthemTheme.panel.border, width: 1),
+        ),
+        color: AnthemTheme.panel.background,
+      ),
+      child: ScrollbarRenderer(
+        scrollRegionStart: 0,
+        scrollRegionEnd: horizontalScrollRegionEnd,
+        handleStart: viewModel.timeView.start,
+        handleEnd: viewModel.timeView.end,
+        canScrollPastEnd: true,
+        disableAtFullSize: false,
+        onChange: (event) {
+          viewModel.timeView.start = event.handleStart;
+          viewModel.timeView.end = event.handleEnd;
+        },
+      ),
     );
   }
 }
