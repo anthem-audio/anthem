@@ -33,6 +33,7 @@ import 'widgets/main_window/main_window.dart';
 GlobalKey mainWindowKey = GlobalKey();
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   await pointerLock.ensureInitialized();
 
   final store = AnthemStore.instance;
