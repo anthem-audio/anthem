@@ -209,4 +209,4 @@ jobs:
           export CLOUDFLARE_API_TOKEN=${{ secrets.CLOUDFLARE_API_TOKEN }}
         
           npm i -g wrangler@latest
-          wrangler pages deploy build/web --project-name=anthem-audio --branch=${{ github.ref_name }}
+          wrangler pages deploy build/web --project-name=anthem-audio --branch=${{ github.ref_name }} --commit-dirty=true
