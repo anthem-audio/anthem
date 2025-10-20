@@ -34,7 +34,7 @@ dependencies:
   pointer_lock:
     git:
       url: https://github.com/josh-audio/pointer_lock.git
-      ref: 798a197
+      ref: 282596d
   mockito: ^5.4.5
   window_manager: ^0.5.0
   okcolor: ^1.1.0

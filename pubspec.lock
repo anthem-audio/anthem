@@ -530,8 +530,8 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: "798a197"
-      resolved-ref: "798a19750f3fa20d5b1a8ca3825f6cffcb5e8323"
+      ref: "282596d"
+      resolved-ref: "282596d3a3cf53b464b80ce7c12b6984cf51615c"
       url: "https://github.com/josh-audio/pointer_lock.git"
     source: git
     version: "0.0.2"
