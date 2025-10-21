@@ -18,7 +18,7 @@
 */
 
 import 'package:anthem/theme.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 
 abstract class DialogControllerImpl {
   void showDialog(
@@ -65,7 +65,8 @@ class DialogController {
       throw ArgumentError('Either text or textSpan must be provided.');
     }
 
-    const maxWidth = 400.0;
+    const maxWidth = 450.0;
+    const maxHeight = 250.0;
 
     if (textSpan != null) {
       _impl?.showDialog(
@@ -81,10 +82,17 @@ class DialogController {
 
     _impl?.showDialog(
       ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: maxWidth),
-        child: Text(
-          text!,
-          style: TextStyle(color: AnthemTheme.text.main, fontSize: 12),
+        constraints: const BoxConstraints(
+          maxWidth: maxWidth,
+          maxHeight: maxHeight,
+        ),
+        child: Scrollbar(
+          child: SingleChildScrollView(
+            child: Text(
+              text!,
+              style: TextStyle(color: AnthemTheme.text.main, fontSize: 12),
+            ),
+          ),
         ),
       ),
       title: title,
@@ -101,9 +109,21 @@ class DialogButton {
   final String text;
   final void Function()? onPress;
   final bool isDismissive;
+  final bool shouldCloseDialog;
 
-  DialogButton({required this.text, this.onPress, this.isDismissive = false});
+  DialogButton({
+    required this.text,
+    this.onPress,
+    this.isDismissive = false,
+    this.shouldCloseDialog = true,
+  });
 
-  DialogButton.ok({this.onPress}) : text = 'OK', isDismissive = false;
-  DialogButton.cancel({this.onPress}) : text = 'Cancel', isDismissive = true;
+  DialogButton.ok({this.onPress})
+    : text = 'OK',
+      isDismissive = false,
+      shouldCloseDialog = true;
+  DialogButton.cancel({this.onPress})
+    : text = 'Cancel',
+      isDismissive = true,
+      shouldCloseDialog = true;
 }

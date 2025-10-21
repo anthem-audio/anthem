@@ -25,6 +25,20 @@ import 'package:provider/provider.dart';
 
 import 'dialog_controller.dart';
 
+class _DialogState {
+  Widget? currentDialogContent;
+  String? currentDialogTitle;
+  List<DialogButton>? currentDialogButtons;
+  void Function()? onDismiss;
+
+  _DialogState({
+    required this.currentDialogContent,
+    required this.currentDialogTitle,
+    required this.currentDialogButtons,
+    required this.onDismiss,
+  });
+}
+
 class DialogRenderer extends StatefulWidget {
   final Widget? child;
   final DialogController controller;
@@ -37,10 +51,20 @@ class DialogRenderer extends StatefulWidget {
 
 class _DialogRendererState extends State<DialogRenderer>
     implements DialogControllerImpl {
-  Widget? currentDialogContent;
-  String? currentDialogTitle;
-  List<DialogButton>? currentDialogButtons;
-  void Function()? onDismiss;
+  // Widget? currentDialogContent;
+  // String? currentDialogTitle;
+  // List<DialogButton>? currentDialogButtons;
+  // void Function()? onDismiss;
+  List<_DialogState> dialogStack = [];
+
+  Widget? get currentDialogContent =>
+      dialogStack.isNotEmpty ? dialogStack.last.currentDialogContent : null;
+  String? get currentDialogTitle =>
+      dialogStack.isNotEmpty ? dialogStack.last.currentDialogTitle : null;
+  List<DialogButton>? get currentDialogButtons =>
+      dialogStack.isNotEmpty ? dialogStack.last.currentDialogButtons : null;
+  void Function()? get onDismiss =>
+      dialogStack.isNotEmpty ? dialogStack.last.onDismiss : null;
 
   @override
   void initState() {
@@ -62,19 +86,23 @@ class _DialogRendererState extends State<DialogRenderer>
     void Function()? onDismiss,
   }) {
     setState(() {
-      currentDialogContent = content;
-      currentDialogTitle = title;
-      currentDialogButtons = buttons;
-      this.onDismiss = onDismiss;
+      dialogStack.add(
+        _DialogState(
+          currentDialogContent: content,
+          currentDialogTitle: title,
+          currentDialogButtons: buttons,
+          onDismiss: onDismiss,
+        ),
+      );
     });
   }
 
   @override
   void closeDialog() {
     setState(() {
-      currentDialogContent = null;
-      currentDialogTitle = null;
-      currentDialogButtons = null;
+      if (dialogStack.isNotEmpty) {
+        dialogStack.removeLast();
+      }
     });
   }
 
@@ -184,7 +212,9 @@ class _DialogRendererState extends State<DialogRenderer>
                                     ),
                                     text: button.text,
                                     onPress: () {
-                                      closeDialog();
+                                      if (button.shouldCloseDialog) {
+                                        closeDialog();
+                                      }
                                       button.onPress?.call();
                                     },
                                   ),
