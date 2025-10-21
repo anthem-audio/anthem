@@ -22,6 +22,7 @@ import 'dart:io';
 
 import 'package:anthem/commands/sequence_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/license_text.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/visualization/visualization.dart';
@@ -42,6 +43,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide Icons;
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../basic/icon.dart';
 
@@ -343,13 +345,35 @@ class _ProjectMenu extends StatelessWidget {
                   if (kIsWeb || !Platform.isWindows)
                     'This software is provided under the terms of the GNU Affero General Public License v3.0.\n\n',
                   if (!kIsWeb && Platform.isWindows)
-                    'The source code of this software is licensed under the GNU General Public License v3.0 or later, but the Windows binary is provided under a proprietary license due to dependencies on closed-source libraries.\n\n',
-                  'THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.',
+                    'The source code of this software is licensed under the GNU General Public License v3.0 or later, but the Windows binary is provided under a proprietary license due to its use of closed-source libraries.',
                 ].join(''),
                 title: 'About Anthem',
                 buttons: [
                   DialogButton(
-                    text: 'Additional license Information...',
+                    text: 'Source code',
+                    shouldCloseDialog: false,
+                    onPress: () {
+                      launchUrl(
+                        Uri.parse('https://github.com/anthem-audio/anthem'),
+                      );
+                    },
+                  ),
+                  DialogButton(
+                    text: 'License',
+                    shouldCloseDialog: false,
+                    onPress: () {
+                      dialogController.showTextDialog(
+                        title: 'License',
+                        text: kIsWeb || !Platform.isWindows
+                            ? agpl
+                            : anthemLicenseProprietary,
+                        buttons: [DialogButton.ok()],
+                      );
+                    },
+                  ),
+                  DialogButton(
+                    text: 'Additional license info',
+                    shouldCloseDialog: false,
                     onPress: () {
                       showLicensePage(
                         context: context,

@@ -1542,3 +1542,56 @@ may consider it more useful to permit linking proprietary applications with
 the library.  If this is what you want to do, use the GNU Lesser General
 Public License instead of this License.  But first, please read
 <https://www.gnu.org/licenses/why-not-lgpl.html>.''';
+
+const String anthemLicenseProprietary = '''
+Copyright © 2021 - 2025 Joshua Wade and Budislav Stepanov
+All rights reserved.
+
+This License Agreement ("Agreement") governs use and distribution of the compiled Windows binaries of the software known as Anthem ("the Software"). By installing, copying, or using the Software, you agree to the terms below.
+
+For the purposes of this Agreement, "Software" means the compiled executable programs and associated runtime assets distributed by the copyright holders for Windows platforms.
+
+1. Grant of Permission
+
+You are granted a worldwide, royalty-free, non-exclusive right to:
+
+* install and use the unmodified Software on any Windows computer; and
+* copy and redistribute the Software in its original, unmodified form for personal, educational, or internal organizational use, provided that this Agreement and the copyright notice remain included.
+
+2. Restrictions
+
+You may not:
+
+2.1. modify, reverse engineer, decompile, or create derivative works of the Software;
+2.2. distribute altered or repackaged versions of the Software;
+2.3. remove or obscure any copyright, trademark, or attribution notice; or
+2.4. claim authorship of or imply endorsement by Joshua Wade, Budislav Stepanov, or the Anthem project.
+
+3. Attribution
+
+When publicly referencing or redistributing the Software, you must clearly acknowledge:
+
+"Anthem © 2021 - 2025 Joshua Wade and Budislav Stepanov."
+
+No endorsement or affiliation is implied by such acknowledgment.
+
+4. Disclaimer of Warranty
+
+The Software is provided "as is" without warranty of any kind, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, and non-infringement. You assume all responsibility and risk for use of the Software.
+
+5. Limitation of Liability
+
+In no event shall the copyright holders or contributors be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from or in connection with the Software or its use or distribution.
+
+6. License Scope
+
+This Agreement applies only to the unmodified proprietary Windows binaries of Anthem distributed by the copyright holders. Where a distributed build incorporates components licensed under the GNU Affero General Public License v3.0 (AGPL-3.0), that combined work is made available to you under AGPL-3.0, and the corresponding source code for that combined work is provided under AGPL-3.0. Nothing in this Agreement limits rights granted to you under AGPL-3.0 for those combined works.
+
+7. Termination
+
+Any violation of this Agreement terminates your rights under it. Upon termination, you must cease use and distribution of the Software and destroy all copies in your possession.
+
+8. Governing Law
+
+This Agreement shall be governed by the laws of the State of Tennessee, U.S.A., without regard to conflict-of-laws principles.
+''';
