@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/licenses.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/shortcuts/raw_key_event_singleton.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
@@ -35,6 +36,8 @@ GlobalKey mainWindowKey = GlobalKey();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await pointerLock.ensureInitialized();
+
+  addLicenses();
 
   final store = AnthemStore.instance;
 
@@ -165,6 +168,10 @@ class _AppState extends State<App> with WindowListener {
         fontFamily: 'Roboto',
         textSelectionTheme: TextSelectionThemeData(
           selectionColor: AnthemTheme.primary.subtleBorder.withAlpha(50),
+        ),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: AnthemTheme.primary.main,
+          brightness: Brightness.dark,
         ),
       ),
       home: Scaffold(

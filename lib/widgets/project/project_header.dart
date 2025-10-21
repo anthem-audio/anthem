@@ -18,6 +18,7 @@
 */
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:anthem/commands/sequence_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
@@ -38,7 +39,7 @@ import 'package:anthem/widgets/main_window/main_window_controller.dart';
 import 'package:anthem/widgets/project/project_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart' hide Icons;
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
@@ -323,6 +324,42 @@ class _ProjectMenu extends StatelessWidget {
                 project.id,
                 true,
                 dialogController: dialogController,
+              );
+            },
+          ),
+          Separator(),
+          AnthemMenuItem(
+            text: 'About...',
+            onSelected: () {
+              final dialogController = Provider.of<DialogController>(
+                context,
+                listen: false,
+              );
+              dialogController.showTextDialog(
+                text: [
+                  'Version: Pre-alpha\n\n',
+                  'Code copyright (C) 2021 - 2025 Joshua Wade\n',
+                  'UI/UX design and icons copyright (C) 2021 - 2025 Budislav Stepanov\n\n',
+                  if (kIsWeb || !Platform.isWindows)
+                    'This software is provided under the terms of the GNU Affero General Public License v3.0.\n\n',
+                  if (!kIsWeb && Platform.isWindows)
+                    'The source code of this software is licensed under the GNU General Public License v3.0 or later, but the Windows binary is provided under a proprietary license due to dependencies on closed-source libraries.\n\n',
+                  'THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.',
+                ].join(''),
+                title: 'About Anthem',
+                buttons: [
+                  DialogButton(
+                    text: 'Additional license Information...',
+                    onPress: () {
+                      showLicensePage(
+                        context: context,
+                        applicationName: 'Anthem',
+                        applicationVersion: 'Pre-alpha',
+                      );
+                    },
+                  ),
+                  DialogButton.ok(),
+                ],
               );
             },
           ),

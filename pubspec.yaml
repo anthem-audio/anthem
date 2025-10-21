@@ -53,7 +53,7 @@ dev_dependencies:
   source_gen: ^4.0.1
 
 flutter:
-  uses-material-design: false
+  uses-material-design: true
 
   shaders:
   - assets/shaders/automation_curve.frag
