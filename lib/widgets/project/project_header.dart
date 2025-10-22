@@ -341,11 +341,8 @@ class _ProjectMenu extends StatelessWidget {
                 text: [
                   'Version: Pre-alpha\n\n',
                   'Code copyright (C) 2021 - 2025 Joshua Wade\n',
-                  'UI/UX design and icons copyright (C) 2021 - 2025 Budislav Stepanov\n\n',
-                  if (kIsWeb || !Platform.isWindows)
-                    'This software is provided under the terms of the GNU Affero General Public License v3.0.\n\n',
-                  if (!kIsWeb && Platform.isWindows)
-                    'The source code of this software is licensed under the GNU General Public License v3.0 or later, but the Windows binary is provided under a proprietary license due to its use of closed-source libraries.',
+                  'UI design and icons copyright (C) 2021 - 2025 Budislav Stepanov\n\n',
+                  'All rights reserved.\n\n',
                 ].join(''),
                 title: 'About Anthem',
                 buttons: [
