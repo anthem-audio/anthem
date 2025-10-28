@@ -1,35 +1,18 @@
 {
-    "name": "anthem",
-    "short_name": "anthem",
+    "name": "Anthem",
+    "short_name": "Anthem",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#3D3D3D",
+    "theme_color": "#25C29D",
+    "description": "An open-source digital audio workstation",
+    "orientation": "landscape-primary",
     "prefer_related_applications": false,
     "icons": [
         {
-            "src": "icons/Icon-192.png",
-            "sizes": "192x192",
-            "type": "image/png"
-        },
-        {
-            "src": "icons/Icon-512.png",
-            "sizes": "512x512",
-            "type": "image/png"
-        },
-        {
-            "src": "icons/Icon-maskable-192.png",
-            "sizes": "192x192",
-            "type": "image/png",
-            "purpose": "maskable"
-        },
-        {
-            "src": "icons/Icon-maskable-512.png",
-            "sizes": "512x512",
-            "type": "image/png",
-            "purpose": "maskable"
+            "src": "icons/logo.svg",
+            "sizes": "192x192 512x512",
+            "type": "image/svg"
         }
     ]
 }
