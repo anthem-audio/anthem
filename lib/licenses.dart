@@ -783,7 +783,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.''',
   // We also use the VST SDK under a proprietary license on Windows.
   if (kIsWeb || !Platform.isWindows) {
     LicenseRegistry.addLicense(() async* {
-      yield LicenseEntryWithLineBreaks(['VST SDK'], gpl);
+      yield LicenseEntryWithLineBreaks(['VST3 SDK'], gpl);
     });
   }
 
