@@ -90,7 +90,7 @@ class DialogController {
           child: SingleChildScrollView(
             child: Text(
               text!,
-              style: TextStyle(color: AnthemTheme.text.main, fontSize: 12),
+              style: TextStyle(color: AnthemTheme.text.main, fontSize: 13),
             ),
           ),
         ),

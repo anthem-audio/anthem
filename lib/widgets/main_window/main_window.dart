@@ -69,7 +69,7 @@ class _MainWindowState extends State<MainWindow> {
           messageDialogController.showTextDialog(
             title: 'Welcome',
             textSpan: TextSpan(
-              style: TextStyle(color: AnthemTheme.text.main, fontSize: 12),
+              style: TextStyle(color: AnthemTheme.text.main, fontSize: 13),
               children: [
                 TextSpan(
                   text:
@@ -89,7 +89,10 @@ class _MainWindowState extends State<MainWindow> {
                 ),
                 TextSpan(
                   text: 'report any bugs on GitHub',
-                  style: TextStyle(decoration: TextDecoration.underline),
+                  style: TextStyle(
+                    decoration: TextDecoration.underline,
+                    color: AnthemTheme.primary.main,
+                  ),
                   recognizer: TapGestureRecognizer()
                     ..onTap = () {
                       launchUrl(
@@ -99,11 +102,14 @@ class _MainWindowState extends State<MainWindow> {
                 ),
                 TextSpan(
                   text:
-                      '. For better performance, lower latency, and third-party plugin support, try the desktop version, available for Windows, macOS, and Linux from ',
+                      '. For better performance, lower latency, and third-party plugin support, try ',
                 ),
                 TextSpan(
-                  text: 'GitHub',
-                  style: TextStyle(decoration: TextDecoration.underline),
+                  text: 'the desktop version',
+                  style: TextStyle(
+                    decoration: TextDecoration.underline,
+                    color: AnthemTheme.primary.main,
+                  ),
                   recognizer: TapGestureRecognizer()
                     ..onTap = () {
                       launchUrl(
@@ -111,7 +117,7 @@ class _MainWindowState extends State<MainWindow> {
                       );
                     },
                 ),
-                TextSpan(text: '.'),
+                TextSpan(text: ', available for Windows, macOS, and Linux.'),
               ],
             ),
             buttons: [DialogButton.ok()],

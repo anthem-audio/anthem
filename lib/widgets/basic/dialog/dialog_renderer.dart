@@ -151,7 +151,7 @@ class _DialogRendererState extends State<DialogRenderer>
                                     currentDialogTitle!,
                                     style: TextStyle(
                                       color: AnthemTheme.text.main,
-                                      fontSize: 16,
+                                      fontSize: 18,
                                     ),
                                   ),
                                 ),

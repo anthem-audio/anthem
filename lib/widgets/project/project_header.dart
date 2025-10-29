@@ -341,8 +341,7 @@ class _ProjectMenu extends StatelessWidget {
                 text: [
                   'Version: Pre-alpha\n\n',
                   'Code copyright (C) 2021 - 2025 Joshua Wade\n',
-                  'UI design and icons copyright (C) 2021 - 2025 Budislav Stepanov\n\n',
-                  'All rights reserved.\n\n',
+                  'UI design and icons copyright (C) 2021 - 2025 Budislav Stepanov',
                 ].join(''),
                 title: 'About Anthem',
                 buttons: [

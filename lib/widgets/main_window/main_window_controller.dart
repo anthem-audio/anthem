@@ -165,8 +165,8 @@ class MainWindowController {
             spacing: 12,
             children: [
               Text(
-                'Enter a filename for the project:',
-                style: TextStyle(fontSize: 12, color: AnthemTheme.text.main),
+                'Enter a file name for the project:',
+                style: TextStyle(fontSize: 13, color: AnthemTheme.text.main),
               ),
               SizedBox(
                 width: 161,
