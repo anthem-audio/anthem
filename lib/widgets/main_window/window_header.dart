@@ -21,12 +21,14 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/controller_registry.dart';
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/project_controller.dart';
+import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/main_window/window_header_engine_indicator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -71,10 +73,16 @@ class _WindowHeaderState extends State<WindowHeader> {
           ),
           const SizedBox(width: 1),
           ...widget.tabs.map<Widget>(
-            (tab) => _Tab(
-              isSelected: tab.id == widget.selectedTabId,
-              id: tab.id,
-              title: tab.title,
+            (tab) => Observer(
+              builder: (context) {
+                return _Tab(
+                  isSelected: tab.id == widget.selectedTabId,
+                  id: tab.id,
+                  title: tab.title,
+                  hasUnsavedChanges:
+                      AnthemStore.instance.projects[tab.id]?.isDirty ?? false,
+                );
+              },
             ),
           ),
           Expanded(child: windowHandleAndControls),
@@ -212,10 +220,16 @@ class _WindowButtonsState extends State<_WindowButtons> with WindowListener {
 
 class _Tab extends StatefulWidget {
   final bool isSelected;
+  final bool hasUnsavedChanges;
   final Id id;
   final String title;
 
-  const _Tab({required this.isSelected, required this.id, required this.title});
+  const _Tab({
+    required this.isSelected,
+    required this.id,
+    required this.title,
+    required this.hasUnsavedChanges,
+  });
 
   @override
   State<_Tab> createState() => _TabState();
@@ -250,6 +264,16 @@ class _TabState extends State<_Tab> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(width: 12),
+                if (widget.hasUnsavedChanges)
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: AnthemTheme.text.main,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                if (widget.hasUnsavedChanges) const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     widget.title,
