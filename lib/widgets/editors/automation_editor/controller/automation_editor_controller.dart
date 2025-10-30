@@ -19,7 +19,7 @@
 
 import 'dart:ui';
 
-import 'package:anthem/commands/pattern_automation_commands.dart';
+import 'package:anthem/logic/commands/pattern_automation_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/automation_lane.dart';
 import 'package:anthem/model/pattern/automation_point.dart';

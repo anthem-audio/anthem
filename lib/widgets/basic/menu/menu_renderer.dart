@@ -27,7 +27,7 @@ import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
-import 'package:anthem/widgets/project/project_controller.dart';
+import 'package:anthem/logic/project_controller.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 

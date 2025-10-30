@@ -25,7 +25,7 @@ import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/editors/pattern_editor/generator_row_automation.dart';
 import 'package:anthem/widgets/editors/pattern_editor/generator_row_notes.dart';
-import 'package:anthem/widgets/project/project_controller.dart';
+import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';

@@ -20,9 +20,9 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:anthem/commands/command.dart';
-import 'package:anthem/commands/command_stack.dart';
-import 'package:anthem/commands/journal_commands.dart';
+import 'package:anthem/logic/commands/command.dart';
+import 'package:anthem/logic/commands/command_stack.dart';
+import 'package:anthem/logic/commands/journal_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/sequence.dart';

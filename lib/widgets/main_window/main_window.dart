@@ -22,7 +22,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_renderer.dart';
 import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
-import 'package:anthem/widgets/main_window/main_window_controller.dart';
+import 'package:anthem/logic/main_window_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';

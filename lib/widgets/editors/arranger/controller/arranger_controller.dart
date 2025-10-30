@@ -20,8 +20,8 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:anthem/commands/arrangement_commands.dart';
-import 'package:anthem/commands/journal_commands.dart';
+import 'package:anthem/logic/commands/arrangement_commands.dart';
+import 'package:anthem/logic/commands/journal_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/project.dart';

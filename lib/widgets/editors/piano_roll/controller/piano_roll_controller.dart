@@ -19,9 +19,9 @@
 
 import 'dart:math';
 
-import 'package:anthem/commands/journal_commands.dart';
-import 'package:anthem/commands/pattern_note_commands.dart';
-import 'package:anthem/commands/timeline_commands.dart';
+import 'package:anthem/logic/commands/journal_commands.dart';
+import 'package:anthem/logic/commands/pattern_note_commands.dart';
+import 'package:anthem/logic/commands/timeline_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/project.dart';

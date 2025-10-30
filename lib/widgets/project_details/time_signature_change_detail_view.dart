@@ -19,7 +19,7 @@
 
 import 'dart:math';
 
-import 'package:anthem/commands/timeline_commands.dart';
+import 'package:anthem/logic/commands/timeline_commands.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';

@@ -35,7 +35,7 @@ import 'package:anthem/widgets/editors/pattern_editor/pattern_editor.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/project_details/project_details.dart';
 import 'package:anthem/widgets/project_explorer/project_explorer.dart';
-import 'package:anthem/widgets/project/project_controller.dart';
+import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/widgets/project/project_footer.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 

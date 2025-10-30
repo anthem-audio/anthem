@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/commands/command.dart';
+import 'package:anthem/logic/commands/command.dart';
 import 'package:anthem/model/project.dart';
 
 /// A command to set the tempo of the project sequence.

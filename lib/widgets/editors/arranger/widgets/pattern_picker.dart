@@ -22,7 +22,7 @@ import 'dart:async';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
-import 'package:anthem/widgets/project/project_controller.dart';
+import 'package:anthem/logic/project_controller.dart';
 import 'package:flutter/widgets.dart';
 
 import 'package:anthem/theme.dart';

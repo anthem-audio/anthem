@@ -19,9 +19,9 @@
 
 import 'dart:io';
 
-import 'package:anthem/commands/arrangement_commands.dart';
-import 'package:anthem/commands/pattern_commands.dart';
-import 'package:anthem/commands/project_commands.dart';
+import 'package:anthem/logic/commands/arrangement_commands.dart';
+import 'package:anthem/logic/commands/pattern_commands.dart';
+import 'package:anthem/logic/commands/project_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/generator.dart';

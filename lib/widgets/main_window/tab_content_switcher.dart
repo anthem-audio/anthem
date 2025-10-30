@@ -19,7 +19,7 @@
 
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/widgets.dart';
-import 'main_window_controller.dart';
+import 'package:anthem/logic/main_window_controller.dart';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/project/project.dart';

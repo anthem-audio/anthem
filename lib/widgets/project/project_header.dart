@@ -20,7 +20,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:anthem/commands/sequence_commands.dart';
+import 'package:anthem/logic/commands/sequence_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/license_text.dart';
 import 'package:anthem/model/model.dart';
@@ -36,8 +36,8 @@ import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/visualization_builder.dart';
 import 'package:anthem/widgets/debug/widget_test_area.dart';
-import 'package:anthem/widgets/main_window/main_window_controller.dart';
-import 'package:anthem/widgets/project/project_controller.dart';
+import 'package:anthem/logic/main_window_controller.dart';
+import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide Icons;

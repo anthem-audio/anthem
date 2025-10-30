@@ -22,9 +22,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 
-import 'package:anthem/commands/pattern_commands.dart';
-import 'package:anthem/commands/pattern_note_commands.dart';
-import 'package:anthem/commands/project_commands.dart';
+import 'package:anthem/logic/commands/pattern_commands.dart';
+import 'package:anthem/logic/commands/pattern_note_commands.dart';
+import 'package:anthem/logic/commands/project_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/model/model.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -298,7 +298,7 @@ void main() {
         AddGeneratorCommand(
           generatorId: 'generator1',
           node: NodeModel.uninitialized(),
-          name: 'Genrator name',
+          name: 'Generator name',
           generatorType: GeneratorType.instrument,
           color: const Color(0xFF000000),
         ),
