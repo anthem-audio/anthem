@@ -167,21 +167,27 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   /// processor. This is be debounced to avoid excessive requests.
   void scheduleDebouncedStateUpdate() async {
     _stateUpdateDebouncedAction ??= TimerDebouncedAction(() async {
-      await updateStateFromEngine();
+      await updateStateFromEngine(true);
     }, Duration(seconds: 1));
     _stateUpdateDebouncedAction!.execute();
   }
 
-  Future<void> updateStateFromEngine() async {
+  Future<void> updateStateFromEngine([bool waitForSend = false]) async {
     if (!project.engine.isRunning) {
       return;
     }
 
-    await stateIsSentToEngineCompleter.future;
+    if (waitForSend) {
+      await stateIsSentToEngineCompleter.future;
+    }
 
-    processorState = await project.engine.processingGraphApi.getPluginState(id);
+    final newState = await project.engine.processingGraphApi.getPluginState(id);
+    if (newState != processorState) {
+      processorState = newState;
 
-    project.isDirty = true;
+      // Mark project as dirty
+      project.isDirty = true;
+    }
   }
 
   /// Sends the current state of the processor to the engine.
