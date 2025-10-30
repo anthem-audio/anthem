@@ -205,10 +205,10 @@ void main() {
         reason: 'The initial state should contain a processing graph.',
       );
       expect(
-        initialState['isSaved'],
+        initialState['isDirty'],
         isNotNull,
         reason:
-            'The initial state should contain isSaved - this is not in the project file.',
+            'The initial state should contain isDirty - this is not in the project file.',
       );
     });
 
