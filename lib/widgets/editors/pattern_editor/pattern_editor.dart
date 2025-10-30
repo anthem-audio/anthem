@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/controller_registry.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
@@ -51,8 +52,13 @@ class _PatternEditorState extends State<PatternEditor> {
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
+
     final projectController = Provider.of<ProjectController>(context);
-    controller ??= PatternEditorController(project: project);
+
+    if (controller == null) {
+      controller = PatternEditorController(project: project);
+      ControllerRegistry.instance.registerController(project.id, controller!);
+    }
 
     final kebabMenuController = AnthemMenuController();
     final addChannelMenuController = AnthemMenuController();

@@ -19,6 +19,7 @@
 
 import 'dart:async';
 
+import 'package:anthem/logic/controller_registry.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
@@ -86,7 +87,10 @@ class _ArrangerState extends State<Arranger> {
       timeView: TimeRange(0, 3072),
     );
 
-    controller ??= ArrangerController(viewModel: viewModel!, project: project);
+    if (controller == null) {
+      controller = ArrangerController(viewModel: viewModel!, project: project);
+      ControllerRegistry.instance.registerController('project.id', controller!);
+    }
 
     return Provider.value(
       value: viewModel!,

@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/controller_registry.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
@@ -51,6 +52,12 @@ class _MainWindowState extends State<MainWindow> {
   MainWindowController controller = MainWindowController();
 
   bool firstBuild = true;
+
+  @override
+  void initState() {
+    super.initState();
+    ControllerRegistry.instance.mainWindowController = controller;
+  }
 
   @override
   Widget build(BuildContext context) {

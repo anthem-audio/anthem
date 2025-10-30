@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/controller_registry.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
@@ -53,11 +54,16 @@ class AutomationEditorState extends State<AutomationEditor> {
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
+
     viewModel ??= AutomationEditorViewModel(timeView: TimeRange(0, 3072));
-    controller ??= AutomationEditorController(
-      viewModel: viewModel!,
-      project: project,
-    );
+
+    if (controller == null) {
+      controller = AutomationEditorController(
+        viewModel: viewModel!,
+        project: project,
+      );
+      ControllerRegistry.instance.registerController(project.id, controller!);
+    }
 
     return Provider.value(
       value: viewModel!,

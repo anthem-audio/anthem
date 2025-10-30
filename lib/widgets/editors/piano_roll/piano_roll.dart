@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/logic/commands/timeline_commands.dart';
+import 'package:anthem/logic/controller_registry.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
@@ -91,7 +92,10 @@ class _PianoRollState extends State<PianoRoll> {
       timeView: TimeRange(0, 3072),
     );
 
-    controller ??= PianoRollController(project: project, viewModel: viewModel!);
+    if (controller == null) {
+      controller = PianoRollController(project: project, viewModel: viewModel!);
+      ControllerRegistry.instance.registerController(project.id, controller!);
+    }
 
     return Provider.value(
       value: controller!,
