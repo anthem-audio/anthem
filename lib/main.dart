@@ -35,6 +35,7 @@ import 'package:window_manager/window_manager.dart';
 import 'model/project.dart';
 import 'model/store.dart';
 import 'widgets/main_window/main_window.dart';
+import 'web_init_stub.dart' if (dart.library.js_interop) 'web_init.dart';
 
 GlobalKey mainWindowKey = GlobalKey();
 
@@ -61,6 +62,9 @@ void main() async {
     await windowManager.ensureInitialized();
     await windowManager.setAsFrameless();
   }
+
+  // Only defined on web
+  webInit();
 }
 
 class App extends StatefulWidget {
