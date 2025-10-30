@@ -17,8 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:anthem/licenses.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/shortcuts/raw_key_event_singleton.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/foundation.dart';
@@ -67,6 +70,7 @@ class App extends StatefulWidget {
 
 class _AppState extends State<App> with WindowListener {
   bool isMaximized = false;
+  DialogController dialogController = DialogController();
 
   Future<void> _initWindow() async {
     await windowManager.setPreventClose(true);
@@ -111,16 +115,48 @@ class _AppState extends State<App> with WindowListener {
 
     // The below is a rough outline for save-before-exit
 
-    // // a) Ask the user or run an auto-save
-    // final shouldQuit = await _maybeSaveOrConfirm();
+    // a) Ask the user or run an auto-save
+    final shouldQuit = await _maybeSaveOrConfirm();
 
-    // if (shouldQuit) {
-    //   await windowManager.destroy();   // forces the app to exit
-    // } else {
-    //   // Simply return; the window stays open
-    // }
+    if (shouldQuit) {
+      await windowManager.destroy(); // forces the app to exit
+    } else {
+      // Simply return; the window stays open
+    }
 
     await windowManager.destroy();
+  }
+
+  Future<bool> _maybeSaveOrConfirm() async {
+    // Check for dirty projects
+    final projects = AnthemStore.instance.projects.values;
+
+    if (projects.any((p) => p.isDirty)) {
+      final completer = Completer<bool>();
+
+      dialogController.showTextDialog(
+        text:
+            'You have unsaved changes.\n\nAre you sure you want to quit without saving?',
+        title: 'Unsaved Changes',
+        buttons: [
+          DialogButton.cancel(),
+          DialogButton(
+            text: 'Quit Without Saving',
+            isDismissive: true,
+            onPress: () {
+              completer.complete(true);
+            },
+          ),
+        ],
+        onDismiss: () {
+          completer.complete(false);
+        },
+      );
+
+      return completer.future;
+    } else {
+      return true;
+    }
   }
 
   @override
@@ -150,7 +186,7 @@ class _AppState extends State<App> with WindowListener {
       fit: StackFit.expand,
       children: [
         Container(color: AnthemTheme.panel.border),
-        MainWindow(key: mainWindowKey),
+        MainWindow(key: mainWindowKey, dialogController: dialogController),
       ],
     );
 

@@ -53,7 +53,6 @@ class ProjectModel extends _ProjectModel
 
   factory ProjectModel.fromJson(Map<String, dynamic> json) {
     final project = _$ProjectModelAnthemModelMixin.fromJson(json)
-      ..isSaved = true
       // This is the top model in the tree. setParentPropertiesOnChildren will not
       // work correctly if we don't set this.
       ..isTopLevelModel = true;
@@ -131,11 +130,13 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   @hideFromSerialization
   String? filePath;
 
-  /// Whether or not the project has been saved. If false, the project has
-  /// either never been saved, or has been modified since the last save.
+  /// Tracks whether or not the project has been saved.
+  ///
+  /// If false, the project has either never been saved, or otherwise has been
+  /// saved and not modified since then.
   @anthemObservable
   @hideFromSerialization
-  bool isSaved = false;
+  bool isDirty = false;
 
   // Detail view state
 
@@ -392,6 +393,10 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     } else {
       _commandStack.push(command);
     }
+
+    // If we receive an action that can be undone, then we will consider the
+    // project dirty.
+    isDirty = true;
   }
 
   /// Pushes the given command to the undo/redo queue without executing it
@@ -406,6 +411,10 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     } else {
       _commandStack.push(command);
     }
+
+    // If we receive an action that can be undone, then we will consider the
+    // project dirty.
+    isDirty = true;
   }
 
   void _assertJournalInactive() {
@@ -416,14 +425,18 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
 
   /// Undoes the last command in the undo/redo queue.
   void undo() {
+    if (!_commandStack.canUndo) return;
     _assertJournalInactive();
     _commandStack.undo();
+    isDirty = true;
   }
 
   /// Redoes the next command in the undo/redo queue.
   void redo() {
+    if (!_commandStack.canRedo) return;
     _assertJournalInactive();
     _commandStack.redo();
+    isDirty = true;
   }
 
   void startJournalPage() {

@@ -120,7 +120,7 @@ class MainWindowController {
     _addProject(project);
 
     project.filePath = path;
-    project.isSaved = true;
+    project.isDirty = false;
 
     return project.id;
   }
@@ -135,7 +135,7 @@ class MainWindowController {
     String? path;
 
     if (!kIsWeb) {
-      if (alwaysUseFilePicker || !project.isSaved) {
+      if (alwaysUseFilePicker || project.isDirty) {
         path = (await FilePicker.platform.saveFile(
           type: FileType.custom,
           allowedExtensions: ['anthem'],
@@ -201,7 +201,7 @@ class MainWindowController {
         bytes: bytes,
       );
 
-      project.isSaved = true;
+      project.isDirty = false;
     } else {
       // Load the latest for all plugin states before saving
       await Future.wait(
@@ -214,7 +214,7 @@ class MainWindowController {
         path!,
       ).writeAsString(json.encode(project.toJson()), flush: true);
 
-      project.isSaved = true;
+      project.isDirty = false;
       project.filePath = path;
     }
   }

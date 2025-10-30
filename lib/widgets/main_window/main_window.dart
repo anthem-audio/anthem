@@ -37,7 +37,9 @@ import 'package:url_launcher/url_launcher.dart';
 // import 'package:web/web.dart';
 
 class MainWindow extends StatefulWidget {
-  const MainWindow({super.key});
+  final DialogController dialogController;
+
+  const MainWindow({super.key, required this.dialogController});
 
   @override
   State<MainWindow> createState() => _MainWindowState();
@@ -46,7 +48,6 @@ class MainWindow extends StatefulWidget {
 class _MainWindowState extends State<MainWindow> {
   bool isTestMenuOpen = false;
   AnthemMenuController menuController = AnthemMenuController();
-  DialogController messageDialogController = DialogController();
   MainWindowController controller = MainWindowController();
 
   bool firstBuild = true;
@@ -66,7 +67,7 @@ class _MainWindowState extends State<MainWindow> {
       // a user gesture.
       if (kIsWeb) {
         Future(() {
-          messageDialogController.showTextDialog(
+          widget.dialogController.showTextDialog(
             title: 'Welcome',
             textSpan: TextSpan(
               style: TextStyle(color: AnthemTheme.text.main, fontSize: 13),
@@ -135,7 +136,7 @@ class _MainWindowState extends State<MainWindow> {
     return Provider.value(
       value: controller,
       child: DialogRenderer(
-        controller: messageDialogController,
+        controller: widget.dialogController,
         child: ScreenOverlay(
           child: Container(
             color: AnthemTheme.panel.border,

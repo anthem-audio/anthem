@@ -60,6 +60,7 @@ class DialogController {
     String? text,
     TextSpan? textSpan,
     List<DialogButton>? buttons,
+    void Function()? onDismiss,
   }) {
     if (text == null && textSpan == null) {
       throw ArgumentError('Either text or textSpan must be provided.');
@@ -97,6 +98,7 @@ class DialogController {
       ),
       title: title,
       buttons: buttons,
+      onDismiss: onDismiss,
     );
   }
 

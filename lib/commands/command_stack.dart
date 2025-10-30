@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -39,14 +39,18 @@ class CommandStack {
     command.execute(project);
   }
 
+  bool get canUndo => commandPointer - 1 < 0;
+
   void undo() {
-    if (commandPointer - 1 < 0) return;
+    if (!canUndo) return;
     commandPointer--;
     commands[commandPointer].rollback(project);
   }
 
+  bool get canRedo => commandPointer + 1 > commands.length;
+
   void redo() {
-    if (commandPointer + 1 > commands.length) return;
+    if (!canRedo) return;
     commandPointer++;
     commands[commandPointer - 1].execute(project);
   }
