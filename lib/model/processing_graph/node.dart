@@ -180,6 +180,8 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
     await stateIsSentToEngineCompleter.future;
 
     processorState = await project.engine.processingGraphApi.getPluginState(id);
+
+    project.isDirty = true;
   }
 
   /// Sends the current state of the processor to the engine.
