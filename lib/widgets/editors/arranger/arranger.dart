@@ -89,7 +89,7 @@ class _ArrangerState extends State<Arranger> {
 
     if (controller == null) {
       controller = ArrangerController(viewModel: viewModel!, project: project);
-      ControllerRegistry.instance.registerController('project.id', controller!);
+      ControllerRegistry.instance.registerController(project.id, controller!);
     }
 
     return Provider.value(

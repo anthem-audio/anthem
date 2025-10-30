@@ -64,10 +64,10 @@ class MainWindowController {
     }
   }
 
-  void closeProject(Id projectId) {
+  void closeProjectWithoutSaving(Id projectId) {
     final store = AnthemStore.instance;
 
-    // Stop engine
+    // Clean up project resources
     store.projects[projectId]!.dispose();
 
     // Remove project from model
@@ -125,7 +125,7 @@ class MainWindowController {
     return project.id;
   }
 
-  Future<void> saveProject(
+  Future<bool> saveProject(
     Id projectId,
     bool alwaysUseFilePicker, {
     required DialogController dialogController,
@@ -145,7 +145,7 @@ class MainWindowController {
       }
     }
 
-    if (!kIsWeb && path == null) return;
+    if (!kIsWeb && path == null) return false;
 
     if (path != null && !path.endsWith('.anthem')) {
       path += '.anthem';
@@ -193,7 +193,7 @@ class MainWindowController {
       );
 
       final fileName = await completer.future;
-      if (fileName == null) return;
+      if (fileName == null) return false;
 
       final bytes = utf8.encode(json.encode(project.toJson()));
       await FilePicker.platform.saveFile(
@@ -202,6 +202,7 @@ class MainWindowController {
       );
 
       project.isDirty = false;
+      return true;
     } else {
       // Load the latest for all plugin states before saving
       await Future.wait(
@@ -216,6 +217,7 @@ class MainWindowController {
 
       project.isDirty = false;
       project.filePath = path;
+      return true;
     }
   }
 }

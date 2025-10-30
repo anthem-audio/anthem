@@ -18,7 +18,9 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/controller_registry.dart';
 import 'package:anthem/logic/main_window_controller.dart';
+import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
@@ -263,7 +265,9 @@ class _TabState extends State<_Tab> {
                   icon: Icons.close,
                   onPress: () {
                     closePressed = true;
-                    controller.closeProject(widget.id);
+                    ControllerRegistry.instance
+                        .getController<ProjectController>(widget.id)
+                        ?.close();
                   },
                 ),
                 const SizedBox(width: 8),

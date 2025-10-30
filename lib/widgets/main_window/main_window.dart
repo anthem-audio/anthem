@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -152,16 +152,9 @@ class _MainWindowState extends State<MainWindow> {
               child: Observer(
                 builder: (context) {
                   final tabs = store.projectOrder.map<TabDef>((projectId) {
-                    final projectPath = store.projects[projectId]?.filePath;
-                    final titleFromPath = projectPath
-                        ?.split(RegExp('[/\\\\]'))
-                        .last
-                        .split('.')
-                        .first;
-
                     return TabDef(
                       id: projectId,
-                      title: titleFromPath ?? 'New Project',
+                      title: store.projects[projectId]?.name ?? '',
                     );
                   }).toList();
 

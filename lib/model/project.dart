@@ -130,6 +130,14 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   @hideFromSerialization
   String? filePath;
 
+  String get name {
+    if (filePath == null) {
+      return 'New Project';
+    }
+
+    return filePath!.split(RegExp('[/\\\\]')).last.split('.').first;
+  }
+
   /// Tracks whether or not the project has been saved.
   ///
   /// If false, the project has either never been saved, or otherwise has been

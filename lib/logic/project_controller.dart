@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:anthem/logic/commands/arrangement_commands.dart';
@@ -24,6 +25,7 @@ import 'package:anthem/logic/commands/pattern_commands.dart';
 import 'package:anthem/logic/commands/project_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/controller_registry.dart';
 import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/processing_graph/node.dart';
@@ -247,6 +249,58 @@ class ProjectController {
         duration: const Duration(milliseconds: 500),
       );
     }
+  }
+
+  /// Closes the project.
+  ///
+  /// Returns true if the project was closed, false if the close was cancelled.
+  Future<bool> close() {
+    final dialogController = ControllerRegistry.instance.dialogController!;
+    final mainWindowController =
+        ControllerRegistry.instance.mainWindowController!;
+
+    final completer = Completer<bool>();
+
+    if (project.isDirty) {
+      dialogController.showTextDialog(
+        title: 'Unsaved Changes',
+        text:
+            'The project "${project.name}" has unsaved changes.\n\n'
+            'Do you want to save before closing?',
+        onDismiss: () {
+          completer.complete(false);
+        },
+        buttons: [
+          DialogButton(text: 'Cancel', isDismissive: true),
+          DialogButton(
+            text: "Don't Save",
+            onPress: () {
+              mainWindowController.closeProjectWithoutSaving(project.id);
+              completer.complete(true);
+            },
+          ),
+          DialogButton(
+            text: 'Save',
+            onPress: () async {
+              final result = await mainWindowController.saveProject(
+                project.id,
+                false,
+                dialogController: dialogController,
+              );
+              if (result) {
+                mainWindowController.closeProjectWithoutSaving(project.id);
+              }
+              completer.complete(result);
+            },
+          ),
+        ],
+      );
+    } else {
+      mainWindowController.closeProjectWithoutSaving(project.id);
+      completer.complete(true);
+    }
+
+    return completer.future;
   }
 }
 

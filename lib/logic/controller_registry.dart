@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/logic/main_window_controller.dart';
+import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 
 /// A registry for storing and retrieving controllers by key.
 ///
@@ -26,6 +27,7 @@ import 'package:anthem/logic/main_window_controller.dart';
 /// under that project's ID.
 class ControllerRegistry {
   MainWindowController? mainWindowController;
+  DialogController? dialogController;
 
   static final ControllerRegistry instance = ControllerRegistry._internal();
 
