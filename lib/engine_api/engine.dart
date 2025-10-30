@@ -195,7 +195,10 @@ class Engine {
   }
 
   Future<void> dispose() async {
-    await _exit();
+    if (_engineState != EngineState.stopped) {
+      await _exit();
+    }
+
     _engineStateStreamController.close();
   }
 
