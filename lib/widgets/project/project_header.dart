@@ -18,7 +18,6 @@
 */
 
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:anthem/logic/commands/sequence_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
@@ -360,9 +359,7 @@ class _ProjectMenu extends StatelessWidget {
                     onPress: () {
                       dialogController.showTextDialog(
                         title: 'License',
-                        text: kIsWeb || !Platform.isWindows
-                            ? agpl
-                            : anthemLicenseProprietary,
+                        text: agpl,
                         buttons: [DialogButton.ok()],
                       );
                     },
