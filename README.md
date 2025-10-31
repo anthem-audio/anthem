@@ -47,22 +47,6 @@ This list reflects our current plans but does not represent a commitment of any 
 
 ## Contributing
 
-If you're interested in contributing, feel free to open a discussion thread on this repository, or submit a pull request. Please note that contributions are subject to relicensing; see the note on licensing below.
+If you're interested in contributing, feel free to open a discussion thread on this repository, or submit a pull request.
 
-There is documentation for developers [here](docs/index.md), which includes an architectural overview and setup instructions. There is also inline documentation which we intend to improve over time.
-
-### Source code licensing
-
-Anthem is dual-licensed under a GPL/proprietary license. This is entirely driven by our desire to release software that is compatible with ASIO drivers on Windows. We cannot do this if we license our Windows binaries under GPLv3.
-
-For this reason, Anthem's source code has the following additional constraints:
-- Any libraries we use must be compatible with a proprietary licensing model, e.g. they must either themselves have dual-licensing options (e.g. JUCE's free-tier commercial license), or they must be permissively licensed.
-- All contributors to Anthem must sign a contributor license agreement (CLA) that allows broad relicensing of their contributions.
-
-In order to ensure that Anthem remains free software, we make the following commitments:
-- On platforms besides Windows, binaries will be released under the terms of AGPLv3+ (JUCE 8 and above are licensed under AGPLv3 and so are incompatible with regular GPL).
-- The proprietary license will be used solely for distribution on Windows, and in the unlikely event that other similar constraints arise in the future.
-- We may consider relicensing portions of the codebase to more permissive licenses (e.g. MIT) to serve as-of-yet unanticipated use-cases, but Anthem will never be close-sourced.
-- In the event that the author has passed away or is incapable of making or communicating their decisions, the code in this repository will be implicitly released into the public domain.
-
-By signing the CLA, you as a contributor are giving up your legal right to decide how we will use your contributions. We recognize that this will prevent some people from contributing, as there is a history of dual-licensed projects becoming close-sourced or relicensed in ways that significantly reduce their usefulness. Since this project currently does not make money, we feel it is unwise to use legal pathways that are untested. Broad CLAs are legally unambiguous, and GPL has a well-understood legal history; we believe that this combination is the best way to protect ourselves legally while still providing ASIO-compatible builds.
+There is documentation for developers [here](docs/README.md), which includes an architectural overview and setup instructions.
