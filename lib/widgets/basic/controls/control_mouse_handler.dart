@@ -19,11 +19,9 @@
 
 import 'package:anthem/helpers/window_utils.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
-import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:provider/provider.dart';
 import 'package:pointer_lock/pointer_lock.dart';
 
 class ControlMouseEvent {
@@ -178,16 +176,11 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
 
   void onPointerSignal(PointerEvent e) {
     if (e is PointerScrollEvent) {
-      final keyboardModifiers = Provider.of<KeyboardModifiers>(
-        context,
-        listen: false,
-      );
-
       final dxRaw = -e.scrollDelta.dx * 0.35;
       final dyRaw = -e.scrollDelta.dy * 0.35;
 
-      final dx = keyboardModifiers.shift ? dyRaw : dxRaw;
-      final dy = keyboardModifiers.shift ? dxRaw : dyRaw;
+      final dx = HardwareKeyboard.instance.isShiftPressed ? dyRaw : dxRaw;
+      final dy = HardwareKeyboard.instance.isShiftPressed ? dxRaw : dyRaw;
 
       final event = ControlMouseEvent(
         delta: Offset(dx, dy),

@@ -25,9 +25,9 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/visualization/visualization.dart';
-import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/basic/visualization_builder.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -163,11 +163,6 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
         event.buttons & kPrimaryButton != 0;
     _lastMouseDownTime = DateTime.now();
 
-    final keyboardModifiers = Provider.of<KeyboardModifiers>(
-      context,
-      listen: false,
-    );
-
     final isPlayheadMove =
         event.buttons & kPrimaryButton != 0 &&
         event.localPosition.dy > loopAreaHeight;
@@ -180,7 +175,8 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
     final isLoopCreate =
         (isDoubleClick ||
             (event.buttons & kSecondaryButton != 0) ||
-            (event.buttons & kPrimaryButton != 0 && keyboardModifiers.ctrl)) &&
+            (event.buttons & kPrimaryButton != 0 &&
+                HardwareKeyboard.instance.isControlPressed)) &&
         event.localPosition.dy <= loopAreaHeight;
 
     if (isPlayheadMove) {
@@ -193,7 +189,11 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
       if (time < 0) time = 0;
 
-      _setPlayheadPosition(time, keyboardModifiers.alt, pattern: pattern);
+      _setPlayheadPosition(
+        time,
+        HardwareKeyboard.instance.isAltPressed,
+        pattern: pattern,
+      );
 
       _playheadMoveActive = true;
     } else if (isLoopHandleMove) {
@@ -221,7 +221,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
       if (time < 0) time = 0;
 
-      if (keyboardModifiers.alt) {
+      if (HardwareKeyboard.instance.isAltPressed) {
         _loopCreateStart = time.round();
       } else {
         final divisionChanges = getDivisionChanges(
@@ -260,11 +260,6 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
     final arrangement = _arrangement;
     final pattern = _pattern;
 
-    final keyboardModifiers = Provider.of<KeyboardModifiers>(
-      context,
-      listen: false,
-    );
-
     if (_playheadMoveActive) {
       var time = pixelsToTime(
         timeViewStart: widget.timeViewStartAnimation.value,
@@ -275,7 +270,11 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
       if (time < 0) time = 0;
 
-      _setPlayheadPosition(time, keyboardModifiers.alt, pattern: pattern);
+      _setPlayheadPosition(
+        time,
+        HardwareKeyboard.instance.isAltPressed,
+        pattern: pattern,
+      );
     } else if (_loopHandleMoveActive) {
       if (arrangement == null && pattern == null) {
         // If there is no arrangement or pattern, we can't move the loop handle
@@ -298,7 +297,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
       if (time < 0) time = 0;
 
-      if (!keyboardModifiers.alt && time > 0) {
+      if (!HardwareKeyboard.instance.isAltPressed && time > 0) {
         var divisionChanges = getDivisionChanges(
           viewWidthInPixels: _lastTimelineSize.width,
           snap: AutoSnap(),
@@ -355,7 +354,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
       if (time < 0) time = 0;
 
-      if (!keyboardModifiers.alt) {
+      if (!HardwareKeyboard.instance.isAltPressed) {
         var divisionChanges = getDivisionChanges(
           viewWidthInPixels: _lastTimelineSize.width,
           snap: AutoSnap(),

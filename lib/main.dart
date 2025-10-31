@@ -25,11 +25,9 @@ import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/shortcuts/raw_key_event_singleton.dart';
-import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pointer_lock/pointer_lock.dart';
-import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'model/project.dart';
@@ -204,14 +202,7 @@ class _AppState extends State<App> with WindowListener {
           brightness: Brightness.dark,
         ),
       ),
-      home: Scaffold(
-        body: MultiProvider(
-          providers: [
-            ChangeNotifierProvider(create: (_) => KeyboardModifiers()),
-          ],
-          child: windowResizeAreaWithContent,
-        ),
-      ),
+      home: Scaffold(body: windowResizeAreaWithContent),
       builder: (context, child) {
         return GestureDetector(
           // Un-focus text boxes when clicking elsewhere

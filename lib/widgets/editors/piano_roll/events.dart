@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,7 +18,6 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/widgets.dart';
 
 abstract class PianoRollEvent {
@@ -32,7 +31,6 @@ abstract class PianoRollPointerEvent extends PianoRollEvent {
     required this.key,
     required this.offset,
     required this.pointerEvent,
-    required this.keyboardModifiers,
     required super.pianoRollSize,
   });
 
@@ -44,9 +42,6 @@ abstract class PianoRollPointerEvent extends PianoRollEvent {
 
   /// Determines if this is caused by a right click.
   final PointerEvent pointerEvent;
-
-  /// Ctrl, alt and shift key states.
-  final KeyboardModifiers keyboardModifiers;
 }
 
 class PianoRollPointerDownEvent extends PianoRollPointerEvent {
@@ -58,7 +53,6 @@ class PianoRollPointerDownEvent extends PianoRollPointerEvent {
     required super.offset,
     required PointerDownEvent super.pointerEvent,
     required super.pianoRollSize,
-    required super.keyboardModifiers,
     required this.noteUnderCursor,
     required this.isResize,
   });
@@ -70,7 +64,6 @@ class PianoRollPointerMoveEvent extends PianoRollPointerEvent {
     required super.offset,
     required PointerMoveEvent super.pointerEvent,
     required super.pianoRollSize,
-    required super.keyboardModifiers,
   });
 }
 
@@ -80,7 +73,6 @@ class PianoRollPointerUpEvent extends PianoRollPointerEvent {
     required super.offset,
     required super.pointerEvent,
     required super.pianoRollSize,
-    required super.keyboardModifiers,
   });
 }
 

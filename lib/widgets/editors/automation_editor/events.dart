@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,32 +19,23 @@
 
 import 'dart:ui';
 
-import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
-
 class AutomationEditorPointerDownEvent {
   Offset pos;
   Offset globalPos;
   Size viewSize;
   int buttons;
-  KeyboardModifiers keyboardModifiers;
 
   AutomationEditorPointerDownEvent({
     required this.pos,
     required this.globalPos,
     required this.viewSize,
     required this.buttons,
-    required this.keyboardModifiers,
   });
 }
 
 class AutomationEditorPointerMoveEvent {
   Offset pos;
   Size viewSize;
-  KeyboardModifiers keyboardModifiers;
 
-  AutomationEditorPointerMoveEvent({
-    required this.pos,
-    required this.viewSize,
-    required this.keyboardModifiers,
-  });
+  AutomationEditorPointerMoveEvent({required this.pos, required this.viewSize});
 }

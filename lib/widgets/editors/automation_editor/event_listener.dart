@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/automation_editor/controller/automation_editor_controller.dart';
 import 'package:anthem/widgets/editors/automation_editor/events.dart';
 import 'package:anthem/widgets/editors/shared/scroll_manager.dart';
@@ -47,31 +46,20 @@ class AutomationEditorEventListener extends StatelessWidget {
           },
           child: Listener(
             onPointerDown: (e) {
-              final keyboardModifiers = Provider.of<KeyboardModifiers>(
-                context,
-                listen: false,
-              );
-
               controller.pointerDown(
                 AutomationEditorPointerDownEvent(
                   pos: e.localPosition,
                   globalPos: e.position,
                   viewSize: constraints.biggest,
                   buttons: e.buttons,
-                  keyboardModifiers: keyboardModifiers,
                 ),
               );
             },
             onPointerMove: (e) {
-              final keyboardModifiers = Provider.of<KeyboardModifiers>(
-                context,
-                listen: false,
-              );
               controller.pointerMove(
                 AutomationEditorPointerMoveEvent(
                   pos: e.localPosition,
                   viewSize: constraints.biggest,
-                  keyboardModifiers: keyboardModifiers,
                 ),
               );
             },

@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:ui';
-
 import 'package:anthem/logic/commands/pattern_automation_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/automation_lane.dart';
@@ -30,6 +28,7 @@ import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:mobx/mobx.dart';
 
 import '../automation_point_animation_tracker.dart';

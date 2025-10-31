@@ -17,11 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:provider/provider.dart';
 
 import 'helpers/time_helpers.dart';
 import 'helpers/types.dart';
@@ -159,11 +158,10 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
       delta *= 1.5;
     }
 
-    final modifiers = Provider.of<KeyboardModifiers>(context, listen: false);
     final contentRenderBox = context.findRenderObject() as RenderBox;
 
     // Horizontal zoom
-    if (modifiers.ctrl) {
+    if (HardwareKeyboard.instance.isControlPressed) {
       final pointerPos = contentRenderBox.globalToLocal(e.position);
 
       zoomTimeView(
@@ -177,7 +175,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
     }
 
     // Vertical zoom
-    if (modifiers.alt) {
+    if (HardwareKeyboard.instance.isAltPressed) {
       final pointerPos = contentRenderBox.globalToLocal(e.position);
 
       widget.onVerticalZoom?.call(pointerPos.dy, -delta * 0.005);
@@ -186,7 +184,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
     }
 
     // Horizontal scroll
-    if (modifiers.shift) {
+    if (HardwareKeyboard.instance.isShiftPressed) {
       // We need to scroll by the same speed in pixels, regardless of how
       // zoomed in we are. Since our current scroll position is in time and not
       // pixels, we use this value to convert between the two.
@@ -223,10 +221,9 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
 
     if ((panZoomEvent?.scale ?? 1) != 1) return;
 
-    final modifiers = Provider.of<KeyboardModifiers>(context, listen: false);
     final contentRenderBox = context.findRenderObject() as RenderBox;
 
-    if (modifiers.ctrl) {
+    if (HardwareKeyboard.instance.isControlPressed) {
       final pointerPos = contentRenderBox.globalToLocal(e.position);
 
       // Horizontal zoom
@@ -240,7 +237,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager> {
       return;
     }
 
-    if (modifiers.alt) {
+    if (HardwareKeyboard.instance.isAltPressed) {
       final pointerPos = contentRenderBox.globalToLocal(e.position);
 
       widget.onVerticalZoom?.call(pointerPos.dy, -dy * 0.01);

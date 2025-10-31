@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,7 +19,6 @@
 
 import 'dart:math';
 
-import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/events.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
@@ -71,11 +70,6 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
       pixelOffsetFromLeft: pointerPos.dx,
     );
 
-    final keyboardModifiers = Provider.of<KeyboardModifiers>(
-      context,
-      listen: false,
-    );
-
     final event = PianoRollPointerDownEvent(
       key: note,
       offset: time,
@@ -83,7 +77,6 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
       pianoRollSize: contentRenderBox.size,
       noteUnderCursor:
           noteUnderCursor?.metadata.id ?? resizeHandleUnderCursor?.metadata.id,
-      keyboardModifiers: keyboardModifiers,
       isResize: resizeHandleUnderCursor != null,
     );
 
@@ -101,11 +94,6 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
 
     final controller = Provider.of<PianoRollController>(context, listen: false);
 
-    final keyboardModifiers = Provider.of<KeyboardModifiers>(
-      context,
-      listen: false,
-    );
-
     final event = PianoRollPointerMoveEvent(
       key: pixelsToKeyValue(
         keyHeight: viewModel.keyHeight,
@@ -120,7 +108,6 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
       ),
       pointerEvent: e,
       pianoRollSize: contentRenderBox.size,
-      keyboardModifiers: keyboardModifiers,
     );
 
     controller.pointerMove(event);
@@ -129,10 +116,7 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
   void handlePointerUp(BuildContext context, PointerEvent e) {
     final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
     final controller = Provider.of<PianoRollController>(context, listen: false);
-    final keyboardModifiers = Provider.of<KeyboardModifiers>(
-      context,
-      listen: false,
-    );
+
     final contentRenderBox = context.findRenderObject() as RenderBox;
     final pointerPos = contentRenderBox.globalToLocal(e.position);
 
@@ -150,7 +134,6 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
       ),
       pointerEvent: e,
       pianoRollSize: contentRenderBox.size,
-      keyboardModifiers: keyboardModifiers,
     );
 
     controller.pointerUp(event);
