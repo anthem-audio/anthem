@@ -120,7 +120,9 @@ class Engine {
 
   void _setEngineState(EngineState state) {
     _engineState = state;
-    _engineStateStreamController.add(state);
+    if (!_engineStateStreamController.isClosed) {
+      _engineStateStreamController.add(state);
+    }
   }
 
   Engine(this.id, this.project, {this.enginePathOverride}) {
