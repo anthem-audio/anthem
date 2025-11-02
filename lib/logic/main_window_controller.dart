@@ -72,7 +72,7 @@ class MainWindowController {
 
     // Remove project from model
     store.projects.remove(projectId);
-    store.projectOrder.removeWhere((element) => element == projectId);
+    store.projectOrder.remove(projectId);
 
     // If the active project was closed, set it to the first open project
     if (store.activeProjectId == projectId && store.projectOrder.isNotEmpty) {

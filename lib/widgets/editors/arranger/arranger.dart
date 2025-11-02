@@ -798,9 +798,7 @@ class _TrackHeadersState extends State<_TrackHeaders> {
             var trackPositionPointer = -widget.verticalScrollPosition;
 
             for (final trackID in project.sequence.trackOrder) {
-              final heightModifier = viewModel.trackHeightModifiers[trackID];
-
-              if (heightModifier == null) continue;
+              final heightModifier = viewModel.trackHeightModifiers[trackID]!;
 
               final trackHeight = getTrackHeight(
                 viewModel.baseTrackHeight,
