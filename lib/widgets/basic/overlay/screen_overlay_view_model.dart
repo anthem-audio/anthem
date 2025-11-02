@@ -32,6 +32,10 @@ abstract class _ScreenOverlayViewModel with Store {
   ObservableMap<Id, ScreenOverlayEntry> entries = ObservableMap();
 }
 
+/// An entry in the screen overlay stack.
+///
+/// This is positioned within a [Stack] that fills the window, so the widget can
+/// use [Positioned] to place itself anywhere on the window.
 class ScreenOverlayEntry {
   final Widget Function(BuildContext, Id) builder;
   final void Function()? onClose;
