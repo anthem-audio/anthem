@@ -30,6 +30,17 @@ import 'package:mobx/mobx.dart';
 
 part 'gain.g.dart';
 
+/// A gain processor, used for basic volume controls.
+///
+/// Takes a single audio input and output, and a control input for gain.
+///
+/// The control input expects a [0.0, 1.0] value, where 0.0 is -inf dB and 1.0
+/// is 0 dB. The mapping is part linear and part logarithmic. See
+/// [gainParameterValueToString] below for details.
+///
+/// This processor is implemented in the engine at:
+/// - `engine/src/modules/processors/gain.h`
+/// - `engine/src/modules/processors/gain.cpp`
 @AnthemModel.syncedModel(
   cppBehaviorClassName: 'GainProcessor',
   cppBehaviorClassIncludePath: 'modules/processors/gain.h',
