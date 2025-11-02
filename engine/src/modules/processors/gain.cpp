@@ -24,11 +24,7 @@
 #include "modules/core/anthem.h"
 
 GainProcessor::GainProcessor(const GainProcessorModelImpl& _impl)
-    : AnthemProcessor("Gain"), GainProcessorModelBase(_impl) {
-  auto& audioDeviceManager = Anthem::getInstance().audioDeviceManager;
-  auto* device = audioDeviceManager.getCurrentAudioDevice();
-  auto sampleRate = device->getCurrentSampleRate();
-}
+    : AnthemProcessor("Gain"), GainProcessorModelBase(_impl) {}
 
 GainProcessor::~GainProcessor() {}
 
