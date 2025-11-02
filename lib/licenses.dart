@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:io';
-
 import 'package:anthem/license_text.dart';
 import 'package:flutter/foundation.dart';
 
@@ -83,27 +81,44 @@ SOFTWARE.
     );
   });
 
+  // ########## Brickworks ##########
+
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks(
+      ['Brickworks'],
+      '''
+Copyright (C) 2021-2025 Orastron Srl unipersonale.
+
+Authors: Stefano D'Angelo, Paolo Marrone.
+
+All the code in the repo is released under GPLv3. See the `LICENSE` file. Alternatively, we offer a commercial license that doesn't restrict usage with respect to time, projects, or developers involved. More details [on the official web page](https://www.orastron.com/algorithms#use-anytime).
+
+The `include/bw_rand.h` file contains code from https://nullprogram.com/blog/2017/09/21/, which was released into the public domain by its author.
+
+VST is a registered trademark of Steinberg Media Technologies GmbH.
+
+All trademarks and registered marks are properties of their respective owners. All company, product, and service names used are for identification purposes only. Use of these names, trademarks, and brands does not imply endorsement.
+''',
+    );
+    yield LicenseEntryWithLineBreaks(['Brickworks'], gpl);
+  });
+
   // ########## JUCE ##########
 
-  // Windows builds are released under a proprietary license, and we use the
-  // JUCE library under the free-tier commercial license on Windows.
-  if (kIsWeb || !Platform.isWindows) {
-    LicenseRegistry.addLicense(() async* {
-      yield LicenseEntryWithLineBreaks(
-        ['JUCE'],
-        '''
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks(
+      ['JUCE'],
+      '''
 NOTICE
 
 The JUCE framework has been modified by Joshua Wade to support building under
 Emscripten. These modifications were made between September and October of 2025.
 ''',
-      );
-      yield LicenseEntryWithLineBreaks(['JUCE'], agpl);
-    });
-  }
+    );
+    yield LicenseEntryWithLineBreaks(['JUCE'], agpl);
+  });
 
-  // We still need to include license information for JUCE's dependencies on all
-  // platforms.
+  // JUCE dependencies are below.
 
   LicenseRegistry.addLicense(() async* {
     yield LicenseEntryWithLineBreaks(['AudioUnitSDK'], apache);
