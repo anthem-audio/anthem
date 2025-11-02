@@ -39,7 +39,7 @@ class CommandStack {
     command.execute(project);
   }
 
-  bool get canUndo => commandPointer - 1 < 0;
+  bool get canUndo => commandPointer - 1 >= 0;
 
   void undo() {
     if (!canUndo) return;
@@ -47,7 +47,7 @@ class CommandStack {
     commands[commandPointer].rollback(project);
   }
 
-  bool get canRedo => commandPointer + 1 > commands.length;
+  bool get canRedo => commandPointer + 1 < commands.length;
 
   void redo() {
     if (!canRedo) return;
