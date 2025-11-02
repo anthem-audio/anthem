@@ -12,6 +12,7 @@
 - [Setup on Linux](./setup_linux.md)
 - [Setup on macOS](./setup_macos.md)
 - [Setup on Windows](./setup_windows.md)
+- [Setup for web development](./setup_web.md)
 
 ## Introduction
 
