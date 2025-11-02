@@ -133,9 +133,6 @@ set(APP_MAIN ${PROJECT_SOURCE_DIR}/src/main.cpp)
 set(ANTHEM_ENGINE_SOURCES ${ANTHEM_ALL_SOURCES})
 list(REMOVE_ITEM ANTHEM_ENGINE_SOURCES ${APP_MAIN})
 
-# Skip AnthemEngineLib for WASM for now while we work out JUCE issues.
-# if (NOT IS_WASM)
-
 # Build a reusable library target
 add_library(AnthemEngineLib STATIC
   ${ANTHEM_ENGINE_SOURCES}
@@ -147,6 +144,7 @@ target_link_libraries(AnthemEngineLib
     project_includes
 
     reflectcpp
+    brickworks::brickworks
 )
 
 if (IS_WASM)
@@ -185,9 +183,6 @@ else()
     target_link_libraries(AnthemEngineLib PUBLIC CURL::libcurl atomic)
   endif()
 endif()
-
-# End AnthemEngineLib skip for WASM
-# endif()
 
 
 # -------------------------------------------------------------------
