@@ -104,6 +104,8 @@ class _GeneratorRowState extends State<GeneratorRow> {
                       max: 1,
                       width: 20,
                       height: 20,
+                      hint: (v) =>
+                          'Channel gain: ${gainParameterValueToString(v)}',
                       onValueChanged: (value) {
                         if (node == null) return;
 

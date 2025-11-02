@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
@@ -96,4 +98,40 @@ abstract class _GainProcessorModel
   String nodeId;
 
   _GainProcessorModel({required this.nodeId});
+}
+
+double _linearToDb(double linear) {
+  return 20 * log(linear) / ln10;
+}
+
+double _dbToLinear(double db) {
+  return pow(10, db / 20).toDouble();
+}
+
+/// Converts a raw [0.0, 1.0] parameter value to a string for display.
+String gainParameterValueToString(double rawValue) {
+  // See gain.h for a matching implementation used for the actual gain calculation.
+
+  // 0.0 to linearFloor maps linearly from -inf to dbFloor
+  // linearFloor to 1.0 maps logarithmically from dbFloor to 0dB
+
+  const linearFloor = 0.2;
+  const dbFloor = -20.0;
+
+  var dbValue = '';
+
+  if (rawValue == 0) {
+    dbValue = '-inf';
+  } else if (rawValue < linearFloor) {
+    final db40Linear = _dbToLinear(dbFloor);
+    final linearValue = (rawValue / linearFloor) * db40Linear;
+    final db = _linearToDb(linearValue);
+    dbValue = db.toStringAsFixed(1);
+  } else {
+    final scaled = (rawValue - linearFloor) / (1.0 - linearFloor);
+    final db = scaled * -dbFloor + dbFloor;
+    dbValue = db.toStringAsFixed(1);
+  }
+
+  return '$dbValue dB';
 }

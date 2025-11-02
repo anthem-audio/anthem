@@ -31,15 +31,18 @@ private:
   //
   // In the header to allow inlining.
   float paramValueToGainLinear(float paramValue) {
-    // Below 0.05, map linearly from 0 to -40dB
-    if (paramValue <= 0.05f) {
-      float neg40db = bw_dB2linf(-40.f);
-      return (paramValue / 0.05f) * neg40db;
+    const float linearFloor = 0.2f;
+    const float dbFloor = -20.0f;
+
+    // Below linearFloor, map linearly from 0 to -40dB
+    if (paramValue <= linearFloor) {
+      float floorDb = bw_dB2linf(dbFloor);
+      return (paramValue / linearFloor) * floorDb;
     }
 
-    // Above 0.05, map exponentially from -40dB to 0dB
-    float scaledValue = (paramValue - 0.05f) / 0.95f; // Scale to [0, 1]
-    float gainDB = scaledValue * 40.f - 40.f;         // Map to [-40, 0] dB
+    // Above linearFloor, map exponentially from -40dB to 0dB
+    float scaledValue = (paramValue - linearFloor) / (1.0f - linearFloor); // Scale to [0, 1]
+    float gainDB = scaledValue * -dbFloor + dbFloor;         // Map to [-40, 0] dB
     return bw_dB2linf(gainDB);
   }
 public:
