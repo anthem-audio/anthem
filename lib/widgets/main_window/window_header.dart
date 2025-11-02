@@ -263,7 +263,7 @@ class _TabState extends State<_Tab> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 if (widget.hasUnsavedChanges)
                   Container(
                     width: 8,
