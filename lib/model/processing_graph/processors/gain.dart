@@ -71,7 +71,7 @@ class GainProcessorModel extends _GainProcessorModel
             dataType: NodePortDataType.control,
             parameterConfig: ParameterConfigModel(
               id: gainPortId,
-              defaultValue: 0.125,
+              defaultValue: 0.75,
               minimumValue: 0.0,
               maximumValue: 1.0,
               smoothingDurationSeconds: 0.01,

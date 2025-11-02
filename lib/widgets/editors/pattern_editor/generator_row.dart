@@ -101,10 +101,9 @@ class _GeneratorRowState extends State<GeneratorRow> {
                     return Knob(
                       value: value,
                       min: 0,
-                      max: 10,
+                      max: 1,
                       width: 20,
                       height: 20,
-                      stickyPoints: const [1],
                       onValueChanged: (value) {
                         if (node == null) return;
 

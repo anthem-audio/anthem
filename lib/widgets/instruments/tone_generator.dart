@@ -87,7 +87,7 @@ class _ToneGeneratorState extends State<ToneGenerator> {
                             ToneGeneratorProcessorModel.amplitudePortId,
                           )
                           .parameterValue ??
-                      0.125;
+                      0.75;
 
                   return Knob(
                     value: value,

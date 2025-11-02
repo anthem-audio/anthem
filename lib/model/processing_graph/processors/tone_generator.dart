@@ -83,7 +83,7 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
             dataType: NodePortDataType.control,
             parameterConfig: ParameterConfigModel(
               id: _ToneGeneratorProcessorModel.amplitudePortId,
-              defaultValue: 0.125,
+              defaultValue: 0.75,
               minimumValue: 0,
               maximumValue: 1,
               smoothingDurationSeconds: 0.5,
