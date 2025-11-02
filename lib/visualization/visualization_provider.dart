@@ -151,7 +151,12 @@ class VisualizationProvider {
 
     scheduleMicrotask(() async {
       // If the engine is starting or stopped, wait for it to be ready.
-      await _project.engine.readyForMessages;
+      try {
+        await _project.engine.readyForMessages;
+      } catch (_) {
+        // The above will throw if the engine stops.
+        return;
+      }
 
       _project.engine.visualizationApi.setSubscriptions(
         _enabled ? _subscriptions.keys.toList() : [],
