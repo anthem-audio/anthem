@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/widgets.dart';
 
 class ArrangerPointerEvent {
@@ -34,6 +35,9 @@ class ArrangerPointerEvent {
   /// Size of the arranger when this event occurred.
   Size arrangerSize;
 
+  /// Ctrl, alt and shift key states.
+  KeyboardModifiers keyboardModifiers;
+
   /// The clip under the cursor during this event, if any. Currently just used
   /// for pointer down events.
   Id? clipUnderCursor;
@@ -49,6 +53,7 @@ class ArrangerPointerEvent {
     required this.track,
     required this.pointerEvent,
     required this.arrangerSize,
+    required this.keyboardModifiers,
     required this.isResizeFromStart,
     required this.isResizeFromEnd,
     this.clipUnderCursor,

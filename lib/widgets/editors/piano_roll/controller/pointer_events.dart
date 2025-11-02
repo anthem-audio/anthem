@@ -207,9 +207,8 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         pattern.notes[project.activeInstrumentID]?.nonObservableInner ??
         <NoteModel>[];
 
-    if (HardwareKeyboard.instance.isControlPressed ||
-        viewModel.tool == EditorTool.select) {
-      if (HardwareKeyboard.instance.isShiftPressed &&
+    if (event.keyboardModifiers.ctrl || viewModel.tool == EditorTool.select) {
+      if (event.keyboardModifiers.shift &&
           event.noteUnderCursor != null &&
           viewModel.selectedNotes.nonObservableInner.contains(
             event.noteUnderCursor,
@@ -220,7 +219,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         _eventHandlingState = EventHandlingState.creatingAdditiveSelectionBox;
       }
 
-      if (!HardwareKeyboard.instance.isShiftPressed) {
+      if (!event.keyboardModifiers.shift) {
         viewModel.selectedNotes.clear();
       }
 
@@ -351,7 +350,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
       )) {
         _eventHandlingState = EventHandlingState.movingSelection;
 
-        if (HardwareKeyboard.instance.isShiftPressed) {
+        if (event.keyboardModifiers.shift) {
           project.startJournalPage();
 
           final newSelectedNotes = ObservableSet<Id>();
@@ -386,7 +385,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         _eventHandlingState = EventHandlingState.movingSingleNote;
         viewModel.selectedNotes.clear();
 
-        if (HardwareKeyboard.instance.isShiftPressed) {
+        if (event.keyboardModifiers.shift) {
           final newNote = NoteModel.fromNoteModel(pressedNote);
 
           project.execute(
@@ -424,7 +423,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
       timeViewEnd: viewModel.timeView.end,
     );
 
-    final targetTime = HardwareKeyboard.instance.isAltPressed
+    final targetTime = event.keyboardModifiers.alt
         ? eventTime
         : getSnappedTime(rawTime: eventTime, divisionChanges: divisionChanges);
 
@@ -534,7 +533,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
           timeViewEnd: viewModel.timeView.end,
         );
 
-        if (!HardwareKeyboard.instance.isAltPressed) {
+        if (!event.keyboardModifiers.alt) {
           snappedOffset = getSnappedTime(
             rawTime: offset.floor(),
             divisionChanges: divisionChanges,
@@ -576,8 +575,8 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         }
 
         for (final note in notes) {
-          final shift = HardwareKeyboard.instance.isShiftPressed;
-          final ctrl = HardwareKeyboard.instance.isControlPressed;
+          final shift = event.keyboardModifiers.shift;
+          final ctrl = event.keyboardModifiers.ctrl;
           note.key =
               _noteMoveActionData!.startKeys[note.id]! +
               (shift ? 0 : keyOffsetFromEventStart);
@@ -714,7 +713,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
           timeViewEnd: viewModel.timeView.end,
         );
 
-        if (!HardwareKeyboard.instance.isAltPressed) {
+        if (!event.keyboardModifiers.alt) {
           snappedOriginalTime = getSnappedTime(
             rawTime: _noteResizeActionData!.pointerStartOffset.floor(),
             divisionChanges: divisionChanges,
@@ -748,7 +747,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
         // Make sure no notes go below the smallest snap size if snapping is
         // enabled.
-        if (!HardwareKeyboard.instance.isAltPressed &&
+        if (!event.keyboardModifiers.alt &&
             _noteResizeActionData!.smallestStartLength + diff <
                 snapAtSmallestNoteStart) {
           int snapCount =
@@ -761,7 +760,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
         // If snapping is disabled, make sure the notes all have a length of at
         // least 1.
-        if (HardwareKeyboard.instance.isAltPressed) {
+        if (event.keyboardModifiers.alt) {
           final newSmallestNoteSize =
               _noteResizeActionData!.smallestStartLength + diff;
           if (newSmallestNoteSize < 1) {

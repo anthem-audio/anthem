@@ -155,9 +155,8 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
     final arrangement =
         project.sequence.arrangements[project.sequence.activeArrangementID]!;
 
-    if (HardwareKeyboard.instance.isControlPressed ||
-        viewModel.tool == EditorTool.select) {
-      if (HardwareKeyboard.instance.isShiftPressed &&
+    if (event.keyboardModifiers.ctrl || viewModel.tool == EditorTool.select) {
+      if (event.keyboardModifiers.shift &&
           event.clipUnderCursor != null &&
           viewModel.selectedClips.nonObservableInner.contains(
             event.clipUnderCursor,
@@ -168,7 +167,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         _eventHandlingState = EventHandlingState.creatingAdditiveSelectionBox;
       }
 
-      if (!HardwareKeyboard.instance.isShiftPressed) {
+      if (!event.keyboardModifiers.shift) {
         viewModel.selectedClips.clear();
       }
 
@@ -334,7 +333,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       if (viewModel.selectedClips.contains(pressedClip.id)) {
         _eventHandlingState = EventHandlingState.movingSelection;
 
-        if (HardwareKeyboard.instance.isShiftPressed) {
+        if (event.keyboardModifiers.shift) {
           project.startJournalPage();
 
           final newSelectedNotes = ObservableSet<String>();
@@ -363,7 +362,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         viewModel.cursorPattern = pressedClip.patternId;
         viewModel.cursorTimeRange = pressedClip.timeView?.clone();
 
-        if (HardwareKeyboard.instance.isShiftPressed) {
+        if (event.keyboardModifiers.shift) {
           project.startJournalPage();
 
           final newClip = ClipModel.fromClipModel(pressedClip);
@@ -392,7 +391,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       timeViewEnd: viewModel.timeView.end,
     );
 
-    final targetTime = HardwareKeyboard.instance.isAltPressed
+    final targetTime = event.keyboardModifiers.alt
         ? eventTime
         : getSnappedTime(rawTime: eventTime, divisionChanges: divisionChanges);
 
@@ -483,7 +482,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
           timeViewEnd: viewModel.timeView.end,
         );
 
-        if (!HardwareKeyboard.instance.isAltPressed) {
+        if (!event.keyboardModifiers.alt) {
           snappedOffset = getSnappedTime(
             rawTime: offset.floor(),
             divisionChanges: divisionChanges,
@@ -527,8 +526,8 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         }
 
         for (final clip in clips) {
-          final shift = HardwareKeyboard.instance.isShiftPressed;
-          final ctrl = HardwareKeyboard.instance.isControlPressed;
+          final shift = event.keyboardModifiers.shift;
+          final ctrl = event.keyboardModifiers.ctrl;
 
           final track =
               _clipMoveActionData!.startTracks[clip.id]! +
@@ -665,7 +664,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
           timeViewEnd: viewModel.timeView.end,
         );
 
-        if (!HardwareKeyboard.instance.isAltPressed) {
+        if (!event.keyboardModifiers.alt) {
           snappedOriginalTime = getSnappedTime(
             rawTime: _clipResizeActionData!.pointerStartOffset.floor(),
             divisionChanges: divisionChanges,
@@ -703,7 +702,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
         // Make sure no clips go below the smallest snap size if snapping is
         // enabled.
-        if (!HardwareKeyboard.instance.isAltPressed &&
+        if (!event.keyboardModifiers.alt &&
             _clipResizeActionData!.smallestStartTimeRange.width + diff <
                 snapAtSmallestClipStart) {
           int snapCount =
@@ -717,7 +716,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
         // If snapping is disabled, make sure the clips all have a length of at
         // least 1.
-        if (HardwareKeyboard.instance.isAltPressed) {
+        if (event.keyboardModifiers.alt) {
           final newSmallestClipSize =
               (_clipResizeActionData!.smallestStartTimeRange.width + diff)
                   .round();

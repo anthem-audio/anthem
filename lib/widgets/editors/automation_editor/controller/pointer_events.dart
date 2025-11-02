@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -130,7 +130,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
           pixelOffsetFromLeft: event.pos.dx,
         ).round();
 
-        if (!HardwareKeyboard.instance.isAltPressed) {
+        if (!event.keyboardModifiers.alt) {
           final divisionChanges = getDivisionChanges(
             viewWidthInPixels: event.viewSize.width,
             snap: AutoSnap(),
@@ -273,7 +273,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
 
       final normalizedYDelta = -deltaFromStart.dy / event.viewSize.height;
 
-      if (!HardwareKeyboard.instance.isShiftPressed) {
+      if (!event.keyboardModifiers.shift) {
         automationLane.points[_pointMoveActionData!.pointIndex].value =
             (_pointMoveActionData!.startValue + normalizedYDelta).clamp(0, 1);
       } else {
@@ -291,7 +291,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
                   viewModel.timeView.start)
               .round();
 
-      if (!HardwareKeyboard.instance.isAltPressed) {
+      if (!event.keyboardModifiers.alt) {
         final divisionChanges = getDivisionChanges(
           viewWidthInPixels: event.viewSize.width,
           snap: AutoSnap(),
@@ -326,7 +326,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
         }
       }
 
-      if (!HardwareKeyboard.instance.isControlPressed) {
+      if (!event.keyboardModifiers.ctrl) {
         for (final pointToMove in _pointMoveActionData!.pointsToMoveInTime) {
           automationLane.points[pointToMove.index].offset =
               pointToMove.startTime + xDelta;
@@ -343,11 +343,10 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
       final deltaY =
           event.pos.dy - _tensionChangeActionData!.startPointerOffset.dy;
       final deltaTension = -deltaY / 250;
-      final invertMultiplier = _tensionChangeActionData!.invert ? -1 : 1;
+      final invertMult = _tensionChangeActionData!.invert ? -1 : 1;
 
       point.tension =
-          (_tensionChangeActionData!.startTension +
-                  invertMultiplier * deltaTension)
+          (_tensionChangeActionData!.startTension + invertMult * deltaTension)
               .clamp(-1, 1);
     }
   }

@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/model/project.dart';
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/scroll_manager.dart';
 import 'package:flutter/widgets.dart';
@@ -112,6 +113,10 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
   ArrangerPointerEvent convertPointerEvent(PointerEvent event, Size viewSize) {
     final viewModel = Provider.of<ArrangerViewModel>(context, listen: false);
     final project = Provider.of<ProjectModel>(context, listen: false);
+    final keyboardModifiers = Provider.of<KeyboardModifiers>(
+      context,
+      listen: false,
+    );
 
     final offset = pixelsToTime(
       timeViewStart: viewModel.timeView.start,
@@ -136,6 +141,7 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
       track: track,
       pointerEvent: event,
       arrangerSize: viewSize,
+      keyboardModifiers: keyboardModifiers,
       clipUnderCursor:
           clipUnderCursor?.metadata.id ?? resizeHandleUnderCursor?.metadata.id,
       isResizeFromStart:

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,11 +18,41 @@
 */
 
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import 'raw_key_event_singleton.dart';
+
+/// This class describes which modifier keys are currently pressed. It is
+/// provided by [ShortcutProvider].
+class KeyboardModifiers with ChangeNotifier, DiagnosticableTreeMixin {
+  bool _ctrl = false;
+  bool _alt = false;
+  bool _shift = false;
+
+  KeyboardModifiers();
+
+  bool get ctrl => _ctrl;
+  bool get alt => _alt;
+  bool get shift => _shift;
+
+  void setCtrl(bool value) {
+    _ctrl = value;
+    notifyListeners();
+  }
+
+  void setAlt(bool value) {
+    _alt = value;
+    notifyListeners();
+  }
+
+  void setShift(bool value) {
+    _shift = value;
+    notifyListeners();
+  }
+}
 
 /// This widget listens for shortcuts and sends them to the active
 /// [ShortcutConsumer].
@@ -68,6 +98,28 @@ class _ShortcutProviderState extends State<ShortcutProvider> {
     final keyDown = e is KeyDownEvent;
     final keyUp = e is KeyUpEvent;
     final keyRepeat = e is KeyRepeatEvent;
+
+    final ctrl =
+        e.logicalKey.keyLabel == 'Control Left' ||
+        e.logicalKey.keyLabel == 'Control Right';
+    final alt =
+        e.logicalKey.keyLabel == 'Alt Left' ||
+        e.logicalKey.keyLabel == 'Alt Right';
+    final shift =
+        e.logicalKey.keyLabel == 'Shift Left' ||
+        e.logicalKey.keyLabel == 'Shift Right';
+
+    final keyboardModifiers = Provider.of<KeyboardModifiers>(
+      context,
+      listen: false,
+    );
+
+    if (ctrl && keyDown) keyboardModifiers.setCtrl(true);
+    if (ctrl && keyUp) keyboardModifiers.setCtrl(false);
+    if (alt && keyDown) keyboardModifiers.setAlt(true);
+    if (alt && keyUp) keyboardModifiers.setAlt(false);
+    if (shift && keyDown) keyboardModifiers.setShift(true);
+    if (shift && keyUp) keyboardModifiers.setShift(false);
 
     if (keyDown || keyRepeat) controller.handleKeyDown(e);
     if (keyUp) controller.handleKeyUp(e);
