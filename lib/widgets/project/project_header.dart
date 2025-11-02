@@ -198,7 +198,7 @@ class _TempoControlState extends State<_TempoControl> {
       size: DigitDisplaySize.large,
       decimalPlaces: 2,
       minCharacterCount: 6,
-      hint: 'Set the tempo',
+      hint: 'Set the project tempo',
       hintUnits: 'beats per minute',
       value: projectModel.sequence.beatsPerMinute,
       onStart: () {

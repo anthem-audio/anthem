@@ -50,7 +50,7 @@ class _TimeSignatureControlState extends State<TimeSignatureControl> {
 
   @override
   Widget build(BuildContext context) {
-    const String baseHint = 'Set the time signature';
+    const String baseHint = 'Set the project time signature';
     String getDynamicHint() {
       final timeSignature = projectModel.sequence.defaultTimeSignature;
       return '${timeSignature.numerator}/${timeSignature.denominator}';
