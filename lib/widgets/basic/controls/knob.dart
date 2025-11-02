@@ -19,6 +19,7 @@
 
 import 'dart:math';
 
+import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/util/lazy_follower.dart';
 import 'package:flutter/widgets.dart';
 
@@ -39,6 +40,9 @@ class Knob extends StatefulWidget {
 
   final List<double> stickyPoints;
 
+  final String Function(double value)? hoverHintOverride;
+  final String Function(double value)? hint;
+
   const Knob({
     super.key,
     this.width,
@@ -49,6 +53,8 @@ class Knob extends StatefulWidget {
     this.max = 1,
     double? min,
     this.stickyPoints = const [],
+    this.hoverHintOverride,
+    this.hint,
   }) : min = min ?? (type == KnobType.pan ? -1 : 0);
 
   @override
@@ -71,6 +77,39 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
 
   double pastStart = 0;
   double pastEnd = 0;
+
+  int? currentHintId;
+
+  void setHint({required bool hover}) {
+    String? currentHintText;
+    if (hover && widget.hoverHintOverride != null) {
+      currentHintText = widget.hoverHintOverride!.call(lastValue);
+    } else if (widget.hint != null) {
+      currentHintText = widget.hint!.call(lastValue);
+    }
+
+    if (currentHintText == null) {
+      clearHint();
+      return;
+    }
+
+    if (currentHintId == null) {
+      currentHintId = HintStore.instance.addHint([
+        HintSection('click + drag', currentHintText),
+      ]);
+    } else {
+      HintStore.instance.updateHint(currentHintId!, [
+        HintSection('click + drag', currentHintText),
+      ]);
+    }
+  }
+
+  void clearHint() {
+    if (currentHintId != null) {
+      HintStore.instance.removeHint(currentHintId!);
+      currentHintId = null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -101,6 +140,8 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
           isOver = true;
         });
 
+        setHint(hover: true);
+
         setHoverAnimationState(true);
         animationHelper!.update();
       },
@@ -108,6 +149,8 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
         setState(() {
           isOver = false;
         });
+
+        clearHint();
 
         if (!isPressed) {
           setHoverAnimationState(false);
@@ -123,6 +166,8 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
 
           valueOnPress = widget.value;
           lastValue = widget.value;
+
+          setHint(hover: false);
 
           setPressAnimationState(true);
           animationHelper!.update();
@@ -184,7 +229,13 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
             valueChange = 1 - lastValue;
           }
 
-          final newValueRaw = (scaledToRaw(lastValue) + valueChange);
+          var newValueRaw = (scaledToRaw(lastValue) + valueChange);
+
+          if (pastEnd > 0) {
+            newValueRaw = 1;
+          } else if (pastStart < 0) {
+            newValueRaw = 0;
+          }
 
           final newValue = newValueRaw * (widget.max - widget.min) + widget.min;
 
@@ -225,6 +276,8 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
               lastValue = newValue;
             }
           }
+
+          setHint(hover: false);
         },
         child: SizedBox(
           width: widget.width,
