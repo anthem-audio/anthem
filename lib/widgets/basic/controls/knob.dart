@@ -64,10 +64,13 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
   double valueOnPress = -1;
   double lastValue = -1;
 
-  double getRawValue(double value) =>
+  double scaledToRaw(double value) =>
       (value - widget.min) / (widget.max - widget.min);
 
   double? stickyTrapCounter;
+
+  double pastStart = 0;
+  double pastEnd = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -139,12 +142,49 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
           if (widget.onValueChanged == null) return;
 
           final rawPixelChange = e.delta.dy;
-          final valueChange = rawPixelChange / 300;
+          var valueChange = rawPixelChange / 300;
 
-          final newValueRaw = (getRawValue(lastValue) + valueChange).clamp(
-            0.0,
-            1.0,
-          );
+          // Handle existing overshoot past beginning
+
+          if (pastStart < 0) {
+            pastStart += valueChange;
+            if (pastStart > 0) {
+              valueChange = pastStart;
+              pastStart = 0;
+            } else {
+              valueChange = 0;
+            }
+          }
+
+          // Handle existing overshoot past end
+
+          if (pastEnd > 0) {
+            pastEnd += valueChange;
+            if (pastEnd < 0) {
+              valueChange = pastEnd;
+              pastEnd = 0;
+            } else {
+              valueChange = 0;
+            }
+          }
+
+          if (valueChange == 0) return;
+
+          // Handle new overshoot past beginning
+
+          if (lastValue + valueChange < 0) {
+            pastStart += lastValue + valueChange;
+            valueChange = -lastValue;
+          }
+
+          // Handle new overshoot past end
+
+          if (lastValue + valueChange > 1) {
+            pastEnd += lastValue + valueChange - 1;
+            valueChange = 1 - lastValue;
+          }
+
+          final newValueRaw = (scaledToRaw(lastValue) + valueChange);
 
           final newValue = newValueRaw * (widget.max - widget.min) + widget.min;
 
@@ -174,17 +214,15 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
                   ? stickyTrapCounter! - _stickyTrapSize
                   : stickyTrapCounter! + _stickyTrapSize;
 
-              final newValueRaw = lastValue + overshoot;
-
               final newValue =
-                  (getRawValue(lastValue) + overshoot) *
+                  (scaledToRaw(lastValue) + overshoot) *
                       (widget.max - widget.min) +
                   widget.min;
 
               widget.onValueChanged?.call(newValue);
 
               stickyTrapCounter = null;
-              lastValue = newValueRaw;
+              lastValue = newValue;
             }
           }
         },
@@ -199,7 +237,7 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
 
               return CustomPaint(
                 painter: _KnobPainter(
-                  value: getRawValue(widget.value),
+                  value: scaledToRaw(widget.value),
                   type: widget.type,
                   sizeMultiplier: sizeMultiplierHelper.animation.value,
                   trackSize: trackSizeHelper.animation.value,
