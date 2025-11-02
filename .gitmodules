@@ -4,3 +4,6 @@
 [submodule "engine/include/reflect-cpp"]
 	path = engine/include/reflect-cpp
 	url = https://github.com/getml/reflect-cpp.git
+[submodule "engine/include/brickworks"]
+	path = engine/include/brickworks
+	url = https://github.com/Orastron/brickworks.git
