@@ -29,6 +29,10 @@
 
 #include "modules/core/anthem.h"
 
+#ifdef __EMSCRIPTEN__
+#include "modules/core/comms_methods_for_ui_wasm.h"
+#endif
+
 class AnthemEngineApplication : public juce::JUCEApplicationBase, private juce::ChangeListener
 {
 private:

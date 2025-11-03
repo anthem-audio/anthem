@@ -19,27 +19,30 @@
 
 import 'dart:convert';
 
-import 'package:anthem/commands/sequence_commands.dart';
+import 'package:anthem/logic/commands/sequence_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/license_text.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/controls/digit_control.dart';
 import 'package:anthem/widgets/basic/controls/time_signature_control.dart';
+import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/horizontal_meter_simple.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/visualization_builder.dart';
 import 'package:anthem/widgets/debug/widget_test_area.dart';
-import 'package:anthem/widgets/main_window/main_window_controller.dart';
-import 'package:anthem/widgets/project/project_controller.dart';
+import 'package:anthem/logic/main_window_controller.dart';
+import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart' hide Icons;
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../basic/icon.dart';
 
@@ -195,7 +198,7 @@ class _TempoControlState extends State<_TempoControl> {
       size: DigitDisplaySize.large,
       decimalPlaces: 2,
       minCharacterCount: 6,
-      hint: 'Set the tempo',
+      hint: 'Set the project tempo',
       hintUnits: 'beats per minute',
       value: projectModel.sequence.beatsPerMinute,
       onStart: () {
@@ -273,6 +276,11 @@ class _ProjectMenu extends StatelessWidget {
 
     final project = Provider.of<ProjectModel>(context);
 
+    final dialogController = Provider.of<DialogController>(
+      context,
+      listen: false,
+    );
+
     return Menu(
       menuController: menuController,
       menuDef: MenuDef(
@@ -297,21 +305,82 @@ class _ProjectMenu extends StatelessWidget {
             },
           ),
           Separator(),
+          if (!kIsWeb)
+            AnthemMenuItem(
+              text: 'Save',
+              hint: 'Save the active project',
+              onSelected: () {
+                mainWindowController.saveProject(
+                  project.id,
+                  false,
+                  dialogController: dialogController,
+                );
+              },
+            ),
           AnthemMenuItem(
-            text: 'Save',
-            hint: 'Save the active project',
-            onSelected: () {
-              mainWindowController.saveProject(project.id, false);
-            },
-          ),
-          AnthemMenuItem(
-            text: 'Save as...',
+            text: kIsWeb ? 'Download project...' : 'Save as...',
             hint: 'Save the active project to a new location',
             onSelected: () {
-              mainWindowController.saveProject(project.id, true);
+              mainWindowController.saveProject(
+                project.id,
+                true,
+                dialogController: dialogController,
+              );
             },
           ),
           Separator(),
+          AnthemMenuItem(
+            text: 'About...',
+            onSelected: () {
+              final dialogController = Provider.of<DialogController>(
+                context,
+                listen: false,
+              );
+              dialogController.showTextDialog(
+                text: [
+                  'Version: Pre-alpha\n\n',
+                  'Code copyright (C) 2021 - 2025 Joshua Wade\n',
+                  'UI design and icons copyright (C) 2021 - 2025 Budislav Stepanov',
+                ].join(''),
+                title: 'About Anthem',
+                buttons: [
+                  DialogButton(
+                    text: 'Source code',
+                    shouldCloseDialog: false,
+                    onPress: () {
+                      launchUrl(
+                        Uri.parse('https://github.com/anthem-audio/anthem'),
+                      );
+                    },
+                  ),
+                  DialogButton(
+                    text: 'License',
+                    shouldCloseDialog: false,
+                    onPress: () {
+                      dialogController.showTextDialog(
+                        title: 'License',
+                        text: agpl,
+                        buttons: [DialogButton.ok()],
+                      );
+                    },
+                  ),
+                  DialogButton(
+                    text: 'Additional license info',
+                    shouldCloseDialog: false,
+                    onPress: () {
+                      showLicensePage(
+                        context: context,
+                        applicationName: 'Anthem',
+                        applicationVersion: 'Pre-alpha',
+                      );
+                    },
+                  ),
+                  DialogButton.ok(),
+                ],
+              );
+            },
+          ),
+          if (kDebugMode) Separator(),
           if (kDebugMode)
             AnthemMenuItem(
               text: 'Debug',

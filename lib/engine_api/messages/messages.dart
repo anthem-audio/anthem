@@ -19,7 +19,7 @@
 
 // ignore_for_file: non_constant_identifier_names
 
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem_codegen/include.dart';
 
 part 'model_sync.dart';
 part 'processing_graph.dart';

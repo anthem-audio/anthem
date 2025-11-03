@@ -25,7 +25,7 @@ import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/editors/pattern_editor/generator_row_automation.dart';
 import 'package:anthem/widgets/editors/pattern_editor/generator_row_notes.dart';
-import 'package:anthem/widgets/project/project_controller.dart';
+import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
@@ -101,10 +101,11 @@ class _GeneratorRowState extends State<GeneratorRow> {
                     return Knob(
                       value: value,
                       min: 0,
-                      max: 10,
+                      max: 1,
                       width: 20,
                       height: 20,
-                      stickyPoints: const [1],
+                      hint: (v) =>
+                          'Channel gain: ${gainParameterValueToString(v)}',
                       onValueChanged: (value) {
                         if (node == null) return;
 
@@ -120,13 +121,39 @@ class _GeneratorRowState extends State<GeneratorRow> {
                 const SizedBox(width: 20),
               const SizedBox(width: 8),
               if (generator.generatorType == GeneratorType.instrument)
-                const Knob(
-                  value: 0,
-                  min: -100,
-                  max: 100,
-                  width: 20,
-                  height: 20,
-                  type: KnobType.pan,
+                Observer(
+                  builder: (context) {
+                    final nodeId = generator.balanceNodeId;
+                    final node = project.processingGraph.nodes[nodeId];
+                    final value =
+                        node
+                            ?.getPortById(BalanceProcessorModel.balancePortId)
+                            .parameterValue ??
+                        0;
+
+                    return Knob(
+                      value: value,
+                      min: -1,
+                      max: 1,
+                      width: 20,
+                      height: 20,
+                      type: KnobType.pan,
+                      stickyPoints: [0],
+                      hint: (v) => v == 0
+                          ? 'Channel balance: Center'
+                          : 'Channel balance: ${(v * 100).abs().toStringAsFixed(0)}%${v < 0 ? ' L' : ' R'}',
+                      onValueChanged: (value) {
+                        if (node == null) return;
+
+                        node
+                                .getPortById(
+                                  BalanceProcessorModel.balancePortId,
+                                )
+                                .parameterValue =
+                            value;
+                      },
+                    );
+                  },
                 ),
               if (generator.generatorType != GeneratorType.instrument)
                 const SizedBox(width: 20),

@@ -22,22 +22,29 @@
 #include "generated/lib/model/model.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
 
-// The gain node takes an audio input and multiplies each sample by a control
-// input.
-//
-// Note that this control input is a raw gain value, not decibels. Decibels can
-// be converted to raw gain using the following formula:
-//
-// `rawGain = 10 ^ (decibels / 20)`
-//
-// As an example, -3 db converts to a raw gain of roughly 0.7:
-//
-// `10 ^ (-0.3 / 20) ~= 0.7`
-//
-// So, for a decibel change of -3 db, the control value must be roughly 0.7.
-//
-// The input can be anything from from 0 (-inf db) to 10 (+20 db).
+#include "bw_math.h"
+
+// Applies gain to the input audio signal.
 class GainProcessor : public AnthemProcessor, public GainProcessorModelBase {
+private:
+  // Converts an incoming [0.0, 1.0] parameter value to a linear gain value.
+  //
+  // In the header to allow inlining.
+  float paramValueToGainLinear(float paramValue) {
+    const float linearFloor = 0.2f;
+    const float dbFloor = -20.0f;
+
+    // Below linearFloor, map linearly from 0 to -40dB
+    if (paramValue <= linearFloor) {
+      float floorDb = bw_dB2linf(dbFloor);
+      return (paramValue / linearFloor) * floorDb;
+    }
+
+    // Above linearFloor, map exponentially from -40dB to 0dB
+    float scaledValue = (paramValue - linearFloor) / (1.0f - linearFloor); // Scale to [0, 1]
+    float gainDB = scaledValue * -dbFloor + dbFloor;         // Map to [-40, 0] dB
+    return bw_dB2linf(gainDB);
+  }
 public:
   GainProcessor(const GainProcessorModelImpl& _impl);
   ~GainProcessor() override;

@@ -22,14 +22,14 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 
-import 'package:anthem/commands/pattern_commands.dart';
-import 'package:anthem/commands/pattern_note_commands.dart';
-import 'package:anthem/commands/project_commands.dart';
+import 'package:anthem/logic/commands/pattern_commands.dart';
+import 'package:anthem/logic/commands/pattern_note_commands.dart';
+import 'package:anthem/logic/commands/project_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/model/model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:anthem/engine_api/engine_connector.dart';
+import 'package:anthem/engine_api/engine_connector_desktop.dart';
 
 var id = 0;
 int getId() => id++;
@@ -205,10 +205,10 @@ void main() {
         reason: 'The initial state should contain a processing graph.',
       );
       expect(
-        initialState['isSaved'],
+        initialState['isDirty'],
         isNotNull,
         reason:
-            'The initial state should contain isSaved - this is not in the project file.',
+            'The initial state should contain isDirty - this is not in the project file.',
       );
     });
 
@@ -298,7 +298,7 @@ void main() {
         AddGeneratorCommand(
           generatorId: 'generator1',
           node: NodeModel.uninitialized(),
-          name: 'Genrator name',
+          name: 'Generator name',
           generatorType: GeneratorType.instrument,
           color: const Color(0xFF000000),
         ),

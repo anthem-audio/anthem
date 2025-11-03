@@ -26,8 +26,14 @@ jobs:
             arch: arm64
           - os: macos-13
             arch: x64
+          - os: ubuntu-latest
+            arch: wasm
 
     steps:
+      - name: Set up Emscripten
+        if: matrix.arch == 'wasm'
+        uses: mymindstorm/setup-emsdk@v14
+
       - name: Check out code
         uses: actions/checkout@v4
         with:
@@ -107,21 +113,28 @@ jobs:
           dart analyze --fatal-infos
 
       # --------------------------------------------------------------
-      # Build engine
+      # Build engine (desktop)
       # --------------------------------------------------------------
-      - name: Build engine
+      - name: Build engine (desktop)
+        if: matrix.arch != 'wasm'
         run: dart run anthem:cli engine build --release
+
+      - name: Build engine (WASM)
+        if: matrix.arch == 'wasm'
+        run: dart run anthem:cli engine build --release --wasm
 
       # --------------------------------------------------------------
       # Engine unit tests
       # --------------------------------------------------------------
       - name: Run engine unit tests
+        if: matrix.arch != 'wasm'
         run: dart run anthem:cli engine unit-test
 
       # --------------------------------------------------------------
       # Flutter unit + integration tests
       # --------------------------------------------------------------
       - name: Run Flutter tests
+        if: matrix.arch != 'wasm'
         run: flutter test .
 
       # --------------------------------------------------------------
@@ -135,7 +148,7 @@ jobs:
       # Build Flutter (Linux)
       # --------------------------------------------------------------
       - name: Build Flutter (Linux)
-        if: contains(matrix.os, 'ubuntu')
+        if: contains(matrix.os, 'ubuntu') && matrix.arch != 'wasm'
         run: flutter build linux --verbose --release
       
       # --------------------------------------------------------------
@@ -146,6 +159,13 @@ jobs:
         run: flutter build macos --verbose --release
 
       # --------------------------------------------------------------
+      # Build Flutter (WASM)
+      # --------------------------------------------------------------
+      - name: Build Flutter (WASM)
+        if: matrix.arch == 'wasm'
+        run: flutter build web --verbose --release --wasm
+
+      # --------------------------------------------------------------
       # Upload artifacts (Windows)
       # --------------------------------------------------------------
       - name: Upload artifact (Windows)
@@ -153,13 +173,18 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: anthem-windows-${{ matrix.arch }}
-          path: ${{ github.workspace }}/${{ matrix.arch == 'x64' && 'build/windows/x64/runner/Release' || 'build/windows/arm64/runner/Release' }}
+          # As of writing, Flutter on Windows currently builds x64, as Dart does
+          # not support arm64 on Windows yet. So, both the x64 and arm64 builds
+          # are built as x64, and are output to the x64 folder. If (hopefully
+          # when) this changes, the path here would look like the Linux path
+          # below.
+          path: ${{ github.workspace }}/build/windows/x64/runner/Release
 
       # --------------------------------------------------------------
       # Upload artifacts (Linux)
       # --------------------------------------------------------------
       - name: Upload artifact (Linux)
-        if: contains(matrix.os, 'ubuntu')
+        if: contains(matrix.os, 'ubuntu') && matrix.arch != 'wasm'
         uses: actions/upload-artifact@v4
         with:
           name: anthem-linux-${{ matrix.arch }}
@@ -174,3 +199,14 @@ jobs:
         with:
           name: anthem-macos-${{ matrix.arch }}
           path: ${{ github.workspace }}/build/macos/Build/Products/Release/Anthem.app
+
+      # --------------------------------------------------------------
+      # Deploy web build
+      # --------------------------------------------------------------
+      - name: Deploy web build to CloudFlare Pages
+        if: matrix.arch == 'wasm'
+        run: |
+          export CLOUDFLARE_API_TOKEN=${{ secrets.CLOUDFLARE_API_TOKEN }}
+        
+          npm i -g wrangler@latest
+          wrangler pages deploy build/web --project-name=anthem-audio --branch=${{ github.ref_name }} --commit-dirty=true

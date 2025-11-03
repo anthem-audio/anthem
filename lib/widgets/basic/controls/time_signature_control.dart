@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/commands/sequence_commands.dart';
+import 'package:anthem/logic/commands/sequence_commands.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/controls/control_mouse_handler.dart';
@@ -50,7 +50,7 @@ class _TimeSignatureControlState extends State<TimeSignatureControl> {
 
   @override
   Widget build(BuildContext context) {
-    const String baseHint = 'Set the time signature';
+    const String baseHint = 'Set the project time signature';
     String getDynamicHint() {
       final timeSignature = projectModel.sequence.defaultTimeSignature;
       return '${timeSignature.numerator}/${timeSignature.denominator}';

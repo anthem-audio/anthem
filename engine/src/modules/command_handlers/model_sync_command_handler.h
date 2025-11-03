@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "../plugin_window.h"
+#include "plugin_window.h"
 #include "modules/core/anthem.h"
 #include <rfl.hpp>
 

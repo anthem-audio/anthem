@@ -20,9 +20,9 @@
 import 'dart:async';
 
 import 'package:analyzer/dart/constant/value.dart';
-import 'package:analyzer/dart/element/element2.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:anthem_codegen/generators/cpp/cpp_model_sync.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
@@ -47,7 +47,7 @@ class CppModelBuilder implements Builder {
     final inputId = buildStep.inputId;
     if (inputId.extension != '.dart') return;
 
-    final LibraryElement2 library;
+    final LibraryElement library;
     try {
       library = await buildStep.resolver.libraryFor(inputId);
     } catch (ex) {
@@ -67,15 +67,39 @@ class CppModelBuilder implements Builder {
     final cppFileImports = <String>[];
     final functionDefinitions = <String>[];
 
+    // Error flags
+
+    // For context, module files are meant as a tool to generate a single C++
+    // file that includes the entire model, which provides a single source of
+    // truth for include order, along with an easy way to reference the entire
+    // model. Module files (Anthem has one, model.dart) are tagged with an
+    // annotation and have a bunch of export statements, making them convenient
+    // on the Dart side as well.
+    //
+    // Regular models (not module files) must not import these module files.
+    // They must instead individually import all files that the C++ side must
+    // import. Module files by definition are easy multi-imports on the Dart
+    // side and may be suggested by Dart tooling.
+    //
+    // This can lead to a situation where a Dart file does not produce any
+    // import-related errors since it imports a module file that itself exports
+    // a bunch of Dart files, but the generated C++ file does error since it
+    // didn't try to import the same module file, and so a referenced model item
+    // is not defined.
+    //
+    // As a mitigation for this case, we detect it during code generation and
+    // throw an error.
+    var anyImportHasModuleDeclaration = false;
+
     // Note that module file imports are only used for module files. There is a
     // detailed description in the doc comment on the @GenerateCppModuleFile
     // annotation.
 
     // Looks for @GenerateCppModuleFile on this library.
-    final libraryAnnotation = library.metadata2.annotations
+    final libraryAnnotation = library.metadata.annotations
         .where(
           (annotation) =>
-              annotation.element2?.enclosingElement2?.name3 ==
+              annotation.element?.enclosingElement?.name ==
               'GenerateCppModuleFile',
         )
         .firstOrNull;
@@ -106,7 +130,7 @@ class CppModelBuilder implements Builder {
         final enumAnnotation = const TypeChecker.typeNamed(
           AnthemEnum,
           inPackage: 'anthem_codegen',
-        ).firstAnnotationOf(fieldInfo.fieldElement.type.element3!);
+        ).firstAnnotationOf(fieldInfo.fieldElement.type.element!);
 
         final hideAnnotation = const TypeChecker.typeNamed(
           Hide,
@@ -121,10 +145,10 @@ class CppModelBuilder implements Builder {
           if (hideAnnotation == null ||
               hideAnnotation.getField('cpp')?.toBoolValue() == false) {
             log.warning(
-              'Enum ${fieldInfo.fieldElement.type.element3?.name3} is not annotated with @anthemEnum. This is required for enums that are used by Anthem models.',
+              'Enum ${fieldInfo.fieldElement.type.element?.name} is not annotated with @anthemEnum. This is required for enums that are used by Anthem models.',
             );
             log.warning(
-              'The enum ${fieldInfo.fieldElement.type.element3?.name3} is used in a field called ${fieldInfo.fieldElement.name3} on ${classElement.name3}.',
+              'The enum ${fieldInfo.fieldElement.type.element?.name} is used in a field called ${fieldInfo.fieldElement.name} on ${classElement.name}.',
             );
           }
         }
@@ -151,6 +175,11 @@ class CppModelBuilder implements Builder {
       codeBlocks.add(enumsCode);
     }
     forwardDeclarations.addAll(enumsForwardDeclarations);
+
+    var skipFileForWasm = false;
+
+    // Tracks whether there are different values for classes in the same file
+    bool? lastWasmSkipValue;
 
     // Looks for @AnthemModel on each class in the file, and generates the
     // appropriate code
@@ -179,6 +208,20 @@ class CppModelBuilder implements Builder {
 
       // Create a new ModelClassInfo instance for this class
       final modelClassInfo = ModelClassInfo(libraryReader, libraryClass);
+
+      if (modelClassInfo.annotation!.skipOnWasm) {
+        skipFileForWasm = true;
+      }
+      if (lastWasmSkipValue == null) {
+        lastWasmSkipValue = modelClassInfo.annotation!.skipOnWasm;
+      } else {
+        if (lastWasmSkipValue != modelClassInfo.annotation!.skipOnWasm) {
+          throw Exception(
+            'All classes in the same file must have the same value for skipOnWasm.',
+          );
+        }
+      }
+
       classesProcessed.add(modelClassInfo);
 
       if (modelClassInfo.annotation!.generateModelSync) {
@@ -193,7 +236,7 @@ class CppModelBuilder implements Builder {
         );
       }
 
-      codeBlocks.add('// ${modelClassInfo.annotatedClass.name3}\n\n');
+      codeBlocks.add('// ${modelClassInfo.annotatedClass.name}\n\n');
 
       // Generate the code for this class
       final (
@@ -216,13 +259,13 @@ class CppModelBuilder implements Builder {
     }
 
     final libraryImports = library.fragments
-        .map((fragment) => fragment.libraryImports2)
+        .map((fragment) => fragment.libraryImports)
         .expand((e) => e);
 
     // Checks the imports of this library for any that themselves contain Anthem
     // models, and generates the appropriate imports for the C++ module file.
     for (final importElement in libraryImports) {
-      final importLibrary = importElement.importedLibrary2;
+      final importLibrary = importElement.importedLibrary;
 
       if (importLibrary == null) {
         continue;
@@ -230,8 +273,8 @@ class CppModelBuilder implements Builder {
 
       final importLibraryReader = LibraryReader(importLibrary);
 
-      List<ClassElement2> annotatedClasses = [];
-      List<EnumElement2> annotatedEnums = [];
+      List<ClassElement> annotatedClasses = [];
+      List<EnumElement> annotatedEnums = [];
 
       for (final classElement in importLibraryReader.classes) {
         final annotation = const TypeChecker.typeNamed(
@@ -262,6 +305,15 @@ class CppModelBuilder implements Builder {
         }
 
         annotatedEnums.add(enumElement);
+      }
+
+      final libraryAnnotation = const TypeChecker.typeNamed(
+        GenerateCppModuleFile,
+        inPackage: 'anthem_codegen',
+      ).firstAnnotationOf(importLibrary);
+
+      if (libraryAnnotation != null) {
+        anyImportHasModuleDeclaration = true;
       }
 
       if (annotatedClasses.isEmpty && annotatedEnums.isEmpty) {
@@ -345,11 +397,31 @@ class CppModelBuilder implements Builder {
       return;
     }
 
-    var headerCodeToWrite = '''/*
+    // If we did, check error flags.
+    if (anyImportHasModuleDeclaration) {
+      throw Exception(
+        'Dart model files cannot import module files (e.g. model.dart). They '
+        'must individually import every file they reference, as the C++ code '
+        'generator relies on this information.',
+      );
+    }
+
+    var headerCodeToWrite =
+        '''/*
   This file is generated by the Anthem code generator.
 */
 
 #pragma once
+
+${skipFileForWasm ? '#ifndef __EMSCRIPTEN__' : ''}
+
+#ifndef ANTHEM_IF_NOT_WASM
+  #ifdef __EMSCRIPTEN__
+    #define ANTHEM_IF_NOT_WASM(...)
+  #else
+    #define ANTHEM_IF_NOT_WASM(...) __VA_ARGS__
+  #endif
+#endif
 
 #include <rfl/json.hpp>
 #include <rfl.hpp>
@@ -364,6 +436,8 @@ class CppModelBuilder implements Builder {
         '''/*
   This file is generated by the Anthem code generator.
 */
+
+${skipFileForWasm ? '#ifndef __EMSCRIPTEN__' : ''}
 
 #include "${inputId.pathSegments.last.replaceAll('.dart', '.h')}"
 
@@ -418,6 +492,11 @@ class CppModelBuilder implements Builder {
     for (final functionDefinition in functionDefinitions) {
       cppCodeToWrite += functionDefinition;
       cppCodeToWrite += '\n';
+    }
+
+    if (skipFileForWasm) {
+      headerCodeToWrite += '#endif // #ifndef __EMSCRIPTEN__\n';
+      cppCodeToWrite += '#endif // #ifndef __EMSCRIPTEN__\n';
     }
 
     final headerAssetId = inputId.changeExtension('.h');
@@ -521,10 +600,10 @@ _generateStructsForModel(ModelClassInfo modelClassInfo) {
   // class", and all subclasses will use rfl::Flatten to include this struct.
 
   forwardDeclarations.add(
-    'struct ${modelClassInfo.annotatedClass.name3}$baseText;',
+    'struct ${modelClassInfo.annotatedClass.name}$baseText;',
   );
 
-  writer.writeLine('struct ${modelClassInfo.annotatedClass.name3}$baseText {');
+  writer.writeLine('struct ${modelClassInfo.annotatedClass.name}$baseText {');
   writer.incrementWhitespace();
 
   for (final MapEntry(key: fieldName, value: fieldInfo)
@@ -563,7 +642,7 @@ _generateStructsForModel(ModelClassInfo modelClassInfo) {
   // If we need to generate a wrapper class for this model, do so now.
 
   if (generateWrapper) {
-    final className = modelClassInfo.annotatedClass.name3;
+    final className = modelClassInfo.annotatedClass.name;
     final baseSuffix = modelClassInfo.annotation?.cppBehaviorClassName != null
         ? 'Base'
         : '';
@@ -588,7 +667,7 @@ _generateStructsForModel(ModelClassInfo modelClassInfo) {
 
       final type = getCppType(field.typeInfo, modelClassInfo);
       writer.writeLine(
-        'static const $type ${field.fieldElement.name3} = ${field.constantValue};',
+        'static const $type ${field.fieldElement.name} = ${field.constantValue};',
       );
     }
 
@@ -727,7 +806,7 @@ _generateStructsForModel(ModelClassInfo modelClassInfo) {
       writer.writeLine('$type $fieldName;');
     }
 
-    final baseClassName = modelClassInfo.annotatedClass.name3!;
+    final baseClassName = modelClassInfo.annotatedClass.name!;
     writer.writeLine(
       'rfl::Flatten<${baseClassName}Base> ${baseClassName[0].toLowerCase() + baseClassName.substring(1)}Base;',
     );
@@ -748,7 +827,7 @@ _generateStructsForModel(ModelClassInfo modelClassInfo) {
     final usingWriter = Writer();
 
     usingWriter.writeLine(
-      'using ${modelClassInfo.annotatedClass.name3} = rfl::TaggedUnion<',
+      'using ${modelClassInfo.annotatedClass.name} = rfl::TaggedUnion<',
     );
     usingWriter.incrementWhitespace();
     usingWriter.writeLine('"__type",');
@@ -788,7 +867,7 @@ _generateCppModuleFile(LibraryReader libraryReader) {
   final library = libraryReader.element;
 
   final libraryExports = library.fragments
-      .map((fragment) => fragment.libraryExports2)
+      .map((fragment) => fragment.libraryExports)
       .expand((e) => e);
 
   for (final export in libraryExports.where(
@@ -802,11 +881,11 @@ _generateCppModuleFile(LibraryReader libraryReader) {
     }
 
     // Don't try to parse this if the exported library can't be resolved
-    if (export.exportedLibrary2 == null) {
+    if (export.exportedLibrary == null) {
       continue;
     }
 
-    final exportLibraryReader = LibraryReader(export.exportedLibrary2!);
+    final exportLibraryReader = LibraryReader(export.exportedLibrary!);
 
     // If the exported library doesn't have any Anthem model classes, then we
     // don't generate an import for it
@@ -874,7 +953,7 @@ _generateCppModuleFile(LibraryReader libraryReader) {
 
 /// Checks if a field should be skipped when generating C++ code, based on the
 /// @Hide annotation.
-bool _shouldSkip(FieldElement2 field) {
+bool _shouldSkip(FieldElement field) {
   final hideAnnotation = const TypeChecker.typeNamed(
     Hide,
     inPackage: 'anthem_codegen',

@@ -20,10 +20,70 @@
 part of 'arrangement.dart';
 
 mixin _ArrangementCompilerMixin on _ArrangementModel {
+  void _recompileOnClipAddedOrRemoved(ClipModel? oldClip, ClipModel? newClip) {
+    // If the engine is not running, then we don't need to worry about
+    // sending this update. When the engine is started, it will recompile
+    // all arrangements.
+    if (!project.engine.isRunning) {
+      return;
+    }
+
+    (int, int)? range;
+
+    if (oldClip != null) {
+      range = (
+        oldClip.offset,
+        oldClip.offset + oldClip.getWidthFromProject(project),
+      );
+    }
+
+    if (newClip != null) {
+      if (range == null) {
+        range = (
+          newClip.offset,
+          newClip.offset + newClip.getWidthFromProject(project),
+        );
+      } else {
+        range = (
+          min(range.$1, newClip.offset),
+          max(range.$2, newClip.offset + newClip.getWidthFromProject(project)),
+        );
+      }
+    } else if (range == null) {
+      throw Exception(
+        'Both oldClip and newClip cannot be null at the same time.',
+      );
+    }
+
+    String? patternIdFromOldClip;
+    if (oldClip != null) {
+      patternIdFromOldClip = oldClip.patternId;
+      final pattern = project.sequence.patterns[oldClip.patternId];
+      if (pattern != null) {
+        for (final channelId in pattern.channelsWithContent) {
+          _channelsToCompile.add(channelId);
+          _invalidationRangeCollector.addRange(range.$1, range.$2);
+        }
+      }
+    }
+
+    if (newClip != null && patternIdFromOldClip != newClip.patternId) {
+      final pattern = project.sequence.patterns[newClip.patternId];
+      if (pattern != null) {
+        for (final channelId in pattern.channelsWithContent) {
+          _channelsToCompile.add(channelId);
+          _invalidationRangeCollector.addRange(range.$1, range.$2);
+        }
+      }
+    }
+
+    _scheduleChannelsToCompile();
+  }
+
   /// Rebuilds only modified clips in the engine.
   ///
   /// This is meant to be attached to the clips field changed listener above.
-  void _recompileModifiedClips(
+  void _recompileOnClipFieldChanged(
     Iterable<FieldAccessor> fieldAccessors,
     FieldOperation operation,
   ) {
@@ -34,167 +94,91 @@ mixin _ArrangementCompilerMixin on _ArrangementModel {
       return;
     }
 
-    // This means we're adding, replacing or removing a clip.
-    if (fieldAccessors.length == 1) {
-      final oldClip = switch (operation) {
-        RawFieldUpdate() => operation.oldValueAs<ClipModel>(),
-        ListInsert() => null,
-        ListRemove() => operation.removedValueAs<ClipModel>(),
-        ListUpdate() => operation.oldValueAs<ClipModel>(),
-        MapPut() => operation.oldValueAs<ClipModel?>(),
-        MapRemove() => operation.removedValueAs<ClipModel>(),
-      };
+    final clipAccessor = fieldAccessors.elementAt(2);
 
-      final newClip = switch (operation) {
-        RawFieldUpdate() => operation.newValueAs<ClipModel>(),
-        ListInsert() => operation.valueAs<ClipModel>(),
-        ListRemove() => null,
-        ListUpdate() => operation.newValueAs<ClipModel>(),
-        MapPut() => operation.newValueAs<ClipModel?>(),
-        MapRemove() => null,
-      };
+    // We need to mark the clip for rebuilding if anything changed,
+    // besides trackId since that just tells it which row to render on.
+    if (clipAccessor.fieldName != 'trackId') {
+      final isOffsetChange = clipAccessor.fieldName == 'offset';
+      final isTimeViewChange = clipAccessor.fieldName == 'timeView';
 
-      (int, int)? range;
-
-      if (oldClip != null) {
-        range = (
-          oldClip.offset,
-          oldClip.offset + oldClip.getWidthFromProject(project),
-        );
-      }
-
-      if (newClip != null) {
-        if (range == null) {
-          range = (
-            newClip.offset,
-            newClip.offset + newClip.getWidthFromProject(project),
-          );
-        } else {
-          range = (
-            min(range.$1, newClip.offset),
-            max(
-              range.$2,
-              newClip.offset + newClip.getWidthFromProject(project),
-            ),
-          );
-        }
-      } else if (range == null) {
-        throw Exception(
-          'Both oldClip and newClip cannot be null at the same time.',
-        );
-      }
-
-      String? patternIdFromOldClip;
-      if (oldClip != null) {
-        patternIdFromOldClip = oldClip.patternId;
-        final pattern = project.sequence.patterns[oldClip.patternId];
+      final clipId = fieldAccessors.elementAt(1).key as Id;
+      final clip = clips[clipId];
+      if (clip != null) {
+        final pattern = project.sequence.patterns[clip.patternId];
         if (pattern != null) {
           for (final channelId in pattern.channelsWithContent) {
             _channelsToCompile.add(channelId);
-            _invalidationRangeCollector.addRange(range.$1, range.$2);
-          }
-        }
-      }
 
-      if (newClip != null && patternIdFromOldClip != newClip.patternId) {
-        final pattern = project.sequence.patterns[newClip.patternId];
-        if (pattern != null) {
-          for (final channelId in pattern.channelsWithContent) {
-            _channelsToCompile.add(channelId);
-            _invalidationRangeCollector.addRange(range.$1, range.$2);
-          }
-        }
-      }
-    }
+            final newWidth = clip.getWidthFromProject(project);
 
-    final clipAccessor = fieldAccessors.elementAtOrNull(1);
+            _invalidationRangeCollector.addRange(
+              clip.offset,
+              clip.offset + newWidth,
+            );
 
-    // This means we're changing a property of a clip.
-    if (clipAccessor != null) {
-      // We need to mark the clip for rebuilding if anything changed,
-      // besides trackId since that just tells it which row to render on.
-      if (clipAccessor.fieldName != 'trackId') {
-        final isOffsetChange = clipAccessor.fieldName == 'offset';
-        final isTimeViewChange = clipAccessor.fieldName == 'timeView';
-
-        final clipId = fieldAccessors.first.key as Id;
-        final clip = clips[clipId];
-        if (clip != null) {
-          final pattern = project.sequence.patterns[clip.patternId];
-          if (pattern != null) {
-            for (final channelId in pattern.channelsWithContent) {
-              _channelsToCompile.add(channelId);
-
-              final newWidth = clip.getWidthFromProject(project);
-
+            if (isOffsetChange) {
+              operation as RawFieldUpdate;
               _invalidationRangeCollector.addRange(
-                clip.offset,
-                clip.offset + newWidth,
+                operation.oldValueAs<int>(),
+                operation.oldValueAs<int>() + newWidth,
               );
+            }
 
-              if (isOffsetChange) {
+            // There are three possible ways timeView can change:
+            // 1. It was null and now it has a value.
+            // 2. It was not null and is now null.
+            // 3. Either its start or end property has changed.
+            if (isTimeViewChange) {
+              final isReplacement = fieldAccessors.length == 3;
+
+              if (isReplacement) {
                 operation as RawFieldUpdate;
-                _invalidationRangeCollector.addRange(
-                  operation.oldValueAs<int>(),
-                  operation.oldValueAs<int>() + newWidth,
-                );
-              }
+                TimeViewModel? oldTimeView = operation
+                    .oldValueAs<TimeViewModel?>();
+                TimeViewModel? newTimeView = operation
+                    .newValueAs<TimeViewModel?>();
 
-              // There are three possible ways timeView can change:
-              // 1. It was null and now it has a value.
-              // 2. It was not null and is now null.
-              // 3. Either its start or end property has changed.
-              if (isTimeViewChange) {
-                final isReplacement = fieldAccessors.length == 2;
+                if (oldTimeView != null) {
+                  _invalidationRangeCollector.addRange(
+                    clip.offset,
+                    clip.offset + oldTimeView.end - oldTimeView.start,
+                  );
+                }
 
-                if (isReplacement) {
-                  operation as RawFieldUpdate;
-                  TimeViewModel? oldTimeView = operation
-                      .oldValueAs<TimeViewModel?>();
-                  TimeViewModel? newTimeView = operation
-                      .newValueAs<TimeViewModel?>();
+                if (newTimeView != null) {
+                  _invalidationRangeCollector.addRange(
+                    clip.offset,
+                    clip.offset + newTimeView.end - newTimeView.start,
+                  );
+                }
+              } else {
+                final timeViewAccessor = fieldAccessors.elementAt(3);
 
-                  if (oldTimeView != null) {
-                    _invalidationRangeCollector.addRange(
-                      clip.offset,
-                      clip.offset + oldTimeView.end - oldTimeView.start,
-                    );
-                  }
+                if (timeViewAccessor.fieldName == 'start') {
+                  final oldStart = (operation as RawFieldUpdate)
+                      .oldValueAs<int>();
+                  final newStart = operation.newValueAs<int>();
 
-                  if (newTimeView != null) {
-                    _invalidationRangeCollector.addRange(
-                      clip.offset,
-                      clip.offset + newTimeView.end - newTimeView.start,
-                    );
-                  }
-                } else {
-                  final timeViewAccessor = fieldAccessors.elementAt(2);
+                  _invalidationRangeCollector.addRange(
+                    clip.offset,
+                    clip.offset +
+                        (clip.timeView!.end - min(oldStart, newStart)),
+                  );
+                } else if (timeViewAccessor.fieldName == 'end') {
+                  final oldEnd = (operation as RawFieldUpdate)
+                      .oldValueAs<int>();
+                  final newEnd = operation.newValueAs<int>();
 
-                  if (timeViewAccessor.fieldName == 'start') {
-                    final oldStart = (operation as RawFieldUpdate)
-                        .oldValueAs<int>();
-                    final newStart = operation.newValueAs<int>();
+                  final start = clip.timeView!.start;
 
-                    _invalidationRangeCollector.addRange(
-                      clip.offset,
-                      clip.offset +
-                          (clip.timeView!.end - min(oldStart, newStart)),
-                    );
-                  } else if (timeViewAccessor.fieldName == 'end') {
-                    final oldEnd = (operation as RawFieldUpdate)
-                        .oldValueAs<int>();
-                    final newEnd = operation.newValueAs<int>();
+                  final oldLength = oldEnd - start;
+                  final newLength = newEnd - start;
 
-                    final start = clip.timeView!.start;
-
-                    final oldLength = oldEnd - start;
-                    final newLength = newEnd - start;
-
-                    _invalidationRangeCollector.addRange(
-                      clip.offset + min(oldLength, newLength),
-                      clip.offset + max(oldLength, newLength),
-                    );
-                  }
+                  _invalidationRangeCollector.addRange(
+                    clip.offset + min(oldLength, newLength),
+                    clip.offset + max(oldLength, newLength),
+                  );
                 }
               }
             }

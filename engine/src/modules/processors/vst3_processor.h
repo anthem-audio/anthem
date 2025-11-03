@@ -19,6 +19,8 @@
 
 #pragma once
 
+#ifndef __EMSCRIPTEN__
+
 #include <memory>
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -83,3 +85,5 @@ public:
   void getState(juce::MemoryBlock& target) override;
   void setState(const juce::MemoryBlock& state) override;
 };
+
+#endif // #ifndef __EMSCRIPTEN__

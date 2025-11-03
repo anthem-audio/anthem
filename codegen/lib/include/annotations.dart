@@ -51,6 +51,7 @@ class AnthemModel {
   final bool generateCpp;
   final bool generateModelSync;
   final bool generateCppWrapperClass;
+  final bool skipOnWasm;
   final String? cppBehaviorClassName;
   final String? cppBehaviorClassIncludePath;
 
@@ -62,6 +63,7 @@ class AnthemModel {
     this.generateCpp = false,
     this.generateModelSync = false,
     this.generateCppWrapperClass = false,
+    this.skipOnWasm = false,
     this.cppBehaviorClassName,
     this.cppBehaviorClassIncludePath,
   });
@@ -73,11 +75,13 @@ class AnthemModel {
   const AnthemModel.syncedModel({
     String? cppBehaviorClassName,
     String? cppBehaviorClassIncludePath,
+    bool skipOnWasm = false,
   }) : this(
          serializable: true,
          generateCpp: true,
          generateModelSync: true,
          generateCppWrapperClass: true,
+         skipOnWasm: skipOnWasm,
          cppBehaviorClassName: cppBehaviorClassName,
          cppBehaviorClassIncludePath: cppBehaviorClassIncludePath,
        );

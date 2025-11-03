@@ -22,7 +22,6 @@ import 'dart:ui' as ui;
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
-import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -36,6 +35,7 @@ import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_shaders/flutter_shaders.dart';

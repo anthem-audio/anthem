@@ -17,9 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem/model/collections.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 import 'automation_point.dart';
@@ -36,7 +35,8 @@ class AutomationLaneModel extends _AutomationLaneModel
       _$AutomationLaneModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _AutomationLaneModel with Store, AnthemModelBase {
+abstract class _AutomationLaneModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
   _AutomationLaneModel();
 
   /// The automation points for this lane. The first point should always have a

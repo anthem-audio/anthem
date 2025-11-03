@@ -1,0 +1,18 @@
+{
+    "name": "Anthem",
+    "short_name": "Anthem",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#3D3D3D",
+    "theme_color": "#25C29D",
+    "description": "An open-source digital audio workstation",
+    "orientation": "landscape-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/logo.svg",
+            "sizes": "192x192 512x512",
+            "type": "image/svg"
+        }
+    ]
+}

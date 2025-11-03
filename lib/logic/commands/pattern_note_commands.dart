@@ -17,12 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/commands/command.dart';
+import 'package:anthem/logic/commands/command.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem_codegen/include.dart';
 
 void _addNote(PatternModel pattern, Id generatorID, NoteModel note) {
   if (!pattern.notes.containsKey(generatorID)) {

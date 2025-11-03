@@ -65,6 +65,14 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     case WM_FONTCHANGE:
       flutter_controller_->engine()->ReloadSystemFonts();
       break;
+
+    // Note: This case is not in the original Flutter generated code.
+    case WM_SYSCOMMAND:
+      if (wparam == SC_KEYMENU) {
+        // Disable ALT application menu.
+        return 0;
+      }
+      break;
   }
 
   return Win32Window::MessageHandler(hwnd, message, wparam, lparam);

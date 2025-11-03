@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/controller_registry.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -35,7 +36,7 @@ import 'package:anthem/widgets/editors/pattern_editor/pattern_editor.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/project_details/project_details.dart';
 import 'package:anthem/widgets/project_explorer/project_explorer.dart';
-import 'package:anthem/widgets/project/project_controller.dart';
+import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/widgets/project/project_footer.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 
@@ -51,29 +52,43 @@ class Project extends StatefulWidget {
 }
 
 class _ProjectState extends State<Project> {
-  ProjectController? controller;
-  ProjectViewModel? viewModel;
+  late ProjectController _controller;
+  late ProjectViewModel _viewModel;
+
+  bool _initialized = false;
+
+  /// Initializes the controller and view model, if not already done.
+  ///
+  /// This is done on render, because on initState the project model doesn't
+  /// exist yet.
+  void _initIfNeeded() {
+    if (_initialized) return;
+    _initialized = true;
+
+    final projectModel = AnthemStore.instance.projects[widget.id]!;
+
+    _viewModel = ProjectViewModel();
+    _controller = ProjectController(projectModel, _viewModel);
+
+    ControllerRegistry.instance.registerController(widget.id, _controller);
+  }
 
   @override
   Widget build(BuildContext context) {
+    _initIfNeeded();
+
     final projectModel = AnthemStore.instance.projects[widget.id]!;
-
-    this.viewModel ??= ProjectViewModel();
-    final viewModel = this.viewModel!;
-
-    this.controller ??= ProjectController(projectModel, viewModel);
-    final controller = this.controller!;
 
     return MultiProvider(
       providers: [
         Provider.value(value: projectModel),
-        Provider.value(value: controller),
-        Provider.value(value: viewModel),
+        Provider.value(value: _controller),
+        Provider.value(value: _viewModel),
       ],
       child: ShortcutConsumer(
         id: 'project',
         global: true,
-        shortcutHandler: controller.onShortcut,
+        shortcutHandler: _controller.onShortcut,
         child: Column(
           children: [
             const ProjectHeader(),
@@ -86,31 +101,18 @@ class _ProjectState extends State<Project> {
                   const pianoRoll = PianoRoll();
                   const mixer = Text('Mixer');
 
-                  final selectedEditor = Stack(
-                    children: [
-                      Visibility(
-                        maintainState: true,
-                        visible:
-                            viewModel.selectedEditor == EditorKind.automation,
-                        child: automationEditor,
-                      ),
-                      Visibility(
-                        maintainState: true,
-                        visible:
-                            viewModel.selectedEditor == EditorKind.channelRack,
-                        child: channelRack,
-                      ),
-                      Visibility(
-                        maintainState: true,
-                        visible: viewModel.selectedEditor == EditorKind.detail,
-                        child: pianoRoll,
-                      ),
-                      Visibility(
-                        maintainState: true,
-                        visible: viewModel.selectedEditor == EditorKind.mixer,
-                        child: mixer,
-                      ),
-                    ],
+                  final selectedEditorIndex =
+                      switch (_viewModel.selectedEditor) {
+                        EditorKind.automation => 0,
+                        EditorKind.channelRack => 1,
+                        EditorKind.detail => 2,
+                        EditorKind.mixer => 3,
+                        null => -1,
+                      };
+
+                  final selectedEditor = IndexedStack(
+                    index: selectedEditorIndex,
+                    children: [automationEditor, channelRack, pianoRoll, mixer],
                   );
 
                   return Panel(
@@ -139,12 +141,12 @@ class _ProjectState extends State<Project> {
                         orientation: PanelOrientation.bottom,
                         panelMinSize: 200,
                         contentMinSize: 150,
-                        hidden: viewModel.selectedEditor == null,
+                        hidden: _viewModel.selectedEditor == null,
                         // Bottom panel content (selected editor)
                         panelContent: RepaintBoundary(child: selectedEditor),
                         child: _PanelOverlay(
-                          builder: viewModel.topPanelOverlayContentBuilder,
-                          close: () => viewModel.clearTopPanelOverlay(),
+                          builder: _viewModel.topPanelOverlayContentBuilder,
+                          close: () => _viewModel.clearTopPanelOverlay(),
                           child: Panel(
                             hidden: !projectModel.isPatternEditorVisible,
                             orientation: PanelOrientation.left,

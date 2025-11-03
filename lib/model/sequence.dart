@@ -18,13 +18,12 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/model/track.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 import 'arrangement/arrangement.dart';
@@ -48,7 +47,8 @@ class SequenceModel extends _SequenceModel
   }
 }
 
-abstract class _SequenceModel with Store, AnthemModelBase {
+abstract class _SequenceModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
   @anthemObservable
   int ticksPerQuarter = 96;
 

@@ -19,6 +19,8 @@
 
 part of 'arranger_controller.dart';
 
+const maxSafeIntWeb = 0x001F_FFFF_FFFF_FFFF;
+
 /// These are the possible states that the arranger can have during event
 /// handing. The current state tells the controller how to handle incoming
 /// pointer events.
@@ -293,12 +295,12 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       if (_eventHandlingState == EventHandlingState.movingSelection) {
         _clipMoveActionData!.startOfFirstClip = viewModel.selectedClips
             .fold<int>(
-              0x7FFFFFFFFFFFFFFF,
+              maxSafeIntWeb,
               (previousValue, clipID) =>
                   min(previousValue, arrangement.clips[clipID]!.offset),
             );
 
-        _clipMoveActionData!.trackOfTopClip = 0x7FFFFFFFFFFFFFFF;
+        _clipMoveActionData!.trackOfTopClip = maxSafeIntWeb;
         _clipMoveActionData!.trackOfBottomClip = 0;
 
         // This has a worst-case complexity of clipCount * trackCount
@@ -730,8 +732,8 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         // Make sure no clips have a time view starting < 0, and that no clips
         // are resized to start before the start of the arrangement.
         if (_clipResizeActionData!.isFromStartOfClip) {
-          var firstNewTimeViewStart = 0x7FFFFFFFFFFFFFFF;
-          var firstNewOffset = 0x7FFFFFFFFFFFFFFF;
+          var firstNewTimeViewStart = maxSafeIntWeb;
+          var firstNewOffset = maxSafeIntWeb;
 
           for (final id in _clipResizeActionData!.startOffsets.keys) {
             final newTimeViewStart =

@@ -17,8 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 part 'node_connection.g.dart';
@@ -51,7 +51,8 @@ class NodeConnectionModel extends _NodeConnectionModel
       _$NodeConnectionModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _NodeConnectionModel with Store, AnthemModelBase {
+abstract class _NodeConnectionModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
   String id;
 
   String sourceNodeId;

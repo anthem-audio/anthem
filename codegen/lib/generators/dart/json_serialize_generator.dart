@@ -17,13 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:analyzer/dart/element/element2.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:analyzer/dart/element/element.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:source_gen/source_gen.dart';
 
 import '../util/model_class_info.dart';
-import 'serialize_generators.dart';
+import 'field_serializers.dart';
 
 /// Generates JSON serialization for an Anthem model class.
 ///
@@ -34,8 +34,7 @@ import 'serialize_generators.dart';
 String generateJsonSerializationCode({required ModelClassInfo context}) {
   var result = StringBuffer();
 
-  result.write('''// ignore: duplicate_ignore
-// ignore: non_constant_identifier_names
+  result.write('''
 ${(context.annotation?.generateModelSync == true) ? '@override' : ''}
 Map<String, dynamic> toJson({bool forEngine = false, bool forProjectFile = true}) {
   final map = <String, dynamic>{};
@@ -81,13 +80,6 @@ Map<String, dynamic> toJson({bool forEngine = false, bool forProjectFile = true}
   }
 
   if (context.isSealed) {
-    // For sealed classes, we figure out which subclass we're dealing with and
-    // use the name of that subclass to inform a field in the JSON map. This
-    // allows us to determine the correct base class when deserializing.
-    result.write('map[\'__type\'] = runtimeType.toString();\n');
-
-    // Then, we output code to determine which fields to serialize depending on
-    // the current subtype
     var isFirst = true;
     for (final subclass in context.sealedSubclasses) {
       if (isFirst) {
@@ -97,6 +89,13 @@ Map<String, dynamic> toJson({bool forEngine = false, bool forProjectFile = true}
         result.write('else if (this is ${subclass.name}) {\n');
       }
 
+      // For sealed classes, we use the name of the subclass to inform a field
+      // in the JSON map. This allows us to determine the correct type when
+      // deserializing.
+      result.write('map[\'__type\'] = \'${subclass.name}\';\n');
+
+      // Then, we output code to determine which fields to serialize depending
+      // on the current subtype.
       for (final field in subclass.fields.entries) {
         final name = field.key;
         final fieldInfo = field.value;
@@ -164,7 +163,7 @@ enum _FieldBehavior {
 /// - alwaysSerialize: The field should always be serialized
 /// - serializeForEngineOnly: The field should be serialized only when sending
 ///   the model to the engine
-_FieldBehavior _getFieldBehavior(FieldElement2 field) {
+_FieldBehavior _getFieldBehavior(FieldElement field) {
   final hideAnnotation = const TypeChecker.typeNamed(
     Hide,
     inPackage: 'anthem_codegen',
@@ -197,11 +196,16 @@ String _createSetterForField({
 }) {
   accessor ??= fieldName;
 
-  final converter = createSerializerForField(type: type, accessor: accessor);
+  var converter = createSerializerForField(type: type, accessor: accessor);
 
   // If the field is nullable, we need to check if the value we're adding to the
   // JSON map is null before adding it
   if (type.isNullable) {
+    // Fix conflict with "value" local variable below
+    if (converter == 'value') {
+      converter = 'this.value';
+    }
+
     return '''{
     final value = $converter;
     if (value != null) {

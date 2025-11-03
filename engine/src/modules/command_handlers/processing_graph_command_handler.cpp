@@ -35,7 +35,7 @@ handleProcessingGraphCommand(Request& request) {
     // audio device to get buffer size and sample rate
     if (anthem.audioDeviceManager.getCurrentAudioDevice() == nullptr) {
       jassertfalse;
-      juce::JUCEApplication::quit();
+      juce::JUCEApplicationBase::quit();
     }
 
     try {

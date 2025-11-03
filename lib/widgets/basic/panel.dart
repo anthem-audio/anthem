@@ -238,9 +238,8 @@ class _PanelState extends State<Panel> {
             ),
 
             // Draggable separator
-            Visibility(
-              visible: !isPanelHidden,
-              child: Positioned(
+            if (!isPanelHidden)
+              Positioned(
                 left: handleLeft,
                 right: handleRight,
                 top: handleTop,
@@ -265,7 +264,6 @@ class _PanelState extends State<Panel> {
                   ),
                 ),
               ),
-            ),
           ],
         );
       },

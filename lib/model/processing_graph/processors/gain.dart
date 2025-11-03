@@ -17,18 +17,30 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/parameter_config.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 part 'gain.g.dart';
 
+/// A gain processor, used for basic volume controls.
+///
+/// Takes a single audio input and output, and a control input for gain.
+///
+/// The control input expects a [0.0, 1.0] value, where 0.0 is -inf dB and 1.0
+/// is 0 dB. The mapping is part linear and part logarithmic. See
+/// [gainParameterValueToString] below for details.
+///
+/// This processor is implemented in the engine at:
+/// - `engine/src/modules/processors/gain.h`
+/// - `engine/src/modules/processors/gain.cpp`
 @AnthemModel.syncedModel(
   cppBehaviorClassName: 'GainProcessor',
   cppBehaviorClassIncludePath: 'modules/processors/gain.h',
@@ -72,7 +84,7 @@ class GainProcessorModel extends _GainProcessorModel
             dataType: NodePortDataType.control,
             parameterConfig: ParameterConfigModel(
               id: gainPortId,
-              defaultValue: 0.125,
+              defaultValue: 0.75,
               minimumValue: 0.0,
               maximumValue: 1.0,
               smoothingDurationSeconds: 0.01,
@@ -88,7 +100,8 @@ class GainProcessorModel extends _GainProcessorModel
   static int get gainPortId => _GainProcessorModel.gainPortId;
 }
 
-abstract class _GainProcessorModel with Store, AnthemModelBase {
+abstract class _GainProcessorModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
   static const int audioInputPortId = 0;
   static const int audioOutputPortId = 1;
   static const int gainPortId = 2;
@@ -96,4 +109,40 @@ abstract class _GainProcessorModel with Store, AnthemModelBase {
   String nodeId;
 
   _GainProcessorModel({required this.nodeId});
+}
+
+double _linearToDb(double linear) {
+  return 20 * log(linear) / ln10;
+}
+
+double _dbToLinear(double db) {
+  return pow(10, db / 20).toDouble();
+}
+
+/// Converts a raw [0.0, 1.0] parameter value to a string for display.
+String gainParameterValueToString(double rawValue) {
+  // See gain.h for a matching implementation used for the actual gain calculation.
+
+  // 0.0 to linearFloor maps linearly from -inf to dbFloor
+  // linearFloor to 1.0 maps logarithmically from dbFloor to 0dB
+
+  const linearFloor = 0.2;
+  const dbFloor = -20.0;
+
+  var dbValue = '';
+
+  if (rawValue == 0) {
+    dbValue = '-inf';
+  } else if (rawValue < linearFloor) {
+    final db40Linear = _dbToLinear(dbFloor);
+    final linearValue = (rawValue / linearFloor) * db40Linear;
+    final db = _linearToDb(linearValue);
+    dbValue = db.toStringAsFixed(1);
+  } else {
+    final scaled = (rawValue - linearFloor) / (1.0 - linearFloor);
+    final db = scaled * -dbFloor + dbFloor;
+    dbValue = db.toStringAsFixed(1);
+  }
+
+  return '$dbValue dB';
 }

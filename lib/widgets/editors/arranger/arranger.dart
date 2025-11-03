@@ -19,6 +19,7 @@
 
 import 'dart:async';
 
+import 'package:anthem/logic/controller_registry.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
@@ -37,7 +38,7 @@ import 'package:anthem/widgets/editors/arranger/widgets/track_header.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/playhead_line.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
-import 'package:anthem/widgets/project/project_controller.dart';
+import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/widgets/util/lazy_follower.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -86,7 +87,10 @@ class _ArrangerState extends State<Arranger> {
       timeView: TimeRange(0, 3072),
     );
 
-    controller ??= ArrangerController(viewModel: viewModel!, project: project);
+    if (controller == null) {
+      controller = ArrangerController(viewModel: viewModel!, project: project);
+      ControllerRegistry.instance.registerController(project.id, controller!);
+    }
 
     return Provider.value(
       value: viewModel!,
@@ -290,7 +294,7 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _HorizontalScrollbar extends StatelessWidget {
+class _HorizontalScrollbar extends StatelessObserverWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<ArrangerViewModel>(context);
@@ -303,30 +307,26 @@ class _HorizontalScrollbar extends StatelessWidget {
         arrangementModel?.viewWidth.toDouble() ??
         project.sequence.ticksPerQuarter * 4 * 4;
 
-    return Observer(
-      builder: (context) {
-        return Container(
-          height: 17,
-          decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(color: AnthemTheme.panel.border, width: 1),
-            ),
-            color: AnthemTheme.panel.background,
-          ),
-          child: ScrollbarRenderer(
-            scrollRegionStart: 0,
-            scrollRegionEnd: horizontalScrollRegionEnd,
-            handleStart: viewModel.timeView.start,
-            handleEnd: viewModel.timeView.end,
-            canScrollPastEnd: true,
-            disableAtFullSize: false,
-            onChange: (event) {
-              viewModel.timeView.start = event.handleStart;
-              viewModel.timeView.end = event.handleEnd;
-            },
-          ),
-        );
-      },
+    return Container(
+      height: 17,
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: AnthemTheme.panel.border, width: 1),
+        ),
+        color: AnthemTheme.panel.background,
+      ),
+      child: ScrollbarRenderer(
+        scrollRegionStart: 0,
+        scrollRegionEnd: horizontalScrollRegionEnd,
+        handleStart: viewModel.timeView.start,
+        handleEnd: viewModel.timeView.end,
+        canScrollPastEnd: true,
+        disableAtFullSize: false,
+        onChange: (event) {
+          viewModel.timeView.start = event.handleStart;
+          viewModel.timeView.end = event.handleEnd;
+        },
+      ),
     );
   }
 }
@@ -798,9 +798,7 @@ class _TrackHeadersState extends State<_TrackHeaders> {
             var trackPositionPointer = -widget.verticalScrollPosition;
 
             for (final trackID in project.sequence.trackOrder) {
-              final heightModifier = viewModel.trackHeightModifiers[trackID];
-
-              if (heightModifier == null) continue;
+              final heightModifier = viewModel.trackHeightModifiers[trackID]!;
 
               final trackHeight = getTrackHeight(
                 viewModel.baseTrackHeight,

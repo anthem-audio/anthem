@@ -20,16 +20,14 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:anthem/commands/command.dart';
-import 'package:anthem/commands/command_stack.dart';
-import 'package:anthem/commands/journal_commands.dart';
+import 'package:anthem/logic/commands/command.dart';
+import 'package:anthem/logic/commands/command_stack.dart';
+import 'package:anthem/logic/commands/journal_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/sequence.dart';
 import 'package:anthem/visualization/visualization.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:anthem/engine_api/messages/messages.dart' as message_api;
 import 'package:mobx/mobx.dart';
 
@@ -55,7 +53,6 @@ class ProjectModel extends _ProjectModel
 
   factory ProjectModel.fromJson(Map<String, dynamic> json) {
     final project = _$ProjectModelAnthemModelMixin.fromJson(json)
-      ..isSaved = true
       // This is the top model in the tree. setParentPropertiesOnChildren will not
       // work correctly if we don't set this.
       ..isTopLevelModel = true;
@@ -70,18 +67,21 @@ class ProjectModel extends _ProjectModel
     // is the top level, we need to call it ourselves.
     setParentPropertiesOnChildren();
 
-    generators.addFieldChangedListener((fieldAccessors, operation) {
-      // If there is only one item, then this change is directly related to the
-      // generators map itself.
-      if (fieldAccessors.elementAtOrNull(1) == null) {
-        // If the operation is a remove, we need to notify the engine so it can
-        // clean up any compiled sequences for this channel.
-        if (operation is MapRemove) {
-          final generatorId = fieldAccessors.elementAt(0).key as Id;
-          engine.sequencerApi.cleanUpChannel(generatorId);
-        }
-      }
-    });
+    // We need to notify the engine when a generator is removed so it can clean
+    // up any compiled sequences for this channel.
+    onChange(
+      // This filter matches against removals from the generators map
+      (b) => b.generators.anyValue.filterByChangeType([
+        ModelFilterChangeType.mapRemove,
+      ]),
+      (e) {
+        // Field accessors are:
+        // 0: the generators field
+        // 1: accessing a value in the map by key
+        final generatorId = e.fieldAccessors[1].key as Id;
+        engine.sequencerApi.cleanUpChannel(generatorId);
+      },
+    );
   }
 }
 
@@ -130,11 +130,21 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   @hideFromSerialization
   String? filePath;
 
-  /// Whether or not the project has been saved. If false, the project has
-  /// either never been saved, or has been modified since the last save.
+  String get name {
+    if (filePath == null) {
+      return 'New Project';
+    }
+
+    return filePath!.split(RegExp('[/\\\\]')).last.split('.').first;
+  }
+
+  /// Tracks whether or not the project has been saved.
+  ///
+  /// If false, the project has either never been saved, or otherwise has been
+  /// saved and not modified since then.
   @anthemObservable
   @hideFromSerialization
-  bool isSaved = false;
+  bool isDirty = false;
 
   // Detail view state
 
@@ -192,7 +202,11 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   final engineID = getEngineID();
 
   @hide
-  late Engine engine;
+  late Engine engine = Engine(
+    engineID,
+    this as ProjectModel,
+    enginePathOverride: _enginePathOverride,
+  );
 
   @anthemObservable
   @hide
@@ -239,12 +253,6 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// This function is run after deserialization. It allows us to do some setup
   /// that the deserialization step can't do for us.
   void hydrate() {
-    engine = Engine(
-      engineID,
-      this as ProjectModel,
-      enginePathOverride: _enginePathOverride,
-    );
-
     engine.engineStateStream.listen((state) {
       (this as ProjectModel).engineState = state;
 
@@ -260,7 +268,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
 
         if (_fieldChangedListener != null) {
           // Unhook the model change stream from the engine
-          (this as AnthemModelBase).removeFieldChangedListener(
+          (this as AnthemModelBase).removeRawFieldChangedListener(
             _fieldChangedListener!,
           );
           _fieldChangedListener = null;
@@ -378,7 +386,9 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     };
 
     // Hook up the model change stream to the engine
-    (this as AnthemModelBase).addFieldChangedListener(_fieldChangedListener!);
+    (this as AnthemModelBase).addRawFieldChangedListener(
+      _fieldChangedListener!,
+    );
   }
 
   /// Executes the given command on the project and pushes it to the undo/redo
@@ -391,6 +401,10 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     } else {
       _commandStack.push(command);
     }
+
+    // If we receive an action that can be undone, then we will consider the
+    // project dirty.
+    isDirty = true;
   }
 
   /// Pushes the given command to the undo/redo queue without executing it
@@ -405,6 +419,10 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     } else {
       _commandStack.push(command);
     }
+
+    // If we receive an action that can be undone, then we will consider the
+    // project dirty.
+    isDirty = true;
   }
 
   void _assertJournalInactive() {
@@ -415,14 +433,18 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
 
   /// Undoes the last command in the undo/redo queue.
   void undo() {
+    if (!_commandStack.canUndo) return;
     _assertJournalInactive();
     _commandStack.undo();
+    isDirty = true;
   }
 
   /// Redoes the next command in the undo/redo queue.
   void redo() {
+    if (!_commandStack.canRedo) return;
     _assertJournalInactive();
     _commandStack.redo();
+    isDirty = true;
   }
 
   void startJournalPage() {

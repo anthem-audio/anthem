@@ -17,10 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/processing_graph/processors/master_output.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 import 'node.dart';
@@ -124,7 +123,8 @@ class ProcessingGraphModel extends _ProcessingGraphModel
   }
 }
 
-abstract class _ProcessingGraphModel with Store, AnthemModelBase {
+abstract class _ProcessingGraphModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
   /// A map of nodes in the graph.
   ///
   /// The key is the node ID.

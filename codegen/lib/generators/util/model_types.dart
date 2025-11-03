@@ -17,10 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:analyzer/dart/element/element2.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
@@ -91,7 +91,7 @@ class EnumModelType extends ModelType {
 
   final String enumName;
 
-  final EnumElement2 enumElement;
+  final EnumElement enumElement;
 
   EnumModelType(
     this.enumName, {
@@ -187,7 +187,7 @@ class CustomModelType extends ModelType {
   CustomModelType(this.modelClassInfo, {required super.isNullable});
 
   @override
-  String get dartName => modelClassInfo.annotatedClass.name3!;
+  String get dartName => modelClassInfo.annotatedClass.name!;
 }
 
 class UnionModelType extends ModelType {
@@ -221,15 +221,15 @@ class UnknownModelType extends ModelType {
 /// Parses a Dart type into a [ModelType].
 ModelType getModelType(
   DartType type,
-  ClassElement2 annotatedClass, {
-  FieldElement2? field,
+  ClassElement annotatedClass, {
+  FieldElement? field,
 }) {
-  final element = type.element3;
+  final element = type.element;
   if (element == null) return UnknownModelType.error();
 
   final isNullable = type.nullabilitySuffix == NullabilitySuffix.question;
 
-  return switch (element.name3) {
+  return switch (element.name) {
     'bool' => BoolModelType(isNullable: isNullable),
     'int' => IntModelType(isNullable: isNullable),
     'double' => DoubleModelType(isNullable: isNullable),
@@ -245,19 +245,19 @@ ModelType getModelType(
             ).firstAnnotationOf(field);
 
       // Check if this is a list
-      if (element is ClassElement2 &&
-          (element.name3 == 'List' ||
-              element.name3 == 'ObservableList' ||
-              element.name3 == 'AnthemObservableList')) {
+      if (element is ClassElement &&
+          (element.name == 'List' ||
+              element.name == 'ObservableList' ||
+              element.name == 'AnthemObservableList')) {
         if (type is! ParameterizedType) return UnknownModelType.error();
 
         final typeParam = type.typeArguments.first;
-        if (typeParam.element3 == null) return UnknownModelType.error();
+        if (typeParam.element == null) return UnknownModelType.error();
 
         final itemType = getModelType(typeParam, annotatedClass);
         return ListModelType(
           itemType,
-          collectionType: switch (element.name3) {
+          collectionType: switch (element.name) {
             'ObservableList' => CollectionType.mobXObservable,
             'AnthemObservableList' => CollectionType.anthemObservable,
             _ => CollectionType.raw,
@@ -267,10 +267,10 @@ ModelType getModelType(
       }
 
       // Check if this is a map
-      if (element is ClassElement2 &&
-          (element.name3 == 'Map' ||
-              element.name3 == 'ObservableMap' ||
-              element.name3 == 'AnthemObservableMap')) {
+      if (element is ClassElement &&
+          (element.name == 'Map' ||
+              element.name == 'ObservableMap' ||
+              element.name == 'AnthemObservableMap')) {
         if (type is! ParameterizedType) return UnknownModelType.error();
 
         final typeParams = type.typeArguments;
@@ -279,10 +279,10 @@ ModelType getModelType(
         final keyType = getModelType(typeParams[0], annotatedClass);
         if (!keyType.canBeMapKey) {
           log.warning(
-            'Map key type cannot be used as a map key: ${typeParams[0].element3?.name3}',
+            'Map key type cannot be used as a map key: ${typeParams[0].element?.name}',
           );
           log.warning(
-            '${typeParams[0].element3?.name3} is a field on ${annotatedClass.name3}.',
+            '${typeParams[0].element?.name} is a field on ${annotatedClass.name}.',
           );
           return UnknownModelType.error();
         }
@@ -291,7 +291,7 @@ ModelType getModelType(
         return MapModelType(
           keyType,
           valueType,
-          collectionType: switch (element.name3) {
+          collectionType: switch (element.name) {
             'ObservableMap' => CollectionType.mobXObservable,
             'AnthemObservableMap' => CollectionType.anthemObservable,
             _ => CollectionType.raw,
@@ -300,7 +300,7 @@ ModelType getModelType(
         );
       }
       // Check for Object with @Union() annotation
-      else if (element is ClassElement2 && element.name3 == 'Object') {
+      else if (element is ClassElement && element.name == 'Object') {
         final types = unionAnnotation
             ?.getField('types')
             ?.toListValue()
@@ -317,11 +317,11 @@ ModelType getModelType(
         }
       } else if (unionAnnotation != null && field != null) {
         throw Exception(
-          'Union annotation must be used on Object type, but was used on ${element.name3}. The type ${element.name3} is used in a field on ${annotatedClass.name3}.',
+          'Union annotation must be used on Object type, but was used on ${element.name}. The type ${element.name} is used in a field on ${annotatedClass.name}.',
         );
       }
       // Check for custom type
-      else if (element is ClassElement2) {
+      else if (element is ClassElement) {
         // If this is a custom type, it should be annotated as an Anthem model
         final anthemModelAnnotation = const TypeChecker.typeNamed(
           AnthemModel,
@@ -329,37 +329,35 @@ ModelType getModelType(
         ).firstAnnotationOf(element);
         if (anthemModelAnnotation == null) {
           return UnknownModelType(
-            dartName: element.name3!,
+            dartName: element.name!,
             isNullable: isNullable,
           );
         }
 
         try {
-          final type = ModelClassInfo(LibraryReader(element.library2), element);
+          final type = ModelClassInfo(LibraryReader(element.library), element);
           return CustomModelType(type, isNullable: isNullable);
         } catch (e) {
-          log.warning('Error parsing custom type: ${element.name3}');
+          log.warning('Error parsing custom type: ${element.name}');
           log.warning('This may be because the type is not formed correctly.');
-          log.warning(
-            '${element.name3} is a field on ${annotatedClass.name3}.',
-          );
+          log.warning('${element.name} is a field on ${annotatedClass.name}.');
           return UnknownModelType(
-            dartName: element.name3!,
+            dartName: element.name!,
             isNullable: isNullable,
           );
         }
       }
       // Check for enum
-      else if (element is EnumElement2) {
+      else if (element is EnumElement) {
         return EnumModelType(
-          element.name3!,
+          element.name!,
           isNullable: isNullable,
           enumElement: element,
         );
       }
 
       log.warning(
-        'Unknown type: ${element.name3}. This is not expected, and may be a bug. The type ${element.name3} is used in a field on ${annotatedClass.name3}.',
+        'Unknown type: ${element.name}. This is not expected, and may be a bug. The type ${element.name} is used in a field on ${annotatedClass.name}.',
       );
 
       return UnknownModelType.error();

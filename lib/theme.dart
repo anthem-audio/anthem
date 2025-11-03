@@ -33,6 +33,7 @@ class AnthemTheme {
   static _Control control = _Control();
   static _Text text = _Text();
   static _Grid grid = _Grid();
+  static _Overlay overlay = _Overlay();
 }
 
 class _Panel {
@@ -69,8 +70,12 @@ class _Control {
   Color activeBackground = const Color(0xFF357869);
   Color border = const Color(0xFF323232);
 
-  // Not from the original theme
   Color background = const Color(0xFF3D3D3D);
+}
+
+class _Overlay {
+  Color background = const Color(0xFF3D3D3D);
+  Color border = const Color(0xFF636363);
 }
 
 const _textMain = Color(0xFFCFCFCF);

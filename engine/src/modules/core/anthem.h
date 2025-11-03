@@ -23,9 +23,9 @@
 #include <iostream>
 
 #include <juce_audio_devices/juce_audio_devices.h>
-#include <juce_audio_processors/juce_audio_processors.h>
 
-#include "modules/core/comms.h"
+#include "comms.h"
+
 #include "modules/core/command_handler.h"
 #include "modules/core/anthem_audio_callback.h"
 #include "modules/processing_graph/runtime/anthem_graph_processor.h"
@@ -84,8 +84,10 @@ public:
   // JUCE class for managing audio devices
   juce::AudioDeviceManager audioDeviceManager;
 
+  #ifndef __EMSCRIPTEN__
   // JUCE class for loading and managing plugins
   juce::AudioPluginFormatManager audioPluginFormatManager;
+  #endif // #ifndef __EMSCRIPTEN__
 
   // The UI communication layer. This is used to send and receive messages from
   // the UI.

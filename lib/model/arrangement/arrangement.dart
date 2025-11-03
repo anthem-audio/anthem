@@ -21,12 +21,11 @@ import 'dart:math';
 
 import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem/model/collections.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/sequence.dart';
 import 'package:anthem/model/shared/invalidation_range_collector.dart';
 import 'package:anthem/model/shared/loop_points.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 import 'clip.dart';
@@ -71,21 +70,57 @@ class ArrangementModel extends _ArrangementModel
 
       updateViewWidthAction.execute();
 
-      clips.addFieldChangedListener((fieldAccessors, operation) {
-        _recompileModifiedClips(fieldAccessors, operation);
-        updateViewWidthAction.execute();
+      onChange(
+        (b) => b.clips.anyValue.multiple([
+          (b) => b.offset,
+          (b) => b.patternId,
+          (b) => b.timeView.withDescendants,
+        ]),
+        (e) {
+          _recompileOnClipFieldChanged(e.fieldAccessors, e.operation);
+        },
+      );
+
+      onChange((b) => b.clips.anyValue, (e) {
+        _recompileOnClipAddedOrRemoved(
+          e.operation.oldValue as ClipModel?,
+          e.operation.newValue as ClipModel?,
+        );
       });
 
-      addFieldChangedListener((fieldAccessors, operation) {
-        if (fieldAccessors.first.fieldName == 'loopPoints') {
-          _updateLoopPointsAction.execute();
-        }
+      // We need to update viewWidth whenever clips or relevant clip properties
+      // change.
+      onChange(
+        (b) => b.multiple([
+          // Changes to the clips map itself
+          (b) => b.clips.anyValue,
+
+          // Changes to clip properties that affect arrangement width
+          (b) => b.clips.anyValue.multiple([
+            (b) => b.offset,
+            (b) => b.patternId,
+            (b) => b.timeView.withDescendants,
+          ]),
+        ]),
+        (e) {
+          updateViewWidthAction.execute();
+        },
+      );
+
+      // After updating loop points in the model, we inform the engine.
+      //
+      // We don't have a detailed model change observation system in the engine,
+      // so this is a simple way to allow the engine to perform necessary
+      // side-effects.
+      onChange((b) => b.loopPoints.withDescendants, (e) {
+        _updateLoopPointsAction.execute();
       });
     });
   }
 }
 
-abstract class _ArrangementModel with Store, AnthemModelBase {
+abstract class _ArrangementModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
   Id id;
 
   @anthemObservable
@@ -132,13 +167,25 @@ abstract class _ArrangementModel with Store, AnthemModelBase {
         barMultiple;
   }
 
-  /// Width of the arrangement in ticks, with some buffer at the end.
+  /// Width of the arrangement in ticks, with some buffer at the end, based on
+  /// the width of the content in the arrangement.
   ///
-  /// This is updated whenever the clips change.
+  /// This must be updated whenever any clip is added or removed, or if its
+  /// position or size changes.
   @anthemObservable
   @hide
   late int viewWidth = getWidth();
 
+  /// A debounced action to update [viewWidth].
+  ///
+  /// This action must be run when clips are changed.
+  ///
+  /// MobX provides us a way to trigger this on the relevant model changes;
+  /// however, it is at least a full order of magnitude slower. Since this runs
+  /// very often, we do it manually instead.
+  ///
+  /// Anthem has a system for observing model changes (see generated onChange
+  /// method for models), and we use this to trigger the action.
   @hide
   late final MicrotaskDebouncedAction updateViewWidthAction =
       MicrotaskDebouncedAction(() {

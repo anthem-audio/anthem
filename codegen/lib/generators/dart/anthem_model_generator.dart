@@ -19,16 +19,17 @@
 
 import 'dart:async';
 
-import 'package:anthem_codegen/generators/dart/serialize_generators.dart';
+import 'package:anthem_codegen/generators/dart/model_change_generator.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
-import 'package:anthem_codegen/include/annotations.dart';
-import 'package:anthem_codegen/generators/dart/json_deserialize_generator.dart';
-import 'package:anthem_codegen/generators/dart/mobx_generator.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:anthem_codegen/generators/util/model_class_info.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
+import 'json_deserialize_generator.dart';
 import 'json_serialize_generator.dart';
+import 'field_serializers.dart';
+import 'mobx_generator.dart';
 
 /// Provides code generation for Anthem models.
 ///
@@ -55,6 +56,10 @@ class AnthemModelGenerator extends Generator {
   Future<String> generate(LibraryReader library, BuildStep buildStep) async {
     var result = StringBuffer();
 
+    result.write(
+      '// ignore_for_file: duplicate_ignore, unnecessary_overrides, non_constant_identifier_names\n',
+    );
+
     // Looks for @AnthemModel on each class in the file, and generates the
     // appropriate code
     for (final libraryClass in library.classes) {
@@ -71,7 +76,7 @@ class AnthemModelGenerator extends Generator {
       final context = ModelClassInfo(library, libraryClass);
 
       result.write(
-        'mixin _\$${libraryClass.name3}AnthemModelMixin on ${context.baseClass.name3}${context.annotation!.generateModelSync ? ', AnthemModelBase' : ''} {\n',
+        'mixin _\$${libraryClass.name}AnthemModelMixin on ${context.baseClass.name}${context.annotation!.generateModelSync ? ', AnthemModelBase' : ''} {\n',
       );
 
       if (context.annotation!.serializable) {
@@ -97,9 +102,17 @@ class AnthemModelGenerator extends Generator {
         result.write('\n  // Init function\n');
         result.write('\n');
         result.write(_generateInitFunction(context: context));
+
+        result.write('\n  // onChange method\n');
+        result.write(generateOnChangeMethod(context: context));
       }
 
       result.write('}\n');
+
+      if (context.annotation!.generateModelSync) {
+        result.write('\n');
+        result.write(generateFilterBuilders(context: context));
+      }
     }
 
     // The cache for parsed classes persists across files, so we need to clear
@@ -179,8 +192,6 @@ String _generateGettersAndSetters({
     final typeQ = fieldInfo.typeInfo.isNullable ? '?' : '';
 
     result.write('@override\n');
-    result.write('// ignore: duplicate_ignore\n');
-    result.write('// ignore: unnecessary_overrides\n');
     result.write('${fieldInfo.typeInfo.dartName}$typeQ get $fieldName {\n');
     if (fieldInfo.isObservable) {
       result.write(generateMobXGetter(fieldName, fieldInfo));
@@ -218,7 +229,7 @@ catch (_) {
         // to the entire subtree when it is attached. Otherwise, we need to
         // do it now.
         setter.write('''
-if (!isTopLevelModel && parent != null) {
+if (isTopLevelModel || parent != null) {
   $fieldGetter.setParentProperties(
     parent: this,
     fieldName: '$fieldName',
@@ -244,7 +255,7 @@ ${first ? '' : 'else '}if (value is ${subtype.dartName}) {
             // to the entire subtree when it is attached. Otherwise, we need to
             // do it now.
             setter.write('''
-  if (!isTopLevelModel && parent != null) {
+  if (isTopLevelModel || parent != null) {
     value.setParentProperties(
       parent: this,
       fieldName: '$fieldName',
@@ -360,7 +371,7 @@ ${first ? '' : 'else '}if (super.$fieldName is ${subtype.dartName}) {
           // to the entire subtree when it is attached. Otherwise, we need to
           // do it now.
           result.write('''
-  if (!isTopLevelModel && parent != null) {
+  if (isTopLevelModel || parent != null) {
     $fieldGetter.setParentProperties(
       parent: this,
       fieldName: '$fieldName',

@@ -151,7 +151,12 @@ class VisualizationProvider {
 
     scheduleMicrotask(() async {
       // If the engine is starting or stopped, wait for it to be ready.
-      await _project.engine.readyForMessages;
+      try {
+        await _project.engine.readyForMessages;
+      } catch (_) {
+        // The above will throw if the engine stops.
+        return;
+      }
 
       _project.engine.visualizationApi.setSubscriptions(
         _enabled ? _subscriptions.keys.toList() : [],
@@ -195,10 +200,21 @@ class VisualizationProvider {
     while (_subscriptions.isNotEmpty) {
       final groupKey = _subscriptions.keys.first;
       final group = _subscriptions[groupKey]!;
-      while (group.isNotEmpty) {
+      var groupLength = group.length;
+      while (groupLength != 0) {
         final subscription = group.last;
+
+        // This should cause the subscription to be removed from the list.
         subscription.dispose();
-        group.removeLast();
+
+        groupLength--;
+        if (group.length != groupLength) {
+          // Prevents an infinite loop if the list length doesn't change due to
+          // future bugs here or in VisualizationSubscription.dispose().
+          throw StateError(
+            'Subscription list length mismatch when disposing VisualizationProvider.',
+          );
+        }
       }
       _subscriptions.remove(groupKey);
     }

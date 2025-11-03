@@ -17,20 +17,34 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
+import 'package:anthem/licenses.dart';
+import 'package:anthem/logic/controller_registry.dart';
+import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/shortcuts/raw_key_event_singleton.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:pointer_lock/pointer_lock.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'model/project.dart';
 import 'model/store.dart';
 import 'widgets/main_window/main_window.dart';
+import 'web_init_stub.dart' if (dart.library.js_interop) 'web_init.dart';
 
 GlobalKey mainWindowKey = GlobalKey();
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await pointerLock.ensureInitialized();
+
+  addLicenses();
+
   final store = AnthemStore.instance;
 
   // Note: This code for creating a new project is duplicated in
@@ -44,8 +58,13 @@ void main() async {
 
   runApp(const App());
 
-  await windowManager.ensureInitialized();
-  await windowManager.setAsFrameless();
+  if (!kIsWeb) {
+    await windowManager.ensureInitialized();
+    await windowManager.setAsFrameless();
+  }
+
+  // Only defined on web
+  webInit();
 }
 
 class App extends StatefulWidget {
@@ -57,6 +76,7 @@ class App extends StatefulWidget {
 
 class _AppState extends State<App> with WindowListener {
   bool isMaximized = false;
+  DialogController dialogController = DialogController();
 
   Future<void> _initWindow() async {
     await windowManager.setPreventClose(true);
@@ -68,13 +88,21 @@ class _AppState extends State<App> with WindowListener {
   @override
   void initState() {
     super.initState();
-    windowManager.addListener(this);
-    _initWindow();
+
+    ControllerRegistry.instance.dialogController = dialogController;
+
+    if (!kIsWeb) {
+      windowManager.addListener(this);
+      _initWindow();
+    }
   }
 
   @override
   void dispose() {
-    windowManager.removeListener(this);
+    if (!kIsWeb) {
+      windowManager.removeListener(this);
+    }
+
     super.dispose();
   }
 
@@ -93,18 +121,36 @@ class _AppState extends State<App> with WindowListener {
       }
     }
 
-    // The below is a rough outline for save-before-exit
+    final shouldQuit = await _maybeSaveOrConfirm();
 
-    // // a) Ask the user or run an auto-save
-    // final shouldQuit = await _maybeSaveOrConfirm();
+    if (shouldQuit) {
+      await windowManager.destroy();
+    }
+  }
 
-    // if (shouldQuit) {
-    //   await windowManager.destroy();   // forces the app to exit
-    // } else {
-    //   // Simply return; the window stays open
-    // }
+  Future<bool> _maybeSaveOrConfirm() async {
+    // Check for dirty projects
+    final projects = AnthemStore.instance.projects.values;
 
-    await windowManager.destroy();
+    for (final project in [...projects].reversed) {
+      if (!project.isDirty) {
+        ControllerRegistry.instance.mainWindowController!
+            .closeProjectWithoutSaving(project.id);
+        continue;
+      }
+
+      ControllerRegistry.instance.mainWindowController!.switchTab(project.id);
+
+      final projectController = ControllerRegistry.instance
+          .getController<ProjectController>(project.id);
+      final didClose = await projectController?.close();
+
+      if (didClose != true) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   @override
@@ -130,41 +176,51 @@ class _AppState extends State<App> with WindowListener {
 
   @override
   Widget build(BuildContext context) {
+    final contentStack = Stack(
+      fit: StackFit.expand,
+      children: [
+        Container(color: AnthemTheme.panel.border),
+        MainWindow(key: mainWindowKey, dialogController: dialogController),
+      ],
+    );
+
+    final windowResizeAreaWithContent = kIsWeb
+        ? contentStack
+        : DragToResizeArea(
+            enableResizeEdges: isMaximized ? [] : null,
+            child: contentStack,
+          );
+
     return MaterialApp(
       title: 'Anthem',
       color: AnthemTheme.primary.main,
       theme: ThemeData(
+        fontFamily: 'Roboto',
         textSelectionTheme: TextSelectionThemeData(
           selectionColor: AnthemTheme.primary.subtleBorder.withAlpha(50),
         ),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: AnthemTheme.primary.main,
+          brightness: Brightness.dark,
+        ),
       ),
-      builder: (context, widget) {
+      home: Scaffold(
+        body: MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => KeyboardModifiers()),
+          ],
+          child: windowResizeAreaWithContent,
+        ),
+      ),
+      builder: (context, child) {
         return GestureDetector(
           // Un-focus text boxes when clicking elsewhere
           onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-          child: Scaffold(
-            body: MultiProvider(
-              providers: [
-                ChangeNotifierProvider(
-                  create: (context) => KeyboardModifiers(),
-                ),
-              ],
-              child: ScrollConfiguration(
-                behavior: ScrollConfiguration.of(
-                  context,
-                ).copyWith(scrollbars: false),
-                child: DragToResizeArea(
-                  enableResizeEdges: isMaximized ? [] : null,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Container(color: AnthemTheme.panel.border),
-                      MainWindow(key: mainWindowKey),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          child: ScrollConfiguration(
+            behavior: ScrollConfiguration.of(
+              context,
+            ).copyWith(scrollbars: false),
+            child: child!,
           ),
         );
       },

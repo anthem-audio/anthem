@@ -19,6 +19,8 @@
 
 part of 'piano_roll_controller.dart';
 
+const maxSafeIntWeb = 0x001F_FFFF_FFFF_FFFF;
+
 /// These are the possible states that the piano roll can have during event
 /// handing. The current state tells the controller how to handle incoming
 /// pointer events.
@@ -305,7 +307,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
       if (_eventHandlingState == EventHandlingState.movingSelection) {
         _noteMoveActionData!.startOfFirstNote = notes.fold<int>(
-          0x7FFFFFFFFFFFFFFF,
+          maxSafeIntWeb,
           (previousValue, element) =>
               viewModel.selectedNotes.nonObservableInner.contains(element.id)
               ? min(previousValue, element.offset)
@@ -319,7 +321,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
               : previousValue,
         );
         _noteMoveActionData!.keyOfBottomNote = notes.fold<int>(
-          0x7FFFFFFFFFFFFFFF,
+          maxSafeIntWeb,
           (previousValue, element) =>
               viewModel.selectedNotes.nonObservableInner.contains(element.id)
               ? min(previousValue, element.key)

@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/controller_registry.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
@@ -28,7 +29,7 @@ import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor_controller.dart';
 import 'package:anthem/widgets/menus/add_channel_menu.dart';
-import 'package:anthem/widgets/project/project_controller.dart';
+import 'package:anthem/logic/project_controller.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -51,8 +52,13 @@ class _PatternEditorState extends State<PatternEditor> {
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
+
     final projectController = Provider.of<ProjectController>(context);
-    controller ??= PatternEditorController(project: project);
+
+    if (controller == null) {
+      controller = PatternEditorController(project: project);
+      ControllerRegistry.instance.registerController(project.id, controller!);
+    }
 
     final kebabMenuController = AnthemMenuController();
     final addChannelMenuController = AnthemMenuController();

@@ -17,9 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem/model/collections.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 import 'node_port_config.dart';
@@ -56,7 +55,8 @@ class NodePortModel extends _NodePortModel
   NodePortDataType get type => config.dataType;
 }
 
-abstract class _NodePortModel with Store, AnthemModelBase {
+abstract class _NodePortModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
   // This will map to the 32-bit parameter ID from the VST standard if this is a
   // control input port.
   int id;

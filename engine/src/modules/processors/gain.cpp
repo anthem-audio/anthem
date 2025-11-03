@@ -22,25 +22,7 @@
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 
 GainProcessor::GainProcessor(const GainProcessorModelImpl& _impl)
-    : AnthemProcessor("Gain"), GainProcessorModelBase(_impl) {
-  // // Audio input port
-  // config.addAudioInput(
-  //   std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Audio, 0)
-  // );
-
-  // // Audio output port
-  // config.addAudioOutput(
-  //   std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Audio, 0)
-  // );
-
-  // // Control ports
-  
-  // // Amplitude
-  // config.addControlInput(
-  //   std::make_shared<AnthemProcessorPortConfig>(AnthemGraphDataType::Control, 0),
-  //   std::make_shared<AnthemProcessorParameterConfig>(0ul, 1.0f, 0.0f, 10.0f)
-  // );
-}
+    : AnthemProcessor("Gain"), GainProcessorModelBase(_impl) {}
 
 GainProcessor::~GainProcessor() {}
 
@@ -53,11 +35,14 @@ void GainProcessor::process(AnthemProcessContext& context, int numSamples) {
   auto& amplitudeControlBuffer = context.getInputControlBuffer(GainProcessorModelBase::gainPortId);
 
   for (int sample = 0; sample < numSamples; sample++) {
+    auto paramValue = amplitudeControlBuffer.getReadPointer(0)[sample];
+    float targetGain = paramValueToGainLinear(paramValue);
+
     for (int channel = 0; channel < audioOutBuffer.getNumChannels(); ++channel) {
       auto inputSample = audioInBuffer.getReadPointer(channel)[sample];
-      auto amplitudeSample = amplitudeControlBuffer.getReadPointer(0)[sample];
+      auto outputSample = inputSample * targetGain;
 
-      audioOutBuffer.getWritePointer(channel)[sample] = inputSample * amplitudeSample;
+      audioOutBuffer.getWritePointer(channel)[sample] = outputSample;
     }
   }
 }

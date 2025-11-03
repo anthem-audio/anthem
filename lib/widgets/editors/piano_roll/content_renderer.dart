@@ -19,7 +19,6 @@
 
 import 'package:anthem/color_shifter.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
-import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
@@ -28,6 +27,7 @@ import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
 import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui' as ui;

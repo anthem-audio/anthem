@@ -18,7 +18,7 @@
 */
 
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 class Hint extends StatefulWidget {
   final Widget? child;

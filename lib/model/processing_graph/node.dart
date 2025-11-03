@@ -21,16 +21,16 @@ import 'dart:async';
 
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/debounced_action.dart';
-import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
+import 'package:anthem/model/processing_graph/processors/balance.dart';
 import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
 import 'package:anthem/model/processing_graph/processors/simple_midi_generator.dart';
 import 'package:anthem/model/processing_graph/processors/simple_volume_lfo.dart';
 import 'package:anthem/model/processing_graph/processors/vst3_processor.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 import 'processors/master_output.dart';
@@ -111,7 +111,7 @@ class NodeModel extends _NodeModel
   }
 }
 
-abstract class _NodeModel with Store, AnthemModelBase {
+abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   String id;
 
   AnthemObservableList<NodePortModel> audioInputPorts;
@@ -168,19 +168,27 @@ abstract class _NodeModel with Store, AnthemModelBase {
   /// processor. This is be debounced to avoid excessive requests.
   void scheduleDebouncedStateUpdate() async {
     _stateUpdateDebouncedAction ??= TimerDebouncedAction(() async {
-      await updateStateFromEngine();
+      await updateStateFromEngine(true);
     }, Duration(seconds: 1));
     _stateUpdateDebouncedAction!.execute();
   }
 
-  Future<void> updateStateFromEngine() async {
+  Future<void> updateStateFromEngine([bool waitForSend = false]) async {
     if (!project.engine.isRunning) {
       return;
     }
 
-    await stateIsSentToEngineCompleter.future;
+    if (waitForSend) {
+      await stateIsSentToEngineCompleter.future;
+    }
 
-    processorState = await project.engine.processingGraphApi.getPluginState(id);
+    final newState = await project.engine.processingGraphApi.getPluginState(id);
+    if (newState != processorState) {
+      processorState = newState;
+
+      // Mark project as dirty
+      project.isDirty = true;
+    }
   }
 
   /// Sends the current state of the processor to the engine.
@@ -211,6 +219,7 @@ abstract class _NodeModel with Store, AnthemModelBase {
   }
 
   @Union([
+    BalanceProcessorModel,
     GainProcessorModel,
     LiveEventProviderProcessorModel,
     MasterOutputProcessorModel,

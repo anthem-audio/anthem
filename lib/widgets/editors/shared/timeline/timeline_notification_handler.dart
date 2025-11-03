@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/commands/timeline_commands.dart';
+import 'package:anthem/logic/commands/timeline_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
@@ -80,11 +80,11 @@ class _TimelineNotificationHandlerState
                     ? 0
                     : startTime.floor()),
             divisionChanges: divisionChanges,
-          ).clamp(0, 0x7FFFFFFFFFFFFFFF);
+          ).clamp(0, 0x001F_FFFF_FFFF_FFFF); // Max safe integer for web
 
           if (notification is TimelineLabelPointerDownNotification) {
             startTime = notification.time;
-            snapOffset = notification.time.floor() - snappedPos;
+            snapOffset = notification.time.floor().toInt() - snappedPos;
           } else if (notification is TimelineLabelPointerMoveNotification) {
             hasMoved = true;
             project.execute(

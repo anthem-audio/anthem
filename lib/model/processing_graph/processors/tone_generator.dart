@@ -18,13 +18,12 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem/model/collections.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/parameter_config.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 part 'tone_generator.g.dart';
@@ -84,7 +83,7 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
             dataType: NodePortDataType.control,
             parameterConfig: ParameterConfigModel(
               id: _ToneGeneratorProcessorModel.amplitudePortId,
-              defaultValue: 0.125,
+              defaultValue: 0.75,
               minimumValue: 0,
               maximumValue: 1,
               smoothingDurationSeconds: 0.5,
@@ -112,7 +111,8 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
       _ToneGeneratorProcessorModel.eventInputPortId;
 }
 
-abstract class _ToneGeneratorProcessorModel with Store, AnthemModelBase {
+abstract class _ToneGeneratorProcessorModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
   static const int audioOutputPortId = 0;
 
   static const int frequencyPortId = 1;

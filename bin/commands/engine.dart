@@ -18,7 +18,7 @@
 */
 
 // ignore_for_file: avoid_print
-// cspell:ignore DCMAKE fsanitize
+// cspell:ignore DCMAKE fsanitize emcmake
 
 import 'dart:io';
 
@@ -32,7 +32,7 @@ class EngineCommand extends Command<dynamic> {
   String get name => 'engine';
 
   @override
-  String get description => 'Utilities for developing the Anthem engine.';
+  String get description => 'Build, clean, or test the Anthem engine.';
 
   EngineCommand() {
     addSubcommand(_BuildEngineCommand());
@@ -66,28 +66,48 @@ class _BuildEngineCommand extends Command<dynamic> {
     argParser.addFlag(
       'address-sanitizer',
       defaultsTo: false,
+      help: 'Builds the engine with address sanitizer enabled.',
+    );
+
+    argParser.addFlag(
+      'wasm',
+      defaultsTo: false,
       help:
-          'Builds the engine with address sanitizer enabled. This does not work with MSVC.',
+          'Builds the engine with a WebAssembly target, and copies the output to the Flutter web directory. '
+          'This is only tested on Linux, though it is likely also possible on macOS. Windows users should use WSL2 for this.',
+    );
+
+    argParser.addFlag(
+      'skip-configuration',
+      defaultsTo: false,
+      help:
+          'Skips the configuration step (cmake ..). A regular build must have been run once for the same configuration, otherwise this will fail.',
     );
   }
 
   @override
   Future<void> run() async {
-    if (argResults!['release'] && argResults!['debug']) {
+    final release = argResults!['release'] as bool;
+    final debug = argResults!['debug'] as bool;
+    final addressSanitizer = argResults!['address-sanitizer'] as bool;
+    final wasm = argResults!['wasm'] as bool;
+    final skipConfiguration = argResults!['skip-configuration'] as bool;
+
+    if (release && debug) {
       print(
         Colorize('Error: Cannot build in both release and debug mode.')..red(),
       );
       return;
     }
 
-    if (!argResults!['release'] && !argResults!['debug']) {
+    if (!release && !debug) {
       print(
         Colorize('Error: Must build in either release or debug mode.')..red(),
       );
       return;
     }
 
-    if (argResults!['release'] && argResults!['address-sanitizer']) {
+    if (release && addressSanitizer) {
       print(
         Colorize(
           'Error: Cannot build in release mode with address sanitizer enabled.',
@@ -148,41 +168,81 @@ to generate the files, then run this script again.''')..red(),
       return;
     }
 
-    final buildDirectoryName = argResults!['address-sanitizer']
-        ? 'build_asan'
-        : (argResults!['debug'] ? 'build' : 'build_release');
+    var buildDirectoryName = 'build';
+    if (wasm) buildDirectoryName += '_wasm';
+    if (release) buildDirectoryName += '_release';
+    if (addressSanitizer) buildDirectoryName += '_asan';
 
     await _buildCmakeTarget(
       'AnthemEngine',
-      addressSanitizer: argResults!['address-sanitizer'],
-      debug: argResults!['debug'],
+      wasm: wasm,
+      addressSanitizer: addressSanitizer,
+      debug: debug,
       buildDirectoryName: buildDirectoryName,
+      skipConfiguration: skipConfiguration,
     );
 
-    print(
-      Colorize('Copying engine binary to Flutter assets directory...')
-        ..lightGreen(),
-    );
-    final engineBinaryPath = packageRootPath.resolve(
-      'engine/$buildDirectoryName/AnthemEngine_artefacts${argResults!['debug'] ? '/Debug' : '/Release'}/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
-    );
-    final flutterAssetsDirPath = packageRootPath.resolve('assets/engine/');
+    if (wasm) {
+      print(
+        Colorize('Copying engine binary to Flutter web directory...')
+          ..lightGreen(),
+      );
 
-    // Create the engine directory in assets if it doesn't exist
-    final flutterAssetsDir = Directory.fromUri(flutterAssetsDirPath);
-    if (!flutterAssetsDir.existsSync()) {
-      flutterAssetsDir.createSync(recursive: true);
+      final paths = [
+        packageRootPath.resolve('engine/$buildDirectoryName/AnthemEngine.js'),
+        packageRootPath.resolve('engine/$buildDirectoryName/AnthemEngine.wasm'),
+        packageRootPath.resolve(
+          'engine/$buildDirectoryName/AnthemEngine.wasm.map',
+        ),
+      ];
+
+      final flutterWebDirPath = packageRootPath.resolve('web/engine/');
+      final flutterWebDir = Directory.fromUri(flutterWebDirPath);
+
+      if (!flutterWebDir.existsSync()) {
+        flutterWebDir.createSync(recursive: true);
+      }
+
+      for (final path in paths) {
+        print('Copying ${path.path}...');
+        final fileName = path.pathSegments.last;
+        final flutterEngineBinaryPath = flutterWebDirPath.resolve(fileName);
+        if (!File.fromUri(path).existsSync()) {
+          print('${path.path} not found.');
+          continue;
+        }
+        File.fromUri(path).copySync(
+          flutterEngineBinaryPath.toFilePath(windows: Platform.isWindows),
+        );
+      }
+
+      print(Colorize('Copy complete.').lightGreen());
+    } else {
+      print(
+        Colorize('Copying engine binary to Flutter assets directory...')
+          ..lightGreen(),
+      );
+      final engineBinaryPath = packageRootPath.resolve(
+        'engine/$buildDirectoryName/AnthemEngine_artefacts${debug ? '/Debug' : '/Release'}/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+      );
+      final flutterAssetsDirPath = packageRootPath.resolve('assets/engine/');
+
+      // Create the engine directory in assets if it doesn't exist
+      final flutterAssetsDir = Directory.fromUri(flutterAssetsDirPath);
+      if (!flutterAssetsDir.existsSync()) {
+        flutterAssetsDir.createSync(recursive: true);
+      }
+
+      // Copy the engine binary to the Flutter assets directory
+      final flutterEngineBinaryPath = flutterAssetsDirPath.resolve(
+        'AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+      );
+      File.fromUri(engineBinaryPath).copySync(
+        flutterEngineBinaryPath.toFilePath(windows: Platform.isWindows),
+      );
+
+      print(Colorize('Copy complete.').lightGreen());
     }
-
-    // Copy the engine binary to the Flutter assets directory
-    final flutterEngineBinaryPath = flutterAssetsDirPath.resolve(
-      'AnthemEngine${Platform.isWindows ? '.exe' : ''}',
-    );
-    File.fromUri(
-      engineBinaryPath,
-    ).copySync(flutterEngineBinaryPath.toFilePath(windows: Platform.isWindows));
-
-    print(Colorize('Copy complete.').lightGreen());
   }
 }
 
@@ -218,6 +278,14 @@ Future<bool> _isIpcOutdated() async {
 }
 
 class _CleanEngineCommand extends Command<dynamic> {
+  _CleanEngineCommand() {
+    argParser.addFlag(
+      'y',
+      defaultsTo: false,
+      help: 'Automatically confirm all prompts.',
+    );
+  }
+
   @override
   String get name => 'clean';
 
@@ -226,20 +294,60 @@ class _CleanEngineCommand extends Command<dynamic> {
 
   @override
   Future<void> run() async {
+    final skipPrompts = argResults!['y'] as bool;
+
     print(Colorize('Cleaning the Anthem engine build...')..lightGreen());
 
-    final packageRootPath = getPackageRootPath();
-    final buildDirPath = packageRootPath.resolve('engine/build/');
-    final buildAsanDirPath = packageRootPath.resolve('engine/build_asan/');
-    final buildDir = Directory.fromUri(buildDirPath);
-    final buildAsanDir = Directory.fromUri(buildAsanDirPath);
+    final packageRoot = getPackageRootPath();
+    final engineDirPath = packageRoot.resolve('engine/');
 
-    print(Colorize('Deleting build directory...')..lightGreen());
-    if (buildDir.existsSync()) {
-      buildDir.deleteSync(recursive: true);
+    final folders = Directory.fromUri(engineDirPath)
+        .listSync()
+        .whereType<Directory>()
+        .where((dir) {
+          final pathSegments = dir.uri.pathSegments;
+          for (var i = pathSegments.length - 1; i >= 0; i--) {
+            if (pathSegments[i].isEmpty) continue;
+            return pathSegments[i].startsWith('build');
+          }
+          return false;
+        })
+        .toList();
+
+    final webEngineDir = Directory.fromUri(packageRoot.resolve('web/engine'));
+    if (webEngineDir.existsSync()) {
+      folders.add(webEngineDir);
     }
-    if (buildAsanDir.existsSync()) {
-      buildAsanDir.deleteSync(recursive: true);
+
+    if (folders.isEmpty) {
+      print(
+        Colorize('No build directories found, nothing to clean.')..lightGreen(),
+      );
+      return;
+    }
+
+    if (!skipPrompts) {
+      print(Colorize('This will remove the following directories:')..yellow());
+      for (final dir in folders) {
+        print(Colorize(' - ${dir.path}'));
+      }
+      print(Colorize('Are you sure you want to continue? (y/N)')..yellow());
+
+      final confirmation = stdin.readLineSync();
+      if (confirmation?.toLowerCase() != 'y') {
+        print(Colorize('Aborting clean operation.')..red());
+        return;
+      }
+    }
+
+    print(Colorize('Deleting build directories...')..lightGreen());
+    for (final dir in folders) {
+      try {
+        dir.deleteSync(recursive: true);
+        print(Colorize('Deleted ${dir.path}'));
+      } catch (e) {
+        print(Colorize('Failed to delete ${dir.uri}: $e')..red());
+      }
     }
 
     print(Colorize('Clean complete.').lightGreen());
@@ -305,11 +413,13 @@ class _EngineUnitTestCommand extends Command<dynamic> {
 
 Future<void> _buildCmakeTarget(
   String target, {
+  bool wasm = false,
   bool addressSanitizer = false,
   bool debug = false,
+  bool skipConfiguration = false,
   String buildDirectoryName = 'build',
 }) async {
-  if (addressSanitizer) {
+  if (addressSanitizer && !wasm) {
     print(
       Colorize(
         'WARNING: Address sanitizer is enabled. The UI will not automatically run this build. You will need to modify engine_connector.dart to do one of the following:',
@@ -329,15 +439,17 @@ Future<void> _buildCmakeTarget(
 
   final packageRootPath = getPackageRootPath();
 
-  print(Colorize('Creating build directory...')..lightGreen());
   final buildDirPath = packageRootPath.resolve('engine/$buildDirectoryName/');
-  final buildDir = Directory.fromUri(buildDirPath);
-  buildDir.createSync();
 
-  print(Colorize('Running CMake...')..lightGreen());
-  final cmakeProcess = await Process.start(
-    'cmake',
-    [
+  if (!skipConfiguration) {
+    print(Colorize('Creating build directory...')..lightGreen());
+    final buildDir = Directory.fromUri(buildDirPath);
+    buildDir.createSync();
+
+    final cmakeCommand = [
+      if (wasm) 'emcmake',
+      'cmake',
+
       // Note: On Linux, if you get an error like: CMake Warning:
       // Manually-specified variables were not used by the project:
       //
@@ -346,7 +458,7 @@ Future<void> _buildCmakeTarget(
       // Then you may need to set the debug/release flag in the same way that
       // Windows does below in the build command. E.g.:
       //     cmake --build . --config (Release/Debug)
-      if (Platform.isLinux || Platform.isMacOS)
+      if (Platform.isLinux || Platform.isMacOS || wasm)
         '-DCMAKE_BUILD_TYPE=${debug ? 'Debug' : 'Release'}',
 
       if (addressSanitizer && (Platform.isLinux || Platform.isMacOS)) ...[
@@ -365,43 +477,81 @@ Future<void> _buildCmakeTarget(
         '-DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address',
       ],
 
-      if (addressSanitizer && Platform.isWindows) ...[
+      if (addressSanitizer && Platform.isWindows && !wasm) ...[
         r'-DCMAKE_C_FLAGS="/fsanitize=address"',
         r'-DCMAKE_CXX_FLAGS="/fsanitize=address"',
       ],
-
       '..',
-    ],
-    workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
-    environment: {
-      if (Platform.isLinux) 'CC': '/usr/bin/clang',
-      if (Platform.isLinux) 'CXX': '/usr/bin/clang++',
-    },
-    mode: ProcessStartMode.inheritStdio,
-  );
+    ];
 
-  final cmakeExitCode = await cmakeProcess.exitCode;
-  if (cmakeExitCode != 0) {
-    print(Colorize('\n\nError: CMake failed.').red());
-    exit(exitCode);
+    print(Colorize('Running CMake...')..lightGreen());
+    final Process cmakeProcess;
+
+    if (Platform.isWindows && wasm) {
+      cmakeProcess = await Process.start(
+        'wsl',
+        [
+          '--cd',
+          buildDirPath.toFilePath(windows: Platform.isWindows),
+          'bash',
+          '-lc',
+          cmakeCommand.map((e) => '"$e"').join(' '),
+        ],
+        // workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
+        mode: ProcessStartMode.inheritStdio,
+      );
+    } else {
+      cmakeProcess = await Process.start(
+        cmakeCommand.first,
+        cmakeCommand.skip(1).toList(),
+        workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
+        environment: {
+          if (Platform.isLinux && !wasm) 'CC': '/usr/bin/clang',
+          if (Platform.isLinux && !wasm) 'CXX': '/usr/bin/clang++',
+        },
+        mode: ProcessStartMode.inheritStdio,
+      );
+    }
+
+    final cmakeExitCode = await cmakeProcess.exitCode;
+    if (cmakeExitCode != 0) {
+      print(Colorize('\n\nError: CMake failed.').red());
+      exit(exitCode);
+    }
   }
 
   print(Colorize('Running build...')..lightGreen());
-  final buildProcess = await Process.start(
+
+  final buildCommand = [
     'cmake',
-    [
-      '--build',
-      '.',
-      '--target',
-      target,
-      // For macOS, I think these are ignored, but they don't seem to break
-      // anything.
-      if (Platform.isWindows || Platform.isMacOS) '--config',
-      if (Platform.isWindows || Platform.isMacOS) debug ? 'Debug' : 'Release',
-    ],
-    workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
-    mode: ProcessStartMode.inheritStdio,
-  );
+    '--build',
+    '.',
+    '--target',
+    target,
+    // For macOS, I think these are ignored, but they don't seem to break
+    // anything.
+    if (Platform.isWindows || Platform.isMacOS) '--config',
+    if (Platform.isWindows || Platform.isMacOS) debug ? 'Debug' : 'Release',
+  ];
+
+  final Process buildProcess;
+
+  if (Platform.isWindows && wasm) {
+    buildProcess = await Process.start('wsl', [
+      '--cd',
+      buildDirPath.toFilePath(windows: Platform.isWindows),
+      'bash',
+      '-lc',
+      buildCommand.map((e) => '"$e"').join(' '),
+    ], mode: ProcessStartMode.inheritStdio);
+  } else {
+    buildProcess = await Process.start(
+      buildCommand.first,
+      buildCommand.skip(1).toList(),
+      workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
+      mode: ProcessStartMode.inheritStdio,
+    );
+  }
 
   final buildExitCode = await buildProcess.exitCode;
   if (buildExitCode != 0) {

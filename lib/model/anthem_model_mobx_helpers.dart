@@ -17,8 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/anthem_model_base_mixin.dart';
-
+import 'package:anthem_codegen/include.dart';
 import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart';
 

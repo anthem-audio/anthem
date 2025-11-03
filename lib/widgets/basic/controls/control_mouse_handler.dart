@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/window_utils.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/gestures.dart';
@@ -24,7 +25,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 import 'package:pointer_lock/pointer_lock.dart';
-import 'package:window_manager/window_manager.dart';
 
 class ControlMouseEvent {
   Offset delta;
@@ -99,8 +99,8 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
     final mediaQuery = MediaQuery.of(context);
     devicePixelRatio = mediaQuery.devicePixelRatio;
 
-    final windowPos = await windowManager.getPosition();
-    final windowSize = await windowManager.getSize();
+    final windowPos = await getWindowPosition();
+    final windowSize = await getWindowSize();
 
     windowRect = Rect.fromLTWH(
       windowPos.dx / devicePixelRatio,
@@ -133,6 +133,8 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
   }
 
   void onPointerMove(PointerLockMoveEvent e) {
+    if (pointerDeviceKind == null) return;
+
     accumulatorX += e.delta.dx;
     accumulatorY += e.delta.dy;
 
@@ -153,6 +155,8 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
   }
 
   void onPointerUp(PointerEvent e) {
+    if (pointerDeviceKind == null) return;
+
     widget.onEnd?.call(
       ControlMouseEvent(
         delta: const Offset(0, 0),
@@ -202,7 +206,6 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
   Widget build(BuildContext context) {
     final listener = Listener(
       behavior: HitTestBehavior.translucent,
-      onPointerUp: onPointerUp,
       onPointerSignal: onPointerSignal,
       child: widget.child,
     );

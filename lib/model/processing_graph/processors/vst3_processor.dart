@@ -18,10 +18,11 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem/model/collections.dart';
-import 'package:anthem/model/model.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem/model/processing_graph/node.dart';
+import 'package:anthem/model/processing_graph/node_port.dart';
+import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 part 'vst3_processor.g.dart';
@@ -29,6 +30,7 @@ part 'vst3_processor.g.dart';
 @AnthemModel.syncedModel(
   cppBehaviorClassName: 'VST3Processor',
   cppBehaviorClassIncludePath: 'modules/processors/vst3_processor.h',
+  skipOnWasm: true,
 )
 class VST3ProcessorModel extends _VST3ProcessorModel
     with _$VST3ProcessorModel, _$VST3ProcessorModelAnthemModelMixin {
@@ -71,7 +73,8 @@ class VST3ProcessorModel extends _VST3ProcessorModel
   static int get audioOutputPortId => _VST3ProcessorModel.audioOutputPortId;
 }
 
-abstract class _VST3ProcessorModel with AnthemModelBase, Store {
+abstract class _VST3ProcessorModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
   static const int audioOutputPortId = 0;
 
   static const int eventInputPortId = 1;

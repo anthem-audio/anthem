@@ -17,9 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
-
-import 'anthem_model_base_mixin.dart';
 
 /// Serializes a model value to a JSON-serializable object.
 ///

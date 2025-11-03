@@ -19,6 +19,8 @@
 
 #include "vst3_processor.h"
 
+#ifndef __EMSCRIPTEN__
+
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 
 #include "modules/core/anthem.h"
@@ -234,3 +236,5 @@ void VST3Processor::setState(const juce::MemoryBlock& state) {
     pluginInstance->setStateInformation(state.getData(), static_cast<int>(state.getSize()));
   }
 }
+
+#endif // #ifndef __EMSCRIPTEN__

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Joshua Wade
+  Copyright (C) 2021 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -70,16 +70,16 @@ double pixelsToKeyValue({
 String keyToString(int key) {
   const notes = [
     'C',
-    'C♯',
+    'C#',
     'D',
-    'E♭',
+    'Eb',
     'E',
     'F',
-    'F♯',
+    'F#',
     'G',
-    'A♭',
+    'Ab',
     'A',
-    'B♭',
+    'Bb',
     'B',
   ];
   return notes[key % notes.length] + (key ~/ notes.length - 1).toString();

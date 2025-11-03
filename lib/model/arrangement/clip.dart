@@ -18,9 +18,9 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/anthem_model_base_mixin.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 part 'clip.g.dart';
@@ -71,7 +71,7 @@ class ClipModel extends _ClipModel
       _$ClipModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _ClipModel with Store, AnthemModelBase {
+abstract class _ClipModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   Id id;
 
   @anthemObservable

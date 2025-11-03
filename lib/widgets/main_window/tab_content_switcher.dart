@@ -19,7 +19,7 @@
 
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/widgets.dart';
-import 'main_window_controller.dart';
+import 'package:anthem/logic/main_window_controller.dart';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/project/project.dart';
@@ -38,18 +38,12 @@ class TabContentSwitcher extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    return IndexedStack(
+      index: tabs.indexWhere((tab) => tab.id == selectedTabId),
       children: tabs.map((tab) {
-        final active = tab.id == selectedTabId;
-        return Positioned.fill(
-          child: ShortcutProvider(
-            active: active,
-            child: Visibility(
-              visible: active,
-              maintainState: true,
-              child: Project(id: tab.id),
-            ),
-          ),
+        return ShortcutProvider(
+          active: tab.id == selectedTabId,
+          child: Project(id: tab.id),
         );
       }).toList(),
     );

@@ -19,8 +19,8 @@
 
 import 'dart:math';
 
+import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/util/lazy_follower.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
 import 'control_mouse_handler.dart';
@@ -40,6 +40,9 @@ class Knob extends StatefulWidget {
 
   final List<double> stickyPoints;
 
+  final String Function(double value)? hoverHintOverride;
+  final String Function(double value)? hint;
+
   const Knob({
     super.key,
     this.width,
@@ -50,6 +53,8 @@ class Knob extends StatefulWidget {
     this.max = 1,
     double? min,
     this.stickyPoints = const [],
+    this.hoverHintOverride,
+    this.hint,
   }) : min = min ?? (type == KnobType.pan ? -1 : 0);
 
   @override
@@ -65,10 +70,46 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
   double valueOnPress = -1;
   double lastValue = -1;
 
-  double getRawValue(double value) =>
+  double scaledToRaw(double value) =>
       (value - widget.min) / (widget.max - widget.min);
 
   double? stickyTrapCounter;
+
+  double pastStart = 0;
+  double pastEnd = 0;
+
+  int? currentHintId;
+
+  void setHint({required bool hover}) {
+    String? currentHintText;
+    if (hover && widget.hoverHintOverride != null) {
+      currentHintText = widget.hoverHintOverride!.call(lastValue);
+    } else if (widget.hint != null) {
+      currentHintText = widget.hint!.call(lastValue);
+    }
+
+    if (currentHintText == null) {
+      clearHint();
+      return;
+    }
+
+    if (currentHintId == null) {
+      currentHintId = HintStore.instance.addHint([
+        HintSection('click + drag', currentHintText),
+      ]);
+    } else {
+      HintStore.instance.updateHint(currentHintId!, [
+        HintSection('click + drag', currentHintText),
+      ]);
+    }
+  }
+
+  void clearHint() {
+    if (currentHintId != null) {
+      HintStore.instance.removeHint(currentHintId!);
+      currentHintId = null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -99,6 +140,8 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
           isOver = true;
         });
 
+        setHint(hover: true);
+
         setHoverAnimationState(true);
         animationHelper!.update();
       },
@@ -107,12 +150,15 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
           isOver = false;
         });
 
+        clearHint();
+
         if (!isPressed) {
           setHoverAnimationState(false);
           animationHelper!.update();
         }
       },
       child: ControlMouseHandler(
+        cursor: SystemMouseCursors.click,
         onStart: () {
           setState(() {
             isPressed = true;
@@ -120,6 +166,8 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
 
           valueOnPress = widget.value;
           lastValue = widget.value;
+
+          setHint(hover: false);
 
           setPressAnimationState(true);
           animationHelper!.update();
@@ -139,12 +187,57 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
           if (widget.onValueChanged == null) return;
 
           final rawPixelChange = e.delta.dy;
-          final valueChange = rawPixelChange / 300;
+          var valueChange = rawPixelChange / 300;
 
-          final newValueRaw = (getRawValue(lastValue) + valueChange).clamp(
-            0.0,
-            1.0,
-          );
+          // Handle existing overshoot past beginning
+
+          if (pastStart < 0) {
+            pastStart += valueChange;
+            if (pastStart > 0) {
+              valueChange = pastStart;
+              pastStart = 0;
+            } else {
+              valueChange = 0;
+            }
+          }
+
+          // Handle existing overshoot past end
+
+          if (pastEnd > 0) {
+            pastEnd += valueChange;
+            if (pastEnd < 0) {
+              valueChange = pastEnd;
+              pastEnd = 0;
+            } else {
+              valueChange = 0;
+            }
+          }
+
+          if (valueChange == 0) return;
+
+          // Handle new overshoot past beginning
+
+          final lastValueRaw = scaledToRaw(lastValue);
+
+          if (lastValueRaw + valueChange < 0) {
+            pastStart += lastValueRaw + valueChange;
+            valueChange = -lastValueRaw;
+          }
+
+          // Handle new overshoot past end
+
+          if (lastValueRaw + valueChange > 1) {
+            pastEnd += lastValueRaw + valueChange - 1;
+            valueChange = 1 - lastValueRaw;
+          }
+
+          var newValueRaw = (lastValueRaw + valueChange);
+
+          if (pastEnd > 0) {
+            newValueRaw = 1;
+          } else if (pastStart < 0) {
+            newValueRaw = 0;
+          }
 
           final newValue = newValueRaw * (widget.max - widget.min) + widget.min;
 
@@ -174,19 +267,19 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
                   ? stickyTrapCounter! - _stickyTrapSize
                   : stickyTrapCounter! + _stickyTrapSize;
 
-              final newValueRaw = lastValue + overshoot;
-
               final newValue =
-                  (getRawValue(lastValue) + overshoot) *
+                  (scaledToRaw(lastValue) + overshoot) *
                       (widget.max - widget.min) +
                   widget.min;
 
               widget.onValueChanged?.call(newValue);
 
               stickyTrapCounter = null;
-              lastValue = newValueRaw;
+              lastValue = newValue;
             }
           }
+
+          setHint(hover: false);
         },
         child: SizedBox(
           width: widget.width,
@@ -199,7 +292,7 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
 
               return CustomPaint(
                 painter: _KnobPainter(
-                  value: getRawValue(widget.value),
+                  value: scaledToRaw(widget.value),
                   type: widget.type,
                   sizeMultiplier: sizeMultiplierHelper.animation.value,
                   trackSize: trackSizeHelper.animation.value,

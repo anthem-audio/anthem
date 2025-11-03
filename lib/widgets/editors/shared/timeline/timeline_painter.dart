@@ -135,7 +135,7 @@ class TimelinePainter extends CustomPainter {
       if (i >= barDivisionChanges.length) break;
 
       final thisDivision = barDivisionChanges[i];
-      var nextDivisionStart = 0x7FFF_FFFF_FFFF_FFFF; // int max
+      var nextDivisionStart = 0x001F_FFFF_FFFF_FFFF; // Max safe integer for web
 
       if (i < barDivisionChanges.length - 1) {
         nextDivisionStart = barDivisionChanges[i + 1].offset;

@@ -18,8 +18,8 @@
 */
 
 import 'package:anthem/logic/live_event_manager.dart';
-import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:flutter/material.dart';
 import 'package:mobx/mobx.dart';
 
@@ -45,6 +45,7 @@ class GeneratorModel extends _GeneratorModel
         generatorType: GeneratorType.instrument,
         generatorNodeId: null,
         gainNodeId: null,
+        balanceNodeId: null,
         // midiGenNodeId: null,
         sequenceNoteProviderNodeId: null,
         liveEventProviderNodeId: null,
@@ -57,6 +58,7 @@ class GeneratorModel extends _GeneratorModel
     required super.color,
     required super.generatorNodeId,
     required super.gainNodeId,
+    required super.balanceNodeId,
     // required super.midiGenNodeId,
     required super.sequenceNoteProviderNodeId,
     required super.liveEventProviderNodeId,
@@ -69,7 +71,8 @@ class GeneratorModel extends _GeneratorModel
   late final LiveEventManager liveEventManager = LiveEventManager(this);
 }
 
-abstract class _GeneratorModel with Store, AnthemModelBase {
+abstract class _GeneratorModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
   String id;
 
   @anthemObservable
@@ -88,11 +91,20 @@ abstract class _GeneratorModel with Store, AnthemModelBase {
   /// The ID of the gain node that this generator outputs to.
   ///
   /// The signal flow is as follows:
-  ///     plugin -> gainNode -> (some target)
+  ///     plugin -> gainNode -> balanceNode -> (some target)
   ///
-  /// The gain node is used for the volume knobs on the generator row.
+  /// The gain node is used for the volume knob on the generator row.
   @anthemObservable
   String? gainNodeId;
+
+  /// The ID of the balance node that this generator outputs to.
+  ///
+  /// The signal flow is as follows:
+  ///     plugin -> gainNode -> balanceNode -> (some target)
+  ///
+  /// The balance node is used for the stereo balance knob on the generator row.
+  @anthemObservable
+  String? balanceNodeId;
 
   // @anthemObservable
   // String? midiGenNodeId;
@@ -110,6 +122,7 @@ abstract class _GeneratorModel with Store, AnthemModelBase {
     required this.color,
     required this.generatorNodeId,
     required this.gainNodeId,
+    required this.balanceNodeId,
     // required this.midiGenNodeId,
     required this.sequenceNoteProviderNodeId,
     required this.liveEventProviderNodeId,

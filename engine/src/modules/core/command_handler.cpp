@@ -37,7 +37,7 @@ void HeartbeatThread::run() {
     if (!gotMessageSinceLastHeartbeatCheck) {
       juce::Logger::writeToLog("No heartbeat or message received in the last 10 seconds. Exiting...");
       juce::MessageManager::callAsync([]() {
-        juce::JUCEApplication::quit();
+        juce::JUCEApplicationBase::quit();
       });
     } else {
       gotMessageSinceLastHeartbeatCheck = false;
@@ -174,6 +174,7 @@ void CommandHandler::processNextCommand() {
     VisualizationBroker::getInstance().dispose();
 
     Anthem::getInstance().comms.closeSocketThread();
-    juce::JUCEApplication::quit();
+    Anthem::getInstance().shutdown();
+    juce::JUCEApplicationBase::quit();
   }
 }

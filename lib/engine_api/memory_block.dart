@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -24,6 +24,9 @@ import 'dart:typed_data';
 /// from the socket connection.
 class MemoryBlock {
   Uint8List buffer = Uint8List(0);
+
+  MemoryBlock();
+  MemoryBlock.fromTypedList(Uint8List list) : buffer = Uint8List.fromList(list);
 
   /// Appends the given data onto the end of the buffer.
   void append(Uint8List bytes) {

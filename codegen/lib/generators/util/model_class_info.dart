@@ -17,8 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:analyzer/dart/element/element2.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:analyzer/dart/element/element.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
@@ -35,7 +35,7 @@ import 'package:source_gen/source_gen.dart';
 /// behavior if it leaks into the next step. This should be done at the
 /// beginning of each builder's `build()` function, if that builder uses this
 /// cache.
-Map<ClassElement2, ModelClassInfo> _modelClassInfoCache = {};
+Map<ClassElement, ModelClassInfo> _modelClassInfoCache = {};
 
 /// Clears the cache for model items.
 ///
@@ -53,9 +53,9 @@ void cleanModelClassInfoCache() {
 /// across the code generators.
 class ModelClassInfo {
   LibraryReader libraryReader;
-  ClassElement2 annotatedClass;
+  ClassElement annotatedClass;
 
-  ClassElement2? _baseClass;
+  ClassElement? _baseClass;
 
   /// Represents the base class for this model class, e.g. `_MyClass` in the
   /// following case:
@@ -108,10 +108,10 @@ class ModelClassInfo {
   ///   // ...
   /// }
   /// ```
-  ClassElement2 get baseClass {
+  ClassElement get baseClass {
     if (_baseClass == null) {
       final String invalidSetupHelp =
-          '''Base class not found for ${annotatedClass.name3}.
+          '''Base class not found for ${annotatedClass.name}.
 
 Model items in Anthem must have a super class with a mixin, and a matching base class:
 
@@ -141,7 +141,7 @@ class _MyModel {
   /// [LibraryReader] context, or pulls from the cache if one already exists.
   factory ModelClassInfo(
     LibraryReader libraryReader,
-    ClassElement2 annotatedClass,
+    ClassElement annotatedClass,
   ) {
     return _modelClassInfoCache[annotatedClass] ??
         ModelClassInfo._create(libraryReader, annotatedClass);
@@ -167,6 +167,8 @@ class _MyModel {
                 .getField('generateCppWrapperClass')
                 ?.toBoolValue() ??
             false,
+        skipOnWasm:
+            annotationElement.getField('skipOnWasm')?.toBoolValue() ?? false,
         cppBehaviorClassName: annotationElement
             .getField('cppBehaviorClassName')
             ?.toStringValue(),
@@ -189,14 +191,14 @@ class _MyModel {
     final libraryAndImportedClasses = [
       libraryReader.classes,
       libraryReader.element.fragments
-          .map((lib) => lib.importedLibraries2)
+          .map((lib) => lib.importedLibraries)
           .expand((e) => e)
           .map((lib) => LibraryReader(lib).classes)
           .expand((e) => e),
     ].expand((e) => e);
 
     _baseClass = libraryAndImportedClasses
-        .where((e) => e.name3 == '_${annotatedClass.name3}')
+        .where((e) => e.name == '_${annotatedClass.name}')
         .firstOrNull;
 
     // The code below just doesn't work. I think it's because the mixin isn't
@@ -213,14 +215,14 @@ class _MyModel {
     //   continue;
     // }
 
-    for (final field in _baseClass?.fields2 ?? <FieldElement2>[]) {
+    for (final field in _baseClass?.fields ?? <FieldElement>[]) {
       // If the field doesn't have a setter, it's not something we can
       // deserialize, so we won't include it. This can happen if the field is
       // final, or if the field is a getter.
       //
       // The only exception to this is if the field is a static const field, in
       // which case we will include it as a constant.
-      if (field.setter2 == null) {
+      if (field.setter == null) {
         // We treat static const fields as constants, if they are primitive types
         // (e.g. string, number, bool). If the field is static and/or const but
         // not both, or if it's not a primitive type, we will just skip over it.
@@ -240,7 +242,7 @@ class _MyModel {
       // Check for skip annotation
       if (_skipAll(field)) continue;
 
-      fields[field.name3!] = ModelFieldInfo(
+      fields[field.name!] = ModelFieldInfo(
         fieldElement: field,
         libraryReader: libraryReader,
         annotatedClass: annotatedClass,
@@ -249,10 +251,10 @@ class _MyModel {
 
     isSealed = annotatedClass.isSealed;
 
-    final List<ClassElement2> subclasses = [];
+    final List<ClassElement> subclasses = [];
 
     for (var element in libraryReader.classes) {
-      if (element.supertype?.element3 == annotatedClass) {
+      if (element.supertype?.element == annotatedClass) {
         subclasses.add(element);
       }
     }
@@ -266,20 +268,20 @@ class _MyModel {
 }
 
 class SealedSubclassInfo {
-  ClassElement2 subclass;
+  ClassElement subclass;
   Map<String, ModelFieldInfo> fields = {};
-  String get name => subclass.name3!;
+  String get name => subclass.name!;
 
   SealedSubclassInfo(this.subclass, ModelClassInfo baseClassInfo) {
-    for (final field in subclass.fields2) {
+    for (final field in subclass.fields) {
       // If the field doesn't have a setter, it's not something we can
       // deserialize, so we won't include it. This can happen if the field is
       // final, or if the field is a getter.
-      if (field.setter2 == null) continue;
+      if (field.setter == null) continue;
 
       if (_skipAll(field)) continue;
 
-      fields[field.name3!] = ModelFieldInfo(
+      fields[field.name!] = ModelFieldInfo(
         fieldElement: field,
         libraryReader: baseClassInfo.libraryReader,
         annotatedClass: subclass,
@@ -291,7 +293,7 @@ class SealedSubclassInfo {
 /// Represents a parsed field in an Anthem model.
 class ModelFieldInfo {
   /// The field element for this field.
-  final FieldElement2 fieldElement;
+  final FieldElement fieldElement;
 
   /// The parsed type info for this field.
   final ModelType typeInfo;
@@ -318,7 +320,7 @@ class ModelFieldInfo {
   ModelFieldInfo({
     required this.fieldElement,
     required LibraryReader libraryReader,
-    required ClassElement2 annotatedClass,
+    required ClassElement annotatedClass,
   }) : typeInfo = getModelType(
          fieldElement.type,
          annotatedClass,
@@ -373,7 +375,7 @@ class ModelFieldInfo {
 
 /// Returns true if the field should be skipped during code generation, based on
 /// the @Hide annotation.
-bool _skipAll(FieldElement2 field) {
+bool _skipAll(FieldElement field) {
   final hideAnnotation = const TypeChecker.typeNamed(
     Hide,
     inPackage: 'anthem_codegen',

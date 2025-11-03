@@ -37,7 +37,6 @@ devtools_options.yaml
 *.mocks.dart
 
 # Web related
-lib/generated_plugin_registrant.dart
 
 # Symbolication related
 app.*.symbols
@@ -55,10 +54,9 @@ app.*.map.json
 # Engine
 /assets/engine/*
 /engine_connector/build/
-/engine/build/
-/engine/build_asan/
-/engine/build_release/
+/engine/build*/
 /engine/src/generated/
+/web/engine/
 
 # Visual Studio
 **/out/build/**

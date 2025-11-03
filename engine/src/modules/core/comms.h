@@ -24,7 +24,9 @@
 
 #include <juce_core/juce_core.h>
 #include <juce_events/juce_events.h>
-#include <juce_gui_basics/juce_gui_basics.h>
+
+#include "comms_pipe_wasm.h"
+#include "comms.h"
 
 class Anthem;
 
@@ -45,7 +47,11 @@ private:
 
   static constexpr int THREAD_SLEEP_MS = 1;
 
+  #ifdef __EMSCRIPTEN__
+  AnthemPipeWasm socket;
+  #else // #ifdef __EMSCRIPTEN__
   juce::StreamingSocket socket;
+  #endif // #ifdef __EMSCRIPTEN__
 
   // Tries writing the current message to the socket. This may complete without
   // sending everything.
@@ -59,7 +65,7 @@ private:
 
   juce::MemoryBlock pendingHeader;
   juce::MemoryBlock pendingBytes;
-  
+
   // The header is 8 bytes. This indexes into (header, pendingBytes). If the
   // index is 0 - 7, we are reading from the header. If it is 8 or more, we are
   // reading from pendingBytes. For example if writeIndex is 8, we are reading from
@@ -87,7 +93,7 @@ public:
   void run() override;
 };
 
-// This class manages the socket communication with the UI.
+// This class manages communication with the UI.
 class AnthemComms {
 private:
   AnthemSocketThread socketThread;
@@ -101,6 +107,16 @@ public:
 
   void send(std::string& message);
   void sendRaw(juce::MemoryBlock& message);
+
+  #ifdef __EMSCRIPTEN__
+  AnthemPipeWasm& getSocketOrPipe() {
+    return socketThread.socket;
+  }
+  #else // #ifdef __EMSCRIPTEN__
+  juce::StreamingSocket& getSocketOrPipe() {
+    return socketThread.socket;
+  }
+  #endif // #ifdef __EMSCRIPTEN__
 
   // Stops the socket thread, after all messages have been sent.
   //

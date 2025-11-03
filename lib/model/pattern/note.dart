@@ -18,8 +18,8 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/anthem_model_base_mixin.dart';
-import 'package:anthem_codegen/include/annotations.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 part 'note.g.dart';
@@ -51,7 +51,7 @@ class NoteModel extends _NoteModel
       _$NoteModelAnthemModelMixin.fromJson(json);
 }
 
-abstract class _NoteModel with Store, AnthemModelBase {
+abstract class _NoteModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   String id;
 
   @anthemObservable

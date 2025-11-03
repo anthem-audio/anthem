@@ -17,9 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
 import 'dart:convert';
 
-import 'package:anthem/model/project.dart';
 import 'package:mobx/mobx.dart';
 
 /// Represents a type of field in the model.
@@ -34,7 +34,52 @@ String _stringifyValue(dynamic value) {
 }
 
 /// Represents an operation to a field, map, or list.
-sealed class FieldOperation {}
+sealed class FieldOperation {
+  bool get hasOldValue {
+    return this is RawFieldUpdate ||
+        this is ListUpdate ||
+        this is ListRemove ||
+        this is MapPut ||
+        this is MapRemove;
+  }
+
+  dynamic get oldValue {
+    if (this is RawFieldUpdate) {
+      return (this as RawFieldUpdate).oldValue;
+    } else if (this is ListUpdate) {
+      return (this as ListUpdate).oldValue;
+    } else if (this is ListRemove) {
+      return (this as ListRemove).removedValue;
+    } else if (this is MapPut) {
+      return (this as MapPut).oldValue;
+    } else if (this is MapRemove) {
+      return (this as MapRemove).removedValue;
+    }
+
+    return null;
+  }
+
+  bool get hasNewValue {
+    return this is RawFieldUpdate ||
+        this is ListInsert ||
+        this is ListUpdate ||
+        this is MapPut;
+  }
+
+  dynamic get newValue {
+    if (this is RawFieldUpdate) {
+      return (this as RawFieldUpdate).newValue;
+    } else if (this is ListInsert) {
+      return (this as ListInsert).value;
+    } else if (this is ListUpdate) {
+      return (this as ListUpdate).newValue;
+    } else if (this is MapPut) {
+      return (this as MapPut).newValue;
+    }
+
+    return null;
+  }
+}
 
 class RawFieldUpdate extends FieldOperation {
   /// This is the new value of the field. It is a serialized representation. It
@@ -55,6 +100,7 @@ class RawFieldUpdate extends FieldOperation {
   /// The value that was replaced, if any.
   ///
   /// This is the actual value, not a serialized representation.
+  @override
   final dynamic oldValue;
 
   T oldValueAs<T>() => oldValue as T;
@@ -62,6 +108,7 @@ class RawFieldUpdate extends FieldOperation {
   /// The new value of the field.
   ///
   /// This is the actual value, not a serialized representation.
+  @override
   final dynamic newValue;
 
   T newValueAs<T>() => newValue as T;
@@ -127,6 +174,7 @@ class ListUpdate extends FieldOperation {
   /// The value that was replaced, if any.
   ///
   /// This is the actual value, not a serialized representation.
+  @override
   final dynamic oldValue;
 
   T oldValueAs<T>() => oldValue as T;
@@ -134,6 +182,7 @@ class ListUpdate extends FieldOperation {
   /// The new value of the field.
   ///
   /// This is the actual value, not a serialized representation.
+  @override
   final dynamic newValue;
 
   T newValueAs<T>() => newValue as T;
@@ -160,6 +209,7 @@ class MapPut extends FieldOperation {
   /// The value that was replaced, if any.
   ///
   /// This is the actual value, not a serialized representation.
+  @override
   final dynamic oldValue;
 
   T oldValueAs<T>() => oldValue as T;
@@ -167,6 +217,7 @@ class MapPut extends FieldOperation {
   /// The value to be inserted.
   ///
   /// This is the actual value, not a serialized representation.
+  @override
   final dynamic newValue;
 
   T newValueAs<T>() => newValue as T;
@@ -348,9 +399,9 @@ mixin AnthemModelBase {
 
   /// Listeners that are notified when a field is changed.
   final List<
-    void Function(Iterable<FieldAccessor> accessors, FieldOperation operation)
+    void Function(List<FieldAccessor> accessors, FieldOperation operation)
   >
-  _listeners = [];
+  _rawListeners = [];
 
   /// Serializes the model to a JSON representation.
   dynamic toJson({bool forEngine = false, bool forProjectFile = true});
@@ -361,8 +412,8 @@ mixin AnthemModelBase {
   }) {
     final accessorChainNotNull = accessorChain ?? [];
 
-    for (final listener in _listeners) {
-      listener(accessorChainNotNull.reversed, operation);
+    for (final listener in _rawListeners) {
+      listener(accessorChainNotNull.reversed.toList(), operation);
     }
 
     // If the parent field is not set, then this model doesn't have a parent yet
@@ -394,19 +445,19 @@ mixin AnthemModelBase {
   }
 
   /// Adds a listener that is notified when a field is changed.
-  void addFieldChangedListener(
-    void Function(Iterable<FieldAccessor> accessors, FieldOperation operation)
+  void addRawFieldChangedListener(
+    void Function(List<FieldAccessor> accessors, FieldOperation operation)
     listener,
   ) {
-    _listeners.add(listener);
+    _rawListeners.add(listener);
   }
 
   /// Removes a listener that is notified when a field is changed.
-  void removeFieldChangedListener(
-    void Function(Iterable<FieldAccessor> accessors, FieldOperation operation)
+  void removeRawFieldChangedListener(
+    void Function(List<FieldAccessor> accessors, FieldOperation operation)
     listener,
   ) {
-    _listeners.remove(listener);
+    _rawListeners.remove(listener);
   }
 
   /// Sets properties that describe the position of this model on its parent
@@ -429,33 +480,19 @@ mixin AnthemModelBase {
     // we will assume that we can recursively initialize all children too.
     setParentPropertiesOnChildren();
 
-    // Run any attach actions that have been queued up
-    for (final action in _onFirstAttachActions) {
-      action();
-    }
-    _onFirstAttachActions.clear();
+    // Run any attach actions that have been queued up. This happens in a
+    // microtask because during deserialization it's usually desirable to run
+    // these actions after the model is fully deserialized, not in the middle of
+    // deserialization when the model is only partially constructed.
+    scheduleMicrotask(() {
+      for (final action in _onFirstAttachActions) {
+        action();
+      }
+      _onFirstAttachActions.clear();
+    });
   }
 
   void setParentPropertiesOnChildren();
-
-  ProjectModel? _project;
-  ProjectModel get project {
-    if (_project != null) {
-      return _project!;
-    }
-
-    var model = parent;
-    while (model != null) {
-      if (model is ProjectModel) {
-        _project = model;
-        return model;
-      }
-
-      model = model.parent;
-    }
-
-    throw Exception('Could not find project model');
-  }
 
   /// Gets the first ancestor of this model that is of type [T].
   T getFirstAncestorOfType<T extends AnthemModelBase>() {

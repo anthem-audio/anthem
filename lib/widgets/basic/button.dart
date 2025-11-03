@@ -320,7 +320,7 @@ class _ButtonState extends State<Button> {
       child: Listener(
         onPointerDown: _onPointerDown,
         onPointerUp: _onPointerUp,
-        onPointerCancel: _onPointerUp,
+        onPointerCancel: (e) => _onPointerUp(e, true),
         child: Container(
           width: widget.width,
           height: widget.height,
@@ -353,16 +353,21 @@ class _ButtonState extends State<Button> {
 
   void _onPointerDown(PointerEvent e) {
     if (!mounted) return;
+
     setState(() {
       pressed = true;
     });
   }
 
-  void _onPointerUp(PointerEvent e) {
+  void _onPointerUp(PointerEvent e, [bool cancelled = false]) {
     if (!mounted) return;
+
     setState(() {
       pressed = false;
-      widget.onPress?.call();
     });
+
+    if (hovered && !cancelled) {
+      widget.onPress?.call();
+    }
   }
 }

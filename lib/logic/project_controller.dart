@@ -17,18 +17,21 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
 import 'dart:io';
 
-import 'package:anthem/commands/arrangement_commands.dart';
-import 'package:anthem/commands/pattern_commands.dart';
-import 'package:anthem/commands/project_commands.dart';
+import 'package:anthem/logic/commands/arrangement_commands.dart';
+import 'package:anthem/logic/commands/pattern_commands.dart';
+import 'package:anthem/logic/commands/project_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/controller_registry.dart';
 import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/processors/vst3_processor.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:file_picker/file_picker.dart';
@@ -175,7 +178,7 @@ class ProjectController {
     }
   }
 
-  void addVst3Generator() async {
+  void addVst3Generator(DialogController dialogController) async {
     String initialDirectory;
 
     if (Platform.isWindows) {
@@ -199,11 +202,14 @@ class ProjectController {
 
     final path = result?.files[0].path;
 
-    if (path == null) return;
-
-    // TODO: This will only happen on macOS due to a limitation in the file
-    // picker. We should show a dialog here with an error.
-    if (!path.toLowerCase().endsWith('.vst3')) {
+    if (path?.toLowerCase().endsWith('.vst3') != true) {
+      dialogController.showTextDialog(
+        title: 'Error',
+        text:
+            'The selected plugin could not be loaded. It may '
+            'not be a valid VST3 plugin, or it may be incompatible.',
+        buttons: [DialogButton.ok()],
+      );
       return;
     }
 
@@ -211,7 +217,7 @@ class ProjectController {
       name: 'VST Plugin',
       generatorType: GeneratorType.instrument,
       color: getColor(),
-      node: VST3ProcessorModel.createNode(path),
+      node: VST3ProcessorModel.createNode(path!),
     );
   }
 
@@ -243,6 +249,58 @@ class ProjectController {
         duration: const Duration(milliseconds: 500),
       );
     }
+  }
+
+  /// Closes the project.
+  ///
+  /// Returns true if the project was closed, false if the close was cancelled.
+  Future<bool> close() {
+    final dialogController = ControllerRegistry.instance.dialogController!;
+    final mainWindowController =
+        ControllerRegistry.instance.mainWindowController!;
+
+    final completer = Completer<bool>();
+
+    if (project.isDirty) {
+      dialogController.showTextDialog(
+        title: 'Unsaved Changes',
+        text:
+            'The project "${project.name}" has unsaved changes.\n\n'
+            'Do you want to save before closing?',
+        onDismiss: () {
+          completer.complete(false);
+        },
+        buttons: [
+          DialogButton(text: 'Cancel', isDismissive: true),
+          DialogButton(
+            text: "Don't Save",
+            onPress: () {
+              mainWindowController.closeProjectWithoutSaving(project.id);
+              completer.complete(true);
+            },
+          ),
+          DialogButton(
+            text: 'Save',
+            onPress: () async {
+              final result = await mainWindowController.saveProject(
+                project.id,
+                false,
+                dialogController: dialogController,
+              );
+              if (result) {
+                mainWindowController.closeProjectWithoutSaving(project.id);
+              }
+              completer.complete(result);
+            },
+          ),
+        ],
+      );
+    } else {
+      mainWindowController.closeProjectWithoutSaving(project.id);
+      completer.complete(true);
+    }
+
+    return completer.future;
   }
 }
 
