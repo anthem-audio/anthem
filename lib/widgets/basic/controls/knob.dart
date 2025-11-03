@@ -217,19 +217,21 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
 
           // Handle new overshoot past beginning
 
-          if (lastValue + valueChange < 0) {
-            pastStart += lastValue + valueChange;
-            valueChange = -lastValue;
+          final lastValueRaw = scaledToRaw(lastValue);
+
+          if (lastValueRaw + valueChange < 0) {
+            pastStart += lastValueRaw + valueChange;
+            valueChange = -lastValueRaw;
           }
 
           // Handle new overshoot past end
 
-          if (lastValue + valueChange > 1) {
-            pastEnd += lastValue + valueChange - 1;
-            valueChange = 1 - lastValue;
+          if (lastValueRaw + valueChange > 1) {
+            pastEnd += lastValueRaw + valueChange - 1;
+            valueChange = 1 - lastValueRaw;
           }
 
-          var newValueRaw = (scaledToRaw(lastValue) + valueChange);
+          var newValueRaw = (lastValueRaw + valueChange);
 
           if (pastEnd > 0) {
             newValueRaw = 1;
