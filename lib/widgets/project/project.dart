@@ -101,31 +101,18 @@ class _ProjectState extends State<Project> {
                   const pianoRoll = PianoRoll();
                   const mixer = Text('Mixer');
 
-                  final selectedEditor = Stack(
-                    children: [
-                      Visibility(
-                        maintainState: true,
-                        visible:
-                            _viewModel.selectedEditor == EditorKind.automation,
-                        child: automationEditor,
-                      ),
-                      Visibility(
-                        maintainState: true,
-                        visible:
-                            _viewModel.selectedEditor == EditorKind.channelRack,
-                        child: channelRack,
-                      ),
-                      Visibility(
-                        maintainState: true,
-                        visible: _viewModel.selectedEditor == EditorKind.detail,
-                        child: pianoRoll,
-                      ),
-                      Visibility(
-                        maintainState: true,
-                        visible: _viewModel.selectedEditor == EditorKind.mixer,
-                        child: mixer,
-                      ),
-                    ],
+                  final selectedEditorIndex =
+                      switch (_viewModel.selectedEditor) {
+                        EditorKind.automation => 0,
+                        EditorKind.channelRack => 1,
+                        EditorKind.detail => 2,
+                        EditorKind.mixer => 3,
+                        null => -1,
+                      };
+
+                  final selectedEditor = IndexedStack(
+                    index: selectedEditorIndex,
+                    children: [automationEditor, channelRack, pianoRoll, mixer],
                   );
 
                   return Panel(
