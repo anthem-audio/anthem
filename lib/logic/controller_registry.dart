@@ -40,12 +40,6 @@ class ControllerRegistry {
       throw Exception('Cannot register controller of type dynamic');
     }
 
-    if (_controllers.containsKey((T, key))) {
-      throw Exception(
-        'Controller of type $T with key $key is already registered',
-      );
-    }
-
     _controllers[(T, key)] = controller;
   }
 
