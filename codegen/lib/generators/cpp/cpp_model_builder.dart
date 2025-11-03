@@ -67,6 +67,30 @@ class CppModelBuilder implements Builder {
     final cppFileImports = <String>[];
     final functionDefinitions = <String>[];
 
+    // Error flags
+
+    // For context, module files are meant as a tool to generate a single C++
+    // file that includes the entire model, which provides a single source of
+    // truth for include order, along with an easy way to reference the entire
+    // model. Module files (Anthem has one, model.dart) are tagged with an
+    // annotation and have a bunch of export statements, making them convenient
+    // on the Dart side as well.
+    //
+    // Regular models (not module files) must not import these module files.
+    // They must instead individually import all files that the C++ side must
+    // import. Module files by definition are easy multi-imports on the Dart
+    // side and may be suggested by Dart tooling.
+    //
+    // This can lead to a situation where a Dart file does not produce any
+    // import-related errors since it imports a module file that itself exports
+    // a bunch of Dart files, but the generated C++ file does error since it
+    // didn't try to import the same module file, and so a referenced model item
+    // is not defined.
+    //
+    // As a mitigation for this case, we detect it during code generation and
+    // throw an error.
+    var anyImportHasModuleDeclaration = false;
+
     // Note that module file imports are only used for module files. There is a
     // detailed description in the doc comment on the @GenerateCppModuleFile
     // annotation.
@@ -283,6 +307,15 @@ class CppModelBuilder implements Builder {
         annotatedEnums.add(enumElement);
       }
 
+      final libraryAnnotation = const TypeChecker.typeNamed(
+        GenerateCppModuleFile,
+        inPackage: 'anthem_codegen',
+      ).firstAnnotationOf(importLibrary);
+
+      if (libraryAnnotation != null) {
+        anyImportHasModuleDeclaration = true;
+      }
+
       if (annotatedClasses.isEmpty && annotatedEnums.isEmpty) {
         continue;
       }
@@ -362,6 +395,15 @@ class CppModelBuilder implements Builder {
         cppFileImports.isEmpty &&
         functionDefinitions.isEmpty) {
       return;
+    }
+
+    // If we did, check error flags.
+    if (anyImportHasModuleDeclaration) {
+      throw Exception(
+        'Dart model files cannot import module files (e.g. model.dart). They '
+        'must individually import every file they reference, as the C++ code '
+        'generator relies on this information.',
+      );
     }
 
     var headerCodeToWrite =
