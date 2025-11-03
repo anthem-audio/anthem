@@ -31,6 +31,7 @@ void _addGenerator(
   int? index,
   required NodeModel generatorNode,
   required NodeModel gainNode,
+  required NodeModel balanceNode,
   // required NodeModel midiGenNode,
   required NodeModel sequenceNoteProviderNode,
   required NodeModel liveEventProviderNode,
@@ -53,6 +54,7 @@ void _addGenerator(
 
   project.processingGraph.addNode(generatorNode);
   project.processingGraph.addNode(gainNode);
+  project.processingGraph.addNode(balanceNode);
   // project.processingGraph.addNode(midiGenNode);
   project.processingGraph.addNode(sequenceNoteProviderNode);
   project.processingGraph.addNode(liveEventProviderNode);
@@ -89,6 +91,15 @@ void _addGenerator(
       id: getId(),
       sourceNodeId: gainNode.id,
       sourcePortId: gainNode.audioOutputPorts[0].id,
+      destinationNodeId: balanceNode.id,
+      destinationPortId: balanceNode.audioInputPorts[0].id,
+    ),
+  );
+  project.processingGraph.addConnection(
+    NodeConnectionModel(
+      id: getId(),
+      sourceNodeId: balanceNode.id,
+      sourcePortId: balanceNode.audioOutputPorts[0].id,
       destinationNodeId: project.processingGraph.masterOutputNodeId,
       destinationPortId: project.processingGraph
           .getMasterOutputNode()
@@ -185,6 +196,7 @@ class AddGeneratorCommand extends Command {
   @override
   void execute(ProjectModel project) {
     final gainNode = GainProcessorModel.createNode();
+    final balanceNode = BalanceProcessorModel.createNode();
     // final midiGenNode = SimpleMidiGeneratorProcessorModel.createNode();
     final sequencerNoteProviderNode =
         SequenceNoteProviderProcessorModel.createNode(generatorId);
@@ -199,6 +211,7 @@ class AddGeneratorCommand extends Command {
       color: color,
       generatorNodeId: node.id,
       gainNodeId: gainNode.id,
+      balanceNodeId: balanceNode.id,
       // midiGenNodeId: midiGenNode.id,
       sequenceNoteProviderNodeId: sequencerNoteProviderNode.id,
       liveEventProviderNodeId: liveEventProviderNode.id,
@@ -209,6 +222,7 @@ class AddGeneratorCommand extends Command {
       generator,
       generatorNode: node,
       gainNode: gainNode,
+      balanceNode: balanceNode,
       liveEventProviderNode: liveEventProviderNode,
 
       // midiGenNode: midiGenNode,
@@ -226,6 +240,7 @@ class RemoveGeneratorCommand extends Command {
   GeneratorModel generator;
   NodeModel generatorNode;
   NodeModel gainNode;
+  NodeModel balanceNode;
   // NodeModel midiGenNode;
   NodeModel sequenceNoteProviderNode;
   NodeModel liveEventProviderNode;
@@ -243,10 +258,10 @@ class RemoveGeneratorCommand extends Command {
   }) : generatorNode =
            project.processingGraph.nodes[generator.generatorNodeId]!,
        gainNode = project.processingGraph.nodes[generator.gainNodeId]!,
+       balanceNode = project.processingGraph.nodes[generator.balanceNodeId]!,
        //  midiGenNode = project.processingGraph.nodes[generator.midiGenNodeId]!
        sequenceNoteProviderNode =
-           project.processingGraph.nodes[generator // what is this formatting
-               .sequenceNoteProviderNodeId]!,
+           project.processingGraph.nodes[generator.sequenceNoteProviderNodeId]!,
        liveEventProviderNode =
            project.processingGraph.nodes[generator.liveEventProviderNodeId]! {
     index = project.generatorOrder.indexOf(generator.id);
@@ -279,6 +294,7 @@ class RemoveGeneratorCommand extends Command {
       index: index,
       generatorNode: generatorNode,
       gainNode: gainNode,
+      balanceNode: balanceNode,
       // midiGenNode: midiGenNode,
       sequenceNoteProviderNode: sequenceNoteProviderNode,
       liveEventProviderNode: liveEventProviderNode,

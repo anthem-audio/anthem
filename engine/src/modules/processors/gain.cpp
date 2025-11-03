@@ -21,8 +21,6 @@
 
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 
-#include "modules/core/anthem.h"
-
 GainProcessor::GainProcessor(const GainProcessorModelImpl& _impl)
     : AnthemProcessor("Gain"), GainProcessorModelBase(_impl) {}
 
@@ -37,7 +35,6 @@ void GainProcessor::process(AnthemProcessContext& context, int numSamples) {
   auto& amplitudeControlBuffer = context.getInputControlBuffer(GainProcessorModelBase::gainPortId);
 
   for (int sample = 0; sample < numSamples; sample++) {
-    // Set gain
     auto paramValue = amplitudeControlBuffer.getReadPointer(0)[sample];
     float targetGain = paramValueToGainLinear(paramValue);
 

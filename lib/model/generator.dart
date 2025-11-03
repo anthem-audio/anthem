@@ -45,6 +45,7 @@ class GeneratorModel extends _GeneratorModel
         generatorType: GeneratorType.instrument,
         generatorNodeId: null,
         gainNodeId: null,
+        balanceNodeId: null,
         // midiGenNodeId: null,
         sequenceNoteProviderNodeId: null,
         liveEventProviderNodeId: null,
@@ -57,6 +58,7 @@ class GeneratorModel extends _GeneratorModel
     required super.color,
     required super.generatorNodeId,
     required super.gainNodeId,
+    required super.balanceNodeId,
     // required super.midiGenNodeId,
     required super.sequenceNoteProviderNodeId,
     required super.liveEventProviderNodeId,
@@ -89,11 +91,20 @@ abstract class _GeneratorModel
   /// The ID of the gain node that this generator outputs to.
   ///
   /// The signal flow is as follows:
-  ///     plugin -> gainNode -> (some target)
+  ///     plugin -> gainNode -> balanceNode -> (some target)
   ///
-  /// The gain node is used for the volume knobs on the generator row.
+  /// The gain node is used for the volume knob on the generator row.
   @anthemObservable
   String? gainNodeId;
+
+  /// The ID of the balance node that this generator outputs to.
+  ///
+  /// The signal flow is as follows:
+  ///     plugin -> gainNode -> balanceNode -> (some target)
+  ///
+  /// The balance node is used for the stereo balance knob on the generator row.
+  @anthemObservable
+  String? balanceNodeId;
 
   // @anthemObservable
   // String? midiGenNodeId;
@@ -111,6 +122,7 @@ abstract class _GeneratorModel
     required this.color,
     required this.generatorNodeId,
     required this.gainNodeId,
+    required this.balanceNodeId,
     // required this.midiGenNodeId,
     required this.sequenceNoteProviderNodeId,
     required this.liveEventProviderNodeId,

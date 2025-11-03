@@ -22,6 +22,7 @@ import 'dart:async';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
+import 'package:anthem/model/processing_graph/processors/balance.dart';
 import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
@@ -218,6 +219,7 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   }
 
   @Union([
+    BalanceProcessorModel,
     GainProcessorModel,
     LiveEventProviderProcessorModel,
     MasterOutputProcessorModel,
