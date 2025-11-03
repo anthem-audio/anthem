@@ -17,6 +17,25 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+// This file is probably the least intuitive part of the model codegen / sync
+// system, so it warrants an explanation.
+//
+// @GenerateCppModuleFile() below triggers the code generator to output
+// something we call a "module" file in C++ - essentially just a big file that
+// has #include statements for each file that is exported here. We import this
+// module file in hand-written C++ code as the proper way to reference the
+// generated C++ model.
+//
+// One reason this is potentially unintuitive is that C++ is sensitive to
+// include order. If we reorder includes here, they will be reordered in the
+// output file. This could cause issues. We try to forward-declare as much as
+// possible, but there's only so much you can do.
+//
+// The other reason this is potentially unintuitive is simply that new model
+// files *must* be referenced here in order to be usable in the C++ code. We may
+// be able to automatically generate this file, but it is not guaranteed given
+// the ordering issues noted above.
+
 @GenerateCppModuleFile()
 library;
 
@@ -30,6 +49,7 @@ export 'pattern/automation_point.dart';
 export 'pattern/note.dart';
 export 'pattern/pattern.dart';
 
+export 'processing_graph/processors/balance.dart';
 export 'processing_graph/processors/gain.dart';
 export 'processing_graph/processors/live_event_provider.dart';
 export 'processing_graph/processors/master_output.dart';
