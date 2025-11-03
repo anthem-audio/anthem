@@ -41,11 +41,9 @@ class TabContentSwitcher extends StatelessWidget {
     return IndexedStack(
       index: tabs.indexWhere((tab) => tab.id == selectedTabId),
       children: tabs.map((tab) {
-        return Positioned.fill(
-          child: ShortcutProvider(
-            active: tab.id == selectedTabId,
-            child: Project(id: tab.id),
-          ),
+        return ShortcutProvider(
+          active: tab.id == selectedTabId,
+          child: Project(id: tab.id),
         );
       }).toList(),
     );
