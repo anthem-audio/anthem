@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,6 +18,8 @@
 */
 
 #include "linear_parameter_smoother.h"
+
+#include "bw_math.h"
 
 LinearParameterSmoother::LinearParameterSmoother(float initialValue, float duration) {
   targetValue = initialValue;
@@ -41,7 +43,7 @@ float LinearParameterSmoother::getTargetValue() {
 
 void LinearParameterSmoother::process(float deltaTime) {
   if (timeRemaining > 0.0f) {
-    float step = deltaTime / duration;
+    float step = bw_minf(deltaTime / timeRemaining, 1.0f);
     currentValue = currentValue + (targetValue - currentValue) * step;
     timeRemaining -= deltaTime;
   } else {
