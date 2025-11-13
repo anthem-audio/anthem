@@ -71,17 +71,17 @@ String wrapCodeWithMobXSetter(
   if (fieldInfo.fieldElement.isLate) {
     valueSetter =
         '''try {
-  oldValue = $fieldName;
+  \$oldValue = $fieldName;
 } catch (_) {
-  oldValue = null;
+  \$oldValue = null;
 }''';
   } else {
-    valueSetter = 'oldValue = $fieldName;';
+    valueSetter = '\$oldValue = $fieldName;';
   }
 
-  return '''${fieldInfo.typeInfo.dartName}? oldValue;
+  return '''${fieldInfo.typeInfo.dartName}? \$oldValue;
 $valueSetter
-_\$${fieldName}Atom.reportWrite(value, oldValue, () {
+_\$${fieldName}Atom.reportWrite(\$value, \$oldValue, () {
   $code
 });''';
 }

@@ -201,15 +201,10 @@ String _createSetterForField({
   // If the field is nullable, we need to check if the value we're adding to the
   // JSON map is null before adding it
   if (type.isNullable) {
-    // Fix conflict with "value" local variable below
-    if (converter == 'value') {
-      converter = 'this.value';
-    }
-
     return '''{
-    final value = $converter;
-    if (value != null) {
-      $mapName['$fieldName'] = value;
+    final \$value = $converter;
+    if (\$value != null) {
+      $mapName['$fieldName'] = \$value;
     }
   }
 ''';
