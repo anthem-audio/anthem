@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:ui';
-
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/project.dart';
@@ -29,7 +27,6 @@ import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:flutter_shaders/flutter_shaders.dart';
 import 'package:provider/provider.dart';
 
 /// Size of the resize handles, in pixels.
@@ -64,30 +61,22 @@ class ArrangerContentRenderer extends StatelessObserverWidget {
 
     if (arrangement == null) return const SizedBox();
 
-    return ShaderBuilder(assetKey: 'assets/shaders/automation_curve.frag', (
-      context,
-      shader,
-      child,
-    ) {
-      return CustomPaintObserver(
-        painterBuilder: () => ArrangerContentPainter(
-          curveShader: shader,
-          timeViewStart: timeViewStart,
-          timeViewEnd: timeViewEnd,
-          verticalScrollPosition: verticalScrollPosition,
-          project: project,
-          arrangement: arrangement,
-          viewModel: viewModel,
-          devicePixelRatio: View.of(context).devicePixelRatio,
-        ),
-        isComplex: true,
-      );
-    });
+    return CustomPaintObserver(
+      painterBuilder: () => ArrangerContentPainter(
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        verticalScrollPosition: verticalScrollPosition,
+        project: project,
+        arrangement: arrangement,
+        viewModel: viewModel,
+        devicePixelRatio: View.of(context).devicePixelRatio,
+      ),
+      isComplex: true,
+    );
   }
 }
 
 class ArrangerContentPainter extends CustomPainterObserver {
-  final FragmentShader curveShader;
   final double timeViewStart;
   final double timeViewEnd;
   final double verticalScrollPosition;
@@ -97,7 +86,6 @@ class ArrangerContentPainter extends CustomPainterObserver {
   final double devicePixelRatio;
 
   ArrangerContentPainter({
-    required this.curveShader,
     required this.timeViewStart,
     required this.timeViewEnd,
     required this.verticalScrollPosition,
@@ -178,7 +166,6 @@ class ArrangerContentPainter extends CustomPainterObserver {
 
       paintClip(
         canvas: canvas,
-        curveShader: curveShader,
         canvasSize: size,
         pattern: pattern,
         clip: clip,
@@ -189,6 +176,8 @@ class ArrangerContentPainter extends CustomPainterObserver {
         selected: viewModel.selectedClips.contains(clip.id),
         pressed: viewModel.pressedClip == clip.id,
         devicePixelRatio: devicePixelRatio,
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
       );
 
       viewModel.visibleClips.add(

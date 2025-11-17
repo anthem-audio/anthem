@@ -17,14 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:math';
 import 'dart:ui';
 
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/automation_editor/curves/curve_renderer.dart';
-import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 
 import 'clip.dart';
 
@@ -36,7 +34,6 @@ const clipTitleHeight = 16;
 /// Paints a clip onto the given canvas with the given position and size.
 void paintClip({
   required Canvas canvas,
-  required FragmentShader curveShader,
   required Size canvasSize,
   required PatternModel pattern,
   ClipModel? clip,
@@ -47,7 +44,10 @@ void paintClip({
   required bool selected,
   required bool pressed,
   required double devicePixelRatio,
+  required double timeViewStart,
+  required double timeViewEnd,
   bool hideBorder = false,
+  bool newMethod = false,
 }) {
   // Container
 
@@ -172,12 +172,7 @@ void paintClip({
 
       canvas.save();
 
-      canvas.clipRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2),
-          const Radius.circular(3),
-        ),
-      );
+      canvas.clipRect(Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2));
 
       final innerHeight = height - 2;
 
@@ -217,69 +212,32 @@ void paintClip({
 
     canvas.save();
 
-    canvas.clipRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2),
-        const Radius.circular(3),
-      ),
-    );
+    canvas.clipRect(Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2));
+
+    final timePerPixel = (timeViewEnd - timeViewStart) / canvasSize.width;
+
+    final clipTimeViewStart = clip?.timeView?.start.toDouble() ?? 0;
+    final clipTimeViewEnd =
+        clip?.timeView?.end.toDouble() ?? pattern.getWidth().toDouble();
 
     for (final lane in pattern.automationLanes.values) {
-      for (var i = 1; i < lane.points.length; i++) {
-        final previousPoint = lane.points[i - 1];
-        final thisPoint = lane.points[i];
-
-        final timeViewStart = clip?.timeView?.start.toDouble() ?? 0;
-        final timeViewEnd =
-            clip?.timeView?.end.toDouble() ?? pattern.getWidth().toDouble();
-
-        final lastPointX =
-            timeToPixels(
-              timeViewStart: timeViewStart,
-              timeViewEnd: timeViewEnd,
-              viewPixelWidth: width - 1,
-              time: previousPoint.offset.toDouble(),
-            ) +
-            x +
-            1;
-        final pointX =
-            timeToPixels(
-              timeViewStart: timeViewStart,
-              timeViewEnd: timeViewEnd,
-              viewPixelWidth: width - 1,
-              time: thisPoint.offset.toDouble(),
-            ) +
-            x +
-            1;
-
-        if ((lastPointX < 0 && pointX < 0) ||
-            (lastPointX > x + width && pointX > x + width)) {
-          continue;
-        }
-
-        const strokeWidth = 2.0;
-
-        final xOffset = (lastPointX - strokeWidth * 0.5);
-
-        drawCurve(
-          canvas,
-          curveShader,
-          drawArea: Rectangle(
-            xOffset,
-            y + clipTitleHeight,
-            pointX - lastPointX,
-            height - clipTitleHeight - 2,
-          ),
-          devicePixelRatio: devicePixelRatio,
-          firstPointValue: previousPoint.value,
-          secondPointValue: thisPoint.value,
-          tension: thisPoint.tension,
-          strokeWidth: strokeWidth,
-          color: contentColor,
-          gradientOpacityTop: 0.1,
-          gradientOpacityBottom: 0.1,
-        );
-      }
+      fullRendererNew(
+        canvas,
+        canvasSize,
+        xDrawPositionTime: (
+          (clip?.offset.toDouble() ?? 0.0) + timePerPixel,
+          ((clip?.offset ?? 0) + (clip?.width ?? 0)).toDouble() - timePerPixel,
+        ),
+        yDrawPositionPixels: (y + clipTitleHeight + 1, y + height - 1),
+        points: lane.points,
+        strokeWidth: 2.0,
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        clipStart: clipTimeViewStart,
+        clipEnd: clipTimeViewEnd,
+        clipOffset: clip?.offset.toDouble() ?? 0.0,
+        color: contentColor,
+      );
     }
 
     canvas.restore();

@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:anthem/helpers/id.dart';
@@ -38,7 +37,6 @@ import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:flutter_shaders/flutter_shaders.dart';
 import 'package:provider/provider.dart';
 
 class AutomationEditorContentRenderer extends StatefulObserverWidget {
@@ -75,22 +73,18 @@ class _AutomationEditorContentRendererState
       }
     });
 
-    return ShaderBuilder(
-      assetKey: 'assets/shaders/automation_curve.frag',
-      (context, shader, child) => CustomPaintObserver(
-        painterBuilder: () => AutomationEditorPainter(
-          timeViewStart: widget.timeViewStart,
-          timeViewEnd: widget.timeViewEnd,
-          ticksPerQuarter: project.sequence.ticksPerQuarter,
-          project: project,
-          pattern: pattern,
-          shader: shader,
-          devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
-          visiblePoints: viewModel.visiblePoints,
-          viewModel: viewModel,
-        ),
-        isComplex: true,
+    return CustomPaintObserver(
+      painterBuilder: () => AutomationEditorPainter(
+        timeViewStart: widget.timeViewStart,
+        timeViewEnd: widget.timeViewEnd,
+        ticksPerQuarter: project.sequence.ticksPerQuarter,
+        project: project,
+        pattern: pattern,
+        devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
+        visiblePoints: viewModel.visiblePoints,
+        viewModel: viewModel,
       ),
+      isComplex: true,
     );
   }
 }
@@ -103,7 +97,6 @@ class AutomationEditorPainter extends CustomPainterObserver {
   final int ticksPerQuarter;
   final ProjectModel project;
   final PatternModel? pattern;
-  final FragmentShader shader;
   final double devicePixelRatio;
   final CanvasAnnotationSet<PointAnnotation> visiblePoints;
   final AutomationEditorViewModel viewModel;
@@ -114,7 +107,6 @@ class AutomationEditorPainter extends CustomPainterObserver {
     required this.ticksPerQuarter,
     required this.project,
     this.pattern,
-    required this.shader,
     required this.devicePixelRatio,
     required this.visiblePoints,
     required this.viewModel,
@@ -172,49 +164,17 @@ class AutomationEditorPainter extends CustomPainterObserver {
 
     AutomationPointModel? lastPoint;
 
-    for (final point in points) {
-      if (lastPoint == null) {
-        lastPoint = point;
-        continue;
-      }
-
-      final lastPointX = timeToPixels(
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        viewPixelWidth: size.width,
-        time: lastPoint.offset.toDouble(),
-      );
-      final pointX = timeToPixels(
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        viewPixelWidth: size.width,
-        time: point.offset.toDouble(),
-      );
-
-      if ((lastPointX < 0 && pointX < 0) ||
-          (lastPointX > size.width && pointX > size.width)) {
-        lastPoint = point;
-        continue;
-      }
-
-      final xOffset = (lastPointX - strokeWidth * 0.5);
-      const yOffset = 0.0;
-
-      drawCurve(
+    if (points.length >= 2) {
+      fullRendererNew(
         canvas,
-        shader,
-        drawArea: Rectangle(xOffset, yOffset, pointX - lastPointX, size.height),
-        devicePixelRatio: devicePixelRatio,
-        firstPointValue: lastPoint.value,
-        secondPointValue: point.value,
-        tension: point.tension,
+        size,
+        xDrawPositionTime: (0, points.last.offset.toDouble()),
+        yDrawPositionPixels: (0, size.height),
+        points: points,
         strokeWidth: strokeWidth,
-        color: AnthemTheme.primary.main,
-        gradientOpacityTop: 0.2,
-        gradientOpacityBottom: 0.03,
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
       );
-
-      lastPoint = point;
     }
 
     // This section draws circles for each node, as well as circles for each
@@ -338,7 +298,6 @@ class AutomationEditorPainter extends CustomPainterObserver {
       ticksPerQuarter != oldDelegate.ticksPerQuarter ||
       project != oldDelegate.project ||
       pattern != oldDelegate.pattern ||
-      shader != oldDelegate.shader ||
       devicePixelRatio != oldDelegate.devicePixelRatio ||
       visiblePoints != oldDelegate.visiblePoints ||
       viewModel != oldDelegate.viewModel ||

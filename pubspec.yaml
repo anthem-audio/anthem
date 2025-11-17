@@ -55,9 +55,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  shaders:
-  - assets/shaders/automation_curve.frag
-
   fonts:
   - family: RobotoMono
     fonts:
