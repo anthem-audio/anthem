@@ -50,3 +50,10 @@ This list reflects our current plans but does not represent a commitment of any 
 If you're interested in contributing, feel free to open a discussion thread on this repository, or submit a pull request.
 
 There is documentation for developers [here](docs/README.md), which includes an architectural overview and setup instructions.
+
+## Credits
+
+- Budislav Stepanov - UI, UX, and workflow design
+- Joshua Wade - Workflow design and code
+
+Special thanks to Stephen Wade for the countless hours spent helping me refine design concepts and software architecture. -Josh
