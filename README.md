@@ -53,7 +53,7 @@ There is documentation for developers [here](docs/README.md), which includes an 
 
 ## Credits
 
-- Budislav Stepanov - UI, UX, and workflow design
-- Joshua Wade - Workflow design and code
+- Budislav Stepanov - UI/UX design
+- Joshua Wade - Code
 
 Special thanks to Stephen Wade for the countless hours spent helping me refine design concepts and software architecture. -Josh
