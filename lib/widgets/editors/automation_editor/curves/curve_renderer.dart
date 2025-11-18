@@ -120,6 +120,8 @@ void fullRendererNew(
 
   double clipOffset = 0.0,
 }) {
+  if (points.length < 2) return;
+
   final xDrawPositionPixels = (
     timeToPixels(
       timeViewStart: timeViewStart,
