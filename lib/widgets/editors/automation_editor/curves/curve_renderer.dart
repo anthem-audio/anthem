@@ -261,7 +261,7 @@ void fullRendererNew(
   // the number of line segments drawn in most cases.
   ({double x, double y}) curvePointA = (
     x: startX,
-    y: valueToY(_evaluateCurve(startTime, automationPoints)),
+    y: valueToY(_evaluateCurve(startTime - clipOffset, automationPoints)),
   );
   ({double x, double y})? curvePointB;
 
