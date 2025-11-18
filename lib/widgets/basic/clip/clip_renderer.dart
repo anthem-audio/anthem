@@ -221,7 +221,7 @@ void paintClip({
         clip?.timeView?.end.toDouble() ?? pattern.getWidth().toDouble();
 
     for (final lane in pattern.automationLanes.values) {
-      fullRendererNew(
+      renderAutomationCurve(
         canvas,
         canvasSize,
         xDrawPositionTime: (

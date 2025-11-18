@@ -102,7 +102,20 @@ double _evaluateCurve(double time, List<AutomationPoint> points) {
   }
 }
 
-void fullRendererNew(
+/// Renders the automation curve given by [points] onto the provided [canvas].
+///
+/// See usage examples in the automation editor and arranger.
+///
+/// This method samples the curve at one-pixel intervals (device independent),
+/// and then aggressively downsamples the resulting points, removing over 85% of
+/// the points in most common cases. It then uses these points to draw the
+/// curve, using Canvas.drawRawPoints for the line, and Canvas.drawVertices for
+/// the gradient fill below the curve.
+///
+/// The result of rendering the downsampled points is nearly indistinguishable
+/// from rendering with all the points. The aggressiveness of the downsampling
+/// can be adjusted below.
+void renderAutomationCurve(
   Canvas canvas,
   Size canvasSize, {
   required (double, double) xDrawPositionTime,
