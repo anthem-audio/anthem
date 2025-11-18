@@ -47,7 +47,6 @@ void paintClip({
   required double timeViewStart,
   required double timeViewEnd,
   bool hideBorder = false,
-  bool newMethod = false,
 }) {
   // Container
 

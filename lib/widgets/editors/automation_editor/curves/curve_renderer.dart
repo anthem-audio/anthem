@@ -38,6 +38,13 @@ typedef AutomationPoint = ({
 var _pointBuffer = Float32List(2000 * 2);
 var _triCoordBuffer = Float32List(2000 * 12);
 
+void _resizeIfNeededForPointIndex(int pointIndex) {
+  while (pointIndex * 2 >= _pointBuffer.length) {
+    _pointBuffer = Float32List(_pointBuffer.length * 2);
+    _triCoordBuffer = Float32List(_triCoordBuffer.length * 2);
+  }
+}
+
 /// Caches the last accessed curve segment for _evaluateCurve.
 ///
 /// Since we will call evaluateCurve in order, this will prevent us from
@@ -166,15 +173,18 @@ void renderAutomationCurve(
     ..style = PaintingStyle.stroke
     ..strokeWidth = strokeWidth;
 
+  const gradientStartAlpha = 0.05;
+  const gradientEndAlpha = 0.25;
+
   final gradientPaint = Paint()
     ..shader = LinearGradient(
       colors: [
-        chosenColor.withValues(alpha: 0.25),
-        chosenColor.withValues(alpha: 0.05),
+        chosenColor.withValues(alpha: gradientStartAlpha),
+        chosenColor.withValues(alpha: gradientEndAlpha),
       ],
       stops: const [0.0, 1.0],
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
+      begin: Alignment.bottomCenter,
+      end: Alignment.topCenter,
     ).createShader(drawArea)
     ..style = PaintingStyle.fill;
 
@@ -190,25 +200,13 @@ void renderAutomationCurve(
     );
   });
 
-  // Resize buffers if needed
-  var maxPossiblePointCount = min(
-    drawArea.width.ceil(),
-    canvasSize.width.ceil(),
-  );
-
-  if (_pointBuffer.length < maxPossiblePointCount) {
-    final maxPossibleCoordinateCount = maxPossiblePointCount * 2; // x and y
-    _pointBuffer = Float32List(maxPossibleCoordinateCount * 2);
-    _triCoordBuffer = Float32List(maxPossibleCoordinateCount * 12);
-  }
-
   double startTime;
   double endTime;
 
   if (clipStart == null) {
     startTime = points.first.offset.toDouble() + clipOffset;
   } else {
-    startTime = clipStart + clipOffset - clipStart;
+    startTime = clipOffset;
   }
 
   endTime = points.last.offset.toDouble() + clipOffset - (clipStart ?? 0.0);
@@ -262,6 +260,7 @@ void renderAutomationCurve(
       drawArea.top + drawArea.height * (1.0 - value);
 
   if (!willCutOffStart) {
+    _resizeIfNeededForPointIndex(pointCount + 1);
     _pointBuffer[pointCount * 2] = startX.toDouble();
     _pointBuffer[pointCount * 2 + 1] = valueToY(automationPoints.first.value);
     pointCount++;
@@ -282,6 +281,7 @@ void renderAutomationCurve(
 
   if (willCutOffStart) {
     // Add point A
+    _resizeIfNeededForPointIndex(pointCount + 1);
     _pointBuffer[pointCount * 2] = curvePointA.x;
     _pointBuffer[pointCount * 2 + 1] = curvePointA.y;
     pointCount++;
@@ -303,6 +303,7 @@ void renderAutomationCurve(
     if (mostRecentCurve != null && mostRecentCurve != _currentCurveCache) {
       for (var i = mostRecentCurve.$2; i < _currentCurveCache.$2; i++) {
         if (curvePointB != null) {
+          _resizeIfNeededForPointIndex(pointCount + 1);
           _pointBuffer[pointCount * 2] = curvePointB.x;
           _pointBuffer[pointCount * 2 + 1] = curvePointB.y;
           pointCount++;
@@ -316,6 +317,7 @@ void renderAutomationCurve(
         );
         final y = valueToY(automationPoints[i].value);
 
+        _resizeIfNeededForPointIndex(pointCount + 1);
         _pointBuffer[pointCount * 2] = x;
         _pointBuffer[pointCount * 2 + 1] = y;
 
@@ -334,26 +336,6 @@ void renderAutomationCurve(
       curvePointB = (x: x, y: y);
       continue;
     }
-
-    // This adds one point exactly at the tension handle, otherwise very shallow
-    // curves will deviate from the tension handle.
-    // final currentSegmentMidpoint = (automationPoints[_currentCurveCache.$1].offset +
-    //         automationPoints[_currentCurveCache.$2].offset) *
-    //     0.5;
-    // if (time > currentSegmentMidpoint && !isAfterSegmentMidpoint) {
-    //   isAfterSegmentMidpoint = true;
-
-    //   final x = timeToPixels(
-    //     timeViewStart: timeViewStart,
-    //     timeViewEnd: timeViewEnd,
-    //     viewPixelWidth: canvasSize.width,
-    //     time: currentSegmentMidpoint,
-    //   );
-    //   final y = valueToY(_evaluateCurve(currentSegmentMidpoint, automationPoints));
-    //   _pointBuffer[pointCount * 2] = x;
-    //   _pointBuffer[pointCount * 2 + 1] = y;
-    //   pointCount++;
-    // }
 
     ({double x, double y}) curvePointC = (x: x, y: y);
 
@@ -381,7 +363,9 @@ void renderAutomationCurve(
       squarePixelDistance = dx * dx + dy * dy;
     }
 
-    final threshold = pi * 0.1 / sqrt(squarePixelDistance);
+    // Adjust for aggressiveness - higher removes more points
+    const double angleDistanceFactor = 0.1;
+    final threshold = pi * angleDistanceFactor / sqrt(squarePixelDistance);
 
     // This evaluation is to determine if we should keep point B (the point from
     // the previous iteration)
@@ -392,6 +376,7 @@ void renderAutomationCurve(
       final ix = pointCount * 2;
       final iY = pointCount * 2 + 1;
 
+      _resizeIfNeededForPointIndex(pointCount + 1);
       _pointBuffer[ix] = curvePointB.x;
       _pointBuffer[iY] = curvePointB.y;
 
@@ -404,11 +389,13 @@ void renderAutomationCurve(
 
   // If there is a remaining curve point B, add it
   if (curvePointB != null) {
+    _resizeIfNeededForPointIndex(pointCount + 1);
     _pointBuffer[pointCount * 2] = curvePointB.x;
     _pointBuffer[pointCount * 2 + 1] = curvePointB.y;
     pointCount++;
   }
 
+  _resizeIfNeededForPointIndex(pointCount + 1);
   _pointBuffer[pointCount * 2] = endX.toDouble();
   _pointBuffer[pointCount * 2 + 1] = valueToY(
     _evaluateCurve(endTime - clipOffset + (clipStart ?? 0.0), automationPoints),
@@ -455,9 +442,6 @@ void renderAutomationCurve(
 
   final segmentCount = pointCount - 1;
   final vertexFloatCount = segmentCount * 12; // 2 triangles per segment
-
-  // print('Curve rendering: kept $pointCount points of $total '
-  //     '(${(skipped / total * 100).toStringAsFixed(2)}% skipped)');
 
   // This aliases on Skia, but we draw a line along the main boundary that would
   // alias, so it works out well on Skia platforms (as of writing, this is
