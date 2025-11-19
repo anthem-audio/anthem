@@ -35,14 +35,25 @@ typedef AutomationPoint = ({
   AutomationCurveType curve,
 });
 
-var _pointBuffer = Float32List(2000 * 2);
-var _triCoordBuffer = Float32List(2000 * 12);
+var _pointBuffer = Float32List(200 * 2);
+var _triCoordBuffer = Float32List(200 * 12);
 
 void _resizeIfNeededForPointIndex(int pointIndex) {
-  while (pointIndex * 2 >= _pointBuffer.length) {
-    _pointBuffer = Float32List(_pointBuffer.length * 2);
-    _triCoordBuffer = Float32List(_triCoordBuffer.length * 2);
+  if (pointIndex * 2 < _pointBuffer.length) return;
+
+  var newPointBufferSize = _pointBuffer.length;
+
+  while (pointIndex * 2 >= newPointBufferSize) {
+    newPointBufferSize *= 2;
   }
+
+  final newPointBuffer = Float32List(newPointBufferSize);
+  newPointBuffer.setRange(0, _pointBuffer.length, _pointBuffer);
+  _pointBuffer = newPointBuffer;
+
+  final newTriCoordBuffer = Float32List(newPointBufferSize * 6);
+  newTriCoordBuffer.setRange(0, _triCoordBuffer.length, _triCoordBuffer);
+  _triCoordBuffer = newTriCoordBuffer;
 }
 
 /// Caches the last accessed curve segment for _evaluateCurve.
