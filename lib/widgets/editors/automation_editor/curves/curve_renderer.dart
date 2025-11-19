@@ -188,7 +188,9 @@ void renderAutomationCurve(
   final linePaint = Paint()
     ..color = chosenColor
     ..style = PaintingStyle.stroke
-    ..strokeWidth = strokeWidth;
+    ..strokeWidth = strokeWidth
+    // drawRawPoints draws a bunch of straight lines with two stroke caps each
+    ..strokeCap = StrokeCap.round;
 
   const gradientStartAlpha = 0.05;
   const gradientEndAlpha = 0.25;
