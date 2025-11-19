@@ -75,6 +75,12 @@ double _evaluateCurve(double time, List<AutomationPoint> points) {
 
   // Check if the cached segment is valid
   var (firstIndex, secondIndex) = _currentCurveCache;
+
+  if (secondIndex >= points.length) {
+    firstIndex = 0;
+    secondIndex = 1;
+  }
+
   if (time >= points[firstIndex].offset && time <= points[secondIndex].offset) {
     // Cache hit
   } else {
