@@ -70,20 +70,13 @@ class AutomationEditorState extends State<AutomationEditor> {
       child: Provider.value(
         value: controller!,
         child: Container(
-          decoration: BoxDecoration(
-            color: AnthemTheme.panel.background,
-            borderRadius: BorderRadius.all(Radius.circular(4)),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(6),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _AutomationEditorHeader(),
-                SizedBox(height: 4),
-                Flexible(child: _AutomationEditorContent()),
-              ],
-            ),
+          decoration: BoxDecoration(color: AnthemTheme.panel.background),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _AutomationEditorHeader(),
+              Flexible(child: _AutomationEditorContent()),
+            ],
           ),
         ),
       ),
@@ -96,11 +89,14 @@ class _AutomationEditorHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 26,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [Button(icon: Icons.kebab, width: 26)],
+    return Padding(
+      padding: const EdgeInsets.all(6.0),
+      child: SizedBox(
+        height: 24,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [Button(icon: Icons.kebab, width: 24)],
+        ),
       ),
     );
   }
@@ -159,8 +155,77 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border.symmetric(
+                horizontal: BorderSide(color: AnthemTheme.panel.border),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Provider.value(
+                  value: viewModel.timeView,
+                  child: SizedBox(
+                    height: 38,
+                    child: Timeline.pattern(
+                      patternID: activePatternID,
+                      timeViewStartAnimation: timeViewStartAnimItem.animation,
+                      timeViewEndAnimation: timeViewEndAnimItem.animation,
+                      timeViewAnimationController:
+                          timeViewAnimationHelper!.animationController,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Builder(
+                    builder: (context) {
+                      final content = Container(
+                        color: AnthemTheme.grid.backgroundLight,
+                        child: AnimatedBuilder(
+                          animation:
+                              timeViewAnimationHelper!.animationController,
+                          builder: (context, child) {
+                            return AutomationEditorContentRenderer(
+                              timeViewStart:
+                                  timeViewStartAnimItem.animation.value,
+                              timeViewEnd: timeViewEndAnimItem.animation.value,
+                            );
+                          },
+                        ),
+                      );
+
+                      final playhead = Positioned.fill(
+                        child: PlayheadLine(
+                          timeViewAnimationController:
+                              timeViewAnimationHelper!.animationController,
+                          timeViewStartAnimation:
+                              timeViewStartAnimItem.animation,
+                          timeViewEndAnimation: timeViewEndAnimItem.animation,
+                          isVisible: true,
+                          editorActiveSequenceId:
+                              project.sequence.activePatternID,
+                        ),
+                      );
+
+                      return AutomationPointContextMenu(
+                        child: AutomationEditorEventListener(
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [content, playhead],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
         SizedBox(
-          height: 26,
+          height: 16,
           child: ScrollbarRenderer(
             handleStart: viewModel.timeView.start,
             handleEnd: viewModel.timeView.end,
@@ -176,75 +241,6 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
               viewModel.timeView.start = event.handleStart;
               viewModel.timeView.end = event.handleEnd;
             },
-          ),
-        ),
-        const SizedBox(height: 4),
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: AnthemTheme.panel.border),
-              borderRadius: const BorderRadius.all(Radius.circular(4)),
-            ),
-            child: ClipRRect(
-              borderRadius: const BorderRadius.all(Radius.circular(4)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Provider.value(
-                    value: viewModel.timeView,
-                    child: SizedBox(
-                      height: 38,
-                      child: Timeline.pattern(
-                        patternID: activePatternID,
-                        timeViewStartAnimation: timeViewStartAnimItem.animation,
-                        timeViewEndAnimation: timeViewEndAnimItem.animation,
-                        timeViewAnimationController:
-                            timeViewAnimationHelper!.animationController,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Builder(
-                      builder: (context) {
-                        final content = AnimatedBuilder(
-                          animation:
-                              timeViewAnimationHelper!.animationController,
-                          builder: (context, child) {
-                            return AutomationEditorContentRenderer(
-                              timeViewStart:
-                                  timeViewStartAnimItem.animation.value,
-                              timeViewEnd: timeViewEndAnimItem.animation.value,
-                            );
-                          },
-                        );
-
-                        final playhead = Positioned.fill(
-                          child: PlayheadLine(
-                            timeViewAnimationController:
-                                timeViewAnimationHelper!.animationController,
-                            timeViewStartAnimation:
-                                timeViewStartAnimItem.animation,
-                            timeViewEndAnimation: timeViewEndAnimItem.animation,
-                            isVisible: true,
-                            editorActiveSequenceId:
-                                project.sequence.activePatternID,
-                          ),
-                        );
-
-                        return AutomationPointContextMenu(
-                          child: AutomationEditorEventListener(
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [content, playhead],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
         ),
       ],
