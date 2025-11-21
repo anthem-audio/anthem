@@ -36,6 +36,7 @@ typedef AutomationPoint = ({
 });
 
 var _pointBuffer = Float32List(200 * 2);
+var _lineJoinBuffer = Float32List(200 * 2);
 var _triCoordBuffer = Float32List(200 * 12);
 
 void _resizeIfNeededForPointIndex(int pointIndex) {
@@ -50,6 +51,10 @@ void _resizeIfNeededForPointIndex(int pointIndex) {
   final newPointBuffer = Float32List(newPointBufferSize);
   newPointBuffer.setRange(0, _pointBuffer.length, _pointBuffer);
   _pointBuffer = newPointBuffer;
+
+  final newLineJoinBuffer = Float32List(newPointBufferSize);
+  newLineJoinBuffer.setRange(0, _lineJoinBuffer.length, _lineJoinBuffer);
+  _lineJoinBuffer = newLineJoinBuffer;
 
   final newTriCoordBuffer = Float32List(newPointBufferSize * 6);
   newTriCoordBuffer.setRange(0, _triCoordBuffer.length, _triCoordBuffer);
@@ -189,8 +194,30 @@ void renderAutomationCurve(
     ..color = chosenColor
     ..style = PaintingStyle.stroke
     ..strokeWidth = strokeWidth
-    // drawRawPoints draws a bunch of straight lines with two stroke caps each
-    ..strokeCap = StrokeCap.round;
+    // drawRawPoints draws a bunch of straight lines with two stroke caps each.
+    //
+    // StrokeCap.round looks okay, but is many times slower and quickly becomes
+    // a bottleneck. StrokeCap.square is free as it just lengthens the line, but
+    // produces minor artifacts at each point - it looks like the line is very
+    // slightly wider at each point, which is very often. StrokeCap.butt
+    // produces a VERY slight gap between segments, which is annoying but less
+    // noticeable.
+    //
+    // StrokeCap.butt does look very bad when we have very sharp curves, so the
+    // final trick is that we draw a bunch of circles (drawRawPoints with
+    // StrokeCap.round and PointMode.points), which is much faster than capping
+    // the lines with a round cap, even if we draw a circle at every point.
+    // Then, we can choose when to draw those circles based on curvature, which
+    // further reduces the already small overhead, and produces a decent end
+    // result.
+    ..strokeCap = StrokeCap.butt;
+
+  // Paint for circles that we manually add to simulate round line joins
+  final lineJoinCirclePaint = Paint()
+    ..color = chosenColor
+    ..strokeWidth = strokeWidth
+    ..strokeCap = StrokeCap.round
+    ..style = PaintingStyle.fill;
 
   const gradientStartAlpha = 0.05;
   const gradientEndAlpha = 0.25;
@@ -274,6 +301,7 @@ void renderAutomationCurve(
   }
 
   var pointCount = 0;
+  var lineJoinCount = 0;
 
   double valueToY(double value) =>
       drawArea.top + drawArea.height * (1.0 - value);
@@ -340,6 +368,11 @@ void renderAutomationCurve(
         _pointBuffer[pointCount * 2] = x;
         _pointBuffer[pointCount * 2 + 1] = y;
 
+        _lineJoinBuffer[lineJoinCount * 2] = x;
+        _lineJoinBuffer[lineJoinCount * 2 + 1] = y;
+
+        lineJoinCount++;
+
         curvePointA = (x: x, y: y);
         curvePointB = null;
 
@@ -386,20 +419,34 @@ void renderAutomationCurve(
     const double angleDistanceFactor = 0.1;
     final threshold = pi * angleDistanceFactor / sqrt(squarePixelDistance);
 
+    const double lineJoinAngleThresholdFactor = 2.0;
+    final lineJoinThreshold = threshold * lineJoinAngleThresholdFactor;
+
     // This evaluation is to determine if we should keep point B (the point from
     // the previous iteration)
     if (angleDifference < threshold) {
       // Skip this point
       curvePointB = curvePointC;
     } else {
-      final ix = pointCount * 2;
+      final iX = pointCount * 2;
       final iY = pointCount * 2 + 1;
 
       _resizeIfNeededForPointIndex(pointCount + 1);
-      _pointBuffer[ix] = curvePointB.x;
+      _pointBuffer[iX] = curvePointB.x;
       _pointBuffer[iY] = curvePointB.y;
 
       pointCount++;
+
+      if (angleDifference >= lineJoinThreshold) {
+        // Add a circle at this point to simulate a round line join
+        final ljX = lineJoinCount * 2;
+        final ljY = lineJoinCount * 2 + 1;
+
+        _lineJoinBuffer[ljX] = curvePointB.x;
+        _lineJoinBuffer[ljY] = curvePointB.y;
+
+        lineJoinCount++;
+      }
 
       curvePointA = curvePointB;
       curvePointB = curvePointC;
@@ -478,6 +525,12 @@ void renderAutomationCurve(
     PointMode.polygon,
     Float32List.sublistView(_pointBuffer, 0, pointCount * 2),
     linePaint,
+  );
+
+  canvas.drawRawPoints(
+    PointMode.points,
+    Float32List.sublistView(_lineJoinBuffer, 0, lineJoinCount * 2),
+    lineJoinCirclePaint,
   );
 }
 
