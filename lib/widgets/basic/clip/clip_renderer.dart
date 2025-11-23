@@ -144,11 +144,8 @@ void paintClip({
 
   final textFadeOutPaint = Paint()..shader = textFadeOutGradient;
 
-  canvas.drawRRect(
-    RRect.fromRectAndCorners(
-      Rect.fromLTWH(x, textY + 1, width - 1.5, textHeight),
-      topRight: const Radius.circular(3),
-    ),
+  canvas.drawRect(
+    Rect.fromLTWH(x, textY + 1, width - 1.5, textHeight),
     textFadeOutPaint,
   );
 
@@ -211,21 +208,23 @@ void paintClip({
 
     canvas.save();
 
-    canvas.clipRect(Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2));
-
-    final timePerPixel = (timeViewEnd - timeViewStart) / canvasSize.width;
+    // final timePerPixel = (timeViewEnd - timeViewStart) / canvasSize.width;
 
     final clipTimeViewStart = clip?.timeView?.start.toDouble() ?? 0;
     final clipTimeViewEnd =
         clip?.timeView?.end.toDouble() ?? pattern.getWidth().toDouble();
+
+    canvas.saveLayer(null, Paint()..blendMode = BlendMode.plus);
+
+    canvas.clipRect(Rect.fromLTWH(0, 0, canvasSize.width, canvasSize.height));
 
     for (final lane in pattern.automationLanes.values) {
       renderAutomationCurve(
         canvas,
         canvasSize,
         xDrawPositionTime: (
-          (clip?.offset.toDouble() ?? 0.0) + timePerPixel,
-          ((clip?.offset ?? 0) + (clip?.width ?? 0)).toDouble() - timePerPixel,
+          (clip?.offset.toDouble() ?? 0.0),
+          ((clip?.offset ?? 0) + (clip?.width ?? 0)).toDouble(),
         ),
         yDrawPositionPixels: (y + clipTitleHeight + 1, y + height - 1),
         points: lane.points,
@@ -235,9 +234,11 @@ void paintClip({
         clipStart: clipTimeViewStart,
         clipEnd: clipTimeViewEnd,
         clipOffset: clip?.offset.toDouble() ?? 0.0,
-        color: contentColor,
+        color: const Color(0xFF777777),
       );
     }
+
+    canvas.restore();
 
     canvas.restore();
   }
