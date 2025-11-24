@@ -28,6 +28,31 @@ import 'package:anthem_codegen/include/collections.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 
+class CoordinateBuffer {
+  Float32List _buffer = Float32List(512);
+  int _length = 0;
+  int get coordinateCount => _length ~/ 2;
+
+  Float32List get buffer => Float32List.sublistView(_buffer, 0, _length);
+  Float32List get bufferRaw => _buffer;
+
+  void add(double x, double y) {
+    if ((_length + 2) > _buffer.length) {
+      final newBuffer = Float32List(_buffer.length * 2);
+      newBuffer.setRange(0, _buffer.length, _buffer);
+      _buffer = newBuffer;
+    }
+
+    _buffer[_length] = x;
+    _buffer[_length + 1] = y;
+    _length += 2;
+  }
+
+  void clear() {
+    _length = 0;
+  }
+}
+
 typedef AutomationPoint = ({
   double offset,
   double value,
@@ -35,31 +60,9 @@ typedef AutomationPoint = ({
   AutomationCurveType curve,
 });
 
-var _pointBuffer = Float32List(200 * 2);
-var _lineJoinBuffer = Float32List(200 * 2);
-var _triCoordBuffer = Float32List(200 * 12);
-
-void _resizeIfNeededForPointIndex(int pointIndex) {
-  if (pointIndex * 2 < _pointBuffer.length) return;
-
-  var newPointBufferSize = _pointBuffer.length;
-
-  while (pointIndex * 2 >= newPointBufferSize) {
-    newPointBufferSize *= 2;
-  }
-
-  final newPointBuffer = Float32List(newPointBufferSize);
-  newPointBuffer.setRange(0, _pointBuffer.length, _pointBuffer);
-  _pointBuffer = newPointBuffer;
-
-  final newLineJoinBuffer = Float32List(newPointBufferSize);
-  newLineJoinBuffer.setRange(0, _lineJoinBuffer.length, _lineJoinBuffer);
-  _lineJoinBuffer = newLineJoinBuffer;
-
-  final newTriCoordBuffer = Float32List(newPointBufferSize * 6);
-  newTriCoordBuffer.setRange(0, _triCoordBuffer.length, _triCoordBuffer);
-  _triCoordBuffer = newTriCoordBuffer;
-}
+var _pointBuffer = CoordinateBuffer();
+var _lineJoinBuffer = CoordinateBuffer();
+var _triCoordBuffer = CoordinateBuffer();
 
 /// Caches the last accessed curve segment for _evaluateCurve.
 ///
@@ -161,8 +164,21 @@ void renderAutomationCurve({
   double? clipEnd,
 
   double clipOffset = 0.0,
+
+  CoordinateBuffer? pointBuffer,
+  CoordinateBuffer? lineJoinBuffer,
+  CoordinateBuffer? triCoordBuffer,
 }) {
   if (points.length < 2) return;
+
+  // We don't clear incoming buffers, as they will be reused across multiple
+  // clip renders. If we're using our own internal buffers, we clear them.
+  final shouldClear =
+      pointBuffer == null || lineJoinBuffer == null || triCoordBuffer == null;
+
+  pointBuffer ??= _pointBuffer;
+  lineJoinBuffer ??= _lineJoinBuffer;
+  triCoordBuffer ??= _triCoordBuffer;
 
   final xDrawPositionPixels = (
     timeToPixels(
@@ -221,6 +237,8 @@ void renderAutomationCurve({
 
   const gradientStartAlpha = 0.05;
   const gradientEndAlpha = 0.25;
+
+  // override is 0xFFFFFFFF from 0.05 to 0.1
 
   final gradientPaint = Paint()
     ..shader = LinearGradient(
@@ -300,17 +318,11 @@ void renderAutomationCurve({
     );
   }
 
-  var pointCount = 0;
-  var lineJoinCount = 0;
-
   double valueToY(double value) =>
       drawArea.top + drawArea.height * (1.0 - value);
 
   if (!willCutOffStart) {
-    _resizeIfNeededForPointIndex(pointCount + 1);
-    _pointBuffer[pointCount * 2] = startX.toDouble();
-    _pointBuffer[pointCount * 2 + 1] = valueToY(automationPoints.first.value);
-    pointCount++;
+    _pointBuffer.add(startX.toDouble(), valueToY(automationPoints.first.value));
   }
 
   // We will use this to track if the curve has changed between evaluations. If
@@ -328,10 +340,7 @@ void renderAutomationCurve({
 
   if (willCutOffStart) {
     // Add point A
-    _resizeIfNeededForPointIndex(pointCount + 1);
-    _pointBuffer[pointCount * 2] = curvePointA.x;
-    _pointBuffer[pointCount * 2 + 1] = curvePointA.y;
-    pointCount++;
+    _pointBuffer.add(curvePointA.x, curvePointA.y);
   }
 
   // Sample points along the curve
@@ -350,10 +359,7 @@ void renderAutomationCurve({
     if (mostRecentCurve != null && mostRecentCurve != _currentCurveCache) {
       for (var i = mostRecentCurve.$2; i < _currentCurveCache.$2; i++) {
         if (curvePointB != null) {
-          _resizeIfNeededForPointIndex(pointCount + 1);
-          _pointBuffer[pointCount * 2] = curvePointB.x;
-          _pointBuffer[pointCount * 2 + 1] = curvePointB.y;
-          pointCount++;
+          _pointBuffer.add(curvePointB.x, curvePointB.y);
         }
 
         final x = timeToPixels(
@@ -364,19 +370,11 @@ void renderAutomationCurve({
         );
         final y = valueToY(automationPoints[i].value);
 
-        _resizeIfNeededForPointIndex(pointCount + 1);
-        _pointBuffer[pointCount * 2] = x;
-        _pointBuffer[pointCount * 2 + 1] = y;
-
-        _lineJoinBuffer[lineJoinCount * 2] = x;
-        _lineJoinBuffer[lineJoinCount * 2 + 1] = y;
-
-        lineJoinCount++;
+        _pointBuffer.add(x, y);
+        _lineJoinBuffer.add(x, y);
 
         curvePointA = (x: x, y: y);
         curvePointB = null;
-
-        pointCount++;
       }
     }
 
@@ -428,24 +426,11 @@ void renderAutomationCurve({
       // Skip this point
       curvePointB = curvePointC;
     } else {
-      final iX = pointCount * 2;
-      final iY = pointCount * 2 + 1;
-
-      _resizeIfNeededForPointIndex(pointCount + 1);
-      _pointBuffer[iX] = curvePointB.x;
-      _pointBuffer[iY] = curvePointB.y;
-
-      pointCount++;
+      _pointBuffer.add(curvePointB.x, curvePointB.y);
 
       if (angleDifference >= lineJoinThreshold) {
         // Add a circle at this point to simulate a round line join
-        final ljX = lineJoinCount * 2;
-        final ljY = lineJoinCount * 2 + 1;
-
-        _lineJoinBuffer[ljX] = curvePointB.x;
-        _lineJoinBuffer[ljY] = curvePointB.y;
-
-        lineJoinCount++;
+        _lineJoinBuffer.add(curvePointB.x, curvePointB.y);
       }
 
       curvePointA = curvePointB;
@@ -455,18 +440,18 @@ void renderAutomationCurve({
 
   // If there is a remaining curve point B, add it
   if (curvePointB != null) {
-    _resizeIfNeededForPointIndex(pointCount + 1);
-    _pointBuffer[pointCount * 2] = curvePointB.x;
-    _pointBuffer[pointCount * 2 + 1] = curvePointB.y;
-    pointCount++;
+    _pointBuffer.add(curvePointB.x, curvePointB.y);
   }
 
-  _resizeIfNeededForPointIndex(pointCount + 1);
-  _pointBuffer[pointCount * 2] = endX.toDouble();
-  _pointBuffer[pointCount * 2 + 1] = valueToY(
-    _evaluateCurve(endTime - clipOffset + (clipStart ?? 0.0), automationPoints),
+  _pointBuffer.add(
+    endX.toDouble(),
+    valueToY(
+      _evaluateCurve(
+        endTime - clipOffset + (clipStart ?? 0.0),
+        automationPoints,
+      ),
+    ),
   );
-  pointCount++;
 
   // Create geometry for gradient fill
   void createTrianglesForPoints(
@@ -478,60 +463,48 @@ void renderAutomationCurve({
   ) {
     final baseY = drawArea.top + drawArea.height;
 
-    final i = segmentIndex * 12;
+    // First triangle
+    _triCoordBuffer.add(x1, y1);
+    _triCoordBuffer.add(x2, y2);
+    _triCoordBuffer.add(x2, baseY);
 
-    _triCoordBuffer[i] = x1;
-    _triCoordBuffer[i + 1] = y1;
-    _triCoordBuffer[i + 2] = x2;
-    _triCoordBuffer[i + 3] = y2;
-    _triCoordBuffer[i + 4] = x2;
-    _triCoordBuffer[i + 5] = baseY;
-
-    final j = i + 6;
-
-    _triCoordBuffer[j] = x1;
-    _triCoordBuffer[j + 1] = y1;
-    _triCoordBuffer[j + 2] = x2;
-    _triCoordBuffer[j + 3] = baseY;
-    _triCoordBuffer[j + 4] = x1;
-    _triCoordBuffer[j + 5] = baseY;
+    // Second triangle
+    _triCoordBuffer.add(x1, y1);
+    _triCoordBuffer.add(x2, baseY);
+    _triCoordBuffer.add(x1, baseY);
   }
 
-  for (int i = 0; i < pointCount - 1; i++) {
-    final x1 = _pointBuffer[2 * i];
-    final y1 = _pointBuffer[2 * i + 1];
-    final x2 = _pointBuffer[2 * (i + 1)];
-    final y2 = _pointBuffer[2 * (i + 1) + 1];
+  for (int i = 0; i < _pointBuffer.coordinateCount - 1; i++) {
+    final x1 = _pointBuffer.bufferRaw[2 * i];
+    final y1 = _pointBuffer.bufferRaw[2 * i + 1];
+    final x2 = _pointBuffer.bufferRaw[2 * (i + 1)];
+    final y2 = _pointBuffer.bufferRaw[2 * (i + 1) + 1];
 
     createTrianglesForPoints(x1, y1, x2, y2, i);
   }
-
-  final segmentCount = pointCount - 1;
-  final vertexFloatCount = segmentCount * 12; // 2 triangles per segment
 
   // This aliases on Skia, but we draw a line along the main boundary that would
   // alias, so it works out well on Skia platforms (as of writing, this is
   // Windows, Linux, and web). Also this is extremely fast.
   canvas.drawVertices(
-    Vertices.raw(
-      VertexMode.triangles,
-      Float32List.sublistView(_triCoordBuffer, 0, vertexFloatCount),
-    ),
+    Vertices.raw(VertexMode.triangles, _triCoordBuffer.buffer),
     BlendMode.srcOver,
     gradientPaint,
   );
 
-  canvas.drawRawPoints(
-    PointMode.polygon,
-    Float32List.sublistView(_pointBuffer, 0, pointCount * 2),
-    linePaint,
-  );
+  canvas.drawRawPoints(PointMode.polygon, _pointBuffer.buffer, linePaint);
 
   canvas.drawRawPoints(
     PointMode.points,
-    Float32List.sublistView(_lineJoinBuffer, 0, lineJoinCount * 2),
+    _lineJoinBuffer.buffer,
     lineJoinCirclePaint,
   );
+
+  if (shouldClear) {
+    _triCoordBuffer.clear();
+    _pointBuffer.clear();
+    _lineJoinBuffer.clear();
+  }
 }
 
 const double pi4Plus0273 = pi / 4.0 + 0.273;
