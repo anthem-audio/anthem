@@ -144,9 +144,9 @@ double _evaluateCurve(double time, List<AutomationPoint> points) {
 /// The result of rendering the downsampled points is nearly indistinguishable
 /// from rendering with all the points. The aggressiveness of the downsampling
 /// can be adjusted below.
-void renderAutomationCurve(
-  Canvas canvas,
-  Size canvasSize, {
+void renderAutomationCurve({
+  required Canvas canvas,
+  required Size canvasSize,
   required (double, double) xDrawPositionTime,
   required (double, double) yDrawPositionPixels,
   required AnthemObservableList<AutomationPointModel> points,

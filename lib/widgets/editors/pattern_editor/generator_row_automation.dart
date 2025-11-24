@@ -80,8 +80,8 @@ class _GeneratorRowAutomationPainter extends CustomPainterObserver {
     final lane = pattern.automationLanes[generatorID]!;
 
     renderAutomationCurve(
-      canvas,
-      size,
+      canvas: canvas,
+      canvasSize: size,
       xDrawPositionTime: (timeViewStart, timeViewEnd),
       yDrawPositionPixels: (0, size.height),
       points: lane.points,

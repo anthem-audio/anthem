@@ -166,8 +166,8 @@ class AutomationEditorPainter extends CustomPainterObserver {
 
     if (points.length >= 2) {
       renderAutomationCurve(
-        canvas,
-        size,
+        canvas: canvas,
+        canvasSize: size,
         xDrawPositionTime: (0, points.last.offset.toDouble()),
         yDrawPositionPixels: (0, size.height),
         points: points,

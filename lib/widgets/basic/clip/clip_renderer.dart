@@ -341,8 +341,8 @@ void _paintRestOfClip({
 
     for (final lane in pattern.automationLanes.values) {
       renderAutomationCurve(
-        canvas,
-        canvasSize,
+        canvas: canvas,
+        canvasSize: canvasSize,
         xDrawPositionTime: (
           (clip?.offset.toDouble() ?? 0.0),
           ((clip?.offset ?? 0) + (clip?.width ?? 0)).toDouble(),
