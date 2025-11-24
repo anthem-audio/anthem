@@ -117,13 +117,36 @@ class ArrangerContentPainter extends CustomPainterObserver {
     );
   }
 
+  /// Paints the clips onto the arranger canvas.
   void _paintClips(Canvas canvas, Size size) {
     viewModel.visibleClips.clear();
     viewModel.visibleResizeAreas.clear();
 
+    // We render each clip in multiple stages to optimize draw calls. For
+    // example, automation curves from all visible clips are rendered all at
+    // once, which significantly reduces raster time for the associated draw
+    // calls over drawing one clip at a time.
+    //
+    // In order to achieve this from a coloring standpoint, we draw clip content
+    // into a separate layer in gray, and use blend modes to overlay this on
+    // colorful clip backgrounds.
+    //
+    // Since we draw all the backgrounds first, then the content, we cannot draw
+    // all clips in a single pass if any of them overlay each other.
+    //
+    // We solve this by detecting overlaps. If clips A and B overlap, B is on
+    // top, and we have additional clips C, D and E do not overlap with
+    // anything, we will draw two layers. The first layer will contain A, C, D,
+    // and E, and the second layer will contain B. Within each layer, we will
+    // draw all backgrounds first, then all content.
+    //
+    // Note that if we ever disallow overlapping clips in the arranger, then we
+    // could simplify this logic.
+
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
-    arrangement.clips.forEach((key, clip) {
+    final clipsLayer = arrangement.clips.keys.map<ClipRenderInfo?>((clipId) {
+      final clip = arrangement.clips[clipId]!;
       final pattern = project.sequence.patterns[clip.patternId]!;
 
       final x = timeToPixels(
@@ -142,7 +165,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
           x +
           1;
 
-      if (x > size.width || x + width < 0) return;
+      if (x > size.width || x + width < 0) return null;
 
       final y =
           trackIndexToPos(
@@ -162,11 +185,9 @@ class ArrangerContentPainter extends CustomPainterObserver {
           ) +
           1;
 
-      if (y > size.height || y + trackHeight < 0) return;
+      if (y > size.height || y + trackHeight < 0) return null;
 
-      paintClip(
-        canvas: canvas,
-        canvasSize: size,
+      return (
         pattern: pattern,
         clip: clip,
         x: x,
@@ -175,48 +196,64 @@ class ArrangerContentPainter extends CustomPainterObserver {
         height: trackHeight,
         selected: viewModel.selectedClips.contains(clip.id),
         pressed: viewModel.pressedClip == clip.id,
+      );
+    }).nonNulls;
+
+    for (final clipList in [clipsLayer]) {
+      paintClipList(
+        canvas: canvas,
+        canvasSize: size,
+        clipList: clipList,
         devicePixelRatio: devicePixelRatio,
         timeViewStart: timeViewStart,
         timeViewEnd: timeViewEnd,
       );
 
-      viewModel.visibleClips.add(
-        rect: Rect.fromLTWH(x, y, width - 1, trackHeight - 1),
-        metadata: (id: clip.id),
-      );
+      for (final clipEntry in clipList) {
+        final x = clipEntry.x;
+        final y = clipEntry.y;
+        final width = clipEntry.width;
+        final trackHeight = clipEntry.height;
+        final clip = clipEntry.clip;
 
-      final startResizeHandleRect = Rect.fromLTWH(
-        x - _clipResizeHandleOvershoot,
-        y,
-        _clipResizeHandleWidth
-            // Ensures there's a bit of the clip still showing
-            -
-            (_minimumClickableClipArea - width).clamp(
-              0,
-              (_clipResizeHandleWidth - _clipResizeHandleOvershoot),
-            ),
-        trackHeight - 1,
-      );
-      viewModel.visibleResizeAreas.add(
-        rect: startResizeHandleRect,
-        metadata: (id: clip.id, type: ResizeAreaType.start),
-      );
+        viewModel.visibleClips.add(
+          rect: Rect.fromLTWH(x, y, width - 1, trackHeight - 1),
+          metadata: (id: clip.id),
+        );
 
-      // Notice this is fromLTRB. We generally use fromLTWH elsewhere.
-      final endResizeHandleRect = Rect.fromLTRB(
-        x +
-            (width - (_clipResizeHandleWidth - _clipResizeHandleOvershoot))
-                // Ensures there's a bit of the clip still showing
-                .clamp(_minimumClickableClipArea, double.infinity)
-                .clamp(0, width),
-        y,
-        x + width + _clipResizeHandleOvershoot,
-        y + trackHeight - 1,
-      );
-      viewModel.visibleResizeAreas.add(
-        rect: endResizeHandleRect,
-        metadata: (id: clip.id, type: ResizeAreaType.end),
-      );
-    });
+        final startResizeHandleRect = Rect.fromLTWH(
+          x - _clipResizeHandleOvershoot,
+          y,
+          _clipResizeHandleWidth
+              // Ensures there's a bit of the clip still showing
+              -
+              (_minimumClickableClipArea - width).clamp(
+                0,
+                (_clipResizeHandleWidth - _clipResizeHandleOvershoot),
+              ),
+          trackHeight - 1,
+        );
+        viewModel.visibleResizeAreas.add(
+          rect: startResizeHandleRect,
+          metadata: (id: clip.id, type: ResizeAreaType.start),
+        );
+
+        // Notice this is fromLTRB. We generally use fromLTWH elsewhere.
+        final endResizeHandleRect = Rect.fromLTRB(
+          x +
+              (width - (_clipResizeHandleWidth - _clipResizeHandleOvershoot))
+                  // Ensures there's a bit of the clip still showing
+                  .clamp(_minimumClickableClipArea, double.infinity)
+                  .clamp(0, width),
+          y,
+          x + width + _clipResizeHandleOvershoot,
+          y + trackHeight - 1,
+        );
+        viewModel.visibleResizeAreas.add(
+          rect: endResizeHandleRect,
+          metadata: (id: clip.id, type: ResizeAreaType.end),
+        );
+      }
+    }
   }
 }

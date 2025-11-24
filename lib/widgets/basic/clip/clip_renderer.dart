@@ -31,6 +31,60 @@ const smallSizeThreshold = 38;
 
 const clipTitleHeight = 16;
 
+typedef ClipRenderInfo = ({
+  PatternModel pattern,
+  ClipModel clip,
+  double x,
+  double y,
+  double width,
+  double height,
+  bool selected,
+  bool pressed,
+});
+
+void paintClipList({
+  required Canvas canvas,
+  required Size canvasSize,
+  required Iterable<ClipRenderInfo> clipList,
+  required double devicePixelRatio,
+  required double timeViewStart,
+  required double timeViewEnd,
+  bool hideBorder = false,
+}) {
+  for (final clipEntry in clipList) {
+    _paintContainer(
+      canvas: canvas,
+      pattern: clipEntry.pattern,
+      x: clipEntry.x,
+      y: clipEntry.y,
+      width: clipEntry.width,
+      height: clipEntry.height,
+      selected: clipEntry.selected,
+      pressed: clipEntry.pressed,
+      hideBorder: hideBorder,
+    );
+  }
+
+  for (final clipEntry in clipList) {
+    _paintRestOfClip(
+      canvas: canvas,
+      canvasSize: canvasSize,
+      pattern: clipEntry.pattern,
+      clip: clipEntry.clip,
+      x: clipEntry.x,
+      y: clipEntry.y,
+      width: clipEntry.width,
+      height: clipEntry.height,
+      selected: clipEntry.selected,
+      pressed: clipEntry.pressed,
+      devicePixelRatio: devicePixelRatio,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      hideBorder: hideBorder,
+    );
+  }
+}
+
 /// Paints a clip onto the given canvas with the given position and size.
 void paintClip({
   required Canvas canvas,
@@ -48,15 +102,52 @@ void paintClip({
   required double timeViewEnd,
   bool hideBorder = false,
 }) {
-  // Container
+  _paintContainer(
+    canvas: canvas,
+    pattern: pattern,
+    x: x,
+    y: y,
+    width: width,
+    height: height,
+    selected: selected,
+    pressed: pressed,
+    hideBorder: hideBorder,
+  );
 
-  final color = getBaseColor(
+  _paintRestOfClip(
+    canvas: canvas,
+    canvasSize: canvasSize,
+    pattern: pattern,
+    x: x,
+    y: y,
+    width: width,
+    height: height,
+    selected: selected,
+    pressed: pressed,
+    devicePixelRatio: devicePixelRatio,
+    timeViewStart: timeViewStart,
+    timeViewEnd: timeViewEnd,
+  );
+}
+
+void _paintContainer({
+  required Canvas canvas,
+  required PatternModel pattern,
+  required double x,
+  required double y,
+  required double width,
+  required double height,
+  required bool selected,
+  required bool pressed,
+  bool hideBorder = false,
+}) {
+  final baseColor = getBaseColor(
     color: pattern.color,
     selected: selected,
     pressed: pressed,
   );
 
-  final rectPaint = Paint()..color = color;
+  final rectPaint = Paint()..color = baseColor;
   final rectStrokePaint = Paint()
     ..color = AnthemTheme.grid.accent
     ..style = PaintingStyle.stroke
@@ -74,6 +165,36 @@ void paintClip({
   if (!hideBorder) {
     canvas.drawRect(rect, rectStrokePaint);
   }
+}
+
+void _paintRestOfClip({
+  required Canvas canvas,
+  required Size canvasSize,
+  required PatternModel pattern,
+  ClipModel? clip,
+  required double x,
+  required double y,
+  required double width,
+  required double height,
+  required bool selected,
+  required bool pressed,
+  required double devicePixelRatio,
+  required double timeViewStart,
+  required double timeViewEnd,
+  bool hideBorder = false,
+}) {
+  final baseColor = getBaseColor(
+    color: pattern.color,
+    selected: selected,
+    pressed: pressed,
+  );
+
+  final rect = Rect.fromLTWH(
+    x + (hideBorder ? 0 : 0.5),
+    y + (hideBorder ? 0 : 0.5),
+    width - (hideBorder ? 0 : 1),
+    height - (hideBorder ? 0 : 1),
+  );
 
   final contentColor = getContentColor(
     color: pattern.color,
@@ -132,13 +253,13 @@ void paintClip({
     );
   }
 
-  final transparentColor = color.withAlpha(0);
+  final transparentColor = baseColor.withAlpha(0);
 
   // Fade out gradient
   final textFadeOutGradient = Gradient.linear(
     Offset(x, textY),
     Offset(x + width - 3, textY),
-    [transparentColor, transparentColor, color],
+    [transparentColor, transparentColor, baseColor],
     [0, 1 - (10 / width), 1],
   );
 
