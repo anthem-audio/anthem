@@ -26,6 +26,11 @@ import 'package:anthem/widgets/editors/automation_editor/curves/curve_renderer.d
 
 import 'clip.dart';
 
+// For automation rendering
+final _automationLineBuffer = LineBuffer();
+final _automationLineJoinBuffer = CoordinateBuffer();
+final _automationTriCoordBuffer = CoordinateBuffer();
+
 // Clips that are shorter than this will not render content
 const smallSizeThreshold = 38;
 
@@ -45,7 +50,7 @@ typedef ClipRenderInfo = ({
 void paintClipList({
   required Canvas canvas,
   required Size canvasSize,
-  required Iterable<ClipRenderInfo> clipList,
+  required List<ClipRenderInfo> clipList,
   required double devicePixelRatio,
   required double timeViewStart,
   required double timeViewEnd,
@@ -64,6 +69,91 @@ void paintClipList({
       hideBorder: hideBorder,
     );
   }
+
+  canvas.saveLayer(null, Paint()..blendMode = BlendMode.plus);
+
+  for (final clipEntry in clipList) {
+    final pattern = clipEntry.pattern;
+    final clip = clipEntry.clip;
+
+    final clipTimeViewStart = clip.timeView?.start.toDouble() ?? 0;
+    final clipTimeViewEnd =
+        clip.timeView?.end.toDouble() ?? pattern.getWidth().toDouble();
+
+    final y = clipEntry.y;
+    final height = clipEntry.height;
+
+    for (final lane in pattern.automationLanes.values) {
+      renderAutomationCurve(
+        canvas: canvas,
+        canvasSize: canvasSize,
+        xDrawPositionTime: (
+          clip.offset.toDouble(),
+          (clip.offset + clip.width).toDouble(),
+        ),
+        yDrawPositionPixels: (y + clipTitleHeight + 1, y + height - 1),
+        points: lane.points,
+        strokeWidth: 2.0,
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        clipStart: clipTimeViewStart,
+        clipEnd: clipTimeViewEnd,
+        clipOffset: clip.offset.toDouble(),
+        color: const Color(0xFF777777),
+
+        lineBuffer: _automationLineBuffer,
+        lineJoinBuffer: _automationLineJoinBuffer,
+        triCoordBuffer: _automationTriCoordBuffer,
+      );
+
+      _automationLineBuffer.markNextAsDisjoint();
+    }
+  }
+
+  final gradientPaint = getGradientPaint(
+    chosenColor: const Color(0xFF777777),
+    drawArea: Rect.fromLTWH(0, 0, canvasSize.width, canvasSize.height),
+    gradientStartAlpha: 0.05,
+    gradientEndAlpha: 0.1,
+    overrideColor: const Color(0xFFFFFFFF),
+  );
+
+  final linePaint = getLinePaint(
+    chosenColor: const Color(0xFF777777),
+    strokeWidth: 2.0,
+  );
+
+  final lineJoinCirclePaint = getLineJoinPaint(
+    chosenColor: const Color(0xFF777777),
+    strokeWidth: 2.0,
+  );
+
+  // This aliases on Skia, but we draw a line along the main boundary that would
+  // alias, so it works out well on Skia platforms (as of writing, this is
+  // Windows, Linux, and web). Also this is extremely fast.
+  canvas.drawVertices(
+    Vertices.raw(VertexMode.triangles, _automationTriCoordBuffer.buffer),
+    BlendMode.srcOver,
+    gradientPaint,
+  );
+
+  canvas.drawRawPoints(
+    PointMode.lines,
+    _automationLineBuffer.buffer,
+    linePaint,
+  );
+
+  canvas.drawRawPoints(
+    PointMode.points,
+    _automationLineJoinBuffer.buffer,
+    lineJoinCirclePaint,
+  );
+
+  _automationTriCoordBuffer.clear();
+  _automationLineBuffer.clear();
+  _automationLineJoinBuffer.clear();
+
+  canvas.restore();
 
   for (final clipEntry in clipList) {
     _paintRestOfClip(
@@ -326,42 +416,6 @@ void _paintRestOfClip({
 
       canvas.restore();
     }
-
-    canvas.save();
-
-    // final timePerPixel = (timeViewEnd - timeViewStart) / canvasSize.width;
-
-    final clipTimeViewStart = clip?.timeView?.start.toDouble() ?? 0;
-    final clipTimeViewEnd =
-        clip?.timeView?.end.toDouble() ?? pattern.getWidth().toDouble();
-
-    canvas.saveLayer(null, Paint()..blendMode = BlendMode.plus);
-
-    canvas.clipRect(Rect.fromLTWH(0, 0, canvasSize.width, canvasSize.height));
-
-    for (final lane in pattern.automationLanes.values) {
-      renderAutomationCurve(
-        canvas: canvas,
-        canvasSize: canvasSize,
-        xDrawPositionTime: (
-          (clip?.offset.toDouble() ?? 0.0),
-          ((clip?.offset ?? 0) + (clip?.width ?? 0)).toDouble(),
-        ),
-        yDrawPositionPixels: (y + clipTitleHeight + 1, y + height - 1),
-        points: lane.points,
-        strokeWidth: 2.0,
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        clipStart: clipTimeViewStart,
-        clipEnd: clipTimeViewEnd,
-        clipOffset: clip?.offset.toDouble() ?? 0.0,
-        color: const Color(0xFF777777),
-      );
-    }
-
-    canvas.restore();
-
-    canvas.restore();
   }
 }
 
