@@ -172,4 +172,20 @@ void main() {
     expect(collector.size, 1);
     validateRanges([(0, 180)]);
   });
+
+  test('Test rangeOverlap', () {
+    collector.addRange(5, 15);
+    collector.addRange(25, 35);
+    collector.addRange(45, 55);
+
+    expect(collector.overlapsRange(10, 12), isTrue);
+    expect(collector.overlapsRange(15, 20), isTrue);
+    expect(collector.overlapsRange(15, 20, false), isFalse);
+    expect(collector.overlapsRange(30, 40), isTrue);
+    expect(collector.overlapsRange(50, 52), isTrue);
+    expect(collector.overlapsRange(0, 5), isTrue);
+    expect(collector.overlapsRange(0, 5, false), isFalse);
+    expect(collector.overlapsRange(55, 60), isTrue);
+    expect(collector.overlapsRange(55, 60, false), isFalse);
+  });
 }

@@ -183,6 +183,30 @@ class InvalidationRangeCollector {
     return result;
   }
 
+  /// Tests if the given range overlaps any existing ranges.
+  bool overlapsRange(int start, int end, [bool inclusive = true]) {
+    for (var i = 0; i < size; i++) {
+      var existingRangeStart = _array[i * 2];
+      var existingRangeEnd = _array[i * 2 + 1];
+
+      final inclusiveTest =
+          start <= existingRangeEnd && end >= existingRangeStart;
+      final exclusiveTest =
+          start < existingRangeEnd && end > existingRangeStart;
+
+      // Check if the incoming range overlaps or totally covers this one
+      if ((inclusive && inclusiveTest) || (!inclusive && exclusiveTest)) {
+        return true;
+      } else if (end < existingRangeStart) {
+        // Since the ranges are sorted, if we've reached a range that starts
+        // after the end of the incoming range, we can stop checking.
+        break;
+      }
+    }
+
+    return false;
+  }
+
   /// Collapses any blank spaces.
   ///
   /// For example, if the array looks like:
