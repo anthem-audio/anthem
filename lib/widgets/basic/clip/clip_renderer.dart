@@ -85,6 +85,8 @@ void paintClipList({
     final y = clipEntry.y;
     final height = clipEntry.height;
 
+    if (height <= smallSizeThreshold) continue;
+
     for (final lane in pattern.automationLanes.values) {
       renderAutomationCurve(
         canvas: canvas,
