@@ -72,6 +72,8 @@ void paintClipList({
 
   canvas.saveLayer(null, Paint()..blendMode = BlendMode.plus);
 
+  final timePerPixel = (timeViewEnd - timeViewStart) / canvasSize.width;
+
   for (final clipEntry in clipList) {
     final pattern = clipEntry.pattern;
     final clip = clipEntry.clip;
@@ -91,14 +93,21 @@ void paintClipList({
           clip.offset.toDouble(),
           (clip.offset + clip.width).toDouble(),
         ),
-        yDrawPositionPixels: (y + clipTitleHeight + 1, y + height - 1),
+        yDrawPositionPixels: (y + clipTitleHeight + 2, y + height - 2),
         points: lane.points,
         strokeWidth: 2.0,
         timeViewStart: timeViewStart,
         timeViewEnd: timeViewEnd,
-        clipStart: clipTimeViewStart,
+
+        // The use of timePerPixel here scales the automation curve in the X
+        // direction so that it does not draw across the clip boundary. This
+        // makes the positioning very slightly incorrect, but since we can't
+        // render-clip the draw call around the entire DAW clip (due to
+        // performance concerns), we have to get the automation to draw within
+        // the DAW clip boundaries without any render clipping.
+        clipStart: clipTimeViewStart + timePerPixel * 2,
         clipEnd: clipTimeViewEnd,
-        clipOffset: clip.offset.toDouble(),
+        clipOffset: clip.offset.toDouble() + timePerPixel,
         color: const Color(0xFF777777),
 
         lineBuffer: _automationLineBuffer,
