@@ -106,7 +106,7 @@ void paintClipList({
         triCoordBuffer: _automationTriCoordBuffer,
       );
 
-      _automationLineBuffer.markNextAsDisjoint();
+      _automationLineBuffer.disconnectNext();
     }
   }
 

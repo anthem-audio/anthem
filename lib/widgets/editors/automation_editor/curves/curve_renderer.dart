@@ -101,7 +101,7 @@ class LineBuffer {
 
   /// If called, the next point added will not create a line segment from the
   /// last point.
-  void markNextAsDisjoint() {
+  void disconnectNext() {
     _nextIsDisjoint = true;
   }
 }
@@ -217,7 +217,22 @@ double _evaluateCurve(double time, List<AutomationPoint> points) {
 
     // Start at the last known first index, which is most likely
     final result = testStartingAt(_currentCurveCache.$1);
+
+    if (time > points[points.length - 1].offset) {
+      firstIndex = points.length - 2;
+      secondIndex = points.length - 1;
+      _currentCurveCache = (firstIndex, secondIndex);
+      return points.last.value;
+    }
+
     if (!result) {
+      if (time < points[0].offset) {
+        firstIndex = 0;
+        secondIndex = 1;
+        _currentCurveCache = (firstIndex, secondIndex);
+        return points.first.value;
+      }
+
       testStartingAt(0); // Fallback to start if not found
     }
   }
