@@ -24,13 +24,13 @@
 
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart'
     show VisualizationUpdateEvent;
 import 'package:anthem/model/project.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter/widgets.dart';
 
 import 'ring_buffer.dart';
 
