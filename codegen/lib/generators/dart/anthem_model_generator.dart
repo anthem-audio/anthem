@@ -54,11 +54,7 @@ class AnthemModelGenerator extends Generator {
 
   @override
   Future<String> generate(LibraryReader library, BuildStep buildStep) async {
-    var result = StringBuffer();
-
-    result.write(
-      '// ignore_for_file: duplicate_ignore, unnecessary_overrides, non_constant_identifier_names\n',
-    );
+    final result = StringBuffer();
 
     // Looks for @AnthemModel on each class in the file, and generates the
     // appropriate code
@@ -119,7 +115,13 @@ class AnthemModelGenerator extends Generator {
     // it for each file.
     cleanModelClassInfoCache();
 
-    return result.toString();
+    if (result.isEmpty) {
+      return '';
+    }
+
+    const ignores = '// ignore_for_file: duplicate_ignore, unnecessary_overrides, non_constant_identifier_names\n';
+
+    return ignores + result.toString();
   }
 }
 
