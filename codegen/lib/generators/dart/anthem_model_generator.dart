@@ -119,7 +119,8 @@ class AnthemModelGenerator extends Generator {
       return '';
     }
 
-    const ignores = '// ignore_for_file: duplicate_ignore, unnecessary_overrides, non_constant_identifier_names\n';
+    const ignores =
+        '// ignore_for_file: duplicate_ignore, unnecessary_overrides, non_constant_identifier_names\n';
 
     return ignores + result.toString();
   }
