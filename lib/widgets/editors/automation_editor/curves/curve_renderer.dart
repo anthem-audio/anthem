@@ -106,6 +106,150 @@ class LineBuffer {
   }
 }
 
+/// Class to abstract the downsampling of incoming automation line points to
+/// reduce the number of points drawn.
+class _DownsamplingCurveBuilder {
+  final LineBuffer lineBuffer;
+  final CoordinateBuffer lineJoinBuffer;
+  final CoordinateBuffer triCoordBuffer;
+
+  ({double x, double y})? _curvePointA;
+  ({double x, double y})? _curvePointB;
+  bool _pointBIsHandle = false;
+
+  double baseY;
+
+  _DownsamplingCurveBuilder({
+    required this.lineBuffer,
+    required this.lineJoinBuffer,
+    required this.triCoordBuffer,
+    required this.baseY,
+  });
+
+  /// Adds a point to the downsampler.
+  ///
+  /// [baseY] is the y-coordinate of the bottom of the curve. It should be equal
+  /// to the pixel Y value that corresponds to a normalized Y value of 0 for the
+  /// automation curve.
+  void addPoint(double x, double y, [bool isHandle = false]) {
+    // These are used to track curvature. If the curvature at a point is below a
+    // threshold, we can skip the point segment, which should significantly
+    // reduce the number of line segments drawn in most cases.
+    final pointA = _curvePointA;
+    final pointB = _curvePointB;
+    final pointC = (x: x, y: y);
+
+    if (pointA == null) {
+      _addToLineBuffer(baseY, x, y);
+      _curvePointA = pointC;
+      return;
+    }
+
+    if (pointB == null) {
+      _curvePointB = pointC;
+      return;
+    }
+
+    // We need to check the angle between AB and BC
+    final angleAB = atan2approx(
+      _curvePointB!.y - pointA.y,
+      _curvePointB!.x - pointA.x,
+    );
+    final angleBC = atan2approx(pointC.y - pointB.y, pointC.x - pointB.x);
+    final angleDifference = (angleBC - angleAB).abs();
+
+    // We also get the pixel distance. As the distance grows, we must shrink the
+    // angle threshold to avoid artifacts with very shallow curves (happens when
+    // zooming way in).
+    final double squarePixelDistance;
+    {
+      // AB distance squared + BC squared is just AC distance squared, so we'll
+      // calculate that instead
+      //
+      // Technically this isn't quite right (should be ab distance + bc
+      // distance), but it seems to be close enough in practice.
+      final dx = pointC.x - pointA.x;
+      final dy = pointC.y - pointA.y;
+      squarePixelDistance = dx * dx + dy * dy;
+    }
+
+    // Adjust for aggressiveness - higher removes more points
+    const double angleDistanceFactor = 0.1;
+    final threshold = pi * angleDistanceFactor / sqrt(squarePixelDistance);
+
+    const double lineJoinAngleThresholdFactor = 2.0;
+    final lineJoinThreshold = threshold * lineJoinAngleThresholdFactor;
+
+    bool addToLineJoin = false;
+
+    // This evaluation is to determine if we should keep point B (the point from
+    // the previous iteration)
+    if (angleDifference < threshold ||
+        // For handles, we always add them. This means that they may be
+        // extremely close to the last sampled point that came through. In some
+        // cases this produces nearly double the points unless we detect this
+        // case.
+        //
+        // When we have a handle point, we manually check its distance, and if
+        // it is indeed extremely close to either the point before or after it,
+        // we skip it. In practice this happens quite often.
+        ((isHandle || _pointBIsHandle) && squarePixelDistance < 1.0)) {
+      // Skip this point
+      _curvePointB = pointC;
+    } else {
+      _addToLineBuffer(baseY, pointB.x, pointB.y);
+
+      if (angleDifference >= lineJoinThreshold) {
+        // Add a circle at this point to simulate a round line join
+        addToLineJoin = true;
+      }
+
+      _curvePointA = pointB;
+      _curvePointB = pointC;
+    }
+
+    if (addToLineJoin || isHandle) {
+      lineJoinBuffer.add(pointB.x, pointB.y);
+    }
+
+    if (isHandle) {
+      _pointBIsHandle = true;
+    } else {
+      _pointBIsHandle = false;
+    }
+  }
+
+  void finish() {
+    final pointB = _curvePointB;
+
+    if (pointB != null) {
+      _addToLineBuffer(baseY, pointB.x, pointB.y);
+    }
+  }
+
+  // Create geometry for gradient fill
+  void _createTrianglesForPoints(double x1, double y1, double x2, double y2) {
+    // First triangle
+    triCoordBuffer.add(x1, y1);
+    triCoordBuffer.add(x2, y2);
+    triCoordBuffer.add(x2, baseY);
+
+    // Second triangle
+    triCoordBuffer.add(x1, y1);
+    triCoordBuffer.add(x2, baseY);
+    triCoordBuffer.add(x1, baseY);
+  }
+
+  void _addToLineBuffer(double baseY, double x, double y) {
+    final result = lineBuffer.add(x, y);
+
+    if (result != null) {
+      final (x1, y1, x2, y2) = result;
+      _createTrianglesForPoints(x1, y1, x2, y2);
+    }
+  }
+}
+
 typedef AutomationPoint = ({
   double offset,
   double value,
@@ -328,33 +472,9 @@ void renderAutomationCurve({
     yDrawPositionPixels.$2 - yDrawPositionPixels.$1,
   );
 
+  final baseY = drawArea.top + drawArea.height;
+
   if (points.isEmpty) return;
-
-  // Create geometry for gradient fill
-  void createTrianglesForPoints(double x1, double y1, double x2, double y2) {
-    final baseY = drawArea.top + drawArea.height;
-
-    triCoordBuffer!;
-
-    // First triangle
-    triCoordBuffer.add(x1, y1);
-    triCoordBuffer.add(x2, y2);
-    triCoordBuffer.add(x2, baseY);
-
-    // Second triangle
-    triCoordBuffer.add(x1, y1);
-    triCoordBuffer.add(x2, baseY);
-    triCoordBuffer.add(x1, baseY);
-  }
-
-  void addToLineBuffer(double x, double y) {
-    final result = lineBuffer!.add(x, y);
-
-    if (result != null) {
-      final (x1, y1, x2, y2) = result;
-      createTrianglesForPoints(x1, y1, x2, y2);
-    }
-  }
 
   // The hope is that these will be much better inlined than the full objects,
   // and so a lot faster to work with
@@ -425,30 +545,33 @@ void renderAutomationCurve({
   double valueToY(double value) =>
       drawArea.top + drawArea.height * (1.0 - value);
 
-  if (!willCutOffStart) {
-    addToLineBuffer(startX.toDouble(), valueToY(automationPoints.first.value));
-  }
-
   // We will use this to track if the curve has changed between evaluations. If
   // it has, then we will add an extra point that is exactly on the boundary,
   // which fixes some sampling artifacts.
   (int firstIndex, int secondIndex)? mostRecentCurve;
-  // These are used to track curvature. If the curvature at a point is below a
-  // threshold, we can skip the point segment, which should significantly reduce
-  // the number of line segments drawn in most cases.
-  ({double x, double y}) curvePointA = (
-    x: startX,
-    y: valueToY(_evaluateCurve(startTime - clipOffset, automationPoints)),
+
+  final _DownsamplingCurveBuilder curveBuilder = _DownsamplingCurveBuilder(
+    lineBuffer: lineBuffer,
+    lineJoinBuffer: lineJoinBuffer,
+    triCoordBuffer: triCoordBuffer,
+    baseY: baseY,
   );
-  ({double x, double y})? curvePointB;
 
   if (willCutOffStart) {
     // Add point A
-    addToLineBuffer(curvePointA.x, curvePointA.y);
+    curveBuilder.addPoint(
+      startX,
+      valueToY(_evaluateCurve(startTime - clipOffset, automationPoints)),
+    );
+  } else {
+    curveBuilder.addPoint(
+      startX.toDouble(),
+      valueToY(automationPoints.first.value),
+    );
   }
 
   // Sample points along the curve
-  for (double x = startX; x <= endX; x += 2.0) {
+  for (double x = startX; x <= endX; x += 1.0) {
     final xToTime = pixelsToTime(
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
@@ -462,10 +585,6 @@ void renderAutomationCurve({
     // This adds one point for each actual handle
     if (mostRecentCurve != null && mostRecentCurve != _currentCurveCache) {
       for (var i = mostRecentCurve.$2; i < _currentCurveCache.$2; i++) {
-        if (curvePointB != null) {
-          addToLineBuffer(curvePointB.x, curvePointB.y);
-        }
-
         final x = timeToPixels(
           timeViewStart: timeViewStart,
           timeViewEnd: timeViewEnd,
@@ -474,11 +593,8 @@ void renderAutomationCurve({
         );
         final y = valueToY(automationPoints[i].value);
 
-        addToLineBuffer(x, y);
+        curveBuilder.addPoint(x, y, true);
         lineJoinBuffer.add(x, y);
-
-        curvePointA = (x: x, y: y);
-        curvePointB = null;
       }
     }
 
@@ -486,68 +602,10 @@ void renderAutomationCurve({
     // points) where the most recent time was found.
     mostRecentCurve = _currentCurveCache;
 
-    if (curvePointB == null) {
-      curvePointB = (x: x, y: y);
-      continue;
-    }
-
-    ({double x, double y}) curvePointC = (x: x, y: y);
-
-    // We need to check the angle between AB and BC
-    final angleAB = atan2approx(
-      curvePointB.y - curvePointA.y,
-      curvePointB.x - curvePointA.x,
-    );
-    final angleBC = atan2approx(
-      curvePointC.y - curvePointB.y,
-      curvePointC.x - curvePointB.x,
-    );
-    final angleDifference = (angleBC - angleAB).abs();
-
-    // We also get the pixel distance. As the distance grows, we must shrink the
-    // angle threshold to avoid artifacts with very shallow curves (happens when
-    // zooming way in).
-    final double squarePixelDistance;
-    {
-      // Good ol' Pythagoras
-      // AB distance squared + BC squared is just AC distance squared, so we'll
-      // calculate that instead
-      final dx = curvePointC.x - curvePointA.x;
-      final dy = curvePointC.y - curvePointA.y;
-      squarePixelDistance = dx * dx + dy * dy;
-    }
-
-    // Adjust for aggressiveness - higher removes more points
-    const double angleDistanceFactor = 0.1;
-    final threshold = pi * angleDistanceFactor / sqrt(squarePixelDistance);
-
-    const double lineJoinAngleThresholdFactor = 2.0;
-    final lineJoinThreshold = threshold * lineJoinAngleThresholdFactor;
-
-    // This evaluation is to determine if we should keep point B (the point from
-    // the previous iteration)
-    if (angleDifference < threshold) {
-      // Skip this point
-      curvePointB = curvePointC;
-    } else {
-      addToLineBuffer(curvePointB.x, curvePointB.y);
-
-      if (angleDifference >= lineJoinThreshold) {
-        // Add a circle at this point to simulate a round line join
-        lineJoinBuffer.add(curvePointB.x, curvePointB.y);
-      }
-
-      curvePointA = curvePointB;
-      curvePointB = curvePointC;
-    }
+    curveBuilder.addPoint(x, y);
   }
 
-  // If there is a remaining curve point B, add it
-  if (curvePointB != null) {
-    addToLineBuffer(curvePointB.x, curvePointB.y);
-  }
-
-  addToLineBuffer(
+  curveBuilder.addPoint(
     endX.toDouble(),
     valueToY(
       _evaluateCurve(
@@ -556,6 +614,8 @@ void renderAutomationCurve({
       ),
     ),
   );
+
+  curveBuilder.finish();
 
   if (shouldPaintAndClear) {
     final chosenColor = color ?? AnthemTheme.primary.main;
@@ -584,16 +644,20 @@ void renderAutomationCurve({
     // alias, so it works out well on Skia platforms (as of writing, this is
     // Windows, Linux, and web). Also this is extremely fast.
     canvas.drawVertices(
-      Vertices.raw(VertexMode.triangles, triCoordBuffer.buffer),
+      Vertices.raw(VertexMode.triangles, curveBuilder.triCoordBuffer.buffer),
       BlendMode.srcOver,
       gradientPaint,
     );
 
-    canvas.drawRawPoints(PointMode.lines, lineBuffer.buffer, linePaint);
+    canvas.drawRawPoints(
+      PointMode.lines,
+      curveBuilder.lineBuffer.buffer,
+      linePaint,
+    );
 
     canvas.drawRawPoints(
       PointMode.points,
-      lineJoinBuffer.buffer,
+      curveBuilder.lineJoinBuffer.buffer,
       lineJoinCirclePaint,
     );
 
