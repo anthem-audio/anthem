@@ -173,6 +173,19 @@ void paintClipList({
       hideBorder: hideBorder,
     );
   }
+
+  if (!hideBorder) {
+    for (final clipEntry in clipList) {
+      _paintContainerBorder(
+        canvas: canvas,
+        pattern: clipEntry.pattern,
+        x: clipEntry.x,
+        y: clipEntry.y,
+        width: clipEntry.width,
+        height: clipEntry.height,
+      );
+    }
+  }
 }
 
 /// Paints a clip onto the given canvas with the given position and size.
@@ -238,10 +251,6 @@ void _paintContainer({
   );
 
   final rectPaint = Paint()..color = baseColor;
-  final rectStrokePaint = Paint()
-    ..color = AnthemTheme.grid.accent
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 1.0;
 
   final rect = Rect.fromLTWH(
     x + (hideBorder ? 0 : 0.5),
@@ -251,10 +260,24 @@ void _paintContainer({
   );
 
   canvas.drawRect(rect, rectPaint);
+}
 
-  if (!hideBorder) {
-    canvas.drawRect(rect, rectStrokePaint);
-  }
+void _paintContainerBorder({
+  required Canvas canvas,
+  required PatternModel pattern,
+  required double x,
+  required double y,
+  required double width,
+  required double height,
+}) {
+  final rect = Rect.fromLTWH(x + 0.5, y + 0.5, width - 1, height - 1);
+
+  final rectStrokePaint = Paint()
+    ..color = AnthemTheme.grid.accent
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.0;
+
+  canvas.drawRect(rect, rectStrokePaint);
 }
 
 void _paintRestOfClip({
