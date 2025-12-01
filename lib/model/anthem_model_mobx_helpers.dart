@@ -88,16 +88,42 @@ T blockObservation<T>({
   required T Function() block,
 }) {
   for (final modelItem in modelItems) {
-    modelItem.observationBlockDepth++;
-    incrementBlockObservationBuilderDepth();
+    beginObservationBlockFor(modelItem);
   }
 
   final result = block();
 
   for (final modelItem in modelItems) {
-    modelItem.observationBlockDepth--;
-    decrementBlockObservationBuilderDepth();
+    endObservationBlockFor(modelItem);
   }
 
   return result;
+}
+
+/// Begins an observation block for the given model item.
+///
+/// This is one half of [blockObservation]. See that function for more details.
+///
+/// [endObservationBlockFor] must be called later for the same model item.
+///
+/// [beginObservationBlockFor] and [endObservationBlockFor] calls can be used
+/// instead of [blockObservation] if it is more convenient.
+void beginObservationBlockFor(AnthemModelBase modelItem) {
+  modelItem.observationBlockDepth++;
+  incrementBlockObservationBuilderDepth();
+}
+
+/// Ends an observation block for the given model item.
+///
+/// This is one half of [blockObservation]. See that function for more details.
+///
+/// [beginObservationBlockFor] must have been called previously for the same
+/// model item.
+///
+/// [beginObservationBlockFor] and [endObservationBlockFor] calls can be used
+/// instead of [blockObservation] if it is more convenient.
+void endObservationBlockFor(AnthemModelBase modelItem) {
+  assert(modelItem.observationBlockDepth > 0);
+  modelItem.observationBlockDepth--;
+  decrementBlockObservationBuilderDepth();
 }

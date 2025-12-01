@@ -20,6 +20,7 @@
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/automation_editor/curves/smooth.dart';
@@ -439,6 +440,9 @@ void renderAutomationCurve({
 }) {
   if (points.length < 2) return;
 
+  points.observeAllChanges();
+  beginObservationBlockFor(points);
+
   // We don't clear incoming buffers, as they will be reused across multiple
   // clip renders. If we're using our own internal buffers, we clear them.
   //
@@ -665,6 +669,8 @@ void renderAutomationCurve({
     lineBuffer.clear();
     lineJoinBuffer.clear();
   }
+
+  endObservationBlockFor(points);
 }
 
 const double pi4Plus0273 = pi / 4.0 + 0.273;
