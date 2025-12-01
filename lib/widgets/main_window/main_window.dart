@@ -160,9 +160,11 @@ class _MainWindowState extends State<MainWindow> {
 
                   return Column(
                     children: [
-                      WindowHeader(
-                        selectedTabId: store.activeProjectId,
-                        tabs: tabs,
+                      RepaintBoundary(
+                        child: WindowHeader(
+                          selectedTabId: store.activeProjectId,
+                          tabs: tabs,
+                        ),
                       ),
                       Expanded(
                         child: TabContentSwitcher(

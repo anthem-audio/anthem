@@ -65,19 +65,19 @@ class AutomationEditorState extends State<AutomationEditor> {
       ControllerRegistry.instance.registerController(project.id, controller!);
     }
 
-    return Provider.value(
-      value: viewModel!,
-      child: Provider.value(
-        value: controller!,
-        child: Container(
-          decoration: BoxDecoration(color: AnthemTheme.panel.background),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _AutomationEditorHeader(),
-              Flexible(child: _AutomationEditorContent()),
-            ],
-          ),
+    return MultiProvider(
+      providers: [
+        Provider.value(value: viewModel!),
+        Provider.value(value: controller!),
+      ],
+      child: Container(
+        decoration: BoxDecoration(color: AnthemTheme.panel.background),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _AutomationEditorHeader(),
+            Flexible(child: _AutomationEditorContent()),
+          ],
         ),
       ),
     );
