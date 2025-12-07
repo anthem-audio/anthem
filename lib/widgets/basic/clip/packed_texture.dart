@@ -48,6 +48,10 @@ class PackedTexture {
   Image? textureAtlas;
 
   List<Rect> drawImages(List<Image> images) {
+    if (images.isEmpty) {
+      return [];
+    }
+
     final pictureRecorder = PictureRecorder();
     final canvas = Canvas(pictureRecorder);
 
@@ -80,6 +84,10 @@ class PackedTexture {
     List<Image> images, [
     double maxWidth = 2048.0,
   ]) {
+    if (images.isEmpty) {
+      return (rects: [], atlasSize: Size.zero);
+    }
+
     var currentX = 0.0;
     var currentY = 0.0;
     var rowHeight = 0.0;
