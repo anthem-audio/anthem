@@ -219,6 +219,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
 
     for (final clipList in clipLayers) {
       paintClipList(
+        project: project,
         canvas: canvas,
         canvasSize: size,
         clipList: clipList,

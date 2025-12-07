@@ -17,10 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
+import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/automation_editor/curves/curve_renderer.dart';
 
@@ -48,6 +50,7 @@ typedef ClipRenderInfo = ({
 });
 
 void paintClipList({
+  required ProjectModel project,
   required Canvas canvas,
   required Size canvasSize,
   required List<ClipRenderInfo> clipList,
@@ -70,6 +73,7 @@ void paintClipList({
     );
   }
 
+  // Begin blend mode layer
   canvas.saveLayer(null, Paint()..blendMode = BlendMode.plus);
 
   final timePerPixel = (timeViewEnd - timeViewStart) / canvasSize.width;
@@ -164,10 +168,100 @@ void paintClipList({
   _automationLineBuffer.clear();
   _automationLineJoinBuffer.clear();
 
+  // Title
+
+  // Make sure we're observing the pattern name
+  for (var entry in clipList) {
+    entry.pattern.name;
+  }
+
+  const textHeight = 15.0;
+
+  final sequence = project.sequence;
+  final spriteSheet = sequence.patternTitleTexture;
+
+  if (spriteSheet.textureAtlas != null) {
+    canvas.drawAtlas(
+      spriteSheet.textureAtlas!,
+      List.generate(clipList.length, (i) {
+        final clipEntry = clipList[i];
+        return RSTransform.fromComponents(
+          rotation: 0,
+          scale: 1 / devicePixelRatio,
+          anchorX: 0,
+          anchorY: 0,
+          translateX: clipEntry.x,
+          translateY:
+              clipEntry.y +
+              (clipEntry.height > smallSizeThreshold
+                  ? 0
+                  : (clipEntry.height / 2) - (textHeight / 2)),
+        );
+      }, growable: false),
+      List.generate(clipList.length, (i) {
+        final pattern = clipList[i].pattern;
+        return Rect.fromLTWH(
+          pattern.clipTitleAtlasRect!.left,
+          pattern.clipTitleAtlasRect!.top,
+          min(
+            pattern.clipTitleAtlasRect!.width,
+            (clipList[i].width - 2) * devicePixelRatio,
+          ),
+          pattern.clipTitleAtlasRect!.height,
+        );
+      }, growable: false),
+      List.generate(clipList.length, (i) {
+        return const Color(0xFF777777);
+      }, growable: false),
+      BlendMode.dstIn,
+      null,
+      Paint(),
+    );
+  } else {
+    // Fallback if the image hasn't been generated yet
+    for (final clipEntry in clipList) {
+      final pattern = clipEntry.pattern;
+      final y = clipEntry.y;
+      final height = clipEntry.height;
+
+      final textY = height > smallSizeThreshold
+          ? y
+          : y + (height / 2) - (textHeight / 2);
+      final rect = Rect.fromLTWH(
+        clipEntry.x,
+        textY,
+        clipEntry.width,
+        textHeight,
+      );
+
+      final x = clipEntry.x;
+      final width = clipEntry.width;
+      final selected = clipEntry.selected;
+      final pressed = clipEntry.pressed;
+      drawPatternTitle(
+        canvas: canvas,
+        size: canvasSize,
+        clipRect: rect,
+        pattern: pattern,
+        x: x,
+        y: textY,
+        width: width,
+        height: height,
+        selected: selected,
+        pressed: pressed,
+        // We don't need to manually handle device pixel ratio here since we're
+        // drawing directly to the canvas, which already accounts for it.
+        devicePixelRatio: 1,
+      );
+    }
+  }
+
+  // End blend mode layer
   canvas.restore();
 
   for (final clipEntry in clipList) {
     _paintRestOfClip(
+      project: project,
       canvas: canvas,
       canvasSize: canvasSize,
       pattern: clipEntry.pattern,
@@ -229,6 +323,7 @@ void paintClip({
   );
 
   _paintRestOfClip(
+    project: pattern.project,
     canvas: canvas,
     canvasSize: canvasSize,
     pattern: pattern,
@@ -292,6 +387,7 @@ void _paintContainerBorder({
 }
 
 void _paintRestOfClip({
+  required ProjectModel project,
   required Canvas canvas,
   required Size canvasSize,
   required PatternModel pattern,
@@ -307,92 +403,37 @@ void _paintRestOfClip({
   required double timeViewEnd,
   bool hideBorder = false,
 }) {
-  final baseColor = getBaseColor(
-    color: pattern.color,
-    selected: selected,
-    pressed: pressed,
-  );
+  // This is way too slow, so commenting out for now.
 
-  final rect = Rect.fromLTWH(
-    x + (hideBorder ? 0 : 0.5),
-    y + (hideBorder ? 0 : 0.5),
-    width - (hideBorder ? 0 : 1),
-    height - (hideBorder ? 0 : 1),
-  );
+  // final baseColor = getBaseColor(
+  //   color: pattern.color,
+  //   selected: selected,
+  //   pressed: pressed,
+  // );
 
-  final contentColor = getContentColor(
-    color: pattern.color,
-    selected: selected,
-    pressed: pressed,
-  );
+  // final rect = Rect.fromLTWH(
+  //   x + (hideBorder ? 0 : 0.5),
+  //   y + (hideBorder ? 0 : 0.5),
+  //   width - (hideBorder ? 0 : 1),
+  //   height - (hideBorder ? 0 : 1),
+  // );
 
-  // Title
+  // final transparentColor = baseColor.withAlpha(0);
 
-  // Make sure we're observing both the name and the image cache
-  final titleImage = pattern.renderedTitle;
-  pattern.name;
+  // // Fade out gradient
+  // final textFadeOutGradient = Gradient.linear(
+  //   Offset(x, textY),
+  //   Offset(x + width - 3, textY),
+  //   [transparentColor, transparentColor, baseColor],
+  //   [0, 1 - (10 / width), 1],
+  // );
 
-  const textHeight = 15.0;
-  final textY = height > smallSizeThreshold
-      ? y
-      : y + (height / 2) - (textHeight / 2);
+  // final textFadeOutPaint = Paint()..shader = textFadeOutGradient;
 
-  if (titleImage != null) {
-    final rect = Rect.fromLTWH(0, 0, (width - 2) * devicePixelRatio, height);
-
-    canvas.drawAtlas(
-      titleImage,
-      [
-        RSTransform.fromComponents(
-          rotation: 0,
-          scale: 1 / devicePixelRatio,
-          anchorX: 0,
-          anchorY: 0,
-          translateX: x,
-          translateY: textY,
-        ),
-      ],
-      [rect],
-      [contentColor],
-      BlendMode.dstIn,
-      null,
-      Paint(),
-    );
-  } else {
-    // Fallback if the image hasn't been generated yet
-    drawPatternTitle(
-      canvas: canvas,
-      size: canvasSize,
-      clipRect: rect,
-      pattern: pattern,
-      x: x,
-      y: textY,
-      width: width,
-      height: height,
-      selected: selected,
-      pressed: pressed,
-      // We don't need to manually handle device pixel ratio here since we're
-      // drawing directly to the canvas, which already accounts for it.
-      devicePixelRatio: 1,
-    );
-  }
-
-  final transparentColor = baseColor.withAlpha(0);
-
-  // Fade out gradient
-  final textFadeOutGradient = Gradient.linear(
-    Offset(x, textY),
-    Offset(x + width - 3, textY),
-    [transparentColor, transparentColor, baseColor],
-    [0, 1 - (10 / width), 1],
-  );
-
-  final textFadeOutPaint = Paint()..shader = textFadeOutGradient;
-
-  canvas.drawRect(
-    Rect.fromLTWH(x, textY + 1, width - 1.5, textHeight),
-    textFadeOutPaint,
-  );
+  // canvas.drawRect(
+  //   Rect.fromLTWH(x, textY + 1, width - 1.5, textHeight),
+  //   textFadeOutPaint,
+  // );
 
   // Notes
 
@@ -482,7 +523,7 @@ void drawPatternTitle({
 
   final paragraphStyle = ParagraphStyle(
     textAlign: TextAlign.left,
-    ellipsis: '...',
+    // ellipsis: '...',
     maxLines: 1,
   );
 
@@ -491,8 +532,35 @@ void drawPatternTitle({
     ..addText(pattern.name);
 
   final paragraph = paragraphBuilder.build();
-  final constraints = ParagraphConstraints(width: width);
+  final constraints = ParagraphConstraints(width: width - 6);
   paragraph.layout(constraints);
 
   canvas.drawParagraph(paragraph, Offset(x + 3, y));
+}
+
+(double, double) getClipTitleSize({
+  required double devicePixelRatio,
+  required PatternModel pattern,
+}) {
+  // We hardcode the height for now
+  const height = clipTitleHeight;
+
+  // Width is based on the pattern name length
+  final paragraphStyle = ParagraphStyle(
+    textAlign: TextAlign.left,
+    ellipsis: '...',
+    maxLines: 1,
+  );
+
+  final paragraphBuilder = ParagraphBuilder(paragraphStyle)
+    ..pushStyle(TextStyle(fontSize: 11 * devicePixelRatio))
+    ..addText(pattern.name);
+
+  final paragraph = paragraphBuilder.build();
+  final constraints = ParagraphConstraints(width: double.infinity);
+  paragraph.layout(constraints);
+
+  final width = paragraph.maxIntrinsicWidth / devicePixelRatio + 6;
+
+  return (width, height.toDouble());
 }

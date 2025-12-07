@@ -25,10 +25,12 @@ part of 'package:anthem/model/pattern/pattern.dart';
 /// efficiently, as text layout and rendering is quite expensive when compared
 /// with everything else we're drawing.
 
-// ignore: library_private_types_in_public_api
 mixin _ClipTitleRenderCacheMixin on _PatternModel {
-  @observable
+  @hide
   Image? renderedTitle;
+
+  @hide
+  Rect? clipTitleAtlasRect;
 
   Future<void> updateClipTitleCache() async {
     // This will happen in unit tests that are using the model. This should
@@ -44,18 +46,18 @@ mixin _ClipTitleRenderCacheMixin on _PatternModel {
       mainWindowKey.currentContext!,
     ).devicePixelRatio;
 
-    final width = 250.0 * devicePixelRatio;
-    final height = 15.0 * devicePixelRatio;
+    final inputWidth = 250.0 * devicePixelRatio;
+    final inputHeight = 15.0 * devicePixelRatio;
 
     drawPatternTitle(
       canvas: canvas,
-      size: Size(width, height),
-      clipRect: Rect.fromLTWH(0, 0, width, height),
+      size: Size(inputWidth, inputHeight),
+      clipRect: Rect.fromLTWH(0, 0, inputWidth, inputHeight),
       pattern: this as PatternModel,
       x: 3,
       y: 0,
-      width: width,
-      height: height,
+      width: inputWidth,
+      height: inputHeight,
       // We draw the text in white so we can recolor it when rendering from the
       // cache.
       whiteText: true,
@@ -64,6 +66,17 @@ mixin _ClipTitleRenderCacheMixin on _PatternModel {
 
     final picture = recorder.endRecording();
 
-    renderedTitle = await picture.toImage(width.floor(), height.floor());
+    final (width, height) = getClipTitleSize(
+      devicePixelRatio: devicePixelRatio,
+      pattern: this as PatternModel,
+    );
+
+    renderedTitle = await picture.toImage(
+      (width * devicePixelRatio).ceil(),
+      (height * devicePixelRatio).ceil(),
+    );
+
+    getFirstAncestorOfType<SequenceModel>()
+        .scheduleClipTitleTextureAtlasUpdate();
   }
 }
