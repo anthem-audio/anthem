@@ -34,9 +34,10 @@ final _automationLineJoinBuffer = CoordinateBuffer();
 final _automationTriCoordBuffer = CoordinateBuffer();
 
 // Clips that are shorter than this will not render content
-const smallSizeThreshold = 38;
+const _smallSizeThreshold = 38;
 
-const clipTitleHeight = 16;
+const _clipTitleHeight = 16;
+const _clipTitlePadding = 2;
 
 typedef ClipRenderInfo = ({
   PatternModel pattern,
@@ -89,7 +90,7 @@ void paintClipList({
     final y = clipEntry.y;
     final height = clipEntry.height;
 
-    if (height <= smallSizeThreshold) continue;
+    if (height <= _smallSizeThreshold) continue;
 
     for (final lane in pattern.automationLanes.values) {
       renderAutomationCurve(
@@ -99,7 +100,7 @@ void paintClipList({
           clip.offset.toDouble(),
           (clip.offset + clip.width).toDouble(),
         ),
-        yDrawPositionPixels: (y + clipTitleHeight + 2, y + height - 2),
+        yDrawPositionPixels: (y + _clipTitleHeight + 2, y + height - 2),
         points: lane.points,
         strokeWidth: 2.0,
         timeViewStart: timeViewStart,
@@ -193,7 +194,7 @@ void paintClipList({
           translateX: clipEntry.x,
           translateY:
               clipEntry.y +
-              (clipEntry.height > smallSizeThreshold
+              (clipEntry.height > _smallSizeThreshold
                   ? 0
                   : (clipEntry.height / 2) - (textHeight / 2)),
         );
@@ -205,7 +206,7 @@ void paintClipList({
           pattern.clipTitleAtlasRect!.top,
           min(
             pattern.clipTitleAtlasRect!.width,
-            (clipList[i].width - 2) * devicePixelRatio,
+            (clipList[i].width - _clipTitlePadding * 2) * devicePixelRatio,
           ),
           pattern.clipTitleAtlasRect!.height,
         );
@@ -224,7 +225,7 @@ void paintClipList({
       final y = clipEntry.y;
       final height = clipEntry.height;
 
-      final textY = height > smallSizeThreshold
+      final textY = height > _smallSizeThreshold
           ? y
           : y + (height / 2) - (textHeight / 2);
       final rect = Rect.fromLTWH(
@@ -440,7 +441,7 @@ void _paintRestOfClip({
   // Subscribes to the update signal for notes in this pattern
   pattern.clipNotesUpdateSignal.value;
 
-  if (height > smallSizeThreshold) {
+  if (height > _smallSizeThreshold) {
     final contentColor = getContentColor(
       color: pattern.color,
       selected: selected,
@@ -460,7 +461,8 @@ void _paintRestOfClip({
 
       final dist = clipNotesEntry.highestNote - clipNotesEntry.lowestNote;
       final notePadding =
-          (innerHeight - clipTitleHeight) * (0.4 - dist * 0.05).clamp(0.1, 0.4);
+          (innerHeight - _clipTitleHeight) *
+          (0.4 - dist * 0.05).clamp(0.1, 0.4);
 
       // The vertices for the notes are in a coordinate system based on notes,
       // where X is time and Y is normalized. The transformations below
@@ -475,10 +477,10 @@ void _paintRestOfClip({
         -(clip?.timeView?.start.toDouble() ?? 0.0) * clipScaleFactor,
         0,
       );
-      canvas.translate(x + 1, y + 1 + clipTitleHeight + notePadding);
+      canvas.translate(x + 1, y + 1 + _clipTitleHeight + notePadding);
       canvas.scale(
         clipScaleFactor,
-        innerHeight - clipTitleHeight - notePadding * 2,
+        innerHeight - _clipTitleHeight - notePadding * 2,
       );
 
       // The clip may not start at the beginning, which we account for here.
@@ -521,21 +523,19 @@ void drawPatternTitle({
     );
   }
 
-  final paragraphStyle = ParagraphStyle(
-    textAlign: TextAlign.left,
-    // ellipsis: '...',
-    maxLines: 1,
-  );
+  final paragraphStyle = ParagraphStyle(textAlign: TextAlign.left, maxLines: 1);
 
   final paragraphBuilder = ParagraphBuilder(paragraphStyle)
     ..pushStyle(TextStyle(color: textColor, fontSize: 11 * devicePixelRatio))
     ..addText(pattern.name);
 
   final paragraph = paragraphBuilder.build();
-  final constraints = ParagraphConstraints(width: width - 6);
+  final constraints = ParagraphConstraints(
+    width: width - _clipTitlePadding * 2 + 2,
+  );
   paragraph.layout(constraints);
 
-  canvas.drawParagraph(paragraph, Offset(x + 3, y));
+  canvas.drawParagraph(paragraph, Offset(x + _clipTitlePadding + 1, y));
 }
 
 (double, double) getClipTitleSize({
@@ -543,7 +543,7 @@ void drawPatternTitle({
   required PatternModel pattern,
 }) {
   // We hardcode the height for now
-  const height = clipTitleHeight;
+  const height = _clipTitleHeight;
 
   // Width is based on the pattern name length
   final paragraphStyle = ParagraphStyle(
