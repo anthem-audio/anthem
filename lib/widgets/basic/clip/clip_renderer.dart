@@ -122,6 +122,7 @@ void paintClipList({
         triCoordBuffer: _automationTriCoordBuffer,
       );
 
+      // This avoids connecting lines between clips.
       _automationLineBuffer.disconnectNext();
     }
   }
@@ -139,6 +140,8 @@ void paintClipList({
     chosenColor: const Color(0xFF777777),
     strokeWidth: 2.0,
   );
+
+  final notePaint = Paint()..color = const Color(0xFF777777);
 
   // This aliases on Skia, but we draw a line along the main boundary that would
   // alias, so it works out well on Skia platforms (as of writing, this is
@@ -167,9 +170,10 @@ void paintClipList({
 
   // Title
 
-  // Make sure we're observing the pattern name
+  // Make sure we're observing necessary MobX observables
   for (var entry in clipList) {
     entry.pattern.name;
+    entry.pattern.clipNotesUpdateSignal.value;
   }
 
   const textHeight = 15.0;
@@ -253,28 +257,59 @@ void paintClipList({
     }
   }
 
-  // End blend mode layer
-  canvas.restore();
+  // Notes
 
   for (final clipEntry in clipList) {
-    _paintRestOfClip(
-      project: project,
-      canvas: canvas,
-      canvasSize: canvasSize,
-      pattern: clipEntry.pattern,
-      clip: clipEntry.clip,
-      x: clipEntry.x,
-      y: clipEntry.y,
-      width: clipEntry.width,
-      height: clipEntry.height,
-      selected: clipEntry.selected,
-      pressed: clipEntry.pressed,
-      devicePixelRatio: devicePixelRatio,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-      hideBorder: hideBorder,
-    );
+    final (:height, :pattern, :selected, :pressed, :x, :y, :width, :clip) =
+        clipEntry;
+
+    if (height > _smallSizeThreshold) {
+      for (final clipNotesEntry in pattern.clipNotesRenderCache.values) {
+        if (clipNotesEntry.renderedVertices == null) continue;
+
+        canvas.save();
+
+        canvas.clipRect(Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2));
+
+        final innerHeight = height - 2;
+
+        final dist = clipNotesEntry.highestNote - clipNotesEntry.lowestNote;
+        final notePadding =
+            (innerHeight - _clipTitleHeight) *
+            (0.4 - dist * 0.05).clamp(0.1, 0.4);
+
+        // The vertices for the notes are in a coordinate system based on notes,
+        // where X is time and Y is normalized. The transformations below
+        // translate this to the correct position and scale it to convert it into
+        // pixel coordinates.
+
+        final clipScaleFactor = (width - 1) / clip.width.toDouble();
+
+        canvas.translate(
+          -(clip.timeView?.start.toDouble() ?? 0.0) * clipScaleFactor,
+          0,
+        );
+        canvas.translate(x + 1, y + 1 + _clipTitleHeight + notePadding);
+        canvas.scale(
+          clipScaleFactor,
+          innerHeight - _clipTitleHeight - notePadding * 2,
+        );
+
+        // The clip may not start at the beginning, which we account for here.
+
+        canvas.drawVertices(
+          clipNotesEntry.renderedVertices!,
+          BlendMode.srcOver,
+          notePaint,
+        );
+
+        canvas.restore();
+      }
+    }
   }
+
+  // End blend mode layer
+  canvas.restore();
 
   if (!hideBorder) {
     for (final clipEntry in clipList) {
@@ -317,22 +352,6 @@ void paintClip({
     selected: selected,
     pressed: pressed,
     hideBorder: hideBorder,
-  );
-
-  _paintRestOfClip(
-    project: pattern.project,
-    canvas: canvas,
-    canvasSize: canvasSize,
-    pattern: pattern,
-    x: x,
-    y: y,
-    width: width,
-    height: height,
-    selected: selected,
-    pressed: pressed,
-    devicePixelRatio: devicePixelRatio,
-    timeViewStart: timeViewStart,
-    timeViewEnd: timeViewEnd,
   );
 }
 
@@ -381,115 +400,6 @@ void _paintContainerBorder({
     ..strokeWidth = 1.0;
 
   canvas.drawRect(rect, rectStrokePaint);
-}
-
-void _paintRestOfClip({
-  required ProjectModel project,
-  required Canvas canvas,
-  required Size canvasSize,
-  required PatternModel pattern,
-  ClipModel? clip,
-  required double x,
-  required double y,
-  required double width,
-  required double height,
-  required bool selected,
-  required bool pressed,
-  required double devicePixelRatio,
-  required double timeViewStart,
-  required double timeViewEnd,
-  bool hideBorder = false,
-}) {
-  // This is way too slow, so commenting out for now.
-
-  // final baseColor = getBaseColor(
-  //   color: pattern.color,
-  //   selected: selected,
-  //   pressed: pressed,
-  // );
-
-  // final rect = Rect.fromLTWH(
-  //   x + (hideBorder ? 0 : 0.5),
-  //   y + (hideBorder ? 0 : 0.5),
-  //   width - (hideBorder ? 0 : 1),
-  //   height - (hideBorder ? 0 : 1),
-  // );
-
-  // final transparentColor = baseColor.withAlpha(0);
-
-  // // Fade out gradient
-  // final textFadeOutGradient = Gradient.linear(
-  //   Offset(x, textY),
-  //   Offset(x + width - 3, textY),
-  //   [transparentColor, transparentColor, baseColor],
-  //   [0, 1 - (10 / width), 1],
-  // );
-
-  // final textFadeOutPaint = Paint()..shader = textFadeOutGradient;
-
-  // canvas.drawRect(
-  //   Rect.fromLTWH(x, textY + 1, width - 1.5, textHeight),
-  //   textFadeOutPaint,
-  // );
-
-  // Notes
-
-  // Subscribes to the update signal for notes in this pattern
-  pattern.clipNotesUpdateSignal.value;
-
-  if (height > _smallSizeThreshold) {
-    final contentColor = getContentColor(
-      color: pattern.color,
-      selected: selected,
-      pressed: pressed,
-    );
-
-    final notePaint = Paint()..color = contentColor;
-
-    for (final clipNotesEntry in pattern.clipNotesRenderCache.values) {
-      if (clipNotesEntry.renderedVertices == null) continue;
-
-      canvas.save();
-
-      canvas.clipRect(Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2));
-
-      final innerHeight = height - 2;
-
-      final dist = clipNotesEntry.highestNote - clipNotesEntry.lowestNote;
-      final notePadding =
-          (innerHeight - _clipTitleHeight) *
-          (0.4 - dist * 0.05).clamp(0.1, 0.4);
-
-      // The vertices for the notes are in a coordinate system based on notes,
-      // where X is time and Y is normalized. The transformations below
-      // translate this to the correct position and scale it to convert it into
-      // pixel coordinates.
-
-      final clipScaleFactor =
-          (width - 1) /
-          (clip?.width.toDouble() ?? pattern.getWidth().toDouble());
-
-      canvas.translate(
-        -(clip?.timeView?.start.toDouble() ?? 0.0) * clipScaleFactor,
-        0,
-      );
-      canvas.translate(x + 1, y + 1 + _clipTitleHeight + notePadding);
-      canvas.scale(
-        clipScaleFactor,
-        innerHeight - _clipTitleHeight - notePadding * 2,
-      );
-
-      // The clip may not start at the beginning, which we account for here.
-
-      canvas.drawVertices(
-        clipNotesEntry.renderedVertices!,
-        BlendMode.srcOver,
-        notePaint,
-      );
-
-      canvas.restore();
-    }
-  }
 }
 
 void drawPatternTitle({
