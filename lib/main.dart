@@ -187,15 +187,18 @@ class _AppState extends State<App> with WindowListener {
       children: [
         Container(color: AnthemTheme.panel.border),
         MainWindow(key: mainWindowKey, dialogController: dialogController),
-        Positioned(
-          right: 0,
-          bottom: 0,
-          child: SizedBox(
-            width: 300,
-            height: 200,
-            child: PerformanceOverlay.allEnabled(),
-          ),
-        ),
+
+        // Uncomment for performance overlay
+
+        // Positioned(
+        //   right: 0,
+        //   bottom: 0,
+        //   child: SizedBox(
+        //     width: 300,
+        //     height: 200,
+        //     child: PerformanceOverlay.allEnabled(),
+        //   ),
+        // ),
       ],
     );
 
