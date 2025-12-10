@@ -437,6 +437,8 @@ void renderAutomationCurve({
   LineBuffer? lineBuffer,
   CoordinateBuffer? lineJoinBuffer,
   CoordinateBuffer? triCoordBuffer,
+
+  bool correctForClipBounds = false,
 }) {
   if (points.length < 2) return;
 
@@ -506,6 +508,13 @@ void renderAutomationCurve({
     endTime = min(endTime, clipEnd + clipOffset - clipStart);
   }
 
+  // This prevents the curve from rendering slightly before the start of the
+  // clip.
+  if (correctForClipBounds) {
+    final timePerPixel = (timeViewEnd - timeViewStart) / canvasSize.width;
+    startTime += timePerPixel;
+  }
+
   var startX = timeToPixels(
     timeViewStart: timeViewStart,
     timeViewEnd: timeViewEnd,
@@ -560,19 +569,6 @@ void renderAutomationCurve({
     triCoordBuffer: triCoordBuffer,
     baseY: baseY,
   );
-
-  if (willCutOffStart) {
-    // Add point A
-    curveBuilder.addPoint(
-      startX,
-      valueToY(_evaluateCurve(startTime - clipOffset, automationPoints)),
-    );
-  } else {
-    curveBuilder.addPoint(
-      startX.toDouble(),
-      valueToY(automationPoints.first.value),
-    );
-  }
 
   // Sample points along the curve
   for (double x = startX; x <= endX; x += 1.0) {

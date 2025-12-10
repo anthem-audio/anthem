@@ -77,8 +77,6 @@ void paintClipList({
   // Begin blend mode layer
   canvas.saveLayer(null, Paint()..blendMode = BlendMode.plus);
 
-  final timePerPixel = (timeViewEnd - timeViewStart) / canvasSize.width;
-
   for (final clipEntry in clipList) {
     final pattern = clipEntry.pattern;
     final clip = clipEntry.clip;
@@ -112,14 +110,16 @@ void paintClipList({
         // render-clip the draw call around the entire DAW clip (due to
         // performance concerns), we have to get the automation to draw within
         // the DAW clip boundaries without any render clipping.
-        clipStart: clipTimeViewStart + timePerPixel * 2,
+        clipStart: clipTimeViewStart,
         clipEnd: clipTimeViewEnd,
-        clipOffset: clip.offset.toDouble() + timePerPixel,
+        clipOffset: clip.offset.toDouble(),
         color: const Color(0xFF777777),
 
         lineBuffer: _automationLineBuffer,
         lineJoinBuffer: _automationLineJoinBuffer,
         triCoordBuffer: _automationTriCoordBuffer,
+
+        correctForClipBounds: true,
       );
 
       // This avoids connecting lines between clips.
