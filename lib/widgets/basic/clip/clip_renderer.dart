@@ -126,13 +126,9 @@ void paintClipList({
     }
   }
 
-  final gradientPaint = getGradientPaint(
-    chosenColor: const Color(0xFF777777),
-    drawArea: Rect.fromLTWH(0, 0, canvasSize.width, canvasSize.height),
-    gradientStartAlpha: 0.05,
-    gradientEndAlpha: 0.1,
-    overrideColor: const Color(0xFFFFFFFF),
-  );
+  final automationShadedPaint = Paint()
+    ..color = const Color(0x19FFFFFF)
+    ..style = PaintingStyle.fill;
 
   final linePaint = getLinePaint(
     chosenColor: const Color(0xFF777777),
@@ -150,7 +146,7 @@ void paintClipList({
   canvas.drawVertices(
     Vertices.raw(VertexMode.triangles, _automationTriCoordBuffer.buffer),
     BlendMode.srcOver,
-    gradientPaint,
+    automationShadedPaint,
   );
 
   canvas.drawRawPoints(
