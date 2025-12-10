@@ -91,7 +91,7 @@ class _ProjectState extends State<Project> {
         shortcutHandler: _controller.onShortcut,
         child: Column(
           children: [
-            const ProjectHeader(),
+            const RepaintBoundary(child: ProjectHeader()),
             const SizedBox(height: 3),
             Expanded(
               child: Observer(
@@ -169,7 +169,7 @@ class _ProjectState extends State<Project> {
               ),
             ),
             const SizedBox(height: 3),
-            const ProjectFooter(),
+            const RepaintBoundary(child: ProjectFooter()),
           ],
         ),
       ),

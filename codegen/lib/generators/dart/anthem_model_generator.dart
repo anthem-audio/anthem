@@ -54,11 +54,7 @@ class AnthemModelGenerator extends Generator {
 
   @override
   Future<String> generate(LibraryReader library, BuildStep buildStep) async {
-    var result = StringBuffer();
-
-    result.write(
-      '// ignore_for_file: duplicate_ignore, unnecessary_overrides, non_constant_identifier_names\n',
-    );
+    final result = StringBuffer();
 
     // Looks for @AnthemModel on each class in the file, and generates the
     // appropriate code
@@ -119,7 +115,14 @@ class AnthemModelGenerator extends Generator {
     // it for each file.
     cleanModelClassInfoCache();
 
-    return result.toString();
+    if (result.isEmpty) {
+      return '';
+    }
+
+    const ignores =
+        '// ignore_for_file: duplicate_ignore, unnecessary_overrides, non_constant_identifier_names\n';
+
+    return ignores + result.toString();
   }
 }
 
@@ -205,17 +208,17 @@ String _generateGettersAndSetters({
 
     if (shouldGenerateModelSync) {
       setter.write('''
-${fieldInfo.typeInfo.dartName}? oldValue;
+${fieldInfo.typeInfo.dartName}? \$oldValue;
 try {
-  oldValue = super.$fieldName;
+  \$oldValue = super.$fieldName;
 }
 catch (_) {
-  oldValue = null;
+  \$oldValue = null;
 }
 ''');
     }
 
-    setter.write('super.$fieldName = value;\n');
+    setter.write('super.$fieldName = \$value;\n');
 
     if (shouldGenerateModelSync) {
       // If the field is a custom model type, we need to tell it about its
@@ -244,7 +247,7 @@ var setterReceivedValidType = false;
 ''');
         for (final subtype in typeInfo.subTypes) {
           setter.write('''
-${first ? '' : 'else '}if (value is ${subtype.dartName}) {
+${first ? '' : 'else '}if (\$value is ${subtype.dartName}) {
   setterReceivedValidType = true;
 ''');
           if (subtype is CustomModelType ||
@@ -256,7 +259,7 @@ ${first ? '' : 'else '}if (value is ${subtype.dartName}) {
             // do it now.
             setter.write('''
   if (isTopLevelModel || parent != null) {
-    value.setParentProperties(
+    \$value.setParentProperties(
       parent: this,
       fieldName: '$fieldName',
       fieldType: FieldType.raw,
@@ -269,14 +272,14 @@ ${first ? '' : 'else '}if (value is ${subtype.dartName}) {
         }
 
         setter.write('''if (!setterReceivedValidType) {
-  throw Exception('Invalid type for field $fieldName. Got value of type \${value.runtimeType}, but expected one of: ${typeInfo.subTypes.map((subtype) => subtype.dartName).join(', ')}.');
+  throw Exception('Invalid type for field $fieldName. Got value of type \${\$value.runtimeType}, but expected one of: ${typeInfo.subTypes.map((subtype) => subtype.dartName).join(', ')}.');
 }
 ''');
       }
 
       final valueGetter = createSerializerForField(
         type: fieldInfo.typeInfo,
-        accessor: 'value',
+        accessor: '\$value',
         alwaysIncludeEngineOnlyFields: true,
       );
 
@@ -285,8 +288,8 @@ ${first ? '' : 'else '}if (value is ${subtype.dartName}) {
       setter.write('''
 notifyFieldChanged(
   operation: RawFieldUpdate(
-    oldValue: oldValue,
-    newValue: value,
+    oldValue: \$oldValue,
+    newValue: \$value,
     newValueSerialized: $valueGetter,
   ),
   accessorChain: [
@@ -301,7 +304,7 @@ notifyFieldChanged(
 
     result.write('@override\n');
     result.write(
-      'set $fieldName(${fieldInfo.typeInfo.dartName}$typeQ value) {\n',
+      'set $fieldName(${fieldInfo.typeInfo.dartName}$typeQ \$value) {\n',
     );
     if (fieldInfo.isObservable) {
       result.write(

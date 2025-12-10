@@ -537,6 +537,10 @@ void decrementBlockObservationBuilderDepth() {
   _blockObservationBuilderDepth--;
 }
 
+int get blockObservationBuilderDepth {
+  return _blockObservationBuilderDepth;
+}
+
 bool get isBlockObservationBuilderActive {
   return _blockObservationBuilderDepth > 0;
 }

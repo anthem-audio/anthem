@@ -23,6 +23,7 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/model/track.dart';
+import 'package:anthem/widgets/basic/clip/packed_texture.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
@@ -30,20 +31,35 @@ import 'arrangement/arrangement.dart';
 
 part 'sequence.g.dart';
 
+part 'package:anthem/widgets/basic/clip/clip_title_atlas_mixin.dart';
+
 @AnthemModel.syncedModel(
   cppBehaviorClassName: 'Sequence',
   cppBehaviorClassIncludePath: 'modules/core/sequence.h',
 )
 class SequenceModel extends _SequenceModel
-    with _$SequenceModel, _$SequenceModelAnthemModelMixin {
+    with
+        _$SequenceModel,
+        _$SequenceModelAnthemModelMixin,
+        _ClipTitleAtlasMixin {
   SequenceModel.uninitialized() : super();
-  SequenceModel.create() : super.create();
+
+  SequenceModel.create() : super.create() {
+    _init();
+  }
 
   factory SequenceModel.fromJson(Map<String, dynamic> json) {
     final sequence = _$SequenceModelAnthemModelMixin.fromJson(json);
     sequence.activePatternID = sequence.patternOrder.firstOrNull;
     sequence.activeArrangementID = sequence.arrangementOrder.firstOrNull;
+    sequence._init();
     return sequence;
+  }
+
+  void _init() {
+    onModelFirstAttached(() {
+      _updateClipTitleTextureAtlas();
+    });
   }
 }
 

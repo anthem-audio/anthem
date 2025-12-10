@@ -343,10 +343,11 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
       final deltaY =
           event.pos.dy - _tensionChangeActionData!.startPointerOffset.dy;
       final deltaTension = -deltaY / 250;
-      final invertMult = _tensionChangeActionData!.invert ? -1 : 1;
+      final invertMultiplier = _tensionChangeActionData!.invert ? -1 : 1;
 
       point.tension =
-          (_tensionChangeActionData!.startTension + invertMult * deltaTension)
+          (_tensionChangeActionData!.startTension +
+                  invertMultiplier * deltaTension)
               .clamp(-1, 1);
     }
   }

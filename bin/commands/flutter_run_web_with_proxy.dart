@@ -30,6 +30,12 @@ import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_proxy/shelf_proxy.dart';
 import 'package:shelf_static/shelf_static.dart';
 
+/// Enables serving `flutter run` or an existing build/web directory behind a
+/// proxy that adds the necessary COOP/COEP headers.
+///
+/// As of Flutter 3.38, this is not necessary for development as the headers can
+/// be added by a new web_dev_config.yaml in the project root. However, it is
+/// still needed when serving an existing build/web directory.
 class FlutterRunWebWithProxyCommand extends Command<dynamic> {
   FlutterRunWebWithProxyCommand() {
     argParser.addFlag(

@@ -22,6 +22,8 @@
     "deserializers",
     "desync",
     "Diagnosticable",
+    "downsampler",
+    "downsamples",
     "dylib",
     "emscripten",
     "endl",

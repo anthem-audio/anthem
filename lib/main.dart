@@ -26,6 +26,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/shortcuts/raw_key_event_singleton.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
+import 'package:anthem_codegen/include/model_base_mixin.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pointer_lock/pointer_lock.dart';
@@ -176,11 +177,28 @@ class _AppState extends State<App> with WindowListener {
 
   @override
   Widget build(BuildContext context) {
+    assert(
+      blockObservationBuilderDepth == 0,
+      'blockObservationBuilderDepth is not zero at the start of App.build(). This indicates a mismatch in begin/end observation block calls somewhere in the app.',
+    );
+
     final contentStack = Stack(
       fit: StackFit.expand,
       children: [
         Container(color: AnthemTheme.panel.border),
         MainWindow(key: mainWindowKey, dialogController: dialogController),
+
+        // Uncomment for performance overlay
+
+        // Positioned(
+        //   right: 0,
+        //   bottom: 0,
+        //   child: SizedBox(
+        //     width: 300,
+        //     height: 200,
+        //     child: PerformanceOverlay.allEnabled(),
+        //   ),
+        // ),
       ],
     );
 

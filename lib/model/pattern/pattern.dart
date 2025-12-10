@@ -27,6 +27,7 @@ import 'package:anthem/main.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem/model/sequence.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/shared/invalidation_range_collector.dart';
 import 'package:anthem/model/shared/loop_points.dart';

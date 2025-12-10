@@ -92,70 +92,70 @@ class _ArrangerState extends State<Arranger> {
       ControllerRegistry.instance.registerController(project.id, controller!);
     }
 
-    return Provider.value(
-      value: viewModel!,
-      child: Provider.value(
-        value: controller!,
-        child: ArrangerTimeViewProvider(
-          child: ShortcutConsumer(
-            id: 'arranger',
-            shortcutHandler: controller!.onShortcut,
-            child: Container(
-              color: AnthemTheme.panel.background,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _Header(),
-                  Container(height: 1, color: AnthemTheme.panel.border),
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        SizedBox(width: 126, child: PatternPicker()),
-                        Container(width: 1, color: AnthemTheme.panel.border),
-                        const Expanded(child: _ArrangerContent()),
-                        SizedBox(
-                          width: 17,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Container(
-                                height: _timelineHeight,
+    return MultiProvider(
+      providers: [
+        Provider.value(value: viewModel!),
+        Provider.value(value: controller!),
+      ],
+      child: ArrangerTimeViewProvider(
+        child: ShortcutConsumer(
+          id: 'arranger',
+          shortcutHandler: controller!.onShortcut,
+          child: Container(
+            color: AnthemTheme.panel.background,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _Header(),
+                Container(height: 1, color: AnthemTheme.panel.border),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(width: 126, child: PatternPicker()),
+                      Container(width: 1, color: AnthemTheme.panel.border),
+                      const Expanded(child: _ArrangerContent()),
+                      SizedBox(
+                        width: 17,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Container(
+                              height: _timelineHeight,
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  left: BorderSide(
+                                    color: AnthemTheme.panel.border,
+                                    width: 1,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Container(
                                 decoration: BoxDecoration(
                                   border: Border(
                                     left: BorderSide(
                                       color: AnthemTheme.panel.border,
                                       width: 1,
                                     ),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    border: Border(
-                                      left: BorderSide(
-                                        color: AnthemTheme.panel.border,
-                                        width: 1,
-                                      ),
-                                      top: BorderSide(
-                                        color: AnthemTheme.panel.border,
-                                        width: 1,
-                                      ),
+                                    top: BorderSide(
+                                      color: AnthemTheme.panel.border,
+                                      width: 1,
                                     ),
                                   ),
-                                  child: _VerticalScrollbar(),
                                 ),
+                                child: _VerticalScrollbar(),
                               ),
-                              SizedBox(height: 16),
-                            ],
-                          ),
+                            ),
+                            SizedBox(height: 16),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -466,95 +466,98 @@ class _ArrangerContentState extends State<_ArrangerContent>
       setState(() {});
     });
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SizedBox(
-          // +1 for bottom border drawn by timeline
-          height: _timelineHeight + 1,
-          child: Row(
-            children: [
-              Container(
-                width: trackHeaderWidth + 1,
-                decoration: BoxDecoration(
-                  border: Border(
-                    right: BorderSide(color: AnthemTheme.panel.border),
-                    bottom: BorderSide(color: AnthemTheme.panel.border),
+    return RepaintBoundary(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            // +1 for bottom border drawn by timeline
+            height: _timelineHeight + 1,
+            child: Row(
+              children: [
+                Container(
+                  width: trackHeaderWidth + 1,
+                  decoration: BoxDecoration(
+                    border: Border(
+                      right: BorderSide(color: AnthemTheme.panel.border),
+                      bottom: BorderSide(color: AnthemTheme.panel.border),
+                    ),
                   ),
                 ),
-              ),
-              Expanded(
-                child: Observer(
-                  builder: (context) {
-                    return Timeline.arrangement(
-                      timeViewAnimationController:
-                          timeViewEndAnimItem.animationController,
-                      timeViewStartAnimation: timeViewStartAnimItem.animation,
-                      timeViewEndAnimation: timeViewEndAnimItem.animation,
-                      arrangementID: project.sequence.activeArrangementID,
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(
-                width: trackHeaderWidth,
-                child: AnimatedBuilder(
-                  animation: verticalScrollPositionAnimationHelper!
-                      .animationController,
-                  builder: (context, child) {
-                    return _TrackHeaders(
-                      verticalScrollPosition:
-                          verticalScrollPositionAnimItem.animation.value,
-                    );
-                  },
-                ),
-              ),
-              Container(width: 1, color: AnthemTheme.panel.border),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: _ArrangerCanvas(
+                Expanded(
+                  child: Observer(
+                    builder: (context) {
+                      return Timeline.arrangement(
+                        timeViewAnimationController:
+                            timeViewEndAnimItem.animationController,
                         timeViewStartAnimation: timeViewStartAnimItem.animation,
                         timeViewEndAnimation: timeViewEndAnimItem.animation,
-                        timeViewAnimationController:
-                            timeViewAnimationHelper!.animationController,
-                        verticalScrollPositionAnimation:
-                            verticalScrollPositionAnimItem.animation,
-                        verticalScrollPositionAnimationController:
-                            verticalScrollPositionAnimationHelper!
-                                .animationController,
-                      ),
-                    ),
-                  ],
+                        arrangementID: project.sequence.activeArrangementID,
+                      );
+                    },
+                  ),
                 ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  width: trackHeaderWidth,
+                  child: AnimatedBuilder(
+                    animation: verticalScrollPositionAnimationHelper!
+                        .animationController,
+                    builder: (context, child) {
+                      return _TrackHeaders(
+                        verticalScrollPosition:
+                            verticalScrollPositionAnimItem.animation.value,
+                      );
+                    },
+                  ),
+                ),
+                Container(width: 1, color: AnthemTheme.panel.border),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: _ArrangerCanvas(
+                          timeViewStartAnimation:
+                              timeViewStartAnimItem.animation,
+                          timeViewEndAnimation: timeViewEndAnimItem.animation,
+                          timeViewAnimationController:
+                              timeViewAnimationHelper!.animationController,
+                          verticalScrollPositionAnimation:
+                              verticalScrollPositionAnimItem.animation,
+                          verticalScrollPositionAnimationController:
+                              verticalScrollPositionAnimationHelper!
+                                  .animationController,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Row(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: AnthemTheme.panel.border, width: 1),
+                  ),
+                ),
+                width: trackHeaderWidth,
+                height: 17,
               ),
+              Expanded(child: _HorizontalScrollbar()),
             ],
           ),
-        ),
-        Row(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: AnthemTheme.panel.border, width: 1),
-                ),
-              ),
-              width: trackHeaderWidth,
-              height: 17,
-            ),
-            Expanded(child: _HorizontalScrollbar()),
-          ],
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

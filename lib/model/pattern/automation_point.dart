@@ -46,7 +46,7 @@ class AutomationPointModel extends _AutomationPointModel
 
 abstract class _AutomationPointModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
-  late final Id id;
+  late Id id;
 
   @anthemObservable
   int offset;
