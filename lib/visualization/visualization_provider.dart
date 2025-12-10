@@ -58,9 +58,11 @@ class VisualizationProvider {
 
   void _sendUpdateIntervalToEngine() {
     // For the refresh rate, we get the maximum refresh rate of all displays.
-    final refreshRate = PlatformDispatcher.instance.displays
-        .map((d) => d.refreshRate)
-        .reduce(max);
+    final refreshRate = PlatformDispatcher.instance.displays.isNotEmpty
+        ? PlatformDispatcher.instance.displays
+              .map((d) => d.refreshRate)
+              .reduce(max)
+        : 60.0;
 
     _project.engine.visualizationApi.setUpdateInterval(
       (1000 / refreshRate) * 0.9, // A bit faster than the refresh rate
