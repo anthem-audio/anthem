@@ -260,52 +260,16 @@ void paintClipList({
   // Notes
 
   for (final clipEntry in clipList) {
-    final (:height, :pattern, :selected, :pressed, :x, :y, :width, :clip) =
-        clipEntry;
-
-    if (height > _smallSizeThreshold) {
-      for (final clipNotesEntry in pattern.clipNotesRenderCache.values) {
-        if (clipNotesEntry.renderedVertices == null) continue;
-
-        canvas.save();
-
-        canvas.clipRect(Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2));
-
-        final innerHeight = height - 2;
-
-        final dist = clipNotesEntry.highestNote - clipNotesEntry.lowestNote;
-        final notePadding =
-            (innerHeight - _clipTitleHeight) *
-            (0.4 - dist * 0.05).clamp(0.1, 0.4);
-
-        // The vertices for the notes are in a coordinate system based on notes,
-        // where X is time and Y is normalized. The transformations below
-        // translate this to the correct position and scale it to convert it into
-        // pixel coordinates.
-
-        final clipScaleFactor = (width - 1) / clip.width.toDouble();
-
-        canvas.translate(
-          -(clip.timeView?.start.toDouble() ?? 0.0) * clipScaleFactor,
-          0,
-        );
-        canvas.translate(x + 1, y + 1 + _clipTitleHeight + notePadding);
-        canvas.scale(
-          clipScaleFactor,
-          innerHeight - _clipTitleHeight - notePadding * 2,
-        );
-
-        // The clip may not start at the beginning, which we account for here.
-
-        canvas.drawVertices(
-          clipNotesEntry.renderedVertices!,
-          BlendMode.srcOver,
-          notePaint,
-        );
-
-        canvas.restore();
-      }
-    }
+    _paintClipNotes(
+      canvas: canvas,
+      notePaint: notePaint,
+      pattern: clipEntry.pattern,
+      clip: clipEntry.clip,
+      x: clipEntry.x,
+      y: clipEntry.y,
+      width: clipEntry.width,
+      height: clipEntry.height,
+    );
   }
 
   // End blend mode layer
@@ -353,6 +317,62 @@ void paintClip({
     pressed: pressed,
     hideBorder: hideBorder,
   );
+
+  canvas.saveLayer(null, Paint()..blendMode = BlendMode.plus);
+
+  // Title
+
+  drawPatternTitle(
+    canvas: canvas,
+    size: canvasSize,
+    clipRect: Rect.fromLTWH(x, y, width, height),
+    pattern: pattern,
+    x: x,
+    y: y,
+    width: width,
+    height: height,
+    selected: selected,
+    pressed: pressed,
+    devicePixelRatio: 1,
+    overrideTextColor: const Color(0xFF777777),
+  );
+
+  // Automation
+
+  for (final lane in pattern.automationLanes.values) {
+    if (height <= _smallSizeThreshold) continue;
+
+    renderAutomationCurve(
+      canvas: canvas,
+      canvasSize: canvasSize,
+      xDrawPositionTime: clip != null
+          ? (clip.offset.toDouble(), (clip.offset + clip.width).toDouble())
+          : (0.0, 0.0),
+      yDrawPositionPixels: (y + _clipTitleHeight + 2, y + height - 2),
+      points: lane.points,
+      strokeWidth: 2.0,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      color: const Color(0xFF777777),
+    );
+  }
+
+  // Notes
+
+  if (height > _smallSizeThreshold) {
+    _paintClipNotes(
+      canvas: canvas,
+      notePaint: Paint()..color = const Color(0xFF777777),
+      pattern: pattern,
+      clip: clip,
+      x: x,
+      y: y,
+      width: width,
+      height: height,
+    );
+  }
+
+  canvas.restore();
 }
 
 void _paintContainer({
@@ -412,15 +432,15 @@ void drawPatternTitle({
   required double width,
   required double height,
   required double devicePixelRatio,
-  bool whiteText = false,
+  Color? overrideTextColor,
   bool selected = false,
   bool pressed = false,
   bool saveLayer = true,
 }) {
   final Color textColor;
 
-  if (whiteText) {
-    textColor = const Color(0xFFFFFFFF);
+  if (overrideTextColor != null) {
+    textColor = overrideTextColor;
   } else {
     textColor = getContentColor(
       color: pattern.color,
@@ -469,4 +489,59 @@ void drawPatternTitle({
   final width = paragraph.maxIntrinsicWidth / devicePixelRatio + 6;
 
   return (width, height.toDouble());
+}
+
+void _paintClipNotes({
+  required Canvas canvas,
+  required Paint notePaint,
+  required PatternModel pattern,
+  ClipModel? clip,
+  required double x,
+  required double y,
+  required double width,
+  required double height,
+}) {
+  if (height <= _smallSizeThreshold) return;
+
+  for (final clipNotesEntry in pattern.clipNotesRenderCache.values) {
+    if (clipNotesEntry.renderedVertices == null) continue;
+
+    canvas.save();
+
+    canvas.clipRect(Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2));
+
+    final innerHeight = height - 2;
+
+    final dist = clipNotesEntry.highestNote - clipNotesEntry.lowestNote;
+    final notePadding =
+        (innerHeight - _clipTitleHeight) * (0.4 - dist * 0.05).clamp(0.1, 0.4);
+
+    // The vertices for the notes are in a coordinate system based on notes,
+    // where X is time and Y is normalized. The transformations below
+    // translate this to the correct position and scale it to convert it into
+    // pixel coordinates.
+
+    final clipScaleFactor =
+        (width - 1) / (clip?.width.toDouble() ?? pattern.getWidth().toDouble());
+
+    canvas.translate(
+      -(clip?.timeView?.start.toDouble() ?? 0.0) * clipScaleFactor,
+      0,
+    );
+    canvas.translate(x + 1, y + 1 + _clipTitleHeight + notePadding);
+    canvas.scale(
+      clipScaleFactor,
+      innerHeight - _clipTitleHeight - notePadding * 2,
+    );
+
+    // The clip may not start at the beginning, which we account for here.
+
+    canvas.drawVertices(
+      clipNotesEntry.renderedVertices!,
+      BlendMode.srcOver,
+      notePaint,
+    );
+
+    canvas.restore();
+  }
 }

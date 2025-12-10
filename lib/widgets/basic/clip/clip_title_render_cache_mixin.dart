@@ -60,7 +60,7 @@ mixin _ClipTitleRenderCacheMixin on _PatternModel {
       height: inputHeight,
       // We draw the text in white so we can recolor it when rendering from the
       // cache.
-      whiteText: true,
+      overrideTextColor: const Color(0xFFFFFFFF),
       devicePixelRatio: devicePixelRatio,
     );
 
