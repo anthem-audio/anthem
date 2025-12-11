@@ -4,34 +4,38 @@ The Anthem engine has two major components: the sequencer and the processing gra
 
 ## Definitions
 
-Before we discuss the Anthem sequencer, I will briefly define some terms.
-
-- **Ticks Per Quarter Note (TPQN):** This term comes from MIDI, and defines the resolution of the sequencer. Each "pulse", defined in this document as a tick, can contain zero or more events across the arrangement, and TPQN defines how many of these ticks occur per beat. If the tempo is 120 BPM and the TPQN is set at 96, then the sequencer will run at a rate of 120 * 96 ticks per minute, or 11520 ticks per minute.
-   - Note that "runs at a particular rate" implies that we manage our own clock, which isn't the case for Anthem, or for any other audio software that I'm aware of. We rely on the audio callback from the system audio API, and calculate our timing based on how the current sample and the sample rate as defined by the system API.
-- **Tick:** A tick is the smallest unit of time available to the sequencer. Most events in the sequencer have a time, defined as a number of ticks since the start of the pattern, which determines when that event will occur. Arranger clips are the exception; their start times are encoded as ticks since the start of the arrangement.
-- **Event:** In this document, an event is defined as any action that can be sent to a generator. These can include note on/off events, automation points, or audio events.
+- **Ticks Per Quarter Note (TPQN):** This term comes from MIDI, and defines time for the sequencer. Ticks occur at a rate determined by the current tempo. TPQN defines how many of these ticks occur per beat. If the tempo is 120 beats per minute and the TPQN is set at 96, then the sequencer will run at a rate of 120 * 96 ticks per minute, or 11520 ticks per minute.
+- **Tick:** A tick is an arbitrary unit of time whose duration is defined by the current tempo. Events in the sequencer have a time, defined as a floating-point number of ticks since the start of the sequence, which determines when that event will occur.
+- **Event:** An event is defined as any action that can be sent to a track. These can include note on/off events, automation points, or audio events.
 - **Sequencer:** This term is used here to describe a system for arranging and playing back events at specific times. These events can include note on and off events for instruments, audio clip start and stop events, and automation events. In Anthem, the sequencer is responsible for maintaining an in-memory model of the arrangement, and during playback it is responsible for sending the events for the current tick to their respective generators.
-- **Generator:** We use this term to describe a module that can take live or sequenced events and produce data for the audio processing graph. This includes instruments, which take note events and produce audio; automation channels, which take automation events and produce control signals; and audio sequencer channels, which take audio events and produce audio.
 - **Sequence** A sequence is a collection of events and/or clips of other sequences. Sequences can be composed infinitely, but sequences cannot contain clips of themselves, or do anything else that would create a dependency loop.
-- **Clip:** A clip is a window into a sequence that can be placed in another sequence. Clips contain an `offset` value, which represents the time in ticks that the clip starts at relative to the start of the arrangement.
-- **Transport:** The transport is a module that acts as the source of truth for time within the sequencer. It keeps track of the playhead, which marks the tick being currently processed by the sequencer.
+- **Clip:** A clip is a window into a sequence that can be placed in another sequence.
+- **Transport:** The transport is a module that acts as the source of truth for time within the sequencer. It keeps track of the playhead, which marks the current time in the sequence.
 
 ## Overview
 
-The sequencer in Anthem is the module responsible reading out events from sequences and sending them to live instrument, audio, and automation channels.
+The sequencer in Anthem is responsible reading out events from sequences and sending them to tracks. It is implemented by components in the UI, data model, and engine.
 
-The sequencer itself has two roles: the first is to compile each sequence in the project model into a flat event list for each channel, and the second is to provide these events to the processing graph via special sequence event provider nodes. These nodes read the active sequence during playback and feed the processing graph with events for a given channel.
+## Data model
+
+Anthem has tracks, which represent places where events can be sent. Sequences are collections of these events, and possibly clips of other sequences.
+
+Sequences may have one or more clips associated with them. Clips are windows into a sequence, and are owned by a parent sequence (usually an arrangement). They have a start and end time within the sequence that they target, and they have an offset from the start of whatever sequence owns them. They also may be associated with a track, which defines where raw events will be sent.
+
+The arrangement is itself a sequence. It does not directly contain events, but instead contains only clips of other sequences.
+
+Multiple clips can exist of a given sequence, which allows complex sequence linking behavior. This includes traditional pattern-style workflows, but also allows for the same sequence to appear in multiple clips on different instruments.
+
+## Engine implementation
+
+The sequencer module in the engine has two roles: The first is to compile each sequence in the project model into a flat event list for each channel, and the second is to provide these events to the processing graph via special sequence event provider nodes. These nodes read the active sequence during playback and feed the processing graph with events for a given channel.
 
 During sequence compilation for a given sequence, the sequencer produces an event list for each channel that is sorted by offset. The goal of this step is to decouple the complexity of the UI from the audio thread. The audio thread should not need to wrangle details of specific user-centric arrangement features.
 
-For example, the project model contains the idea of "sequence composition", or sequences that contain other sequences. This feature exists in the project model, and the compiler reduces the clips in an arrangement down to flat per-channel event lists. The audio thread, then, does not need to have any notion of clips or patterns. This has two advantages. First, advanced features can be developed for sequencing clips, or for any other part of arranging in the UI, without needing to modify the audio code at all, which promotes effective separation of concerns. Second, this makes the actual audio code much easier to write, and it makes it easier to guarantee good performance.
+For example, the project model allows sequences to contain clips of other sequences. This feature exists in the project model, and the compiler reduces all the events in a given sequence down to flat per-track event lists. The audio thread, then, does not need to have any notion of clips or patterns. This has two advantages. First, advanced features can be developed for sequencing clips, or for any other part of arranging in the UI, without needing to modify the audio code at all, which promotes effective separation of concerns. Second, this makes the actual audio code much easier to write, and it makes it easier to guarantee good performance.
 
 When the sequencer is told to generate a given number of samples, it does the following:
 
 1. The audio node graph is told to produce however many samples are needed for this tick.
 2. For each sequence provider node, the node queries the compiled sequence for events within the upcoming processing window, and sends them to the connected downstream nodes.
 3. The sequencer advances the transport by the number of ticks processed, based on the tempo, sample rate, and ticks per quarter note - note that the transport will need to track fractional ticks.
-
-## Open questions
-
-- Tempo automation is not an easy problem, and should be prototyped.
