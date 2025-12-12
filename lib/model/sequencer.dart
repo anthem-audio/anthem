@@ -29,7 +29,7 @@ import 'package:mobx/mobx.dart';
 
 import 'arrangement/arrangement.dart';
 
-part 'sequence.g.dart';
+part 'sequencer.g.dart';
 
 part 'package:anthem/widgets/basic/clip/clip_title_atlas_mixin.dart';
 
