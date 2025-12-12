@@ -22,7 +22,7 @@ import 'dart:math';
 import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
-import 'package:anthem/model/sequence.dart';
+import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/invalidation_range_collector.dart';
 import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem_codegen/include.dart';
@@ -141,7 +141,7 @@ abstract class _ArrangementModel
   /// rounded upward to the nearest `barMultiple` bars.
   int getWidth({int barMultiple = 4, int minPaddingInBarMultiples = 4}) {
     final defaultTimeSignature =
-        getFirstAncestorOfType<SequenceModel>().defaultTimeSignature;
+        getFirstAncestorOfType<SequencerModel>().defaultTimeSignature;
 
     final ticksPerBarDouble =
         project.sequence.ticksPerQuarter /

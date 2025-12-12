@@ -76,7 +76,7 @@ mixin _ClipTitleRenderCacheMixin on _PatternModel {
       (height * devicePixelRatio).ceil(),
     );
 
-    getFirstAncestorOfType<SequenceModel>()
+    getFirstAncestorOfType<SequencerModel>()
         .scheduleClipTitleTextureAtlasUpdate();
   }
 }

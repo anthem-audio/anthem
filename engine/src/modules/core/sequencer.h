@@ -19,22 +19,22 @@
 
 #pragma once
 
-#include "generated/lib/model/sequence.h"
+#include "generated/lib/model/sequencer.h"
 
-class Sequence : public SequenceModelBase {
+class Sequencer : public SequencerModelBase {
 public:
-  Sequence(const SequenceModelImpl& _impl) : SequenceModelBase(_impl) {}
-  ~Sequence() {}
+  Sequencer(const SequencerModelImpl& _impl) : SequencerModelBase(_impl) {}
+  ~Sequencer() {}
 
-  Sequence(const Sequence&) = delete;
-  Sequence& operator=(const Sequence&) = delete;
+  Sequencer(const Sequencer&) = delete;
+  Sequencer& operator=(const Sequencer&) = delete;
   
-  Sequence(Sequence&&) noexcept = default;
-  Sequence& operator=(Sequence&&) noexcept = default;
+  Sequencer(Sequencer&&) noexcept = default;
+  Sequencer& operator=(Sequencer&&) noexcept = default;
 
   void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override;
 
   // void handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {
-  //   SequenceModelBase::handleModelUpdate(request, fieldAccessIndex);
+  //   SequencerModelBase::handleModelUpdate(request, fieldAccessIndex);
   // }
 };

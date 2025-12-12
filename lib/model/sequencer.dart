@@ -34,22 +34,22 @@ part 'sequencer.g.dart';
 part 'package:anthem/widgets/basic/clip/clip_title_atlas_mixin.dart';
 
 @AnthemModel.syncedModel(
-  cppBehaviorClassName: 'Sequence',
-  cppBehaviorClassIncludePath: 'modules/core/sequence.h',
+  cppBehaviorClassName: 'Sequencer',
+  cppBehaviorClassIncludePath: 'modules/core/sequencer.h',
 )
-class SequenceModel extends _SequenceModel
+class SequencerModel extends _SequencerModel
     with
-        _$SequenceModel,
-        _$SequenceModelAnthemModelMixin,
+        _$SequencerModel,
+        _$SequencerModelAnthemModelMixin,
         _ClipTitleAtlasMixin {
-  SequenceModel.uninitialized() : super();
+  SequencerModel.uninitialized() : super();
 
-  SequenceModel.create() : super.create() {
+  SequencerModel.create() : super.create() {
     _init();
   }
 
-  factory SequenceModel.fromJson(Map<String, dynamic> json) {
-    final sequence = _$SequenceModelAnthemModelMixin.fromJson(json);
+  factory SequencerModel.fromJson(Map<String, dynamic> json) {
+    final sequence = _$SequencerModelAnthemModelMixin.fromJson(json);
     sequence.activePatternID = sequence.patternOrder.firstOrNull;
     sequence.activeArrangementID = sequence.arrangementOrder.firstOrNull;
     sequence._init();
@@ -63,7 +63,7 @@ class SequenceModel extends _SequenceModel
   }
 }
 
-abstract class _SequenceModel
+abstract class _SequencerModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
   @anthemObservable
   int ticksPerQuarter = 96;
@@ -127,9 +127,9 @@ abstract class _SequenceModel
   @hideFromSerialization
   bool isPlaying = false;
 
-  _SequenceModel() : super();
+  _SequencerModel() : super();
 
-  _SequenceModel.create() : super() {
+  _SequencerModel.create() : super() {
     final arrangement = ArrangementModel.create(
       name: 'Arrangement 1',
       id: getId(),

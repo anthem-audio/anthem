@@ -74,6 +74,6 @@ export 'shared/time_signature.dart';
 export 'app.dart';
 export 'generator.dart';
 export 'project.dart';
-export 'sequence.dart';
+export 'sequencer.dart';
 export 'store.dart';
 export 'track.dart';

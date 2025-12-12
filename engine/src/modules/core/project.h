@@ -20,7 +20,7 @@
 #pragma once
 
 #include "generated/lib/model/project.h"
-#include "sequence.h"
+#include "sequencer.h"
 
 class Project : public ProjectModelBase {
 public:

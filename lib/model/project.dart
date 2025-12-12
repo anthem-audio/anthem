@@ -25,7 +25,7 @@ import 'package:anthem/logic/commands/command_stack.dart';
 import 'package:anthem/logic/commands/journal_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/sequence.dart';
+import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:anthem/engine_api/messages/messages.dart' as message_api;
@@ -88,7 +88,7 @@ class ProjectModel extends _ProjectModel
 abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// Represents information about the sequenced content in the project, such as
   /// arrangements and patterns, and their content.
-  late SequenceModel sequence;
+  late SequencerModel sequence;
 
   /// Represents the processing graph for the project. This is used to route
   /// audio, control and notes between processors, and to eventually route the
@@ -237,7 +237,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     isTopLevelModel = true;
 
     _commandStack = CommandStack(this as ProjectModel);
-    sequence = SequenceModel.create();
+    sequence = SequencerModel.create();
     processingGraph = ProcessingGraphModel();
 
     hydrate();

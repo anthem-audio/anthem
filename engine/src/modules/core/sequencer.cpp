@@ -17,11 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "sequence.h"
+#include "sequencer.h"
 
 #include "modules/core/anthem.h"
 
-void Sequence::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) {
+void Sequencer::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) {
   auto& transport = *Anthem::getInstance().transport;
 
   // Write initial values to transport
@@ -61,5 +61,5 @@ void Sequence::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr
     Anthem::getInstance().transport->setPlayheadStart(value);
   });
 
-  SequenceModelBase::initialize(self, parent);
+  SequencerModelBase::initialize(self, parent);
 }

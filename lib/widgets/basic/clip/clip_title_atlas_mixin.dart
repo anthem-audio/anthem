@@ -17,9 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'package:anthem/model/sequence.dart';
+part of 'package:anthem/model/sequencer.dart';
 
-mixin _ClipTitleAtlasMixin on _SequenceModel {
+mixin _ClipTitleAtlasMixin on _SequencerModel {
   @hide
   bool isClipTitleTextureAtlasUpdateScheduled = false;
 
