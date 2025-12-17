@@ -274,7 +274,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         trackOffset: 0.5,
         startTimes: {clipUnderCursor.id: clipUnderCursor.offset},
         startTracks: {
-          clipUnderCursor.id: project.sequence.trackOrder.indexOf(
+          clipUnderCursor.id: project.trackOrder.indexOf(
             clipUnderCursor.trackId,
           ),
         },
@@ -288,8 +288,9 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         (clipID) => arrangement.clips[clipID]!,
       )) {
         _clipMoveActionData!.startTimes[clip.id] = clip.offset;
-        _clipMoveActionData!.startTracks[clip.id] = project.sequence.trackOrder
-            .indexOf(clip.trackId);
+        _clipMoveActionData!.startTracks[clip.id] = project.trackOrder.indexOf(
+          clip.trackId,
+        );
       }
 
       if (_eventHandlingState == EventHandlingState.movingSelection) {
@@ -305,7 +306,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
         // This has a worst-case complexity of clipCount * trackCount
         for (final clipID in viewModel.selectedClips) {
-          final clipIndex = project.sequence.trackOrder.indexOf(
+          final clipIndex = project.trackOrder.indexOf(
             arrangement.clips[clipID]!.trackId,
           );
           _clipMoveActionData!.trackOfTopClip = min(
@@ -398,7 +399,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
     project.startJournalPage();
 
     final clip = ClipModel.create(
-      trackId: project.sequence.trackOrder[event.track.floor()],
+      trackId: project.trackOrder[event.track.floor()],
       patternId: viewModel.cursorPattern!,
       offset: targetTime,
       timeView: viewModel.cursorTimeRange?.clone(),
@@ -518,9 +519,9 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         // Prevent the bottom key from going below the lowest allowed note
         if (_clipMoveActionData!.trackOfBottomClip +
                 trackOffsetFromEventStart >=
-            project.sequence.trackOrder.length) {
+            project.trackOrder.length) {
           trackOffsetFromEventStart =
-              project.sequence.trackOrder.length -
+              project.trackOrder.length -
               1 -
               _clipMoveActionData!.trackOfBottomClip;
         }
@@ -532,7 +533,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
           final track =
               _clipMoveActionData!.startTracks[clip.id]! +
               (shift ? 0 : trackOffsetFromEventStart);
-          clip.trackId = project.sequence.trackOrder[track];
+          clip.trackId = project.trackOrder[track];
 
           clip.offset =
               _clipMoveActionData!.startTimes[clip.id]! +
@@ -557,7 +558,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
 
         final clipsInSelection = arrangement.clips.values
             .where((clip) {
-              final trackTop = project.sequence.trackOrder
+              final trackTop = project.trackOrder
                   .indexOf(clip.trackId)
                   .toDouble();
 
@@ -596,7 +597,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
           // great to me for larger projects. I don't want to prematurely
           // optimize though, so I'm leaving this note for the next weary
           // traveler.
-          final clipTrack = project.sequence.trackOrder.indexOf(clip.trackId);
+          final clipTrack = project.trackOrder.indexOf(clip.trackId);
 
           final clipTopLeft = Point(clip.offset, clipTrack);
           final clipBottomRight = Point(
@@ -811,9 +812,8 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
           clipID: clip.id,
           oldOffset: _clipMoveActionData!.startTimes[clip.id]!,
           newOffset: clip.offset,
-          oldTrack: project
-              .sequence
-              .trackOrder[_clipMoveActionData!.startTracks[clip.id]!],
+          oldTrack:
+              project.trackOrder[_clipMoveActionData!.startTracks[clip.id]!],
           newTrack: clip.trackId,
         );
       }).toList();

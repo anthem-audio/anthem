@@ -57,7 +57,7 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
 
     final baseTrackHeight = viewModel.baseTrackHeight;
 
-    for (final trackID in project.sequence.trackOrder) {
+    for (final trackID in project.trackOrder) {
       final trackHeight = getTrackHeight(
         baseTrackHeight,
         viewModel.trackHeightModifiers[trackID]!,

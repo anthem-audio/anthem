@@ -26,6 +26,7 @@ import 'package:anthem/logic/commands/journal_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/sequencer.dart';
+import 'package:anthem/model/track.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:anthem/engine_api/messages/messages.dart' as message_api;
@@ -49,6 +50,18 @@ class ProjectModel extends _ProjectModel
 
   ProjectModel.create([super._enginePathOverride]) : super.create() {
     _init();
+
+    final Map<Id, TrackModel> initTracks = {};
+    final List<Id> initTrackOrder = [];
+
+    for (var i = 1; i <= 1; i++) {
+      final track = TrackModel(name: 'Track $i');
+      initTracks[track.id] = track;
+      initTrackOrder.add(track.id);
+    }
+
+    tracks = AnthemObservableMap.of(initTracks);
+    trackOrder = AnthemObservableList.of(initTrackOrder);
   }
 
   factory ProjectModel.fromJson(Map<String, dynamic> json) {
@@ -108,6 +121,12 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// List of generator IDs in the project (to preserve order).
   @anthemObservable
   AnthemObservableList<Id> generatorOrder = AnthemObservableList();
+
+  @anthemObservable
+  AnthemObservableMap<Id, TrackModel> tracks = AnthemObservableMap();
+
+  @anthemObservable
+  AnthemObservableList<Id> trackOrder = AnthemObservableList();
 
   /// ID of the active instrument, used to determine which instrument is shown
   /// in the channel rack, which is used for piano roll, etc.

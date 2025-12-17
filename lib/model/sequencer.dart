@@ -22,7 +22,6 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/shared/time_signature.dart';
-import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/basic/clip/packed_texture.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -103,12 +102,6 @@ abstract class _SequencerModel
   @hideFromSerialization
   Id? activeTransportSequenceID;
 
-  @anthemObservable
-  AnthemObservableMap<Id, TrackModel> tracks = AnthemObservableMap();
-
-  @anthemObservable
-  AnthemObservableList<Id> trackOrder = AnthemObservableList();
-
   /// The global time signature for the project.
   ///
   /// "Default" is in reference to the fact that time signatures can be changed
@@ -138,18 +131,6 @@ abstract class _SequencerModel
     arrangementOrder = AnthemObservableList.of([arrangement.id]);
     activeArrangementID = arrangement.id;
     activeTransportSequenceID = arrangement.id;
-
-    final Map<Id, TrackModel> initTracks = {};
-    final List<Id> initTrackOrder = [];
-
-    for (var i = 1; i <= 200; i++) {
-      final track = TrackModel(name: 'Track $i');
-      initTracks[track.id] = track;
-      initTrackOrder.add(track.id);
-    }
-
-    tracks = AnthemObservableMap.of(initTracks);
-    trackOrder = AnthemObservableList.of(initTrackOrder);
   }
 
   void setActivePattern(Id? patternID) {

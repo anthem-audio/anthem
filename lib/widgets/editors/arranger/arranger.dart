@@ -80,9 +80,7 @@ class _ArrangerState extends State<Arranger> {
     viewModel ??= ArrangerViewModel(
       baseTrackHeight: 45,
       trackHeightModifiers: mobx.ObservableMap.of(
-        project.sequence.tracks.nonObservableInner.map(
-          (key, value) => MapEntry(key, 1),
-        ),
+        project.tracks.nonObservableInner.map((key, value) => MapEntry(key, 1)),
       ),
       timeView: TimeRange(0, 3072),
     );
@@ -674,7 +672,7 @@ class _ArrangerCanvas extends StatelessWidget {
                   baseTrackHeight: viewModel.baseTrackHeight,
                   scrollPosition: viewModel.verticalScrollPosition,
                   trackHeightModifiers: viewModel.trackHeightModifiers,
-                  trackOrder: project.sequence.trackOrder,
+                  trackOrder: project.trackOrder,
                   trackIndex: selectionBox.top,
                 );
 
@@ -682,7 +680,7 @@ class _ArrangerCanvas extends StatelessWidget {
                   baseTrackHeight: viewModel.baseTrackHeight,
                   scrollPosition: viewModel.verticalScrollPosition,
                   trackHeightModifiers: viewModel.trackHeightModifiers,
-                  trackOrder: project.sequence.trackOrder,
+                  trackOrder: project.trackOrder,
                   trackIndex: selectionBox.top + selectionBox.height,
                 );
 
@@ -800,7 +798,7 @@ class _TrackHeadersState extends State<_TrackHeaders> {
 
             var trackPositionPointer = -widget.verticalScrollPosition;
 
-            for (final trackID in project.sequence.trackOrder) {
+            for (final trackID in project.trackOrder) {
               final heightModifier = viewModel.trackHeightModifiers[trackID]!;
 
               final trackHeight = getTrackHeight(

@@ -128,7 +128,7 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
     final track = posToTrackIndex(
       yOffset: event.localPosition.dy,
       baseTrackHeight: viewModel.baseTrackHeight,
-      trackOrder: project.sequence.trackOrder,
+      trackOrder: project.trackOrder,
       trackHeightModifiers: viewModel.trackHeightModifiers,
       scrollPosition: viewModel.verticalScrollPosition,
     );
