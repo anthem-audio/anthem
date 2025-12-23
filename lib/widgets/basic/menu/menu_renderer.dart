@@ -27,7 +27,6 @@ import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
-import 'package:anthem/logic/project_controller.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
@@ -53,14 +52,8 @@ double getMenuItemHeight(GenericMenuItem menuItem) {
 class MenuRenderer extends StatefulWidget {
   final MenuDef menu;
   final Id id;
-  final ProjectController projectController;
 
-  const MenuRenderer({
-    super.key,
-    required this.menu,
-    required this.id,
-    required this.projectController,
-  });
+  const MenuRenderer({super.key, required this.menu, required this.id});
 
   @override
   State<MenuRenderer> createState() => _MenuRendererState();
@@ -137,7 +130,6 @@ class _MenuRendererState extends State<MenuRenderer> {
                   (child) => MenuItemRenderer(
                     menuItem: child,
                     isMouseInMenu: isMouseInside,
-                    projectController: widget.projectController,
                     updateHintId: (id) {
                       if (hintId != null) {
                         HintStore.instance.removeHint(hintId!);
@@ -163,7 +155,6 @@ class _MenuRendererState extends State<MenuRenderer> {
 class MenuItemRenderer extends StatefulWidget {
   final GenericMenuItem menuItem;
   final bool isMouseInMenu;
-  final ProjectController projectController;
 
   final void Function(int) updateHintId;
   final void Function() removeHint;
@@ -172,7 +163,6 @@ class MenuItemRenderer extends StatefulWidget {
     super.key,
     required this.menuItem,
     required this.isMouseInMenu,
-    required this.projectController,
     required this.updateHintId,
     required this.removeHint,
   });
@@ -372,11 +362,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
                 position.dy -
                 _Constants.padding -
                 1, // -1 to account for menu border
-            child: MenuRenderer(
-              id: id,
-              menu: item.submenu!,
-              projectController: widget.projectController,
-            ),
+            child: MenuRenderer(id: id, menu: item.submenu!),
           );
         },
       ),
