@@ -38,6 +38,8 @@ class AnthemTheme {
 
 class _Panel {
   Color border = const Color(0xFF2F2F2F);
+  Color borderLight = const Color(0xFF5E5E5E);
+  Color borderLightActive = const Color(0xFF6A6A6A);
   Color background = const Color(0XFF3F3F3F);
   Color backgroundLight = const Color(0XFF464646);
   Color main = const Color(0XFF4F4F4F);

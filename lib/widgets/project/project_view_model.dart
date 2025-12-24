@@ -24,6 +24,16 @@ part 'project_view_model.g.dart';
 
 enum EditorKind { detail, automation, channelRack, mixer }
 
+enum PanelKind {
+  pianoRoll,
+  automationEditor,
+  channelRack,
+  mixer,
+  arranger,
+  detailEditor,
+  projectExplorer,
+}
+
 // ignore: library_private_types_in_public_api
 class ProjectViewModel = _ProjectViewModel with _$ProjectViewModel;
 
@@ -35,6 +45,9 @@ abstract class _ProjectViewModel with Store {
   // Widget Function(BuildContext context)?
   @observable
   dynamic topPanelOverlayContentBuilder;
+
+  @observable
+  PanelKind? activePanel;
 
   void setTopPanelOverlay(Widget Function(BuildContext context)? overlay) {
     topPanelOverlayContentBuilder = overlay;

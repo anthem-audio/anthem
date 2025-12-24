@@ -100,12 +100,13 @@ class ProjectFooter extends StatelessWidget {
                 return Button(
                   variant: ButtonVariant.label,
                   icon: Icons.detailEditor,
-                  toggleState: viewModel.selectedEditor == EditorKind.detail,
+                  toggleState: viewModel.selectedEditor == .detail,
                   onPress: () {
-                    if (viewModel.selectedEditor == EditorKind.detail) {
+                    if (viewModel.selectedEditor == .detail) {
                       viewModel.selectedEditor = null;
                     } else {
-                      viewModel.selectedEditor = EditorKind.detail;
+                      viewModel.selectedEditor = .detail;
+                      viewModel.activePanel = .pianoRoll;
                     }
                   },
                 );
@@ -117,13 +118,13 @@ class ProjectFooter extends StatelessWidget {
                 return Button(
                   variant: ButtonVariant.label,
                   icon: Icons.automationEditor,
-                  toggleState:
-                      viewModel.selectedEditor == EditorKind.automation,
+                  toggleState: viewModel.selectedEditor == .automation,
                   onPress: () {
-                    if (viewModel.selectedEditor == EditorKind.automation) {
+                    if (viewModel.selectedEditor == .automation) {
                       viewModel.selectedEditor = null;
                     } else {
-                      viewModel.selectedEditor = EditorKind.automation;
+                      viewModel.selectedEditor = .automation;
+                      viewModel.activePanel = .automationEditor;
                     }
                   },
                 );
@@ -135,13 +136,13 @@ class ProjectFooter extends StatelessWidget {
                 return Button(
                   variant: ButtonVariant.label,
                   icon: Icons.channelRack,
-                  toggleState:
-                      viewModel.selectedEditor == EditorKind.channelRack,
+                  toggleState: viewModel.selectedEditor == .channelRack,
                   onPress: () {
-                    if (viewModel.selectedEditor == EditorKind.channelRack) {
+                    if (viewModel.selectedEditor == .channelRack) {
                       viewModel.selectedEditor = null;
                     } else {
-                      viewModel.selectedEditor = EditorKind.channelRack;
+                      viewModel.selectedEditor = .channelRack;
+                      viewModel.activePanel = .channelRack;
                     }
                   },
                 );
@@ -153,12 +154,13 @@ class ProjectFooter extends StatelessWidget {
                 return Button(
                   variant: ButtonVariant.label,
                   icon: Icons.mixer,
-                  toggleState: viewModel.selectedEditor == EditorKind.mixer,
+                  toggleState: viewModel.selectedEditor == .mixer,
                   onPress: () {
-                    if (viewModel.selectedEditor == EditorKind.mixer) {
+                    if (viewModel.selectedEditor == .mixer) {
                       viewModel.selectedEditor = null;
                     } else {
-                      viewModel.selectedEditor = EditorKind.mixer;
+                      viewModel.selectedEditor = .mixer;
+                      viewModel.activePanel = .mixer;
                     }
                   },
                 );

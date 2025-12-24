@@ -184,7 +184,7 @@ class _PanelState extends State<Panel> {
         contentHugTop |= isPanelHidden;
         contentHugBottom |= isPanelHidden;
 
-        final separatorSize = widget.separatorSize ?? 3.0;
+        final separatorSize = widget.separatorSize ?? 1.0;
         const handleSize = 10.0;
 
         var handleLeft = panelHugLeft

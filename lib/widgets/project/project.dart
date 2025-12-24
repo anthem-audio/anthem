@@ -20,6 +20,7 @@
 import 'package:anthem/logic/controller_registry.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
+import 'package:anthem/widgets/basic/panel_border.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
@@ -92,7 +93,7 @@ class _ProjectState extends State<Project> {
         child: Column(
           children: [
             const RepaintBoundary(child: ProjectHeader()),
-            const SizedBox(height: 3),
+            Container(height: 1, color: AnthemTheme.panel.border),
             Expanded(
               child: Observer(
                 builder: (context) {
@@ -110,35 +111,55 @@ class _ProjectState extends State<Project> {
                         null => -1,
                       };
 
-                  final selectedEditor = IndexedStack(
-                    index: selectedEditorIndex,
-                    children: [automationEditor, channelRack, pianoRoll, mixer],
+                  final selectedEditor = PanelBorder(
+                    panelKind: switch (_viewModel.selectedEditor) {
+                      .automation => .automationEditor,
+                      .channelRack => .channelRack,
+                      .detail => .pianoRoll,
+                      .mixer => .mixer,
+                      null => null,
+                    },
+                    child: IndexedStack(
+                      index: selectedEditorIndex,
+                      children: [
+                        automationEditor,
+                        channelRack,
+                        pianoRoll,
+                        mixer,
+                      ],
+                    ),
                   );
 
                   return Panel(
                     hidden: !projectModel.isDetailViewOpen,
-                    orientation: PanelOrientation.left,
-                    sizeBehavior: PanelSizeBehavior.pixels,
+                    orientation: .left,
+                    sizeBehavior: .pixels,
                     panelStartSize: 200,
                     panelMinSize: 200,
                     // Left side-panel content
                     panelContent: RepaintBoundary(
-                      child: ProjectDetails(
-                        selectedProjectDetails: projectModel
-                            .getSelectedDetailView(),
+                      child: PanelBorder(
+                        panelKind: .detailEditor,
+                        child: ProjectDetails(
+                          selectedProjectDetails: projectModel
+                              .getSelectedDetailView(),
+                        ),
                       ),
                     ),
 
                     child: Panel(
                       hidden: !projectModel.isProjectExplorerOpen,
-                      orientation: PanelOrientation.right,
-                      sizeBehavior: PanelSizeBehavior.pixels,
+                      orientation: .right,
+                      sizeBehavior: .pixels,
                       panelStartSize: 200,
                       // Right side-panel content
-                      panelContent: const ProjectExplorer(),
+                      panelContent: const PanelBorder(
+                        panelKind: .projectExplorer,
+                        child: ProjectExplorer(),
+                      ),
 
                       child: Panel(
-                        orientation: PanelOrientation.bottom,
+                        orientation: .bottom,
                         panelMinSize: 200,
                         contentMinSize: 150,
                         hidden: _viewModel.selectedEditor == null,
@@ -149,17 +170,22 @@ class _ProjectState extends State<Project> {
                           close: () => _viewModel.clearTopPanelOverlay(),
                           child: Panel(
                             hidden: !projectModel.isPatternEditorVisible,
-                            orientation: PanelOrientation.left,
+                            orientation: .left,
                             panelStartSize: 500,
                             panelMinSize: 500,
                             contentMinSize: 500,
-                            sizeBehavior: PanelSizeBehavior.pixels,
+                            sizeBehavior: .pixels,
                             // Pattern editor
                             panelContent: const RepaintBoundary(
-                              child: PatternEditor(),
+                              child: PanelBorder(child: PatternEditor()),
                             ),
                             // Arranger
-                            child: const RepaintBoundary(child: Arranger()),
+                            child: const RepaintBoundary(
+                              child: PanelBorder(
+                                panelKind: .arranger,
+                                child: Arranger(),
+                              ),
+                            ),
                           ),
                         ),
                       ),
