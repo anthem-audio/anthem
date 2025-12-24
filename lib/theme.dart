@@ -37,10 +37,11 @@ class AnthemTheme {
 }
 
 class _Panel {
-  Color border = const Color(0xFF313131);
+  Color border = const Color(0xFF2F2F2F);
   Color background = const Color(0XFF3F3F3F);
+  Color backgroundLight = const Color(0XFF464646);
   Color main = const Color(0XFF4F4F4F);
-  Color accent = const Color(0XFF585858);
+  Color accent = const Color(0XFF525252);
 
   Color scrollbar = const Color(0xFF8C8C8C);
   Color scrollbarHover = const Color(0xFFA3A3A3);
