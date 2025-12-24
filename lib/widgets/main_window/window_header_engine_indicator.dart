@@ -37,18 +37,13 @@ class EngineIndicator extends StatelessObserverWidget {
 
     return Button(
       hideBorder: true,
-      width: 28,
+      width: 40,
       backgroundGradient: (
-        AnthemTheme.panel.background,
-        AnthemTheme.panel.background,
+        AnthemTheme.panel.backgroundLight,
+        AnthemTheme.panel.backgroundLight,
       ),
       variant: ButtonVariant.ghost,
-      borderRadius: const BorderRadius.only(
-        topLeft: Radius.circular(4),
-        topRight: Radius.zero,
-        bottomLeft: Radius.zero,
-        bottomRight: Radius.zero,
-      ),
+      borderRadius: BorderRadius.zero,
       onPress: () async {
         if (engineState != EngineState.stopped) {
           activeProject?.engine.stop();
