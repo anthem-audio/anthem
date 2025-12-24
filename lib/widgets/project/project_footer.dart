@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/model/project.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/hint/hint_display.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
@@ -36,10 +37,11 @@ class ProjectFooter extends StatelessWidget {
     final projectModel = Provider.of<ProjectModel>(context);
     final viewModel = Provider.of<ProjectViewModel>(context);
 
-    return SizedBox(
-      height: 32,
+    return Container(
+      color: AnthemTheme.panel.backgroundLight,
+      height: 40,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 3),
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.max,
@@ -50,6 +52,7 @@ class ProjectFooter extends StatelessWidget {
                   icon: Icons.browserPanel,
                   variant: ButtonVariant.label,
                   toggleState: projectModel.isDetailViewOpen,
+                  hideBorder: true,
                   onPress: () {
                     projectModel.isDetailViewOpen =
                         !projectModel.isDetailViewOpen;
@@ -64,16 +67,19 @@ class ProjectFooter extends StatelessWidget {
               text: 'ARRANGE',
               toggleState: true,
               contentPadding: EdgeInsets.symmetric(horizontal: 8),
+              hideBorder: true,
             ),
             Button(
               variant: ButtonVariant.label,
               text: 'EDIT',
               contentPadding: EdgeInsets.symmetric(horizontal: 8),
+              hideBorder: true,
             ),
             Button(
               variant: ButtonVariant.label,
               text: 'MIX',
               contentPadding: EdgeInsets.symmetric(horizontal: 8),
+              hideBorder: true,
             ),
             _Separator(),
             const SizedBox(width: 6),
@@ -85,6 +91,7 @@ class ProjectFooter extends StatelessWidget {
                   toggleState: projectModel.isPatternEditorVisible,
                   onPress: () => projectModel.isPatternEditorVisible =
                       !projectModel.isPatternEditorVisible,
+                  hideBorder: true,
                   hint: projectModel.isPatternEditorVisible
                       ? [HintSection('click', 'Hide pattern editor')]
                       : [HintSection('click', 'Show pattern editor')],
@@ -101,6 +108,7 @@ class ProjectFooter extends StatelessWidget {
                   variant: ButtonVariant.label,
                   icon: Icons.detailEditor,
                   toggleState: viewModel.selectedEditor == .detail,
+                  hideBorder: true,
                   onPress: () {
                     if (viewModel.selectedEditor == .detail) {
                       viewModel.selectedEditor = null;
@@ -119,6 +127,7 @@ class ProjectFooter extends StatelessWidget {
                   variant: ButtonVariant.label,
                   icon: Icons.automationEditor,
                   toggleState: viewModel.selectedEditor == .automation,
+                  hideBorder: true,
                   onPress: () {
                     if (viewModel.selectedEditor == .automation) {
                       viewModel.selectedEditor = null;
@@ -137,6 +146,7 @@ class ProjectFooter extends StatelessWidget {
                   variant: ButtonVariant.label,
                   icon: Icons.channelRack,
                   toggleState: viewModel.selectedEditor == .channelRack,
+                  hideBorder: true,
                   onPress: () {
                     if (viewModel.selectedEditor == .channelRack) {
                       viewModel.selectedEditor = null;
@@ -155,6 +165,7 @@ class ProjectFooter extends StatelessWidget {
                   variant: ButtonVariant.label,
                   icon: Icons.mixer,
                   toggleState: viewModel.selectedEditor == .mixer,
+                  hideBorder: true,
                   onPress: () {
                     if (viewModel.selectedEditor == .mixer) {
                       viewModel.selectedEditor = null;
@@ -178,6 +189,7 @@ class ProjectFooter extends StatelessWidget {
                   icon: Icons.browserPanel,
                   variant: ButtonVariant.label,
                   toggleState: projectModel.isProjectExplorerOpen,
+                  hideBorder: true,
                   onPress: () {
                     projectModel.isProjectExplorerOpen =
                         !projectModel.isProjectExplorerOpen;

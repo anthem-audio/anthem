@@ -194,7 +194,7 @@ class _ProjectState extends State<Project> {
                 },
               ),
             ),
-            const SizedBox(height: 3),
+            Container(color: AnthemTheme.panel.border, height: 1),
             const RepaintBoundary(child: ProjectFooter()),
           ],
         ),
