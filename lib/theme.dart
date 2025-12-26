@@ -62,12 +62,16 @@ class _Primary {
 
 class _Control {
   _ByBackgroundType main = _ByBackgroundType(
+    darkAccent: const Color(0xFF3B3B3B),
     dark: const Color(0xFF4F4F4F),
     light: const Color(0xFF585858),
+    lightAccent: const Color(0xFF5E5E5E),
   );
   _ByBackgroundType hover = _ByBackgroundType(
+    darkAccent: const Color(0xFF404040),
     dark: const Color(0xFF585858),
     light: const Color(0xFF636363),
+    lightAccent: const Color(0xFF6C6C6C),
   );
   Color active = const Color(0xFF25C29D);
   Color activeBackground = const Color(0xFF357869);
@@ -90,10 +94,17 @@ class _Text {
 }
 
 class _ByBackgroundType {
+  Color darkAccent;
   Color dark;
   Color light;
+  Color lightAccent;
 
-  _ByBackgroundType({required this.dark, required this.light});
+  _ByBackgroundType({
+    required this.darkAccent,
+    required this.dark,
+    required this.light,
+    required this.lightAccent,
+  });
 }
 
 // For grid lines in editors

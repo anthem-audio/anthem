@@ -20,6 +20,7 @@
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/button_tabs.dart';
 import 'package:anthem/widgets/basic/hint/hint_display.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/icon.dart';
@@ -41,7 +42,7 @@ class ProjectFooter extends StatelessWidget {
       color: AnthemTheme.panel.backgroundLight,
       height: 40,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.max,
@@ -62,24 +63,13 @@ class ProjectFooter extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             _Separator(),
-            Button(
-              variant: ButtonVariant.label,
-              text: 'ARRANGE',
-              toggleState: true,
-              contentPadding: EdgeInsets.symmetric(horizontal: 8),
-              hideBorder: true,
-            ),
-            Button(
-              variant: ButtonVariant.label,
-              text: 'EDIT',
-              contentPadding: EdgeInsets.symmetric(horizontal: 8),
-              hideBorder: true,
-            ),
-            Button(
-              variant: ButtonVariant.label,
-              text: 'MIX',
-              contentPadding: EdgeInsets.symmetric(horizontal: 8),
-              hideBorder: true,
+            TextButtonTabs(
+              tabs: [
+                (label: 'Arrange', onSelect: () {}),
+                (label: 'Edit', onSelect: () {}),
+                (label: 'Mix', onSelect: () {}),
+              ],
+              selectedIndex: 0,
             ),
             _Separator(),
             const SizedBox(width: 6),
