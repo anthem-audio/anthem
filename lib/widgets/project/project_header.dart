@@ -129,6 +129,10 @@ class _PlayStopButtonGroup extends StatelessWidget {
             width: 24,
             contentPadding: EdgeInsets.all(3),
             hint: [HintSection('click', 'Play')],
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(2),
+              bottomLeft: Radius.circular(2),
+            ),
             onPress: () {
               final projectModel = Provider.of<ProjectModel>(
                 context,
@@ -150,6 +154,10 @@ class _PlayStopButtonGroup extends StatelessWidget {
             width: 24,
             contentPadding: EdgeInsets.all(3),
             hint: [HintSection('click', 'Stop')],
+            borderRadius: const BorderRadius.only(
+              topRight: Radius.circular(2),
+              bottomRight: Radius.circular(2),
+            ),
             onPress: () {
               final projectModel = Provider.of<ProjectModel>(
                 context,
