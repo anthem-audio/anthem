@@ -172,7 +172,7 @@ class _WindowButtonsState extends State<_WindowButtons> with WindowListener {
             borderRadius: BorderRadius.circular(4),
             variant: ButtonVariant.ghost,
             hideBorder: true,
-            backgroundHoverGradient: (Color(0xFF555555), Color(0xFF555555)),
+            backgroundHover: Color(0xFF555555),
             icon: Icons.minimize,
             onPress: () {
               windowManager.minimize();
@@ -188,7 +188,7 @@ class _WindowButtonsState extends State<_WindowButtons> with WindowListener {
             borderRadius: BorderRadius.circular(4),
             variant: ButtonVariant.ghost,
             hideBorder: true,
-            backgroundHoverGradient: (Color(0xFF555555), Color(0xFF555555)),
+            backgroundHover: Color(0xFF555555),
             icon: isMaximized ? Icons.restoreDown : Icons.maximize,
             onPress: () async {
               if (isMaximized) {
@@ -208,7 +208,7 @@ class _WindowButtonsState extends State<_WindowButtons> with WindowListener {
             borderRadius: BorderRadius.circular(4),
             variant: ButtonVariant.ghost,
             hideBorder: true,
-            backgroundHoverGradient: (Color(0xFFBA322B), Color(0xFFBA322B)),
+            backgroundHover: Color(0xFFBA322B),
             icon: Icons.close,
             onPress: () {
               windowManager.close();
@@ -321,10 +321,7 @@ class _TabState extends State<_Tab> {
                     visible: widget.isSelected || isHovered,
                     child: Button(
                       variant: ButtonVariant.ghost,
-                      backgroundHoverGradient: (
-                        const Color(0x00000000),
-                        const Color(0x00000000),
-                      ),
+                      backgroundHover: const Color(0x00000000),
                       width: 22,
                       height: 22,
                       hideBorder: true,

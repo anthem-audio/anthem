@@ -197,15 +197,9 @@ class _GeneratorRowState extends State<GeneratorRow> {
                       child: Button(
                         width: 105,
                         height: 26,
-                        backgroundGradient: (generator.color, generator.color),
-                        backgroundHoverGradient: (
-                          backgroundHoverColor,
-                          backgroundHoverColor,
-                        ),
-                        backgroundPressGradient: (
-                          backgroundHoverColor,
-                          backgroundHoverColor,
-                        ),
+                        background: generator.color,
+                        backgroundHover: backgroundHoverColor,
+                        backgroundPress: backgroundHoverColor,
                         contentBuilder: (context, color) {
                           return Center(
                             child: Text(

@@ -38,10 +38,7 @@ class EngineIndicator extends StatelessObserverWidget {
     return Button(
       hideBorder: true,
       width: 40,
-      backgroundGradient: (
-        AnthemTheme.panel.backgroundLight,
-        AnthemTheme.panel.backgroundLight,
-      ),
+      background: AnthemTheme.panel.backgroundLight,
       variant: ButtonVariant.ghost,
       borderRadius: BorderRadius.zero,
       onPress: () async {
