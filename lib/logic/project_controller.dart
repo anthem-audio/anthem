@@ -230,6 +230,10 @@ class ProjectController {
     );
   }
 
+  void addTrack() {
+    project.execute(TrackAddRemoveCommand.add(project: project));
+  }
+
   void setActiveArrangement(Id? id) {
     project.sequence.setActiveArrangement(id);
     _updateTransportSequenceID(id);

@@ -55,7 +55,7 @@ class ProjectModel extends _ProjectModel
     final Map<Id, TrackModel> initTracks = {};
     final List<Id> initTrackOrder = [];
 
-    for (var i = 1; i <= 3; i++) {
+    for (var i = 1; i <= 1; i++) {
       final track = TrackModel(
         name: 'Track $i',
         color: AnthemColor.randomHue(),

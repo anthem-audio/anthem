@@ -20,6 +20,7 @@
 import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem_codegen/include.dart';
 
@@ -302,5 +303,74 @@ class RemoveGeneratorCommand extends Command {
       notes: notes,
       automationLanes: automationLanes,
     );
+  }
+}
+
+class TrackAddRemoveCommand extends Command {
+  final bool isAdd;
+  bool get isRemove => !isAdd;
+
+  late final TrackModel track;
+
+  TrackAddRemoveCommand.add({required ProjectModel project}) : isAdd = true {
+    track = TrackModel(
+      name: 'Track ${project.trackOrder.length + 1}',
+      color: AnthemColor.randomHue(),
+    );
+  }
+
+  TrackAddRemoveCommand.remove({required ProjectModel project, required Id id})
+    : isAdd = false {
+    track = project.tracks[id]!;
+  }
+
+  @override
+  void execute(ProjectModel project) {
+    if (isAdd) {
+      _add(project);
+    } else {
+      _remove(project);
+    }
+  }
+
+  @override
+  void rollback(ProjectModel project) {
+    if (isAdd) {
+      _remove(project);
+    } else {
+      _add(project);
+    }
+  }
+
+  void _add(ProjectModel project) {
+    if (project.tracks[track.id] != null) {
+      throw StateError(
+        'Tried to add a track that already exists. This indicates bad usage of '
+        'TrackAddRemoveCommand, or bad project state.',
+      );
+    }
+
+    project.trackOrder.add(track.id);
+    project.tracks[track.id] = track;
+
+    ServiceRegistry.forProject(
+      project.id,
+    ).arrangerViewModel.registerTrack(track.id);
+  }
+
+  void _remove(ProjectModel project) {
+    if (project.tracks[track.id] == null) {
+      throw StateError(
+        'Tried to remove a track that does not exist. This indicates bad usage '
+        'of TrackAddRemoveCommand, or bad project state.',
+      );
+    }
+
+    ServiceRegistry.forProject(
+      project.id,
+    ).arrangerViewModel.unregisterTrack(track.id);
+
+    project.trackOrder.remove(track.id);
+    project.tracks.remove(track.id);
   }
 }

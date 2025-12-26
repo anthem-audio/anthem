@@ -803,6 +803,8 @@ class _TrackHeadersState extends State<_TrackHeaders> {
 
             var trackPositionPointer = -widget.verticalScrollPosition;
 
+            var didBreak = false;
+
             for (final trackID in project.trackOrder) {
               final heightModifier = viewModel.trackHeightModifiers[trackID]!;
 
@@ -877,9 +879,34 @@ class _TrackHeadersState extends State<_TrackHeaders> {
                 );
               }
 
-              if (trackPositionPointer >= constraints.maxHeight) break;
+              if (trackPositionPointer >= constraints.maxHeight) {
+                didBreak = true;
+                break;
+              }
 
               trackPositionPointer += trackHeight;
+            }
+
+            // If we didn't fill the whole area, then we are at the end of the
+            // track list, so we can add an "add track" button
+            if (!didBreak) {
+              headers.add(
+                Positioned(
+                  top: trackPositionPointer + 8,
+                  left: 16,
+                  right: 16,
+                  child: Button(
+                    icon: Icons.add,
+                    hint: [.new('click', 'Add a new track')],
+                    onPress: () {
+                      final controller = ServiceRegistry.forProject(
+                        project.id,
+                      ).projectController;
+                      controller.addTrack();
+                    },
+                  ),
+                ),
+              );
             }
 
             return ClipRect(child: Stack(children: headers + resizeHandles));
