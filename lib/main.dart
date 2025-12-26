@@ -185,7 +185,7 @@ class _AppState extends State<App> with WindowListener {
     final contentStack = Stack(
       fit: StackFit.expand,
       children: [
-        Container(color: AnthemTheme.panel.border),
+        Container(color: const Color(0xFF2F2F2F)),
         MainWindow(key: mainWindowKey, dialogController: dialogController),
 
         // Uncomment for performance overlay
