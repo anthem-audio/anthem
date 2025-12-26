@@ -20,7 +20,7 @@
 import 'dart:async';
 
 import 'package:anthem/licenses.dart';
-import 'package:anthem/logic/controller_registry.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';

@@ -21,7 +21,7 @@ import 'dart:convert';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/license_text.dart';
-import 'package:anthem/logic/controller_registry.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/model/store.dart';

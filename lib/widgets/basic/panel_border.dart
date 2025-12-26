@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/logic/controller_registry.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
