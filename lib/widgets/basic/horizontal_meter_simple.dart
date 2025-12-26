@@ -43,7 +43,7 @@ class HorizontalMeterSimple extends StatelessWidget {
             child: Container(
               decoration: BoxDecoration(
                 color: AnthemTheme.control.background,
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(4),
                 border: Border.all(color: AnthemTheme.control.border, width: 1),
               ),
             ),

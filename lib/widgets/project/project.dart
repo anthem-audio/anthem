@@ -223,7 +223,7 @@ class _PanelOverlay extends StatelessWidget {
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(4),
                 color: AnthemTheme.panel.main,
               ),
             ),
