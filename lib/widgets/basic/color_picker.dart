@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -53,7 +53,6 @@ class _ColorPickerState extends State<ColorPicker> {
       child: Row(
         children: List.generate(hues.length, (colorIndex) {
           final hue = hues[colorIndex];
-          final saturation = saturations[colorIndex] * 0.53;
 
           return Expanded(
             child: Column(
@@ -64,14 +63,14 @@ class _ColorPickerState extends State<ColorPicker> {
                 final saturationModifier =
                     saturations[colorIndex] + (lightnessIndex - 1) * 0.5 - 0.2;
 
+                final color = AnthemColor(
+                  hue: hue,
+                  saturationModifier: saturationModifier,
+                  lightnessModifier: lightnessModifier,
+                );
+
                 void onPointerUp(PointerEvent e) {
-                  widget.onChange?.call(
-                    AnthemColor(
-                      hue: hue,
-                      saturationModifier: saturationModifier,
-                      lightnessModifier: lightnessModifier,
-                    ),
-                  );
+                  widget.onChange?.call(color.clone());
                 }
 
                 return Expanded(
@@ -80,12 +79,7 @@ class _ColorPickerState extends State<ColorPicker> {
                     onPointerCancel: onPointerUp,
                     child: Container(
                       margin: const EdgeInsets.all(squareMargin),
-                      color: HSLColor.fromAHSL(
-                        1,
-                        hue,
-                        (saturation * saturationModifier).clamp(0, 1),
-                        (0.5 * lightnessModifier).clamp(0, 1),
-                      ).toColor(),
+                      color: color.colorShifter.clipBase.toColor(),
                     ),
                   ),
                 );

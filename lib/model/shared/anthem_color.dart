@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
 import 'package:anthem/color_shifter.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -35,8 +37,23 @@ class AnthemColor extends _AnthemColor
   AnthemColor.uninitialized()
     : super(hue: 0, lightnessModifier: 1, saturationModifier: 1);
 
+  AnthemColor.randomHue()
+    : super(
+        hue: (Random().nextInt(12) * 30).toDouble(),
+        lightnessModifier: 1,
+        saturationModifier: 1,
+      );
+
   factory AnthemColor.fromJson(Map<String, dynamic> json) =>
       _$AnthemColorAnthemModelMixin.fromJson(json);
+
+  AnthemColor clone() {
+    return AnthemColor(
+      hue: hue,
+      lightnessModifier: lightnessModifier,
+      saturationModifier: saturationModifier,
+    );
+  }
 }
 
 abstract class _AnthemColor with Store, AnthemModelBase {

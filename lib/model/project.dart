@@ -26,6 +26,7 @@ import 'package:anthem/logic/commands/journal_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/sequencer.dart';
+import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem_codegen/include.dart';
@@ -54,8 +55,11 @@ class ProjectModel extends _ProjectModel
     final Map<Id, TrackModel> initTracks = {};
     final List<Id> initTrackOrder = [];
 
-    for (var i = 1; i <= 1; i++) {
-      final track = TrackModel(name: 'Track $i');
+    for (var i = 1; i <= 3; i++) {
+      final track = TrackModel(
+        name: 'Track $i',
+        color: AnthemColor.randomHue(),
+      );
       initTracks[track.id] = track;
       initTrackOrder.add(track.id);
     }

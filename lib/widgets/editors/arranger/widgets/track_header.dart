@@ -19,15 +19,12 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/model/track.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/button.dart';
-import 'package:anthem/widgets/basic/icon.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
-class TrackHeader extends StatelessWidget {
+class TrackHeader extends StatelessObserverWidget {
   final Id trackID;
 
   const TrackHeader({super.key, required this.trackID});
@@ -35,51 +32,50 @@ class TrackHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
+    final track = project.tracks[trackID]!;
 
-    // Allows Observer widgets to track changes from MobX
-    TrackModel getTrack() => project.tracks[trackID]!;
+    final trackAnthemColor = track.color;
+    final colorShifter = trackAnthemColor.colorShifter;
+    final color = colorShifter.clipBase.toColor();
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final height = constraints.maxHeight;
-        const fontSize = 11.0;
-
-        // Hacky way to make sure it's centered when the row is small
-        final double verticalPadding = 8.0.clamp(
-          0,
-          (height - fontSize - 5) / 2,
-        );
-
         return Container(
           color: AnthemTheme.panel.main,
-          child: Stack(
+          child: Row(
             children: [
-              Positioned(
-                left: 8,
-                top: verticalPadding,
-                child: Observer(
-                  builder: (context) {
-                    return Text(
-                      getTrack().name,
-                      style: TextStyle(
-                        color: AnthemTheme.text.main,
-                        fontSize: fontSize,
-                      ),
-                    );
-                  },
+              Container(
+                width: 9,
+                decoration: BoxDecoration(
+                  color: color,
+                  border: Border(
+                    right: BorderSide(
+                      color: AnthemTheme.panel.border,
+                      width: 1,
+                    ),
+                  ),
                 ),
               ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Button(
-                  variant: ButtonVariant.label,
-                  icon: Icons.mute,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: verticalPadding,
-                  ),
-                  hideBorder: true,
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
+                      child: Text(
+                        track.name,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AnthemTheme.text.main,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

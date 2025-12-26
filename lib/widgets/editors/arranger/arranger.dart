@@ -405,7 +405,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
 
   @override
   Widget build(BuildContext context) {
-    const trackHeaderWidth = 130.0;
+    const trackHeaderWidth = 160.0;
 
     final viewModel = Provider.of<ArrangerViewModel>(context);
     final controller = Provider.of<ArrangerController>(context);
@@ -818,6 +818,16 @@ class _TrackHeadersState extends State<_TrackHeaders> {
                       height: trackHeight - 1,
                       child: TrackHeader(trackID: trackID),
                     ),
+                  ),
+                );
+                headers.add(
+                  Positioned(
+                    key: Key('$trackID-border'),
+                    top: trackPositionPointer + trackHeight - 1,
+                    left: 0,
+                    right: 0,
+                    height: 1,
+                    child: Container(color: AnthemTheme.panel.border),
                   ),
                 );
                 const resizeHandleHeight = 10.0;

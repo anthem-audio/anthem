@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
@@ -28,9 +29,10 @@ part 'track.g.dart';
 @AnthemModel.syncedModel()
 class TrackModel extends _TrackModel
     with _$TrackModel, _$TrackModelAnthemModelMixin {
-  TrackModel({required super.name});
+  TrackModel({required super.name, required super.color});
 
-  TrackModel.uninitialized() : super(name: '');
+  TrackModel.uninitialized()
+    : super(name: '', color: AnthemColor.uninitialized());
 
   factory TrackModel.fromJson(Map<String, dynamic> json) =>
       _$TrackModelAnthemModelMixin.fromJson(json);
@@ -43,5 +45,10 @@ abstract class _TrackModel
   @anthemObservable
   String name;
 
-  _TrackModel({required this.name}) : id = getId(), super();
+  @anthemObservable
+  AnthemColor color;
+
+  _TrackModel({required this.name, required this.color})
+    : id = getId(),
+      super();
 }
