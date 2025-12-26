@@ -24,7 +24,6 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/measure_text.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
-import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 import 'package:flutter/widgets.dart';
@@ -34,19 +33,23 @@ import 'menu_model.dart';
 
 class _Constants {
   static const double submenuArrowWidth = 8.0;
-  static const double padding = 8.0;
+  static const double outerPadding = 3.0;
+  static const double horizontalInnerPadding = 8.0;
+  static const double verticalInnerPadding = 4.0;
   static const double fontSize = 11.0;
+  static const double separatorPadding = 7.0;
   static const double separatorHeight = 13.0;
-  static const double menuItemHeight = 25.0;
+  static const double menuItemHeight = 24.0;
 
   static const Duration hoverOpenDuration = Duration(milliseconds: 500);
   static const Duration hoverCloseDuration = Duration(milliseconds: 500);
 }
 
-double getMenuItemHeight(GenericMenuItem menuItem) {
-  if (menuItem is AnthemMenuItem) return _Constants.menuItemHeight;
-  if (menuItem is Separator) return _Constants.separatorHeight;
-  return 0;
+double _getMenuItemHeight(GenericMenuItem menuItem) {
+  return switch (menuItem) {
+    AnthemMenuItem() => _Constants.menuItemHeight,
+    Separator() => _Constants.separatorHeight,
+  };
 }
 
 class MenuRenderer extends StatefulWidget {
@@ -82,9 +85,7 @@ class _MenuRendererState extends State<MenuRenderer> {
             context: context,
           ).width;
           var submenuArrowWidth = hasSubmenu
-              ? _Constants.padding +
-                    _Constants.submenuArrowWidth +
-                    (child.submenu != null ? 50 : 0)
+              ? _Constants.submenuArrowWidth + (child.submenu != null ? 50 : 0)
               : 0;
           // The extra 4 pixels here is due to the border from the hover effect,
           // plus something else that I'm not sure about. We need 2px for the hover
@@ -93,11 +94,6 @@ class _MenuRendererState extends State<MenuRenderer> {
           return (labelWidth + submenuArrowWidth + 7);
         })
         .fold<double>(0, (value, element) => max(value, element));
-
-    final height = widget.menu.children.fold<double>(
-      0,
-      (value, element) => value + getMenuItemHeight(element),
-    );
 
     return MouseRegion(
       onEnter: (event) {
@@ -116,14 +112,19 @@ class _MenuRendererState extends State<MenuRenderer> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: AnthemTheme.panel.background,
-          border: Border.all(color: AnthemTheme.panel.border),
+          color: AnthemTheme.overlay.background,
+          border: Border.all(color: AnthemTheme.overlay.border),
           borderRadius: const BorderRadius.all(Radius.circular(4)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF000000).withValues(alpha: 0.25),
+              blurRadius: 14,
+            ),
+          ],
         ),
-        width: widest + (_Constants.padding + 1) * 4,
-        height: height + (_Constants.padding + 1) * 2,
+        width: widest + (_Constants.horizontalInnerPadding + 1) * 4,
         child: Padding(
-          padding: const EdgeInsets.all(_Constants.padding),
+          padding: const EdgeInsets.all(_Constants.outerPadding),
           child: Column(
             children: widget.menu.children
                 .map(
@@ -212,7 +213,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
       context,
     );
 
-    final height = getMenuItemHeight(widget.menuItem);
+    final height = _getMenuItemHeight(widget.menuItem);
 
     if (widget.menuItem is AnthemMenuItem) {
       final item = widget.menuItem as AnthemMenuItem;
@@ -235,20 +236,23 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
       ];
 
       if (item.submenu != null) {
-        rowChildren.add(const SizedBox(width: _Constants.padding));
         rowChildren.add(
-          SizedBox(
-            width: _Constants.submenuArrowWidth,
-            child: Transform.rotate(
-              angle: -pi / 2,
-              alignment: Alignment.center,
-              child: SvgIcon(icon: Icons.arrowDown, color: textColor),
+          const SizedBox(width: _Constants.horizontalInnerPadding),
+        );
+        rowChildren.add(
+          ClipPath(
+            clipper: _TriangleClipper(),
+            child: Container(
+              width: _Constants.submenuArrowWidth * 0.75,
+              height: _Constants.submenuArrowWidth,
+              color: textColor,
             ),
           ),
         );
       }
 
       return MouseRegion(
+        cursor: item.disabled ? MouseCursor.defer : SystemMouseCursors.click,
         onEnter: (e) {
           if (item.disabled) return;
 
@@ -300,17 +304,12 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
           },
           child: Container(
             decoration: BoxDecoration(
-              color: showHoverState ? AnthemTheme.primary.subtle : null,
-              // This adds 2px to the width of the menu
-              border: showHoverState
-                  ? Border.all(color: AnthemTheme.primary.subtleBorder)
-                  : Border.all(color: const Color(0x00000000)),
-              borderRadius: BorderRadius.circular(4),
+              color: showHoverState ? AnthemTheme.overlay.menuItemHover : null,
             ),
             height: height,
             child: Padding(
               padding: const EdgeInsets.symmetric(
-                horizontal: _Constants.padding,
+                horizontal: _Constants.horizontalInnerPadding,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.max,
@@ -328,10 +327,10 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
         height: height,
         child: Padding(
           padding: EdgeInsets.symmetric(
-            horizontal: _Constants.padding,
+            horizontal: _Constants.separatorPadding,
             vertical: (_Constants.separatorHeight / 2).floor().toDouble(),
           ),
-          child: Container(color: AnthemTheme.control.border),
+          child: Container(color: AnthemTheme.overlay.border),
         ),
       );
     }
@@ -357,11 +356,8 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
       ScreenOverlayEntry(
         builder: (screenOverlayContext, id) {
           return Positioned(
-            left: position.dx + size.width + _Constants.padding,
-            top:
-                position.dy -
-                _Constants.padding -
-                1, // -1 to account for menu border
+            left: position.dx + size.width + _Constants.horizontalInnerPadding,
+            top: position.dy - _Constants.verticalInnerPadding,
             child: MenuRenderer(id: id, menu: item.submenu!),
           );
         },
@@ -400,4 +396,19 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
     submenuCloseTimer?.cancel();
     submenuCloseTimer = null;
   }
+}
+
+class _TriangleClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    path.moveTo(0, 0);
+    path.lineTo(size.width, size.height / 2);
+    path.lineTo(0, size.height);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }

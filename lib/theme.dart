@@ -83,6 +83,8 @@ class _Control {
 class _Overlay {
   Color background = const Color(0xFF3D3D3D);
   Color border = const Color(0xFF636363);
+  Color menuItemHover = const Color(0xFF20A888).withValues(alpha: 0.25);
+  Color menuItemActive = const Color(0xFF20A888).withValues(alpha: 0.11);
 }
 
 const _textMain = Color(0xFFCFCFCF);
