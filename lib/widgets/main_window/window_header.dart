@@ -567,6 +567,7 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
               Menu(
                 menuController: fileMenuController,
                 menuDef: fileMenuDef,
+                offset: const Offset(0, 1),
                 child: _ApplicationMenuButton(
                   text: 'File',
                   isFirst: true,
@@ -578,6 +579,7 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
               Menu(
                 menuController: editMenuController,
                 menuDef: editMenuDef,
+                offset: const Offset(0, 1),
                 child: Container(width: 1, color: AnthemTheme.panel.border),
               ),
               _ApplicationMenuButton(
@@ -589,6 +591,7 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
               Menu(
                 menuController: helpMenuController,
                 menuDef: helpMenuDef,
+                offset: const Offset(0, 1),
                 child: Container(width: 1, color: AnthemTheme.panel.border),
               ),
               _ApplicationMenuButton(

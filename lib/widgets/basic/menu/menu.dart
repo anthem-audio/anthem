@@ -32,6 +32,7 @@ class Menu extends StatefulWidget {
   final Widget? child;
   late final MenuAlignment menuAlignment;
   final void Function()? onClose;
+  final Offset offset;
 
   Menu({
     super.key,
@@ -40,6 +41,7 @@ class Menu extends StatefulWidget {
     required this.menuDef,
     MenuAlignment? alignment,
     this.onClose,
+    this.offset = Offset.zero,
   }) {
     menuAlignment = alignment ?? MenuAlignment.bottomLeft;
   }
@@ -71,15 +73,16 @@ class _MenuState extends State<Menu> {
         incomingPos ??
         contentRenderBox.localToGlobal(
           Offset(
-            widget.menuAlignment == MenuAlignment.topLeft ||
-                    widget.menuAlignment == MenuAlignment.bottomLeft
-                ? 0
-                : contentRenderBox.size.width,
-            widget.menuAlignment == MenuAlignment.topLeft ||
-                    widget.menuAlignment == MenuAlignment.topRight
-                ? 0
-                : contentRenderBox.size.height,
-          ),
+                widget.menuAlignment == MenuAlignment.topLeft ||
+                        widget.menuAlignment == MenuAlignment.bottomLeft
+                    ? 0
+                    : contentRenderBox.size.width,
+                widget.menuAlignment == MenuAlignment.topLeft ||
+                        widget.menuAlignment == MenuAlignment.topRight
+                    ? 0
+                    : contentRenderBox.size.height,
+              ) +
+              widget.offset,
         );
     final id = getId();
 
