@@ -21,7 +21,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/button_tabs.dart';
+import 'package:anthem/widgets/basic/button_tabs_old.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/text_box.dart';
