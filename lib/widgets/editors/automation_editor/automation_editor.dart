@@ -62,7 +62,7 @@ class AutomationEditorState extends State<AutomationEditor> {
         viewModel: viewModel!,
         project: project,
       );
-      ControllerRegistry.instance.registerController(project.id, controller!);
+      ServiceRegistry.forProject(project.id).register(controller!);
     }
 
     return MultiProvider(

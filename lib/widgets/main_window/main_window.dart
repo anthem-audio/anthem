@@ -56,7 +56,7 @@ class _MainWindowState extends State<MainWindow> {
   @override
   void initState() {
     super.initState();
-    ControllerRegistry.instance.mainWindowController = controller;
+    ServiceRegistry.mainWindowController = controller;
   }
 
   @override

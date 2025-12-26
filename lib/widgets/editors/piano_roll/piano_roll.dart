@@ -94,7 +94,7 @@ class _PianoRollState extends State<PianoRoll> {
 
     if (controller == null) {
       controller = PianoRollController(project: project, viewModel: viewModel!);
-      ControllerRegistry.instance.registerController(project.id, controller!);
+      ServiceRegistry.forProject(project.id).register(controller!);
     }
 
     return Provider.value(

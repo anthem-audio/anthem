@@ -18,7 +18,6 @@
 */
 
 import 'package:anthem/logic/service_registry.dart';
-import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
@@ -34,9 +33,7 @@ class PanelBorder extends StatelessObserverWidget {
   @override
   Widget build(BuildContext context) {
     final projectId = AnthemStore.instance.activeProjectId;
-    final viewModel = ControllerRegistry.instance
-        .getController<ProjectController>(projectId)!
-        .viewModel;
+    final viewModel = ServiceRegistry.forProject(projectId).projectViewModel;
 
     final isActive = panelKind != null && viewModel.activePanel == panelKind;
 

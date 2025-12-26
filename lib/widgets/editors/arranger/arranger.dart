@@ -77,17 +77,22 @@ class _ArrangerState extends State<Arranger> {
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
 
-    viewModel ??= ArrangerViewModel(
-      baseTrackHeight: 45,
-      trackHeightModifiers: mobx.ObservableMap.of(
-        project.tracks.nonObservableInner.map((key, value) => MapEntry(key, 1)),
-      ),
-      timeView: TimeRange(0, 3072),
-    );
+    if (viewModel == null) {
+      viewModel = ArrangerViewModel(
+        baseTrackHeight: 45,
+        trackHeightModifiers: mobx.ObservableMap.of(
+          project.tracks.nonObservableInner.map(
+            (key, value) => MapEntry(key, 1),
+          ),
+        ),
+        timeView: TimeRange(0, 3072),
+      );
+      ServiceRegistry.forProject(project.id).register(viewModel!);
+    }
 
     if (controller == null) {
       controller = ArrangerController(viewModel: viewModel!, project: project);
-      ControllerRegistry.instance.registerController(project.id, controller!);
+      ServiceRegistry.forProject(project.id).register(controller!);
     }
 
     return MultiProvider(

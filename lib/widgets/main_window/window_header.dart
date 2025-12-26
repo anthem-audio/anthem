@@ -328,9 +328,9 @@ class _TabState extends State<_Tab> {
                       icon: Icons.close,
                       onPress: () {
                         closePressed = true;
-                        ControllerRegistry.instance
-                            .getController<ProjectController>(widget.id)
-                            ?.close();
+                        ServiceRegistry.forProject(
+                          widget.id,
+                        ).projectController.close();
                       },
                     ),
                   ),
@@ -376,9 +376,7 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
     );
 
     ProjectController getProjectController() {
-      return ControllerRegistry.instance.getController<ProjectController>(
-        activeProjectId,
-      )!;
+      return ServiceRegistry.forProject(activeProjectId).projectController;
     }
 
     final fileMenuDef = MenuDef(

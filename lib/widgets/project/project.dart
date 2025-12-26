@@ -71,7 +71,8 @@ class _ProjectState extends State<Project> {
     _viewModel = ProjectViewModel();
     _controller = ProjectController(projectModel, _viewModel);
 
-    ControllerRegistry.instance.registerController(widget.id, _controller);
+    ServiceRegistry.forProject(widget.id).register(_viewModel);
+    ServiceRegistry.forProject(widget.id).register(_controller);
   }
 
   @override

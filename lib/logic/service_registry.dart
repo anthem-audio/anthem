@@ -17,49 +17,67 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/main_window_controller.dart';
+import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
+import 'package:anthem/widgets/editors/arranger/view_model.dart';
+import 'package:anthem/widgets/project/project_view_model.dart';
 
-/// A registry for storing and retrieving controllers by key.
+/// A registry for storing and retrieving services by key.
 ///
-/// Unless otherwise necessary, controllers are registered here by project ID.
-/// For example, the arranger controller for each project is just registered
-/// under that project's ID.
-class ControllerRegistry {
-  MainWindowController? mainWindowController;
-  DialogController? dialogController;
+/// Unless otherwise necessary, services are registered here by project ID. For
+/// example, the arranger controller for each project is just registered under
+/// that project's ID.
+class ServiceRegistry {
+  static MainWindowController? mainWindowController;
+  static DialogController? dialogController;
 
-  static final ControllerRegistry instance = ControllerRegistry._internal();
+  static final Map<Id, ServiceRegistry> _serviceRegistriesByProjectId = {};
 
-  ControllerRegistry._internal();
+  // TODO: Clean up on project close
 
-  final Map<(Type, String), dynamic> _controllers = {};
+  static ServiceRegistry forProject(Id projectId) =>
+      _serviceRegistriesByProjectId[projectId] ??= ServiceRegistry._internal();
+  static void removeProject(Id projectId) =>
+      _serviceRegistriesByProjectId.remove(projectId);
 
-  void registerController<T>(String key, T controller) {
+  ProjectController get projectController =>
+      _services[(ProjectController, null)]!;
+
+  ProjectViewModel get projectViewModel => _services[(ProjectViewModel, null)]!;
+  ArrangerViewModel get arrangerViewModel =>
+      _services[(ArrangerViewModel, null)]!;
+
+  ServiceRegistry._internal();
+
+  final Map<(Type, String?), dynamic> _services = {};
+
+  void register<T>(T controller, [String? key]) {
     if (T == dynamic) {
       throw Exception('Cannot register controller of type dynamic');
     }
 
-    _controllers[(T, key)] = controller;
+    _services[(T, key)] = controller;
   }
 
-  T? getController<T>(String key) {
+  T? get<T>(String key) {
     if (T == dynamic) {
       throw Exception('Cannot get controller of type dynamic');
     }
 
-    final controller = _controllers[(T, key)];
+    final controller = _services[(T, key)];
     if (controller is T) {
       return controller;
     }
     return null;
   }
 
-  void unregisterController<T>(String key) {
+  void unregister<T>(String key) {
     if (T == dynamic) {
       throw Exception('Cannot unregister controller of type dynamic');
     }
 
-    _controllers.remove((T, key));
+    _services.remove((T, key));
   }
 }

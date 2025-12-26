@@ -255,9 +255,8 @@ class ProjectController {
   ///
   /// Returns true if the project was closed, false if the close was cancelled.
   Future<bool> close() {
-    final dialogController = ControllerRegistry.instance.dialogController!;
-    final mainWindowController =
-        ControllerRegistry.instance.mainWindowController!;
+    final dialogController = ServiceRegistry.dialogController!;
+    final mainWindowController = ServiceRegistry.mainWindowController!;
 
     final completer = Completer<bool>();
 
@@ -299,6 +298,10 @@ class ProjectController {
       mainWindowController.closeProjectWithoutSaving(project.id);
       completer.complete(true);
     }
+
+    completer.future.then((_) {
+      ServiceRegistry.removeProject(project.id);
+    });
 
     return completer.future;
   }

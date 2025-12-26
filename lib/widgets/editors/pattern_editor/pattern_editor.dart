@@ -57,7 +57,7 @@ class _PatternEditorState extends State<PatternEditor> {
 
     if (controller == null) {
       controller = PatternEditorController(project: project);
-      ControllerRegistry.instance.registerController(project.id, controller!);
+      ServiceRegistry.forProject(project.id).register(controller!);
     }
 
     final kebabMenuController = AnthemMenuController();

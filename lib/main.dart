@@ -21,7 +21,6 @@ import 'dart:async';
 
 import 'package:anthem/licenses.dart';
 import 'package:anthem/logic/service_registry.dart';
-import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/shortcuts/raw_key_event_singleton.dart';
@@ -90,7 +89,7 @@ class _AppState extends State<App> with WindowListener {
   void initState() {
     super.initState();
 
-    ControllerRegistry.instance.dialogController = dialogController;
+    ServiceRegistry.dialogController = dialogController;
 
     if (!kIsWeb) {
       windowManager.addListener(this);
@@ -135,16 +134,18 @@ class _AppState extends State<App> with WindowListener {
 
     for (final project in [...projects].reversed) {
       if (!project.isDirty) {
-        ControllerRegistry.instance.mainWindowController!
-            .closeProjectWithoutSaving(project.id);
+        ServiceRegistry.mainWindowController!.closeProjectWithoutSaving(
+          project.id,
+        );
         continue;
       }
 
-      ControllerRegistry.instance.mainWindowController!.switchTab(project.id);
+      ServiceRegistry.mainWindowController!.switchTab(project.id);
 
-      final projectController = ControllerRegistry.instance
-          .getController<ProjectController>(project.id);
-      final didClose = await projectController?.close();
+      final projectController = ServiceRegistry.forProject(
+        project.id,
+      ).projectController;
+      final didClose = await projectController.close();
 
       if (didClose != true) {
         return false;

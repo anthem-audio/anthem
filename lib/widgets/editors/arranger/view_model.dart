@@ -107,4 +107,12 @@ abstract class _ArrangerViewModel with Store {
         );
     return (clip: clipUnderCursor, resizeHandle: resizeHandleUnderCursor);
   }
+
+  void registerTrack(Id trackId) {
+    trackHeightModifiers[trackId] = 1;
+  }
+
+  void unregisterTrack(Id trackId) {
+    trackHeightModifiers.remove(trackId);
+  }
 }
