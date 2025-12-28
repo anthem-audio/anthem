@@ -79,7 +79,7 @@ class _ArrangerState extends State<Arranger> {
 
     if (viewModel == null) {
       viewModel = ArrangerViewModel(
-        baseTrackHeight: 45,
+        baseTrackHeight: 53,
         trackHeightModifiers: mobx.ObservableMap.of(
           project.tracks.nonObservableInner.map(
             (key, value) => MapEntry(key, 1),
