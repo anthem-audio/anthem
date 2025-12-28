@@ -164,6 +164,15 @@ class _ButtonState extends State<Button> {
   _ButtonState();
 
   @override
+  void dispose() {
+    if (hintId != null) {
+      HintStore.instance.removeHint(hintId!);
+    }
+
+    super.dispose();
+  }
+
+  @override
   void didUpdateWidget(Button oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (hovered && oldWidget.hint != widget.hint) {
