@@ -892,6 +892,7 @@ class _TrackHeadersState extends State<_TrackHeaders> {
             if (!didBreak) {
               headers.add(
                 Positioned(
+                  key: Key('add-track-button'),
                   top: trackPositionPointer + 8,
                   left: 16,
                   right: 16,
