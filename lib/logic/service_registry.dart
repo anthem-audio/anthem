@@ -35,8 +35,6 @@ class ServiceRegistry {
 
   static final Map<Id, ServiceRegistry> _serviceRegistriesByProjectId = {};
 
-  // TODO: Clean up on project close
-
   static ServiceRegistry forProject(Id projectId) =>
       _serviceRegistriesByProjectId[projectId] ??= ServiceRegistry._internal();
   static void removeProject(Id projectId) =>
