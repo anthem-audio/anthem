@@ -43,6 +43,7 @@ class TrackHeader extends StatelessObserverWidget {
         return Container(
           color: AnthemTheme.panel.main,
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 width: 9,
@@ -57,25 +58,19 @@ class TrackHeader extends StatelessObserverWidget {
                 ),
               ),
               Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 7,
-                      ),
-                      child: Text(
-                        track.name,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: AnthemTheme.text.main,
-                          fontSize: 11,
-                        ),
-                      ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 7,
+                  ),
+                  child: Text(
+                    track.name,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AnthemTheme.text.main,
+                      fontSize: 11,
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],

@@ -79,12 +79,8 @@ class _ArrangerState extends State<Arranger> {
 
     if (viewModel == null) {
       viewModel = ArrangerViewModel(
+        project: project,
         baseTrackHeight: 53,
-        trackHeightModifiers: mobx.ObservableMap.of(
-          project.tracks.nonObservableInner.map(
-            (key, value) => MapEntry(key, 1),
-          ),
-        ),
         timeView: TimeRange(0, 3072),
       );
       ServiceRegistry.forProject(project.id).register(viewModel!);
@@ -673,21 +669,13 @@ class _ArrangerCanvas extends StatelessWidget {
                   time: viewModel.timeView.start + selectionBox.width,
                 );
 
-                final top = trackIndexToPos(
-                  baseTrackHeight: viewModel.baseTrackHeight,
-                  scrollPosition: viewModel.verticalScrollPosition,
-                  trackHeightModifiers: viewModel.trackHeightModifiers,
-                  trackOrder: project.trackOrder,
-                  trackIndex: selectionBox.top,
+                final top = viewModel.trackPositionCalculator.getTrackPosition(
+                  selectionBox.top.floor(),
                 );
-
-                final bottom = trackIndexToPos(
-                  baseTrackHeight: viewModel.baseTrackHeight,
-                  scrollPosition: viewModel.verticalScrollPosition,
-                  trackHeightModifiers: viewModel.trackHeightModifiers,
-                  trackOrder: project.trackOrder,
-                  trackIndex: selectionBox.top + selectionBox.height,
-                );
+                final bottom = viewModel.trackPositionCalculator
+                    .getTrackPosition(
+                      (selectionBox.top + selectionBox.height).floor(),
+                    );
 
                 final borderColor = const HSLColor.fromAHSL(
                   1,
@@ -796,41 +784,64 @@ class _TrackHeadersState extends State<_TrackHeaders> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final editorHeight = constraints.maxHeight;
+
         return Observer(
           builder: (context) {
+            viewModel.trackPositionCalculator.invalidate(
+              editorHeight,
+              widget.verticalScrollPosition,
+            );
+
             List<Widget> headers = [];
             List<Widget> resizeHandles = [];
 
-            var trackPositionPointer = -widget.verticalScrollPosition;
+            double positionForAddButton = double.nan;
+            var lastTrackWasSendTrack = false;
+            var lastTrackBottom = 0.0;
 
-            var didBreak = false;
+            for (final (trackIndex, (trackId, isSendTrack))
+                in project.trackOrder
+                    .map((t) => (t, false))
+                    .followedBy(
+                      project.sendTrackOrder.reversed.map((t) => (t, true)),
+                    )
+                    .indexed) {
+              final heightModifier = viewModel.trackHeightModifiers[trackId]!;
 
-            for (final trackID in project.trackOrder) {
-              final heightModifier = viewModel.trackHeightModifiers[trackID]!;
+              final trackPosition = viewModel.trackPositionCalculator
+                  .getTrackPosition(trackIndex);
+              final trackHeight = viewModel.trackPositionCalculator
+                  .getTrackHeight(trackIndex);
 
-              final trackHeight = getTrackHeight(
-                viewModel.baseTrackHeight,
-                heightModifier,
-              );
+              if (isSendTrack && !lastTrackWasSendTrack) {
+                lastTrackWasSendTrack = true;
+                positionForAddButton = lastTrackBottom;
+              }
 
-              if (trackPositionPointer < constraints.maxHeight &&
-                  trackPositionPointer + trackHeight > 0) {
+              lastTrackBottom = trackPosition + trackHeight;
+
+              if (trackPosition >= editorHeight) {
+                break;
+              }
+
+              if (trackPosition + trackHeight > 0) {
                 headers.add(
                   Positioned(
-                    key: Key(trackID),
-                    top: trackPositionPointer,
+                    key: Key(trackId),
+                    top: trackPosition + (isSendTrack ? 1 : 0),
                     left: 0,
                     right: 0,
                     child: SizedBox(
                       height: trackHeight - 1,
-                      child: TrackHeader(trackID: trackID),
+                      child: TrackHeader(trackID: trackId),
                     ),
                   ),
                 );
                 headers.add(
                   Positioned(
-                    key: Key('$trackID-border'),
-                    top: trackPositionPointer + trackHeight - 1,
+                    key: Key('$trackId-border'),
+                    top: trackPosition + (isSendTrack ? 0 : (trackHeight - 1)),
                     left: 0,
                     right: 0,
                     height: 1,
@@ -840,11 +851,11 @@ class _TrackHeadersState extends State<_TrackHeaders> {
                 const resizeHandleHeight = 10.0;
                 resizeHandles.add(
                   Positioned(
-                    key: Key('$trackID-handle'),
+                    key: Key('$trackId-handle'),
                     left: 0,
                     right: 0,
                     top:
-                        trackPositionPointer +
+                        trackPosition +
                         trackHeight -
                         1 -
                         resizeHandleHeight / 2,
@@ -866,7 +877,7 @@ class _TrackHeadersState extends State<_TrackHeaders> {
                                 newPixelHeight /
                                 startPixelHeight *
                                 startModifier;
-                            viewModel.trackHeightModifiers[trackID] =
+                            viewModel.trackHeightModifiers[trackId] =
                                 newModifier;
                           },
                           // Hack: Listener callbacks do nothing unless this is
@@ -878,22 +889,15 @@ class _TrackHeadersState extends State<_TrackHeaders> {
                   ),
                 );
               }
-
-              if (trackPositionPointer >= constraints.maxHeight) {
-                didBreak = true;
-                break;
-              }
-
-              trackPositionPointer += trackHeight;
             }
 
             // If we didn't fill the whole area, then we are at the end of the
             // track list, so we can add an "add track" button
-            if (!didBreak) {
+            if (!positionForAddButton.isNaN) {
               headers.add(
                 Positioned(
                   key: Key('add-track-button'),
-                  top: trackPositionPointer + 8,
+                  top: positionForAddButton + 8,
                   left: 16,
                   right: 16,
                   child: Button(

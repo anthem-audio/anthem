@@ -54,6 +54,7 @@ class ProjectModel extends _ProjectModel
 
     final Map<Id, TrackModel> initTracks = {};
     final List<Id> initTrackOrder = [];
+    final List<Id> initSendTrackOrder = [];
 
     for (var i = 1; i <= 1; i++) {
       final track = TrackModel(
@@ -64,8 +65,16 @@ class ProjectModel extends _ProjectModel
       initTrackOrder.add(track.id);
     }
 
+    final masterTrack = TrackModel(
+      name: 'Master',
+      color: AnthemColor.randomHue(),
+    );
+    initTracks[masterTrack.id] = masterTrack;
+    initSendTrackOrder.add(masterTrack.id);
+
     tracks = AnthemObservableMap.of(initTracks);
     trackOrder = AnthemObservableList.of(initTrackOrder);
+    sendTrackOrder = AnthemObservableList.of(initSendTrackOrder);
   }
 
   factory ProjectModel.fromJson(Map<String, dynamic> json) {
@@ -131,6 +140,9 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
 
   @anthemObservable
   AnthemObservableList<Id> trackOrder = AnthemObservableList();
+
+  @anthemObservable
+  AnthemObservableList<Id> sendTrackOrder = AnthemObservableList();
 
   /// ID of the active instrument, used to determine which instrument is shown
   /// in the channel rack, which is used for piano roll, etc.

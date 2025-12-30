@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/scroll_manager.dart';
@@ -112,7 +111,6 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
 
   ArrangerPointerEvent convertPointerEvent(PointerEvent event, Size viewSize) {
     final viewModel = Provider.of<ArrangerViewModel>(context, listen: false);
-    final project = Provider.of<ProjectModel>(context, listen: false);
     final keyboardModifiers = Provider.of<KeyboardModifiers>(
       context,
       listen: false,
@@ -125,12 +123,8 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
       pixelOffsetFromLeft: event.localPosition.dx,
     );
 
-    final track = posToTrackIndex(
-      yOffset: event.localPosition.dy,
-      baseTrackHeight: viewModel.baseTrackHeight,
-      trackOrder: project.trackOrder,
-      trackHeightModifiers: viewModel.trackHeightModifiers,
-      scrollPosition: viewModel.verticalScrollPosition,
+    final track = viewModel.trackPositionCalculator.getTrackIndexFromPosition(
+      event.localPosition.dy,
     );
 
     final (clip: clipUnderCursor, resizeHandle: resizeHandleUnderCursor) =

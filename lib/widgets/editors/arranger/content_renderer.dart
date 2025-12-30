@@ -169,18 +169,12 @@ class ArrangerContentPainter extends CustomPainterObserver {
       if (x > size.width || x + width < 0) return null;
 
       final y =
-          trackIndexToPos(
-            trackIndex: project.trackOrder
-                .indexWhere((trackID) => trackID == clip.trackId)
-                .toDouble(),
-            baseTrackHeight: viewModel.baseTrackHeight,
-            trackOrder: project.trackOrder,
-            trackHeightModifiers: viewModel.trackHeightModifiers,
-            scrollPosition: verticalScrollPosition,
+          viewModel.trackPositionCalculator.getTrackPosition(
+            project.trackOrder.indexWhere((trackID) => trackID == clip.trackId),
           ) -
           1;
       final trackHeight =
-          getTrackHeight(
+          calculateTrackHeight(
             viewModel.baseTrackHeight,
             viewModel.trackHeightModifiers[clip.trackId]!,
           ) +

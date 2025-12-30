@@ -26,7 +26,6 @@ import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
 
 import '../view_model.dart';
-import '../helpers.dart';
 
 class ArrangerBackgroundPainter extends CustomPainterObserver {
   final double verticalScrollPosition;
@@ -53,23 +52,24 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
 
     // Horizontal lines
 
-    var verticalPositionPointer = -verticalScrollPosition - 1;
+    final trackCount =
+        project.trackOrder.length + project.sendTrackOrder.length;
 
-    final baseTrackHeight = viewModel.baseTrackHeight;
+    for (var i = 0; i < trackCount; i++) {
+      final isSendTrack = i >= project.trackOrder.length;
 
-    for (final trackID in project.trackOrder) {
-      final trackHeight = getTrackHeight(
-        baseTrackHeight,
-        viewModel.trackHeightModifiers[trackID]!,
+      final trackPosition = viewModel.trackPositionCalculator.getTrackPosition(
+        i,
       );
+      final trackHeight = viewModel.trackPositionCalculator.getTrackHeight(i);
 
-      verticalPositionPointer += trackHeight;
-
-      if (verticalPositionPointer < 0) continue;
-      if (verticalPositionPointer > size.height) break;
+      var drawPosition = trackPosition;
+      if (!isSendTrack) {
+        drawPosition += trackHeight - 1;
+      }
 
       canvas.drawRect(
-        Rect.fromLTWH(0, verticalPositionPointer, size.width, 1),
+        Rect.fromLTWH(0, drawPosition, size.width, 1),
         majorLinePaint,
       );
     }

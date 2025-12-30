@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,10 +18,12 @@
 */
 
 import 'dart:math';
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/clip.dart';
+import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
@@ -71,20 +73,30 @@ abstract class _ArrangerViewModel with Store {
   @observable
   Id? pressedClip;
 
+  late final _TrackPositionAndSize trackPositionCalculator;
+
   final visibleClips = CanvasAnnotationSet<({Id id})>();
   final visibleResizeAreas =
       CanvasAnnotationSet<({Id id, ResizeAreaType type})>();
 
   _ArrangerViewModel({
+    required ProjectModel project,
     required this.baseTrackHeight,
-    required this.trackHeightModifiers,
     required this.timeView,
-  });
+  }) : trackHeightModifiers = ObservableMap.of(
+         project.tracks.nonObservableInner.map(
+           (key, value) => MapEntry(key, 1),
+         ),
+       ) {
+    trackPositionCalculator = _TrackPositionAndSize(
+      project,
+      this as ArrangerViewModel,
+    );
+  }
 
-  // Total height of the entire scrollable region
-  @computed
-  double get scrollAreaHeight =>
-      getScrollAreaHeight(baseTrackHeight, trackHeightModifiers);
+  /// Total height of the entire scrollable region
+  @observable
+  double scrollAreaHeight = 0.0;
 
   /// Calculates the clip and resize handle under the cursor, if there is one.
   ({
@@ -114,5 +126,112 @@ abstract class _ArrangerViewModel with Store {
 
   void unregisterTrack(Id trackId) {
     trackHeightModifiers.remove(trackId);
+  }
+}
+
+/// Calculates and caches the size and position of tracks in the current view.
+///
+/// The position of each track is dependent on the height of each track above it
+/// plus the vertical scroll position, and the height of the scrollable area
+/// depends on the height of all tracks.
+///
+/// The arranger uses this to calculate which track headers are on screen and
+/// where they are, and to determine how to render the scrollbar. The clip
+/// renderer uses this to determine the y position and size of each clip.
+///
+/// The values are cached in a typed array to improve memory locality and reduce
+/// allocation and GC pressure.
+class _TrackPositionAndSize {
+  ProjectModel projectModel;
+  ArrangerViewModel arrangerViewModel;
+
+  var _cache = Float64List(0);
+  final _trackIdToIndex = <String, int>{};
+
+  _TrackPositionAndSize(this.projectModel, this.arrangerViewModel);
+
+  int trackIdToIndex(String trackId) => _trackIdToIndex[trackId]!;
+
+  double getTrackHeight(int trackIndex) => _cache[trackIndex * 2];
+  double getTrackPosition(int trackIndex) => _cache[trackIndex * 2 + 1];
+
+  /// Gets the track index plus a [0 - 1) offset from the top of the track,
+  /// given a y-offset from the top of the screen.
+  double getTrackIndexFromPosition(double yPosition) {
+    for (int i = 0; i < _cache.length ~/ 2; i++) {
+      final trackPosition = _cache[i * 2 + 1];
+      final trackHeight = _cache[i * 2];
+
+      if (yPosition >= trackPosition &&
+          yPosition <= trackPosition + trackHeight) {
+        return i.toDouble() + (yPosition - trackPosition) / trackHeight;
+      }
+    }
+
+    return double.infinity;
+  }
+
+  /// To be called on build in a LayoutBuilder, as soon as we can know the
+  /// height of the editor and before any further build or render work is done.
+  ///
+  /// This is meant to be used with a MobX observer.
+  void invalidate(double editorHeight, double verticalScrollPosition) {
+    final trackCount =
+        projectModel.trackOrder.length + projectModel.sendTrackOrder.length;
+
+    final allTracksIterable = projectModel.trackOrder
+        .map((t) => (t, false))
+        .followedBy(projectModel.sendTrackOrder.map((t) => (t, true)));
+
+    if (trackCount != projectModel.tracks.length) {
+      throw StateError(
+        'Track order lists and track list do not have the same size',
+      );
+    }
+
+    if (_cache.length != trackCount * 2) {
+      _cache = Float64List(trackCount * 2);
+      _trackIdToIndex.clear();
+    }
+
+    var totalTrackHeight = 0.0;
+    const addButtonAreaHeight = 33.0;
+
+    for (final (i, (trackId, _)) in allTracksIterable.indexed) {
+      final heightIndex = i * 2;
+      final trackHeight = calculateTrackHeight(
+        arrangerViewModel.baseTrackHeight,
+        arrangerViewModel.trackHeightModifiers[trackId]!,
+      );
+      _cache[heightIndex] = trackHeight;
+      _trackIdToIndex[trackId] = i;
+      totalTrackHeight += trackHeight;
+    }
+
+    final trackGap = max(
+      0.0,
+      editorHeight - (totalTrackHeight + addButtonAreaHeight),
+    );
+
+    var lastWasSendTrack = false;
+    var positionPointer = -verticalScrollPosition;
+
+    for (final (i, (_, isSendTrack)) in allTracksIterable.indexed) {
+      final heightIndex = i * 2;
+      final positionIndex = heightIndex + 1;
+
+      if (isSendTrack && !lastWasSendTrack) {
+        lastWasSendTrack = true;
+        positionPointer += trackGap + addButtonAreaHeight;
+      }
+
+      _cache[positionIndex] = positionPointer;
+      positionPointer += _cache[heightIndex];
+    }
+
+    arrangerViewModel.scrollAreaHeight =
+        positionPointer +
+        arrangerViewModel.verticalScrollPosition -
+        addButtonAreaHeight;
   }
 }
