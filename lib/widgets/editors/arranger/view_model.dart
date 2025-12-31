@@ -98,6 +98,15 @@ abstract class _ArrangerViewModel with Store {
   @observable
   double scrollAreaHeight = 0.0;
 
+  /// Current editor height
+  ///
+  /// Careful not to accidentally use this while calculating the editor height.
+  @observable
+  double editorHeight = 0.0;
+
+  double get maxVerticalScrollPosition =>
+      (scrollAreaHeight - editorHeight).clamp(0, double.infinity);
+
   /// Calculates the clip and resize handle under the cursor, if there is one.
   ({
     CanvasAnnotation<({Id id})>? clip,
@@ -230,8 +239,6 @@ class _TrackPositionAndSize {
     }
 
     arrangerViewModel.scrollAreaHeight =
-        positionPointer +
-        arrangerViewModel.verticalScrollPosition -
-        addButtonAreaHeight;
+        positionPointer + arrangerViewModel.verticalScrollPosition;
   }
 }

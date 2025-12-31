@@ -62,7 +62,7 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
                                   minTrackHeight,
                                   maxTrackHeight,
                                 ))
-                        .clamp(0, double.infinity);
+                        .clamp(0.0, viewModel.maxVerticalScrollPosition);
               },
               onVerticalPanStart: (y) {
                 _panYStart = y;

@@ -78,29 +78,35 @@ class _ArrangerState extends State<Arranger> {
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
 
-    if (viewModel == null) {
-      viewModel = ArrangerViewModel(
+    if (this.viewModel == null) {
+      this.viewModel = ArrangerViewModel(
         project: project,
         baseTrackHeight: 53,
         timeView: TimeRange(0, 3072),
       );
-      ServiceRegistry.forProject(project.id).register(viewModel!);
+      ServiceRegistry.forProject(project.id).register(this.viewModel!);
     }
 
-    if (controller == null) {
-      controller = ArrangerController(viewModel: viewModel!, project: project);
-      ServiceRegistry.forProject(project.id).register(controller!);
+    if (this.controller == null) {
+      this.controller = ArrangerController(
+        viewModel: this.viewModel!,
+        project: project,
+      );
+      ServiceRegistry.forProject(project.id).register(this.controller!);
     }
+
+    final viewModel = this.viewModel!;
+    final controller = this.controller!;
 
     return MultiProvider(
       providers: [
-        Provider.value(value: viewModel!),
-        Provider.value(value: controller!),
+        Provider.value(value: viewModel),
+        Provider.value(value: controller),
       ],
       child: ArrangerTimeViewProvider(
         child: ShortcutConsumer(
           id: 'arranger',
-          shortcutHandler: controller!.onShortcut,
+          shortcutHandler: controller.onShortcut,
           child: Container(
             color: AnthemTheme.panel.background,
             child: Column(
@@ -113,12 +119,17 @@ class _ArrangerState extends State<Arranger> {
                     builder: (context, constraints) {
                       return Observer(
                         builder: (context) {
-                          final editorHeight = constraints.maxHeight;
+                          final editorHeight =
+                              constraints.maxHeight -
+                              _timelineHeight -
+                              _scrollbarShortSideLength;
+                          viewModel.editorHeight = editorHeight;
+                          viewModel.verticalScrollPosition = viewModel
+                              .verticalScrollPosition
+                              .clamp(0.0, viewModel.maxVerticalScrollPosition);
 
-                          viewModel!.trackPositionCalculator.invalidate(
-                            editorHeight -
-                                _timelineHeight -
-                                _scrollbarShortSideLength,
+                          viewModel.trackPositionCalculator.invalidate(
+                            editorHeight,
                           );
 
                           return Row(
@@ -356,23 +367,18 @@ class _HorizontalScrollbar extends StatelessObserverWidget {
   }
 }
 
-class _VerticalScrollbar extends StatelessWidget {
+class _VerticalScrollbar extends StatelessObserverWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<ArrangerViewModel>(context);
 
-    return Observer(
-      builder: (context) {
-        return ScrollbarRenderer(
-          scrollRegionStart: 0,
-          scrollRegionEnd: viewModel.scrollAreaHeight,
-          handleStart: viewModel.verticalScrollPosition,
-          handleEnd:
-              viewModel.verticalScrollPosition + viewModel.scrollAreaHeight,
-          onChange: (event) {
-            viewModel.verticalScrollPosition = event.handleStart;
-          },
-        );
+    return ScrollbarRenderer(
+      scrollRegionStart: 0,
+      scrollRegionEnd: viewModel.scrollAreaHeight,
+      handleStart: viewModel.verticalScrollPosition,
+      handleEnd: viewModel.verticalScrollPosition + viewModel.editorHeight,
+      onChange: (event) {
+        viewModel.verticalScrollPosition = event.handleStart;
       },
     );
   }
