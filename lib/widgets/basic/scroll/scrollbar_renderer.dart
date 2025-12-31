@@ -121,7 +121,11 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
       handleEnd -= endOvershoot;
     }
 
-    if (handleStart == widget.handleStart && handleEnd == widget.handleEnd) {
+    bool epsilonEquals(double a, double b) =>
+        (a - b) < 1e-12 && (a - b) > -1e-12;
+
+    if (epsilonEquals(handleStart, widget.handleStart) &&
+        epsilonEquals(handleEnd, widget.handleEnd)) {
       return;
     }
 
