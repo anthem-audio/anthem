@@ -361,22 +361,16 @@ class _VerticalScrollbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = Provider.of<ArrangerViewModel>(context);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Observer(
-          builder: (context) {
-            return ScrollbarRenderer(
-              scrollRegionStart: 0,
-              scrollRegionEnd: viewModel.scrollAreaHeight,
-              handleStart: viewModel.verticalScrollPosition,
-              handleEnd:
-                  viewModel.verticalScrollPosition +
-                  constraints.maxHeight -
-                  _timelineHeight,
-              onChange: (event) {
-                viewModel.verticalScrollPosition = event.handleStart;
-              },
-            );
+    return Observer(
+      builder: (context) {
+        return ScrollbarRenderer(
+          scrollRegionStart: 0,
+          scrollRegionEnd: viewModel.scrollAreaHeight,
+          handleStart: viewModel.verticalScrollPosition,
+          handleEnd:
+              viewModel.verticalScrollPosition + viewModel.scrollAreaHeight,
+          onChange: (event) {
+            viewModel.verticalScrollPosition = event.handleStart;
           },
         );
       },
