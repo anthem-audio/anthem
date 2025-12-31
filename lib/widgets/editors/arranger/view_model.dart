@@ -175,7 +175,7 @@ class _TrackPositionAndSize {
   /// height of the editor and before any further build or render work is done.
   ///
   /// This is meant to be used with a MobX observer.
-  void invalidate(double editorHeight, double verticalScrollPosition) {
+  void invalidate(double editorHeight) {
     final trackCount =
         projectModel.trackOrder.length + projectModel.sendTrackOrder.length;
 
@@ -214,7 +214,7 @@ class _TrackPositionAndSize {
     );
 
     var lastWasSendTrack = false;
-    var positionPointer = -verticalScrollPosition;
+    var positionPointer = -arrangerViewModel.verticalScrollPosition;
 
     for (final (i, (_, isSendTrack)) in allTracksIterable.indexed) {
       final heightIndex = i * 2;

@@ -51,6 +51,7 @@ import 'view_model.dart';
 import 'helpers.dart';
 
 const _timelineHeight = 38.0;
+const _scrollbarShortSideLength = 17.0;
 
 class Arranger extends StatefulWidget {
   const Arranger({super.key});
@@ -108,50 +109,75 @@ class _ArrangerState extends State<Arranger> {
                 _Header(),
                 Container(height: 1, color: AnthemTheme.panel.border),
                 Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(width: 126, child: PatternPicker()),
-                      Container(width: 1, color: AnthemTheme.panel.border),
-                      const Expanded(child: _ArrangerContent()),
-                      SizedBox(
-                        width: 17,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Container(
-                              height: _timelineHeight,
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  left: BorderSide(
-                                    color: AnthemTheme.panel.border,
-                                    width: 1,
-                                  ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Observer(
+                        builder: (context) {
+                          final editorHeight = constraints.maxHeight;
+
+                          viewModel!.trackPositionCalculator.invalidate(
+                            editorHeight -
+                                _timelineHeight -
+                                _scrollbarShortSideLength,
+                          );
+
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const SizedBox(
+                                width: 126,
+                                child: PatternPicker(),
+                              ),
+                              Container(
+                                width: 1,
+                                color: AnthemTheme.panel.border,
+                              ),
+                              const Expanded(child: _ArrangerContent()),
+                              SizedBox(
+                                width: _scrollbarShortSideLength,
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Container(
+                                      height: _timelineHeight,
+                                      decoration: BoxDecoration(
+                                        border: Border(
+                                          left: BorderSide(
+                                            color: AnthemTheme.panel.border,
+                                            width: 1,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          border: Border(
+                                            left: BorderSide(
+                                              color: AnthemTheme.panel.border,
+                                              width: 1,
+                                            ),
+                                            top: BorderSide(
+                                              color: AnthemTheme.panel.border,
+                                              width: 1,
+                                            ),
+                                          ),
+                                        ),
+                                        child: _VerticalScrollbar(),
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      height: _scrollbarShortSideLength - 1,
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
-                            Expanded(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    left: BorderSide(
-                                      color: AnthemTheme.panel.border,
-                                      width: 1,
-                                    ),
-                                    top: BorderSide(
-                                      color: AnthemTheme.panel.border,
-                                      width: 1,
-                                    ),
-                                  ),
-                                ),
-                                child: _VerticalScrollbar(),
-                              ),
-                            ),
-                            SizedBox(height: 16),
-                          ],
-                        ),
-                      ),
-                    ],
+                            ],
+                          );
+                        },
+                      );
+                    },
                   ),
                 ),
               ],
@@ -307,7 +333,7 @@ class _HorizontalScrollbar extends StatelessObserverWidget {
         project.sequence.ticksPerQuarter * 4 * 4;
 
     return Container(
-      height: 17,
+      height: _scrollbarShortSideLength,
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(color: AnthemTheme.panel.border, width: 1),
@@ -550,7 +576,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
                   ),
                 ),
                 width: trackHeaderWidth,
-                height: 17,
+                height: _scrollbarShortSideLength,
               ),
               Expanded(child: _HorizontalScrollbar()),
             ],
@@ -788,11 +814,6 @@ class _TrackHeadersState extends State<_TrackHeaders> {
 
         return Observer(
           builder: (context) {
-            viewModel.trackPositionCalculator.invalidate(
-              editorHeight,
-              widget.verticalScrollPosition,
-            );
-
             List<Widget> headers = [];
             List<Widget> resizeHandles = [];
 
