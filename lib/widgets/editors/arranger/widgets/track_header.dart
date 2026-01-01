@@ -118,35 +118,50 @@ class _TrackHeaderResizeHandleState extends State<TrackHeaderResizeHandle> {
       height: widget.resizeHandleHeight,
       child: MouseRegion(
         cursor: SystemMouseCursors.resizeUpDown,
-        child: Listener(
-          onPointerDown: (event) {
-            startPixelHeight = widget.trackHeight;
-            startModifier = trackHeightModifier;
-            startY = event.position.dy;
-            startVerticalScrollPosition = viewModel.verticalScrollPosition;
-          },
-          onPointerMove: (event) {
-            final newPixelHeight =
-                ((widget.isSendTrack ? -1.0 : 1.0) *
-                            (event.position.dy - startY) +
-                        startPixelHeight)
-                    .clamp(minTrackHeight, maxTrackHeight);
-            final newModifier =
-                newPixelHeight / startPixelHeight * startModifier;
-            viewModel.trackHeightModifiers[widget.trackId] = newModifier;
+        child: GestureDetector(
+          onDoubleTap: () {
+            // On double click, this resets the track height
+            viewModel.trackHeightModifiers[widget.trackId] = 1;
 
-            if (widget.isSendTrack && viewModel.regularToSendGapHeight == 0) {
-              viewModel.verticalScrollPosition =
-                  (startVerticalScrollPosition +
-                          (newPixelHeight - startPixelHeight))
-                      .clamp(
-                        0,
-                        viewModel.scrollAreaHeight - viewModel.editorHeight,
-                      );
-            }
+            // This may require scrolling, as a shorter track may mean that the
+            // bottom of the lowest track is now above the bottom of the editor.
+            // This will be recalculated regardless on next render, but we would
+            // render a single frame incorrectly which is noticeable.
+            // Recalculating here means everything is correct on next render.
+            viewModel.trackPositionCalculator.invalidate(
+              viewModel.editorHeight,
+            );
           },
-          // Hack: Listener callbacks do nothing unless this is here
-          child: Container(color: const Color(0x00000000)),
+          child: Listener(
+            onPointerDown: (event) {
+              startPixelHeight = widget.trackHeight;
+              startModifier = trackHeightModifier;
+              startY = event.position.dy;
+              startVerticalScrollPosition = viewModel.verticalScrollPosition;
+            },
+            onPointerMove: (event) {
+              final newPixelHeight =
+                  ((widget.isSendTrack ? -1.0 : 1.0) *
+                              (event.position.dy - startY) +
+                          startPixelHeight)
+                      .clamp(minTrackHeight, maxTrackHeight);
+              final newModifier =
+                  newPixelHeight / startPixelHeight * startModifier;
+              viewModel.trackHeightModifiers[widget.trackId] = newModifier;
+
+              if (widget.isSendTrack && viewModel.regularToSendGapHeight == 0) {
+                viewModel.verticalScrollPosition =
+                    (startVerticalScrollPosition +
+                            (newPixelHeight - startPixelHeight))
+                        .clamp(
+                          0,
+                          viewModel.scrollAreaHeight - viewModel.editorHeight,
+                        );
+              }
+            },
+            // Hack: Listener callbacks do nothing unless this is here
+            child: Container(color: const Color(0x00000000)),
+          ),
         ),
       ),
     );
