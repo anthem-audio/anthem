@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2025 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -816,6 +816,9 @@ class _TrackHeadersState extends State<_TrackHeaders> {
             var lastTrackWasSendTrack = false;
             var lastTrackBottom = 0.0;
 
+            // For MobX, since we're pulling the real values from a cache
+            final _ = viewModel.baseTrackHeight;
+
             for (final (trackIndex, (trackId, isSendTrack))
                 in project.trackOrder
                     .map((t) => (t, false))
@@ -823,6 +826,9 @@ class _TrackHeadersState extends State<_TrackHeaders> {
                       project.sendTrackOrder.reversed.map((t) => (t, true)),
                     )
                     .indexed) {
+              // For MobX, since we're pulling the real values from a cache
+              final _ = viewModel.trackHeightModifiers[trackId];
+
               final trackPosition = viewModel.trackPositionCalculator
                   .getTrackPosition(trackIndex);
               final trackHeight = viewModel.trackPositionCalculator

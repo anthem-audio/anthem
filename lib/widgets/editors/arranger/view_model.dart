@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -98,11 +98,20 @@ abstract class _ArrangerViewModel with Store {
   @observable
   double scrollAreaHeight = 0.0;
 
-  /// Current editor height
+  /// The current height of the editor canvas, which should be calculated during
+  /// layout.
   ///
   /// Careful not to accidentally use this while calculating the editor height.
   @observable
   double editorHeight = 0.0;
+
+  /// The current gap between regular tracks and send tracks, NOT including the
+  /// add track button.
+  ///
+  /// This will be zero if there is any vertical scroll available in the
+  /// arranger.
+  @observable
+  double regularToSendGapHeight = 0.0;
 
   double get maxVerticalScrollPosition =>
       (scrollAreaHeight - editorHeight).clamp(0, double.infinity);
@@ -221,6 +230,8 @@ class _TrackPositionAndSize {
       0.0,
       editorHeight - (totalTrackHeight + addButtonAreaHeight),
     );
+
+    arrangerViewModel.regularToSendGapHeight = trackGap;
 
     var lastWasSendTrack = false;
     var positionPointer = -arrangerViewModel.verticalScrollPosition;

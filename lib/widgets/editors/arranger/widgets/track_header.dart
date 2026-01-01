@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -83,7 +83,7 @@ class TrackHeader extends StatelessObserverWidget {
   }
 }
 
-class TrackHeaderResizeHandle extends StatefulWidget {
+class TrackHeaderResizeHandle extends StatefulObserverWidget {
   final double resizeHandleHeight;
   final String trackId;
   final double trackHeight;
@@ -106,6 +106,7 @@ class _TrackHeaderResizeHandleState extends State<TrackHeaderResizeHandle> {
   double startPixelHeight = -1;
   double startModifier = -1;
   double startY = -1;
+  double startVerticalScrollPosition = -1;
 
   @override
   Widget build(BuildContext context) {
@@ -122,6 +123,7 @@ class _TrackHeaderResizeHandleState extends State<TrackHeaderResizeHandle> {
             startPixelHeight = widget.trackHeight;
             startModifier = trackHeightModifier;
             startY = event.position.dy;
+            startVerticalScrollPosition = viewModel.verticalScrollPosition;
           },
           onPointerMove: (event) {
             final newPixelHeight =
@@ -132,6 +134,16 @@ class _TrackHeaderResizeHandleState extends State<TrackHeaderResizeHandle> {
             final newModifier =
                 newPixelHeight / startPixelHeight * startModifier;
             viewModel.trackHeightModifiers[widget.trackId] = newModifier;
+
+            if (widget.isSendTrack && viewModel.regularToSendGapHeight == 0) {
+              viewModel.verticalScrollPosition =
+                  (startVerticalScrollPosition +
+                          (newPixelHeight - startPixelHeight))
+                      .clamp(
+                        0,
+                        viewModel.scrollAreaHeight - viewModel.editorHeight,
+                      );
+            }
           },
           // Hack: Listener callbacks do nothing unless this is here
           child: Container(color: const Color(0x00000000)),
