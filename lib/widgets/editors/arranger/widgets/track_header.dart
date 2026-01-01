@@ -20,6 +20,8 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/editors/arranger/helpers.dart';
+import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -77,6 +79,64 @@ class TrackHeader extends StatelessObserverWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class TrackHeaderResizeHandle extends StatefulWidget {
+  final double resizeHandleHeight;
+  final String trackId;
+  final double trackHeight;
+  final bool isSendTrack;
+
+  const TrackHeaderResizeHandle({
+    super.key,
+    required this.resizeHandleHeight,
+    required this.trackId,
+    required this.trackHeight,
+    required this.isSendTrack,
+  });
+
+  @override
+  State<TrackHeaderResizeHandle> createState() =>
+      _TrackHeaderResizeHandleState();
+}
+
+class _TrackHeaderResizeHandleState extends State<TrackHeaderResizeHandle> {
+  double startPixelHeight = -1;
+  double startModifier = -1;
+  double startY = -1;
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = Provider.of<ArrangerViewModel>(context);
+
+    final trackHeightModifier = viewModel.trackHeightModifiers[widget.trackId]!;
+
+    return SizedBox(
+      height: widget.resizeHandleHeight,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.resizeUpDown,
+        child: Listener(
+          onPointerDown: (event) {
+            startPixelHeight = widget.trackHeight;
+            startModifier = trackHeightModifier;
+            startY = event.position.dy;
+          },
+          onPointerMove: (event) {
+            final newPixelHeight =
+                ((widget.isSendTrack ? -1.0 : 1.0) *
+                            (event.position.dy - startY) +
+                        startPixelHeight)
+                    .clamp(minTrackHeight, maxTrackHeight);
+            final newModifier =
+                newPixelHeight / startPixelHeight * startModifier;
+            viewModel.trackHeightModifiers[widget.trackId] = newModifier;
+          },
+          // Hack: Listener callbacks do nothing unless this is here
+          child: Container(color: const Color(0x00000000)),
+        ),
+      ),
     );
   }
 }

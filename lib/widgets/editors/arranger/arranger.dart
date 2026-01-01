@@ -48,7 +48,6 @@ import 'package:provider/provider.dart';
 import '../shared/helpers/time_helpers.dart';
 import 'widgets/grid.dart';
 import 'view_model.dart';
-import 'helpers.dart';
 
 const _timelineHeight = 38.0;
 const _scrollbarShortSideLength = 17.0;
@@ -799,10 +798,6 @@ class _TrackHeaders extends StatefulWidget {
 }
 
 class _TrackHeadersState extends State<_TrackHeaders> {
-  double startPixelHeight = -1;
-  double startModifier = -1;
-  double startY = -1;
-
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<ArrangerViewModel>(context);
@@ -828,8 +823,6 @@ class _TrackHeadersState extends State<_TrackHeaders> {
                       project.sendTrackOrder.reversed.map((t) => (t, true)),
                     )
                     .indexed) {
-              final heightModifier = viewModel.trackHeightModifiers[trackId]!;
-
               final trackPosition = viewModel.trackPositionCalculator
                   .getTrackPosition(trackIndex);
               final trackHeight = viewModel.trackPositionCalculator
@@ -884,34 +877,11 @@ class _TrackHeadersState extends State<_TrackHeaders> {
                     left: 0,
                     right: 0,
                     top: resizeHandleTop,
-                    child: SizedBox(
-                      height: resizeHandleHeight,
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.resizeUpDown,
-                        child: Listener(
-                          onPointerDown: (event) {
-                            startPixelHeight = trackHeight;
-                            startModifier = heightModifier;
-                            startY = event.position.dy;
-                          },
-                          onPointerMove: (event) {
-                            final newPixelHeight =
-                                ((isSendTrack ? -1.0 : 1.0) *
-                                            (event.position.dy - startY) +
-                                        startPixelHeight)
-                                    .clamp(minTrackHeight, maxTrackHeight);
-                            final newModifier =
-                                newPixelHeight /
-                                startPixelHeight *
-                                startModifier;
-                            viewModel.trackHeightModifiers[trackId] =
-                                newModifier;
-                          },
-                          // Hack: Listener callbacks do nothing unless this is
-                          // here
-                          child: Container(color: const Color(0x00000000)),
-                        ),
-                      ),
+                    child: TrackHeaderResizeHandle(
+                      resizeHandleHeight: resizeHandleHeight,
+                      trackHeight: trackHeight,
+                      isSendTrack: isSendTrack,
+                      trackId: trackId,
                     ),
                   ),
                 );
