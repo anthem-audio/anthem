@@ -23,11 +23,16 @@ A few notes:
 
 Prior to 2024, development was UI-only, focused on proving out Flutter as a viable UI solution.
 
-Development in 2024 and the first half of 2025 focused on building out Anthem's audio engine. This primarily included building a sequencer and live audio graph, as well as a scalable solution for IPC and state synchronization between the Flutter UI and the C++ engine.
+Development in 2024 and most of 2025 focused on building out Anthem's audio engine. This primarily included building a sequencer and live audio graph, as well as a scalable solution for IPC and state synchronization between the Flutter UI and the C++ engine.
 
-### 2025 & early 2026
+In last quarter of 2025, the following items were completed:
+- Added a web port
+- Redesigned automation rendering to improve correctness and performance
+- Improved arranger rendering performance by an order of magnitude
 
-Anthem's development is currently focused on building a powerful, usable and productive sequencer. Anthem currently supports MIDI sequencing only, but this is enough to allow us to iterate on the high-level arrangement workflow. Along these lines, we are introducing a novel arranger design that hopes to combine the best of modern pattern-based and linear workflows.
+### Early 2026
+
+Anthem's development is currently focused on building a powerful, usable and productive sequencer. Anthem currently supports MIDI sequencing only, but this is enough to allow us to iterate on the high-level arrangement workflow. Along these lines, we are introducing an arranger design that hopes to combine the best of modern pattern-based and linear workflows.
 
 ### Future
 
@@ -47,7 +52,14 @@ This list reflects our current plans but does not represent a commitment of any 
 
 ## Contributing
 
-If you're interested in contributing, feel free to open a discussion thread on this repository, or submit a pull request.
+Bug reports are always welcome, and are greatly appreciated.
+
+Pull requests are welcome, but will be subject to careful review and may not be accepted for a number of reasons. This includes:
+- PRs with mismatched coding style,
+- PRs with poor or incompatible code architecture, and
+- features that are not compatible with our vision of Anthem.
+
+If you would like to develop a feature for Anthem, you can open a discussion thread on GitHub to discuss the feature and see if it aligns with the current direction of development.
 
 There is documentation for developers [here](docs/README.md), which includes an architectural overview and setup instructions.
 
