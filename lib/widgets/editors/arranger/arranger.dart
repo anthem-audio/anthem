@@ -869,17 +869,21 @@ class _TrackHeadersState extends State<_TrackHeaders> {
                     child: Container(color: AnthemTheme.panel.border),
                   ),
                 );
+
                 const resizeHandleHeight = 10.0;
+
+                var resizeHandleTop =
+                    trackPosition - 1 - resizeHandleHeight / 2;
+                if (!isSendTrack) {
+                  resizeHandleTop += trackHeight + 1;
+                }
+
                 resizeHandles.add(
                   Positioned(
                     key: Key('$trackId-handle'),
                     left: 0,
                     right: 0,
-                    top:
-                        trackPosition +
-                        trackHeight -
-                        1 -
-                        resizeHandleHeight / 2,
+                    top: resizeHandleTop,
                     child: SizedBox(
                       height: resizeHandleHeight,
                       child: MouseRegion(
@@ -892,7 +896,9 @@ class _TrackHeadersState extends State<_TrackHeaders> {
                           },
                           onPointerMove: (event) {
                             final newPixelHeight =
-                                (event.position.dy - startY + startPixelHeight)
+                                ((isSendTrack ? -1.0 : 1.0) *
+                                            (event.position.dy - startY) +
+                                        startPixelHeight)
                                     .clamp(minTrackHeight, maxTrackHeight);
                             final newModifier =
                                 newPixelHeight /
