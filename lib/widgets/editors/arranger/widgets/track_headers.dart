@@ -160,6 +160,10 @@ class _TrackHeaderResizeHandleState extends State<_TrackHeaderResizeHandle> {
                 shouldIgnoreDeadZone = startModifier == 1;
                 startY = event.position.dy;
                 startVerticalScrollPosition = viewModel.verticalScrollPosition;
+
+                ServiceRegistry.mainWindowController.setCursorOverride(
+                  SystemMouseCursors.resizeUpDown,
+                );
               },
               onPointerMove: (event) {
                 // Compute raw delta in pixels based on pointer movement
@@ -258,6 +262,9 @@ class _TrackHeaderResizeHandleState extends State<_TrackHeaderResizeHandle> {
 
                 lastModifier = newModifier;
                 lastPixelHeight = newPixelHeight;
+              },
+              onPointerUp: (e) {
+                ServiceRegistry.mainWindowController.clearCursorOverride();
               },
               // Hack: Listener callbacks do nothing unless this is here
               child: Container(color: const Color(0x00000000)),
