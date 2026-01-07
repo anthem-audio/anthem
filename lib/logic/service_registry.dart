@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,6 +22,7 @@ import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
+import 'package:anthem/widgets/main_window/main_window_view_model.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 
 /// A registry for storing and retrieving services by key.
@@ -31,6 +32,7 @@ import 'package:anthem/widgets/project/project_view_model.dart';
 /// that project's ID.
 class ServiceRegistry {
   static MainWindowController? mainWindowController;
+  static MainWindowViewModel mainWindowViewModel = MainWindowViewModel();
   static DialogController? dialogController;
 
   static final Map<Id, ServiceRegistry> _serviceRegistriesByProjectId = {};

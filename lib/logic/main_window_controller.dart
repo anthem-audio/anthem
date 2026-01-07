@@ -22,6 +22,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/text_box.dart';
@@ -219,6 +220,14 @@ class MainWindowController {
       project.filePath = path;
       return true;
     }
+  }
+
+  void setCursorOverride(MouseCursor cursor) {
+    ServiceRegistry.mainWindowViewModel.globalCursor = cursor;
+  }
+
+  void clearCursorOverride() {
+    ServiceRegistry.mainWindowViewModel.globalCursor = MouseCursor.defer;
   }
 }
 

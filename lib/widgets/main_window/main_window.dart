@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -35,7 +35,6 @@ import 'package:anthem/widgets/basic/overlay/screen_overlay.dart';
 import 'package:anthem/widgets/main_window/tab_content_switcher.dart';
 import 'package:anthem/widgets/main_window/window_header.dart';
 import 'package:url_launcher/url_launcher.dart';
-// import 'package:web/web.dart';
 
 class MainWindow extends StatefulWidget {
   final DialogController dialogController;
@@ -61,6 +60,8 @@ class _MainWindowState extends State<MainWindow> {
 
   @override
   Widget build(BuildContext context) {
+    final viewModel = ServiceRegistry.mainWindowViewModel;
+
     if (firstBuild) {
       firstBuild = false;
 
@@ -142,43 +143,62 @@ class _MainWindowState extends State<MainWindow> {
 
     return Provider.value(
       value: controller,
-      child: DialogRenderer(
-        controller: widget.dialogController,
-        child: ScreenOverlay(
-          child: Container(
-            color: AnthemTheme.panel.border,
-            child: Padding(
-              padding: const EdgeInsets.all(3),
-              child: Observer(
-                builder: (context) {
-                  final tabs = store.projectOrder.map<TabDef>((projectId) {
-                    return TabDef(
-                      id: projectId,
-                      title: store.projects[projectId]?.name ?? '',
-                    );
-                  }).toList();
+      child: Stack(
+        fit: .expand,
+        children: [
+          DialogRenderer(
+            controller: widget.dialogController,
+            child: ScreenOverlay(
+              child: Container(
+                color: AnthemTheme.panel.border,
+                child: Padding(
+                  padding: const EdgeInsets.all(3),
+                  child: Observer(
+                    builder: (context) {
+                      final tabs = store.projectOrder.map<TabDef>((projectId) {
+                        return TabDef(
+                          id: projectId,
+                          title: store.projects[projectId]?.name ?? '',
+                        );
+                      }).toList();
 
-                  return Column(
-                    children: [
-                      RepaintBoundary(
-                        child: WindowHeader(
-                          selectedTabId: store.activeProjectId,
-                          tabs: tabs,
-                        ),
-                      ),
-                      Expanded(
-                        child: TabContentSwitcher(
-                          tabs: tabs,
-                          selectedTabId: store.activeProjectId,
-                        ),
-                      ),
-                    ],
-                  );
-                },
+                      return Column(
+                        children: [
+                          RepaintBoundary(
+                            child: WindowHeader(
+                              selectedTabId: store.activeProjectId,
+                              tabs: tabs,
+                            ),
+                          ),
+                          Expanded(
+                            child: TabContentSwitcher(
+                              tabs: tabs,
+                              selectedTabId: store.activeProjectId,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
               ),
             ),
           ),
-        ),
+
+          // Sets an override for the mouse cursor, which should be used when
+          // the mouse is pressed down during click-and-drag operations.
+          //
+          // See setCursorOverride() and clearCursorOverride() from
+          // MainWindowController for examples on how to use this.
+          Observer(
+            builder: (context) {
+              return MouseRegion(
+                cursor: viewModel.globalCursor,
+                hitTestBehavior: .translucent,
+              );
+            },
+          ),
+        ],
       ),
     );
   }

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/service_registry.dart';
 import 'package:flutter/widgets.dart';
 
 enum PanelOrientation { left, top, right, bottom }
@@ -82,18 +83,26 @@ class _PanelState extends State<Panel> {
   double startPos = -1;
   double startSize = -1;
 
+  MouseCursor cursorFromBuild = MouseCursor.defer;
+
   void onResizePointerDown(PointerDownEvent e, double panelSize) {
     if (isResizeActive) return;
-    final horizontal = _isLeftOrRight(widget.orientation);
+
     isResizeActive = true;
     resizeActive = true;
+
+    final horizontal = _isLeftOrRight(widget.orientation);
     startPos = (horizontal ? e.position.dx : e.position.dy);
     startSize = panelSize;
+
+    ServiceRegistry.mainWindowController!.setCursorOverride(cursorFromBuild);
   }
 
   void onResizePointerUp(PointerUpEvent e) {
     resizeActive = false;
     isResizeActive = false;
+
+    ServiceRegistry.mainWindowController!.clearCursorOverride();
   }
 
   void onResizePointerCancel(PointerCancelEvent e) {
@@ -142,6 +151,10 @@ class _PanelState extends State<Panel> {
         final mainAxisSize = (isHorizontal
             ? constraints.maxWidth
             : constraints.maxHeight);
+
+        cursorFromBuild = isHorizontal
+            ? SystemMouseCursors.resizeLeftRight
+            : SystemMouseCursors.resizeUpDown;
 
         if (pixelPanelSize < 0) {
           pixelPanelSize = widget.panelStartSize ?? defaultPanelSize;
@@ -245,9 +258,7 @@ class _PanelState extends State<Panel> {
                 top: handleTop,
                 bottom: handleBottom,
                 child: MouseRegion(
-                  cursor: isHorizontal
-                      ? SystemMouseCursors.resizeLeftRight
-                      : SystemMouseCursors.resizeUpDown,
+                  cursor: cursorFromBuild,
                   opaque: false,
                   child: Listener(
                     onPointerDown: (e) => onResizePointerDown(e, panelSize),

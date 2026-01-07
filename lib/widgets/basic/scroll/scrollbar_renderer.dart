@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/service_registry.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../../theme.dart';
@@ -90,6 +91,10 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
     setState(() {
       pressed = true;
     });
+
+    ServiceRegistry.mainWindowController!.setCursorOverride(
+      SystemMouseCursors.click,
+    );
   }
 
   void _handleMove(double pos, double trackSize) {
@@ -138,6 +143,8 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
     setState(() {
       pressed = false;
     });
+
+    ServiceRegistry.mainWindowController!.clearCursorOverride();
   }
 
   @override
