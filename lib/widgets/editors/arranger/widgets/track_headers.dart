@@ -24,6 +24,8 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/hint/hint.dart';
 import 'package:anthem/widgets/basic/icon.dart';
+import 'package:anthem/widgets/basic/menu/menu.dart';
+import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:flutter/widgets.dart';
@@ -277,6 +279,8 @@ class TrackHeaders extends StatefulWidget {
 }
 
 class _TrackHeadersState extends State<TrackHeaders> {
+  AnthemMenuController menuController = AnthemMenuController();
+
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<ArrangerViewModel>(context);
@@ -382,15 +386,37 @@ class _TrackHeadersState extends State<TrackHeaders> {
                   top: positionForAddButton + 8,
                   left: 16,
                   right: 16,
-                  child: Button(
-                    icon: Icons.add,
-                    hint: [.new('click', 'Add a new track')],
-                    onPress: () {
-                      final controller = ServiceRegistry.forProject(
-                        project.id,
-                      ).projectController;
-                      controller.addTrack();
-                    },
+                  child: Menu(
+                    menuController: menuController,
+                    menuDef: .new(
+                      children: [
+                        AnthemMenuItem(
+                          text: 'Add track',
+                          onSelected: () {
+                            final controller = ServiceRegistry.forProject(
+                              project.id,
+                            ).projectController;
+                            controller.addTrack();
+                          },
+                        ),
+                        AnthemMenuItem(
+                          text: 'Add send track',
+                          onSelected: () {
+                            final controller = ServiceRegistry.forProject(
+                              project.id,
+                            ).projectController;
+                            controller.addSendTrack();
+                          },
+                        ),
+                      ],
+                    ),
+                    child: Button(
+                      icon: Icons.add,
+                      hint: [.new('click', 'Add a new track...')],
+                      onPress: () {
+                        menuController.open();
+                      },
+                    ),
                   ),
                 ),
               );

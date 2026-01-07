@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -311,10 +311,18 @@ class TrackAddRemoveCommand extends Command {
   bool get isRemove => !isAdd;
 
   late final TrackModel track;
+  int? index;
+  late final bool isSendTrack;
 
-  TrackAddRemoveCommand.add({required ProjectModel project}) : isAdd = true {
+  TrackAddRemoveCommand.add({
+    required ProjectModel project,
+    this.index,
+    required this.isSendTrack,
+  }) : isAdd = true {
     track = TrackModel(
-      name: 'Track ${project.trackOrder.length + 1}',
+      name: isSendTrack
+          ? 'Send Track ${project.sendTrackOrder.length}'
+          : 'Track ${project.trackOrder.length + 1}',
       color: AnthemColor.randomHue(),
     );
   }
@@ -322,6 +330,14 @@ class TrackAddRemoveCommand extends Command {
   TrackAddRemoveCommand.remove({required ProjectModel project, required Id id})
     : isAdd = false {
     track = project.tracks[id]!;
+    index = project.trackOrder.indexOf(id);
+
+    if (index == -1) {
+      index = project.sendTrackOrder.indexOf(id);
+      isSendTrack = true;
+    } else {
+      isSendTrack = false;
+    }
   }
 
   @override
@@ -350,7 +366,16 @@ class TrackAddRemoveCommand extends Command {
       );
     }
 
-    project.trackOrder.add(track.id);
+    var orderListToModify = isSendTrack
+        ? project.sendTrackOrder
+        : project.trackOrder;
+
+    if (index == null) {
+      orderListToModify.add(track.id);
+    } else {
+      orderListToModify.insert(index!, track.id);
+    }
+
     project.tracks[track.id] = track;
 
     ServiceRegistry.forProject(

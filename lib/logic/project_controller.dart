@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -230,8 +230,30 @@ class ProjectController {
     );
   }
 
-  void addTrack() {
-    project.execute(TrackAddRemoveCommand.add(project: project));
+  void addTrack([int? index]) {
+    project.execute(
+      TrackAddRemoveCommand.add(
+        project: project,
+        index: index,
+        isSendTrack: false,
+      ),
+    );
+  }
+
+  void addSendTrack([int? index]) {
+    project.execute(
+      TrackAddRemoveCommand.add(
+        project: project,
+        index: index,
+        isSendTrack: true,
+      ),
+    );
+  }
+
+  void removeTrack(String trackId) {
+    project.execute(
+      TrackAddRemoveCommand.remove(project: project, id: trackId),
+    );
   }
 
   void setActiveArrangement(Id? id) {
