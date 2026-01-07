@@ -37,7 +37,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show showLicensePage;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -365,7 +364,7 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
     final editMenuController = _editMenuController ?? AnthemMenuController();
     final helpMenuController = _helpMenuController ?? AnthemMenuController();
 
-    final mainWindowController = context.read<MainWindowController>();
+    final mainWindowController = ServiceRegistry.mainWindowController;
 
     final activeProjectId = AnthemStore.instance.activeProjectId;
     final activeProject = AnthemStore.instance.projects[activeProjectId]!;
