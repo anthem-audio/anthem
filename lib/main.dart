@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,7 +22,6 @@ import 'dart:async';
 import 'package:anthem/licenses.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/shortcuts/raw_key_event_singleton.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem_codegen/include/model_base_mixin.dart';
@@ -76,7 +75,6 @@ class App extends StatefulWidget {
 
 class _AppState extends State<App> with WindowListener {
   bool isMaximized = false;
-  DialogController dialogController = DialogController();
 
   Future<void> _initWindow() async {
     await windowManager.setPreventClose(true);
@@ -88,8 +86,6 @@ class _AppState extends State<App> with WindowListener {
   @override
   void initState() {
     super.initState();
-
-    ServiceRegistry.dialogController = dialogController;
 
     if (!kIsWeb) {
       windowManager.addListener(this);
@@ -134,13 +130,13 @@ class _AppState extends State<App> with WindowListener {
 
     for (final project in [...projects].reversed) {
       if (!project.isDirty) {
-        ServiceRegistry.mainWindowController!.closeProjectWithoutSaving(
+        ServiceRegistry.mainWindowController.closeProjectWithoutSaving(
           project.id,
         );
         continue;
       }
 
-      ServiceRegistry.mainWindowController!.switchTab(project.id);
+      ServiceRegistry.mainWindowController.switchTab(project.id);
 
       final projectController = ServiceRegistry.forProject(
         project.id,
@@ -187,7 +183,7 @@ class _AppState extends State<App> with WindowListener {
       fit: StackFit.expand,
       children: [
         Container(color: const Color(0xFF2F2F2F)),
-        MainWindow(key: mainWindowKey, dialogController: dialogController),
+        MainWindow(key: mainWindowKey),
 
         // Uncomment for performance overlay
 

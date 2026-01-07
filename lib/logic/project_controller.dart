@@ -178,7 +178,8 @@ class ProjectController {
     }
   }
 
-  void addVst3Generator(DialogController dialogController) async {
+  void addVst3Generator() async {
+    final dialogController = ServiceRegistry.dialogController;
     String initialDirectory;
 
     if (Platform.isWindows) {
@@ -281,8 +282,8 @@ class ProjectController {
   ///
   /// Returns true if the project was closed, false if the close was cancelled.
   Future<bool> close() {
-    final dialogController = ServiceRegistry.dialogController!;
-    final mainWindowController = ServiceRegistry.mainWindowController!;
+    final dialogController = ServiceRegistry.dialogController;
+    final mainWindowController = ServiceRegistry.mainWindowController;
 
     final completer = Completer<bool>();
 

@@ -95,14 +95,14 @@ class _PanelState extends State<Panel> {
     startPos = (horizontal ? e.position.dx : e.position.dy);
     startSize = panelSize;
 
-    ServiceRegistry.mainWindowController!.setCursorOverride(cursorFromBuild);
+    ServiceRegistry.mainWindowController.setCursorOverride(cursorFromBuild);
   }
 
   void onResizePointerUp(PointerUpEvent e) {
     resizeActive = false;
     isResizeActive = false;
 
-    ServiceRegistry.mainWindowController!.clearCursorOverride();
+    ServiceRegistry.mainWindowController.clearCursorOverride();
   }
 
   void onResizePointerCancel(PointerCancelEvent e) {

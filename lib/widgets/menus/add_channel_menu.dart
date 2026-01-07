@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,7 +18,6 @@
 */
 
 import 'package:anthem/model/model.dart';
-import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/logic/project_controller.dart';
@@ -69,9 +68,7 @@ class AddChannelMenu extends StatelessWidget {
                 AnthemMenuItem(
                   text: 'VST3...',
                   onSelected: () {
-                    projectController.addVst3Generator(
-                      Provider.of<DialogController>(context, listen: false),
-                    );
+                    projectController.addVst3Generator();
                   },
                 ),
               AnthemMenuItem(

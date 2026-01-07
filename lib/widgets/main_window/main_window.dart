@@ -28,7 +28,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
-import 'package:provider/provider.dart';
 
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay.dart';
@@ -37,9 +36,7 @@ import 'package:anthem/widgets/main_window/window_header.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class MainWindow extends StatefulWidget {
-  final DialogController dialogController;
-
-  const MainWindow({super.key, required this.dialogController});
+  const MainWindow({super.key});
 
   @override
   State<MainWindow> createState() => _MainWindowState();
@@ -48,14 +45,12 @@ class MainWindow extends StatefulWidget {
 class _MainWindowState extends State<MainWindow> {
   bool isTestMenuOpen = false;
   AnthemMenuController menuController = AnthemMenuController();
-  MainWindowController controller = MainWindowController();
 
   bool firstBuild = true;
 
   @override
   void initState() {
     super.initState();
-    ServiceRegistry.mainWindowController = controller;
   }
 
   @override
@@ -75,7 +70,7 @@ class _MainWindowState extends State<MainWindow> {
       // a user gesture.
       if (kIsWeb) {
         Future(() {
-          widget.dialogController.showTextDialog(
+          ServiceRegistry.dialogController.showTextDialog(
             title: 'Welcome',
             textSpan: TextSpan(
               style: TextStyle(color: AnthemTheme.text.main, fontSize: 13),
@@ -141,65 +136,61 @@ class _MainWindowState extends State<MainWindow> {
 
     final store = AnthemStore.instance;
 
-    return Provider.value(
-      value: controller,
-      child: Stack(
-        fit: .expand,
-        children: [
-          DialogRenderer(
-            controller: widget.dialogController,
-            child: ScreenOverlay(
-              child: Container(
-                color: AnthemTheme.panel.border,
-                child: Padding(
-                  padding: const EdgeInsets.all(3),
-                  child: Observer(
-                    builder: (context) {
-                      final tabs = store.projectOrder.map<TabDef>((projectId) {
-                        return TabDef(
-                          id: projectId,
-                          title: store.projects[projectId]?.name ?? '',
-                        );
-                      }).toList();
-
-                      return Column(
-                        children: [
-                          RepaintBoundary(
-                            child: WindowHeader(
-                              selectedTabId: store.activeProjectId,
-                              tabs: tabs,
-                            ),
-                          ),
-                          Expanded(
-                            child: TabContentSwitcher(
-                              tabs: tabs,
-                              selectedTabId: store.activeProjectId,
-                            ),
-                          ),
-                        ],
+    return Stack(
+      fit: .expand,
+      children: [
+        DialogRenderer(
+          child: ScreenOverlay(
+            child: Container(
+              color: AnthemTheme.panel.border,
+              child: Padding(
+                padding: const EdgeInsets.all(3),
+                child: Observer(
+                  builder: (context) {
+                    final tabs = store.projectOrder.map<TabDef>((projectId) {
+                      return TabDef(
+                        id: projectId,
+                        title: store.projects[projectId]?.name ?? '',
                       );
-                    },
-                  ),
+                    }).toList();
+
+                    return Column(
+                      children: [
+                        RepaintBoundary(
+                          child: WindowHeader(
+                            selectedTabId: store.activeProjectId,
+                            tabs: tabs,
+                          ),
+                        ),
+                        Expanded(
+                          child: TabContentSwitcher(
+                            tabs: tabs,
+                            selectedTabId: store.activeProjectId,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
           ),
+        ),
 
-          // Sets an override for the mouse cursor, which should be used when
-          // the mouse is pressed down during click-and-drag operations.
-          //
-          // See setCursorOverride() and clearCursorOverride() from
-          // MainWindowController for examples on how to use this.
-          Observer(
-            builder: (context) {
-              return MouseRegion(
-                cursor: viewModel.globalCursor,
-                hitTestBehavior: .translucent,
-              );
-            },
-          ),
-        ],
-      ),
+        // Sets an override for the mouse cursor, which should be used when
+        // the mouse is pressed down during click-and-drag operations.
+        //
+        // See setCursorOverride() and clearCursorOverride() from
+        // MainWindowController for examples on how to use this.
+        Observer(
+          builder: (context) {
+            return MouseRegion(
+              cursor: viewModel.globalCursor,
+              hitTestBehavior: .translucent,
+            );
+          },
+        ),
+      ],
     );
   }
 }

@@ -31,9 +31,10 @@ import 'package:anthem/widgets/project/project_view_model.dart';
 /// example, the arranger controller for each project is just registered under
 /// that project's ID.
 class ServiceRegistry {
-  static MainWindowController? mainWindowController;
-  static MainWindowViewModel mainWindowViewModel = MainWindowViewModel();
-  static DialogController? dialogController;
+  static final MainWindowController mainWindowController =
+      MainWindowController();
+  static final MainWindowViewModel mainWindowViewModel = MainWindowViewModel();
+  static final DialogController dialogController = DialogController();
 
   static final Map<Id, ServiceRegistry> _serviceRegistriesByProjectId = {};
 

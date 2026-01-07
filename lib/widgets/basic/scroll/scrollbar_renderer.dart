@@ -92,7 +92,7 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
       pressed = true;
     });
 
-    ServiceRegistry.mainWindowController!.setCursorOverride(
+    ServiceRegistry.mainWindowController.setCursorOverride(
       SystemMouseCursors.click,
     );
   }
@@ -144,7 +144,7 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
       pressed = false;
     });
 
-    ServiceRegistry.mainWindowController!.clearCursorOverride();
+    ServiceRegistry.mainWindowController.clearCursorOverride();
   }
 
   @override

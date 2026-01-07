@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
@@ -41,9 +42,8 @@ class _DialogState {
 
 class DialogRenderer extends StatefulWidget {
   final Widget? child;
-  final DialogController controller;
 
-  const DialogRenderer({super.key, required this.controller, this.child});
+  const DialogRenderer({super.key, this.child});
 
   @override
   State<DialogRenderer> createState() => _DialogRendererState();
@@ -69,12 +69,12 @@ class _DialogRendererState extends State<DialogRenderer>
   @override
   void initState() {
     super.initState();
-    widget.controller.initialize(this);
+    ServiceRegistry.dialogController.initialize(this);
   }
 
   @override
   void dispose() {
-    widget.controller.dispose();
+    ServiceRegistry.dialogController.dispose();
     super.dispose();
   }
 
@@ -233,7 +233,7 @@ class _DialogRendererState extends State<DialogRenderer>
     }
 
     return Provider.value(
-      value: widget.controller,
+      value: ServiceRegistry.dialogController,
       child: Stack(children: [?widget.child, ?blocker, ?dialog]),
     );
   }

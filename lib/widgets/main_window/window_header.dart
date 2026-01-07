@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -244,7 +244,7 @@ class _TabState extends State<_Tab> {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Provider.of<MainWindowController>(context);
+    final controller = ServiceRegistry.mainWindowController;
 
     final result = MouseRegion(
       cursor: widget.isSelected ? MouseCursor.defer : SystemMouseCursors.click,
@@ -370,10 +370,7 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
     final activeProjectId = AnthemStore.instance.activeProjectId;
     final activeProject = AnthemStore.instance.projects[activeProjectId]!;
 
-    final dialogController = Provider.of<DialogController>(
-      context,
-      listen: false,
-    );
+    final dialogController = ServiceRegistry.dialogController;
 
     ProjectController getProjectController() {
       return ServiceRegistry.forProject(activeProjectId).projectController;
@@ -498,10 +495,7 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
         AnthemMenuItem(
           text: 'About...',
           onSelected: () {
-            final dialogController = Provider.of<DialogController>(
-              context,
-              listen: false,
-            );
+            final dialogController = ServiceRegistry.dialogController;
             dialogController.showTextDialog(
               text: [
                 'Version: Pre-alpha\n\n',
