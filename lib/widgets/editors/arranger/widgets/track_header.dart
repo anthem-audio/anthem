@@ -108,6 +108,15 @@ class _TrackHeaderResizeHandleState extends State<TrackHeaderResizeHandle> {
   double startY = -1;
   double startVerticalScrollPosition = -1;
 
+  double lastModifier = -1;
+  double lastPixelHeight = -1;
+  double deadZoneAmountTraveled = -1;
+  bool shouldIgnoreDeadZone = false;
+
+  // Dead zone at a height modifier of 1.0, which makes it easier to
+  // reset track height
+  static const deadZoneSize = 5.0;
+
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<ArrangerViewModel>(context);
@@ -134,19 +143,85 @@ class _TrackHeaderResizeHandleState extends State<TrackHeaderResizeHandle> {
           },
           child: Listener(
             onPointerDown: (event) {
-              startPixelHeight = widget.trackHeight;
-              startModifier = trackHeightModifier;
+              startPixelHeight = lastPixelHeight = widget.trackHeight;
+              startModifier = lastModifier = trackHeightModifier;
+              // If we start exactly at 1.0, we ignore the sticky effect
+              // initially
+              shouldIgnoreDeadZone = startModifier == 1;
               startY = event.position.dy;
               startVerticalScrollPosition = viewModel.verticalScrollPosition;
             },
             onPointerMove: (event) {
-              final newPixelHeight =
-                  ((widget.isSendTrack ? -1.0 : 1.0) *
-                              (event.position.dy - startY) +
-                          startPixelHeight)
-                      .clamp(minTrackHeight, maxTrackHeight);
-              final newModifier =
-                  newPixelHeight / startPixelHeight * startModifier;
+              // Compute raw delta in pixels based on pointer movement
+              final direction = widget.isSendTrack ? -1.0 : 1.0;
+              var deltaPixelsRaw = direction * (event.position.dy - startY);
+
+              // Raw (no dead-zone) pixel height and modifier
+              var rawPixelHeight = (startPixelHeight + deltaPixelsRaw).clamp(
+                minTrackHeight,
+                maxTrackHeight,
+              );
+              var rawModifier =
+                  rawPixelHeight / startPixelHeight * startModifier;
+
+              assert(startModifier > 0);
+
+              final crossingOffset = startPixelHeight * (1 / startModifier - 1);
+              var distanceFromCrossing = deltaPixelsRaw - crossingOffset;
+
+              final withinDeadZone = distanceFromCrossing.abs() <= deadZoneSize;
+
+              // This transitions from the "dead zone suppressed" handling in
+              // the else case below, to regular handling.
+              if (shouldIgnoreDeadZone && !withinDeadZone) {
+                // The user has dragged OUT of the dead zone. We now disable the
+                // "ignore" flag so that if they return, it will stick.
+                shouldIgnoreDeadZone = false;
+
+                // Hack: To prevent a snap (jump in height), we must offset the
+                // startY. Standard logic subtracts `deadZoneSize` from the
+                // delta. We shift startY in the opposite direction so the
+                // resulting delta is larger, counteracting the subtraction.
+                final offset =
+                    distanceFromCrossing.sign * deadZoneSize * direction;
+                startY -= offset;
+
+                // Recalculate delta and raw values based on the new startY
+                deltaPixelsRaw = direction * (event.position.dy - startY);
+                rawPixelHeight = (startPixelHeight + deltaPixelsRaw).clamp(
+                  minTrackHeight,
+                  maxTrackHeight,
+                );
+                rawModifier = rawPixelHeight / startPixelHeight * startModifier;
+                distanceFromCrossing = deltaPixelsRaw - crossingOffset;
+              }
+
+              double newPixelHeight;
+              double newModifier;
+
+              if (!shouldIgnoreDeadZone && withinDeadZone) {
+                // Inside dead-zone: hold at modifier == 1.0
+                newPixelHeight = (startPixelHeight / startModifier).clamp(
+                  minTrackHeight,
+                  maxTrackHeight,
+                );
+                deadZoneAmountTraveled = distanceFromCrossing;
+                newModifier = newPixelHeight / startPixelHeight * startModifier;
+              } else if (!shouldIgnoreDeadZone && !withinDeadZone) {
+                // Past the dead-zone: subtract its width to keep continuity
+                final effectiveDelta =
+                    deltaPixelsRaw - distanceFromCrossing.sign * deadZoneSize;
+                newPixelHeight = (startPixelHeight + effectiveDelta).clamp(
+                  minTrackHeight,
+                  maxTrackHeight,
+                );
+                newModifier = newPixelHeight / startPixelHeight * startModifier;
+              } else {
+                // Dead-zone suppressed (starting at 1 and moving away)
+                newPixelHeight = rawPixelHeight;
+                newModifier = rawModifier;
+              }
+
               viewModel.trackHeightModifiers[widget.trackId] = newModifier;
 
               if (widget.isSendTrack && viewModel.regularToSendGapHeight == 0) {
@@ -158,6 +233,15 @@ class _TrackHeaderResizeHandleState extends State<TrackHeaderResizeHandle> {
                           viewModel.scrollAreaHeight - viewModel.editorHeight,
                         );
               }
+
+              // We also need to invalidate here (see invalidate call above for
+              // context)
+              viewModel.trackPositionCalculator.invalidate(
+                viewModel.editorHeight,
+              );
+
+              lastModifier = newModifier;
+              lastPixelHeight = newPixelHeight;
             },
             // Hack: Listener callbacks do nothing unless this is here
             child: Container(color: const Color(0x00000000)),
