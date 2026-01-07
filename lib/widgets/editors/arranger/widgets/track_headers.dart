@@ -30,10 +30,10 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
-class TrackHeader extends StatelessObserverWidget {
+class _TrackHeader extends StatelessObserverWidget {
   final Id trackID;
 
-  const TrackHeader({super.key, required this.trackID});
+  const _TrackHeader({required this.trackID});
 
   @override
   Widget build(BuildContext context) {
@@ -87,14 +87,13 @@ class TrackHeader extends StatelessObserverWidget {
   }
 }
 
-class TrackHeaderResizeHandle extends StatefulObserverWidget {
+class _TrackHeaderResizeHandle extends StatefulObserverWidget {
   final double resizeHandleHeight;
   final String trackId;
   final double trackHeight;
   final bool isSendTrack;
 
-  const TrackHeaderResizeHandle({
-    super.key,
+  const _TrackHeaderResizeHandle({
     required this.resizeHandleHeight,
     required this.trackId,
     required this.trackHeight,
@@ -102,11 +101,11 @@ class TrackHeaderResizeHandle extends StatefulObserverWidget {
   });
 
   @override
-  State<TrackHeaderResizeHandle> createState() =>
+  State<_TrackHeaderResizeHandle> createState() =>
       _TrackHeaderResizeHandleState();
 }
 
-class _TrackHeaderResizeHandleState extends State<TrackHeaderResizeHandle> {
+class _TrackHeaderResizeHandleState extends State<_TrackHeaderResizeHandle> {
   double startPixelHeight = -1;
   double startModifier = -1;
   double startY = -1;
@@ -334,7 +333,7 @@ class _TrackHeadersState extends State<TrackHeaders> {
                     right: 0,
                     child: SizedBox(
                       height: trackHeight - 1,
-                      child: TrackHeader(trackID: trackId),
+                      child: _TrackHeader(trackID: trackId),
                     ),
                   ),
                 );
@@ -363,7 +362,7 @@ class _TrackHeadersState extends State<TrackHeaders> {
                     left: 0,
                     right: 0,
                     top: resizeHandleTop,
-                    child: TrackHeaderResizeHandle(
+                    child: _TrackHeaderResizeHandle(
                       resizeHandleHeight: resizeHandleHeight,
                       trackHeight: trackHeight,
                       isSendTrack: isSendTrack,
