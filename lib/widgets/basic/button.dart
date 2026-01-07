@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2025 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,6 +20,7 @@
 import 'dart:math';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
+import 'package:flutter/gestures.dart';
 import 'package:vector_math/vector_math_64.dart';
 
 import 'package:flutter/widgets.dart';
@@ -124,7 +125,8 @@ class Button extends StatefulWidget {
   final bool? hideBorder;
   final BorderRadius? borderRadius;
 
-  final Function? onPress;
+  final void Function()? onPress;
+  final void Function()? onRightClick;
   final bool? toggleState;
 
   final List<HintSection>? hint;
@@ -147,6 +149,7 @@ class Button extends StatefulWidget {
     this.hideBorder,
     this.borderRadius,
     this.onPress,
+    this.onRightClick,
     this.toggleState,
     this.hint,
   });
@@ -319,8 +322,12 @@ class _ButtonState extends State<Button> {
     );
   }
 
+  int _pressedButtons = 0;
+
   void _onPointerDown(PointerEvent e) {
     if (!mounted) return;
+
+    _pressedButtons = e.buttons;
 
     setState(() {
       pressed = true;
@@ -335,7 +342,13 @@ class _ButtonState extends State<Button> {
     });
 
     if (hovered && !cancelled) {
-      widget.onPress?.call();
+      if (_pressedButtons & kPrimaryButton != 0) {
+        widget.onPress?.call();
+      } else if (_pressedButtons & kSecondaryButton != 0) {
+        widget.onRightClick?.call();
+      }
     }
+
+    _pressedButtons = 0;
   }
 }
