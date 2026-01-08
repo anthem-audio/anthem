@@ -131,6 +131,7 @@ class _TrackHeaderResizeHandleState extends State<_TrackHeaderResizeHandle> {
     return SizedBox(
       height: widget.resizeHandleHeight,
       child: Hint(
+        overrideWhilePressed: true,
         hint: [
           .new('click + drag', 'Resize'),
           .new('right click', 'Insert track...'),
