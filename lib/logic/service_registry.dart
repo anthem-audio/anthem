@@ -21,6 +21,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
+import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/main_window/main_window_view_model.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
@@ -45,6 +46,8 @@ class ServiceRegistry {
 
   ProjectController get projectController =>
       _services[(ProjectController, null)]!;
+  ArrangerController get arrangerController =>
+      _services[(ArrangerController, null)]!;
 
   ProjectViewModel get projectViewModel => _services[(ProjectViewModel, null)]!;
   ArrangerViewModel get arrangerViewModel =>

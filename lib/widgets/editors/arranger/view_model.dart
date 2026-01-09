@@ -38,6 +38,8 @@ class ArrangerViewModel = _ArrangerViewModel with _$ArrangerViewModel;
 enum ResizeAreaType { start, end }
 
 abstract class _ArrangerViewModel with Store {
+  final String projectId;
+
   @observable
   EditorTool tool = EditorTool.pencil;
 
@@ -68,6 +70,13 @@ abstract class _ArrangerViewModel with Store {
   Rectangle<double>? selectionBox;
 
   @observable
+  ObservableSet<Id> selectedTracks = ObservableSet();
+
+  Id? lastToggledTrack;
+
+  ({List<Id> selected, List<Id> notSelected})? lastShiftClickRange;
+
+  @observable
   ObservableSet<Id> selectedClips = ObservableSet();
 
   @observable
@@ -83,7 +92,8 @@ abstract class _ArrangerViewModel with Store {
     required ProjectModel project,
     required this.baseTrackHeight,
     required this.timeView,
-  }) : trackHeightModifiers = ObservableMap.of(
+  }) : projectId = project.id,
+       trackHeightModifiers = ObservableMap.of(
          project.tracks.nonObservableInner.map(
            (key, value) => MapEntry(key, 1),
          ),

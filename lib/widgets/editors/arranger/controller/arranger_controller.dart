@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,8 +23,7 @@ import 'dart:math';
 import 'package:anthem/logic/commands/arrangement_commands.dart';
 import 'package:anthem/logic/commands/journal_commands.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/arrangement/clip.dart';
-import 'package:anthem/model/project.dart';
+import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/editors/arranger/events.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
@@ -54,6 +53,9 @@ abstract class _ArrangerController {
   ProjectModel project;
 
   late final ReactionDisposer patternCursorAutorunDispose;
+
+  ProjectModel get _project =>
+      AnthemStore.instance.projects[viewModel.projectId]!;
 
   _ArrangerController({required this.viewModel, required this.project}) {
     // Set up an autorun to update the current cursor pattern if the selected
@@ -94,7 +96,7 @@ abstract class _ArrangerController {
   /// We need to snap the vertical scroll position animation when this happens.
   final onBaseTrackHeightChanged = StreamController<void>.broadcast();
 
-  void deleteSelected() {
+  void deleteSelectedClips() {
     if (viewModel.selectedClips.isEmpty ||
         project.sequence.activeArrangementID == null) {
       return;
@@ -117,7 +119,7 @@ abstract class _ArrangerController {
     project.commitJournalPage();
   }
 
-  void selectAll() {
+  void selectAllClips() {
     if (project.sequence.activeArrangementID == null) return;
 
     final arrangement =
@@ -127,6 +129,75 @@ abstract class _ArrangerController {
 
     for (final clipID in arrangement.clips.keys) {
       viewModel.selectedClips.add(clipID);
+    }
+  }
+
+  void selectTrack(Id trackId) {
+    viewModel.selectedTracks.clear();
+    viewModel.selectedTracks.add(trackId);
+    viewModel.lastToggledTrack = trackId;
+    viewModel.lastShiftClickRange = null;
+  }
+
+  void toggleTrackSelection(Id trackId) {
+    if (viewModel.selectedTracks.contains(trackId)) {
+      viewModel.selectedTracks.remove(trackId);
+    } else {
+      viewModel.selectedTracks.add(trackId);
+    }
+
+    viewModel.lastToggledTrack = trackId;
+    viewModel.lastShiftClickRange = null;
+  }
+
+  void shiftClickToTrack(Id trackId) {
+    if (viewModel.lastToggledTrack == null) {
+      toggleTrackSelection(trackId);
+      return;
+    }
+
+    final project = _project;
+
+    if (project.sequence.activeArrangementID == null) {
+      return;
+    }
+
+    final currentTrackList = project.trackOrder
+        .followedBy(project.sendTrackOrder)
+        .toList();
+
+    if (viewModel.lastShiftClickRange != null) {
+      for (final id in viewModel.lastShiftClickRange!.selected) {
+        viewModel.selectedTracks.add(id);
+      }
+
+      for (final id in viewModel.lastShiftClickRange!.notSelected) {
+        viewModel.selectedTracks.remove(id);
+      }
+    }
+
+    final start = viewModel.lastToggledTrack;
+    final startIndex = start == null ? -1 : currentTrackList.indexOf(start);
+    final end = trackId;
+    final endIndex = currentTrackList.indexOf(end);
+
+    if (startIndex == -1 || endIndex == -1) return;
+
+    final first = min(startIndex, endIndex);
+    final last = max(startIndex, endIndex);
+
+    viewModel.lastShiftClickRange = (selected: [], notSelected: []);
+
+    for (var i = first; i <= last; i++) {
+      final id = currentTrackList[i];
+
+      if (viewModel.selectedTracks.contains(id)) {
+        viewModel.lastShiftClickRange!.selected.add(id);
+      } else {
+        viewModel.lastShiftClickRange!.notSelected.add(id);
+      }
+
+      viewModel.selectedTracks.add(id);
     }
   }
 }

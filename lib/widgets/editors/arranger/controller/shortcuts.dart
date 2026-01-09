@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -25,14 +25,14 @@ mixin _ArrangerShortcutsMixin on _ArrangerController {
   void registerShortcuts() {
     // Delete
     shortcutManager.register(LogicalKeySet(LogicalKeyboardKey.delete), () {
-      deleteSelected();
+      deleteSelectedClips();
     });
 
     // Ctrl + A
     shortcutManager.register(
       LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyA),
       () {
-        selectAll();
+        selectAllClips();
       },
     );
 

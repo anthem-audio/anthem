@@ -28,6 +28,7 @@ import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -42,46 +43,72 @@ class _TrackHeader extends StatelessObserverWidget {
     final project = Provider.of<ProjectModel>(context);
     final track = project.tracks[trackID]!;
 
+    final projectServiceRegistry = ServiceRegistry.forProject(project.id);
+    final controller = projectServiceRegistry.arrangerController;
+    final viewModel = projectServiceRegistry.arrangerViewModel;
+
     final trackAnthemColor = track.color;
     final colorShifter = trackAnthemColor.colorShifter;
     final color = colorShifter.clipBase.toColor();
 
+    final trackBackgroundColor = viewModel.selectedTracks.contains(track.id)
+        ? AnthemTheme.panel.borderLight
+        : AnthemTheme.panel.main;
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        return Container(
-          color: AnthemTheme.panel.main,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 9,
-                decoration: BoxDecoration(
-                  color: color,
-                  border: Border(
-                    right: BorderSide(
-                      color: AnthemTheme.panel.border,
-                      width: 1,
+        return MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () {
+              if (HardwareKeyboard.instance.isShiftPressed) {
+                controller.shiftClickToTrack(track.id);
+                return;
+              }
+
+              if (HardwareKeyboard.instance.isControlPressed) {
+                controller.toggleTrackSelection(track.id);
+                return;
+              }
+
+              controller.selectTrack(track.id);
+            },
+            child: Container(
+              color: trackBackgroundColor,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 9,
+                    decoration: BoxDecoration(
+                      color: color,
+                      border: Border(
+                        right: BorderSide(
+                          color: AnthemTheme.panel.border,
+                          width: 1,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 7,
-                  ),
-                  child: Text(
-                    track.name,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: AnthemTheme.text.main,
-                      fontSize: 11,
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
+                      child: Text(
+                        track.name,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AnthemTheme.text.main,
+                          fontSize: 11,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         );
       },
@@ -120,7 +147,7 @@ class _TrackHeaderResizeHandleState extends State<_TrackHeaderResizeHandle> {
 
   // Dead zone at a height modifier of 1.0, which makes it easier to
   // reset track height
-  static const deadZoneSize = 5.0;
+  static const deadZoneSize = 8.0;
 
   @override
   Widget build(BuildContext context) {
