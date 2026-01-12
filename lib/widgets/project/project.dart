@@ -31,11 +31,11 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/arranger/arranger.dart';
+import 'package:anthem/widgets/editors/attribute_editor/attribute_editor.dart';
 import 'package:anthem/widgets/editors/automation_editor/automation_editor.dart';
 import 'package:anthem/widgets/editors/channel_rack/channel_rack.dart';
 import 'package:anthem/widgets/editors/pattern_editor/pattern_editor.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
-import 'package:anthem/widgets/project_details/project_details.dart';
 import 'package:anthem/widgets/project_explorer/project_explorer.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/widgets/project/project_footer.dart';
@@ -141,7 +141,7 @@ class _ProjectState extends State<Project> {
                     panelContent: const RepaintBoundary(
                       child: PanelBorder(
                         panelKind: .detailEditor,
-                        child: ProjectDetails(),
+                        child: AttributeEditor(),
                       ),
                     ),
 

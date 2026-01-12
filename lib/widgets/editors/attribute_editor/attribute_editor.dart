@@ -20,8 +20,8 @@
 import 'package:anthem/theme.dart';
 import 'package:flutter/widgets.dart';
 
-class ProjectDetails extends StatelessWidget {
-  const ProjectDetails({super.key});
+class AttributeEditor extends StatelessWidget {
+  const AttributeEditor({super.key});
 
   @override
   Widget build(BuildContext context) {
