@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade, Budislav Stepanov
+  Copyright (C) 2021 - 2026 Joshua Wade, Budislav Stepanov
 
   This file is part of Anthem.
 
@@ -42,6 +42,7 @@ class _Panel {
   Color borderLightActive = const Color(0xFF6A6A6A);
   Color background = const Color(0XFF3F3F3F);
   Color backgroundLight = const Color(0XFF464646);
+  Color backgroundDark = const Color(0XFF3B3B3B);
   Color main = const Color(0XFF4F4F4F);
   Color accent = const Color(0XFF525252);
 

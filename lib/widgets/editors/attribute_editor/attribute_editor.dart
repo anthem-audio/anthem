@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/editors/attribute_editor/attribute_group.dart';
 import 'package:flutter/widgets.dart';
 
 class AttributeEditor extends StatelessWidget {
@@ -25,22 +26,14 @@ class AttributeEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AnthemTheme.panel.main,
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              'This is the detail view. Click on something to view and edit its details.',
-              style: TextStyle(color: AnthemTheme.text.main, fontSize: 12),
-              textAlign: TextAlign.center,
-            ),
-          ),
+    return Container(
+      color: AnthemTheme.panel.backgroundDark,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: .stretch,
+          children: [
+            AttributeGroup(title: 'Arranger clip'),
+          ],
         ),
       ),
     );
