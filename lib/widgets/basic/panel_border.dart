@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -48,7 +48,7 @@ class PanelBorder extends StatelessObserverWidget {
       ),
       child: Container(
         decoration: BoxDecoration(
-          border: Border.all(color: AnthemTheme.panel.border, width: 1),
+          border: Border.all(color: AnthemTheme.panel.border, width: 2),
         ),
         child: Listener(
           onPointerDown: (_) {
