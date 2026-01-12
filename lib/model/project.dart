@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -180,23 +180,6 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   @anthemObservable
   @hideFromSerialization
   bool isDirty = false;
-
-  // Detail view state
-
-  @anthemObservable
-  @hide
-  DetailViewKind? _selectedDetailView;
-
-  /// `selectedDetailView` controls which detail item (in the left panel) is
-  /// active. Detail views contain attributes about various items in the
-  /// project, such as patterns, arrangements, notes, etc.
-  DetailViewKind? getSelectedDetailView() => _selectedDetailView;
-
-  /// Sets the selected detail view. See getSelectedDetailView() for more info.
-  void setSelectedDetailView(DetailViewKind? detailView) {
-    _selectedDetailView = detailView;
-    if (detailView != null) isDetailViewOpen = true;
-  }
 
   @anthemObservable
   @hide
@@ -510,28 +493,4 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     visualizationProvider.dispose();
     engine.dispose();
   }
-}
-
-/// Used to describe which detail view is active in the project sidebar, if any
-abstract class DetailViewKind {}
-
-class PatternDetailViewKind extends DetailViewKind {
-  Id patternID;
-  PatternDetailViewKind(this.patternID);
-}
-
-class ArrangementDetailViewKind extends DetailViewKind {
-  Id arrangementID;
-  ArrangementDetailViewKind(this.arrangementID);
-}
-
-class TimeSignatureChangeDetailViewKind extends DetailViewKind {
-  Id? arrangementID;
-  Id? patternID;
-  Id changeID;
-  TimeSignatureChangeDetailViewKind({
-    this.arrangementID,
-    this.patternID,
-    required this.changeID,
-  });
 }

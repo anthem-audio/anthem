@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,7 +19,6 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
-import 'package:anthem/model/project.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/widgets/basic/clip/packed_texture.dart';
@@ -135,17 +134,9 @@ abstract class _SequencerModel
 
   void setActivePattern(Id? patternID) {
     activePatternID = patternID;
-
-    if (patternID != null) {
-      project.setSelectedDetailView(PatternDetailViewKind(patternID));
-    }
   }
 
   void setActiveArrangement(Id? arrangementID) {
     activeArrangementID = arrangementID;
-
-    if (arrangementID != null) {
-      project.setSelectedDetailView(ArrangementDetailViewKind(arrangementID));
-    }
   }
 }

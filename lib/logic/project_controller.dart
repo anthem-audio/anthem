@@ -60,13 +60,6 @@ class ProjectController {
     project.redo();
   }
 
-  void setActiveDetailView(bool isVisible, [DetailViewKind? detailView]) {
-    if (detailView != null) {
-      project.setSelectedDetailView(detailView);
-    }
-    project.isDetailViewOpen = isVisible;
-  }
-
   void setActiveGeneratorID(Id id) {
     project.activeInstrumentID = id;
   }

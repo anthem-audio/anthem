@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -26,7 +26,6 @@ import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/text_box.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_view.dart';
-import 'package:anthem/logic/project_controller.dart';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -61,8 +60,6 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
 
   @override
   Widget build(BuildContext context) {
-    final projectController = Provider.of<ProjectController>(context);
-
     final project = Provider.of<ProjectModel>(context);
 
     TreeViewItemModel getArrangementsTree() => TreeViewItemModel(
@@ -73,10 +70,6 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
             (id) => TreeViewItemModel(
               key: 'arrangement-$id',
               label: project.sequence.arrangements[id]!.name,
-              onClick: () => projectController.setActiveDetailView(
-                true,
-                ArrangementDetailViewKind(id),
-              ),
             ),
           )
           .toList(),
@@ -90,22 +83,9 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
             (patternID) => TreeViewItemModel(
               key: 'pattern-$patternID',
               label: project.sequence.patterns[patternID]!.name,
-              onClick: () => projectController.setActiveDetailView(
-                true,
-                PatternDetailViewKind(patternID),
-              ),
               children: [
                 getMarkersItem(
                   pattern: project.sequence.patterns[patternID],
-                  onClick: (changeID) {
-                    projectController.setActiveDetailView(
-                      true,
-                      TimeSignatureChangeDetailViewKind(
-                        changeID: changeID,
-                        patternID: patternID,
-                      ),
-                    );
-                  },
                 ),
               ],
             ),
@@ -194,7 +174,7 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
 
 TreeViewItemModel getMarkersItem({
   PatternModel? pattern,
-  required void Function(Id key) onClick,
+  void Function(Id key)? onClick,
 }) {
   final timeSignatureChanges = pattern!.timeSignatureChanges;
 
@@ -207,7 +187,7 @@ TreeViewItemModel getMarkersItem({
             key: change.id,
             label: change.timeSignature.toDisplayString(),
             onClick: () {
-              onClick(change.id);
+              onClick?.call(change.id);
             },
           ),
         )

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -138,13 +138,10 @@ class _ProjectState extends State<Project> {
                     panelStartSize: 200,
                     panelMinSize: 200,
                     // Left side-panel content
-                    panelContent: RepaintBoundary(
+                    panelContent: const RepaintBoundary(
                       child: PanelBorder(
                         panelKind: .detailEditor,
-                        child: ProjectDetails(
-                          selectedProjectDetails: projectModel
-                              .getSelectedDetailView(),
-                        ),
+                        child: ProjectDetails(),
                       ),
                     ),
 
