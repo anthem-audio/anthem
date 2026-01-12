@@ -496,11 +496,10 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
           onSelected: () {
             final dialogController = ServiceRegistry.dialogController;
             dialogController.showTextDialog(
-              text: [
-                'Version: Pre-alpha\n\n',
-                'Code copyright (C) 2021 - 2025 Joshua Wade\n',
-                'UI design and icons copyright (C) 2021 - 2025 Budislav Stepanov',
-              ].join(''),
+              text:
+                  'Version: Pre-alpha\n\n'
+                  'UI design and icons copyright (C) 2021 - 2026 Budislav Stepanov\n'
+                  'Code copyright (C) 2021 - 2026 Joshua Wade',
               title: 'About Anthem',
               buttons: [
                 DialogButton(
