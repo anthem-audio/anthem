@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -113,12 +113,15 @@ class _DialogRendererState extends State<DialogRenderer>
 
     if (currentDialogContent != null) {
       blocker = Positioned.fill(
-        child: GestureDetector(
-          onTap: () {
-            closeDialog();
-            onDismiss?.call();
-          },
-          child: Container(color: const Color(0x88000000)),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () {
+              closeDialog();
+              onDismiss?.call();
+            },
+            child: Container(color: const Color(0x33000000)),
+          ),
         ),
       );
       dialog = Positioned.fill(
@@ -128,6 +131,12 @@ class _DialogRendererState extends State<DialogRenderer>
               color: AnthemTheme.overlay.background,
               border: Border.all(color: AnthemTheme.overlay.border),
               borderRadius: BorderRadius.circular(4),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF000000).withValues(alpha: 0.25),
+                  blurRadius: 14,
+                ),
+              ],
             ),
             child: Padding(
               padding: const EdgeInsets.all(12),
