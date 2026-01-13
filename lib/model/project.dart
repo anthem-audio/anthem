@@ -414,10 +414,12 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   void execute(Command command, {bool push = true}) {
     command.execute(this as ProjectModel);
 
-    if (_journalPageActive) {
-      _journalPageAccumulator.add(command);
-    } else {
-      _commandStack.push(command);
+    if (push) {
+      if (_journalPageActive) {
+        _journalPageAccumulator.add(command);
+      } else {
+        _commandStack.push(command);
+      }
     }
 
     // If we receive an action that can be undone, then we will consider the
