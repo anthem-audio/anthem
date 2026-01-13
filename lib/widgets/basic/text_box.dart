@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2025 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -27,13 +27,16 @@ class TextBox extends StatefulWidget {
   final double? width;
   final double? height;
 
+  final TextAlign textAlign;
+
   const TextBox({
     super.key,
     this.controller,
     this.focusNode,
     this.width,
     this.height,
-  });
+    TextAlign? textAlign,
+  }) : textAlign = textAlign ?? .start;
 
   @override
   State<TextBox> createState() => _TextBoxState();
@@ -48,7 +51,7 @@ class _TextBoxState extends State<TextBox> {
         borderRadius: BorderRadius.circular(4),
         color: AnthemTheme.panel.background,
       ),
-      padding: const EdgeInsets.only(left: 8, right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 3),
       height: widget.height,
       width: widget.width,
       child: Center(
@@ -59,6 +62,7 @@ class _TextBoxState extends State<TextBox> {
           maxLines: 1,
           cursorColor: AnthemTheme.text.main,
           style: TextStyle(color: AnthemTheme.text.main, fontSize: 11),
+          textAlign: widget.textAlign,
         ),
       ),
     );
