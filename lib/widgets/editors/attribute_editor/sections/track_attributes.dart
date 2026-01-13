@@ -19,6 +19,7 @@
 
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/widgets/basic/hint/hint.dart';
 import 'package:anthem/widgets/basic/text_box_controlled.dart';
 import 'package:anthem/widgets/editors/attribute_editor/attribute_editor_helpers.dart';
 import 'package:anthem/widgets/editors/attribute_editor/attribute_group.dart';
@@ -77,11 +78,14 @@ class _TrackAttributesState extends State<TrackAttributes> {
             children: [
               // Container(width: 20, height: 20, color: color),
               Expanded(
-                child: ControlledTextBox(
-                  text: trackName,
-                  onChange: setTrackName,
-                  textAlign: .end,
-                  height: 20,
+                child: Hint(
+                  hint: [.new('click', 'Set the track name')],
+                  child: ControlledTextBox(
+                    text: trackName,
+                    onChange: setTrackName,
+                    textAlign: .end,
+                    height: 20,
+                  ),
                 ),
               ),
             ],
