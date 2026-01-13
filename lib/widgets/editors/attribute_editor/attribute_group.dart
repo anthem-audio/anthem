@@ -27,9 +27,9 @@ import 'package:flutter/widgets.dart';
 /// collapse.
 class AttributeGroup extends StatefulWidget {
   final String title;
-  final Widget? content;
+  final Widget? child;
 
-  const AttributeGroup({super.key, required this.title, this.content});
+  const AttributeGroup({super.key, required this.title, this.child});
 
   @override
   State<AttributeGroup> createState() => _AttributeGroupState();
@@ -154,7 +154,7 @@ class _AttributeGroupState extends State<AttributeGroup>
               color: AnthemTheme.panel.main,
             ),
             padding: EdgeInsets.all(4),
-            child: widget.content ?? SizedBox(height: 100),
+            child: widget.child ?? SizedBox(height: 100),
           ),
         ),
       ],

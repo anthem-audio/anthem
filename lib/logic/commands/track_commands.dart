@@ -117,3 +117,23 @@ class TrackAddRemoveCommand extends Command {
     project.tracks.remove(track.id);
   }
 }
+
+class SetTrackNameCommand extends Command {
+  final Id trackId;
+  final String newName;
+  final String oldName;
+
+  SetTrackNameCommand({required TrackModel track, required this.newName})
+    : trackId = track.id,
+      oldName = track.name;
+
+  @override
+  void execute(ProjectModel project) {
+    project.tracks[trackId]!.name = newName;
+  }
+
+  @override
+  void rollback(ProjectModel project) {
+    project.tracks[trackId]!.name = oldName;
+  }
+}

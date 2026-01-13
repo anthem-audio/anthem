@@ -245,9 +245,15 @@ class ProjectController {
     );
   }
 
-  void removeTrack(String trackId) {
+  void removeTrack(Id trackId) {
     project.execute(
       TrackAddRemoveCommand.remove(project: project, id: trackId),
+    );
+  }
+
+  void setTrackName(Id trackId, String newName) {
+    project.execute(
+      SetTrackNameCommand(track: project.tracks[trackId]!, newName: newName),
     );
   }
 

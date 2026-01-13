@@ -17,23 +17,49 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/editors/attribute_editor/attribute_group.dart';
+import 'package:anthem/widgets/editors/attribute_editor/sections/track_attributes.dart';
+import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:provider/provider.dart';
 
-class AttributeEditor extends StatelessWidget {
+class AttributeEditor extends StatelessObserverWidget {
   const AttributeEditor({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final attributeSections = <Widget>[];
+
+    final project = Provider.of<ProjectModel>(context);
+    final serviceRegistry = ServiceRegistry.forProject(project.id);
+
+    final projectViewModel = serviceRegistry.projectViewModel;
+
+    switch (projectViewModel.activePanel) {
+      case null:
+        break;
+      case PanelKind.pianoRoll:
+        break;
+      case PanelKind.automationEditor:
+        break;
+      case PanelKind.channelRack:
+        break;
+      case PanelKind.mixer:
+        break;
+      case PanelKind.arranger:
+        attributeSections.add(TrackAttributes());
+        break;
+    }
+
     return Container(
       color: AnthemTheme.panel.backgroundDark,
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: .stretch,
-          children: [
-            AttributeGroup(title: 'Arranger clip'),
-          ],
+          children: attributeSections,
         ),
       ),
     );
