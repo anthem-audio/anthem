@@ -57,59 +57,63 @@ class _TrackHeader extends StatelessObserverWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        return MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () {
-              if (HardwareKeyboard.instance.isShiftPressed) {
-                controller.shiftClickToTrack(track.id);
-                return;
-              }
+        return Observer(
+          builder: (context) {
+            return MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () {
+                  if (HardwareKeyboard.instance.isShiftPressed) {
+                    controller.shiftClickToTrack(track.id);
+                    return;
+                  }
 
-              if (HardwareKeyboard.instance.isControlPressed) {
-                controller.toggleTrackSelection(track.id);
-                return;
-              }
+                  if (HardwareKeyboard.instance.isControlPressed) {
+                    controller.toggleTrackSelection(track.id);
+                    return;
+                  }
 
-              controller.selectTrack(track.id);
-            },
-            child: Container(
-              color: trackBackgroundColor,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 9,
-                    decoration: BoxDecoration(
-                      color: color,
-                      border: Border(
-                        right: BorderSide(
-                          color: AnthemTheme.panel.border,
-                          width: 1,
+                  controller.selectTrack(track.id);
+                },
+                child: Container(
+                  color: trackBackgroundColor,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 9,
+                        decoration: BoxDecoration(
+                          color: color,
+                          border: Border(
+                            right: BorderSide(
+                              color: AnthemTheme.panel.border,
+                              width: 1,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 7,
-                      ),
-                      child: Text(
-                        track.name,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: AnthemTheme.text.main,
-                          fontSize: 11,
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 7,
+                          ),
+                          child: Text(
+                            track.name,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: AnthemTheme.text.main,
+                              fontSize: 11,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
