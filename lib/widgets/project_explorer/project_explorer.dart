@@ -84,9 +84,7 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
               key: 'pattern-$patternID',
               label: project.sequence.patterns[patternID]!.name,
               children: [
-                getMarkersItem(
-                  pattern: project.sequence.patterns[patternID],
-                ),
+                getMarkersItem(pattern: project.sequence.patterns[patternID]),
               ],
             ),
           )

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -24,15 +24,7 @@ part 'project_view_model.g.dart';
 
 enum EditorKind { detail, automation, channelRack, mixer }
 
-enum PanelKind {
-  pianoRoll,
-  automationEditor,
-  channelRack,
-  mixer,
-  arranger,
-  detailEditor,
-  projectExplorer,
-}
+enum PanelKind { pianoRoll, automationEditor, channelRack, mixer, arranger }
 
 // ignore: library_private_types_in_public_api
 class ProjectViewModel = _ProjectViewModel with _$ProjectViewModel;

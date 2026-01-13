@@ -183,7 +183,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
 
   @anthemObservable
   @hide
-  bool isDetailViewOpen = false;
+  bool isDetailViewOpen = true;
 
   @anthemObservable
   @hide

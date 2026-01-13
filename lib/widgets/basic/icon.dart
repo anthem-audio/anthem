@@ -91,7 +91,9 @@ class Icons {
   static IconDef save = const IconDef('assets/icons_old/edit/save.svg');
   static IconDef stop = const IconDef('assets/icons/main_toolbar/stop.svg');
   static IconDef undo = const IconDef('assets/icons/edit/undo.svg');
-  static IconDef arrowDownThin = const IconDef('assets/icons/small/arrow_down.svg');
+  static IconDef arrowDownThin = const IconDef(
+    'assets/icons/small/arrow_down.svg',
+  );
   static _ScrollbarIcons scrollbar = _ScrollbarIcons();
   static _ToolIcons tools = _ToolIcons();
   static _MainToolbarIcons mainToolbar = _MainToolbarIcons();

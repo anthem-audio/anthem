@@ -139,10 +139,7 @@ class _ProjectState extends State<Project> {
                     panelMinSize: 200,
                     // Left side-panel content
                     panelContent: const RepaintBoundary(
-                      child: PanelBorder(
-                        panelKind: .detailEditor,
-                        child: AttributeEditor(),
-                      ),
+                      child: PanelBorder(child: AttributeEditor()),
                     ),
 
                     child: Panel(
@@ -151,10 +148,7 @@ class _ProjectState extends State<Project> {
                       sizeBehavior: .pixels,
                       panelStartSize: 200,
                       // Right side-panel content
-                      panelContent: const PanelBorder(
-                        panelKind: .projectExplorer,
-                        child: ProjectExplorer(),
-                      ),
+                      panelContent: const PanelBorder(child: ProjectExplorer()),
 
                       child: Panel(
                         orientation: .bottom,
