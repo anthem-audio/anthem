@@ -26,9 +26,10 @@ const squareMargin = 1.0;
 const padding = 4.0;
 
 class ColorPicker extends StatefulWidget {
-  final void Function(AnthemColor)? onChange;
+  final double currentHue;
+  final void Function(AnthemColorPickerEvent event)? onChange;
 
-  const ColorPicker({super.key, this.onChange});
+  const ColorPicker({super.key, required this.currentHue, this.onChange});
 
   @override
   State<ColorPicker> createState() => _ColorPickerState();
@@ -38,9 +39,46 @@ class _ColorPickerState extends State<ColorPicker> {
   @override
   Widget build(BuildContext context) {
     const hueArrayLength = 10;
+    const colorCellSpacing = 2.0;
+
     final hues =
         [0.0] + List.generate(hueArrayLength, (i) => i * 360 / hueArrayLength);
-    final saturations = [0.0] + List.filled(hueArrayLength, 1);
+
+    Widget buildColorCell(double hue, AnthemColorPaletteKind paletteKind) {
+      void onPointerUp(PointerEvent e) {
+        final event = AnthemColorPickerEvent(hue: hue, paletteKind: .normal);
+
+        widget.onChange?.call(event);
+      }
+
+      return Listener(
+        onPointerUp: onPointerUp,
+        onPointerCancel: onPointerUp,
+        child: Container(
+          margin: const EdgeInsets.all(squareMargin),
+          color: HSLColor.fromAHSL(
+            1.0,
+            hue,
+            switch (paletteKind) {
+              AnthemColorPaletteKind.normal => 0.5,
+              AnthemColorPaletteKind.bright => 0.5,
+              AnthemColorPaletteKind.dark => 0.5,
+              AnthemColorPaletteKind.desaturated => 0.2,
+              AnthemColorPaletteKind.grayscale => 0.0,
+            },
+            switch (paletteKind) {
+              AnthemColorPaletteKind.normal => 0.5,
+              AnthemColorPaletteKind.bright => 0.75,
+              AnthemColorPaletteKind.dark => 0.25,
+              AnthemColorPaletteKind.desaturated => 0.5,
+              AnthemColorPaletteKind.grayscale => 0.5,
+            },
+          ).toColor(),
+          width: 16,
+          height: 16,
+        ),
+      );
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -49,45 +87,41 @@ class _ColorPickerState extends State<ColorPicker> {
         borderRadius: BorderRadius.circular(4),
       ),
       padding: const EdgeInsets.all(padding),
-      height: squareSize * 3 + squareMargin * 6 + padding * 2,
-      child: Row(
-        children: List.generate(hues.length, (colorIndex) {
-          final hue = hues[colorIndex];
-
-          return Expanded(
-            child: Column(
-              children: List.generate(3, (lightnessIndex) {
-                var lightnessModifier = 0.9 + (lightnessIndex - 1) * 0.5;
-                if (lightnessIndex == 0) lightnessModifier += 0.2;
-
-                final saturationModifier =
-                    saturations[colorIndex] + (lightnessIndex - 1) * 0.5 - 0.2;
-
-                final color = AnthemColor(
-                  hue: hue,
-                  saturationModifier: saturationModifier,
-                  lightnessModifier: lightnessModifier,
-                );
-
-                void onPointerUp(PointerEvent e) {
-                  widget.onChange?.call(color.clone());
-                }
-
-                return Expanded(
-                  child: Listener(
-                    onPointerUp: onPointerUp,
-                    onPointerCancel: onPointerUp,
-                    child: Container(
-                      margin: const EdgeInsets.all(squareMargin),
-                      color: color.colorShifter.clipBase.toColor(),
-                    ),
-                  ),
-                );
-              }),
-            ),
-          );
-        }),
+      child: Column(
+        spacing: colorCellSpacing,
+        mainAxisSize: .min,
+        crossAxisAlignment: .start,
+        children: [
+          Row(
+            spacing: colorCellSpacing,
+            mainAxisSize: .min,
+            children: Iterable.generate(hues.length, (colorIndex) {
+              final hue = hues[colorIndex];
+              return buildColorCell(hue, .normal);
+            }).followedBy([buildColorCell(0, .grayscale)]).toList(),
+          ),
+          Row(
+            spacing: colorCellSpacing,
+            mainAxisSize: .min,
+            children:
+                <AnthemColorPaletteKind>[
+                  .dark,
+                  .normal,
+                  .bright,
+                  .desaturated,
+                ].map((value) {
+                  return buildColorCell(0, value);
+                }).toList(),
+          ),
+        ],
       ),
     );
   }
+}
+
+class AnthemColorPickerEvent {
+  final double hue;
+  final AnthemColorPaletteKind paletteKind;
+
+  AnthemColorPickerEvent({required this.hue, required this.paletteKind});
 }

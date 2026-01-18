@@ -25,6 +25,8 @@ import 'package:mobx/mobx.dart';
 
 part 'anthem_color.g.dart';
 
+enum AnthemColorPaletteKind { normal, bright, dark, desaturated, grayscale }
+
 @AnthemModel.syncedModel()
 class AnthemColor extends _AnthemColor
     with _$AnthemColor, _$AnthemColorAnthemModelMixin {

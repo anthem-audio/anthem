@@ -19,6 +19,7 @@
 
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/widgets/basic/color_picker_button.dart';
 import 'package:anthem/widgets/basic/hint/hint.dart';
 import 'package:anthem/widgets/basic/text_box_controlled.dart';
 import 'package:anthem/widgets/editors/attribute_editor/attribute_editor_helpers.dart';
@@ -65,6 +66,16 @@ class _TrackAttributesState extends State<TrackAttributes> {
       project.commitJournalPage();
     }
 
+    //
+    // Track color
+    //
+
+    // final trackColor = getColorAttributeValue(
+    //   selectedTrackIds.map((id) => project.tracks[id]!.color)
+    // );
+
+    // void setTrackColor();
+
     return AttributeGroup(
       title: selectedTrackIds.length == 1
           ? 'Track'
@@ -76,10 +87,13 @@ class _TrackAttributesState extends State<TrackAttributes> {
           Row(
             spacing: 4,
             children: [
-              // Container(width: 20, height: 20, color: color),
+              Hint(
+                hint: [.new('click', 'Change the track color')],
+                child: ColorPickerButton(hue: 0),
+              ),
               Expanded(
                 child: Hint(
-                  hint: [.new('click', 'Set the track name')],
+                  hint: [.new('click', 'Change the track name')],
                   child: ControlledTextBox(
                     text: trackName,
                     onChange: setTrackName,
