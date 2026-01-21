@@ -436,6 +436,9 @@ class _TrackHeadersState extends State<TrackHeaders> {
                               project.id,
                             ).projectController;
                             controller.addTrack();
+                            viewModel.selectedTracks
+                              ..clear()
+                              ..add(project.trackOrder.last);
                           },
                         ),
                         AnthemMenuItem(
@@ -445,6 +448,9 @@ class _TrackHeadersState extends State<TrackHeaders> {
                               project.id,
                             ).projectController;
                             controller.addSendTrack();
+                            viewModel.selectedTracks
+                              ..clear()
+                              ..add(project.sendTrackOrder.last);
                           },
                         ),
                       ],
