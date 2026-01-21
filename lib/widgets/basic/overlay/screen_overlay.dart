@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,13 +23,13 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
-/// A `Stack` that is always rendered above the rest of the app.
-/// `ScreenOverlayCubit` provides an API that should be accessible from
-/// anywhere within Anthem, as long as it lives beneath the `ScreenOverlay`.
+/// A [Stack] that is always rendered above the rest of the app.
+/// [ScreenOverlayController] provides an API that should be accessible from
+/// anywhere within Anthem, as long as it lives beneath the [ScreenOverlay].
 ///
 /// Example usage:
 /// ```dart
-/// Provider.of<ScreenOverlayCubit>().add(/* ... */);
+/// Provider.of<ScreenOverlayController>().add(/* ... */);
 /// ```
 class ScreenOverlay extends StatelessObserverWidget {
   final Widget child;

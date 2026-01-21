@@ -18,18 +18,27 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/color_picker.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 /// Button that opens a color picker.
 class ColorPickerButton extends StatefulWidget {
-  final double hue;
+  /// Function that must return the current color values for the color picker.
+  ///
+  /// This is a hack to allow the overlay to observe relevant model changes. It
+  /// is expected that getValues() will derive from the relevant MobX models, so
+  /// calling it in an observer will subscribe to relevant state.
+  final (double hue, AnthemColorPaletteKind palette) Function() getValues;
 
-  const ColorPickerButton({super.key, required this.hue});
+  final void Function(double hue, AnthemColorPaletteKind palette)? onChange;
+
+  const ColorPickerButton({super.key, required this.getValues, this.onChange});
 
   @override
   State<ColorPickerButton> createState() => _ColorPickerButtonState();
@@ -74,21 +83,39 @@ class _ColorPickerButtonState extends State<ColorPickerButton> {
                         ),
                       ],
                     ),
-                    child: ColorPicker(currentHue: 123),
+                    child: Observer(
+                      builder: (context) {
+                        final (hue, palette) = widget.getValues();
+
+                        return ColorPicker(
+                          hue: hue,
+                          palette: palette == .grayscale ? .normal : palette,
+                          onChange: (e) {
+                            widget.onChange?.call(e.hue, e.palette);
+                          },
+                        );
+                      },
+                    ),
                   ),
                 );
               },
             ),
           );
         },
-        child: Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(
-            color: HSLColor.fromAHSL(1.0, widget.hue, 0.5, 0.5).toColor(),
-            border: .all(color: AnthemTheme.panel.border),
-            borderRadius: .circular(4),
-          ),
+        child: Observer(
+          builder: (context) {
+            final (hue, palette) = widget.getValues();
+
+            return Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: getColor(hue, palette),
+                border: .all(color: AnthemTheme.panel.border),
+                borderRadius: .circular(4),
+              ),
+            );
+          },
         ),
       ),
     );

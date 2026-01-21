@@ -188,7 +188,7 @@ abstract class _PatternModel
   _PatternModel();
 
   _PatternModel.create({required this.name}) {
-    color = AnthemColor(hue: 0, lightnessModifier: 2, saturationModifier: 0);
+    color = AnthemColor.randomHue();
     timeSignatureChanges = AnthemObservableList();
   }
 

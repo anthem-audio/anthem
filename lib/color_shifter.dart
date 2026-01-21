@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -27,9 +27,7 @@ import 'package:okcolor/models/okhsl.dart';
 /// with all variations. It also produces color variations for colored items,
 /// such as colored channels, tracks, and clips.
 class AnthemColorShifter {
-  double hue;
-  double lightnessModifier;
-  double saturationModifier;
+  Color baseColor;
 
   late final Color main;
   late final Color subtle;
@@ -46,34 +44,25 @@ class AnthemColorShifter {
   late final OkHsl clipBase;
   late final OkHsl clipText;
 
-  AnthemColorShifter(
-    this.hue, {
-    this.lightnessModifier = 1,
-    this.saturationModifier = 1,
-  }) {
-    final convertedHue = HSLColor.fromAHSL(
-      1,
-      hue,
-      1,
-      0.5,
-    ).toColor().toOkHsl().h;
+  AnthemColorShifter(this.baseColor) {
+    final convertedHue = baseColor.toOkHsl().h;
 
     const baseDartUiColorNoShift = Color(0xFF28D1AA);
     final baseColorNoShift = baseDartUiColorNoShift.toOkHsl();
 
     var okBaseColor = baseColorNoShift.withHue(convertedHue);
 
-    if (saturationModifier >= 1) {
-      okBaseColor = okBaseColor.saturate(saturationModifier - 1);
-    } else {
-      okBaseColor = okBaseColor.desaturate(1 - saturationModifier);
-    }
+    // if (saturationModifier >= 1) {
+    //   okBaseColor = okBaseColor.saturate(saturationModifier - 1);
+    // } else {
+    //   okBaseColor = okBaseColor.desaturate(1 - saturationModifier);
+    // }
 
-    if (lightnessModifier >= 1) {
-      okBaseColor = okBaseColor.lighter(lightnessModifier - 1);
-    } else {
-      okBaseColor = okBaseColor.darker(1 - lightnessModifier);
-    }
+    // if (lightnessModifier >= 1) {
+    //   okBaseColor = okBaseColor.lighter(lightnessModifier - 1);
+    // } else {
+    //   okBaseColor = okBaseColor.darker(1 - lightnessModifier);
+    // }
 
     main = okBaseColor.toColor();
     subtle = main.withValues(alpha: 0.11);
@@ -91,7 +80,7 @@ class AnthemColorShifter {
     noteSelectedBorder = okNoteSelectedBorder.toColor();
     noteSelected = okNoteSelected.toColor();
 
-    clipBase = okBaseColor.darker(0.55).desaturate(0.13);
+    clipBase = baseColor.toOkHsl();
     clipText = clipBase.lighter(0.7).saturate(clipBase.s == 0 ? 0 : 0.2);
   }
 }

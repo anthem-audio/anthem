@@ -26,7 +26,7 @@ const white = Color(0xFFFFFFFF);
 const black = Color(0xFF000000);
 
 class AnthemTheme {
-  static final colorShifter = AnthemColorShifter(166);
+  static final colorShifter = AnthemColorShifter(const Color(0xFF28D1AA));
 
   static _Panel panel = _Panel();
   static _Primary primary = _Primary(colorShifter);

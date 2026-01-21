@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/model.dart';
+
 /// Gets a single string attribute value from multiple items.
 ///
 /// For example, if this is for clip name, attributeValues will be all selected
@@ -40,5 +42,30 @@ String getStringAttributeValue(Iterable<String> attributeValues) {
     return firstValue;
   } else {
     return '';
+  }
+}
+
+(double, AnthemColorPaletteKind) getColorAttributeValue(
+  Iterable<AnthemColor> colorValues,
+) {
+  const gray = (0.0, AnthemColorPaletteKind.grayscale);
+
+  if (colorValues.isEmpty) return gray;
+
+  final firstValue = (colorValues.first.hue, colorValues.first.palette);
+  var allEqual = true;
+
+  for (final value in colorValues.skip(1)) {
+    final valuePair = (value.hue, value.palette);
+    if (valuePair != firstValue) {
+      allEqual = false;
+      break;
+    }
+  }
+
+  if (allEqual) {
+    return firstValue;
+  } else {
+    return gray;
   }
 }

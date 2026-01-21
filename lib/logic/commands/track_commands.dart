@@ -137,3 +137,31 @@ class SetTrackNameCommand extends Command {
     project.tracks[trackId]!.name = oldName;
   }
 }
+
+class SetTrackColorCommand extends Command {
+  final Id trackId;
+  final double newHue;
+  final double oldHue;
+  final AnthemColorPaletteKind newPalette;
+  final AnthemColorPaletteKind oldPalette;
+
+  SetTrackColorCommand({
+    required TrackModel track,
+    required this.newHue,
+    required this.newPalette,
+  }) : trackId = track.id,
+       oldHue = track.color.hue,
+       oldPalette = track.color.palette;
+
+  @override
+  void execute(ProjectModel project) {
+    project.tracks[trackId]!.color.hue = newHue;
+    project.tracks[trackId]!.color.palette = newPalette;
+  }
+
+  @override
+  void rollback(ProjectModel project) {
+    project.tracks[trackId]!.color.hue = oldHue;
+    project.tracks[trackId]!.color.palette = oldPalette;
+  }
+}

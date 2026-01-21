@@ -27,11 +27,7 @@ import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/track_commands.dart';
 import 'package:anthem/logic/service_registry.dart';
-import 'package:anthem/model/generator.dart';
-import 'package:anthem/model/pattern/pattern.dart';
-import 'package:anthem/model/processing_graph/node.dart';
-import 'package:anthem/model/processing_graph/processors/vst3_processor.dart';
-import 'package:anthem/model/project.dart';
+import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
@@ -211,7 +207,7 @@ class ProjectController {
     addGenerator(
       name: 'VST Plugin',
       generatorType: GeneratorType.instrument,
-      color: getColor(),
+      color: generateColor(),
       node: VST3ProcessorModel.createNode(path!),
     );
   }
@@ -254,6 +250,16 @@ class ProjectController {
   void setTrackName(Id trackId, String newName) {
     project.execute(
       SetTrackNameCommand(track: project.tracks[trackId]!, newName: newName),
+    );
+  }
+
+  void setTrackColor(Id trackId, double hue, AnthemColorPaletteKind palette) {
+    project.execute(
+      SetTrackColorCommand(
+        track: project.tracks[trackId]!,
+        newHue: hue,
+        newPalette: palette,
+      ),
     );
   }
 
@@ -336,7 +342,7 @@ class ProjectController {
 
 var nextHue = 0.0;
 
-Color getColor() {
+Color generateColor() {
   final color = HSLColor.fromAHSL(1, nextHue, 0.33, 0.5).toColor();
   nextHue = (nextHue + 330) % 360;
   return color;

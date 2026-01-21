@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2025 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,9 +23,11 @@ import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:flutter/widgets.dart';
+import 'package:okcolor/models/extensions.dart';
 import 'package:provider/provider.dart';
 
 class Clip extends StatelessWidget {
@@ -121,9 +123,7 @@ class ClipPainter extends CustomPainterObserver {
 }
 
 final _selectedColorShifter = AnthemColorShifter(
-  166,
-  lightnessModifier: 1.2,
-  saturationModifier: 1.0,
+  AnthemTheme.primary.main.darker(0.35).desaturate(0.1),
 );
 
 Color getBaseColor({

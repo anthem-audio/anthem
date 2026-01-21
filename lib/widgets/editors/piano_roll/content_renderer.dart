@@ -117,7 +117,7 @@ class PianoRollPainter extends CustomPainterObserver {
   ) {
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
-    final colorShifter = AnthemColorShifter(166);
+    final colorShifter = AnthemColorShifter(AnthemTheme.primary.main);
 
     for (final note in notes) {
       final keyHeight = viewModel.keyHeight;

@@ -247,7 +247,7 @@ class _PianoRollAttributePainter extends CustomPainterObserver {
   void observablePaint(Canvas canvas, Size size) {
     final minorLinePaint = Paint()..color = AnthemTheme.grid.minor;
 
-    final colorShifter = AnthemColorShifter(166);
+    final colorShifter = AnthemColorShifter(AnthemTheme.primary.main);
 
     final selectedNoteColor = colorShifter.noteHovered;
     final noteColor = colorShifter.noteBase;

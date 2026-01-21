@@ -44,7 +44,7 @@ class AddChannelMenu extends StatelessWidget {
               node: NodeModel.uninitialized(),
               name: 'Blank Automation Channel',
               generatorType: GeneratorType.automation,
-              color: getColor(),
+              color: generateColor(),
             );
           },
         ),
@@ -59,7 +59,7 @@ class AddChannelMenu extends StatelessWidget {
                     node: ToneGeneratorProcessorModel.createNode(),
                     name: 'Tone Generator',
                     generatorType: GeneratorType.instrument,
-                    color: getColor(),
+                    color: generateColor(),
                   );
                 },
               ),
@@ -78,7 +78,7 @@ class AddChannelMenu extends StatelessWidget {
                     node: NodeModel.uninitialized(),
                     name: 'Blank Instrument',
                     generatorType: GeneratorType.instrument,
-                    color: getColor(),
+                    color: generateColor(),
                   );
                 },
               ),
