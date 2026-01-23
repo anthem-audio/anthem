@@ -36,12 +36,14 @@ class TrackAddRemoveCommand extends Command {
     required ProjectModel project,
     this.index,
     required this.isSendTrack,
+    required TrackType type,
   }) : isAdd = true {
     track = TrackModel(
       name: isSendTrack
           ? 'Send Track ${project.sendTrackOrder.length}'
           : 'Track ${project.trackOrder.length + 1}',
       color: AnthemColor.randomHue(),
+      type: type,
     );
   }
 

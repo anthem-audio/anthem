@@ -227,6 +227,7 @@ class ProjectController {
         project: project,
         index: index,
         isSendTrack: false,
+        type: .instrument,
       ),
     );
   }
@@ -237,6 +238,7 @@ class ProjectController {
         project: project,
         index: index,
         isSendTrack: true,
+        type: .instrument,
       ),
     );
   }

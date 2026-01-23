@@ -60,6 +60,7 @@ class ProjectModel extends _ProjectModel
       final track = TrackModel(
         name: 'Track $i',
         color: AnthemColor.randomHue(),
+        type: .instrument,
       );
       initTracks[track.id] = track;
       initTrackOrder.add(track.id);
@@ -68,6 +69,7 @@ class ProjectModel extends _ProjectModel
     final masterTrack = TrackModel(
       name: 'Master',
       color: AnthemColor.randomHue(),
+      type: .instrument,
     );
     initTracks[masterTrack.id] = masterTrack;
     initSendTrackOrder.add(masterTrack.id);

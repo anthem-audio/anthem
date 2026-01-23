@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -29,26 +29,58 @@ part 'track.g.dart';
 @AnthemModel.syncedModel()
 class TrackModel extends _TrackModel
     with _$TrackModel, _$TrackModelAnthemModelMixin {
-  TrackModel({required super.name, required super.color});
+  TrackModel({required super.name, required super.color, required super.type});
 
   TrackModel.uninitialized()
-    : super(name: '', color: AnthemColor.uninitialized());
+    : super(name: '', color: AnthemColor.uninitialized(), type: .hybrid);
 
   factory TrackModel.fromJson(Map<String, dynamic> json) =>
       _$TrackModelAnthemModelMixin.fromJson(json);
 }
 
+enum TrackType { instrument, audio, hybrid, group }
+
 abstract class _TrackModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
+  /// This track's ID.
+  ///
+  /// This ID must be used to key this track in [ProjectModel.tracks].
   Id id;
 
+  /// The human-readable name of this track.
+  ///
+  /// Defaults to something like "Track 1".
   @anthemObservable
   String name;
 
+  /// The color of this track.
   @anthemObservable
   AnthemColor color;
 
-  _TrackModel({required this.name, required this.color})
+  /// The type of this track.
+  ///
+  /// This changes the track's behavior from the UI side. For example, all
+  /// tracks can have clips with any kind of content, but:
+  /// - Audio tracks may only allow audio clips in the UI, and will certainly
+  ///   default to them
+  /// - Instrument tracks may not be able to play audio? This is undecided as of
+  ///   writing.
+  /// - When creating a clip on a group track, a group clip will be created, and
+  ///   regular clips will not be allowed here
+  @anthemObservable
+  TrackType type;
+
+  /// IDs of the child tracks of this track.
+  ///
+  /// If this track is a group track, it likely has child tracks. These tracks
+  /// are referenced here.
+  ///
+  /// Note that these will not show up in the high-level track order or send
+  /// track order. They will show up in the [ProjectModel.tracks] map.
+  @anthemObservable
+  AnthemObservableList<Id> childTracks = AnthemObservableList<Id>();
+
+  _TrackModel({required this.name, required this.color, required this.type})
     : id = getId(),
       super();
 }
