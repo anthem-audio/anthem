@@ -31,7 +31,7 @@ enum AnthemColorPaletteKind { normal, bright, dark, desaturated, grayscale }
 
 const colorPickerHues = <double>[0, 30, 60, 120, 161, 195, 215, 260, 310];
 
-final normalColorWheel = AnthemColorWheel([
+final normalColorPalette = AnthemColorPalette([
   const Color(0xFF016CB7),
   const Color(0xFFA43E64),
   const Color(0xFF3C7045),
@@ -40,7 +40,7 @@ final normalColorWheel = AnthemColorWheel([
   const Color(0xFF1367DE),
 ]);
 
-final brightColorWheel = AnthemColorWheel([
+final brightColorPalette = AnthemColorPalette([
   const Color.fromARGB(255, 209, 68, 212),
   const Color(0xFF21D16D),
   const Color(0xFFD13221),
@@ -49,7 +49,7 @@ final brightColorWheel = AnthemColorWheel([
   const Color.fromRGBO(148, 86, 255, 1),
 ]);
 
-final darkColorWheel = AnthemColorWheel([
+final darkColorPalette = AnthemColorPalette([
   const Color.fromARGB(255, 0, 62, 106),
   const Color.fromARGB(255, 113, 27, 59),
   const Color.fromARGB(255, 6, 67, 16),
@@ -58,7 +58,7 @@ final darkColorWheel = AnthemColorWheel([
   const Color.fromARGB(255, 9, 30, 58),
 ]);
 
-final desaturatedColorWheel = AnthemColorWheel([
+final desaturatedColorPalette = AnthemColorPalette([
   const Color.fromARGB(255, 54, 107, 145),
   const Color.fromARGB(255, 137, 95, 111),
   const Color.fromARGB(255, 98, 127, 103),
@@ -69,11 +69,11 @@ final desaturatedColorWheel = AnthemColorWheel([
 
 Color getColor(double hue, AnthemColorPaletteKind palette) {
   return switch (palette) {
-    AnthemColorPaletteKind.normal => normalColorWheel.getColor(hue).toColor(),
-    AnthemColorPaletteKind.bright => brightColorWheel.getColor(hue).toColor(),
-    AnthemColorPaletteKind.dark => darkColorWheel.getColor(hue).toColor(),
+    AnthemColorPaletteKind.normal => normalColorPalette.getColor(hue).toColor(),
+    AnthemColorPaletteKind.bright => brightColorPalette.getColor(hue).toColor(),
+    AnthemColorPaletteKind.dark => darkColorPalette.getColor(hue).toColor(),
     AnthemColorPaletteKind.desaturated =>
-      desaturatedColorWheel.getColor(hue).toColor(),
+      desaturatedColorPalette.getColor(hue).toColor(),
     AnthemColorPaletteKind.grayscale => const Color(0xFF6C6C6C),
   };
 }
@@ -129,10 +129,10 @@ abstract class _AnthemColor with Store, AnthemModelBase {
 /// Given a set of two or more colors, this builds a "color wheel" such that a
 /// given hue produces a color by interpolating between the two colors with the
 /// nearest hues on either side.
-class AnthemColorWheel {
+class AnthemColorPalette {
   final List<HSLColor> colors;
 
-  AnthemColorWheel(List<Color> inputColors)
+  AnthemColorPalette(List<Color> inputColors)
     : colors = inputColors.map((c) => HSLColor.fromColor(c)).toList()
         ..sort((a, b) => a.hue.compareTo(b.hue)) {
     assert(inputColors.length >= 2);

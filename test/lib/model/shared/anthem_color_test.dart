@@ -27,83 +27,89 @@ void main() {
       final color1 = HSLColor.fromAHSL(1.0, 0, 0, 1);
       final color2 = HSLColor.fromAHSL(1.0, 4, 1, 0);
 
-      expect(AnthemColorWheel.lerp(color1, color2, 0).hue, equals(0));
-      expect(AnthemColorWheel.lerp(color1, color2, 0.25).hue, equals(1));
-      expect(AnthemColorWheel.lerp(color1, color2, 0.5).hue, equals(2));
-      expect(AnthemColorWheel.lerp(color1, color2, 0.75).hue, equals(3));
-      expect(AnthemColorWheel.lerp(color1, color2, 1).hue, equals(4));
+      expect(AnthemColorPalette.lerp(color1, color2, 0).hue, equals(0));
+      expect(AnthemColorPalette.lerp(color1, color2, 0.25).hue, equals(1));
+      expect(AnthemColorPalette.lerp(color1, color2, 0.5).hue, equals(2));
+      expect(AnthemColorPalette.lerp(color1, color2, 0.75).hue, equals(3));
+      expect(AnthemColorPalette.lerp(color1, color2, 1).hue, equals(4));
 
-      expect(AnthemColorWheel.lerp(color1, color2, 0).saturation, equals(0));
+      expect(AnthemColorPalette.lerp(color1, color2, 0).saturation, equals(0));
       expect(
-        AnthemColorWheel.lerp(color1, color2, 0.25).saturation,
+        AnthemColorPalette.lerp(color1, color2, 0.25).saturation,
         equals(0.25),
       );
       expect(
-        AnthemColorWheel.lerp(color1, color2, 0.5).saturation,
+        AnthemColorPalette.lerp(color1, color2, 0.5).saturation,
         equals(0.5),
       );
       expect(
-        AnthemColorWheel.lerp(color1, color2, 0.75).saturation,
+        AnthemColorPalette.lerp(color1, color2, 0.75).saturation,
         equals(0.75),
       );
-      expect(AnthemColorWheel.lerp(color1, color2, 1).saturation, equals(1));
+      expect(AnthemColorPalette.lerp(color1, color2, 1).saturation, equals(1));
 
-      expect(AnthemColorWheel.lerp(color1, color2, 0).lightness, equals(1));
+      expect(AnthemColorPalette.lerp(color1, color2, 0).lightness, equals(1));
       expect(
-        AnthemColorWheel.lerp(color1, color2, 0.25).lightness,
+        AnthemColorPalette.lerp(color1, color2, 0.25).lightness,
         equals(0.75),
       );
-      expect(AnthemColorWheel.lerp(color1, color2, 0.5).lightness, equals(0.5));
       expect(
-        AnthemColorWheel.lerp(color1, color2, 0.75).lightness,
+        AnthemColorPalette.lerp(color1, color2, 0.5).lightness,
+        equals(0.5),
+      );
+      expect(
+        AnthemColorPalette.lerp(color1, color2, 0.75).lightness,
         equals(0.25),
       );
-      expect(AnthemColorWheel.lerp(color1, color2, 1).lightness, equals(0));
+      expect(AnthemColorPalette.lerp(color1, color2, 1).lightness, equals(0));
     });
 
     test('Wrap-around case', () {
       final color1 = HSLColor.fromAHSL(1.0, 358, 0, 1);
       final color2 = HSLColor.fromAHSL(1.0, 2, 1, 0);
 
-      expect(AnthemColorWheel.lerp(color1, color2, 0).hue, equals(358));
-      expect(AnthemColorWheel.lerp(color1, color2, 0.25).hue, equals(359));
-      expect(AnthemColorWheel.lerp(color1, color2, 0.5).hue, equals(0));
-      expect(AnthemColorWheel.lerp(color1, color2, 0.75).hue, equals(1));
-      expect(AnthemColorWheel.lerp(color1, color2, 1).hue, equals(2));
+      expect(AnthemColorPalette.lerp(color1, color2, 0).hue, equals(358));
+      expect(AnthemColorPalette.lerp(color1, color2, 0.25).hue, equals(359));
+      expect(AnthemColorPalette.lerp(color1, color2, 0.5).hue, equals(0));
+      expect(AnthemColorPalette.lerp(color1, color2, 0.75).hue, equals(1));
+      expect(AnthemColorPalette.lerp(color1, color2, 1).hue, equals(2));
 
-      expect(AnthemColorWheel.lerp(color1, color2, 0).saturation, equals(0));
+      expect(AnthemColorPalette.lerp(color1, color2, 0).saturation, equals(0));
       expect(
-        AnthemColorWheel.lerp(color1, color2, 0.25).saturation,
+        AnthemColorPalette.lerp(color1, color2, 0.25).saturation,
         equals(0.25),
       );
       expect(
-        AnthemColorWheel.lerp(color1, color2, 0.5).saturation,
+        AnthemColorPalette.lerp(color1, color2, 0.5).saturation,
         equals(0.5),
       );
       expect(
-        AnthemColorWheel.lerp(color1, color2, 0.75).saturation,
+        AnthemColorPalette.lerp(color1, color2, 0.75).saturation,
         equals(0.75),
       );
-      expect(AnthemColorWheel.lerp(color1, color2, 1).saturation, equals(1));
+      expect(AnthemColorPalette.lerp(color1, color2, 1).saturation, equals(1));
 
-      expect(AnthemColorWheel.lerp(color1, color2, 0).lightness, equals(1));
+      expect(AnthemColorPalette.lerp(color1, color2, 0).lightness, equals(1));
       expect(
-        AnthemColorWheel.lerp(color1, color2, 0.25).lightness,
+        AnthemColorPalette.lerp(color1, color2, 0.25).lightness,
         equals(0.75),
       );
-      expect(AnthemColorWheel.lerp(color1, color2, 0.5).lightness, equals(0.5));
       expect(
-        AnthemColorWheel.lerp(color1, color2, 0.75).lightness,
+        AnthemColorPalette.lerp(color1, color2, 0.5).lightness,
+        equals(0.5),
+      );
+      expect(
+        AnthemColorPalette.lerp(color1, color2, 0.75).lightness,
         equals(0.25),
       );
-      expect(AnthemColorWheel.lerp(color1, color2, 1).lightness, equals(0));
+      expect(AnthemColorPalette.lerp(color1, color2, 1).lightness, equals(0));
     });
   });
 
   // Tests AnthemColorWheel, which is responsible for calculating user-selected
   // colors.
   test('AnthemColorWheel', () {
-    AnthemColorWheel colorWheel = AnthemColorWheel([
+    AnthemColorPalette colorWheel = AnthemColorPalette([
       HSLColor.fromAHSL(1.0, 90, 0.75, 0.75).toColor(),
       HSLColor.fromAHSL(1.0, 270, 0.25, 0.25).toColor(),
     ]);
