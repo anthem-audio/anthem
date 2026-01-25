@@ -21,6 +21,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
+import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/main_window/main_window_view_model.dart';
@@ -36,6 +37,7 @@ class ServiceRegistry {
       MainWindowController();
   static final MainWindowViewModel mainWindowViewModel = MainWindowViewModel();
   static final DialogController dialogController = DialogController();
+  static late final ScreenOverlayController screenOverlayController;
 
   static final Map<Id, ServiceRegistry> _serviceRegistriesByProjectId = {};
 

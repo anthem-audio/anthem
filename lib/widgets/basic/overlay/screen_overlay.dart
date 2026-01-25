@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 import 'package:flutter/widgets.dart';
@@ -31,21 +32,29 @@ import 'package:provider/provider.dart';
 /// ```dart
 /// Provider.of<ScreenOverlayController>().add(/* ... */);
 /// ```
-class ScreenOverlay extends StatelessObserverWidget {
+class ScreenOverlay extends StatefulObserverWidget {
   final Widget child;
 
+  const ScreenOverlay({super.key, required this.child});
+
+  @override
+  State<ScreenOverlay> createState() => _ScreenOverlayState();
+}
+
+class _ScreenOverlayState extends State<ScreenOverlay> {
   final ScreenOverlayViewModel viewModel = ScreenOverlayViewModel();
   late final ScreenOverlayController controller;
 
-  ScreenOverlay({super.key, required this.child}) {
+  _ScreenOverlayState() {
     controller = ScreenOverlayController(viewModel: viewModel);
+    ServiceRegistry.screenOverlayController = controller;
   }
 
   @override
   Widget build(BuildContext context) {
     final stackChildren =
         <Widget?>[
-          Positioned.fill(child: child),
+          Positioned.fill(child: widget.child),
           viewModel.entries.isNotEmpty
               ? Positioned.fill(
                   child: Listener(
@@ -68,12 +77,12 @@ class ScreenOverlay extends StatelessObserverWidget {
             )
             .toList();
 
-    return Provider.value(
-      value: viewModel,
-      child: Provider.value(
-        value: controller,
-        child: Stack(children: stackChildren),
-      ),
+    return MultiProvider(
+      providers: [
+        Provider.value(value: viewModel),
+        Provider.value(value: controller),
+      ],
+      child: Stack(children: stackChildren),
     );
   }
 }
