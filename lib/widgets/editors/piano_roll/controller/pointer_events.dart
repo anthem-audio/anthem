@@ -351,7 +351,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         _eventHandlingState = EventHandlingState.movingSelection;
 
         if (event.keyboardModifiers.shift) {
-          project.startJournalPage();
+          project.startUndoGroup();
 
           final newSelectedNotes = ObservableSet<Id>();
 
@@ -427,7 +427,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         ? eventTime
         : getSnappedTime(rawTime: eventTime, divisionChanges: divisionChanges);
 
-    project.startJournalPage();
+    project.startUndoGroup();
 
     final note = _addNote(
       key: event.key.floor(),
@@ -445,7 +445,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
   void rightPointerDown(PianoRollPointerDownEvent event) {
     _eventHandlingState = EventHandlingState.deleting;
 
-    project.startJournalPage();
+    project.startUndoGroup();
 
     final pattern =
         project.sequence.patterns[project.sequence.activePatternID]!;
@@ -877,7 +877,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
     // No matter what, we need to reset the playing notes
     _liveNotes.removeAll();
 
-    project.commitJournalPage();
+    project.commitUndoGroup();
 
     viewModel.pressedNote = null;
 

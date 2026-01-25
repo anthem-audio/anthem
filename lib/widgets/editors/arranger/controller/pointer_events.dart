@@ -335,7 +335,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         _eventHandlingState = EventHandlingState.movingSelection;
 
         if (event.keyboardModifiers.shift) {
-          project.startJournalPage();
+          project.startUndoGroup();
 
           final newSelectedNotes = ObservableSet<String>();
 
@@ -364,7 +364,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         viewModel.cursorTimeRange = pressedClip.timeView?.clone();
 
         if (event.keyboardModifiers.shift) {
-          project.startJournalPage();
+          project.startUndoGroup();
 
           final newClip = ClipModel.fromClipModel(pressedClip);
 
@@ -396,7 +396,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         ? eventTime
         : getSnappedTime(rawTime: eventTime, divisionChanges: divisionChanges);
 
-    project.startJournalPage();
+    project.startUndoGroup();
 
     final clip = ClipModel.create(
       trackId: project.trackOrder[event.track.floor()],
@@ -420,7 +420,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
   void rightPointerDown(ArrangerPointerEvent event) {
     _eventHandlingState = EventHandlingState.deleting;
 
-    project.startJournalPage();
+    project.startUndoGroup();
 
     final arrangement =
         project.sequence.arrangements[project.sequence.activeArrangementID]!;
@@ -862,7 +862,7 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
     viewModel.selectionBox = null;
     viewModel.pressedClip = null;
 
-    project.commitJournalPage();
+    project.commitUndoGroup();
 
     _clipMoveActionData = null;
     _selectionBoxActionData = null;

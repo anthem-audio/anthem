@@ -105,7 +105,7 @@ abstract class _ArrangerController {
     final arrangement =
         project.sequence.arrangements[project.sequence.activeArrangementID]!;
 
-    project.startJournalPage();
+    project.startUndoGroup();
 
     for (final clipID in viewModel.selectedClips) {
       project.execute(
@@ -116,7 +116,7 @@ abstract class _ArrangerController {
       );
     }
 
-    project.commitJournalPage();
+    project.commitUndoGroup();
   }
 
   void selectAllClips() {

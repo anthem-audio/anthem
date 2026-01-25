@@ -211,10 +211,10 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   late final CommandStack _commandStack;
 
   @hide
-  List<Command> _journalPageAccumulator = [];
+  List<Command> _undoGroupAccumulator = [];
 
   @hide
-  bool _journalPageActive = false;
+  bool _undoGroupActive = false;
 
   // Engine
 
@@ -417,8 +417,8 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     command.execute(this as ProjectModel);
 
     if (push) {
-      if (_journalPageActive) {
-        _journalPageAccumulator.add(command);
+      if (_undoGroupActive) {
+        _undoGroupAccumulator.add(command);
       } else {
         _commandStack.push(command);
       }
@@ -436,8 +436,8 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
       command.execute(this as ProjectModel);
     }
 
-    if (_journalPageActive) {
-      _journalPageAccumulator.add(command);
+    if (_undoGroupActive) {
+      _undoGroupAccumulator.add(command);
     } else {
       _commandStack.push(command);
     }
@@ -447,8 +447,8 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     isDirty = true;
   }
 
-  void _assertJournalInactive() {
-    if (_journalPageActive) {
+  void _assertUndoGroupInactive() {
+    if (_undoGroupActive) {
       throw AssertionError("Journal page was active but shouldn't have been.");
     }
   }
@@ -456,7 +456,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// Undoes the last command in the undo/redo queue.
   void undo() {
     if (!_commandStack.canUndo) return;
-    _assertJournalInactive();
+    _assertUndoGroupInactive();
     _commandStack.undo();
     isDirty = true;
   }
@@ -464,25 +464,35 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// Redoes the next command in the undo/redo queue.
   void redo() {
     if (!_commandStack.canRedo) return;
-    _assertJournalInactive();
+    _assertUndoGroupInactive();
     _commandStack.redo();
     isDirty = true;
   }
 
-  void startJournalPage() {
-    _journalPageActive = true;
+  /// Starts an undo group.
+  ///
+  /// Once this is called, any commands that are submitted via [execute] or
+  /// [push] will be grouped into a single undo/redo action.
+  ///
+  /// After the desired actions have been added to the group, [commitUndoGroup]
+  /// can be called to finalize the composite undo/redo action.
+  void startUndoGroup() {
+    _undoGroupActive = true;
   }
 
-  void commitJournalPage() {
-    if (!_journalPageActive) return;
-    if (_journalPageAccumulator.isEmpty) {
-      _journalPageActive = false;
+  /// Commits an undo group.
+  ///
+  /// See [startUndoGroup] for details.
+  void commitUndoGroup() {
+    if (!_undoGroupActive) return;
+    if (_undoGroupAccumulator.isEmpty) {
+      _undoGroupActive = false;
       return;
     }
 
-    final accumulator = _journalPageAccumulator;
-    _journalPageAccumulator = [];
-    _journalPageActive = false;
+    final accumulator = _undoGroupAccumulator;
+    _undoGroupAccumulator = [];
+    _undoGroupActive = false;
 
     if (accumulator.length == 1) {
       _commandStack.push(accumulator.first);

@@ -364,7 +364,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
             .automationLanes[project.activeAutomationGeneratorID]!
             .points[_pointMoveActionData!.pointIndex];
 
-        project.startJournalPage();
+        project.startUndoGroup();
 
         if (_pointMoveActionData!.insertedPointIndex != null) {
           project.push(
@@ -409,7 +409,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
           }
         }
 
-        project.commitJournalPage();
+        project.commitUndoGroup();
 
         break;
       case EventHandlingState.changingTension:
@@ -419,7 +419,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
             .automationLanes[project.activeAutomationGeneratorID]!
             .points[_tensionChangeActionData!.pointIndex];
 
-        project.startJournalPage();
+        project.startUndoGroup();
 
         final tension = point.tension;
 
@@ -435,7 +435,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
 
         viewModel.lastInteractedTension = tension;
 
-        project.commitJournalPage();
+        project.commitUndoGroup();
 
         break;
       case EventHandlingState.idle:

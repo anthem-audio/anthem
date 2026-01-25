@@ -59,11 +59,11 @@ class _TrackAttributesState extends State<TrackAttributes> {
     );
 
     void setTrackName(String newName) {
-      project.startJournalPage();
+      project.startUndoGroup();
       for (final id in selectedTrackIds) {
         projectController.setTrackName(id, newName);
       }
-      project.commitJournalPage();
+      project.commitUndoGroup();
     }
 
     //
@@ -71,11 +71,11 @@ class _TrackAttributesState extends State<TrackAttributes> {
     //
 
     void setTrackColor(double hue, AnthemColorPaletteKind palette) {
-      project.startJournalPage();
+      project.startUndoGroup();
       for (final id in selectedTrackIds) {
         projectController.setTrackColor(id, hue, palette);
       }
-      project.commitJournalPage();
+      project.commitUndoGroup();
     }
 
     return AttributeGroup(

@@ -41,14 +41,6 @@ class ProjectController {
 
   ProjectController(this.project, this.viewModel);
 
-  void journalStartEntry() {
-    project.startJournalPage();
-  }
-
-  void journalCommitEntry() {
-    project.commitJournalPage();
-  }
-
   void undo() {
     project.undo();
   }
@@ -250,11 +242,11 @@ class ProjectController {
   }
 
   void removeTracks(Iterable<Id> trackIds) {
-    project.startJournalPage();
+    project.startUndoGroup();
     for (final id in trackIds) {
       removeTrack(id);
     }
-    project.commitJournalPage();
+    project.commitUndoGroup();
   }
 
   void setTrackName(Id trackId, String newName) {
