@@ -181,7 +181,10 @@ class _TrackPositionAndSize {
   int trackIdToIndex(String trackId) => _trackIdToIndex[trackId]!;
 
   double getTrackHeight(int trackIndex) => _cache[trackIndex * 2];
-  double getTrackPosition(int trackIndex) => _cache[trackIndex * 2 + 1];
+  double getTrackPosition(num fractionalTrackIndex) =>
+      _cache[fractionalTrackIndex.floor() * 2 + 1] +
+      getTrackHeight(fractionalTrackIndex.floor()) *
+          fractionalTrackIndex.remainder(1.0);
 
   /// Gets the track index plus a [0 - 1) offset from the top of the track,
   /// given a y-offset from the top of the screen.

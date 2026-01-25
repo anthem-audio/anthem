@@ -695,12 +695,10 @@ class _ArrangerCanvas extends StatelessWidget {
                 );
 
                 final top = viewModel.trackPositionCalculator.getTrackPosition(
-                  selectionBox.top.floor(),
+                  selectionBox.top,
                 );
                 final bottom = viewModel.trackPositionCalculator
-                    .getTrackPosition(
-                      (selectionBox.top + selectionBox.height).floor(),
-                    );
+                    .getTrackPosition((selectionBox.top + selectionBox.height));
 
                 final borderColor = const HSLColor.fromAHSL(
                   1,
