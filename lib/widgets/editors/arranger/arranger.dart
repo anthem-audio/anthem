@@ -379,6 +379,7 @@ class _VerticalScrollbar extends StatelessObserverWidget {
       onChange: (event) {
         viewModel.verticalScrollPosition = event.handleStart;
       },
+      disableAtFullSize: true,
     );
   }
 }
