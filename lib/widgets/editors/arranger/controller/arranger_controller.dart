@@ -139,6 +139,10 @@ abstract class _ArrangerController {
     viewModel.lastShiftClickRange = null;
   }
 
+  bool isTrackSelected(Id trackId) {
+    return viewModel.selectedTracks.contains(trackId);
+  }
+
   void toggleTrackSelection(Id trackId) {
     if (viewModel.selectedTracks.contains(trackId)) {
       viewModel.selectedTracks.remove(trackId);

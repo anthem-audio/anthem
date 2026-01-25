@@ -24,6 +24,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/hint/hint.dart';
 import 'package:anthem/widgets/basic/icon.dart';
+import 'package:anthem/widgets/basic/menu/context_menu_api.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
@@ -41,6 +42,8 @@ class _TrackHeader extends StatelessObserverWidget {
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
+    final projectServices = ServiceRegistry.forProject(project.id);
+    final projectController = projectServices.projectController;
     final track = project.tracks[trackID]!;
 
     final projectServiceRegistry = ServiceRegistry.forProject(project.id);
@@ -74,6 +77,38 @@ class _TrackHeader extends StatelessObserverWidget {
                   }
 
                   controller.selectTrack(track.id);
+                },
+                onSecondaryTapUp: (e) {
+                  if (!controller.isTrackSelected(track.id)) {
+                    controller.selectTrack(track.id);
+                  }
+
+                  openContextMenu(
+                    e.globalPosition,
+                    MenuDef(
+                      children: [
+                        AnthemMenuItem(
+                          text: 'Delete track',
+                          hint: 'Delete this track',
+                          onSelected: () {
+                            projectController.removeTrack(track.id);
+                            viewModel.selectedTracks.remove(track.id);
+                          },
+                        ),
+                        AnthemMenuItem(
+                          text: 'Delete selected tracks',
+                          hint: 'Delete the selected tracks',
+                          disabled: viewModel.selectedTracks.length <= 1,
+                          onSelected: () {
+                            projectController.removeTracks(
+                              viewModel.selectedTracks,
+                            );
+                            viewModel.selectedTracks.clear();
+                          },
+                        ),
+                      ],
+                    ),
+                  );
                 },
                 child: Container(
                   color: trackBackgroundColor,

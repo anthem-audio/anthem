@@ -249,6 +249,14 @@ class ProjectController {
     );
   }
 
+  void removeTracks(Iterable<Id> trackIds) {
+    project.startJournalPage();
+    for (final id in trackIds) {
+      removeTrack(id);
+    }
+    project.commitJournalPage();
+  }
+
   void setTrackName(Id trackId, String newName) {
     project.execute(
       SetTrackNameCommand(track: project.tracks[trackId]!, newName: newName),
