@@ -52,6 +52,51 @@ class TrackHeader extends StatelessObserverWidget {
         ? AnthemTheme.panel.borderLight
         : AnthemTheme.panel.main;
 
+    void onClick() {
+      if (HardwareKeyboard.instance.isShiftPressed) {
+        controller.shiftClickToTrack(track.id);
+        return;
+      }
+
+      if (HardwareKeyboard.instance.isControlPressed) {
+        controller.toggleTrackSelection(track.id);
+        return;
+      }
+
+      controller.selectTrack(track.id);
+    }
+
+    void onSecondaryClick(TapUpDetails e) {
+      if (!controller.isTrackSelected(track.id)) {
+        controller.selectTrack(track.id);
+      }
+
+      openContextMenu(
+        e.globalPosition,
+        MenuDef(
+          children: [
+            AnthemMenuItem(
+              text: 'Delete track',
+              hint: 'Delete this track',
+              onSelected: () {
+                projectController.removeTrack(track.id);
+                viewModel.selectedTracks.remove(track.id);
+              },
+            ),
+            AnthemMenuItem(
+              text: 'Delete selected tracks',
+              hint: 'Delete the selected tracks',
+              disabled: viewModel.selectedTracks.length <= 1,
+              onSelected: () {
+                projectController.removeTracks(viewModel.selectedTracks);
+                viewModel.selectedTracks.clear();
+              },
+            ),
+          ],
+        ),
+      );
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         return Observer(
@@ -59,51 +104,8 @@ class TrackHeader extends StatelessObserverWidget {
             return MouseRegion(
               cursor: SystemMouseCursors.click,
               child: GestureDetector(
-                onTap: () {
-                  if (HardwareKeyboard.instance.isShiftPressed) {
-                    controller.shiftClickToTrack(track.id);
-                    return;
-                  }
-
-                  if (HardwareKeyboard.instance.isControlPressed) {
-                    controller.toggleTrackSelection(track.id);
-                    return;
-                  }
-
-                  controller.selectTrack(track.id);
-                },
-                onSecondaryTapUp: (e) {
-                  if (!controller.isTrackSelected(track.id)) {
-                    controller.selectTrack(track.id);
-                  }
-
-                  openContextMenu(
-                    e.globalPosition,
-                    MenuDef(
-                      children: [
-                        AnthemMenuItem(
-                          text: 'Delete track',
-                          hint: 'Delete this track',
-                          onSelected: () {
-                            projectController.removeTrack(track.id);
-                            viewModel.selectedTracks.remove(track.id);
-                          },
-                        ),
-                        AnthemMenuItem(
-                          text: 'Delete selected tracks',
-                          hint: 'Delete the selected tracks',
-                          disabled: viewModel.selectedTracks.length <= 1,
-                          onSelected: () {
-                            projectController.removeTracks(
-                              viewModel.selectedTracks,
-                            );
-                            viewModel.selectedTracks.clear();
-                          },
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                onTap: onClick,
+                onSecondaryTapUp: onSecondaryClick,
                 child: Container(
                   color: trackBackgroundColor,
                   child: Row(
