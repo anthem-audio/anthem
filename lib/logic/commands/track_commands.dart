@@ -148,6 +148,14 @@ class TrackAddRemoveCommand extends Command {
         project.id,
       ).arrangerViewModel.registerTrack(track.id);
     }
+
+    final arrangerViewModel = ServiceRegistry.forProject(
+      project.id,
+    ).arrangerViewModel;
+
+    arrangerViewModel.selectedTracks
+      ..clear()
+      ..addAll(_tracks.map((t) => t.trackModel.id));
   }
 
   void _remove(ProjectModel project) {
@@ -172,6 +180,14 @@ class TrackAddRemoveCommand extends Command {
       project.trackOrder.remove(track.id);
       project.tracks.remove(track.id);
     }
+
+    final arrangerViewModel = ServiceRegistry.forProject(
+      project.id,
+    ).arrangerViewModel;
+
+    arrangerViewModel.selectedTracks.removeAll(
+      _tracks.map((t) => t.trackModel.id),
+    );
   }
 }
 

@@ -80,7 +80,6 @@ class TrackHeader extends StatelessObserverWidget {
               hint: 'Delete this track',
               onSelected: () {
                 projectController.removeTrack(track.id);
-                viewModel.selectedTracks.remove(track.id);
               },
             ),
             AnthemMenuItem(
@@ -89,7 +88,6 @@ class TrackHeader extends StatelessObserverWidget {
               disabled: viewModel.selectedTracks.length <= 1,
               onSelected: () {
                 projectController.removeTracks(viewModel.selectedTracks);
-                viewModel.selectedTracks.clear();
               },
             ),
           ],
