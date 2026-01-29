@@ -24,45 +24,84 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
 
-class TrackAddRemoveCommand extends Command {
-  final bool isAdd;
-  bool get isRemove => !isAdd;
-
-  late final TrackModel track;
+class TrackDescriptorForCommand {
   int? index;
-  late final bool isSendTrack;
+  final bool isSendTrack;
+  final TrackType trackType;
+
+  TrackDescriptorForCommand({
+    this.index,
+    required this.isSendTrack,
+    required this.trackType,
+  });
+}
+
+class _InternalTrackAddRemoveDescriptor {
+  int? index;
+  final bool isSendTrack;
+  final TrackModel trackModel;
+
+  _InternalTrackAddRemoveDescriptor({
+    this.index,
+    required this.isSendTrack,
+    required this.trackModel,
+  });
+}
+
+class TrackAddRemoveCommand extends Command {
+  final bool _isAdd;
+
+  late final List<_InternalTrackAddRemoveDescriptor> _tracks;
 
   TrackAddRemoveCommand.add({
     required ProjectModel project,
-    this.index,
-    required this.isSendTrack,
-    required TrackType type,
-  }) : isAdd = true {
-    track = TrackModel(
-      name: isSendTrack
-          ? 'Send Track ${project.sendTrackOrder.length}'
-          : 'Track ${project.trackOrder.length + 1}',
-      color: AnthemColor.randomHue(),
-      type: type,
-    );
+    required List<TrackDescriptorForCommand> tracks,
+  }) : _isAdd = true {
+    _tracks = tracks.map((track) {
+      return _InternalTrackAddRemoveDescriptor(
+        index: track.index,
+        isSendTrack: track.isSendTrack,
+        trackModel: TrackModel(
+          name: track.isSendTrack
+              ? 'Send Track ${project.sendTrackOrder.length}'
+              : 'Track ${project.trackOrder.length + 1}',
+          color: AnthemColor.randomHue(),
+          type: track.trackType,
+        ),
+      );
+    }).toList()..sort((a, b) => a.index!.compareTo(b.index!));
   }
 
-  TrackAddRemoveCommand.remove({required ProjectModel project, required Id id})
-    : isAdd = false {
-    track = project.tracks[id]!;
-    index = project.trackOrder.indexOf(id);
+  TrackAddRemoveCommand.remove({
+    required ProjectModel project,
+    required Iterable<Id> ids,
+  }) : _isAdd = false {
+    _tracks = ids.map((trackId) {
+      var isSendTrack = false;
 
-    if (index == -1) {
-      index = project.sendTrackOrder.indexOf(id);
-      isSendTrack = true;
-    } else {
-      isSendTrack = false;
-    }
+      var index = project.trackOrder.indexOf(trackId);
+      if (index == -1) {
+        isSendTrack = true;
+        index = project.sendTrackOrder.indexOf(trackId);
+      }
+
+      if (index == -1) {
+        throw StateError(
+          'TrackAddRemoveCommand.remove(): Could not find track in track order.',
+        );
+      }
+
+      return _InternalTrackAddRemoveDescriptor(
+        index: index,
+        isSendTrack: isSendTrack,
+        trackModel: project.tracks[trackId]!,
+      );
+    }).toList()..sort((a, b) => a.index!.compareTo(b.index!));
   }
 
   @override
   void execute(ProjectModel project) {
-    if (isAdd) {
+    if (_isAdd) {
       _add(project);
     } else {
       _remove(project);
@@ -71,7 +110,7 @@ class TrackAddRemoveCommand extends Command {
 
   @override
   void rollback(ProjectModel project) {
-    if (isAdd) {
+    if (_isAdd) {
       _remove(project);
     } else {
       _add(project);
@@ -79,44 +118,60 @@ class TrackAddRemoveCommand extends Command {
   }
 
   void _add(ProjectModel project) {
-    if (project.tracks[track.id] != null) {
-      throw StateError(
-        'Tried to add a track that already exists. This indicates bad usage of '
-        'TrackAddRemoveCommand, or bad project state.',
-      );
+    for (final trackDescriptor in _tracks) {
+      final _InternalTrackAddRemoveDescriptor(
+        index: index,
+        trackModel: track,
+        isSendTrack: isSendTrack,
+      ) = trackDescriptor;
+
+      if (project.tracks[track.id] != null) {
+        throw StateError(
+          'Tried to add a track that already exists. This indicates bad usage of '
+          'TrackAddRemoveCommand, or bad project state.',
+        );
+      }
+
+      var orderListToModify = isSendTrack
+          ? project.sendTrackOrder
+          : project.trackOrder;
+
+      if (index == null) {
+        orderListToModify.add(track.id);
+      } else {
+        orderListToModify.insert(index, track.id);
+      }
+
+      project.tracks[track.id] = track;
+
+      ServiceRegistry.forProject(
+        project.id,
+      ).arrangerViewModel.registerTrack(track.id);
     }
-
-    var orderListToModify = isSendTrack
-        ? project.sendTrackOrder
-        : project.trackOrder;
-
-    if (index == null) {
-      orderListToModify.add(track.id);
-    } else {
-      orderListToModify.insert(index!, track.id);
-    }
-
-    project.tracks[track.id] = track;
-
-    ServiceRegistry.forProject(
-      project.id,
-    ).arrangerViewModel.registerTrack(track.id);
   }
 
   void _remove(ProjectModel project) {
-    if (project.tracks[track.id] == null) {
-      throw StateError(
-        'Tried to remove a track that does not exist. This indicates bad usage '
-        'of TrackAddRemoveCommand, or bad project state.',
-      );
+    for (final trackDescriptor in _tracks.reversed) {
+      final _InternalTrackAddRemoveDescriptor(
+        index: index,
+        trackModel: track,
+        isSendTrack: isSendTrack,
+      ) = trackDescriptor;
+
+      if (project.tracks[track.id] == null) {
+        throw StateError(
+          'Tried to remove a track that does not exist. This indicates bad usage '
+          'of TrackAddRemoveCommand, or bad project state.',
+        );
+      }
+
+      ServiceRegistry.forProject(
+        project.id,
+      ).arrangerViewModel.unregisterTrack(track.id);
+
+      project.trackOrder.remove(track.id);
+      project.tracks.remove(track.id);
     }
-
-    ServiceRegistry.forProject(
-      project.id,
-    ).arrangerViewModel.unregisterTrack(track.id);
-
-    project.trackOrder.remove(track.id);
-    project.tracks.remove(track.id);
   }
 }
 

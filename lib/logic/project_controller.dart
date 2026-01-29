@@ -217,9 +217,9 @@ class ProjectController {
     project.execute(
       TrackAddRemoveCommand.add(
         project: project,
-        index: index,
-        isSendTrack: false,
-        type: .instrument,
+        tracks: [
+          .new(index: index, isSendTrack: false, trackType: .instrument),
+        ],
       ),
     );
   }
@@ -228,25 +228,21 @@ class ProjectController {
     project.execute(
       TrackAddRemoveCommand.add(
         project: project,
-        index: index,
-        isSendTrack: true,
-        type: .instrument,
+        tracks: [.new(index: index, isSendTrack: true, trackType: .instrument)],
       ),
     );
   }
 
   void removeTrack(Id trackId) {
     project.execute(
-      TrackAddRemoveCommand.remove(project: project, id: trackId),
+      TrackAddRemoveCommand.remove(project: project, ids: [trackId]),
     );
   }
 
   void removeTracks(Iterable<Id> trackIds) {
-    project.startUndoGroup();
-    for (final id in trackIds) {
-      removeTrack(id);
-    }
-    project.commitUndoGroup();
+    project.execute(
+      TrackAddRemoveCommand.remove(project: project, ids: trackIds),
+    );
   }
 
   void setTrackName(Id trackId, String newName) {
