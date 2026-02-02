@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -462,6 +462,10 @@ mixin AnthemModelBase {
 
   /// Sets properties that describe the position of this model on its parent
   /// model.
+  ///
+  /// This should not be called manually, except in once in [ProjectModel],
+  /// since that is always the root model. All other necessary calls will be
+  /// handled automatically by generated code.
   void setParentProperties({
     required AnthemModelBase parent,
     required FieldType fieldType,
@@ -505,7 +509,7 @@ mixin AnthemModelBase {
       model = model.parent;
     }
 
-    throw Exception('Could not find ancestor model of type $T');
+    throw StateError('Could not find ancestor model of type $T');
   }
 
   final List<void Function()> _onFirstAttachActions = [];
@@ -513,10 +517,29 @@ mixin AnthemModelBase {
   /// Schedules work to be done when this model is first attached to the tree.
   void onModelFirstAttached(void Function() onModelAttached) {
     if (parent != null) {
-      throw Exception('Model is already attached');
+      throw StateError('Model is already attached');
     }
 
     _onFirstAttachActions.add(onModelAttached);
+  }
+
+  /// Detaches this model from its parent, so that model change messages are no
+  /// longer forwarded up the tree.
+  ///
+  /// As an example, when a model object is removed from a list, the object
+  /// itself does not have any way of knowing, since model change messages only
+  /// flow upward. If fields on that model object are then changed, they will
+  /// generate change messages and forward those messages to the object
+  /// referenced by the [parent] field, which has not been updated to reflect
+  /// the fact that this model is no longer attached to its parent.
+  ///
+  /// This won't break anything on the Dart side, but this will generate bad
+  /// messages and send them to the engine. This will either corrupt the engine
+  /// model, or crash the engine. So, when an object is removed from the model
+  /// tree but still needs to be kept around, this method must be called,
+  /// otherwise any mutations to the detached object will be dangerous.
+  void detach() {
+    parent = null;
   }
 }
 

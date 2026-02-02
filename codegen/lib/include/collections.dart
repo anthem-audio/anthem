@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -97,24 +97,37 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
               accessorChain: accessorChain,
             );
           } else if (elementChange.type == OperationType.remove) {
+            final oldValue = elementChange.oldValue;
+
+            if (oldValue is AnthemModelBase) {
+              oldValue.detach();
+            }
+
             final firstChangedIndex = elementChange.index;
             for (var i = firstChangedIndex; i < length; i++) {
               _setParentPropertiesOnIndex(i);
             }
 
             notifyFieldChanged(
-              operation: ListRemove(removedValue: elementChange.oldValue),
+              operation: ListRemove(removedValue: oldValue),
               accessorChain: accessorChain,
             );
           } else if (elementChange.type == OperationType.update) {
+            final oldValue = elementChange.oldValue;
+            final newValue = elementChange.newValue;
+
+            if (oldValue is AnthemModelBase) {
+              oldValue.parent = null;
+            }
+
             _setParentPropertiesOnIndex(elementChange.index);
 
             notifyFieldChanged(
               operation: ListUpdate(
-                oldValue: elementChange.oldValue,
-                newValue: elementChange.newValue,
+                oldValue: oldValue,
+                newValue: newValue,
                 newValueSerialized: _serializeValue(
-                  elementChange.newValue,
+                  newValue,
                   forEngine: true,
                   forProjectFile: false,
                 ),
@@ -185,25 +198,38 @@ class AnthemObservableMap<K, V> extends ObservableMap<K, V>
 
       if (change.type == OperationType.add ||
           change.type == OperationType.update) {
+        final oldValue = change.oldValue;
+        final newValue = change.newValue;
+
+        if (oldValue is AnthemModelBase) {
+          oldValue.detach();
+        }
+
+        if (newValue is AnthemModelBase && change.key is K) {
+          _setParentPropertiesOnValue(change.key as K);
+        }
+
         notifyFieldChanged(
           operation: MapPut(
-            oldValue: change.oldValue,
-            newValue: change.newValue,
+            oldValue: oldValue,
+            newValue: newValue,
             newValueSerialized: _serializeValue(
-              change.newValue,
+              newValue,
               forEngine: true,
               forProjectFile: false,
             ),
           ),
           accessorChain: accessorChain,
         );
-
-        if (change.newValue is AnthemModelBase && change.key is K) {
-          _setParentPropertiesOnValue(change.key as K);
-        }
       } else if (change.type == OperationType.remove) {
+        final oldValue = change.oldValue;
+
+        if (oldValue is AnthemModelBase) {
+          oldValue.detach();
+        }
+
         notifyFieldChanged(
-          operation: MapRemove(removedValue: change.oldValue),
+          operation: MapRemove(removedValue: oldValue),
           accessorChain: accessorChain,
         );
       }

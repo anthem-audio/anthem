@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -120,7 +120,8 @@ class AnthemModelGenerator extends Generator {
     }
 
     const ignores =
-        '// ignore_for_file: duplicate_ignore, unnecessary_overrides, non_constant_identifier_names\n';
+        '// ignore_for_file: duplicate_ignore, unnecessary_overrides, '
+        'non_constant_identifier_names, unnecessary_cast\n';
 
     return ignores + result.toString();
   }
@@ -214,6 +215,10 @@ try {
 }
 catch (_) {
   \$oldValue = null;
+}
+
+if (\$oldValue is AnthemModelBase) {
+  (\$oldValue as AnthemModelBase).detach();
 }
 ''');
     }
