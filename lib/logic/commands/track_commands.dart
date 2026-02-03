@@ -177,7 +177,13 @@ class TrackAddRemoveCommand extends Command {
         project.id,
       ).arrangerViewModel.unregisterTrack(track.id);
 
-      project.trackOrder.remove(track.id);
+      if (isSendTrack) {
+        project.sendTrackOrder.remove(track.id);
+      }
+      else {
+        project.trackOrder.remove(track.id);
+      }
+
       project.tracks.remove(track.id);
     }
 
