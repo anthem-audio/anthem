@@ -23,6 +23,7 @@ import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
+import 'package:meta/meta.dart';
 
 class TrackDescriptorForCommand {
   int? index;
@@ -179,8 +180,7 @@ class TrackAddRemoveCommand extends Command {
 
       if (isSendTrack) {
         project.sendTrackOrder.remove(track.id);
-      }
-      else {
+      } else {
         project.trackOrder.remove(track.id);
       }
 
@@ -194,6 +194,322 @@ class TrackAddRemoveCommand extends Command {
     arrangerViewModel.selectedTracks.removeAll(
       _tracks.map((t) => t.trackModel.id),
     );
+  }
+}
+
+class TrackGroupUngroupCommand extends Command {
+  /// Whether this is a group operation, or an ungroup.
+  ///
+  /// If this is a group operation, [_isGroup] will be true and [execute()] will
+  /// create the group while [rollback()] will revert. If this is an ungroup
+  /// operation, [execute()] will un-create the group and [rollback()] will
+  /// create it.
+  final bool _isGroup;
+
+  /// Whether this group track should be added to the normal track list or the
+  /// send track list.
+  ///
+  /// Only applicable if [_parentTrack] is null.
+  late final bool _isForSendTrack;
+
+  /// The group track to be added, which will become the parent of
+  /// [_childrenToAddToGroup].
+  late final TrackModel _newGroupTrack;
+
+  /// The track that should be the parent of [_newGroupTrack].
+  ///
+  /// If null, then the track will be put in either [ProjectModel.trackOrder] or
+  /// [ProjectModel.sendTrackOrder].
+  late final Id? _parentTrack;
+
+  /// The index within the parent track list at which to insert this track.
+  late final int _indexInParent;
+
+  /// The child tracks that should be added to this track.
+  late final List<Id> _childrenToAddToGroup;
+
+  TrackGroupUngroupCommand.group({
+    required ProjectModel project,
+    required Iterable<Id> trackIds,
+  }) : _isGroup = true {
+    // The logic here is non-trivial and represents intentional design
+    // decisions, so I will spend some time to describe what's going on and why.
+    //
+    // The incoming list of track IDs are tracks that were selected when the
+    // user invoked the group tracks action (e.g. via right click menu). The
+    // actual behavior is more complex than just shoving them all in a single
+    // group. We need to determine the actual group configuration that we want
+    // for this command, and store fields which describe that behavior.
+    //
+    // For example, let's say we have the following track configuration:
+    //
+    // - A
+    //   - B
+    //   - C
+    //   - D
+    // - E
+    //   - F
+    //
+    // Any of these tracks could be selected when this action is invoked. For
+    // some of these selections, it is clear what should happen. For example, if
+    // B and C are selected, then this is the clear result:
+    //
+    // - A
+    //   - NEW GROUP TRACK
+    //     - B
+    //     - C
+    //   - D
+    // - E
+    //   - F
+    //
+    // Other selections are less obvious, but we could use reasonable
+    // assumptions to determine what happens. For example, if A and E are
+    // selected but not B, C, D, or F, you might still expect:
+    //
+    // - NEW GROUP TRACK
+    //   - A
+    //     - B
+    //     - C
+    //     - D
+    //   - E
+    //     - F
+    //
+    // However, say you have only tracks B and E selected. At that point it is
+    // far less obvious what should happen.
+    //
+    // What we actually do in any given scenario is the following:
+    //
+    // 1. Find the common ancestor of all tracks in the incoming list
+    // 2. Within the children of that common ancestor (or the top-level tracks
+    //    if there is no common ancestor), make a list of all tracks that are or
+    //    contain items in the incoming list
+    // 3. Remove these tracks from their parent, and add them to a new group
+    //    track within that parent
+    //
+    // This is simple, correctly handles the cases above, and produces behavior
+    // that is predictable.
+
+    final serviceRegistry = ServiceRegistry.forProject(project.id);
+    final projectController = serviceRegistry.projectController;
+
+    if (!projectController.canGroupTracks(trackIds)) {
+      throw StateError(
+        'TrackGroupUngroupCommand.group(): Invalid track list for grouping. '
+        'canGroupTracks(trackIds) returned false.',
+      );
+    }
+
+    if (trackIds.isEmpty) {
+      throw StateError(
+        'TrackGroupUngroupCommand.group(): Track list cannot be empty.',
+      );
+    }
+
+    _isForSendTrack = projectController.isSendTrack(trackIds.first);
+
+    /// Gets the nearest common ancestor of all tracks, if there is any.
+    ///
+    /// Given the following tracks:
+    /// - A
+    ///   - B
+    ///     - C
+    ///     - D
+    ///   - E
+    ///   - F
+    /// - G
+    ///   - H
+    ///
+    /// Returns the common ancestor, as the first item in the tuple:
+    ///
+    /// If C and D are passed in, B will be returned as the common ancestor. If
+    /// C and E are passed in, A will be returned. If B and H are passed in,
+    /// null will be returned.
+    ///
+    /// Returns a list of immediate children that were passed through when
+    /// reaching the common ancestor, as the second item in the tuple:
+    ///
+    /// If C and E are passed in, the common ancestor will be A, and the
+    /// children passed through will be B and E, both immediate children of A. F
+    /// will not be given, since it is not a parent of any of the items passed
+    /// in [originTrackList.]
+    (Id? commonAncestor, List<Id> childrenPassedThrough) getCommonAncestor(
+      Iterable<Id> originTrackList,
+    ) {
+      int getDepth(Id trackId) {
+        var track = project.tracks[trackId]!;
+        var depth = 0;
+        // The 100,000 here is a sanity check, to prevent infinite loop in the
+        // case of a cycle. Cycles should not be possible unless we have a bug,
+        // or a project file that was incorrectly modified by someone else.
+        while (track.parentTrackId != null && depth < 100_000) {
+          depth++;
+          track = project.tracks[track.parentTrackId]!;
+        }
+        return depth;
+      }
+
+      // This is a map of trackId to (depth, direct children passed through to
+      // reach this track)
+      final trackDepthMap = Map.fromEntries(
+        originTrackList.map((id) => MapEntry(id, (getDepth(id), <Id>[]))),
+      );
+
+      int sanityCount = 0;
+
+      while (true) {
+        int highestDepth = 0;
+        String? trackIdAtHighest;
+
+        for (final MapEntry(key: trackId, value: (depth, _))
+            in trackDepthMap.entries) {
+          if (depth > highestDepth) {
+            trackIdAtHighest = trackId;
+            highestDepth = depth;
+          }
+        }
+
+        if (highestDepth == 0) {
+          break;
+        }
+
+        final (oldDepth, _) = trackDepthMap.remove(trackIdAtHighest!)!;
+        final parentTrackId = project.tracks[trackIdAtHighest]!.parentTrackId!;
+        if (trackDepthMap[parentTrackId] == null) {
+          trackDepthMap[parentTrackId] = (oldDepth - 1, [trackIdAtHighest]);
+        } else {
+          trackDepthMap[parentTrackId]!.$2.add(trackIdAtHighest);
+        }
+
+        if (trackDepthMap.length == 1) {
+          break;
+        }
+
+        if (sanityCount > 100_000) {
+          throw StateError(
+            'Broke out of likely infinite loop in '
+            'TrackGroupUngroupCommand.group().getCommonAncestor()',
+          );
+        }
+
+        sanityCount++;
+      }
+
+      if (trackDepthMap.length != 1) {
+        return (null, trackDepthMap.keys.toList());
+      }
+
+      final entryToReturn = trackDepthMap.entries.first;
+
+      return (entryToReturn.key, entryToReturn.value.$2);
+    }
+
+    final (newGroupParent, tracksToAddToNewGroup) = getCommonAncestor(trackIds);
+
+    final parentTrackList = newGroupParent != null
+        ? project.tracks[newGroupParent]!.childTracks.nonObservableInner
+        : _isForSendTrack
+        ? project.sendTrackOrder.nonObservableInner
+        : project.trackOrder.nonObservableInner;
+
+    final tracksToAddToNewGroupIndices = Map.fromEntries(
+      tracksToAddToNewGroup.map(
+        (trackId) => MapEntry(trackId, parentTrackList.indexOf(trackId)),
+      ),
+    );
+
+    tracksToAddToNewGroup.sort(
+      (a, b) => tracksToAddToNewGroupIndices[a]!.compareTo(
+        tracksToAddToNewGroupIndices[b]!,
+      ),
+    );
+
+    _indexInParent = parentTrackList.indexWhere(
+      (trackId) => tracksToAddToNewGroup.contains(trackId),
+    );
+
+    _newGroupTrack = TrackModel(
+      name: 'New Group',
+      color: AnthemColor.randomHue(),
+      type: .group,
+    );
+    _parentTrack = newGroupParent;
+    _childrenToAddToGroup = tracksToAddToNewGroup;
+  }
+
+  TrackGroupUngroupCommand.ungroup() : _isGroup = false {
+    throw UnimplementedError(); // TODO
+  }
+
+  @override
+  void execute(ProjectModel project) {
+    if (_isGroup) {
+      _group(project);
+    } else {
+      _ungroup(project);
+    }
+  }
+
+  @override
+  void rollback(ProjectModel project) {
+    if (_isGroup) {
+      _ungroup(project);
+    } else {
+      _group(project);
+    }
+  }
+
+  void _group(ProjectModel project) {
+    final parentTrackList = _parentTrack != null
+        ? project.tracks[_parentTrack]!.childTracks
+        : _isForSendTrack
+        ? project.sendTrackOrder
+        : project.trackOrder;
+
+    for (final trackId in _childrenToAddToGroup) {
+      parentTrackList.remove(trackId);
+    }
+
+    _newGroupTrack.childTracks
+      ..clear()
+      ..addAll(_childrenToAddToGroup);
+
+    project.tracks[_newGroupTrack.id] = _newGroupTrack;
+
+    parentTrackList.insert(_indexInParent, _newGroupTrack.id);
+
+    updateTrackParents(project, project.tracks[_parentTrack]);
+
+    ServiceRegistry.forProject(
+      project.id,
+    ).arrangerViewModel.registerTrack(_newGroupTrack.id);
+  }
+
+  void _ungroup(ProjectModel project) {
+    throw UnimplementedError(); // TODO
+  }
+}
+
+/// Updates the parentTrackId field for all children of [track].
+///
+/// If [track] is null, this will update all tracks in the project.
+@visibleForTesting
+void updateTrackParents(ProjectModel project, [TrackModel? track]) {
+  if (track == null) {
+    for (final trackId in project.trackOrder.nonObservableInner.followedBy(
+      project.sendTrackOrder.nonObservableInner,
+    )) {
+      updateTrackParents(project, project.tracks[trackId]!);
+    }
+
+    return;
+  }
+
+  if (track.type != .group) return;
+
+  for (final childTrackId in track.childTracks.nonObservableInner) {
+    final childTrack = project.tracks[childTrackId]!;
+    childTrack.parentTrackId = track.id;
+    updateTrackParents(project, childTrack);
   }
 }
 

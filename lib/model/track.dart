@@ -80,6 +80,13 @@ abstract class _TrackModel
   @anthemObservable
   AnthemObservableList<Id> childTracks = AnthemObservableList<Id>();
 
+  @anthemObservable
+  /// The ID of the parent of this track, if there is any.
+  ///
+  /// This is calculated automatically after tracks are added, removed, or moved
+  /// around.
+  Id? parentTrackId;
+
   _TrackModel({required this.name, required this.color, required this.type})
     : id = getId(),
       super();

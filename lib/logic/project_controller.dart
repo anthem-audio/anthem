@@ -245,6 +245,58 @@ class ProjectController {
     );
   }
 
+  /// Checks if a given track is a send track, or a child of a grouped send
+  /// track.
+  bool isSendTrack(Id trackId, [bool observable = true]) {
+    final projectTracks = observable
+        ? project.tracks
+        : project.tracks.nonObservableInner;
+
+    bool check(TrackModel track) {
+      final childTracks = observable
+          ? track.childTracks
+          : track.childTracks.nonObservableInner;
+      return track.id == trackId ||
+          childTracks.any(
+            (childTrackId) =>
+                childTrackId == trackId || check(projectTracks[childTrackId]!),
+          );
+    }
+
+    return project.sendTrackOrder.any(
+      (sendTrackId) => check(projectTracks[sendTrackId]!),
+    );
+  }
+
+  /// Note that this DOES NOT WORK with MobX observers. We assume that we will
+  /// not need to ask this question when rendering a view, and the iterating
+  /// here can get quite expensive.
+  bool canGroupTracks(Iterable<Id> trackIds) {
+    if (trackIds.isEmpty) return false;
+
+    bool hasSendTracks = false;
+    bool hasRegularTracks = false;
+
+    for (final id in trackIds) {
+      final isSendTrack = this.isSendTrack(id, false);
+
+      hasSendTracks = hasSendTracks || isSendTrack;
+      hasRegularTracks = hasRegularTracks || !isSendTrack;
+
+      if (hasSendTracks && hasRegularTracks) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  void groupTracks(Iterable<Id> trackIds) {
+    project.execute(
+      TrackGroupUngroupCommand.group(project: project, trackIds: trackIds),
+    );
+  }
+
   void setTrackName(Id trackId, String newName) {
     project.execute(
       SetTrackNameCommand(track: project.tracks[trackId]!, newName: newName),
