@@ -124,6 +124,7 @@ void main() {
     //   - M
     //   - N
     // - O
+    // - P
     // - Master Track (as of writing, a special master track does not exist, but
     //   it should)
 
@@ -147,6 +148,7 @@ void main() {
     late Id trackMId;
     late Id trackNId;
     late Id trackOId;
+    late Id trackPId;
     late Id masterTrackId;
 
     late TrackModel trackA;
@@ -164,6 +166,7 @@ void main() {
     late TrackModel trackM;
     late TrackModel trackN;
     late TrackModel trackO;
+    late TrackModel trackP;
     late TrackModel masterTrack;
 
     setUp(() {
@@ -179,12 +182,6 @@ void main() {
         final id = getId();
         final track = TrackModel(name: '', color: MockAnthemColor(), type: type)
           ..id = id;
-
-        if (isSendTrack) {
-          sendTrackOrder.add(id);
-        } else {
-          trackOrder.add(id);
-        }
 
         tracks[id] = track;
 
@@ -206,6 +203,7 @@ void main() {
       final pairM = createTrack(.instrument, true);
       final pairN = createTrack(.instrument, true);
       final pairO = createTrack(.instrument, true);
+      final pairP = createTrack(.instrument, true);
       final pairMaster = createTrack(.instrument, true);
 
       trackAId = pairA.$1;
@@ -223,6 +221,7 @@ void main() {
       trackMId = pairM.$1;
       trackNId = pairN.$1;
       trackOId = pairO.$1;
+      trackPId = pairP.$1;
       masterTrackId = pairMaster.$1;
 
       trackA = pairA.$2;
@@ -240,12 +239,16 @@ void main() {
       trackM = pairM.$2;
       trackN = pairN.$2;
       trackO = pairO.$2;
+      trackP = pairP.$2;
       masterTrack = pairMaster.$2;
 
       trackA.childTracks.addAll([trackBId, trackEId, trackHId, trackIId]);
       trackB.childTracks.addAll([trackCId, trackDId]);
       trackE.childTracks.addAll([trackFId, trackGId]);
-      trackL.childTracks.addAll([trackMId, trackOId]);
+      trackL.childTracks.addAll([trackMId, trackNId]);
+
+      trackOrder.addAll([trackAId, trackJId, trackKId]);
+      sendTrackOrder.addAll([trackLId, trackOId, trackPId, masterTrackId]);
 
       for (final track in tracks.values) {
         for (final childTrackId in track.childTracks) {
@@ -260,48 +263,61 @@ void main() {
       serviceRegistry.register<ArrangerViewModel>(MockArrangerViewModel());
     });
 
-    test('Grouping tracks base track list (not already in group)', () {
-      final mockArrangerViewModel =
-          ServiceRegistry.forProject(project.id).arrangerViewModel
-              as MockArrangerViewModel;
+    for (final (forSendTrack, id1, id2) in [
+      (false, trackJId, trackKId),
+      (true, trackOId, trackPId),
+    ]) {
+      test(
+        'Grouping tracks base track list (not already in group, forSendTrack: $forSendTrack)',
+        () {
+          final trackOrderToUse = forSendTrack ? sendTrackOrder : trackOrder;
 
-      final originalTrackOrder = List<String>.from(trackOrder);
+          final mockArrangerViewModel =
+              ServiceRegistry.forProject(project.id).arrangerViewModel
+                  as MockArrangerViewModel;
 
-      final trackLen = trackOrder.length;
-      final jIndex = trackOrder.indexOf(trackJId);
-      expect(tracks[trackOrder[jIndex]]!.type, equals(TrackType.instrument));
+          final originalTrackOrder = List<String>.from(trackOrderToUse);
 
-      final command = TrackGroupUngroupCommand.group(
-        project: project,
-        trackIds: [trackJId, trackKId],
+          final trackLen = trackOrderToUse.length;
+          final id1Index = trackOrderToUse.indexOf(id1);
+          expect(
+            tracks[trackOrderToUse[id1Index]]!.type,
+            equals(TrackType.instrument),
+          );
+
+          final command = TrackGroupUngroupCommand.group(
+            project: project,
+            trackIds: [id1, id2],
+          );
+          command.execute(project);
+
+          final newGroupTrack = tracks[trackOrder[id1Index]];
+          expect(newGroupTrack, isNotNull);
+          newGroupTrack!;
+
+          expect(trackOrder.length, equals(trackLen - 1));
+          expect(newGroupTrack.type, equals(TrackType.group));
+          expect(newGroupTrack.childTracks, hasLength(2));
+          expect(newGroupTrack.childTracks[0], equals(id1));
+          expect(newGroupTrack.childTracks[1], equals(id2));
+          expect(tracks[id1]!.parentTrackId, equals(newGroupTrack.id));
+          expect(tracks[id2]!.parentTrackId, equals(newGroupTrack.id));
+
+          verify(mockArrangerViewModel.registerTrack(any)).called(1);
+          verifyNever(mockArrangerViewModel.unregisterTrack(any));
+
+          command.rollback(project);
+
+          expect(trackOrder.length, equals(trackLen));
+          expect(trackOrder, containsAllInOrder(originalTrackOrder));
+          expect(tracks[newGroupTrack.id], isNull);
+          expect(tracks[id1]!.parentTrackId, isNull);
+          expect(tracks[id2]!.parentTrackId, isNull);
+
+          verifyNever(mockArrangerViewModel.registerTrack(any));
+          verify(mockArrangerViewModel.unregisterTrack(any)).called(1);
+        },
       );
-      command.execute(project);
-
-      final newGroupTrack = tracks[trackOrder[jIndex]];
-      expect(newGroupTrack, isNotNull);
-      newGroupTrack!;
-
-      expect(trackOrder.length, equals(trackLen - 1));
-      expect(newGroupTrack.type, equals(TrackType.group));
-      expect(newGroupTrack.childTracks, hasLength(2));
-      expect(newGroupTrack.childTracks[0], equals(trackJId));
-      expect(newGroupTrack.childTracks[1], equals(trackKId));
-      expect(tracks[trackJId]!.parentTrackId, equals(newGroupTrack.id));
-      expect(tracks[trackKId]!.parentTrackId, equals(newGroupTrack.id));
-
-      verify(mockArrangerViewModel.registerTrack(any)).called(1);
-      verifyNever(mockArrangerViewModel.unregisterTrack(any));
-
-      command.rollback(project);
-
-      expect(trackOrder.length, equals(trackLen));
-      expect(trackOrder, containsAllInOrder(originalTrackOrder));
-      expect(tracks[newGroupTrack.id], isNull);
-      expect(tracks[trackJId]!.parentTrackId, isNull);
-      expect(tracks[trackKId]!.parentTrackId, isNull);
-
-      verifyNever(mockArrangerViewModel.registerTrack(any));
-      verify(mockArrangerViewModel.unregisterTrack(any)).called(1);
-    });
+    }
   });
 }
