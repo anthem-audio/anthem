@@ -137,7 +137,7 @@ class CppModelBuilder implements Builder {
           inPackage: 'anthem_codegen',
         ).firstAnnotationOf(fieldInfo.fieldElement);
 
-        // If the enum is not annotated with @anthemEnum, then some necessary
+        // If the enum is not annotated with @AnthemEnum(), then some necessary
         // codegen may not happen.
         if (enumAnnotation == null) {
           // Double-check that this field is not hidden from codegen before
@@ -145,7 +145,7 @@ class CppModelBuilder implements Builder {
           if (hideAnnotation == null ||
               hideAnnotation.getField('cpp')?.toBoolValue() == false) {
             log.warning(
-              'Enum ${fieldInfo.fieldElement.type.element?.name} is not annotated with @anthemEnum. This is required for enums that are used by Anthem models.',
+              'Enum ${fieldInfo.fieldElement.type.element?.name} is not annotated with @AnthemEnum(). This is required for enums that are used by Anthem models.',
             );
             log.warning(
               'The enum ${fieldInfo.fieldElement.type.element?.name} is used in a field called ${fieldInfo.fieldElement.name} on ${classElement.name}.',

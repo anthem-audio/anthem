@@ -38,6 +38,7 @@ class TrackModel extends _TrackModel
       _$TrackModelAnthemModelMixin.fromJson(json);
 }
 
+@AnthemEnum()
 enum TrackType { instrument, audio, hybrid, group }
 
 abstract class _TrackModel

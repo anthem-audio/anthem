@@ -27,6 +27,7 @@ import 'package:mobx/mobx.dart';
 
 part 'anthem_color.g.dart';
 
+@AnthemEnum()
 enum AnthemColorPaletteKind { normal, bright, dark, desaturated, grayscale }
 
 const colorPickerHues = <double>[0, 30, 60, 120, 161, 195, 215, 260, 310];
