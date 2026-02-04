@@ -252,20 +252,26 @@ class ProjectController {
         ? project.tracks
         : project.tracks.nonObservableInner;
 
-    bool check(TrackModel track) {
-      final childTracks = observable
-          ? track.childTracks
-          : track.childTracks.nonObservableInner;
-      return track.id == trackId ||
-          childTracks.any(
-            (childTrackId) =>
-                childTrackId == trackId || check(projectTracks[childTrackId]!),
-          );
+    final sendTrackOrder = observable
+        ? project.sendTrackOrder
+        : project.sendTrackOrder.nonObservableInner;
+
+    int safetyCounter = 0;
+    Id? currentTrackId = trackId;
+
+    while (currentTrackId != null && safetyCounter < 100_000) {
+      safetyCounter++;
+
+      final currentTrack = projectTracks[currentTrackId]!;
+      if (currentTrack.parentTrackId == null &&
+          sendTrackOrder.contains(currentTrackId)) {
+        return true;
+      }
+
+      currentTrackId = currentTrack.parentTrackId;
     }
 
-    return project.sendTrackOrder.any(
-      (sendTrackId) => check(projectTracks[sendTrackId]!),
-    );
+    return false;
   }
 
   /// Note that this DOES NOT WORK with MobX observers. We assume that we will
