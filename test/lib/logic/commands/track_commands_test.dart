@@ -261,6 +261,12 @@ void main() {
     });
 
     test('Grouping tracks base track list (not already in group)', () {
+      final mockArrangerViewModel =
+          ServiceRegistry.forProject(project.id).arrangerViewModel
+              as MockArrangerViewModel;
+
+      final originalTrackOrder = List<String>.from(trackOrder);
+
       final trackLen = trackOrder.length;
       final jIndex = trackOrder.indexOf(trackJId);
       expect(tracks[trackOrder[jIndex]]!.type, equals(TrackType.instrument));
@@ -271,13 +277,31 @@ void main() {
       );
       command.execute(project);
 
-      final newGroupTrack = tracks[trackOrder[jIndex]]!;
+      final newGroupTrack = tracks[trackOrder[jIndex]];
+      expect(newGroupTrack, isNotNull);
+      newGroupTrack!;
 
       expect(trackOrder.length, equals(trackLen - 1));
       expect(newGroupTrack.type, equals(TrackType.group));
       expect(newGroupTrack.childTracks, hasLength(2));
       expect(newGroupTrack.childTracks[0], equals(trackJId));
       expect(newGroupTrack.childTracks[1], equals(trackKId));
+      expect(tracks[trackJId]!.parentTrackId, equals(newGroupTrack.id));
+      expect(tracks[trackKId]!.parentTrackId, equals(newGroupTrack.id));
+
+      verify(mockArrangerViewModel.registerTrack(any)).called(1);
+      verifyNever(mockArrangerViewModel.unregisterTrack(any));
+
+      command.rollback(project);
+
+      expect(trackOrder.length, equals(trackLen));
+      expect(trackOrder, containsAllInOrder(originalTrackOrder));
+      expect(tracks[newGroupTrack.id], isNull);
+      expect(tracks[trackJId]!.parentTrackId, isNull);
+      expect(tracks[trackKId]!.parentTrackId, isNull);
+
+      verifyNever(mockArrangerViewModel.registerTrack(any));
+      verify(mockArrangerViewModel.unregisterTrack(any)).called(1);
     });
   });
 }

@@ -226,7 +226,10 @@ class TrackGroupUngroupCommand extends Command {
   late final int _indexInParent;
 
   /// The child tracks that should be added to this track.
-  late final List<Id> _childrenToAddToGroup;
+  ///
+  /// The second field in the tuple is the original index of this track, so the
+  /// operation can be reversed correctly.
+  late final List<(Id, int)> _childrenToAddToGroup;
 
   TrackGroupUngroupCommand.group({
     required ProjectModel project,
@@ -433,7 +436,9 @@ class TrackGroupUngroupCommand extends Command {
       type: .group,
     );
     _parentTrack = newGroupParent;
-    _childrenToAddToGroup = tracksToAddToNewGroup;
+    _childrenToAddToGroup = tracksToAddToNewGroup
+        .map((t) => (t, tracksToAddToNewGroupIndices[t]!))
+        .toList();
   }
 
   TrackGroupUngroupCommand.ungroup() : _isGroup = false {
@@ -465,13 +470,13 @@ class TrackGroupUngroupCommand extends Command {
         ? project.sendTrackOrder
         : project.trackOrder;
 
-    for (final trackId in _childrenToAddToGroup) {
+    for (final (trackId, _) in _childrenToAddToGroup) {
       parentTrackList.remove(trackId);
     }
 
     _newGroupTrack.childTracks
       ..clear()
-      ..addAll(_childrenToAddToGroup);
+      ..addAll(_childrenToAddToGroup.map((c) => c.$1));
 
     project.tracks[_newGroupTrack.id] = _newGroupTrack;
 
@@ -485,7 +490,26 @@ class TrackGroupUngroupCommand extends Command {
   }
 
   void _ungroup(ProjectModel project) {
-    throw UnimplementedError(); // TODO
+    final parentTrackList = _parentTrack != null
+        ? project.tracks[_parentTrack]!.childTracks
+        : _isForSendTrack
+        ? project.sendTrackOrder
+        : project.trackOrder;
+
+    project.tracks.remove(_newGroupTrack.id);
+    parentTrackList.remove(_newGroupTrack.id);
+
+    _newGroupTrack.childTracks.clear();
+
+    for (final (trackId, originalIndex) in _childrenToAddToGroup) {
+      parentTrackList.insert(originalIndex, trackId);
+    }
+
+    updateTrackParents(project, project.tracks[_parentTrack]);
+
+    ServiceRegistry.forProject(
+      project.id,
+    ).arrangerViewModel.unregisterTrack(_newGroupTrack.id);
   }
 }
 
@@ -498,7 +522,9 @@ void updateTrackParents(ProjectModel project, [TrackModel? track]) {
     for (final trackId in project.trackOrder.nonObservableInner.followedBy(
       project.sendTrackOrder.nonObservableInner,
     )) {
-      updateTrackParents(project, project.tracks[trackId]!);
+      final childTrack = project.tracks[trackId]!;
+      childTrack.parentTrackId = null;
+      updateTrackParents(project, childTrack);
     }
 
     return;
