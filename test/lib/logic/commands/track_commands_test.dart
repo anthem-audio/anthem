@@ -19,15 +19,24 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/track_commands.dart';
+import 'package:anthem/logic/project_controller.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
+import 'package:anthem/widgets/editors/arranger/view_model.dart';
+import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 
-@GenerateNiceMocks([MockSpec<ProjectModel>(), MockSpec<AnthemColor>()])
+@GenerateNiceMocks([
+  MockSpec<ProjectModel>(),
+  MockSpec<AnthemColor>(),
+  MockSpec<ProjectViewModel>(),
+  MockSpec<ArrangerViewModel>(),
+])
 import 'track_commands_test.mocks.dart';
 
 void main() {
@@ -35,6 +44,7 @@ void main() {
 
   setUp(() {
     project = MockProjectModel();
+    when(project.id).thenReturn(getId());
   });
 
   group('Set track properties', () {
@@ -236,10 +246,38 @@ void main() {
       trackB.childTracks.addAll([trackCId, trackDId]);
       trackE.childTracks.addAll([trackFId, trackGId]);
       trackL.childTracks.addAll([trackMId, trackOId]);
+
+      for (final track in tracks.values) {
+        for (final childTrackId in track.childTracks) {
+          tracks[childTrackId]!.parentTrackId = track.id;
+        }
+      }
+
+      final serviceRegistry = ServiceRegistry.forProject(project.id);
+      serviceRegistry.register(
+        ProjectController(project, MockProjectViewModel()),
+      );
+      serviceRegistry.register<ArrangerViewModel>(MockArrangerViewModel());
     });
 
-    test('Basic group', () {
-      //
+    test('Grouping tracks base track list (not already in group)', () {
+      final trackLen = trackOrder.length;
+      final jIndex = trackOrder.indexOf(trackJId);
+      expect(tracks[trackOrder[jIndex]]!.type, equals(TrackType.instrument));
+
+      final command = TrackGroupUngroupCommand.group(
+        project: project,
+        trackIds: [trackJId, trackKId],
+      );
+      command.execute(project);
+
+      final newGroupTrack = tracks[trackOrder[jIndex]]!;
+
+      expect(trackOrder.length, equals(trackLen - 1));
+      expect(newGroupTrack.type, equals(TrackType.group));
+      expect(newGroupTrack.childTracks, hasLength(2));
+      expect(newGroupTrack.childTracks[0], equals(trackJId));
+      expect(newGroupTrack.childTracks[1], equals(trackKId));
     });
   });
 }

@@ -19,7 +19,6 @@
 
 import 'dart:math';
 import 'dart:typed_data';
-import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/clip.dart';
@@ -28,6 +27,7 @@ import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:collection/collection.dart';
+import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart';
 
 part 'view_model.g.dart';
@@ -82,7 +82,7 @@ abstract class _ArrangerViewModel with Store {
   @observable
   Id? pressedClip;
 
-  late final _TrackPositionAndSize trackPositionCalculator;
+  late final TrackPositionAndSize trackPositionCalculator;
 
   final visibleClips = CanvasAnnotationSet<({Id id})>();
   final visibleResizeAreas =
@@ -98,7 +98,7 @@ abstract class _ArrangerViewModel with Store {
            (key, value) => MapEntry(key, 1),
          ),
        ) {
-    trackPositionCalculator = _TrackPositionAndSize(
+    trackPositionCalculator = TrackPositionAndSize(
       project,
       this as ArrangerViewModel,
     );
@@ -169,14 +169,15 @@ abstract class _ArrangerViewModel with Store {
 ///
 /// The values are cached in a typed array to improve memory locality and reduce
 /// allocation and GC pressure.
-class _TrackPositionAndSize {
+@visibleForTesting
+class TrackPositionAndSize {
   ProjectModel projectModel;
   ArrangerViewModel arrangerViewModel;
 
   var _cache = Float64List(0);
   final _trackIdToIndex = <String, int>{};
 
-  _TrackPositionAndSize(this.projectModel, this.arrangerViewModel);
+  TrackPositionAndSize(this.projectModel, this.arrangerViewModel);
 
   int trackIdToIndex(String trackId) => _trackIdToIndex[trackId]!;
 
