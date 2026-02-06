@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+// ignore_for_file: unused_local_variable, avoid_print
+
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/track_commands.dart';
 import 'package:anthem/logic/project_controller.dart';
@@ -128,7 +130,6 @@ void main() {
     // - Master Track (as of writing, a special master track does not exist, but
     //   it should)
 
-    late MockProjectModel projectModel;
     late AnthemObservableMap<String, TrackModel> tracks;
     late AnthemObservableList<String> trackOrder;
     late AnthemObservableList<String> sendTrackOrder;
@@ -169,6 +170,43 @@ void main() {
     late TrackModel trackP;
     late TrackModel masterTrack;
 
+    void printTrack(TrackModel track, [String prefix = '']) {
+      print('$prefix- ${track.name}');
+      for (final childId in track.childTracks) {
+        final child = tracks[childId];
+        if (child != null) {
+          printTrack(child, '  $prefix');
+        } else {
+          print('  $prefix- NULL');
+        }
+      }
+    }
+
+    /// For debugging, prints the current track state.
+    ///
+    // ignore: unused_element
+    void printTracks() {
+      print('Tracks:');
+      for (final trackId in trackOrder) {
+        final track = tracks[trackId];
+        if (track != null) {
+          printTrack(track);
+        } else {
+          print('- NULL');
+        }
+      }
+
+      print('Send tracks:');
+      for (final trackId in sendTrackOrder) {
+        final track = tracks[trackId];
+        if (track != null) {
+          printTrack(track);
+        } else {
+          print('- NULL');
+        }
+      }
+    }
+
     setUp(() {
       tracks = AnthemObservableMap();
       trackOrder = AnthemObservableList();
@@ -178,33 +216,40 @@ void main() {
       when(project.trackOrder).thenReturn(trackOrder);
       when(project.sendTrackOrder).thenReturn(sendTrackOrder);
 
-      (Id, TrackModel) createTrack(TrackType type, bool isSendTrack) {
+      (Id, TrackModel) createTrack(
+        String name,
+        TrackType type,
+        bool isSendTrack,
+      ) {
         final id = getId();
-        final track = TrackModel(name: '', color: MockAnthemColor(), type: type)
-          ..id = id;
+        final track = TrackModel(
+          name: name,
+          color: MockAnthemColor(),
+          type: type,
+        )..id = id;
 
         tracks[id] = track;
 
         return (id, track);
       }
 
-      final pairA = createTrack(.group, false);
-      final pairB = createTrack(.group, false);
-      final pairC = createTrack(.instrument, false);
-      final pairD = createTrack(.instrument, false);
-      final pairE = createTrack(.group, false);
-      final pairF = createTrack(.instrument, false);
-      final pairG = createTrack(.instrument, false);
-      final pairH = createTrack(.instrument, false);
-      final pairI = createTrack(.instrument, false);
-      final pairJ = createTrack(.instrument, false);
-      final pairK = createTrack(.instrument, false);
-      final pairL = createTrack(.group, true);
-      final pairM = createTrack(.instrument, true);
-      final pairN = createTrack(.instrument, true);
-      final pairO = createTrack(.instrument, true);
-      final pairP = createTrack(.instrument, true);
-      final pairMaster = createTrack(.instrument, true);
+      final pairA = createTrack('A', .group, false);
+      final pairB = createTrack('B', .group, false);
+      final pairC = createTrack('C', .instrument, false);
+      final pairD = createTrack('D', .instrument, false);
+      final pairE = createTrack('E', .group, false);
+      final pairF = createTrack('F', .instrument, false);
+      final pairG = createTrack('G', .instrument, false);
+      final pairH = createTrack('H', .instrument, false);
+      final pairI = createTrack('I', .instrument, false);
+      final pairJ = createTrack('J', .instrument, false);
+      final pairK = createTrack('K', .instrument, false);
+      final pairL = createTrack('L', .group, true);
+      final pairM = createTrack('M', .instrument, true);
+      final pairN = createTrack('N', .instrument, true);
+      final pairO = createTrack('O', .instrument, true);
+      final pairP = createTrack('P', .instrument, true);
+      final pairMaster = createTrack('Master', .instrument, true);
 
       trackAId = pairA.$1;
       trackBId = pairB.$1;
@@ -263,61 +308,273 @@ void main() {
       serviceRegistry.register<ArrangerViewModel>(MockArrangerViewModel());
     });
 
-    for (final (forSendTrack, id1, id2) in [
-      (false, trackJId, trackKId),
-      (true, trackOId, trackPId),
-    ]) {
-      test(
-        'Grouping tracks base track list (not already in group, forSendTrack: $forSendTrack)',
-        () {
-          final trackOrderToUse = forSendTrack ? sendTrackOrder : trackOrder;
+    void runBasicGroupTest(bool isForSendTrack, Id id1, Id id2) {
+      final trackOrderToUse = isForSendTrack ? sendTrackOrder : trackOrder;
 
-          final mockArrangerViewModel =
-              ServiceRegistry.forProject(project.id).arrangerViewModel
-                  as MockArrangerViewModel;
+      final mockArrangerViewModel =
+          ServiceRegistry.forProject(project.id).arrangerViewModel
+              as MockArrangerViewModel;
 
-          final originalTrackOrder = List<String>.from(trackOrderToUse);
+      final originalTrackOrder = List<String>.from(trackOrderToUse);
 
-          final trackLen = trackOrderToUse.length;
-          final id1Index = trackOrderToUse.indexOf(id1);
-          expect(
-            tracks[trackOrderToUse[id1Index]]!.type,
-            equals(TrackType.instrument),
-          );
-
-          final command = TrackGroupUngroupCommand.group(
-            project: project,
-            trackIds: [id1, id2],
-          );
-          command.execute(project);
-
-          final newGroupTrack = tracks[trackOrder[id1Index]];
-          expect(newGroupTrack, isNotNull);
-          newGroupTrack!;
-
-          expect(trackOrder.length, equals(trackLen - 1));
-          expect(newGroupTrack.type, equals(TrackType.group));
-          expect(newGroupTrack.childTracks, hasLength(2));
-          expect(newGroupTrack.childTracks[0], equals(id1));
-          expect(newGroupTrack.childTracks[1], equals(id2));
-          expect(tracks[id1]!.parentTrackId, equals(newGroupTrack.id));
-          expect(tracks[id2]!.parentTrackId, equals(newGroupTrack.id));
-
-          verify(mockArrangerViewModel.registerTrack(any)).called(1);
-          verifyNever(mockArrangerViewModel.unregisterTrack(any));
-
-          command.rollback(project);
-
-          expect(trackOrder.length, equals(trackLen));
-          expect(trackOrder, containsAllInOrder(originalTrackOrder));
-          expect(tracks[newGroupTrack.id], isNull);
-          expect(tracks[id1]!.parentTrackId, isNull);
-          expect(tracks[id2]!.parentTrackId, isNull);
-
-          verifyNever(mockArrangerViewModel.registerTrack(any));
-          verify(mockArrangerViewModel.unregisterTrack(any)).called(1);
-        },
+      final trackLen = trackOrderToUse.length;
+      final id1Index = trackOrderToUse.indexOf(id1);
+      expect(
+        tracks[trackOrderToUse[id1Index]]!.type,
+        equals(TrackType.instrument),
       );
+
+      final command = TrackGroupUngroupCommand.group(
+        project: project,
+        trackIds: [id1, id2],
+      );
+      command.execute(project);
+
+      final newGroupTrack = tracks[trackOrderToUse[id1Index]];
+      expect(newGroupTrack, isNotNull);
+      newGroupTrack!;
+
+      expect(trackOrderToUse.length, equals(trackLen - 1));
+      expect(newGroupTrack.type, equals(TrackType.group));
+      expect(newGroupTrack.childTracks, hasLength(2));
+      expect(newGroupTrack.childTracks[0], equals(id1));
+      expect(newGroupTrack.childTracks[1], equals(id2));
+      expect(tracks[id1]!.parentTrackId, equals(newGroupTrack.id));
+      expect(tracks[id2]!.parentTrackId, equals(newGroupTrack.id));
+
+      verify(mockArrangerViewModel.registerTrack(any)).called(1);
+      verifyNever(mockArrangerViewModel.unregisterTrack(any));
+
+      command.rollback(project);
+
+      expect(trackOrderToUse.length, equals(trackLen));
+      expect(trackOrderToUse, containsAllInOrder(originalTrackOrder));
+      expect(tracks[newGroupTrack.id], isNull);
+      expect(tracks[id1]!.parentTrackId, isNull);
+      expect(tracks[id2]!.parentTrackId, isNull);
+
+      verifyNever(mockArrangerViewModel.registerTrack(any));
+      verify(mockArrangerViewModel.unregisterTrack(any)).called(1);
     }
+
+    test('Basic track grouping test, regular tracks', () {
+      runBasicGroupTest(false, trackJId, trackKId);
+    });
+
+    test('Basic track grouping test, send tracks', () {
+      runBasicGroupTest(true, trackOId, trackPId);
+    });
+
+    test(
+      "Can't group tracks where some are send tracks and some are regular tracks",
+      () {
+        expect(() {
+          print('throws');
+          TrackGroupUngroupCommand.group(
+            project: project,
+            trackIds: [trackAId, trackOId],
+          );
+        }, throwsA(anything));
+      },
+    );
+
+    test('Simple grouping within another group', () {
+      final originalTrackOrderLength = trackOrder.length;
+
+      final command = TrackGroupUngroupCommand.group(
+        project: project,
+        trackIds: [trackCId, trackDId],
+      );
+
+      command.execute(project);
+
+      // No tracks added or removed at the top level
+      expect(trackOrder, hasLength(originalTrackOrderLength));
+
+      // Track A has the same children
+
+      expect(trackA.childTracks, hasLength(4));
+      expect(trackA.childTracks[0], equals(trackB.id));
+      expect(trackA.childTracks[1], equals(trackE.id));
+      expect(trackA.childTracks[2], equals(trackH.id));
+      expect(trackA.childTracks[3], equals(trackI.id));
+
+      // Track B has replaced the grouped tracks with a parent group track
+
+      expect(trackB.childTracks, hasLength(1));
+      expect(trackB.parentTrackId, equals(trackA.id));
+
+      final newGroupTrack = tracks[trackB.childTracks[0]];
+      expect(newGroupTrack, isNotNull);
+      newGroupTrack!;
+
+      expect(newGroupTrack.childTracks, hasLength(2));
+      expect(newGroupTrack.type, equals(TrackType.group));
+      expect(newGroupTrack.parentTrackId, equals(trackB.id));
+
+      expect(newGroupTrack.childTracks, hasLength(2));
+      expect(newGroupTrack.childTracks[0], equals(trackC.id));
+      expect(newGroupTrack.childTracks[1], equals(trackD.id));
+
+      expect(trackC.parentTrackId, equals(newGroupTrack.id));
+      expect(trackD.parentTrackId, equals(newGroupTrack.id));
+
+      // Rollback and verify the original state is restored
+
+      command.rollback(project);
+
+      // Top-level track order unchanged
+      expect(trackOrder, hasLength(originalTrackOrderLength));
+
+      // Track A still has the same children
+      expect(trackA.childTracks, hasLength(4));
+      expect(trackA.childTracks[0], equals(trackB.id));
+      expect(trackA.childTracks[1], equals(trackE.id));
+      expect(trackA.childTracks[2], equals(trackH.id));
+      expect(trackA.childTracks[3], equals(trackI.id));
+
+      // Track B's children are restored to the original C and D
+      expect(trackB.childTracks, hasLength(2));
+      expect(trackB.childTracks[0], equals(trackC.id));
+      expect(trackB.childTracks[1], equals(trackD.id));
+      expect(trackB.parentTrackId, equals(trackA.id));
+
+      // C and D point back to B as their parent
+      expect(trackC.parentTrackId, equals(trackB.id));
+      expect(trackD.parentTrackId, equals(trackB.id));
+
+      // The new group track is removed from the tracks map
+      expect(tracks[newGroupTrack.id], isNull);
+    });
+
+    test('Grouping non-adjacent children within a group', () {
+      final originalTrackOrderLength = trackOrder.length;
+
+      final command = TrackGroupUngroupCommand.group(
+        project: project,
+        trackIds: [trackEId, trackIId],
+      );
+
+      command.execute(project);
+
+      // Top-level track order unchanged
+      expect(trackOrder, hasLength(originalTrackOrderLength));
+
+      // Track A now has 3 children: B, newGroup (at E's old position), H
+      expect(trackA.childTracks, hasLength(3));
+      expect(trackA.childTracks[0], equals(trackB.id));
+      expect(trackA.childTracks[2], equals(trackH.id));
+
+      final newGroupTrack = tracks[trackA.childTracks[1]];
+      expect(newGroupTrack, isNotNull);
+      newGroupTrack!;
+
+      // The new group track is between B and H
+      expect(newGroupTrack.type, equals(TrackType.group));
+      expect(newGroupTrack.parentTrackId, equals(trackA.id));
+
+      // The new group track contains E and I
+      expect(newGroupTrack.childTracks, hasLength(2));
+      expect(newGroupTrack.childTracks[0], equals(trackE.id));
+      expect(newGroupTrack.childTracks[1], equals(trackI.id));
+
+      // E and I point to the new group as their parent
+      expect(trackE.parentTrackId, equals(newGroupTrack.id));
+      expect(trackI.parentTrackId, equals(newGroupTrack.id));
+
+      // E still has its original children F and G
+      expect(trackE.childTracks, hasLength(2));
+      expect(trackE.childTracks[0], equals(trackF.id));
+      expect(trackE.childTracks[1], equals(trackG.id));
+
+      // Rollback and verify the original state is restored
+
+      command.rollback(project);
+
+      // Top-level track order unchanged
+      expect(trackOrder, hasLength(originalTrackOrderLength));
+
+      // Track A's children are restored to B, E, H, I
+      expect(trackA.childTracks, hasLength(4));
+      expect(trackA.childTracks[0], equals(trackB.id));
+      expect(trackA.childTracks[1], equals(trackE.id));
+      expect(trackA.childTracks[2], equals(trackH.id));
+      expect(trackA.childTracks[3], equals(trackI.id));
+
+      // E and I point back to A as their parent
+      expect(trackE.parentTrackId, equals(trackA.id));
+      expect(trackI.parentTrackId, equals(trackA.id));
+
+      // E still has its original children
+      expect(trackE.childTracks, hasLength(2));
+      expect(trackE.childTracks[0], equals(trackF.id));
+      expect(trackE.childTracks[1], equals(trackG.id));
+
+      // The new group track is removed from the tracks map
+      expect(tracks[newGroupTrack.id], isNull);
+    });
+
+    test('Grouping top-level tracks A and K', () {
+      final command = TrackGroupUngroupCommand.group(
+        project: project,
+        trackIds: [trackAId, trackKId],
+      );
+
+      command.execute(project);
+
+      // trackOrder loses one entry: [newGroup, J]
+      expect(trackOrder, hasLength(2));
+
+      // The new group is at A's original position (index 0)
+      final newGroupTrack = tracks[trackOrder[0]];
+      expect(newGroupTrack, isNotNull);
+      newGroupTrack!;
+
+      expect(newGroupTrack.type, equals(TrackType.group));
+      expect(newGroupTrack.parentTrackId, isNull);
+
+      // J remains at index 1
+      expect(trackOrder[1], equals(trackJ.id));
+
+      // The new group contains A and K
+      expect(newGroupTrack.childTracks, hasLength(2));
+      expect(newGroupTrack.childTracks[0], equals(trackA.id));
+      expect(newGroupTrack.childTracks[1], equals(trackK.id));
+
+      // A and K point to the new group as their parent
+      expect(trackA.parentTrackId, equals(newGroupTrack.id));
+      expect(trackK.parentTrackId, equals(newGroupTrack.id));
+
+      // A still has its original children
+      expect(trackA.childTracks, hasLength(4));
+      expect(trackA.childTracks[0], equals(trackB.id));
+      expect(trackA.childTracks[1], equals(trackE.id));
+      expect(trackA.childTracks[2], equals(trackH.id));
+      expect(trackA.childTracks[3], equals(trackI.id));
+
+      // Rollback and verify the original state is restored
+
+      command.rollback(project);
+
+      // trackOrder restored to [A, J, K]
+      expect(trackOrder, hasLength(3));
+      expect(trackOrder[0], equals(trackA.id));
+      expect(trackOrder[1], equals(trackJ.id));
+      expect(trackOrder[2], equals(trackK.id));
+
+      // A and K have no parent
+      expect(trackA.parentTrackId, isNull);
+      expect(trackK.parentTrackId, isNull);
+
+      // A still has its original children
+      expect(trackA.childTracks, hasLength(4));
+      expect(trackA.childTracks[0], equals(trackB.id));
+      expect(trackA.childTracks[1], equals(trackE.id));
+      expect(trackA.childTracks[2], equals(trackH.id));
+      expect(trackA.childTracks[3], equals(trackI.id));
+
+      // The new group track is removed from the tracks map
+      expect(tracks[newGroupTrack.id], isNull);
+    });
   });
 }
