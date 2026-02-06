@@ -29,23 +29,40 @@ class TrackDescriptorForCommand {
   int? index;
   final bool isSendTrack;
   final TrackType trackType;
+  final Id? parentTrackId;
 
   TrackDescriptorForCommand({
     this.index,
     required this.isSendTrack,
     required this.trackType,
+    this.parentTrackId,
   });
 }
 
 class _InternalTrackAddRemoveDescriptor {
+  /// The index within the parent's child list (or top-level order list) at
+  /// which to insert/remove this track.
   int? index;
+
+  /// Whether this track belongs to the send track hierarchy.
   final bool isSendTrack;
+
+  /// The parent track ID, or null if this track is at the top level.
+  final Id? parentTrackId;
+
+  /// The primary track model for this descriptor.
   final TrackModel trackModel;
+
+  /// All descendant track models that should also be added to / removed from
+  /// the track map. This list does NOT include [trackModel] itself.
+  final List<TrackModel> descendantTrackModels;
 
   _InternalTrackAddRemoveDescriptor({
     this.index,
     required this.isSendTrack,
+    this.parentTrackId,
     required this.trackModel,
+    this.descendantTrackModels = const [],
   });
 }
 
@@ -59,9 +76,27 @@ class TrackAddRemoveCommand extends Command {
     required List<TrackDescriptorForCommand> tracks,
   }) : _isAdd = true {
     _tracks = tracks.map((track) {
+      // Validate parent track if specified
+      if (track.parentTrackId != null) {
+        final parentTrack = project.tracks[track.parentTrackId];
+        if (parentTrack == null) {
+          throw StateError(
+            'TrackAddRemoveCommand.add(): Parent track '
+            '${track.parentTrackId} not found.',
+          );
+        }
+        if (parentTrack.type != TrackType.group) {
+          throw StateError(
+            'TrackAddRemoveCommand.add(): Parent track '
+            '${track.parentTrackId} is not a group track.',
+          );
+        }
+      }
+
       return _InternalTrackAddRemoveDescriptor(
         index: track.index,
         isSendTrack: track.isSendTrack,
+        parentTrackId: track.parentTrackId,
         trackModel: TrackModel(
           name: track.isSendTrack
               ? 'Send Track ${project.sendTrackOrder.length}'
@@ -70,32 +105,86 @@ class TrackAddRemoveCommand extends Command {
           type: track.trackType,
         ),
       );
-    }).toList()..sort((a, b) => a.index!.compareTo(b.index!));
+    }).toList()..sort((a, b) => (a.index ?? 0).compareTo(b.index ?? 0));
   }
 
   TrackAddRemoveCommand.remove({
     required ProjectModel project,
     required Iterable<Id> ids,
   }) : _isAdd = false {
-    _tracks = ids.map((trackId) {
-      var isSendTrack = false;
+    final idSet = ids.toSet();
 
-      var index = project.trackOrder.indexOf(trackId);
-      if (index == -1) {
-        isSendTrack = true;
-        index = project.sendTrackOrder.indexOf(trackId);
+    // Filter out IDs whose ancestors are already in the set, since removing
+    // an ancestor implicitly removes all descendants.
+    bool hasAncestorInSet(Id trackId) {
+      var current = project.tracks[trackId];
+      if (current == null) return false;
+      var parentId = current.parentTrackId;
+      int safetyCounter = 0;
+      while (parentId != null && safetyCounter < 100000) {
+        if (idSet.contains(parentId)) return true;
+        final parentTrack = project.tracks[parentId];
+        if (parentTrack == null) break;
+        parentId = parentTrack.parentTrackId;
+        safetyCounter++;
+      }
+      return false;
+    }
+
+    // Collect all descendants of a track (recursively)
+    List<TrackModel> collectDescendants(TrackModel track) {
+      final result = <TrackModel>[];
+      for (final childId in track.childTracks) {
+        final child = project.tracks[childId];
+        if (child != null) {
+          result.add(child);
+          result.addAll(collectDescendants(child));
+        }
+      }
+      return result;
+    }
+
+    final rootIds = idSet.where((id) => !hasAncestorInSet(id)).toList();
+
+    _tracks = rootIds.map((trackId) {
+      final trackModel = project.tracks[trackId];
+      if (trackModel == null) {
+        throw StateError(
+          'TrackAddRemoveCommand.remove(): Track $trackId not found.',
+        );
+      }
+
+      final serviceRegistry = ServiceRegistry.forProject(project.id);
+      final projectController = serviceRegistry.projectController;
+      final isSendTrack = projectController.isSendTrack(trackId);
+
+      final parentId = trackModel.parentTrackId;
+
+      int index;
+      if (parentId != null) {
+        final parentTrack = project.tracks[parentId]!;
+        index = parentTrack.childTracks.indexOf(trackId);
+      } else {
+        if (isSendTrack) {
+          index = project.sendTrackOrder.indexOf(trackId);
+        } else {
+          index = project.trackOrder.indexOf(trackId);
+        }
       }
 
       if (index == -1) {
         throw StateError(
-          'TrackAddRemoveCommand.remove(): Could not find track in track order.',
+          'TrackAddRemoveCommand.remove(): Could not find track $trackId in '
+          'its parent or top-level track order.',
         );
       }
 
       return _InternalTrackAddRemoveDescriptor(
         index: index,
         isSendTrack: isSendTrack,
-        trackModel: project.tracks[trackId]!,
+        parentTrackId: parentId,
+        trackModel: trackModel,
+        descendantTrackModels: collectDescendants(trackModel),
       );
     }).toList()..sort((a, b) => a.index!.compareTo(b.index!));
   }
@@ -124,6 +213,8 @@ class TrackAddRemoveCommand extends Command {
         index: index,
         trackModel: track,
         isSendTrack: isSendTrack,
+        parentTrackId: parentTrackId,
+        descendantTrackModels: descendants,
       ) = trackDescriptor;
 
       if (project.tracks[track.id] != null) {
@@ -133,17 +224,38 @@ class TrackAddRemoveCommand extends Command {
         );
       }
 
-      var orderListToModify = isSendTrack
-          ? project.sendTrackOrder
-          : project.trackOrder;
-
-      if (index == null) {
-        orderListToModify.add(track.id);
+      if (parentTrackId != null) {
+        // Add to parent group track's child list
+        final parentTrack = project.tracks[parentTrackId]!;
+        if (index == null) {
+          parentTrack.childTracks.add(track.id);
+        } else {
+          parentTrack.childTracks.insert(index, track.id);
+        }
+        track.parentTrackId = parentTrackId;
       } else {
-        orderListToModify.insert(index, track.id);
+        // Add to top-level order list
+        var orderListToModify = isSendTrack
+            ? project.sendTrackOrder
+            : project.trackOrder;
+
+        if (index == null) {
+          orderListToModify.add(track.id);
+        } else {
+          orderListToModify.insert(index, track.id);
+        }
+        track.parentTrackId = null;
       }
 
       project.tracks[track.id] = track;
+
+      // Also restore all descendants into the track map
+      for (final descendant in descendants) {
+        project.tracks[descendant.id] = descendant;
+        ServiceRegistry.forProject(
+          project.id,
+        ).arrangerViewModel.registerTrack(descendant.id);
+      }
 
       ServiceRegistry.forProject(
         project.id,
@@ -165,6 +277,8 @@ class TrackAddRemoveCommand extends Command {
         index: index,
         trackModel: track,
         isSendTrack: isSendTrack,
+        parentTrackId: parentTrackId,
+        descendantTrackModels: descendants,
       ) = trackDescriptor;
 
       if (project.tracks[track.id] == null) {
@@ -174,14 +288,28 @@ class TrackAddRemoveCommand extends Command {
         );
       }
 
+      // Unregister and remove all descendants from the track map
+      for (final descendant in descendants) {
+        ServiceRegistry.forProject(
+          project.id,
+        ).arrangerViewModel.unregisterTrack(descendant.id);
+        project.tracks.remove(descendant.id);
+      }
+
       ServiceRegistry.forProject(
         project.id,
       ).arrangerViewModel.unregisterTrack(track.id);
 
-      if (isSendTrack) {
-        project.sendTrackOrder.remove(track.id);
+      if (parentTrackId != null) {
+        // Remove from parent group track's child list
+        project.tracks[parentTrackId]!.childTracks.remove(track.id);
       } else {
-        project.trackOrder.remove(track.id);
+        // Remove from top-level order list
+        if (isSendTrack) {
+          project.sendTrackOrder.remove(track.id);
+        } else {
+          project.trackOrder.remove(track.id);
+        }
       }
 
       project.tracks.remove(track.id);
@@ -476,8 +604,8 @@ class TrackGroupUngroupCommand extends Command {
     final parentTrackList = _parentTrack != null
         ? project.tracks[_parentTrack]!.childTracks.nonObservableInner
         : _isForSendTrack
-            ? project.sendTrackOrder.nonObservableInner
-            : project.trackOrder.nonObservableInner;
+        ? project.sendTrackOrder.nonObservableInner
+        : project.trackOrder.nonObservableInner;
 
     _indexInParent = parentTrackList.indexOf(groupTrack);
 
