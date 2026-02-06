@@ -514,6 +514,65 @@ void main() {
       expect(tracks[newGroupTrack.id], isNull);
     });
 
+    test('Ungrouping track E', () {
+      final originalTrackOrderLength = trackOrder.length;
+
+      final command = TrackGroupUngroupCommand.ungroup(
+        project: project,
+        groupTrack: trackEId,
+      );
+
+      command.execute(project);
+
+      // Top-level track order unchanged
+      expect(trackOrder, hasLength(originalTrackOrderLength));
+
+      // Track E is removed from the tracks map
+      expect(tracks[trackEId], isNull);
+
+      // Track A now has 5 children: B, F, G, H, I
+      // F and G replace E at E's former index (1)
+      expect(trackA.childTracks, hasLength(5));
+      expect(trackA.childTracks[0], equals(trackB.id));
+      expect(trackA.childTracks[1], equals(trackF.id));
+      expect(trackA.childTracks[2], equals(trackG.id));
+      expect(trackA.childTracks[3], equals(trackH.id));
+      expect(trackA.childTracks[4], equals(trackI.id));
+
+      // F and G now point to A as their parent
+      expect(trackF.parentTrackId, equals(trackA.id));
+      expect(trackG.parentTrackId, equals(trackA.id));
+
+      // Rollback and verify the original state is restored
+
+      command.rollback(project);
+
+      // Top-level track order unchanged
+      expect(trackOrder, hasLength(originalTrackOrderLength));
+
+      // Track E is back in the tracks map
+      expect(tracks[trackEId], isNotNull);
+
+      // Track A has the original 4 children: B, E, H, I
+      expect(trackA.childTracks, hasLength(4));
+      expect(trackA.childTracks[0], equals(trackB.id));
+      expect(trackA.childTracks[1], equals(trackE.id));
+      expect(trackA.childTracks[2], equals(trackH.id));
+      expect(trackA.childTracks[3], equals(trackI.id));
+
+      // E has its original children F and G
+      expect(trackE.childTracks, hasLength(2));
+      expect(trackE.childTracks[0], equals(trackF.id));
+      expect(trackE.childTracks[1], equals(trackG.id));
+
+      // E points to A as its parent
+      expect(trackE.parentTrackId, equals(trackA.id));
+
+      // F and G point back to E as their parent
+      expect(trackF.parentTrackId, equals(trackE.id));
+      expect(trackG.parentTrackId, equals(trackE.id));
+    });
+
     test('Grouping top-level tracks A and K', () {
       final command = TrackGroupUngroupCommand.group(
         project: project,
@@ -575,6 +634,65 @@ void main() {
 
       // The new group track is removed from the tracks map
       expect(tracks[newGroupTrack.id], isNull);
+    });
+
+    test('Ungrouping send track L', () {
+      final originalTrackOrderLength = trackOrder.length;
+      final originalSendTrackOrderLength = sendTrackOrder.length;
+
+      final command = TrackGroupUngroupCommand.ungroup(
+        project: project,
+        groupTrack: trackLId,
+      );
+
+      command.execute(project);
+
+      // Regular track order unchanged
+      expect(trackOrder, hasLength(originalTrackOrderLength));
+
+      // Track L is removed from the tracks map
+      expect(tracks[trackLId], isNull);
+
+      // sendTrackOrder now has M and N in place of L: [M, N, O, P, Master]
+      expect(sendTrackOrder, hasLength(originalSendTrackOrderLength + 1));
+      expect(sendTrackOrder[0], equals(trackM.id));
+      expect(sendTrackOrder[1], equals(trackN.id));
+      expect(sendTrackOrder[2], equals(trackO.id));
+      expect(sendTrackOrder[3], equals(trackP.id));
+      expect(sendTrackOrder[4], equals(masterTrack.id));
+
+      // M and N have no parent (they are now top-level send tracks)
+      expect(trackM.parentTrackId, isNull);
+      expect(trackN.parentTrackId, isNull);
+
+      // Rollback and verify the original state is restored
+
+      command.rollback(project);
+
+      // Regular track order unchanged
+      expect(trackOrder, hasLength(originalTrackOrderLength));
+
+      // sendTrackOrder restored to [L, O, P, Master]
+      expect(sendTrackOrder, hasLength(originalSendTrackOrderLength));
+      expect(sendTrackOrder[0], equals(trackL.id));
+      expect(sendTrackOrder[1], equals(trackO.id));
+      expect(sendTrackOrder[2], equals(trackP.id));
+      expect(sendTrackOrder[3], equals(masterTrack.id));
+
+      // Track L is back in the tracks map
+      expect(tracks[trackLId], isNotNull);
+
+      // L has its original children M and N
+      expect(trackL.childTracks, hasLength(2));
+      expect(trackL.childTracks[0], equals(trackM.id));
+      expect(trackL.childTracks[1], equals(trackN.id));
+
+      // L has no parent (top-level send track)
+      expect(trackL.parentTrackId, isNull);
+
+      // M and N point back to L as their parent
+      expect(trackM.parentTrackId, equals(trackL.id));
+      expect(trackN.parentTrackId, equals(trackL.id));
     });
   });
 }

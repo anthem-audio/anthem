@@ -231,6 +231,11 @@ class TrackGroupUngroupCommand extends Command {
   /// operation can be reversed correctly.
   late final List<(Id, int)> _childrenToAddToGroup;
 
+  /// Creates a command to group the incoming track IDs.
+  ///
+  /// See the implementation for details on the exact rules for grouping. The
+  /// incoming [trackIds] are the tracks selected by the user when the group
+  /// action is invoked.
   TrackGroupUngroupCommand.group({
     required ProjectModel project,
     required Iterable<Id> trackIds,
@@ -441,8 +446,47 @@ class TrackGroupUngroupCommand extends Command {
         .toList();
   }
 
-  TrackGroupUngroupCommand.ungroup() : _isGroup = false {
-    throw UnimplementedError(); // TODO
+  /// Ungroups the given group track by removing the group track and replacing
+  /// it with its children.
+  TrackGroupUngroupCommand.ungroup({
+    required ProjectModel project,
+    required Id groupTrack,
+  }) : _isGroup = false {
+    final track = project.tracks[groupTrack];
+    if (track == null) {
+      throw StateError(
+        'TrackGroupUngroupCommand.ungroup(): Track $groupTrack not found.',
+      );
+    }
+
+    if (track.type != .group) {
+      throw StateError(
+        'TrackGroupUngroupCommand.ungroup(): Track $groupTrack is not a group '
+        'track.',
+      );
+    }
+
+    final serviceRegistry = ServiceRegistry.forProject(project.id);
+    final projectController = serviceRegistry.projectController;
+
+    _isForSendTrack = projectController.isSendTrack(groupTrack);
+    _newGroupTrack = track;
+    _parentTrack = track.parentTrackId;
+
+    final parentTrackList = _parentTrack != null
+        ? project.tracks[_parentTrack]!.childTracks.nonObservableInner
+        : _isForSendTrack
+            ? project.sendTrackOrder.nonObservableInner
+            : project.trackOrder.nonObservableInner;
+
+    _indexInParent = parentTrackList.indexOf(groupTrack);
+
+    // After the group track is removed from the parent list, each child should
+    // be inserted starting at the group track's former index.
+    _childrenToAddToGroup = [];
+    for (var i = 0; i < track.childTracks.length; i++) {
+      _childrenToAddToGroup.add((track.childTracks[i], _indexInParent + i));
+    }
   }
 
   @override
