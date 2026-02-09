@@ -208,18 +208,9 @@ class TrackPositionAndSize {
   ///
   /// This is meant to be used with a MobX observer.
   void invalidate(double editorHeight) {
-    final trackCount =
-        projectModel.trackOrder.length + projectModel.sendTrackOrder.length;
+    final trackCount = projectModel.tracks.length;
 
-    final allTracksIterable = projectModel.trackOrder
-        .map((t) => (t, false))
-        .followedBy(projectModel.sendTrackOrder.map((t) => (t, true)));
-
-    if (trackCount != projectModel.tracks.length) {
-      throw StateError(
-        'Track order lists and track list do not have the same size',
-      );
-    }
+    final allTracksIterable = getTracksIterable(projectModel);
 
     if (_cache.length != trackCount * 2) {
       _cache = Float64List(trackCount * 2);
@@ -265,5 +256,28 @@ class TrackPositionAndSize {
 
     arrangerViewModel.scrollAreaHeight =
         positionPointer + arrangerViewModel.verticalScrollPosition;
+  }
+}
+
+/// Generates an iterable which gives each track in visual order.
+///
+/// Returns the ID, and a boolean saying whether the track is a group track.
+///
+/// Does not skip collapsed group tracks.
+Iterable<(Id, bool)> getTracksIterable(ProjectModel project) sync* {
+  final topLevelTracks = project.trackOrder
+      .map((t) => (t, false))
+      .followedBy(project.sendTrackOrder.map((t) => (t, true)));
+
+  Iterable<(Id, bool)> yieldChildren(Id trackId, bool isSendTrack) sync* {
+    yield (trackId, isSendTrack);
+    final track = project.tracks[trackId]!;
+    for (final childTrackId in track.childTracks) {
+      yield* yieldChildren(childTrackId, isSendTrack);
+    }
+  }
+
+  for (final topLevelTrack in topLevelTracks) {
+    yield* yieldChildren(topLevelTrack.$1, topLevelTrack.$2);
   }
 }

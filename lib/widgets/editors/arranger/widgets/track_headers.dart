@@ -255,12 +255,7 @@ class _TrackHeadersState extends State<TrackHeaders> {
             final _ = viewModel.baseTrackHeight;
 
             for (final (trackIndex, (trackId, isSendTrack))
-                in project.trackOrder
-                    .map((t) => (t, false))
-                    .followedBy(
-                      project.sendTrackOrder.reversed.map((t) => (t, true)),
-                    )
-                    .indexed) {
+                in getTracksIterable(project).indexed) {
               // For MobX, since we're pulling the real values from a cache
               final _ = viewModel.trackHeightModifiers[trackId];
 

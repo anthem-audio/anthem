@@ -52,12 +52,8 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
 
     // Horizontal lines
 
-    final trackCount =
-        project.trackOrder.length + project.sendTrackOrder.length;
-
-    for (var i = 0; i < trackCount; i++) {
-      final isSendTrack = i >= project.trackOrder.length;
-
+    var i = 0;
+    for (final (_, isSendTrack) in getTracksIterable(project)) {
       final trackPosition = viewModel.trackPositionCalculator.getTrackPosition(
         i,
       );
@@ -72,6 +68,8 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
         Rect.fromLTWH(0, drawPosition, size.width, 1),
         majorLinePaint,
       );
+
+      i++;
     }
 
     // Vertical lines

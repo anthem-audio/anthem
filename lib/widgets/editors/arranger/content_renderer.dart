@@ -170,7 +170,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
 
       final y =
           viewModel.trackPositionCalculator.getTrackPosition(
-            project.trackOrder.indexWhere((trackID) => trackID == clip.trackId),
+            viewModel.trackPositionCalculator.trackIdToIndex(clip.trackId),
           ) -
           1;
       final trackHeight =

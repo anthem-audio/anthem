@@ -75,19 +75,35 @@ class TrackHeader extends StatelessObserverWidget {
         e.globalPosition,
         MenuDef(
           children: [
+            if (viewModel.selectedTracks.length == 1)
+              AnthemMenuItem(
+                text: 'Delete',
+                hint: 'Delete this track',
+                onSelected: () {
+                  projectController.removeTrack(track.id);
+                },
+              ),
+            if (viewModel.selectedTracks.length > 1)
+              AnthemMenuItem(
+                text: 'Delete selected',
+                hint: 'Delete the selected tracks',
+                onSelected: () {
+                  projectController.removeTracks(
+                    viewModel.selectedTracks.nonObservableInner,
+                  );
+                },
+              ),
             AnthemMenuItem(
-              text: 'Delete track',
-              hint: 'Delete this track',
+              text: 'Group',
+              hint:
+                  'Add the selected track${viewModel.selectedTracks.length == 1 ? 's' : ''} to a new track group',
+              disabled: !projectController.canGroupTracks(
+                viewModel.selectedTracks.nonObservableInner,
+              ),
               onSelected: () {
-                projectController.removeTrack(track.id);
-              },
-            ),
-            AnthemMenuItem(
-              text: 'Delete selected tracks',
-              hint: 'Delete the selected tracks',
-              disabled: viewModel.selectedTracks.length <= 1,
-              onSelected: () {
-                projectController.removeTracks(viewModel.selectedTracks);
+                projectController.groupTracks(
+                  viewModel.selectedTracks.nonObservableInner,
+                );
               },
             ),
           ],
@@ -95,8 +111,37 @@ class TrackHeader extends StatelessObserverWidget {
       );
     }
 
+    Iterable<Color> parentColors() sync* {
+      var trackPtr = project.tracks[track.parentTrackId];
+      var counter = 0;
+
+      while(counter < 1000 && trackPtr != null) {
+        counter++;
+        
+        final trackAnthemColor = trackPtr.color;
+        final colorShifter = trackAnthemColor.colorShifter;
+        final color = colorShifter.clipBase.toColor();
+
+        yield color;
+
+        trackPtr = project.tracks[trackPtr.parentTrackId];
+      }
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
+        Widget colorIndicator(Color colorToUse, [bool isGroup = false]) {
+          return Container(
+            width: 9,
+            decoration: BoxDecoration(
+              color: colorToUse,
+              border: Border(
+                right: BorderSide(color: AnthemTheme.panel.border, width: 1),
+              ),
+            ),
+          );
+        }
+
         return Observer(
           builder: (context) {
             return MouseRegion(
@@ -109,18 +154,8 @@ class TrackHeader extends StatelessObserverWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 9,
-                        decoration: BoxDecoration(
-                          color: color,
-                          border: Border(
-                            right: BorderSide(
-                              color: AnthemTheme.panel.border,
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                      ),
+                      ...parentColors().toList().reversed.map((c) => colorIndicator(c, true)),
+                      colorIndicator(color),
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
