@@ -29,20 +29,20 @@ import 'icon.dart';
 
 enum ButtonVariant { main, label, ghost }
 
-class _ButtonColors {
+class ButtonThemeColors {
   final Color idle;
   final Color hover;
   final Color press;
   final Color toggleActive;
 
-  const _ButtonColors({
+  const ButtonThemeColors({
     required this.idle,
     required this.hover,
     required this.press,
     required this.toggleActive,
   });
 
-  const _ButtonColors.all(Color color)
+  const ButtonThemeColors.all(Color color)
     : this(idle: color, hover: color, press: color, toggleActive: color);
 
   Color getColor(bool hovered, bool pressed, bool toggled) {
@@ -53,38 +53,40 @@ class _ButtonColors {
   }
 }
 
-class _ButtonTheme {
-  final _ButtonColors background;
-  final _ButtonColors border;
-  final _ButtonColors content;
+class ButtonTheme {
+  final ButtonThemeColors background;
+  final ButtonThemeColors border;
+  final ButtonThemeColors content;
 
-  const _ButtonTheme({
+  const ButtonTheme({
     required this.background,
     required this.border,
     required this.content,
   });
 }
 
-final _textColors = _ButtonColors(
+final _textColors = ButtonThemeColors(
   idle: Color(0xFFCFCFCF),
   hover: Color(0xFFEFEFEF),
   press: Color(0xFFAFAFAF),
   toggleActive: AnthemTheme.primary.main,
 );
 
-final _mainTheme = _ButtonTheme(
-  background: const _ButtonColors(
+@visibleForTesting
+final buttonMainTheme = ButtonTheme(
+  background: const ButtonThemeColors(
     idle: Color(0xFF5E5E5E),
     hover: Color(0xFF686868),
     press: Color(0xFF4E4E4E),
     toggleActive: Color(0xFF3B3B3B),
   ),
-  border: const _ButtonColors.all(Color(0xFF2F2F2F)),
+  border: const ButtonThemeColors.all(Color(0xFF2F2F2F)),
   content: _textColors,
 );
-final _labelTheme = _ButtonTheme(
-  background: _ButtonColors.all(const Color(0x00000000)),
-  border: _ButtonColors(
+@visibleForTesting
+final buttonLabelTheme = ButtonTheme(
+  background: ButtonThemeColors.all(const Color(0x00000000)),
+  border: ButtonThemeColors(
     idle: const Color(0x00000000),
     hover: const Color(0xFF2F2F2F),
     press: const Color(0xFF2F2F2F),
@@ -92,16 +94,29 @@ final _labelTheme = _ButtonTheme(
   ),
   content: _textColors,
 );
-final _ghostTheme = _ButtonTheme(
-  background: const _ButtonColors(
+@visibleForTesting
+final buttonGhostTheme = ButtonTheme(
+  background: const ButtonThemeColors(
     idle: Color(0x00000000),
     hover: Color(0xFF464646),
     press: Color(0xFF464646),
     toggleActive: Color(0xFF464646),
   ),
-  border: _ButtonColors.all(const Color(0xFF2F2F2F)),
+  border: ButtonThemeColors.all(const Color(0xFF2F2F2F)),
   content: _textColors,
 );
+
+@visibleForTesting
+ButtonTheme getButtonTheme(ButtonVariant variant) {
+  switch (variant) {
+    case ButtonVariant.main:
+      return buttonMainTheme;
+    case ButtonVariant.label:
+      return buttonLabelTheme;
+    case ButtonVariant.ghost:
+      return buttonGhostTheme;
+  }
+}
 
 class Button extends StatefulWidget {
   final ButtonVariant? variant;
@@ -130,6 +145,8 @@ class Button extends StatefulWidget {
   final bool? toggleState;
 
   final List<HintSection>? hint;
+  @visibleForTesting
+  final HintStore? hintStoreOverride;
 
   const Button({
     super.key,
@@ -152,6 +169,7 @@ class Button extends StatefulWidget {
     this.onRightClick,
     this.toggleState,
     this.hint,
+    this.hintStoreOverride,
   });
 
   @override
@@ -164,12 +182,14 @@ class _ButtonState extends State<Button> {
 
   int? hintId;
 
+  HintStore get _hintStore => widget.hintStoreOverride ?? HintStore.instance;
+
   _ButtonState();
 
   @override
   void dispose() {
     if (hintId != null) {
-      HintStore.instance.removeHint(hintId!);
+      _hintStore.removeHint(hintId!);
     }
 
     super.dispose();
@@ -180,11 +200,11 @@ class _ButtonState extends State<Button> {
     super.didUpdateWidget(oldWidget);
     if (hovered && oldWidget.hint != widget.hint) {
       if (hintId != null) {
-        HintStore.instance.removeHint(hintId!);
+        _hintStore.removeHint(hintId!);
       }
 
       if (widget.hint != null) {
-        hintId = HintStore.instance.addHint(widget.hint!);
+        hintId = _hintStore.addHint(widget.hint!);
       } else {
         hintId = null;
       }
@@ -193,21 +213,8 @@ class _ButtonState extends State<Button> {
 
   @override
   Widget build(BuildContext context) {
-    _ButtonTheme theme;
-
     final variant = widget.variant ?? ButtonVariant.main;
-
-    switch (variant) {
-      case ButtonVariant.main:
-        theme = _mainTheme;
-        break;
-      case ButtonVariant.label:
-        theme = _labelTheme;
-        break;
-      case ButtonVariant.ghost:
-        theme = _ghostTheme;
-        break;
-    }
+    final theme = getButtonTheme(variant);
 
     final toggled = (widget.toggleState ?? false);
 
@@ -280,7 +287,7 @@ class _ButtonState extends State<Button> {
           hovered = true;
         });
         if (widget.hint != null) {
-          hintId = HintStore.instance.addHint(widget.hint!);
+          hintId = _hintStore.addHint(widget.hint!);
         }
       },
       onExit: (e) {
@@ -289,7 +296,7 @@ class _ButtonState extends State<Button> {
           hovered = false;
         });
         if (widget.hint != null && hintId != null) {
-          HintStore.instance.removeHint(hintId!);
+          _hintStore.removeHint(hintId!);
         }
       },
       child: Listener(
