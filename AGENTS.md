@@ -1,0 +1,20 @@
+# First steps
+
+Anthem is an open-source DAW. It is written in Dart and C++, using Flutter and JUCE.
+
+- Read [the overview docs page](docs/README.md) for an overview of the project architecture.
+- Check for a `.dart_tool/` folder in the root of the repository. If it does not exist, you may prompt the user to ensure they have the required prerequisites, then follow the instructions in the relevant setup file in `docs/`. Note that the web setup file is relevant for all platforms.
+- Read ./.github/workflows/build.yaml, which contains many useful commands for working with the repo, and examples for running all the tests.
+
+# Repository setup and project-specific commands
+
+- `dart run :cli codegen generate` to generate code. Prefer adding `--root-only` unless running for the first time, if it is not necessary to re-generate model files for the tests in `codegen/` (which is most of the time).
+
+# Documentation
+
+- Do not read anything from `docs/design/` unless specifically asked to, as they are not relevant to day-to-day coding tasks.
+- Read files from `docs/architecture/` that seem relevant to your task.
+
+# Misc
+
+- Codegen tests can be run with `flutter test .` in ./codegen.
