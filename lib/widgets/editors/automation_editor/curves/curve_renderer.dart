@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,6 +18,7 @@
 */
 
 import 'dart:math';
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
@@ -26,8 +27,8 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/automation_editor/curves/smooth.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem_codegen/include/collections.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
+import 'package:meta/meta.dart';
 
 class CoordinateBuffer {
   Float32List _buffer = Float32List(512);
@@ -109,7 +110,8 @@ class LineBuffer {
 
 /// Class to abstract the downsampling of incoming automation line points to
 /// reduce the number of points drawn.
-class _DownsamplingCurveBuilder {
+@visibleForTesting
+class DownsamplingCurveBuilder {
   final LineBuffer lineBuffer;
   final CoordinateBuffer lineJoinBuffer;
   final CoordinateBuffer triCoordBuffer;
@@ -120,7 +122,7 @@ class _DownsamplingCurveBuilder {
 
   double baseY;
 
-  _DownsamplingCurveBuilder({
+  DownsamplingCurveBuilder({
     required this.lineBuffer,
     required this.lineJoinBuffer,
     required this.triCoordBuffer,
@@ -324,6 +326,16 @@ Paint getGradientPaint({
 /// searching on every call, which is likely measurable in at least some cases.
 (int firstIndex, int secondIndex) _currentCurveCache = (0, 1);
 
+@visibleForTesting
+void resetCurrentCurveCacheForTesting() {
+  _currentCurveCache = (0, 1);
+}
+
+@visibleForTesting
+(int firstIndex, int secondIndex) get currentCurveCacheForTesting {
+  return _currentCurveCache;
+}
+
 /// Evaluates the curve at the given time using the provided list of points.
 double _evaluateCurve(double time, List<AutomationPoint> points) {
   // Floating point math is causing this to be very slightly negative sometimes
@@ -401,6 +413,11 @@ double _evaluateCurve(double time, List<AutomationPoint> points) {
     case AutomationCurveType.hold:
       return firstPoint.value;
   }
+}
+
+@visibleForTesting
+double evaluateCurveForTesting(double time, List<AutomationPoint> points) {
+  return _evaluateCurve(time, points);
 }
 
 /// Renders the automation curve given by [points] onto the provided [canvas].
@@ -563,7 +580,7 @@ void renderAutomationCurve({
   // which fixes some sampling artifacts.
   (int firstIndex, int secondIndex)? mostRecentCurve;
 
-  final _DownsamplingCurveBuilder curveBuilder = _DownsamplingCurveBuilder(
+  final curveBuilder = DownsamplingCurveBuilder(
     lineBuffer: lineBuffer,
     lineJoinBuffer: lineJoinBuffer,
     triCoordBuffer: triCoordBuffer,
