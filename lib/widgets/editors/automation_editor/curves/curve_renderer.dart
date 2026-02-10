@@ -30,14 +30,27 @@ import 'package:anthem_codegen/include/collections.dart';
 import 'package:flutter/rendering.dart';
 import 'package:meta/meta.dart';
 
+/// Growable packed coordinate buffer used by raw canvas APIs.
+///
+/// Layout:
+/// `[x0, y0, x1, y1, ...]`
+///
+/// `clear()` only resets the logical length, keeping capacity for reuse across
+/// frames. This avoids per-frame allocation churn in hot paint paths.
 class CoordinateBuffer {
   Float32List _buffer = Float32List(512);
   int _length = 0;
   int get coordinateCount => _length ~/ 2;
 
+  /// Returns a view over the currently written coordinates.
   Float32List get buffer => Float32List.sublistView(_buffer, 0, _length);
+
+  /// Returns the full backing storage, including unused capacity.
+  ///
+  /// This is primarily exposed for tests and low-level diagnostics.
   Float32List get bufferRaw => _buffer;
 
+  /// Appends one coordinate pair.
   void add(double x, double y) {
     if ((_length + 2) > _buffer.length) {
       final newBuffer = Float32List(_buffer.length * 2);
@@ -50,23 +63,41 @@ class CoordinateBuffer {
     _length += 2;
   }
 
+  /// Clears logical contents while retaining capacity.
   void clear() {
     _length = 0;
   }
 }
 
+/// Growable packed line-segment buffer for `PointMode.lines`.
+///
+/// Layout: `[x1, y1, x2, y2, x3, y3, x4, y4, ...]` where each 4-tuple is one
+/// line segment.
+///
+/// The first `add()` call seeds an internal "previous point" and does not emit
+/// a segment. Each subsequent `add()` emits one segment from the previous point
+/// to the new point.
 class LineBuffer {
   Float32List _buffer = Float32List(512);
   int _length = 0;
   bool _nextIsDisjoint = true;
   int get lineCount => _length ~/ 4;
 
+  /// Returns a view over the currently written line coordinates.
   Float32List get buffer => Float32List.sublistView(_buffer, 0, _length);
+
+  /// Returns the full backing storage, including unused capacity.
+  ///
+  /// This is primarily exposed for tests and low-level diagnostics.
   Float32List get bufferRaw => _buffer;
 
   double lastX = 0.0;
   double lastY = 0.0;
 
+  /// Adds a sampled point and emits a line segment if possible.
+  ///
+  /// Returns `(x1, y1, x2, y2)` for the emitted segment, or `null` if this
+  /// point only seeded a new disjoint run.
   (double x1, double y1, double x2, double y2)? add(double x, double y) {
     if (_nextIsDisjoint) {
       lastX = x;
@@ -110,6 +141,17 @@ class LineBuffer {
 
 /// Class to abstract the downsampling of incoming automation line points to
 /// reduce the number of points drawn.
+///
+/// Input points are expected in drawing order (ascending X). The builder tracks
+/// local curvature and drops samples that are visually redundant, while
+/// preserving sharp turns and explicit handle points.
+///
+/// Output is written to three buffers:
+/// - [lineBuffer]: line segments for the curve stroke
+/// - [lineJoinBuffer]: round join points used to hide hard joins
+/// - [triCoordBuffer]: triangle vertices for the fill under the curve
+///
+/// Call [finish] after the last [addPoint] to flush any pending point.
 @visibleForTesting
 class DownsamplingCurveBuilder {
   final LineBuffer lineBuffer;
@@ -120,6 +162,9 @@ class DownsamplingCurveBuilder {
   ({double x, double y})? _curvePointB;
   bool _pointBIsHandle = false;
 
+  /// Pixel-space Y coordinate representing automation value `0.0`.
+  ///
+  /// Fill geometry is generated from the curve down to this baseline.
   double baseY;
 
   DownsamplingCurveBuilder({
@@ -131,9 +176,9 @@ class DownsamplingCurveBuilder {
 
   /// Adds a point to the downsampler.
   ///
-  /// [baseY] is the y-coordinate of the bottom of the curve. It should be equal
-  /// to the pixel Y value that corresponds to a normalized Y value of 0 for the
-  /// automation curve.
+  /// [isHandle] should be `true` for explicit segment-handle points (for
+  /// example, points inserted at segment boundaries). Handle points are kept
+  /// more aggressively to preserve visual landmarks in extreme zoom scenarios.
   void addPoint(double x, double y, [bool isHandle = false]) {
     // These are used to track curvature. If the curvature at a point is below a
     // threshold, we can skip the point segment, which should significantly
@@ -176,10 +221,14 @@ class DownsamplingCurveBuilder {
       squarePixelDistance = dx * dx + dy * dy;
     }
 
-    // Adjust for aggressiveness - higher removes more points
+    // Downsampling aggressiveness: higher removes more points.
+    //
+    // The threshold scales with 1 / sqrt(distance) so we can be aggressive for
+    // dense points while still preserving shallow curves when zoomed in.
     const double angleDistanceFactor = 0.1;
     final threshold = pi * angleDistanceFactor / sqrt(squarePixelDistance);
 
+    // Separate threshold for when we should emit a manual round join marker.
     const double lineJoinAngleThresholdFactor = 2.0;
     final lineJoinThreshold = threshold * lineJoinAngleThresholdFactor;
 
@@ -253,6 +302,12 @@ class DownsamplingCurveBuilder {
   }
 }
 
+/// Lightweight, allocation-friendly point tuple used during rendering.
+///
+/// Expected invariants:
+/// - points are ordered by [offset] ascending
+/// - [value] is normalized to `[0, 1]`
+/// - [curve] on a point defines how the segment ending at that point is shaped
 typedef AutomationPoint = ({
   double offset,
   double value,
@@ -260,10 +315,14 @@ typedef AutomationPoint = ({
   AutomationCurveType curve,
 });
 
+/// Shared scratch buffers used when callers do not provide their own.
+///
+/// These are reused to avoid allocations in hot paint paths.
 final _lineBuffer = LineBuffer();
 final _lineJoinBuffer = CoordinateBuffer();
 final _triCoordBuffer = CoordinateBuffer();
 
+/// Returns the stroke paint used for automation lines.
 Paint getLinePaint({required Color chosenColor, required double strokeWidth}) {
   return Paint()
     ..color = chosenColor
@@ -305,6 +364,10 @@ Paint getGradientPaint({
   required Rect drawArea,
   required double gradientStartAlpha,
   required double gradientEndAlpha,
+
+  /// Optional color override for gradient stops.
+  ///
+  /// If omitted, [chosenColor] is used for both gradient stops.
   Color? overrideColor,
 }) {
   return Paint()
@@ -324,6 +387,8 @@ Paint getGradientPaint({
 ///
 /// Since we will call evaluateCurve in order, this will prevent us from
 /// searching on every call, which is likely measurable in at least some cases.
+///
+/// This cache is intentionally global mutable state for speed.
 (int firstIndex, int secondIndex) _currentCurveCache = (0, 1);
 
 @visibleForTesting
@@ -337,6 +402,18 @@ void resetCurrentCurveCacheForTesting() {
 }
 
 /// Evaluates the curve at the given time using the provided list of points.
+///
+/// [points] must contain at least two points and must be ordered by `offset`
+/// ascending.
+///
+/// Segment semantics:
+/// - interpolation shape is chosen from the second point's
+///   [AutomationCurveType]
+/// - if [time] is before the first point, the first value is returned
+/// - if [time] is after the last point, the last value is returned
+///
+/// This method updates and reuses [_currentCurveCache] to accelerate repeated
+/// calls to the same segment, which is common during rendering.
 double _evaluateCurve(double time, List<AutomationPoint> points) {
   // Floating point math is causing this to be very slightly negative sometimes
   // when rendering offset clips.
@@ -432,7 +509,27 @@ double evaluateCurveForTesting(double time, List<AutomationPoint> points) {
 ///
 /// The result of rendering the downsampled points is nearly indistinguishable
 /// from rendering with all the points. The aggressiveness of the downsampling
-/// can be adjusted below.
+/// can be adjusted by changing constants in this file as well.
+///
+/// Parameter semantics:
+/// - [xDrawPositionTime] is the time range that should map to the horizontal
+///   draw area for this curve instance (for example, a clip's on-screen time
+///   span)
+/// - [yDrawPositionPixels] is the vertical pixel range where values `1.0` (top)
+///   to `0.0` (bottom) are drawn
+/// - [timeViewStart]/[timeViewEnd] describe the full visible time window used
+///   by `timeToPixels` / `pixelsToTime`
+/// - [clipStart]/[clipEnd]/[clipOffset] remap point times when drawing a
+///   windowed or offset clip view
+///
+/// Buffers ([lineBuffer], [lineJoinBuffer], [triCoordBuffer]) for geometry can
+/// be provided. In the case that this will be called for many different curves
+/// in one canvas with the same color, this will allow the geometry for these
+/// multiple curves to be drawn all at once, which is usually much faster. This
+/// is done for the arranger.
+///
+/// [correctForClipBounds] applies a one-pixel start shift used by clip
+/// rendering paths to avoid visible bleed just before clip boundaries.
 void renderAutomationCurve({
   required Canvas canvas,
   required Size canvasSize,
@@ -445,16 +542,20 @@ void renderAutomationCurve({
   required double timeViewStart,
   required double timeViewEnd,
 
-  // If this is rendering in a clip, this defines the time range of the clip view
+  // If this is rendering in a clip, this defines the time range of the clip
+  // view in source-curve time.
   double? clipStart,
   double? clipEnd,
 
+  // Offset of the clip in global/view time.
   double clipOffset = 0.0,
 
   LineBuffer? lineBuffer,
   CoordinateBuffer? lineJoinBuffer,
   CoordinateBuffer? triCoordBuffer,
 
+  // One-pixel start correction used to keep curve sampling from bleeding
+  // slightly before clipped boundaries.
   bool correctForClipBounds = false,
 }) {
   if (points.length < 2) return;
@@ -690,6 +791,9 @@ const double pi4Plus0273 = pi / 4.0 + 0.273;
 const double pi2 = pi / 2.0;
 
 // Based on https://github.com/ducha-aiki/fast_atan2/blob/master/fast_atan.cpp
+//
+// This approximation is used in the downsampling hot loop where speed matters
+// more than perfect precision.
 double atan2approx(double y, double x) {
   final double absY = y.abs();
   final double absX = x.abs();
