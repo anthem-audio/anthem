@@ -19,6 +19,7 @@
 
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/track.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/hint/hint.dart';
@@ -278,11 +279,33 @@ class _TrackHeadersState extends State<TrackHeaders> {
                 break;
               }
 
-              if (trackPosition + trackHeight > 0) {
-                // We only add top-level tracks. Group track headers render
-                // headers for their child tracks, which gives us the greatest
-                // flexibility in how we manage the look and feel.
-                if (isTopLevel) {
+              // We only add top-level tracks. Each track renders headers for
+              // its child tracks, which gives us the greatest flexibility in
+              // how we manage the look and feel.
+              if (isTopLevel) {
+                var canMaybeRender = trackPosition > 0;
+
+                if (!canMaybeRender) {
+                  var subtreeTrackCount = 0;
+                  void countSubtreeTracks(TrackModel track) {
+                    subtreeTrackCount++;
+                    for (var id in track.childTracks) {
+                      countSubtreeTracks(project.tracks[id]!);
+                    }
+                  }
+
+                  countSubtreeTracks(track);
+
+                  var totalTrackHeight = 0.0;
+                  for (var i = 0; i < subtreeTrackCount; i++) {
+                    totalTrackHeight += viewModel.trackPositionCalculator
+                        .getTrackHeight(trackIndex + i);
+                  }
+
+                  canMaybeRender = trackPosition + totalTrackHeight >= 0;
+                }
+
+                if (canMaybeRender) {
                   headers.add(
                     Positioned(
                       key: Key(trackId),
@@ -293,7 +316,9 @@ class _TrackHeadersState extends State<TrackHeaders> {
                     ),
                   );
                 }
+              }
 
+              if (trackPosition + trackHeight > 0) {
                 headers.add(
                   Positioned(
                     key: Key('$trackId-border'),
