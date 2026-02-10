@@ -26,8 +26,12 @@ import 'package:anthem/widgets/basic/hint/hint.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
+import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -234,9 +238,92 @@ class TrackHeaders extends StatefulWidget {
 class _TrackHeadersState extends State<TrackHeaders> {
   AnthemMenuController menuController = AnthemMenuController();
 
+  bool _isHorizontalModifierActive(KeyboardModifiers modifiers) {
+    return modifiers.ctrl || modifiers.shift;
+  }
+
+  void _handleVerticalInput({
+    required ArrangerViewModel viewModel,
+    required ArrangerController controller,
+    required double pointerY,
+    required double dy,
+    required double zoomDeltaFactor,
+    required double scrollDeltaFactor,
+  }) {
+    final modifiers = Provider.of<KeyboardModifiers>(context, listen: false);
+
+    if (modifiers.alt) {
+      controller.setBaseTrackHeight(
+        pointerY,
+        viewModel.baseTrackHeight + dy * zoomDeltaFactor * 15,
+      );
+      return;
+    }
+
+    if (_isHorizontalModifierActive(modifiers)) return;
+
+    viewModel.applyVerticalScrollDelta(dy * scrollDeltaFactor);
+  }
+
+  void _handlePointerSignal(
+    BuildContext context,
+    PointerSignalEvent event,
+    ArrangerViewModel viewModel,
+    ArrangerController controller,
+  ) {
+    if (event is! PointerScrollEvent) {
+      return;
+    }
+
+    if (kIsWeb) {
+      final dy = -event.scrollDelta.dy;
+      _handleVerticalInput(
+        viewModel: viewModel,
+        controller: controller,
+        pointerY: event.localPosition.dy,
+        dy: dy,
+        zoomDeltaFactor: -0.01,
+        scrollDeltaFactor: -1.5,
+      );
+      return;
+    }
+
+    var dy = event.scrollDelta.dy;
+    if (event.kind == PointerDeviceKind.mouse) {
+      // Mouse wheel feels better a bit faster.
+      dy *= 1.5;
+    }
+
+    _handleVerticalInput(
+      viewModel: viewModel,
+      controller: controller,
+      pointerY: event.localPosition.dy,
+      dy: dy,
+      zoomDeltaFactor: -0.005,
+      scrollDeltaFactor: 1,
+    );
+  }
+
+  void _handlePointerPanZoomUpdate(
+    BuildContext context,
+    PointerPanZoomUpdateEvent event,
+    ArrangerViewModel viewModel,
+    ArrangerController controller,
+  ) {
+    _handleVerticalInput(
+      viewModel: viewModel,
+      controller: controller,
+      pointerY: event.localPosition.dy,
+      dy: event.localPanDelta.dy,
+      zoomDeltaFactor: -0.01,
+      scrollDeltaFactor: -1.5,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<ArrangerViewModel>(context);
+    final controller = Provider.of<ArrangerController>(context);
     final project = Provider.of<ProjectModel>(context);
 
     return LayoutBuilder(
@@ -413,7 +500,21 @@ class _TrackHeadersState extends State<TrackHeaders> {
               );
             }
 
-            return ClipRect(child: Stack(children: headers + resizeHandles));
+            return Listener(
+              behavior: HitTestBehavior.translucent,
+              onPointerSignal: (event) {
+                _handlePointerSignal(context, event, viewModel, controller);
+              },
+              onPointerPanZoomUpdate: (event) {
+                _handlePointerPanZoomUpdate(
+                  context,
+                  event,
+                  viewModel,
+                  controller,
+                );
+              },
+              child: ClipRect(child: Stack(children: headers + resizeHandles)),
+            );
           },
         );
       },

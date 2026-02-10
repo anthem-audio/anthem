@@ -27,7 +27,6 @@ import 'package:provider/provider.dart';
 import 'view_model.dart';
 import 'controller/arranger_controller.dart';
 import 'events.dart';
-import 'helpers.dart';
 
 class ArrangerEventListener extends StatefulWidget {
   final Widget? child;
@@ -54,15 +53,7 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
             return EditorScrollManager(
               timeView: viewModel.timeView,
               onVerticalScrollChange: (pixelDelta) {
-                viewModel.verticalScrollPosition =
-                    (viewModel.verticalScrollPosition +
-                            pixelDelta *
-                                0.01 *
-                                viewModel.baseTrackHeight.clamp(
-                                  minTrackHeight,
-                                  maxTrackHeight,
-                                ))
-                        .clamp(0.0, viewModel.maxVerticalScrollPosition);
+                viewModel.applyVerticalScrollDelta(pixelDelta);
               },
               onVerticalPanStart: (y) {
                 _panYStart = y;

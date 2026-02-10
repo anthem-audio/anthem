@@ -126,6 +126,15 @@ abstract class _ArrangerViewModel with Store {
   double get maxVerticalScrollPosition =>
       (scrollAreaHeight - editorHeight).clamp(0, double.infinity);
 
+  void applyVerticalScrollDelta(double pixelDelta) {
+    verticalScrollPosition =
+        (verticalScrollPosition +
+                pixelDelta *
+                    0.01 *
+                    baseTrackHeight.clamp(minTrackHeight, maxTrackHeight))
+            .clamp(0.0, maxVerticalScrollPosition);
+  }
+
   /// Calculates the clip and resize handle under the cursor, if there is one.
   ({
     CanvasAnnotation<({Id id})>? clip,
