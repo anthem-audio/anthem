@@ -166,9 +166,9 @@ abstract class _ArrangerController {
       return;
     }
 
-    final currentTrackList = project.trackOrder
-        .followedBy(project.sendTrackOrder)
-        .toList();
+    final currentTrackList = getTracksIterable(
+      project,
+    ).map((track) => track.$1).toList(growable: false);
 
     if (viewModel.lastShiftClickRange != null) {
       for (final id in viewModel.lastShiftClickRange!.selected) {
@@ -185,7 +185,10 @@ abstract class _ArrangerController {
     final end = trackId;
     final endIndex = currentTrackList.indexOf(end);
 
-    if (startIndex == -1 || endIndex == -1) return;
+    if (startIndex == -1 || endIndex == -1) {
+      selectTrack(trackId);
+      return;
+    }
 
     final first = min(startIndex, endIndex);
     final last = max(startIndex, endIndex);
