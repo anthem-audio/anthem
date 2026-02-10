@@ -220,7 +220,7 @@ class TrackPositionAndSize {
     var totalTrackHeight = 0.0;
     const addButtonAreaHeight = 33.0;
 
-    for (final (i, (trackId, _)) in allTracksIterable.indexed) {
+    for (final (i, (trackId, _, _)) in allTracksIterable.indexed) {
       final heightIndex = i * 2;
       final trackHeight = calculateTrackHeight(
         arrangerViewModel.baseTrackHeight,
@@ -241,7 +241,7 @@ class TrackPositionAndSize {
     var lastWasSendTrack = false;
     var positionPointer = -arrangerViewModel.verticalScrollPosition;
 
-    for (final (i, (_, isSendTrack)) in allTracksIterable.indexed) {
+    for (final (i, (_, isSendTrack, _)) in allTracksIterable.indexed) {
       final heightIndex = i * 2;
       final positionIndex = heightIndex + 1;
 
@@ -261,23 +261,28 @@ class TrackPositionAndSize {
 
 /// Generates an iterable which gives each track in visual order.
 ///
-/// Returns the ID, and a boolean saying whether the track is a group track.
+/// Returns the ID, a boolean saying whether the track is a group track, and an
+/// int giving the current depth.
 ///
 /// Does not skip collapsed group tracks.
-Iterable<(Id, bool)> getTracksIterable(ProjectModel project) sync* {
+Iterable<(Id, bool, int)> getTracksIterable(ProjectModel project) sync* {
   final topLevelTracks = project.trackOrder
       .map((t) => (t, false))
       .followedBy(project.sendTrackOrder.map((t) => (t, true)));
 
-  Iterable<(Id, bool)> yieldChildren(Id trackId, bool isSendTrack) sync* {
-    yield (trackId, isSendTrack);
+  Iterable<(Id, bool, int)> yieldChildren(
+    Id trackId,
+    bool isSendTrack,
+    int currentDepth,
+  ) sync* {
+    yield (trackId, isSendTrack, currentDepth);
     final track = project.tracks[trackId]!;
     for (final childTrackId in track.childTracks) {
-      yield* yieldChildren(childTrackId, isSendTrack);
+      yield* yieldChildren(childTrackId, isSendTrack, currentDepth + 1);
     }
   }
 
   for (final topLevelTrack in topLevelTracks) {
-    yield* yieldChildren(topLevelTrack.$1, topLevelTrack.$2);
+    yield* yieldChildren(topLevelTrack.$1, topLevelTrack.$2, 0);
   }
 }

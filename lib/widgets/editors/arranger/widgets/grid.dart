@@ -53,7 +53,7 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
     // Horizontal lines
 
     var i = 0;
-    for (final (_, isSendTrack) in getTracksIterable(project)) {
+    for (final (_, isSendTrack, _) in getTracksIterable(project)) {
       final trackPosition = viewModel.trackPositionCalculator.getTrackPosition(
         i,
       );

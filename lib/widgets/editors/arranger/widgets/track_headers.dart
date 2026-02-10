@@ -254,10 +254,13 @@ class _TrackHeadersState extends State<TrackHeaders> {
             // For MobX, since we're pulling the real values from a cache
             final _ = viewModel.baseTrackHeight;
 
-            for (final (trackIndex, (trackId, isSendTrack))
+            for (final (trackIndex, (trackId, isSendTrack, trackDepth))
                 in getTracksIterable(project).indexed) {
               // For MobX, since we're pulling the real values from a cache
               final _ = viewModel.trackHeightModifiers[trackId];
+
+              final track = project.tracks[trackId]!;
+              final isTopLevel = track.parentTrackId == null;
 
               final trackPosition = viewModel.trackPositionCalculator
                   .getTrackPosition(trackIndex);
@@ -276,23 +279,26 @@ class _TrackHeadersState extends State<TrackHeaders> {
               }
 
               if (trackPosition + trackHeight > 0) {
-                headers.add(
-                  Positioned(
-                    key: Key(trackId),
-                    top: trackPosition + (isSendTrack ? 1 : 0),
-                    left: 0,
-                    right: 0,
-                    child: SizedBox(
-                      height: trackHeight - 1,
-                      child: TrackHeader(trackID: trackId),
+                // We only add top-level tracks. Group track headers render
+                // headers for their child tracks, which gives us the greatest
+                // flexibility in how we manage the look and feel.
+                if (isTopLevel) {
+                  headers.add(
+                    Positioned(
+                      key: Key(trackId),
+                      top: trackPosition + (isSendTrack ? 1 : 0),
+                      left: 0,
+                      right: 0,
+                      child: SizedBox(child: TrackHeader(trackId: trackId)),
                     ),
-                  ),
-                );
+                  );
+                }
+
                 headers.add(
                   Positioned(
                     key: Key('$trackId-border'),
-                    top: trackPosition + (isSendTrack ? 0 : (trackHeight - 1)),
-                    left: 0,
+                    top: trackPosition - (isSendTrack ? 0 : 1),
+                    left: trackDepth * 9,
                     right: 0,
                     height: 1,
                     child: Container(color: AnthemTheme.panel.border),
@@ -327,6 +333,19 @@ class _TrackHeadersState extends State<TrackHeaders> {
             // If we didn't fill the whole area, then we are at the end of the
             // track list, so we can add an "add track" button
             if (!positionForAddButton.isNaN) {
+              // We're missing one track border, which is the one right above
+              // the add handle, so we can add it here.
+              headers.add(
+                Positioned(
+                  key: Key('last-border'),
+                  top: positionForAddButton - 1,
+                  left: 0,
+                  right: 0,
+                  height: 1,
+                  child: Container(color: AnthemTheme.panel.border),
+                ),
+              );
+
               headers.add(
                 Positioned(
                   key: Key('add-track-button'),
