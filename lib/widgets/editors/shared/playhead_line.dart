@@ -19,6 +19,7 @@
 
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/visualization_builder.dart';
 import 'package:flutter/widgets.dart';
@@ -124,7 +125,7 @@ class _PlayheadPainter extends CustomPainter {
     }
 
     final paint = Paint()
-      ..color = const Color(0xFFD9D9D9)
+      ..color = AnthemTheme.editors.playheadLine
       ..style = PaintingStyle.fill;
 
     final lineX =

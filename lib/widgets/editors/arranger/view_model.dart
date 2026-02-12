@@ -82,6 +82,9 @@ abstract class _ArrangerViewModel with Store {
   @observable
   Id? pressedClip;
 
+  @observable
+  (double, Id)? cursorLocation;
+
   late final TrackPositionAndSize trackPositionCalculator;
 
   final visibleClips = CanvasAnnotationSet<({Id id})>();
@@ -185,10 +188,12 @@ class TrackPositionAndSize {
 
   var _cache = Float64List(0);
   final _trackIdToIndex = <String, int>{};
+  final _trackIndexToId = <int, String>{};
 
   TrackPositionAndSize(this.projectModel, this.arrangerViewModel);
 
   int trackIdToIndex(String trackId) => _trackIdToIndex[trackId]!;
+  String trackIndexToId(int index) => _trackIndexToId[index]!;
 
   double getTrackHeight(int trackIndex) => _cache[trackIndex * 2];
   double getTrackPosition(num fractionalTrackIndex) =>
@@ -224,6 +229,7 @@ class TrackPositionAndSize {
     if (_cache.length != trackCount * 2) {
       _cache = Float64List(trackCount * 2);
       _trackIdToIndex.clear();
+      _trackIndexToId.clear();
     }
 
     var totalTrackHeight = 0.0;
@@ -237,6 +243,7 @@ class TrackPositionAndSize {
       );
       _cache[heightIndex] = trackHeight;
       _trackIdToIndex[trackId] = i;
+      _trackIndexToId[i] = trackId;
       totalTrackHeight += trackHeight;
     }
 

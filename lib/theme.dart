@@ -34,6 +34,8 @@ class AnthemTheme {
   static _Text text = _Text();
   static _Grid grid = _Grid();
   static _Overlay overlay = _Overlay();
+
+  static _Editors editors = _Editors();
 }
 
 class _Panel {
@@ -118,4 +120,8 @@ class _Grid {
   Color backgroundLight = const Color(0xFF494949);
   Color backgroundDark = const Color(0xFF434343);
   Color shaded = const Color(0x11000000);
+}
+
+class _Editors {
+  Color playheadLine = const Color(0xFFD9D9D9);
 }

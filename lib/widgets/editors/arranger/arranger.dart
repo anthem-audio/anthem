@@ -106,6 +106,7 @@ class _ArrangerState extends State<Arranger> {
         child: ShortcutConsumer(
           id: 'arranger',
           shortcutHandler: controller.onShortcut,
+          rawKeyHandler: controller.onRawKeyEvent,
           child: Container(
             color: AnthemTheme.panel.background,
             child: Column(

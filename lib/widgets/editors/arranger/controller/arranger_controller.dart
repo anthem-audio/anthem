@@ -21,16 +21,15 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:anthem/logic/commands/arrangement_commands.dart';
-import 'package:anthem/logic/commands/journal_commands.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
+import 'package:anthem/widgets/editors/arranger/controller/arranger_state_machine.dart';
 import 'package:anthem/widgets/editors/arranger/events.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
-import 'package:anthem/widgets/editors/shared/helpers/box_intersection.dart';
-import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
-import 'package:flutter/gestures.dart';
+import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart';
@@ -41,7 +40,7 @@ part 'pointer_events.dart';
 part 'shortcuts.dart';
 
 class ArrangerController extends _ArrangerController
-    with _ArrangerPointerEventsMixin, _ArrangerShortcutsMixin {
+    with _ArrangerShortcutsMixin {
   ArrangerController({required super.viewModel, required super.project}) {
     // Register shortcuts for this editor
     registerShortcuts();
@@ -51,6 +50,11 @@ class ArrangerController extends _ArrangerController
 abstract class _ArrangerController {
   ArrangerViewModel viewModel;
   ProjectModel project;
+
+  late final ArrangerStateMachine stateMachine = ArrangerStateMachine.create(
+    project: project,
+    viewModel: viewModel,
+  );
 
   late final ReactionDisposer patternCursorAutorunDispose;
 
@@ -68,6 +72,35 @@ abstract class _ArrangerController {
 
   void dispose() {
     patternCursorAutorunDispose();
+    stateMachine.dispose();
+  }
+
+  void pointerDown(ArrangerPointerEvent pointerEvent) {
+    stateMachine.onPointerDown(pointerEvent);
+  }
+
+  void pointerMove(ArrangerPointerEvent pointerEvent) {
+    stateMachine.onPointerMove(pointerEvent);
+  }
+
+  void pointerUp(ArrangerPointerEvent pointerEvent) {
+    stateMachine.onPointerUp(pointerEvent);
+  }
+
+  void onEnter(PointerEnterEvent e) {
+    stateMachine.onEnter(e);
+  }
+
+  void onExit(PointerExitEvent e) {
+    stateMachine.onExit(e);
+  }
+
+  void onHover(PointerHoverEvent e) {
+    stateMachine.onHover(e);
+  }
+
+  void onViewSizeChanged(Size viewSize) {
+    stateMachine.onViewSizeChanged(viewSize);
   }
 
   void setBaseTrackHeight(double pointerY, double trackHeight) {

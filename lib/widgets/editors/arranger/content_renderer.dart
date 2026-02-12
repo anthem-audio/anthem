@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,11 +21,13 @@ import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/invalidation_range_collector.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -110,12 +112,42 @@ class ArrangerContentPainter extends CustomPainterObserver {
 
   @override
   void observablePaint(Canvas canvas, Size size) {
+    canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
+
     arrangement.clips.observeAllChanges();
 
     blockObservation(
       modelItems: [arrangement.clips],
       block: () => _paintClips(canvas, size),
     );
+
+    if (viewModel.cursorLocation != null) {
+      final (offset, trackId) = viewModel.cursorLocation!;
+
+      final trackIndex = viewModel.trackPositionCalculator.trackIdToIndex(
+        trackId,
+      );
+      final trackPos = viewModel.trackPositionCalculator.getTrackPosition(
+        trackIndex,
+      );
+      final trackHeight = viewModel.trackPositionCalculator.getTrackHeight(
+        trackIndex,
+      );
+
+      final rect = Rect.fromLTWH(
+        timeToPixels(
+          time: offset,
+          timeViewStart: timeViewStart,
+          timeViewEnd: timeViewEnd,
+          viewPixelWidth: size.width,
+        ),
+        trackPos,
+        1.0,
+        trackHeight,
+      );
+
+      canvas.drawRect(rect, Paint()..color = AnthemTheme.editors.playheadLine);
+    }
   }
 
   /// Paints the clips onto the arranger canvas.
@@ -144,55 +176,59 @@ class ArrangerContentPainter extends CustomPainterObserver {
     // Note that if we ever disallow overlapping clips in the arranger, then we
     // could simplify this logic.
 
-    canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    final allClips = arrangement.trackIdToSortedClipList.entries
+        .map((idPair) => idPair.value.map((clipId) => (idPair.key, clipId)))
+        .flattened
+        .map<ClipRenderInfo?>((idPair) {
+          final (trackId, clipId) = idPair;
 
-    final allClips = arrangement.clips.keys.map<ClipRenderInfo?>((clipId) {
-      final clip = arrangement.clips[clipId]!;
-      final pattern = project.sequence.patterns[clip.patternId]!;
+          final clip = arrangement.clips[clipId]!;
+          final pattern = project.sequence.patterns[clip.patternId]!;
 
-      final x = timeToPixels(
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        viewPixelWidth: size.width,
-        time: clip.offset.toDouble(),
-      );
-      final width =
-          timeToPixels(
+          final x = timeToPixels(
             timeViewStart: timeViewStart,
             timeViewEnd: timeViewEnd,
             viewPixelWidth: size.width,
-            time: clip.offset.toDouble() + clip.width,
-          ) -
-          x +
-          1;
+            time: clip.offset.toDouble(),
+          );
+          final width =
+              timeToPixels(
+                timeViewStart: timeViewStart,
+                timeViewEnd: timeViewEnd,
+                viewPixelWidth: size.width,
+                time: clip.offset.toDouble() + clip.width,
+              ) -
+              x +
+              1;
 
-      if (x > size.width || x + width < 0) return null;
+          if (x > size.width || x + width < 0) return null;
 
-      final y =
-          viewModel.trackPositionCalculator.getTrackPosition(
-            viewModel.trackPositionCalculator.trackIdToIndex(clip.trackId),
-          ) -
-          1;
-      final trackHeight =
-          calculateTrackHeight(
-            viewModel.baseTrackHeight,
-            viewModel.trackHeightModifiers[clip.trackId]!,
-          ) +
-          1;
+          final y =
+              viewModel.trackPositionCalculator.getTrackPosition(
+                viewModel.trackPositionCalculator.trackIdToIndex(trackId),
+              ) -
+              1;
+          final trackHeight =
+              calculateTrackHeight(
+                viewModel.baseTrackHeight,
+                viewModel.trackHeightModifiers[trackId]!,
+              ) +
+              1;
 
-      if (y > size.height || y + trackHeight < 0) return null;
+          if (y > size.height || y + trackHeight < 0) return null;
 
-      return (
-        pattern: pattern,
-        clip: clip,
-        x: x,
-        y: y,
-        width: width,
-        height: trackHeight,
-        selected: viewModel.selectedClips.contains(clip.id),
-        pressed: viewModel.pressedClip == clip.id,
-      );
-    }).nonNulls;
+          return (
+            pattern: pattern,
+            clip: clip,
+            x: x,
+            y: y,
+            width: width,
+            height: trackHeight,
+            selected: viewModel.selectedClips.contains(clip.id),
+            pressed: viewModel.pressedClip == clip.id,
+          );
+        })
+        .nonNulls;
 
     List<List<ClipRenderInfo>> clipLayers = [];
     final layerBuilder = _ClipLayerBuilder();

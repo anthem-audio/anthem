@@ -75,6 +75,11 @@ class EditorStateMachine<TData> {
         'Only one instance of each EditorStateMachineState subclass is allowed.',
       );
     }
+
+    for (final state in states) {
+      state.stateMachine = this;
+    }
+
     currentState = idleState;
     const startEvent = EditorStateMachineStartEvent();
     _evaluateTransitions(startEvent);
@@ -139,6 +144,13 @@ class EditorStateMachine<TData> {
       final from = currentState;
       final to = states[transition.to]!;
 
+      transition.onTransition?.call(
+        data: data,
+        event: event,
+        from: from,
+        to: to,
+      );
+
       currentState.onExit(data: data, event: event, to: to);
       currentState = to;
       currentState.onEntry(data: data, event: event, from: from);
@@ -160,7 +172,11 @@ class EditorStateMachine<TData> {
         continue;
       }
 
-      if (transition.canTransition(data, event, currentState)) {
+      if (transition.canTransition(
+        data: data,
+        event: event,
+        currentState: currentState,
+      )) {
         return transition;
       }
     }
@@ -197,6 +213,7 @@ class EditorStateMachineSignalEvent extends EditorStateMachineEvent {
 }
 
 abstract class EditorStateMachineState<TData> {
+  late final EditorStateMachine<TData> stateMachine;
   final EditorStateMachineState<TData>? parentState;
 
   EditorStateMachineState([this.parentState]);
@@ -217,18 +234,28 @@ abstract class EditorStateMachineState<TData> {
 }
 
 class EditorStateMachineStateTransition<TData> {
+  final String name;
   final Type from;
   final Type to;
-  final bool Function(
-    TData data,
-    EditorStateMachineEvent event,
-    EditorStateMachineState<TData> currentState,
-  )
+  final bool Function({
+    required TData data,
+    required EditorStateMachineEvent event,
+    required EditorStateMachineState<TData> currentState,
+  })
   canTransition;
+  final void Function({
+    required TData data,
+    required EditorStateMachineEvent event,
+    required EditorStateMachineState<TData> from,
+    required EditorStateMachineState<TData> to,
+  })?
+  onTransition;
 
   EditorStateMachineStateTransition({
+    this.name = '',
     required this.from,
     required this.to,
     required this.canTransition,
+    this.onTransition,
   });
 }

@@ -100,12 +100,14 @@ class _DraggingState extends EditorStateMachineState<_Data> {
     .new(
       from: _IdleState,
       to: _DraggingState,
-      canTransition: (state, event, currentState) => state.isPointerDown,
+      canTransition: ({required data, required event, required currentState}) =>
+          data.isPointerDown,
     ),
     .new(
       from: _DraggingState,
       to: _IdleState,
-      canTransition: (state, event, currentState) => !state.isPointerDown,
+      canTransition: ({required data, required event, required currentState}) =>
+          !data.isPointerDown,
     ),
   ];
 
@@ -148,7 +150,7 @@ class _AddNoteState extends EditorStateMachineState<_Data> {
     .new(
       from: _DraggingState,
       to: _AddNoteState,
-      canTransition: (data, event, currentState) =>
+      canTransition: ({required data, required event, required currentState}) =>
           _isDataChangedEvent(event) && !data.isCtrlPressed,
     ),
 
@@ -157,7 +159,7 @@ class _AddNoteState extends EditorStateMachineState<_Data> {
     .new(
       from: _AddNoteState,
       to: _AddNoteState,
-      canTransition: (data, event, currentState) =>
+      canTransition: ({required data, required event, required currentState}) =>
           data.isPointerDown &&
           (currentState as _AddNoteState).parentState.hasMousePositionChanged(
             data,
@@ -169,8 +171,8 @@ class _AddNoteState extends EditorStateMachineState<_Data> {
     .new(
       from: _AddNoteState,
       to: _DraggingState,
-      canTransition: (state, event, currentState) =>
-          !state.isPointerDown || _isCancelSignal(event),
+      canTransition: ({required data, required event, required currentState}) =>
+          !data.isPointerDown || _isCancelSignal(event),
     ),
   ];
 
@@ -213,7 +215,7 @@ class _SelectionBoxState extends EditorStateMachineState<_Data> {
     .new(
       from: _DraggingState,
       to: _SelectionBoxState,
-      canTransition: (data, event, currentState) =>
+      canTransition: ({required data, required event, required currentState}) =>
           _isDataChangedEvent(event) && data.isCtrlPressed,
     ),
 
@@ -221,12 +223,84 @@ class _SelectionBoxState extends EditorStateMachineState<_Data> {
     .new(
       from: _SelectionBoxState,
       to: _DraggingState,
-      canTransition: (state, event, currentState) => !state.isPointerDown,
+      canTransition: ({required data, required event, required currentState}) =>
+          !data.isPointerDown,
     ),
   ];
 
   _SelectionBoxState(_DraggingState super.parentState);
 }
+
+class _TransitionData {
+  bool shouldTransition = false;
+  final List<String> callOrder = <String>[];
+  int transitionCalls = 0;
+  EditorStateMachineEvent? transitionEvent;
+  Type? transitionFromType;
+  Type? transitionToType;
+}
+
+class _TransitionIdleState extends EditorStateMachineState<_TransitionData> {
+  @override
+  final Iterable<EditorStateMachineStateTransition<_TransitionData>>
+  transitions = [
+    .new(
+      from: _TransitionIdleState,
+      to: _TransitionActiveState,
+      canTransition: ({required data, required event, required currentState}) =>
+          data.shouldTransition,
+      onTransition:
+          ({required data, required event, required from, required to}) {
+            data.transitionCalls++;
+            data.transitionEvent = event;
+            data.transitionFromType = from.runtimeType;
+            data.transitionToType = to.runtimeType;
+            data.callOrder.add('transition');
+          },
+    ),
+  ];
+
+  @override
+  void onExit({
+    required _TransitionData data,
+    required EditorStateMachineEvent event,
+    required EditorStateMachineState<_TransitionData> to,
+  }) {
+    data.callOrder.add('exit');
+  }
+}
+
+class _TransitionActiveState extends EditorStateMachineState<_TransitionData> {
+  @override
+  void onEntry({
+    required _TransitionData data,
+    required EditorStateMachineEvent event,
+    required EditorStateMachineState<_TransitionData> from,
+  }) {
+    data.callOrder.add('entry');
+  }
+}
+
+class _NoTransitionCallbackData {
+  bool shouldTransition = false;
+}
+
+class _NoTransitionCallbackIdleState
+    extends EditorStateMachineState<_NoTransitionCallbackData> {
+  @override
+  final Iterable<EditorStateMachineStateTransition<_NoTransitionCallbackData>>
+  transitions = [
+    .new(
+      from: _NoTransitionCallbackIdleState,
+      to: _NoTransitionCallbackActiveState,
+      canTransition: ({required data, required event, required currentState}) =>
+          data.shouldTransition,
+    ),
+  ];
+}
+
+class _NoTransitionCallbackActiveState
+    extends EditorStateMachineState<_NoTransitionCallbackData> {}
 
 void main() {
   late _Data data;
@@ -304,5 +378,94 @@ void main() {
 
     expect(stateMachine.currentState, isA<_AddNoteState>());
     expect(draggingState.currentMousePos, Point(15, 25));
+  });
+
+  test('calls onTransition with expected values', () {
+    final transitionData = _TransitionData();
+    final transitionIdleState = _TransitionIdleState();
+    final transitionActiveState = _TransitionActiveState();
+
+    final transitionStateMachine = EditorStateMachine(
+      data: transitionData,
+      idleState: transitionIdleState,
+      states: [transitionIdleState, transitionActiveState],
+    );
+
+    transitionStateMachine.updateData((data) {
+      data.shouldTransition = true;
+    });
+
+    expect(transitionStateMachine.currentState, isA<_TransitionActiveState>());
+    expect(transitionData.transitionCalls, 1);
+    expect(
+      transitionData.transitionEvent,
+      isA<EditorStateMachineDataChangedEvent>(),
+    );
+    expect(transitionData.transitionFromType, _TransitionIdleState);
+    expect(transitionData.transitionToType, _TransitionActiveState);
+
+    transitionStateMachine.dispose();
+  });
+
+  test('does not call onTransition when no transition matches', () {
+    final transitionData = _TransitionData();
+    final transitionIdleState = _TransitionIdleState();
+    final transitionActiveState = _TransitionActiveState();
+
+    final transitionStateMachine = EditorStateMachine(
+      data: transitionData,
+      idleState: transitionIdleState,
+      states: [transitionIdleState, transitionActiveState],
+    );
+
+    transitionStateMachine.invalidate();
+
+    expect(transitionStateMachine.currentState, isA<_TransitionIdleState>());
+    expect(transitionData.transitionCalls, 0);
+
+    transitionStateMachine.dispose();
+  });
+
+  test('runs onTransition before onExit and onEntry', () {
+    final transitionData = _TransitionData();
+    final transitionIdleState = _TransitionIdleState();
+    final transitionActiveState = _TransitionActiveState();
+
+    final transitionStateMachine = EditorStateMachine(
+      data: transitionData,
+      idleState: transitionIdleState,
+      states: [transitionIdleState, transitionActiveState],
+    );
+
+    transitionStateMachine.updateData((data) {
+      data.shouldTransition = true;
+    });
+
+    expect(transitionData.callOrder, ['transition', 'exit', 'entry']);
+
+    transitionStateMachine.dispose();
+  });
+
+  test('transitions still work when onTransition is omitted', () {
+    final noTransitionCallbackData = _NoTransitionCallbackData();
+    final noTransitionCallbackIdleState = _NoTransitionCallbackIdleState();
+    final noTransitionCallbackActiveState = _NoTransitionCallbackActiveState();
+
+    final noTransitionCallbackStateMachine = EditorStateMachine(
+      data: noTransitionCallbackData,
+      idleState: noTransitionCallbackIdleState,
+      states: [noTransitionCallbackIdleState, noTransitionCallbackActiveState],
+    );
+
+    noTransitionCallbackStateMachine.updateData((data) {
+      data.shouldTransition = true;
+    });
+
+    expect(
+      noTransitionCallbackStateMachine.currentState,
+      isA<_NoTransitionCallbackActiveState>(),
+    );
+
+    noTransitionCallbackStateMachine.dispose();
   });
 }

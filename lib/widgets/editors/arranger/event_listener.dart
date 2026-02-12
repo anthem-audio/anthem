@@ -40,15 +40,26 @@ class ArrangerEventListener extends StatefulWidget {
 class _ArrangerEventListenerState extends State<ArrangerEventListener> {
   var _panYStart = double.nan;
   var _panScrollPosStart = double.nan;
+  Size? _lastViewSize;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, boxConstraints) {
+        final viewSize = boxConstraints.biggest;
+        final controller = Provider.of<ArrangerController>(
+          context,
+          listen: false,
+        );
+
+        if (_lastViewSize != viewSize) {
+          _lastViewSize = viewSize;
+          controller.onViewSizeChanged(viewSize);
+        }
+
         return Observer(
           builder: (context) {
             final viewModel = Provider.of<ArrangerViewModel>(context);
-            final controller = Provider.of<ArrangerController>(context);
 
             return EditorScrollManager(
               timeView: viewModel.timeView,
@@ -70,28 +81,33 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
                   viewModel.baseTrackHeight + delta * 15,
                 );
               },
-              child: Listener(
-                onPointerDown: (event) {
-                  controller.pointerDown(
-                    convertPointerEvent(event, boxConstraints.biggest),
-                  );
-                },
-                onPointerMove: (event) {
-                  controller.pointerMove(
-                    convertPointerEvent(event, boxConstraints.biggest),
-                  );
-                },
-                onPointerUp: (event) {
-                  controller.pointerUp(
-                    convertPointerEvent(event, boxConstraints.biggest),
-                  );
-                },
-                onPointerCancel: (event) {
-                  controller.pointerUp(
-                    convertPointerEvent(event, boxConstraints.biggest),
-                  );
-                },
-                child: widget.child,
+              child: MouseRegion(
+                onEnter: controller.onEnter,
+                onExit: controller.onExit,
+                onHover: controller.onHover,
+                child: Listener(
+                  onPointerDown: (event) {
+                    controller.pointerDown(
+                      convertPointerEvent(event, boxConstraints.biggest),
+                    );
+                  },
+                  onPointerMove: (event) {
+                    controller.pointerMove(
+                      convertPointerEvent(event, boxConstraints.biggest),
+                    );
+                  },
+                  onPointerUp: (event) {
+                    controller.pointerUp(
+                      convertPointerEvent(event, boxConstraints.biggest),
+                    );
+                  },
+                  onPointerCancel: (event) {
+                    controller.pointerUp(
+                      convertPointerEvent(event, boxConstraints.biggest),
+                    );
+                  },
+                  child: widget.child,
+                ),
               ),
             );
           },

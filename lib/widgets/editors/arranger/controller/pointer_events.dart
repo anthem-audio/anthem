@@ -19,6 +19,8 @@
 
 part of 'arranger_controller.dart';
 
+/*
+
 const maxSafeIntWeb = 0x001F_FFFF_FFFF_FFFF;
 
 /// These are the possible states that the arranger can have during event
@@ -870,3 +872,5 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
     _clipResizeActionData = null;
   }
 }
+
+*/

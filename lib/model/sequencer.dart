@@ -76,21 +76,20 @@ abstract class _SequencerModel
   double get beatsPerMinute => beatsPerMinuteRaw / 100;
 
   @anthemObservable
-  AnthemObservableMap<Id, PatternModel> patterns = AnthemObservableMap();
+  AnthemObservableMap<Id, PatternModel> patterns = .new();
 
   @anthemObservable
-  AnthemObservableList<Id> patternOrder = AnthemObservableList();
+  AnthemObservableList<Id> patternOrder = .new();
 
   @anthemObservable
   @hideFromSerialization
   Id? activePatternID;
 
   @anthemObservable
-  AnthemObservableMap<Id, ArrangementModel> arrangements =
-      AnthemObservableMap();
+  AnthemObservableMap<Id, ArrangementModel> arrangements = .new();
 
   @anthemObservable
-  AnthemObservableList<Id> arrangementOrder = AnthemObservableList();
+  AnthemObservableList<Id> arrangementOrder = .new();
 
   @anthemObservable
   @hideFromSerialization
@@ -107,7 +106,7 @@ abstract class _SequencerModel
   /// midway through an arrangement or pattern. This is the time signature that
   /// is used if there are no time signature changes.
   @anthemObservable
-  TimeSignatureModel defaultTimeSignature = TimeSignatureModel(4, 4);
+  TimeSignatureModel defaultTimeSignature = .new(4, 4);
 
   /// The playback start position, in ticks.
   @anthemObservable
@@ -126,8 +125,8 @@ abstract class _SequencerModel
       name: 'Arrangement 1',
       id: getId(),
     );
-    arrangements = AnthemObservableMap.of({arrangement.id: arrangement});
-    arrangementOrder = AnthemObservableList.of([arrangement.id]);
+    arrangements = .of({arrangement.id: arrangement});
+    arrangementOrder = .of([arrangement.id]);
     activeArrangementID = arrangement.id;
     activeTransportSequenceID = arrangement.id;
   }
