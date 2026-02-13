@@ -28,8 +28,13 @@ import 'package:flutter/widgets.dart';
 
 enum ArrangerModifierKey { ctrl, alt, shift }
 
+/// A state machine to manage user interactions in the arranger.
+///
 /// This is the primary state machine for the arranger. It converts incoming
 /// pointer and key events into useful actions.
+///
+/// Individual states contain most of the logic. The idle state is the base
+/// "nothing is currently happening" state, and everything branches from there.
 class ArrangerStateMachine
     extends EditorStateMachine<ArrangerStateMachineData> {
   ProjectModel project;
@@ -204,9 +209,7 @@ class ArrangerStateMachineData {
     pointers.remove(event.pointerEvent.pointer);
   }
 
-  void handleEnter(PointerEnterEvent e) {
-    hoveredPointer = .new(e.localPosition.dx, e.localPosition.dy);
-  }
+  void handleEnter(PointerEnterEvent e) {}
 
   void handleExit(PointerExitEvent e) {
     hoveredPointer = null;
@@ -221,24 +224,41 @@ class ArrangerStateMachineData {
 
 class ArrangerIdleState
     extends EditorStateMachineState<ArrangerStateMachineData> {
+  /// Convenience getter to fetch the base state machine object.
   ArrangerStateMachine get arrangerStateMachine =>
       stateMachine as ArrangerStateMachine;
+
+  /// The main input data for the state machine, which is the current
+  /// interaction state (e.g. what pointers are down and where, which modifier
+  /// keys are pressed).
+  ArrangerStateMachineData get interactionState => arrangerStateMachine.data;
 
   ProjectModel get project => arrangerStateMachine.project;
   ArrangerViewModel get viewModel => arrangerStateMachine.viewModel;
 
   ActivePointer? lastHoveredPointer;
 
-  void updateHover(ArrangerStateMachineData data) {
-    lastHoveredPointer = data.hoveredPointer?.clone();
+  /// Updates the current mouse hover position with a new one from [interactionState].
+  void updateHover() {
+    lastHoveredPointer = interactionState.hoveredPointer?.clone();
 
-    if (lastHoveredPointer == null) {
+    updateCursor(
+      lastHoveredPointer == null
+          ? null
+          : (lastHoveredPointer!.x, lastHoveredPointer!.y),
+    );
+  }
+
+  void updateCursor((double x, double y)? coordinates) {
+    if (coordinates == null) {
       viewModel.cursorLocation = null;
       return;
     }
 
+    final (x, y) = coordinates;
+
     final fractionalTrackIndex = viewModel.trackPositionCalculator
-        .getTrackIndexFromPosition(lastHoveredPointer!.y);
+        .getTrackIndexFromPosition(y);
 
     if (fractionalTrackIndex.isInfinite) {
       viewModel.cursorLocation = null;
@@ -249,23 +269,19 @@ class ArrangerIdleState
       fractionalTrackIndex.floor(),
     );
 
-    if (data.viewSize.width <= 0) {
-      viewModel.cursorLocation = null;
-      return;
-    }
-
     final offset = pixelsToTime(
       timeViewStart: viewModel.timeView.start,
       timeViewEnd: viewModel.timeView.end,
-      viewPixelWidth: data.viewSize.width,
-      pixelOffsetFromLeft: lastHoveredPointer!.x,
+      viewPixelWidth: interactionState.viewSize.width,
+      pixelOffsetFromLeft: x,
     );
 
-    final targetTime = data.isAltPressed
+    final targetTime = interactionState.isAltPressed
         ? offset
         : getSnappedTime(
             rawTime: offset.round(),
             divisionChanges: arrangerStateMachine.divisionChanges(),
+            round: true,
           );
 
     viewModel.cursorLocation = (targetTime.toDouble(), trackId);
@@ -280,9 +296,8 @@ class ArrangerIdleState
       to: ArrangerIdleState,
       canTransition: ({required data, required event, required currentState}) =>
           lastHoveredPointer != data.hoveredPointer,
-      onTransition:
-          ({required data, required event, required from, required to}) =>
-              updateHover(data),
+      onTransition: ({required event, required from, required to}) =>
+          updateHover(),
     ),
   ];
 }

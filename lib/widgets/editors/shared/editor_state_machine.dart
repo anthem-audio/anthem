@@ -145,7 +145,6 @@ class EditorStateMachine<TData> {
       final to = states[transition.to]!;
 
       transition.onTransition?.call(
-        data: data,
         event: event,
         from: from,
         to: to,
@@ -244,7 +243,6 @@ class EditorStateMachineStateTransition<TData> {
   })
   canTransition;
   final void Function({
-    required TData data,
     required EditorStateMachineEvent event,
     required EditorStateMachineState<TData> from,
     required EditorStateMachineState<TData> to,

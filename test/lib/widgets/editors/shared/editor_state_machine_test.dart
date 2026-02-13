@@ -242,21 +242,22 @@ class _TransitionData {
 
 class _TransitionIdleState extends EditorStateMachineState<_TransitionData> {
   @override
-  final Iterable<EditorStateMachineStateTransition<_TransitionData>>
+  late final Iterable<EditorStateMachineStateTransition<_TransitionData>>
   transitions = [
     .new(
       from: _TransitionIdleState,
       to: _TransitionActiveState,
       canTransition: ({required data, required event, required currentState}) =>
           data.shouldTransition,
-      onTransition:
-          ({required data, required event, required from, required to}) {
-            data.transitionCalls++;
-            data.transitionEvent = event;
-            data.transitionFromType = from.runtimeType;
-            data.transitionToType = to.runtimeType;
-            data.callOrder.add('transition');
-          },
+      onTransition: ({required event, required from, required to}) {
+        final data = stateMachine.data;
+
+        data.transitionCalls++;
+        data.transitionEvent = event;
+        data.transitionFromType = from.runtimeType;
+        data.transitionToType = to.runtimeType;
+        data.callOrder.add('transition');
+      },
     ),
   ];
 
