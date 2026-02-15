@@ -34,6 +34,9 @@ class _PointerState {
 class _Data {
   bool isCtrlPressed = false;
   final Map<int, _PointerState> pointerMap = <int, _PointerState>{};
+  int dragPosition = 0;
+  int normalizedDragPosition = 0;
+  final List<String> activeCallOrder = <String>[];
 
   bool get isPointerDown => pointerMap.values.any((pointer) => pointer.isDown);
 
@@ -96,6 +99,13 @@ class _DraggingState extends EditorStateMachineState<_Data> {
   }
 
   @override
+  void onActive({required EditorStateMachineEvent event}) {
+    final data = stateMachine.data;
+    data.activeCallOrder.add('dragging');
+    data.normalizedDragPosition = data.dragPosition * 2;
+  }
+
+  @override
   final Iterable<EditorStateMachineStateTransition<_Data>> transitions = [
     .new(
       from: _IdleState,
@@ -113,10 +123,11 @@ class _DraggingState extends EditorStateMachineState<_Data> {
 
   @override
   void onEntry({
-    required _Data data,
     required EditorStateMachineEvent event,
     required EditorStateMachineState<_Data> from,
   }) {
+    final data = stateMachine.data;
+
     if (from is _IdleState) {
       final pointer = _getTrackedPointer(data);
       if (pointer != null) {
@@ -143,6 +154,8 @@ class _AddNoteState extends EditorStateMachineState<_Data> {
   /// editor state or add an undo/redo command.
   final StreamController<void> cancelledController =
       StreamController<void>.broadcast();
+  int entryCount = 0;
+  int latestObservedNormalizedDragPosition = 0;
 
   @override
   final Iterable<EditorStateMachineStateTransition<_Data>> transitions = [
@@ -178,19 +191,28 @@ class _AddNoteState extends EditorStateMachineState<_Data> {
 
   @override
   void onEntry({
-    required _Data data,
     required EditorStateMachineEvent event,
     required EditorStateMachineState<_Data> from,
   }) {
+    entryCount++;
+    final data = stateMachine.data;
     parentState.updateCurrentMousePosition(data);
   }
 
   @override
+  void onActive({required EditorStateMachineEvent event}) {
+    final data = stateMachine.data;
+    data.activeCallOrder.add('addNote');
+    latestObservedNormalizedDragPosition = data.normalizedDragPosition;
+  }
+
+  @override
   void onExit({
-    required _Data data,
     required EditorStateMachineEvent event,
     required EditorStateMachineState<_Data> to,
   }) {
+    final data = stateMachine.data;
+
     if (_isCancelSignal(event)) {
       cancelledController.add(null);
       return;
@@ -228,6 +250,16 @@ class _SelectionBoxState extends EditorStateMachineState<_Data> {
     ),
   ];
 
+  int entryCount = 0;
+
+  @override
+  void onEntry({
+    required EditorStateMachineEvent event,
+    required EditorStateMachineState<_Data> from,
+  }) {
+    entryCount++;
+  }
+
   _SelectionBoxState(_DraggingState super.parentState);
 }
 
@@ -263,10 +295,10 @@ class _TransitionIdleState extends EditorStateMachineState<_TransitionData> {
 
   @override
   void onExit({
-    required _TransitionData data,
     required EditorStateMachineEvent event,
     required EditorStateMachineState<_TransitionData> to,
   }) {
+    final data = stateMachine.data;
     data.callOrder.add('exit');
   }
 }
@@ -274,10 +306,10 @@ class _TransitionIdleState extends EditorStateMachineState<_TransitionData> {
 class _TransitionActiveState extends EditorStateMachineState<_TransitionData> {
   @override
   void onEntry({
-    required _TransitionData data,
     required EditorStateMachineEvent event,
     required EditorStateMachineState<_TransitionData> from,
   }) {
+    final data = stateMachine.data;
     data.callOrder.add('entry');
   }
 }
@@ -379,6 +411,69 @@ void main() {
 
     expect(stateMachine.currentState, isA<_AddNoteState>());
     expect(draggingState.currentMousePos, Point(15, 25));
+  });
+
+  test('does not rerun onActive after same-event transitions', () {
+    expect(stateMachine.currentState, isA<_IdleState>());
+    data.activeCallOrder.clear();
+
+    stateMachine.updateData((data) {
+      data.setPointerState(pointerId: 1, isDown: true, x: 10, y: 20);
+    }, hints: {_DataHint.pointer});
+
+    expect(stateMachine.currentState, isA<_AddNoteState>());
+    expect(data.activeCallOrder, isEmpty);
+  });
+
+  test('updates active states from parent to child', () {
+    stateMachine.updateData((data) {
+      data.setPointerState(pointerId: 1, isDown: true, x: 10, y: 20);
+      data.dragPosition = 1;
+    }, hints: {_DataHint.pointer});
+
+    expect(stateMachine.currentState, isA<_AddNoteState>());
+    data.activeCallOrder.clear();
+
+    stateMachine.updateData((data) {
+      data.dragPosition = 6;
+    });
+
+    expect(data.activeCallOrder, ['dragging', 'addNote']);
+    expect(addNoteState.latestObservedNormalizedDragPosition, 12);
+  });
+
+  test('parent transitions can run while a child state is active', () {
+    stateMachine.updateData((data) {
+      data.setPointerState(pointerId: 1, isDown: true, x: 10, y: 20);
+      data.isCtrlPressed = false;
+    }, hints: {_DataHint.pointer});
+
+    expect(stateMachine.currentState, isA<_AddNoteState>());
+
+    stateMachine.updateData((data) {
+      data.isCtrlPressed = true;
+    });
+
+    expect(stateMachine.currentState, isA<_SelectionBoxState>());
+    expect(selectionBoxState.entryCount, 1);
+  });
+
+  test('ancestor transitions to active leaf are suppressed by default', () {
+    stateMachine.updateData((data) {
+      data.setPointerState(pointerId: 1, isDown: true, x: 10, y: 20);
+      data.isCtrlPressed = false;
+      data.dragPosition = 2;
+    }, hints: {_DataHint.pointer});
+
+    expect(stateMachine.currentState, isA<_AddNoteState>());
+    expect(addNoteState.entryCount, 1);
+
+    stateMachine.updateData((data) {
+      data.dragPosition = 3;
+    });
+
+    expect(stateMachine.currentState, isA<_AddNoteState>());
+    expect(addNoteState.entryCount, 1);
   });
 
   test('calls onTransition with expected values', () {

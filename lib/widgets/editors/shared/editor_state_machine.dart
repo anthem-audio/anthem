@@ -31,6 +31,19 @@ import 'package:collection/collection.dart';
 /// Then, when data changes are invalidated or signals are emitted, this class
 /// evaluates transitions and delegates behavior to active state logic.
 ///
+/// This machine supports hierarchical state behavior via [parentState].
+/// Per event, processing runs in this order:
+/// 1. [EditorStateMachineState.onActive] for all active states from root to
+///    leaf.
+/// 2. Transition resolution from leaf to root.
+/// 3. Transition callbacks: `onTransition`, then `onExit`, then `onEntry`.
+///
+/// For hierarchical transitions, exits/entries are applied relative to the
+/// first shared ancestor between the current leaf and target leaf:
+/// - `onExit` runs from current leaf upward to (but excluding) that ancestor.
+/// - `onEntry` runs from the next child below that ancestor down to target
+///   leaf.
+///
 /// This class exists because of the enormous complexity in handling each
 /// interaction in complex editors like the ones in this software. In UI code,
 /// we typically handle pointer events directly in event handlers, and possibly
@@ -47,7 +60,10 @@ class EditorStateMachine<TData> {
   final EditorStateMachineState<TData> idleState;
   final Map<Type, EditorStateMachineState<TData>> states;
   final List<EditorStateMachineStateTransition<TData>> transitions;
+  late final Map<Type, List<EditorStateMachineState<TData>>>
+  _statePathsFromRootByType;
 
+  /// The current active leaf state.
   late EditorStateMachineState<TData> currentState;
 
   static const int _maxTransitionsPerCycle = 1024;
@@ -79,6 +95,8 @@ class EditorStateMachine<TData> {
     for (final state in states) {
       state.stateMachine = this;
     }
+
+    _initializeStateHierarchy();
 
     currentState = idleState;
     const startEvent = EditorStateMachineStartEvent();
@@ -135,24 +153,16 @@ class EditorStateMachine<TData> {
   void _evaluateTransitions(EditorStateMachineEvent event) {
     var processedTransitions = 0;
 
+    // Parent states can update shared derived data before child behavior.
+    _runActiveStateUpdates(event);
+
     while (true) {
       final transition = _findFirstValidTransition(event);
       if (transition == null) {
         return;
       }
 
-      final from = currentState;
-      final to = states[transition.to]!;
-
-      transition.onTransition?.call(
-        event: event,
-        from: from,
-        to: to,
-      );
-
-      currentState.onExit(data: data, event: event, to: to);
-      currentState = to;
-      currentState.onEntry(data: data, event: event, from: from);
+      _applyTransition(event, transition);
 
       processedTransitions++;
       if (processedTransitions >= _maxTransitionsPerCycle) {
@@ -163,20 +173,160 @@ class EditorStateMachine<TData> {
     }
   }
 
-  EditorStateMachineStateTransition<TData>? _findFirstValidTransition(
-    EditorStateMachineEvent event,
-  ) {
-    for (final transition in transitions) {
-      if (transition.from != currentState.runtimeType) {
-        continue;
+  void _initializeStateHierarchy() {
+    if (!identical(states[idleState.runtimeType], idleState)) {
+      throw StateError(
+        'The idle state instance must be included in the state list.',
+      );
+    }
+
+    final paths = <Type, List<EditorStateMachineState<TData>>>{};
+
+    for (final state in states.values) {
+      final pathFromLeaf = <EditorStateMachineState<TData>>[];
+      final visited = <EditorStateMachineState<TData>>{};
+
+      EditorStateMachineState<TData>? cursor = state;
+      while (cursor != null) {
+        if (!visited.add(cursor)) {
+          throw StateError(
+            'Detected a parent state cycle involving ${state.runtimeType}.',
+          );
+        }
+
+        final registeredState = states[cursor.runtimeType];
+        if (!identical(registeredState, cursor)) {
+          throw StateError(
+            'State ${state.runtimeType} references parent ${cursor.runtimeType}, but that parent instance is not registered in this machine.',
+          );
+        }
+
+        pathFromLeaf.add(cursor);
+        cursor = cursor.parentState;
       }
 
-      if (transition.canTransition(
-        data: data,
-        event: event,
-        currentState: currentState,
-      )) {
-        return transition;
+      final pathFromRoot = pathFromLeaf.reversed.toList(growable: false);
+      paths[state.runtimeType] = List.unmodifiable(pathFromRoot);
+    }
+
+    _statePathsFromRootByType = Map.unmodifiable(paths);
+  }
+
+  List<EditorStateMachineState<TData>> _statePathFromRoot(
+    EditorStateMachineState<TData> state,
+  ) {
+    final path = _statePathsFromRootByType[state.runtimeType];
+    if (path == null || !identical(path.last, state)) {
+      throw StateError(
+        'State ${state.runtimeType} is not registered in this machine.',
+      );
+    }
+
+    return path;
+  }
+
+  void _runActiveStateUpdates(EditorStateMachineEvent event) {
+    // Execute from root to leaf so parent state updates are visible to children.
+    final activePath = _statePathFromRoot(currentState);
+    for (final state in activePath) {
+      state.onActive(event: event);
+    }
+  }
+
+  void _applyTransition(
+    EditorStateMachineEvent event,
+    _ResolvedTransition<TData> resolvedTransition,
+  ) {
+    final fromLeaf = currentState;
+    final toLeaf = resolvedTransition.targetState;
+
+    resolvedTransition.transition.onTransition?.call(
+      event: event,
+      from: resolvedTransition.sourceState,
+      to: toLeaf,
+    );
+
+    if (identical(fromLeaf, toLeaf)) {
+      // Preserve self-transition re-entry semantics.
+      fromLeaf.onExit(event: event, to: toLeaf);
+      currentState = toLeaf;
+      toLeaf.onEntry(event: event, from: fromLeaf);
+      return;
+    }
+
+    final fromPath = _statePathFromRoot(fromLeaf);
+    final toPath = _statePathFromRoot(toLeaf);
+    final sharedPrefixLength = _sharedPathPrefixLength(fromPath, toPath);
+
+    // Exit leaf -> ancestor (exclusive), then enter ancestor child -> new leaf.
+    final statesToExit = fromPath.sublist(sharedPrefixLength).reversed;
+    for (final state in statesToExit) {
+      state.onExit(event: event, to: toLeaf);
+    }
+
+    currentState = toLeaf;
+
+    final statesToEnter = toPath.sublist(sharedPrefixLength);
+    for (final state in statesToEnter) {
+      state.onEntry(event: event, from: fromLeaf);
+    }
+  }
+
+  int _sharedPathPrefixLength(
+    List<EditorStateMachineState<TData>> a,
+    List<EditorStateMachineState<TData>> b,
+  ) {
+    final minLength = a.length < b.length ? a.length : b.length;
+    var index = 0;
+
+    while (index < minLength && identical(a[index], b[index])) {
+      index++;
+    }
+
+    return index;
+  }
+
+  _ResolvedTransition<TData>? _findFirstValidTransition(
+    EditorStateMachineEvent event,
+  ) {
+    final activePath = _statePathFromRoot(currentState);
+
+    // Child states get first chance to transition; parents can still delegate.
+    for (final sourceState in activePath.reversed) {
+      for (final transition in transitions) {
+        if (transition.from != sourceState.runtimeType) {
+          continue;
+        }
+
+        if (!transition.canTransition(
+          data: data,
+          event: event,
+          currentState: sourceState,
+        )) {
+          continue;
+        }
+
+        final toState = states[transition.to];
+        if (toState == null) {
+          throw StateError(
+            'Transition "${transition.name}" targets ${transition.to}, which is not registered.',
+          );
+        }
+
+        final isAncestorToAlreadyActivePathTransition =
+            !identical(sourceState, currentState) &&
+            activePath.any((activeState) => identical(activeState, toState));
+        if (isAncestorToAlreadyActivePathTransition &&
+            !transition.allowAncestorToActivePathTransition) {
+          // Avoid repeated ancestor->already-active transitions each event.
+          continue;
+        }
+
+        return _ResolvedTransition(
+          transition: transition,
+          sourceState: sourceState,
+          targetState: toState,
+        );
       }
     }
 
@@ -217,14 +367,25 @@ abstract class EditorStateMachineState<TData> {
 
   EditorStateMachineState([this.parentState]);
 
+  /// Called once per processed event while this state is active.
+  ///
+  /// Active states are updated from root to leaf before transition resolution.
+  void onActive({required EditorStateMachineEvent event}) {}
+
+  /// Called when this state is entered as part of a transition.
+  ///
+  /// For hierarchical transitions, this may be called on multiple states from
+  /// the first child below the shared ancestor down to the target leaf.
   void onEntry({
-    required TData data,
     required EditorStateMachineEvent event,
     required EditorStateMachineState<TData> from,
   }) {}
 
+  /// Called when this state is exited as part of a transition.
+  ///
+  /// For hierarchical transitions, this may be called on multiple states from
+  /// the current leaf up to the first child below the shared ancestor.
   void onExit({
-    required TData data,
     required EditorStateMachineEvent event,
     required EditorStateMachineState<TData> to,
   }) {}
@@ -249,11 +410,30 @@ class EditorStateMachineStateTransition<TData> {
   })?
   onTransition;
 
+  /// If `false` (default), ancestor transitions that target any state already
+  /// in the active path are skipped to prevent transition churn.
+  ///
+  /// Set to `true` only when repeated ancestor-driven re-entry is intentional.
+  final bool allowAncestorToActivePathTransition;
+
   EditorStateMachineStateTransition({
     this.name = '',
     required this.from,
     required this.to,
     required this.canTransition,
     this.onTransition,
+    this.allowAncestorToActivePathTransition = false,
+  });
+}
+
+class _ResolvedTransition<TData> {
+  final EditorStateMachineStateTransition<TData> transition;
+  final EditorStateMachineState<TData> sourceState;
+  final EditorStateMachineState<TData> targetState;
+
+  _ResolvedTransition({
+    required this.transition,
+    required this.sourceState,
+    required this.targetState,
   });
 }
