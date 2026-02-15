@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/arranger/events.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
@@ -701,11 +703,14 @@ class ArrangerCreateClipState
       viewPixelWidth: interactionState.viewSize.width,
       pixelOffsetFromLeft: startPosition.x,
     );
-    final endOffsetRaw = pixelsToTime(
-      timeViewStart: viewModel.timeView.start,
-      timeViewEnd: viewModel.timeView.end,
-      viewPixelWidth: interactionState.viewSize.width,
-      pixelOffsetFromLeft: currentPosition.x,
+    final endOffsetRaw = max(
+      0.0,
+      pixelsToTime(
+        timeViewStart: viewModel.timeView.start,
+        timeViewEnd: viewModel.timeView.end,
+        viewPixelWidth: interactionState.viewSize.width,
+        pixelOffsetFromLeft: currentPosition.x,
+      ),
     );
 
     final divisionChanges = arrangerStateMachine.divisionChanges();
@@ -736,6 +741,11 @@ class ArrangerCreateClipState
       endOffset: endOffset,
       color: track.color.colorShifter.clipBase.toColor().withValues(alpha: 0.5),
     );
+
+    // Clear the cursor once we have a real clip create hint
+    if ((endOffset - startOffset).abs() > 0) {
+      viewModel.cursorLocation = null;
+    }
   }
 }
 
