@@ -213,22 +213,88 @@ class ProjectController {
     );
   }
 
-  void addTrack([int? index]) {
+  void addTrack() {
     project.execute(
       TrackAddRemoveCommand.add(
         project: project,
-        tracks: [
-          .new(index: index, isSendTrack: false, trackType: .instrument),
-        ],
+        tracks: [.new(isSendTrack: false, trackType: .instrument)],
       ),
     );
   }
 
-  void addSendTrack([int? index]) {
+  void addSendTrack() {
     project.execute(
       TrackAddRemoveCommand.add(
         project: project,
-        tracks: [.new(index: index, isSendTrack: true, trackType: .instrument)],
+        tracks: [.new(isSendTrack: true, trackType: .instrument)],
+      ),
+    );
+  }
+
+  void insertTrackAt(Id anchorTrackId) {
+    final anchorTrack = project.tracks[anchorTrackId];
+
+    if (anchorTrack == null) {
+      throw StateError(
+        'ProjectController.insertTrackAt(): Track $anchorTrackId not found.',
+      );
+    }
+
+    final anchorIsSendTrack = isSendTrack(anchorTrackId);
+
+    Id? parentTrackId;
+    int? index;
+
+    if (anchorTrack.type == TrackType.group) {
+      parentTrackId = anchorTrack.id;
+      index = anchorTrack.childTracks.length;
+    } else if (anchorTrack.parentTrackId != null) {
+      parentTrackId = anchorTrack.parentTrackId;
+      final parentTrack = project.tracks[parentTrackId];
+
+      if (parentTrack == null) {
+        throw StateError(
+          'ProjectController.insertTrackAt(): Parent track '
+          '$parentTrackId not found for track $anchorTrackId.',
+        );
+      }
+
+      final anchorIndex = parentTrack.childTracks.indexOf(anchorTrackId);
+      if (anchorIndex == -1) {
+        throw StateError(
+          'ProjectController.insertTrackAt(): Track $anchorTrackId not found '
+          'in child list of parent track $parentTrackId.',
+        );
+      }
+
+      index = anchorIndex + 1;
+    } else {
+      final topLevelOrder = anchorIsSendTrack
+          ? project.sendTrackOrder
+          : project.trackOrder;
+      final anchorIndex = topLevelOrder.indexOf(anchorTrackId);
+
+      if (anchorIndex == -1) {
+        throw StateError(
+          'ProjectController.insertTrackAt(): Top-level track '
+          '$anchorTrackId not found in ${anchorIsSendTrack ? 'sendTrackOrder' : 'trackOrder'}.',
+        );
+      }
+
+      index = anchorIndex + 1;
+    }
+
+    project.execute(
+      TrackAddRemoveCommand.add(
+        project: project,
+        tracks: [
+          .new(
+            index: index,
+            isSendTrack: anchorIsSendTrack,
+            trackType: .instrument,
+            parentTrackId: parentTrackId,
+          ),
+        ],
       ),
     );
   }

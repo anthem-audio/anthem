@@ -18,9 +18,14 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/commands/command.dart';
 import 'package:anthem/logic/project_controller.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
+import 'package:anthem/widgets/editors/arranger/view_model.dart';
+import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -145,6 +150,167 @@ void main() {
       expect(projectController.canGroupTracks([trackB.id, trackM.id]), isFalse);
 
       expect(projectController.canGroupTracks([trackL.id, trackM.id]), isTrue);
+    });
+  });
+
+  group('insertTrackAt()', () {
+    final projectId = getId();
+
+    late MockProjectModel project;
+    late ProjectController projectController;
+
+    late AnthemObservableMap<Id, TrackModel> tracks;
+    late AnthemObservableList<Id> trackOrder;
+    late AnthemObservableList<Id> sendTrackOrder;
+
+    late TrackModel regularGroup;
+    late TrackModel regularChildA;
+    late TrackModel regularChildB;
+    late TrackModel regularTopA;
+    late TrackModel regularTopB;
+
+    late TrackModel sendGroup;
+    late TrackModel sendChild;
+    late TrackModel sendTop;
+    late TrackModel masterTrack;
+
+    TrackModel createTrack(String name, TrackType type) {
+      return TrackModel(name: name, color: AnthemColor.randomHue(), type: type);
+    }
+
+    setUp(() {
+      project = MockProjectModel();
+      when(project.id).thenReturn(projectId);
+
+      tracks = AnthemObservableMap();
+      trackOrder = AnthemObservableList();
+      sendTrackOrder = AnthemObservableList();
+
+      when(project.tracks).thenReturn(tracks);
+      when(project.trackOrder).thenReturn(trackOrder);
+      when(project.sendTrackOrder).thenReturn(sendTrackOrder);
+
+      regularGroup = createTrack('Regular Group', .group);
+      regularChildA = createTrack('Regular Child A', .instrument);
+      regularChildB = createTrack('Regular Child B', .instrument);
+      regularTopA = createTrack('Regular Top A', .instrument);
+      regularTopB = createTrack('Regular Top B', .instrument);
+
+      sendGroup = createTrack('Send Group', .group);
+      sendChild = createTrack('Send Child', .instrument);
+      sendTop = createTrack('Send Top', .instrument);
+      masterTrack = createTrack('Master', .instrument);
+
+      tracks.addAll({
+        regularGroup.id: regularGroup,
+        regularChildA.id: regularChildA,
+        regularChildB.id: regularChildB,
+        regularTopA.id: regularTopA,
+        regularTopB.id: regularTopB,
+        sendGroup.id: sendGroup,
+        sendChild.id: sendChild,
+        sendTop.id: sendTop,
+        masterTrack.id: masterTrack,
+      });
+
+      regularGroup.childTracks.addAll([regularChildA.id, regularChildB.id]);
+      regularChildA.parentTrackId = regularGroup.id;
+      regularChildB.parentTrackId = regularGroup.id;
+
+      sendGroup.childTracks.add(sendChild.id);
+      sendChild.parentTrackId = sendGroup.id;
+
+      trackOrder.addAll([regularGroup.id, regularTopA.id, regularTopB.id]);
+      sendTrackOrder.addAll([sendGroup.id, sendTop.id, masterTrack.id]);
+
+      final arrangerViewModel = ArrangerViewModel(
+        project: project,
+        baseTrackHeight: 40,
+        timeView: TimeRange(0, 4),
+      );
+      ServiceRegistry.forProject(
+        projectId,
+      ).register<ArrangerViewModel>(arrangerViewModel);
+
+      when(project.execute(any)).thenAnswer((invocation) {
+        final command = invocation.positionalArguments[0] as Command;
+        command.execute(project);
+      });
+
+      projectController = ProjectController(project, MockProjectViewModel());
+    });
+
+    tearDown(() {
+      ServiceRegistry.removeProject(projectId);
+    });
+
+    test('group anchor inserts at end of group', () {
+      final oldChildren = List<Id>.from(regularGroup.childTracks);
+
+      projectController.insertTrackAt(regularGroup.id);
+
+      expect(regularGroup.childTracks.length, equals(oldChildren.length + 1));
+      expect(regularGroup.childTracks.take(oldChildren.length), oldChildren);
+
+      final newTrackId = regularGroup.childTracks.last;
+      final newTrack = tracks[newTrackId];
+      expect(newTrack, isNotNull);
+      expect(newTrack!.parentTrackId, equals(regularGroup.id));
+      expect(newTrack.type, equals(TrackType.instrument));
+    });
+
+    test('regular child anchor inserts below within parent group', () {
+      final oldChildren = List<Id>.from(regularGroup.childTracks);
+      final anchorIndex = oldChildren.indexOf(regularChildA.id);
+
+      projectController.insertTrackAt(regularChildA.id);
+
+      expect(regularGroup.childTracks.length, equals(oldChildren.length + 1));
+
+      final newTrackId = regularGroup.childTracks[anchorIndex + 1];
+      final newTrack = tracks[newTrackId];
+      expect(newTrack, isNotNull);
+      expect(newTrack!.parentTrackId, equals(regularGroup.id));
+
+      expect(regularGroup.childTracks[anchorIndex], equals(regularChildA.id));
+      expect(
+        regularGroup.childTracks[anchorIndex + 2],
+        equals(regularChildB.id),
+      );
+    });
+
+    test('top-level regular anchor inserts below in trackOrder', () {
+      final oldTrackOrder = List<Id>.from(trackOrder);
+      final anchorIndex = oldTrackOrder.indexOf(regularTopA.id);
+
+      projectController.insertTrackAt(regularTopA.id);
+
+      expect(trackOrder.length, equals(oldTrackOrder.length + 1));
+
+      final newTrackId = trackOrder[anchorIndex + 1];
+      final newTrack = tracks[newTrackId];
+      expect(newTrack, isNotNull);
+      expect(newTrack!.parentTrackId, isNull);
+
+      expect(trackOrder[anchorIndex], equals(regularTopA.id));
+      expect(trackOrder[anchorIndex + 2], equals(regularTopB.id));
+    });
+
+    test('top-level send anchor inserts below in sendTrackOrder', () {
+      final oldSendTrackOrder = List<Id>.from(sendTrackOrder);
+      final anchorIndex = oldSendTrackOrder.indexOf(sendTop.id);
+
+      projectController.insertTrackAt(sendTop.id);
+
+      expect(sendTrackOrder.length, equals(oldSendTrackOrder.length + 1));
+
+      final newTrackId = sendTrackOrder[anchorIndex + 1];
+      final newTrack = tracks[newTrackId];
+      expect(newTrack, isNotNull);
+      expect(newTrack!.parentTrackId, isNull);
+
+      expect(sendTrackOrder[anchorIndex], equals(sendTop.id));
+      expect(sendTrackOrder[anchorIndex + 2], equals(masterTrack.id));
     });
   });
 }

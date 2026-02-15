@@ -79,6 +79,15 @@ class TrackHeader extends StatelessObserverWidget {
         e.globalPosition,
         MenuDef(
           children: [
+            AnthemMenuItem(
+              text: 'Insert track',
+              hint: track.type == .group
+                  ? 'Add a track at the end of this group'
+                  : 'Insert a track below this track',
+              onSelected: () {
+                projectController.insertTrackAt(track.id);
+              },
+            ),
             if (viewModel.selectedTracks.length == 1)
               AnthemMenuItem(
                 text: 'Delete',
