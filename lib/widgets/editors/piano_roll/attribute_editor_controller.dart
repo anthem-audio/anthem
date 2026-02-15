@@ -66,9 +66,7 @@ class AttributeEditorController {
 
     if (pattern == null) return;
 
-    final notes = pattern.notes[project.activeInstrumentID];
-
-    if (notes == null || notes.isEmpty) return;
+    final notes = pattern.notes;
 
     final hasSelectedNotes = viewModel.selectedNotes.isNotEmpty;
 
@@ -193,7 +191,6 @@ class AttributeEditorController {
         .map(
           (noteID) => SetNoteAttributeCommand(
             patternID: pattern.id,
-            generatorID: project.activeInstrumentID!,
             noteID: noteID,
             attribute: attribute,
             oldValue: oldValues[noteID]!,

@@ -19,6 +19,24 @@
 
 part of 'pattern.dart';
 
+// A note here, since I'm likely to return to this later.
+//
+// We have an operation in the engine, called "sequence compiling", that takes
+// each sequence that we may want to play back - every pattern and the full
+// arrangement - and "compiles" them into flat event lists for each track.
+//
+// The codebase is currently transitioning to a track-first system, where
+// previously tracks and instruments were separate and could have a many-to-many
+// relationship.
+//
+// This transition is happening with the UI first. This file deals with signals
+// we send to the engine in order to trigger sequence recompiling, but since we
+// are fundamentally changing the layout of everything, this will change too,
+// but I can't yet predict how. For this reason, I am disabling this behavior
+// for now, until the UI transition is finished.
+
+/*
+
 mixin _PatternCompilerMixin on _PatternModel {
   void _recompileOnNotesAddedOrRemoved(
     String channelId,
@@ -220,3 +238,5 @@ mixin _PatternCompilerMixin on _PatternModel {
     });
   }
 }
+
+*/

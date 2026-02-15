@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,36 +22,24 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem_codegen/include.dart';
 
-void _addNote(PatternModel pattern, Id generatorID, NoteModel note) {
-  if (!pattern.notes.containsKey(generatorID)) {
-    pattern.notes[generatorID] = AnthemObservableList();
-  }
-
-  pattern.notes[generatorID]!.add(note);
+void _addNote(PatternModel pattern, NoteModel note) {
+  pattern.notes.add(note);
 }
 
-void _removeNote(PatternModel pattern, Id generatorID, Id noteID) {
-  pattern.notes[generatorID]!.removeWhere((element) => element.id == noteID);
+void _removeNote(PatternModel pattern, Id noteID) {
+  pattern.notes.removeWhere((element) => element.id == noteID);
 }
 
-NoteModel _getNote(PatternModel pattern, Id generatorID, Id noteID) {
-  return pattern.notes[generatorID]!.firstWhere(
-    (element) => element.id == noteID,
-  );
+NoteModel _getNote(PatternModel pattern, Id noteID) {
+  return pattern.notes.firstWhere((element) => element.id == noteID);
 }
 
 class AddNoteCommand extends Command {
   Id patternID;
-  Id generatorID;
   NoteModel note;
 
-  AddNoteCommand({
-    required this.patternID,
-    required this.generatorID,
-    required this.note,
-  });
+  AddNoteCommand({required this.patternID, required this.note});
 
   @override
   void execute(ProjectModel project) {
@@ -61,7 +49,7 @@ class AddNoteCommand extends Command {
       return;
     }
 
-    _addNote(pattern, generatorID, note);
+    _addNote(pattern, note);
   }
 
   @override
@@ -72,20 +60,15 @@ class AddNoteCommand extends Command {
       return;
     }
 
-    _removeNote(pattern, generatorID, note.id);
+    _removeNote(pattern, note.id);
   }
 }
 
 class DeleteNoteCommand extends Command {
   Id patternID;
-  Id generatorID;
   NoteModel note;
 
-  DeleteNoteCommand({
-    required this.patternID,
-    required this.generatorID,
-    required this.note,
-  });
+  DeleteNoteCommand({required this.patternID, required this.note});
 
   @override
   void execute(ProjectModel project) {
@@ -95,7 +78,7 @@ class DeleteNoteCommand extends Command {
       return;
     }
 
-    _removeNote(pattern, generatorID, note.id);
+    _removeNote(pattern, note.id);
   }
 
   @override
@@ -106,7 +89,7 @@ class DeleteNoteCommand extends Command {
       return;
     }
 
-    _addNote(pattern, generatorID, note);
+    _addNote(pattern, note);
   }
 }
 
@@ -114,7 +97,6 @@ enum NoteAttribute { key, offset, length, velocity, pan }
 
 class SetNoteAttributeCommand extends Command {
   Id patternID;
-  Id generatorID;
   Id noteID;
   NoteAttribute attribute;
   num oldValue;
@@ -122,7 +104,6 @@ class SetNoteAttributeCommand extends Command {
 
   SetNoteAttributeCommand({
     required this.patternID,
-    required this.generatorID,
     required this.noteID,
     required this.attribute,
     required this.oldValue,
@@ -157,7 +138,7 @@ class SetNoteAttributeCommand extends Command {
       return;
     }
 
-    final note = _getNote(pattern, generatorID, noteID);
+    final note = _getNote(pattern, noteID);
 
     setAttribute(note, newValue);
   }
@@ -170,7 +151,7 @@ class SetNoteAttributeCommand extends Command {
       return;
     }
 
-    final note = _getNote(pattern, generatorID, noteID);
+    final note = _getNote(pattern, noteID);
 
     setAttribute(note, oldValue);
   }

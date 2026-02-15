@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -29,7 +29,7 @@ import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
-import 'package:anthem/model/shared/invalidation_range_collector.dart';
+// import 'package:anthem/model/shared/invalidation_range_collector.dart';
 import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes_render_cache.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
@@ -47,14 +47,57 @@ part 'package:anthem/widgets/basic/clip/clip_title_render_cache_mixin.dart';
 part 'package:anthem/widgets/basic/clip/clip_notes_render_cache_mixin.dart';
 part 'pattern_compiler_mixin.dart';
 
+/// The primary container for events.
+///
+/// From a user-facing perspective, events in the arranger live inside clips.
+/// But from an implementation perspective, clips are always just windows into
+/// something else. This model, which we call a "pattern", is that "something
+/// else". The pattern is the container that actually holds events for clips.
+/// When you double-click on a clip with notes, for example, the piano roll
+/// opens with a view directly into the pattern.
+///
+/// The purpose for this separation is two-fold:
+///
+/// First, clips provide the offset of this content in the viewer, and indicate
+/// which track the content lives on. They also provide start and end points for
+/// the content, allowing non-destructive resizing of the clip (e.g. chopping
+/// audio as a use-case) without affecting the underlying content. This makes
+/// clips an arranger-first concept. Patterns are the underlying content, and
+/// are modified by editors that (mostly) do not care where or how that
+/// container is instanced in the arranger.
+///
+/// Second, patterns and clips may be one-to-many. For each pattern, multiple
+/// clips may exist in the arrangement. This allows for a number of powerful
+/// use-cases, including:
+/// - Content that loops can exist as multiple clips of a pattern with that
+///   content, so that editing the pattern affects all instances of the clip
+/// - The same notes can be placed on multiple tracks, where again, editing the
+///   base content affects both clips
+/// - Audio content can be sequenced in a pattern, and then instanced on
+///   multiple tracks
+///
+/// Patterns can contain any of the following:
+/// - Note events
+/// - Audio events
+/// - Automation events
+/// - References to other clips
+/// - For patterns on group tracks, references to clips on specific tracks
+///
+/// Note that free clips can technically contain any content as far as the
+/// engine is concerned, but we only use this feature for enabling the audio
+/// detail editor's functionality. This is important because UI render
+/// optimization is a challenge, so we don't make an attempt to render for cases
+/// we do not support. As an example, for a clip that points to a given pattern,
+/// we only render notes that are in the notes list below, not notes that are in
+/// the free clips list.
 @AnthemModel.syncedModel()
 class PatternModel extends _PatternModel
     with
         _$PatternModel,
         _$PatternModelAnthemModelMixin,
         _ClipTitleRenderCacheMixin,
-        _ClipNotesRenderCacheMixin,
-        _PatternCompilerMixin {
+        _ClipNotesRenderCacheMixin
+/*_PatternCompilerMixin*/ {
   /// Action to tell the engine to send new loop points to the audio thread.
   late final _updateLoopPointsAction = MicrotaskDebouncedAction(() {
     final engine = project.engine;
@@ -66,14 +109,19 @@ class PatternModel extends _PatternModel
     project.engine.sequencerApi.updateLoopPoints(id);
   });
 
+  /// Constructs a blank and invalid pattern.
+  ///
+  /// Used for serialization and deserialization.
   PatternModel() : super();
 
+  /// Creates a [PatternModel].
+  ///
+  /// This is the primary entry point when creating a new pattern in the
+  /// software. Note that JSON serialization and
   PatternModel.create({required super.name}) : super.create() {
     _init();
 
     onModelFirstAttached(() {
-      // I had a todo comment to remove this, but I have no idea why, so I'm
-      // leaving this comment instead. ¯\_(ツ)_/¯
       for (final generator in project.generators.values.where(
         (generator) => generator.generatorType == GeneratorType.automation,
       )) {
@@ -103,26 +151,26 @@ class PatternModel extends _PatternModel
 
       // Make sure the engine knows about this sequence when it is created, in
       // case it is created from project load or undo/redo
-      _channelsToCompile.addAll(channelsWithContent);
-      _schedulePatternCompile(false);
+      // _channelsToCompile.addAll(channelsWithContent);
+      // _schedulePatternCompile(false);
 
       // When notes are changed in the pattern, we need to:
       //   1. Update the clip notes render cache.
       //   2. Tell the engine to re-compile all relevant sequences.
 
       // Notes added or removed
-      onChange((b) => b.notes.anyValue.anyElement, (e) {
-        _recompileOnNotesAddedOrRemoved(
-          e.fieldAccessors[1].key as String,
-          e.operation.oldValue as NoteModel?,
-          e.operation.newValue as NoteModel?,
-        );
-      });
+      // onChange((b) => b.notes.anyElement, (e) {
+      //   _recompileOnNotesAddedOrRemoved(
+      //     e.fieldAccessors[1].key as String,
+      //     e.operation.oldValue as NoteModel?,
+      //     e.operation.newValue as NoteModel?,
+      //   );
+      // });
 
       // Note attributes changed
-      onChange((b) => b.notes.anyValue.anyElement.anyField, (e) {
-        _recompileOnNoteFieldChanged(e.fieldAccessors, e.operation);
-      });
+      // onChange((b) => b.notes.anyElement.anyField, (e) {
+      //   _recompileOnNoteFieldChanged(e.fieldAccessors, e.operation);
+      // });
 
       // When notes change, we also need to update the clip notes render cache
       // and the clip's default width.
@@ -152,8 +200,7 @@ class PatternModel extends _PatternModel
     });
   }
 
-  Iterable<String> get channelsWithContent =>
-      notes.keys.followedBy(automationLanes.keys);
+  Iterable<String> get channelsWithContent => automationLanes.keys;
 }
 
 abstract class _PatternModel
@@ -166,10 +213,8 @@ abstract class _PatternModel
   @anthemObservable
   AnthemColor color = AnthemColor(hue: 0);
 
-  /// The ID here is channel ID `Map<ChannelID, List<NoteModel>>`
   @anthemObservable
-  AnthemObservableMap<Id, AnthemObservableList<NoteModel>> notes =
-      AnthemObservableMap();
+  AnthemObservableList<NoteModel> notes = AnthemObservableList();
 
   /// The ID here is channel ID
   @anthemObservable
@@ -208,13 +253,10 @@ abstract class _PatternModel
     // ticksPerQuarter must be divisible by [0.25, 0.5, 1, 2, 4, 8].
     assert(ticksPerBarDouble == ticksPerBar);
 
-    final lastNoteContent = notes.values
-        .expand((e) => e)
-        .fold<int>(
-          ticksPerBar * barMultiple * minPaddingInBarMultiples,
-          (previousValue, note) =>
-              max(previousValue, (note.offset + note.length)),
-        );
+    final lastNoteContent = notes.fold<int>(
+      ticksPerBar * barMultiple * minPaddingInBarMultiples,
+      (previousValue, note) => max(previousValue, (note.offset + note.length)),
+    );
 
     final lastAutomationContent = automationLanes.values.fold<int>(
       ticksPerBar * barMultiple * minPaddingInBarMultiples,

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -35,7 +35,6 @@ mixin _ClipNotesRenderCacheMixin on _PatternModel {
     for (final generatorID in project.generatorOrder) {
       clipNotesRenderCache[generatorID] ??= ClipNotesRenderCache(
         pattern: this as PatternModel,
-        generatorID: generatorID,
       );
       clipNotesRenderCache[generatorID]!.update();
     }

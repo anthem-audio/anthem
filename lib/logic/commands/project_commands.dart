@@ -119,9 +119,9 @@ void _addGenerator(
 
   // Add back sequence data for this generator to all patterns
   for (final pattern in project.sequence.patterns.values) {
-    if (notes != null && notes.containsKey(pattern.id)) {
-      pattern.notes[generator.id] = notes[pattern.id]!;
-    }
+    // if (notes != null && notes.containsKey(pattern.id)) {
+    //   pattern.notes[generator.id] = notes[pattern.id]!;
+    // }
 
     if (automationLanes != null && automationLanes.containsKey(pattern.id)) {
       pattern.automationLanes[generator.id] = automationLanes[pattern.id]!;
@@ -151,9 +151,9 @@ void _removeGenerator(ProjectModel project, Id generatorID) {
 
   // Remove sequence data for this generator from all patterns
   for (final pattern in project.sequence.patterns.values) {
-    if (pattern.notes.containsKey(generatorID)) {
-      pattern.notes.remove(generatorID);
-    }
+    // if (pattern.notes.containsKey(generatorID)) {
+    //   pattern.notes.remove(generatorID);
+    // }
 
     if (pattern.automationLanes.containsKey(generatorID)) {
       pattern.automationLanes.remove(generatorID);
@@ -267,11 +267,11 @@ class RemoveGeneratorCommand extends Command {
     index = project.generatorOrder.indexOf(generator.id);
 
     notes = {};
-    for (final pattern in project.sequence.patterns.values) {
-      if (pattern.notes.containsKey(generator.id)) {
-        notes![pattern.id] = pattern.notes[generator.id]!;
-      }
-    }
+    // for (final pattern in project.sequence.patterns.values) {
+    //   if (pattern.notes.containsKey(generator.id)) {
+    //     notes![pattern.id] = pattern.notes[generator.id]!;
+    //   }
+    // }
 
     automationLanes = {};
     for (final pattern in project.sequence.patterns.values) {

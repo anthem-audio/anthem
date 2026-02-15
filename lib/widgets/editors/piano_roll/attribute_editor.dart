@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -304,7 +304,7 @@ class _PianoRollAttributePainter extends CustomPainterObserver {
       canvas.drawRect(rect, minorLinePaint);
     }
 
-    final notes = activePattern?.notes[project.activeInstrumentID];
+    final notes = activePattern?.notes;
 
     if (notes == null) return;
 

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -63,9 +63,8 @@ class _PianoRollController {
     required int offset,
     required double pan,
   }) {
-    if (project.sequence.activePatternID == null ||
-        project.activeInstrumentID == null) {
-      throw Exception('Active pattern and/or active generator are not set');
+    if (project.sequence.activePatternID == null) {
+      throw StateError('Active pattern is not set');
     }
 
     final note = NoteModel(
@@ -77,11 +76,7 @@ class _PianoRollController {
     );
 
     project.execute(
-      AddNoteCommand(
-        patternID: project.sequence.activePatternID!,
-        generatorID: project.activeInstrumentID!,
-        note: note,
-      ),
+      AddNoteCommand(patternID: project.sequence.activePatternID!, note: note),
     );
 
     return note;
@@ -150,12 +145,11 @@ class _PianoRollController {
     final commands = project
         .sequence
         .patterns[project.sequence.activePatternID]!
-        .notes[project.activeInstrumentID]!
+        .notes
         .where((note) => viewModel.selectedNotes.contains(note.id))
         .map((note) {
           return DeleteNoteCommand(
             patternID: project.sequence.activePatternID!,
-            generatorID: project.activeInstrumentID!,
             note: note,
           );
         })
@@ -176,10 +170,7 @@ class _PianoRollController {
     }
 
     viewModel.selectedNotes = ObservableSet.of(
-      project
-          .sequence
-          .patterns[project.sequence.activePatternID]!
-          .notes[project.activeInstrumentID]!
+      project.sequence.patterns[project.sequence.activePatternID]!.notes
           .map((note) => note.id)
           .toSet(),
     );

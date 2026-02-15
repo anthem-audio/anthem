@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -97,8 +97,7 @@ class PianoRollPainter extends CustomPainterObserver {
     final pattern = project.sequence.patterns[project.sequence.activePatternID];
     if (pattern == null) return;
 
-    final notes = pattern.notes[project.activeInstrumentID];
-    if (notes == null) return;
+    final notes = pattern.notes;
 
     notes.observeAllChanges();
 

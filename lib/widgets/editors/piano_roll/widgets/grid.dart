@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -153,27 +153,26 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
 
     // Row highlight for pressed note
     if (viewModel.pressedNote != null && activePattern != null) {
-      final notes = activePattern.notes[project.activeInstrumentID];
-      if (notes != null) {
-        final key = notes
-            .firstWhere((note) => note.id == viewModel.pressedNote)
-            .key;
+      final notes = activePattern.notes;
 
-        final keyHeight = viewModel.keyHeight;
+      final key = notes
+          .firstWhere((note) => note.id == viewModel.pressedNote)
+          .key;
 
-        final y = keyValueToPixels(
-          keyValue: key.toDouble(),
-          keyValueAtTop: keyValueAtTop,
-          keyHeight: keyHeight,
-        );
+      final keyHeight = viewModel.keyHeight;
 
-        final isBlackKey = getKeyType(key) == KeyType.black;
+      final y = keyValueToPixels(
+        keyValue: key.toDouble(),
+        keyValueAtTop: keyValueAtTop,
+        keyHeight: keyHeight,
+      );
 
-        canvas.drawRect(
-          Rect.fromLTWH(0, y - keyHeight, size.width, keyHeight),
-          Paint()..color = Color(isBlackKey ? 0x16FFFFFF : 0x10FFFFFF),
-        );
-      }
+      final isBlackKey = getKeyType(key) == KeyType.black;
+
+      canvas.drawRect(
+        Rect.fromLTWH(0, y - keyHeight, size.width, keyHeight),
+        Paint()..color = Color(isBlackKey ? 0x16FFFFFF : 0x10FFFFFF),
+      );
     }
   }
 
