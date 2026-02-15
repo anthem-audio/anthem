@@ -127,49 +127,30 @@ class ArrangerContentPainter extends CustomPainterObserver {
   }
 
   void _drawClipCreateHint(Canvas canvas, Size size) {
-    if (viewModel.clipCreateHint != null) {
-      final (:trackId, :startOffset, :endOffset, :color) =
-          viewModel.clipCreateHint!;
-
-      final startX = timeToPixels(
-        time: startOffset,
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        viewPixelWidth: size.width,
-      );
-      final endX = timeToPixels(
-        time: endOffset,
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        viewPixelWidth: size.width,
-      );
-
-      final left = startX < endX ? startX : endX;
-      final width = (endX - startX).abs();
-
-      if (width > 0) {
-        final trackIndex = viewModel.trackPositionCalculator.trackIdToIndex(
-          trackId,
-        );
-        final trackPos = viewModel.trackPositionCalculator.getTrackPosition(
-          trackIndex,
-        );
-        final trackHeight =
-            viewModel.trackPositionCalculator.getTrackHeight(trackIndex) - 1;
-        final contentTop = trackPos;
-
-        canvas.drawRect(
-          Rect.fromLTWH(left, contentTop, width, trackHeight),
-          Paint()..color = color,
-        );
-      }
+    if (viewModel.clipCreateHint == null) {
+      return;
     }
-  }
 
-  void _drawCursor(Canvas canvas, Size size) {
-    if (viewModel.cursorLocation != null) {
-      final (offset, trackId) = viewModel.cursorLocation!;
+    final (:trackId, :startOffset, :endOffset, :color) =
+        viewModel.clipCreateHint!;
 
+    final startX = timeToPixels(
+      time: startOffset,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      viewPixelWidth: size.width,
+    );
+    final endX = timeToPixels(
+      time: endOffset,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      viewPixelWidth: size.width,
+    );
+
+    final left = (startX < endX ? startX : endX) + 1;
+    final width = (endX - startX).abs() - 1;
+
+    if (width > 0) {
       final trackIndex = viewModel.trackPositionCalculator.trackIdToIndex(
         trackId,
       );
@@ -180,20 +161,59 @@ class ArrangerContentPainter extends CustomPainterObserver {
           viewModel.trackPositionCalculator.getTrackHeight(trackIndex) - 1;
       final contentTop = trackPos;
 
-      final rect = Rect.fromLTWH(
-        timeToPixels(
-          time: offset,
-          timeViewStart: timeViewStart,
-          timeViewEnd: timeViewEnd,
-          viewPixelWidth: size.width,
-        ),
-        contentTop,
-        1.0,
-        trackHeight,
-      );
+      final rect = Rect.fromLTWH(left, contentTop, width, trackHeight);
 
-      canvas.drawRect(rect, Paint()..color = AnthemTheme.editors.playheadLine);
+      canvas.drawRect(rect, Paint()..color = color);
+
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..style = .stroke
+          ..color = color.withAlpha(255)
+          ..strokeWidth = 1,
+      );
     }
+  }
+
+  void _drawCursor(Canvas canvas, Size size) {
+    if (viewModel.cursorLocation == null) {
+      return;
+    }
+
+    if (viewModel.clipCreateHint != null) {
+      final (:trackId, :startOffset, :endOffset, :color) =
+          viewModel.clipCreateHint!;
+
+      if (startOffset != endOffset) {
+        return;
+      }
+    }
+
+    final (offset, trackId) = viewModel.cursorLocation!;
+
+    final trackIndex = viewModel.trackPositionCalculator.trackIdToIndex(
+      trackId,
+    );
+    final trackPos = viewModel.trackPositionCalculator.getTrackPosition(
+      trackIndex,
+    );
+    final trackHeight =
+        viewModel.trackPositionCalculator.getTrackHeight(trackIndex) - 1;
+    final contentTop = trackPos;
+
+    final rect = Rect.fromLTWH(
+      timeToPixels(
+        time: offset,
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: size.width,
+      ),
+      contentTop,
+      1.0,
+      trackHeight,
+    );
+
+    canvas.drawRect(rect, Paint()..color = AnthemTheme.editors.playheadLine);
   }
 
   /// Paints the clips onto the arranger canvas.
