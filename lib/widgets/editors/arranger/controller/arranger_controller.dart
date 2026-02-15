@@ -103,6 +103,22 @@ abstract class _ArrangerController {
     stateMachine.onViewSizeChanged(viewSize);
   }
 
+  void onRenderedViewTransformChanged({
+    required double timeViewStart,
+    required double timeViewEnd,
+    required double verticalScrollPosition,
+  }) {
+    stateMachine.onRenderedViewTransformChanged(
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      verticalScrollPosition: verticalScrollPosition,
+    );
+  }
+
+  void onTrackLayoutChanged() {
+    stateMachine.onTrackLayoutChanged();
+  }
+
   void setBaseTrackHeight(double pointerY, double trackHeight) {
     final oldClampedTrackHeight = viewModel.baseTrackHeight.clamp(
       minTrackHeight,

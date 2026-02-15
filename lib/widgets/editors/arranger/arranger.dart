@@ -131,6 +131,15 @@ class _ArrangerState extends State<Arranger> {
                             editorHeight,
                           );
 
+                          // As of writing, the main purpose of this call is to
+                          // allow the state machine to react to certain edge
+                          // cases. For example, when two-finger scrolling on a
+                          // trackpad, the mouse cursor stays still, and so does
+                          // not emit hover events. However, we still want to
+                          // update the editor cursor position, and this call
+                          // enables part of that.
+                          controller.onTrackLayoutChanged();
+
                           return Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
@@ -413,8 +422,91 @@ class _ArrangerContentState extends State<_ArrangerContent>
 
   StreamSubscription<void>? baseTrackHeightChangedSub;
 
+  ArrangerController? _renderedViewTransformController;
+  double? _lastSyncedTimeViewStart;
+  double? _lastSyncedTimeViewEnd;
+  double? _lastSyncedVerticalScrollPosition;
+
+  void _syncRenderedViewTransform() {
+    if (!mounted) {
+      return;
+    }
+
+    final controller = _renderedViewTransformController;
+    final timeViewHelper = timeViewAnimationHelper;
+    final verticalHelper = verticalScrollPositionAnimationHelper;
+    if (controller == null ||
+        timeViewHelper == null ||
+        verticalHelper == null) {
+      return;
+    }
+
+    final [timeViewStartAnimItem, timeViewEndAnimItem] = timeViewHelper.items;
+    final [verticalScrollPositionAnimItem] = verticalHelper.items;
+
+    final timeViewStart = timeViewStartAnimItem.animation.value;
+    final timeViewEnd = timeViewEndAnimItem.animation.value;
+    final verticalScrollPosition =
+        verticalScrollPositionAnimItem.animation.value;
+
+    if (_lastSyncedTimeViewStart == timeViewStart &&
+        _lastSyncedTimeViewEnd == timeViewEnd &&
+        _lastSyncedVerticalScrollPosition == verticalScrollPosition) {
+      return;
+    }
+
+    _lastSyncedTimeViewStart = timeViewStart;
+    _lastSyncedTimeViewEnd = timeViewEnd;
+    _lastSyncedVerticalScrollPosition = verticalScrollPosition;
+
+    controller.onRenderedViewTransformChanged(
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      verticalScrollPosition: verticalScrollPosition,
+    );
+  }
+
+  void _detachRenderedViewTransformListeners() {
+    final timeViewHelper = timeViewAnimationHelper;
+    if (timeViewHelper != null) {
+      timeViewHelper.animationController.removeListener(
+        _syncRenderedViewTransform,
+      );
+    }
+
+    final verticalHelper = verticalScrollPositionAnimationHelper;
+    if (verticalHelper != null) {
+      verticalHelper.animationController.removeListener(
+        _syncRenderedViewTransform,
+      );
+    }
+  }
+
+  void _attachRenderedViewTransformListeners(ArrangerController controller) {
+    if (identical(_renderedViewTransformController, controller)) {
+      return;
+    }
+
+    _detachRenderedViewTransformListeners();
+
+    _renderedViewTransformController = controller;
+    _lastSyncedTimeViewStart = null;
+    _lastSyncedTimeViewEnd = null;
+    _lastSyncedVerticalScrollPosition = null;
+
+    timeViewAnimationHelper!.animationController.addListener(
+      _syncRenderedViewTransform,
+    );
+    verticalScrollPositionAnimationHelper!.animationController.addListener(
+      _syncRenderedViewTransform,
+    );
+
+    _syncRenderedViewTransform();
+  }
+
   @override
   void dispose() {
+    _detachRenderedViewTransformListeners();
     timeViewAnimationHelper?.dispose();
     verticalScrollPositionAnimationHelper?.dispose();
     baseTrackHeightChangedSub?.cancel();
@@ -466,6 +558,9 @@ class _ArrangerContentState extends State<_ArrangerContent>
 
     final [verticalScrollPositionAnimItem] =
         verticalScrollPositionAnimationHelper!.items;
+
+    _attachRenderedViewTransformListeners(controller);
+    _syncRenderedViewTransform();
 
     // Snap vertical scroll position when base track height is changed
     baseTrackHeightChangedSub ??= controller.onBaseTrackHeightChanged.stream

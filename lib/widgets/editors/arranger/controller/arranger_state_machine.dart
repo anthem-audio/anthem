@@ -46,6 +46,14 @@ class _ArrangerPointerUpSignal extends _ArrangerPointerSignal {
   const _ArrangerPointerUpSignal(super.event);
 }
 
+class _ArrangerViewTransformChangedSignal {
+  const _ArrangerViewTransformChangedSignal();
+}
+
+class _ArrangerTrackLayoutChangedSignal {
+  const _ArrangerTrackLayoutChangedSignal();
+}
+
 /// A state machine to manage user interactions in the arranger.
 ///
 /// This is the primary state machine for the arranger. It converts incoming
@@ -123,6 +131,28 @@ class ArrangerStateMachine
     });
   }
 
+  void onRenderedViewTransformChanged({
+    required double timeViewStart,
+    required double timeViewEnd,
+    required double verticalScrollPosition,
+  }) {
+    if (data.renderedTimeViewStart == timeViewStart &&
+        data.renderedTimeViewEnd == timeViewEnd &&
+        data.renderedVerticalScrollPosition == verticalScrollPosition) {
+      return;
+    }
+
+    data.renderedTimeViewStart = timeViewStart;
+    data.renderedTimeViewEnd = timeViewEnd;
+    data.renderedVerticalScrollPosition = verticalScrollPosition;
+
+    emitSignal(const _ArrangerViewTransformChangedSignal());
+  }
+
+  void onTrackLayoutChanged() {
+    emitSignal(const _ArrangerTrackLayoutChangedSignal());
+  }
+
   List<DivisionChange> divisionChanges() {
     return getDivisionChanges(
       viewWidthInPixels: data.viewSize.width,
@@ -130,8 +160,8 @@ class ArrangerStateMachine
       defaultTimeSignature: project.sequence.defaultTimeSignature,
       timeSignatureChanges: [],
       ticksPerQuarter: project.sequence.ticksPerQuarter,
-      timeViewStart: viewModel.timeView.start,
-      timeViewEnd: viewModel.timeView.end,
+      timeViewStart: data.renderedTimeViewStart,
+      timeViewEnd: data.renderedTimeViewEnd,
     );
   }
 
@@ -147,7 +177,10 @@ class ArrangerStateMachine
     required ProjectModel project,
     required ArrangerViewModel viewModel,
   }) {
-    final data = ArrangerStateMachineData();
+    final data = ArrangerStateMachineData()
+      ..renderedTimeViewStart = viewModel.timeView.start
+      ..renderedTimeViewEnd = viewModel.timeView.end
+      ..renderedVerticalScrollPosition = viewModel.verticalScrollPosition;
     final idleState = ArrangerIdleState();
     final dragState = ArrangerDragState(idleState);
     final createClipState = ArrangerCreateClipState(dragState);
@@ -162,12 +195,6 @@ class ArrangerStateMachine
       viewModel: viewModel,
     );
   }
-
-  // @override
-  // void dispose() {
-  //   super.dispose();
-  //   // some other stuff
-  // }
 }
 
 class ActivePointer {
@@ -197,6 +224,10 @@ class ArrangerStateMachineData {
   ActivePointer? hoveredPointer;
   int? activePrimaryPointerId;
   ActivePointer? activePrimaryPointerDownPosition;
+
+  double renderedTimeViewStart = 0;
+  double renderedTimeViewEnd = 0;
+  double renderedVerticalScrollPosition = 0;
 
   ActivePointer? get activePrimaryPointer {
     final pointerId = activePrimaryPointerId;
@@ -318,8 +349,13 @@ class ArrangerIdleState
 
     final (x, y) = coordinates;
 
+    final adjustedY =
+        y +
+        interactionState.renderedVerticalScrollPosition -
+        viewModel.verticalScrollPosition;
+
     final fractionalTrackIndex = viewModel.trackPositionCalculator
-        .getTrackIndexFromPosition(y);
+        .getTrackIndexFromPosition(adjustedY);
 
     if (fractionalTrackIndex.isInfinite) {
       viewModel.cursorLocation = null;
@@ -331,8 +367,8 @@ class ArrangerIdleState
     );
 
     final offset = pixelsToTime(
-      timeViewStart: viewModel.timeView.start,
-      timeViewEnd: viewModel.timeView.end,
+      timeViewStart: interactionState.renderedTimeViewStart,
+      timeViewEnd: interactionState.renderedTimeViewEnd,
       viewPixelWidth: interactionState.viewSize.width,
       pixelOffsetFromLeft: x,
     );
@@ -440,18 +476,27 @@ class ArrangerIdleState
 
   @override
   void onActive({required EditorStateMachineEvent event}) {
-    if (lastHoveredPointer != interactionState.hoveredPointer) {
-      updateHover();
-    }
+    var shouldUpdateHover =
+        lastHoveredPointer != interactionState.hoveredPointer;
 
     if (event is EditorStateMachineSignalEvent) {
       final signal = event.signal;
+      if (signal is _ArrangerViewTransformChangedSignal) {
+        shouldUpdateHover = true;
+      }
+      if (signal is _ArrangerTrackLayoutChangedSignal) {
+        shouldUpdateHover = true;
+      }
       if (signal is _ArrangerPointerDownSignal) {
         _handlePointerDownSignal(signal);
       }
       if (signal is _ArrangerPointerUpSignal) {
         _handlePointerUpSignal(signal);
       }
+    }
+
+    if (shouldUpdateHover) {
+      updateHover();
     }
   }
 }
