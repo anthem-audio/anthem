@@ -121,6 +121,45 @@ class ArrangerContentPainter extends CustomPainterObserver {
       block: () => _paintClips(canvas, size),
     );
 
+    if (viewModel.clipCreateHint != null) {
+      final (:trackId, :startOffset, :endOffset, :color) =
+          viewModel.clipCreateHint!;
+
+      final startX = timeToPixels(
+        time: startOffset,
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: size.width,
+      );
+      final endX = timeToPixels(
+        time: endOffset,
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: size.width,
+      );
+
+      final left = startX < endX ? startX : endX;
+      final width = (endX - startX).abs();
+
+      if (width > 0) {
+        final trackIndex = viewModel.trackPositionCalculator.trackIdToIndex(
+          trackId,
+        );
+        final trackPos = viewModel.trackPositionCalculator.getTrackPosition(
+          trackIndex,
+        );
+        final trackHeight = viewModel.trackPositionCalculator.getTrackHeight(
+          trackIndex,
+        );
+        final contentTop = trackPos - 1;
+
+        canvas.drawRect(
+          Rect.fromLTWH(left, contentTop, width, trackHeight),
+          Paint()..color = color,
+        );
+      }
+    }
+
     if (viewModel.cursorLocation != null) {
       final (offset, trackId) = viewModel.cursorLocation!;
 
@@ -133,6 +172,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
       final trackHeight = viewModel.trackPositionCalculator.getTrackHeight(
         trackIndex,
       );
+      final contentTop = trackPos - 1;
 
       final rect = Rect.fromLTWH(
         timeToPixels(
@@ -141,7 +181,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
           timeViewEnd: timeViewEnd,
           viewPixelWidth: size.width,
         ),
-        trackPos,
+        contentTop,
         1.0,
         trackHeight,
       );

@@ -79,12 +79,21 @@ abstract class _ArrangerViewModel with Store {
   @observable
   ObservableSet<Id> selectedClips = ObservableSet();
 
+  /// The clip that is currently being pressed, if any.
   @observable
   Id? pressedClip;
 
+  /// The position of the cursor that shows when you hover over a track.
   @observable
-  (double, Id)? cursorLocation;
+  (double offset, Id trackId)? cursorLocation;
 
+  /// The box that shows to indicate where a new clip will be created while
+  /// creating a clip.
+  @observable
+  ({Id trackId, double startOffset, double endOffset, Color color})?
+  clipCreateHint;
+
+  /// Calculates and caches the size and position of tracks in the current view.
   late final TrackPositionAndSize trackPositionCalculator;
 
   final visibleClips = CanvasAnnotationSet<({Id id})>();

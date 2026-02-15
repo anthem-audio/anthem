@@ -28,6 +28,24 @@ import 'package:flutter/widgets.dart';
 
 enum ArrangerModifierKey { ctrl, alt, shift }
 
+sealed class _ArrangerPointerSignal {
+  final ArrangerPointerEvent event;
+
+  const _ArrangerPointerSignal(this.event);
+}
+
+class _ArrangerPointerDownSignal extends _ArrangerPointerSignal {
+  const _ArrangerPointerDownSignal(super.event);
+}
+
+class _ArrangerPointerMoveSignal extends _ArrangerPointerSignal {
+  const _ArrangerPointerMoveSignal(super.event);
+}
+
+class _ArrangerPointerUpSignal extends _ArrangerPointerSignal {
+  const _ArrangerPointerUpSignal(super.event);
+}
+
 /// A state machine to manage user interactions in the arranger.
 ///
 /// This is the primary state machine for the arranger. It converts incoming
@@ -44,18 +62,21 @@ class ArrangerStateMachine
     updateData((data) {
       data.handlePointerDown(event);
     });
+    emitSignal(_ArrangerPointerDownSignal(event));
   }
 
   void onPointerMove(ArrangerPointerEvent event) {
     updateData((data) {
       data.handlePointerMove(event);
     });
+    emitSignal(_ArrangerPointerMoveSignal(event));
   }
 
   void onPointerUp(ArrangerPointerEvent event) {
     updateData((data) {
       data.handlePointerUp(event);
     });
+    emitSignal(_ArrangerPointerUpSignal(event));
   }
 
   void onEnter(PointerEnterEvent event) {
@@ -128,7 +149,10 @@ class ArrangerStateMachine
   }) {
     final data = ArrangerStateMachineData();
     final idleState = ArrangerIdleState();
-    final states = [idleState];
+    final dragState = ArrangerDragState(idleState);
+    final createClipState = ArrangerCreateClipState(dragState);
+    final selectionBoxState = ArrangerSelectionBoxState(dragState);
+    final states = [idleState, dragState, createClipState, selectionBoxState];
 
     return ArrangerStateMachine._(
       data: data,
@@ -171,6 +195,17 @@ class ArrangerStateMachineData {
 
   Map<int, ActivePointer> pointers = {};
   ActivePointer? hoveredPointer;
+  int? activePrimaryPointerId;
+  ActivePointer? activePrimaryPointerDownPosition;
+
+  ActivePointer? get activePrimaryPointer {
+    final pointerId = activePrimaryPointerId;
+    if (pointerId == null) {
+      return null;
+    }
+
+    return pointers[pointerId];
+  }
 
   bool isModifierPressed(ArrangerModifierKey modifier) {
     return switch (modifier) {
@@ -193,7 +228,14 @@ class ArrangerStateMachineData {
 
   void handlePointerDown(ArrangerPointerEvent event) {
     final pos = event.pointerEvent.localPosition;
-    pointers[event.pointerEvent.pointer] = .new(pos.dx, pos.dy);
+    final pointerEvent = event.pointerEvent;
+    pointers[pointerEvent.pointer] = .new(pos.dx, pos.dy);
+
+    if (pointerEvent is PointerDownEvent &&
+        pointerEvent.buttons & kPrimaryMouseButton == kPrimaryMouseButton) {
+      activePrimaryPointerId = pointerEvent.pointer;
+      activePrimaryPointerDownPosition = ActivePointer(pos.dx, pos.dy);
+    }
   }
 
   void handlePointerMove(ArrangerPointerEvent event) {
@@ -206,7 +248,13 @@ class ArrangerStateMachineData {
   }
 
   void handlePointerUp(ArrangerPointerEvent event) {
-    pointers.remove(event.pointerEvent.pointer);
+    final pointerId = event.pointerEvent.pointer;
+    pointers.remove(pointerId);
+
+    if (activePrimaryPointerId == pointerId) {
+      activePrimaryPointerId = null;
+      activePrimaryPointerDownPosition = null;
+    }
   }
 
   void handleEnter(PointerEnterEvent e) {}
@@ -224,6 +272,10 @@ class ArrangerStateMachineData {
 
 class ArrangerIdleState
     extends EditorStateMachineState<ArrangerStateMachineData> {
+  static const Duration _doubleClickThreshold = Duration(milliseconds: 500);
+  static const double _maxClickTravelDistance = 8;
+  static const double _maxDoubleClickDistance = 8;
+
   /// Convenience getter to fetch the base state machine object.
   ArrangerStateMachine get arrangerStateMachine =>
       stateMachine as ArrangerStateMachine;
@@ -238,18 +290,27 @@ class ArrangerIdleState
 
   ActivePointer? lastHoveredPointer;
 
-  /// Updates the current mouse hover position with a new one from [interactionState].
+  int? _activePrimaryPointerId;
+  Offset? _activePrimaryPointerDownPosition;
+
+  DateTime? _lastPrimaryClickTimestamp;
+  Offset? _lastPrimaryClickPosition;
+
+  bool doubleClickPressed = false;
+
+  /// Updates the current mouse hover position with a new one from
+  /// [interactionState].
   void updateHover() {
     lastHoveredPointer = interactionState.hoveredPointer?.clone();
 
-    updateCursor(
+    updateArrangerCursor(
       lastHoveredPointer == null
           ? null
           : (lastHoveredPointer!.x, lastHoveredPointer!.y),
     );
   }
 
-  void updateCursor((double x, double y)? coordinates) {
+  void updateArrangerCursor((double x, double y)? coordinates) {
     if (coordinates == null) {
       viewModel.cursorLocation = null;
       return;
@@ -287,17 +348,380 @@ class ArrangerIdleState
     viewModel.cursorLocation = (targetTime.toDouble(), trackId);
   }
 
+  void _clearActivePrimaryPointerTracking() {
+    _activePrimaryPointerId = null;
+    _activePrimaryPointerDownPosition = null;
+  }
+
+  void _handlePointerDownSignal(_ArrangerPointerDownSignal signal) {
+    final pointerEvent = signal.event.pointerEvent;
+    if (pointerEvent is! PointerDownEvent) {
+      return;
+    }
+
+    final isPrimaryClick =
+        pointerEvent.buttons & kPrimaryMouseButton == kPrimaryMouseButton;
+    if (!isPrimaryClick) {
+      return;
+    }
+
+    final clickTimestamp = DateTime.now();
+    final lastClickTimestamp = _lastPrimaryClickTimestamp;
+
+    final clickPosition = pointerEvent.localPosition;
+    final lastClickPosition = _lastPrimaryClickPosition;
+
+    final isDoubleClick =
+        lastClickTimestamp != null &&
+        clickTimestamp.difference(lastClickTimestamp) <=
+            _doubleClickThreshold &&
+        lastClickPosition != null &&
+        (clickPosition - lastClickPosition).distance <= _maxDoubleClickDistance;
+
+    if (isDoubleClick) {
+      doubleClickPressed = true;
+    }
+
+    _activePrimaryPointerId = pointerEvent.pointer;
+    _activePrimaryPointerDownPosition = pointerEvent.localPosition;
+  }
+
+  void _handlePointerUpSignal(_ArrangerPointerUpSignal signal) {
+    final wasDoubleClickPressed = doubleClickPressed;
+
+    final pointerEvent = signal.event.pointerEvent;
+    if (pointerEvent is PointerCancelEvent) {
+      doubleClickPressed = false;
+      _clearActivePrimaryPointerTracking();
+      return;
+    }
+
+    if (pointerEvent is! PointerUpEvent) {
+      return;
+    }
+
+    final activePointerId = _activePrimaryPointerId;
+    final pointerDownPosition = _activePrimaryPointerDownPosition;
+    if (activePointerId == null || pointerDownPosition == null) {
+      return;
+    }
+
+    if (activePointerId != pointerEvent.pointer) {
+      return;
+    }
+
+    doubleClickPressed = false;
+
+    final clickPosition = pointerEvent.localPosition;
+    final clickTravelDistance = (clickPosition - pointerDownPosition).distance;
+    _clearActivePrimaryPointerTracking();
+
+    if (clickTravelDistance > _maxClickTravelDistance) {
+      return;
+    }
+
+    final clickTimestamp = DateTime.now();
+
+    if (wasDoubleClickPressed) {
+      _lastPrimaryClickTimestamp = null;
+      _lastPrimaryClickPosition = null;
+      handleDoubleClick(signal.event);
+      return;
+    }
+
+    _lastPrimaryClickTimestamp = clickTimestamp;
+    _lastPrimaryClickPosition = clickPosition;
+    handleSingleClick(signal.event);
+  }
+
+  void handleSingleClick(ArrangerPointerEvent event) {}
+
+  void handleDoubleClick(ArrangerPointerEvent event) {}
+
+  @override
+  void onActive({required EditorStateMachineEvent event}) {
+    if (lastHoveredPointer != interactionState.hoveredPointer) {
+      updateHover();
+    }
+
+    if (event is EditorStateMachineSignalEvent) {
+      final signal = event.signal;
+      if (signal is _ArrangerPointerDownSignal) {
+        _handlePointerDownSignal(signal);
+      }
+      if (signal is _ArrangerPointerUpSignal) {
+        _handlePointerUpSignal(signal);
+      }
+    }
+  }
+}
+
+class ArrangerDragState
+    extends EditorStateMachineState<ArrangerStateMachineData> {
+  static const double _dragActivationDistance = 4;
+
+  /// Convenience getter to fetch the base state machine object.
+  ArrangerStateMachine get arrangerStateMachine =>
+      stateMachine as ArrangerStateMachine;
+
+  /// The main input data for the state machine, which is the current
+  /// interaction state (e.g. what pointers are down and where, which modifier
+  /// keys are pressed).
+  ArrangerStateMachineData get interactionState => arrangerStateMachine.data;
+
+  ArrangerViewModel get viewModel => arrangerStateMachine.viewModel;
+
+  @override
+  ArrangerIdleState get parentState => super.parentState as ArrangerIdleState;
+
+  int? activePointerId;
+  ActivePointer? dragStartPosition;
+  ActivePointer? dragCurrentPosition;
+  bool hasCrossedActivationDistance = false;
+
+  bool get isDragPointerActive =>
+      interactionState.activePrimaryPointerId != null;
+
+  bool get shouldDelegateToSelectionBox =>
+      isDragPointerActive &&
+      hasCrossedActivationDistance &&
+      (interactionState.isCtrlPressed || viewModel.tool == EditorTool.select);
+
+  bool get shouldDelegateToCreateClip =>
+      isDragPointerActive &&
+      parentState.doubleClickPressed &&
+      hasCrossedActivationDistance &&
+      !shouldDelegateToSelectionBox &&
+      viewModel.tool == EditorTool.pencil;
+
+  void _syncDragParameters() {
+    final nextActivePointerId = interactionState.activePrimaryPointerId;
+
+    if (nextActivePointerId == null) {
+      activePointerId = null;
+      dragStartPosition = null;
+      dragCurrentPosition = null;
+      hasCrossedActivationDistance = false;
+      return;
+    }
+
+    if (activePointerId != nextActivePointerId) {
+      activePointerId = nextActivePointerId;
+      dragStartPosition = interactionState.activePrimaryPointerDownPosition
+          ?.clone();
+      dragCurrentPosition = interactionState.activePrimaryPointer?.clone();
+      hasCrossedActivationDistance = false;
+    }
+
+    dragCurrentPosition = interactionState.activePrimaryPointer?.clone();
+
+    final start = dragStartPosition;
+    final current = dragCurrentPosition;
+    if (start == null || current == null) {
+      return;
+    }
+
+    final deltaX = current.x - start.x;
+    final deltaY = current.y - start.y;
+    final distanceSquared = deltaX * deltaX + deltaY * deltaY;
+    if (!hasCrossedActivationDistance) {
+      hasCrossedActivationDistance =
+          distanceSquared >= _dragActivationDistance * _dragActivationDistance;
+    }
+  }
+
+  @override
+  void onEntry({required event, required from}) {
+    _syncDragParameters();
+  }
+
+  @override
+  void onActive({required event}) {
+    _syncDragParameters();
+  }
+
   @override
   Iterable<EditorStateMachineStateTransition<ArrangerStateMachineData>>
   get transitions => [
     .new(
-      name: 'Mouse moved (idle)',
+      name: 'Enter drag state',
       from: ArrangerIdleState,
+      to: ArrangerDragState,
+      canTransition: ({required data, required event, required currentState}) =>
+          interactionState.activePrimaryPointerId != null,
+    ),
+    .new(
+      name: 'Exit drag state',
+      from: ArrangerDragState,
       to: ArrangerIdleState,
       canTransition: ({required data, required event, required currentState}) =>
-          lastHoveredPointer != data.hoveredPointer,
-      onTransition: ({required event, required from, required to}) =>
-          updateHover(),
+          interactionState.activePrimaryPointerId == null,
     ),
   ];
+
+  ArrangerDragState(ArrangerIdleState super.parentState);
+}
+
+class ArrangerCreateClipState
+    extends EditorStateMachineState<ArrangerStateMachineData> {
+  @override
+  ArrangerDragState get parentState => super.parentState as ArrangerDragState;
+
+  /// Convenience getter to fetch the base state machine object.
+  ArrangerStateMachine get arrangerStateMachine =>
+      stateMachine as ArrangerStateMachine;
+
+  /// The main input data for the state machine, which is the current
+  /// interaction state (e.g. what pointers are down and where, which modifier
+  /// keys are pressed).
+  ArrangerStateMachineData get interactionState => arrangerStateMachine.data;
+
+  ProjectModel get project => arrangerStateMachine.project;
+  ArrangerViewModel get viewModel => arrangerStateMachine.viewModel;
+
+  String? _targetTrackId;
+
+  @override
+  void onEntry({required event, required from}) {
+    _resolveTargetTrackId();
+    _handleMove();
+  }
+
+  @override
+  void onExit({required event, required to}) {
+    _targetTrackId = null;
+    viewModel.clipCreateHint = null;
+  }
+
+  @override
+  Iterable<EditorStateMachineStateTransition<ArrangerStateMachineData>>
+  get transitions => [
+    .new(
+      name: 'Delegate drag to clip creation',
+      from: ArrangerDragState,
+      to: ArrangerCreateClipState,
+      canTransition: ({required data, required event, required currentState}) =>
+          (currentState as ArrangerDragState).shouldDelegateToCreateClip,
+    ),
+    .new(
+      name: 'Clip creation fallback to drag',
+      from: ArrangerCreateClipState,
+      to: ArrangerDragState,
+      canTransition: ({required data, required event, required currentState}) =>
+          !(currentState as ArrangerCreateClipState)
+              .parentState
+              .shouldDelegateToCreateClip,
+    ),
+  ];
+
+  ArrangerCreateClipState(super.parentState);
+
+  @override
+  void onActive({required event}) {
+    _handleMove();
+  }
+
+  void _resolveTargetTrackId() {
+    final start = parentState.dragStartPosition;
+    if (start == null) {
+      _targetTrackId = null;
+      return;
+    }
+
+    final fractionalTrackIndex = viewModel.trackPositionCalculator
+        .getTrackIndexFromPosition(start.y);
+    if (fractionalTrackIndex.isInfinite) {
+      _targetTrackId = null;
+      return;
+    }
+
+    _targetTrackId = viewModel.trackPositionCalculator.trackIndexToId(
+      fractionalTrackIndex.floor(),
+    );
+  }
+
+  void _handleMove() {
+    final trackId = _targetTrackId;
+    final startPosition = parentState.dragStartPosition;
+    final currentPosition = parentState.dragCurrentPosition;
+
+    if (trackId == null || startPosition == null || currentPosition == null) {
+      viewModel.clipCreateHint = null;
+      return;
+    }
+
+    final startOffsetRaw = pixelsToTime(
+      timeViewStart: viewModel.timeView.start,
+      timeViewEnd: viewModel.timeView.end,
+      viewPixelWidth: interactionState.viewSize.width,
+      pixelOffsetFromLeft: startPosition.x,
+    );
+    final endOffsetRaw = pixelsToTime(
+      timeViewStart: viewModel.timeView.start,
+      timeViewEnd: viewModel.timeView.end,
+      viewPixelWidth: interactionState.viewSize.width,
+      pixelOffsetFromLeft: currentPosition.x,
+    );
+
+    final divisionChanges = arrangerStateMachine.divisionChanges();
+    final startOffset = interactionState.isAltPressed
+        ? startOffsetRaw
+        : getSnappedTime(
+            rawTime: startOffsetRaw.round(),
+            divisionChanges: divisionChanges,
+            round: true,
+          ).toDouble();
+    final endOffset = interactionState.isAltPressed
+        ? endOffsetRaw
+        : getSnappedTime(
+            rawTime: endOffsetRaw.round(),
+            divisionChanges: divisionChanges,
+            round: true,
+          ).toDouble();
+
+    final track = project.tracks[trackId];
+    if (track == null) {
+      viewModel.clipCreateHint = null;
+      return;
+    }
+
+    viewModel.clipCreateHint = (
+      trackId: trackId,
+      startOffset: startOffset,
+      endOffset: endOffset,
+      color: track.color.colorShifter.clipBase.toColor().withValues(alpha: 0.5),
+    );
+  }
+}
+
+class ArrangerSelectionBoxState
+    extends EditorStateMachineState<ArrangerStateMachineData> {
+  @override
+  ArrangerDragState get parentState => super.parentState as ArrangerDragState;
+
+  @override
+  Iterable<EditorStateMachineStateTransition<ArrangerStateMachineData>>
+  get transitions => [
+    .new(
+      name: 'Delegate drag to selection box',
+      from: ArrangerDragState,
+      to: ArrangerSelectionBoxState,
+      canTransition: ({required data, required event, required currentState}) =>
+          (currentState as ArrangerDragState).shouldDelegateToSelectionBox,
+    ),
+    .new(
+      name: 'Selection box fallback to drag',
+      from: ArrangerSelectionBoxState,
+      to: ArrangerDragState,
+      canTransition: ({required data, required event, required currentState}) =>
+          !(currentState as ArrangerSelectionBoxState)
+              .parentState
+              .shouldDelegateToSelectionBox,
+    ),
+  ];
+
+  ArrangerSelectionBoxState(super.parentState);
+
+  @override
+  void onEntry({required event, required from}) {}
 }
