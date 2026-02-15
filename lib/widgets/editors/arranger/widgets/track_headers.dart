@@ -396,7 +396,7 @@ class _TrackHeadersState extends State<TrackHeaders> {
                   headers.add(
                     Positioned(
                       key: Key(trackId),
-                      top: trackPosition + (isSendTrack ? 1 : 0),
+                      top: trackPosition,
                       left: 0,
                       right: 0,
                       child: SizedBox(child: TrackHeader(trackId: trackId)),
@@ -405,11 +405,14 @@ class _TrackHeadersState extends State<TrackHeaders> {
                 }
               }
 
-              if (trackPosition + trackHeight > 0) {
+              final borderPos = isSendTrack
+                  ? trackPosition - 1
+                  : trackPosition + trackHeight - 1;
+              if (borderPos > 0) {
                 headers.add(
                   Positioned(
                     key: Key('$trackId-border'),
-                    top: trackPosition - (isSendTrack ? 0 : 1),
+                    top: borderPos,
                     left: trackDepth * 9,
                     right: 0,
                     height: 1,
@@ -419,11 +422,7 @@ class _TrackHeadersState extends State<TrackHeaders> {
 
                 const resizeHandleHeight = 10.0;
 
-                var resizeHandleTop =
-                    trackPosition - 1 - resizeHandleHeight / 2;
-                if (!isSendTrack) {
-                  resizeHandleTop += trackHeight + 1;
-                }
+                var resizeHandleTop = borderPos - resizeHandleHeight / 2;
 
                 resizeHandles.add(
                   Positioned(
@@ -445,19 +444,6 @@ class _TrackHeadersState extends State<TrackHeaders> {
             // If we didn't fill the whole area, then we are at the end of the
             // track list, so we can add an "add track" button
             if (!positionForAddButton.isNaN) {
-              // We're missing one track border, which is the one right above
-              // the add handle, so we can add it here.
-              headers.add(
-                Positioned(
-                  key: Key('last-border'),
-                  top: positionForAddButton - 1,
-                  left: 0,
-                  right: 0,
-                  height: 1,
-                  child: Container(color: AnthemTheme.panel.border),
-                ),
-              );
-
               headers.add(
                 Positioned(
                   key: Key('add-track-button'),

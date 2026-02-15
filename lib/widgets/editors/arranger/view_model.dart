@@ -258,7 +258,7 @@ class TrackPositionAndSize {
 
     final trackGap = max(
       0.0,
-      editorHeight - (totalTrackHeight + addButtonAreaHeight),
+      editorHeight - (totalTrackHeight + addButtonAreaHeight) + 1,
     );
 
     arrangerViewModel.regularToSendGapHeight = trackGap;
@@ -280,7 +280,7 @@ class TrackPositionAndSize {
     }
 
     arrangerViewModel.scrollAreaHeight =
-        positionPointer + arrangerViewModel.verticalScrollPosition;
+        positionPointer + arrangerViewModel.verticalScrollPosition - 1;
   }
 }
 

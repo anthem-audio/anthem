@@ -114,13 +114,19 @@ class ArrangerContentPainter extends CustomPainterObserver {
   void observablePaint(Canvas canvas, Size size) {
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
+    // This draws all the clips
     arrangement.clips.observeAllChanges();
-
     blockObservation(
       modelItems: [arrangement.clips],
       block: () => _paintClips(canvas, size),
     );
 
+    _drawClipCreateHint(canvas, size);
+
+    _drawCursor(canvas, size);
+  }
+
+  void _drawClipCreateHint(Canvas canvas, Size size) {
     if (viewModel.clipCreateHint != null) {
       final (:trackId, :startOffset, :endOffset, :color) =
           viewModel.clipCreateHint!;
@@ -148,10 +154,9 @@ class ArrangerContentPainter extends CustomPainterObserver {
         final trackPos = viewModel.trackPositionCalculator.getTrackPosition(
           trackIndex,
         );
-        final trackHeight = viewModel.trackPositionCalculator.getTrackHeight(
-          trackIndex,
-        );
-        final contentTop = trackPos - 1;
+        final trackHeight =
+            viewModel.trackPositionCalculator.getTrackHeight(trackIndex) - 1;
+        final contentTop = trackPos;
 
         canvas.drawRect(
           Rect.fromLTWH(left, contentTop, width, trackHeight),
@@ -159,7 +164,9 @@ class ArrangerContentPainter extends CustomPainterObserver {
         );
       }
     }
+  }
 
+  void _drawCursor(Canvas canvas, Size size) {
     if (viewModel.cursorLocation != null) {
       final (offset, trackId) = viewModel.cursorLocation!;
 
@@ -169,10 +176,9 @@ class ArrangerContentPainter extends CustomPainterObserver {
       final trackPos = viewModel.trackPositionCalculator.getTrackPosition(
         trackIndex,
       );
-      final trackHeight = viewModel.trackPositionCalculator.getTrackHeight(
-        trackIndex,
-      );
-      final contentTop = trackPos - 1;
+      final trackHeight =
+          viewModel.trackPositionCalculator.getTrackHeight(trackIndex) - 1;
+      final contentTop = trackPos;
 
       final rect = Rect.fromLTWH(
         timeToPixels(

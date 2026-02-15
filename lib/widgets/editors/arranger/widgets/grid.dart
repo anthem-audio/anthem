@@ -61,8 +61,9 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
 
       var drawPosition = trackPosition;
       if (!isSendTrack) {
-        drawPosition += trackHeight - 1;
+        drawPosition += trackHeight;
       }
+      drawPosition--;
 
       canvas.drawRect(
         Rect.fromLTWH(0, drawPosition, size.width, 1),
