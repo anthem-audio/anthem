@@ -33,7 +33,6 @@ import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/arranger/content_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/event_listener.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
-import 'package:anthem/widgets/editors/arranger/widgets/pattern_picker.dart';
 import 'package:anthem/widgets/editors/arranger/widgets/track_headers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/playhead_line.dart';
@@ -135,14 +134,6 @@ class _ArrangerState extends State<Arranger> {
                           return Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              const SizedBox(
-                                width: 126,
-                                child: PatternPicker(),
-                              ),
-                              Container(
-                                width: 1,
-                                color: AnthemTheme.panel.border,
-                              ),
                               const Expanded(child: _ArrangerContent()),
                               SizedBox(
                                 width: _scrollbarShortSideLength,
