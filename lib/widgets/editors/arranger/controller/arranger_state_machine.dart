@@ -281,6 +281,20 @@ class ArrangerStateMachineData {
   }
 
   void handlePointerUp(ArrangerPointerEvent event) {
+    if (event.pointerEvent is! PointerCancelEvent) {
+      final pos = event.pointerEvent.localPosition;
+      final isInView =
+          pos.dx >= 0 &&
+          pos.dy >= 0 &&
+          pos.dx <= viewSize.width &&
+          pos.dy <= viewSize.height;
+      if (isInView) {
+        hoveredPointer ??= ActivePointer(pos.dx, pos.dy);
+        hoveredPointer!.x = pos.dx;
+        hoveredPointer!.y = pos.dy;
+      }
+    }
+
     final pointerId = event.pointerEvent.pointer;
     pointers.remove(pointerId);
 
@@ -494,6 +508,9 @@ class ArrangerIdleState
       }
       if (signal is _ArrangerPointerUpSignal) {
         _handlePointerUpSignal(signal);
+        if (signal.event.pointerEvent is! PointerCancelEvent) {
+          shouldUpdateHover = true;
+        }
       }
     }
 
