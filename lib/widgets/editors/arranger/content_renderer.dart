@@ -27,7 +27,6 @@ import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
-import 'package:collection/collection.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -242,59 +241,54 @@ class ArrangerContentPainter extends CustomPainterObserver {
     // Note that if we ever disallow overlapping clips in the arranger, then we
     // could simplify this logic.
 
-    final allClips = arrangement.trackIdToSortedClipList.entries
-        .map((idPair) => idPair.value.map((clipId) => (idPair.key, clipId)))
-        .flattened
-        .map<ClipRenderInfo?>((idPair) {
-          final (trackId, clipId) = idPair;
+    final allClips = arrangement.clips.values.map<ClipRenderInfo?>((clip) {
+      final trackId = clip.trackId;
 
-          final clip = arrangement.clips[clipId]!;
-          final pattern = project.sequence.patterns[clip.patternId]!;
+      final pattern = project.sequence.patterns[clip.patternId]!;
 
-          final x = timeToPixels(
+      final x = timeToPixels(
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: size.width,
+        time: clip.offset.toDouble(),
+      );
+      final width =
+          timeToPixels(
             timeViewStart: timeViewStart,
             timeViewEnd: timeViewEnd,
             viewPixelWidth: size.width,
-            time: clip.offset.toDouble(),
-          );
-          final width =
-              timeToPixels(
-                timeViewStart: timeViewStart,
-                timeViewEnd: timeViewEnd,
-                viewPixelWidth: size.width,
-                time: clip.offset.toDouble() + clip.width,
-              ) -
-              x +
-              1;
+            time: clip.offset.toDouble() + clip.width,
+          ) -
+          x +
+          1;
 
-          if (x > size.width || x + width < 0) return null;
+      if (x > size.width || x + width < 0) return null;
 
-          final y =
-              viewModel.trackPositionCalculator.getTrackPosition(
-                viewModel.trackPositionCalculator.trackIdToIndex(trackId),
-              ) -
-              1;
-          final trackHeight =
-              calculateTrackHeight(
-                viewModel.baseTrackHeight,
-                viewModel.trackHeightModifiers[trackId]!,
-              ) +
-              1;
+      final y =
+          viewModel.trackPositionCalculator.getTrackPosition(
+            viewModel.trackPositionCalculator.trackIdToIndex(trackId),
+          ) -
+          1;
+      final trackHeight =
+          calculateTrackHeight(
+            viewModel.baseTrackHeight,
+            viewModel.trackHeightModifiers[trackId]!,
+          ) +
+          1;
 
-          if (y > size.height || y + trackHeight < 0) return null;
+      if (y > size.height || y + trackHeight < 0) return null;
 
-          return (
-            pattern: pattern,
-            clip: clip,
-            x: x,
-            y: y,
-            width: width,
-            height: trackHeight,
-            selected: viewModel.selectedClips.contains(clip.id),
-            pressed: viewModel.pressedClip == clip.id,
-          );
-        })
-        .nonNulls;
+      return (
+        pattern: pattern,
+        clip: clip,
+        x: x,
+        y: y,
+        width: width,
+        height: trackHeight,
+        selected: viewModel.selectedClips.contains(clip.id),
+        pressed: viewModel.pressedClip == clip.id,
+      );
+    }).nonNulls;
 
     List<List<ClipRenderInfo>> clipLayers = [];
     final layerBuilder = _ClipLayerBuilder();

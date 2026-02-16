@@ -20,6 +20,7 @@
 import 'dart:math';
 
 import 'package:anthem/model/project.dart';
+import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/events.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/editor_state_machine.dart';
@@ -67,50 +68,44 @@ class ArrangerStateMachine
     extends EditorStateMachine<ArrangerStateMachineData> {
   ProjectModel project;
   ArrangerViewModel viewModel;
+  ArrangerController controller;
 
   void onPointerDown(ArrangerPointerEvent event) {
-    updateData((data) {
-      data.handlePointerDown(event);
-    });
+    data.handlePointerDown(event);
     emitSignal(_ArrangerPointerDownSignal(event));
+    notifyDataUpdated();
   }
 
   void onPointerMove(ArrangerPointerEvent event) {
-    updateData((data) {
-      data.handlePointerMove(event);
-    });
+    data.handlePointerMove(event);
     emitSignal(_ArrangerPointerMoveSignal(event));
+    notifyDataUpdated();
   }
 
   void onPointerUp(ArrangerPointerEvent event) {
-    updateData((data) {
-      data.handlePointerUp(event);
-    });
+    data.handlePointerUp(event);
     emitSignal(_ArrangerPointerUpSignal(event));
+    notifyDataUpdated();
   }
 
   void onEnter(PointerEnterEvent event) {
-    updateData((data) {
-      data.handleEnter(event);
-    });
+    data.handleEnter(event);
+    notifyDataUpdated();
   }
 
   void onExit(PointerExitEvent event) {
-    updateData((data) {
-      data.handleExit(event);
-    });
+    data.handleExit(event);
+    notifyDataUpdated();
   }
 
   void onHover(PointerHoverEvent event) {
-    updateData((data) {
-      data.handleHover(event);
-    });
+    data.handleHover(event);
+    notifyDataUpdated();
   }
 
   void onViewSizeChanged(Size viewSize) {
-    updateData((data) {
-      data.viewSize = viewSize;
-    });
+    data.viewSize = viewSize;
+    notifyDataUpdated();
   }
 
   void modifierPressed(ArrangerModifierKey modifier) {
@@ -118,9 +113,8 @@ class ArrangerStateMachine
       return;
     }
 
-    updateData((data) {
-      data.setModifier(modifier, true);
-    });
+    data.setModifier(modifier, true);
+    notifyDataUpdated();
   }
 
   void modifierReleased(ArrangerModifierKey modifier) {
@@ -128,9 +122,8 @@ class ArrangerStateMachine
       return;
     }
 
-    updateData((data) {
-      data.setModifier(modifier, false);
-    });
+    data.setModifier(modifier, false);
+    notifyDataUpdated();
   }
 
   void onRenderedViewTransformChanged({
@@ -149,6 +142,7 @@ class ArrangerStateMachine
     data.renderedVerticalScrollPosition = verticalScrollPosition;
 
     emitSignal(const _ArrangerViewTransformChangedSignal());
+    notifyDataUpdated();
   }
 
   void onTrackLayoutChanged() {
@@ -173,11 +167,13 @@ class ArrangerStateMachine
     required super.states,
     required this.project,
     required this.viewModel,
+    required this.controller,
   });
 
   factory ArrangerStateMachine.create({
     required ProjectModel project,
     required ArrangerViewModel viewModel,
+    required ArrangerController controller,
   }) {
     final data = ArrangerStateMachineData()
       ..renderedTimeViewStart = viewModel.timeView.start
@@ -195,6 +191,7 @@ class ArrangerStateMachine
       states: states,
       project: project,
       viewModel: viewModel,
+      controller: controller,
     );
   }
 }
@@ -334,6 +331,7 @@ class ArrangerIdleState
 
   ProjectModel get project => arrangerStateMachine.project;
   ArrangerViewModel get viewModel => arrangerStateMachine.viewModel;
+  ArrangerController get controller => arrangerStateMachine.controller;
 
   ActivePointer? lastHoveredPointer;
 
@@ -534,6 +532,7 @@ class ArrangerDragState
   ArrangerStateMachineData get interactionState => arrangerStateMachine.data;
 
   ArrangerViewModel get viewModel => arrangerStateMachine.viewModel;
+  ArrangerController get controller => arrangerStateMachine.controller;
 
   @override
   ArrangerIdleState get parentState => super.parentState as ArrangerIdleState;
@@ -642,6 +641,7 @@ class ArrangerCreateClipState
 
   ProjectModel get project => arrangerStateMachine.project;
   ArrangerViewModel get viewModel => arrangerStateMachine.viewModel;
+  ArrangerController get controller => arrangerStateMachine.controller;
 
   String? _targetTrackId;
 
@@ -682,7 +682,21 @@ class ArrangerCreateClipState
 
   @override
   void onActive({required event}) {
-    _handleMove();
+    if (event is EditorStateMachineSignalEvent) {
+      final signal = event.signal;
+      if (signal is _ArrangerPointerSignal) {
+        switch (signal) {
+          case _ArrangerPointerDownSignal():
+            break;
+          case _ArrangerPointerMoveSignal():
+            _handleMove();
+            break;
+          case _ArrangerPointerUpSignal():
+            _handleUp();
+            break;
+        }
+      }
+    }
   }
 
   void _resolveTargetTrackId() {
@@ -763,6 +777,25 @@ class ArrangerCreateClipState
     if ((endOffset - startOffset).abs() > 0) {
       viewModel.cursorLocation = null;
     }
+  }
+
+  void _handleUp() {
+    if (viewModel.clipCreateHint == null) return;
+
+    final clipCreateHint = viewModel.clipCreateHint!;
+
+    final start = min(clipCreateHint.startOffset, clipCreateHint.endOffset);
+    final end = max(clipCreateHint.startOffset, clipCreateHint.endOffset);
+
+    if (end - start == 0) {
+      return;
+    }
+
+    controller.createClip(
+      trackId: clipCreateHint.trackId,
+      offset: start,
+      width: end - start,
+    );
   }
 }
 

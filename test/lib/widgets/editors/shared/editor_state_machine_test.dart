@@ -54,8 +54,6 @@ class _Data {
   }
 }
 
-enum _DataHint { pointer }
-
 enum _Signal { cancel }
 
 bool _isCancelSignal(EditorStateMachineEvent event) =>
@@ -366,26 +364,23 @@ void main() {
   });
 
   test('add note state emits noteAdded on pointer release', () async {
-    stateMachine.updateData((data) {
-      data.setPointerState(pointerId: 1, isDown: true, x: 10, y: 20);
-    }, hints: {_DataHint.pointer});
+    data.setPointerState(pointerId: 1, isDown: true, x: 10, y: 20);
+    stateMachine.notifyDataUpdated();
 
     expect(stateMachine.currentState, isA<_AddNoteState>());
 
     final noteAdded = addNoteState.noteAddedController.stream.first;
 
-    stateMachine.updateData((data) {
-      data.setPointerState(pointerId: 1, isDown: false, x: 12, y: 24);
-    }, hints: {_DataHint.pointer});
+    data.setPointerState(pointerId: 1, isDown: false, x: 12, y: 24);
+    stateMachine.notifyDataUpdated();
 
     await noteAdded;
     expect(stateMachine.currentState, isA<_IdleState>());
   });
 
   test('add note state emits cancelled on cancel signal', () async {
-    stateMachine.updateData((data) {
-      data.setPointerState(pointerId: 1, isDown: true, x: 10, y: 20);
-    }, hints: {_DataHint.pointer});
+    data.setPointerState(pointerId: 1, isDown: true, x: 10, y: 20);
+    stateMachine.notifyDataUpdated();
 
     expect(stateMachine.currentState, isA<_AddNoteState>());
 
@@ -398,16 +393,14 @@ void main() {
   });
 
   test('add note state self-transitions when pointer moves', () {
-    stateMachine.updateData((data) {
-      data.setPointerState(pointerId: 1, isDown: true, x: 10, y: 20);
-    }, hints: {_DataHint.pointer});
+    data.setPointerState(pointerId: 1, isDown: true, x: 10, y: 20);
+    stateMachine.notifyDataUpdated();
 
     expect(stateMachine.currentState, isA<_AddNoteState>());
     expect(draggingState.currentMousePos, Point(10, 20));
 
-    stateMachine.updateData((data) {
-      data.setPointerState(pointerId: 1, isDown: true, x: 15, y: 25);
-    }, hints: {_DataHint.pointer});
+    data.setPointerState(pointerId: 1, isDown: true, x: 15, y: 25);
+    stateMachine.notifyDataUpdated();
 
     expect(stateMachine.currentState, isA<_AddNoteState>());
     expect(draggingState.currentMousePos, Point(15, 25));
@@ -417,60 +410,56 @@ void main() {
     expect(stateMachine.currentState, isA<_IdleState>());
     data.activeCallOrder.clear();
 
-    stateMachine.updateData((data) {
-      data.setPointerState(pointerId: 1, isDown: true, x: 10, y: 20);
-    }, hints: {_DataHint.pointer});
+    data.setPointerState(pointerId: 1, isDown: true, x: 10, y: 20);
+    stateMachine.notifyDataUpdated();
 
     expect(stateMachine.currentState, isA<_AddNoteState>());
     expect(data.activeCallOrder, isEmpty);
   });
 
   test('updates active states from parent to child', () {
-    stateMachine.updateData((data) {
-      data.setPointerState(pointerId: 1, isDown: true, x: 10, y: 20);
-      data.dragPosition = 1;
-    }, hints: {_DataHint.pointer});
+    data
+      ..setPointerState(pointerId: 1, isDown: true, x: 10, y: 20)
+      ..dragPosition = 1;
+    stateMachine.notifyDataUpdated();
 
     expect(stateMachine.currentState, isA<_AddNoteState>());
     data.activeCallOrder.clear();
 
-    stateMachine.updateData((data) {
-      data.dragPosition = 6;
-    });
+    data.dragPosition = 6;
+    stateMachine.notifyDataUpdated();
 
     expect(data.activeCallOrder, ['dragging', 'addNote']);
     expect(addNoteState.latestObservedNormalizedDragPosition, 12);
   });
 
   test('parent transitions can run while a child state is active', () {
-    stateMachine.updateData((data) {
-      data.setPointerState(pointerId: 1, isDown: true, x: 10, y: 20);
-      data.isCtrlPressed = false;
-    }, hints: {_DataHint.pointer});
+    data
+      ..setPointerState(pointerId: 1, isDown: true, x: 10, y: 20)
+      ..isCtrlPressed = false;
+    stateMachine.notifyDataUpdated();
 
     expect(stateMachine.currentState, isA<_AddNoteState>());
 
-    stateMachine.updateData((data) {
-      data.isCtrlPressed = true;
-    });
+    data.isCtrlPressed = true;
+    stateMachine.notifyDataUpdated();
 
     expect(stateMachine.currentState, isA<_SelectionBoxState>());
     expect(selectionBoxState.entryCount, 1);
   });
 
   test('ancestor transitions to active leaf are suppressed by default', () {
-    stateMachine.updateData((data) {
-      data.setPointerState(pointerId: 1, isDown: true, x: 10, y: 20);
-      data.isCtrlPressed = false;
-      data.dragPosition = 2;
-    }, hints: {_DataHint.pointer});
+    data
+      ..setPointerState(pointerId: 1, isDown: true, x: 10, y: 20)
+      ..isCtrlPressed = false
+      ..dragPosition = 2;
+    stateMachine.notifyDataUpdated();
 
     expect(stateMachine.currentState, isA<_AddNoteState>());
     expect(addNoteState.entryCount, 1);
 
-    stateMachine.updateData((data) {
-      data.dragPosition = 3;
-    });
+    data.dragPosition = 3;
+    stateMachine.notifyDataUpdated();
 
     expect(stateMachine.currentState, isA<_AddNoteState>());
     expect(addNoteState.entryCount, 1);
@@ -487,9 +476,8 @@ void main() {
       states: [transitionIdleState, transitionActiveState],
     );
 
-    transitionStateMachine.updateData((data) {
-      data.shouldTransition = true;
-    });
+    transitionData.shouldTransition = true;
+    transitionStateMachine.notifyDataUpdated();
 
     expect(transitionStateMachine.currentState, isA<_TransitionActiveState>());
     expect(transitionData.transitionCalls, 1);
@@ -514,7 +502,7 @@ void main() {
       states: [transitionIdleState, transitionActiveState],
     );
 
-    transitionStateMachine.invalidate();
+    transitionStateMachine.notifyDataUpdated();
 
     expect(transitionStateMachine.currentState, isA<_TransitionIdleState>());
     expect(transitionData.transitionCalls, 0);
@@ -533,9 +521,8 @@ void main() {
       states: [transitionIdleState, transitionActiveState],
     );
 
-    transitionStateMachine.updateData((data) {
-      data.shouldTransition = true;
-    });
+    transitionData.shouldTransition = true;
+    transitionStateMachine.notifyDataUpdated();
 
     expect(transitionData.callOrder, ['transition', 'exit', 'entry']);
 
@@ -553,9 +540,8 @@ void main() {
       states: [noTransitionCallbackIdleState, noTransitionCallbackActiveState],
     );
 
-    noTransitionCallbackStateMachine.updateData((data) {
-      data.shouldTransition = true;
-    });
+    noTransitionCallbackData.shouldTransition = true;
+    noTransitionCallbackStateMachine.notifyDataUpdated();
 
     expect(
       noTransitionCallbackStateMachine.currentState,

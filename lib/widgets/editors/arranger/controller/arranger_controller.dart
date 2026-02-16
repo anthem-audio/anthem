@@ -21,6 +21,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:anthem/logic/commands/arrangement_commands.dart';
+import 'package:anthem/logic/commands/pattern_commands.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/model.dart';
@@ -54,6 +55,7 @@ abstract class _ArrangerController {
   late final ArrangerStateMachine stateMachine = ArrangerStateMachine.create(
     project: project,
     viewModel: viewModel,
+    controller: this as ArrangerController,
   );
 
   late final ReactionDisposer patternCursorAutorunDispose;
@@ -253,5 +255,37 @@ abstract class _ArrangerController {
 
       viewModel.selectedTracks.add(id);
     }
+  }
+
+  /// Creates a new pattern, and a new clip pointing to that pattern at the
+  /// given time bounds on the given track.
+  void createClip({
+    required Id trackId,
+    required double offset,
+    required double width,
+  }) {
+    project.startUndoGroup();
+
+    final track = project.tracks[trackId]!;
+
+    final pattern = PatternModel.create(name: track.name)
+      ..color = track.color.clone();
+
+    final clip = ClipModel.create(
+      patternId: pattern.id,
+      trackId: trackId,
+      offset: offset.round(),
+      timeView: TimeViewModel(start: 0, end: width.round()),
+    );
+
+    project.execute(PatternAddRemoveCommand.add(pattern: pattern));
+    project.execute(
+      ClipAddRemoveCommand.add(
+        arrangementID: project.sequence.activeArrangementID!,
+        clip: clip,
+      ),
+    );
+
+    project.commitUndoGroup();
   }
 }

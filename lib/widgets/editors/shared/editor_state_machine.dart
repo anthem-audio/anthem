@@ -103,26 +103,16 @@ class EditorStateMachine<TData> {
     _evaluateTransitions(startEvent);
   }
 
-  /// Mutates [data] and then evaluates transitions.
-  void updateData(
-    void Function(TData data) mutator, {
-    Set<Object> hints = const <Object>{},
-  }) {
+  /// Notifies the state machine that [data] has already been mutated.
+  ///
+  /// Call this after making one or more changes to [data] so active states and
+  /// transitions are reevaluated.
+  void notifyDataUpdated() {
     if (_isDisposed) {
       return;
     }
 
-    mutator(data);
-    _enqueueEvent(EditorStateMachineDataChangedEvent());
-  }
-
-  /// Evaluates transitions without mutating data.
-  void invalidate() {
-    if (_isDisposed) {
-      return;
-    }
-
-    _enqueueEvent(EditorStateMachineDataChangedEvent());
+    _enqueueEvent(const EditorStateMachineDataChangedEvent());
   }
 
   /// Emits an arbitrary signal (for example `cancel` or `escape`).

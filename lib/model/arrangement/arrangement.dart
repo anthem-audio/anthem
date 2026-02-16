@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2025 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -127,7 +127,7 @@ abstract class _ArrangementModel
   String name;
 
   @anthemObservable
-  AnthemObservableMap<Id, ClipModel> clips = AnthemObservableMap();
+  AnthemObservableMap<Id, ClipModel> clips = .new();
 
   @anthemObservable
   @hideFromSerialization
