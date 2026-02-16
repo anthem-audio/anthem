@@ -503,45 +503,44 @@ void _paintClipNotes({
 }) {
   if (height <= _smallSizeThreshold) return;
 
-  for (final clipNotesEntry in pattern.clipNotesRenderCache.values) {
-    if (clipNotesEntry.renderedVertices == null) continue;
+  final clipNotesEntry = pattern.clipNotesRenderCache;
+  if (clipNotesEntry.renderedVertices == null) return;
 
-    canvas.save();
+  canvas.save();
 
-    canvas.clipRect(Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2));
+  canvas.clipRect(Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2));
 
-    final innerHeight = height - 2;
+  final innerHeight = height - 2;
 
-    final dist = clipNotesEntry.highestNote - clipNotesEntry.lowestNote;
-    final notePadding =
-        (innerHeight - _clipTitleHeight) * (0.4 - dist * 0.05).clamp(0.1, 0.4);
+  final dist = clipNotesEntry.highestNote - clipNotesEntry.lowestNote;
+  final notePadding =
+      (innerHeight - _clipTitleHeight) * (0.4 - dist * 0.05).clamp(0.1, 0.4);
 
-    // The vertices for the notes are in a coordinate system based on notes,
-    // where X is time and Y is normalized. The transformations below
-    // translate this to the correct position and scale it to convert it into
-    // pixel coordinates.
+  // The vertices for the notes are in a coordinate system based on notes,
+  // where X is time and Y is normalized. The transformations below
+  // translate this to the correct position and scale it to convert it into
+  // pixel coordinates.
 
-    final clipScaleFactor =
-        (width - 1) / (clip?.width.toDouble() ?? pattern.getWidth().toDouble());
+  final clipScaleFactor =
+      (width - 1) / (clip?.width.toDouble() ?? pattern.getWidth().toDouble());
 
-    canvas.translate(
-      -(clip?.timeView?.start.toDouble() ?? 0.0) * clipScaleFactor,
-      0,
-    );
-    canvas.translate(x + 1, y + 1 + _clipTitleHeight + notePadding);
-    canvas.scale(
-      clipScaleFactor,
-      innerHeight - _clipTitleHeight - notePadding * 2,
-    );
+  canvas.translate(
+    -(clip?.timeView?.start.toDouble() ?? 0.0) * clipScaleFactor,
+    0,
+  );
+  canvas.translate(x + 1, y + 1 + _clipTitleHeight + notePadding);
+  canvas.scale(
+    clipScaleFactor,
+    innerHeight - _clipTitleHeight - notePadding * 2,
+  );
 
-    // The clip may not start at the beginning, which we account for here.
+  // The clip may not start at the beginning, which we account for here.
 
-    canvas.drawVertices(
-      clipNotesEntry.renderedVertices!,
-      BlendMode.srcOver,
-      notePaint,
-    );
+  canvas.drawVertices(
+    clipNotesEntry.renderedVertices!,
+    BlendMode.srcOver,
+    notePaint,
+  );
 
-    canvas.restore();
-  }
+  canvas.restore();
 }

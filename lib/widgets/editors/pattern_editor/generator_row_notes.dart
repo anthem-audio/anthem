@@ -71,7 +71,7 @@ class _GeneratorRowNotesPainter extends CustomPainterObserver {
   void observablePaint(Canvas canvas, Size size) {
     pattern.clipNotesUpdateSignal.value;
 
-    final cacheItem = pattern.clipNotesRenderCache[generatorID]!;
+    final cacheItem = pattern.clipNotesRenderCache;
 
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
