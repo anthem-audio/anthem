@@ -78,7 +78,7 @@ class _ProjectExplorerState extends State<ProjectExplorer> {
     TreeViewItemModel getPatternsTree() => TreeViewItemModel(
       key: 'projectPatternsFolder',
       label: 'Patterns',
-      children: project.sequence.patternOrder
+      children: project.sequence.patterns.keys
           .map(
             (patternID) => TreeViewItemModel(
               key: 'pattern-$patternID',

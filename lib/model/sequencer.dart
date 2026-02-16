@@ -48,7 +48,7 @@ class SequencerModel extends _SequencerModel
 
   factory SequencerModel.fromJson(Map<String, dynamic> json) {
     final sequence = _$SequencerModelAnthemModelMixin.fromJson(json);
-    sequence.activePatternID = sequence.patternOrder.firstOrNull;
+    sequence.activePatternID = sequence.patterns.keys.firstOrNull;
     sequence.activeArrangementID = sequence.arrangementOrder.firstOrNull;
     sequence._init();
     return sequence;
@@ -77,9 +77,6 @@ abstract class _SequencerModel
 
   @anthemObservable
   AnthemObservableMap<Id, PatternModel> patterns = .new();
-
-  @anthemObservable
-  AnthemObservableList<Id> patternOrder = .new();
 
   @anthemObservable
   @hideFromSerialization

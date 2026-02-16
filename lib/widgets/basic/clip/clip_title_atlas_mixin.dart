@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -38,7 +38,7 @@ mixin _ClipTitleAtlasMixin on _SequencerModel {
   }
 
   void _updateClipTitleTextureAtlas() {
-    final patternIds = patternOrder
+    final patternIds = patterns.keys
         .where((patternID) => patterns[patternID]?.renderedTitle != null)
         .toList();
     final images = patternIds

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -112,7 +112,7 @@ class _PatternEditorState extends State<PatternEditor> {
                             width: 169,
                             height: 26,
                             hint: 'Change the active pattern',
-                            items: project.sequence.patternOrder.map((id) {
+                            items: project.sequence.patterns.keys.map((id) {
                               final pattern = project.sequence.patterns[id]!;
                               return DropdownItem(
                                 id: id,

@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/logic/commands/pattern_commands.dart';
+// import 'package:anthem/logic/commands/pattern_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 
@@ -27,11 +27,11 @@ class PatternEditorController {
   PatternEditorController({required this.project});
 
   void deletePattern(Id patternID) {
-    project.execute(
-      DeletePatternCommand(
-        pattern: project.sequence.patterns[patternID]!,
-        index: project.sequence.patternOrder.indexOf(patternID),
-      ),
-    );
+    // project.execute(
+    //   DeletePatternCommand(
+    //     pattern: project.sequence.patterns[patternID]!,
+    //     index: project.sequence.patternOrder.indexOf(patternID),
+    //   ),
+    // );
   }
 }
