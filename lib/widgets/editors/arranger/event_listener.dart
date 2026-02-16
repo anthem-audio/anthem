@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
-import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/scroll_manager.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -26,7 +24,6 @@ import 'package:provider/provider.dart';
 
 import 'view_model.dart';
 import 'controller/arranger_controller.dart';
-import 'events.dart';
 
 class ArrangerEventListener extends StatefulWidget {
   final Widget? child;
@@ -88,24 +85,16 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
                 onHover: controller.onHover,
                 child: Listener(
                   onPointerDown: (event) {
-                    controller.pointerDown(
-                      convertPointerEvent(event, boxConstraints.biggest),
-                    );
+                    controller.pointerDown(event);
                   },
                   onPointerMove: (event) {
-                    controller.pointerMove(
-                      convertPointerEvent(event, boxConstraints.biggest),
-                    );
+                    controller.pointerMove(event);
                   },
                   onPointerUp: (event) {
-                    controller.pointerUp(
-                      convertPointerEvent(event, boxConstraints.biggest),
-                    );
+                    controller.pointerUp(event);
                   },
                   onPointerCancel: (event) {
-                    controller.pointerUp(
-                      convertPointerEvent(event, boxConstraints.biggest),
-                    );
+                    controller.pointerUp(event);
                   },
                   child: widget.child,
                 ),
@@ -114,38 +103,6 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
           },
         );
       },
-    );
-  }
-
-  ArrangerPointerEvent convertPointerEvent(PointerEvent event, Size viewSize) {
-    final viewModel = Provider.of<ArrangerViewModel>(context, listen: false);
-    final keyboardModifiers = Provider.of<KeyboardModifiers>(
-      context,
-      listen: false,
-    );
-
-    final offset = pixelsToTime(
-      timeViewStart: viewModel.timeView.start,
-      timeViewEnd: viewModel.timeView.end,
-      viewPixelWidth: viewSize.width,
-      pixelOffsetFromLeft: event.localPosition.dx,
-    );
-
-    final track = viewModel.trackPositionCalculator.getTrackIndexFromPosition(
-      event.localPosition.dy,
-    );
-
-    final contentUnderCursor = viewModel.getContentUnderCursor(
-      event.localPosition,
-    );
-
-    return ArrangerPointerEvent(
-      offset: offset,
-      track: track,
-      pointerEvent: event,
-      arrangerSize: viewSize,
-      keyboardModifiers: keyboardModifiers,
-      contentUnderCursor: contentUnderCursor,
     );
   }
 }

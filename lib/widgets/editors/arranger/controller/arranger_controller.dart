@@ -27,7 +27,6 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_state_machine.dart';
-import 'package:anthem/widgets/editors/arranger/events.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
@@ -77,15 +76,15 @@ abstract class _ArrangerController {
     stateMachine.dispose();
   }
 
-  void pointerDown(ArrangerPointerEvent pointerEvent) {
+  void pointerDown(PointerEvent pointerEvent) {
     stateMachine.onPointerDown(pointerEvent);
   }
 
-  void pointerMove(ArrangerPointerEvent pointerEvent) {
+  void pointerMove(PointerEvent pointerEvent) {
     stateMachine.onPointerMove(pointerEvent);
   }
 
-  void pointerUp(ArrangerPointerEvent pointerEvent) {
+  void pointerUp(PointerEvent pointerEvent) {
     stateMachine.onPointerUp(pointerEvent);
   }
 

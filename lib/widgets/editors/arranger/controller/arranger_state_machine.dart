@@ -21,7 +21,6 @@ import 'dart:math';
 
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
-import 'package:anthem/widgets/editors/arranger/events.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/editor_state_machine.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
@@ -34,7 +33,7 @@ enum ArrangerModifierKey { ctrl, alt, shift }
 enum ArrangerCancelTrigger { escapeKey }
 
 sealed class _ArrangerPointerSignal {
-  final ArrangerPointerEvent event;
+  final PointerEvent event;
 
   const _ArrangerPointerSignal(this.event);
 }
@@ -83,26 +82,26 @@ class ArrangerStateMachine
   ArrangerViewModel viewModel;
   ArrangerController controller;
 
-  void onPointerDown(ArrangerPointerEvent event) {
+  void onPointerDown(PointerEvent event) {
     data.handlePointerDown(event);
     emitSignal(_ArrangerPointerDownSignal(event));
     notifyDataUpdated();
   }
 
-  void onPointerMove(ArrangerPointerEvent event) {
+  void onPointerMove(PointerEvent event) {
     data.handlePointerMove(event);
     emitSignal(_ArrangerPointerMoveSignal(event));
     notifyDataUpdated();
   }
 
-  void onPointerUp(ArrangerPointerEvent event) {
+  void onPointerUp(PointerEvent event) {
     final activePrimaryPointerId = data.activePrimaryPointerId;
 
     data.handlePointerUp(event);
     emitSignal(_ArrangerPointerUpSignal(event));
     notifyDataUpdated();
 
-    if (activePrimaryPointerId == event.pointerEvent.pointer) {
+    if (activePrimaryPointerId == event.pointer) {
       data.clearInteractionCancellation();
     }
   }
@@ -281,9 +280,8 @@ class ArrangerStateMachineData {
     }
   }
 
-  void handlePointerDown(ArrangerPointerEvent event) {
-    final pos = event.pointerEvent.localPosition;
-    final pointerEvent = event.pointerEvent;
+  void handlePointerDown(PointerEvent pointerEvent) {
+    final pos = pointerEvent.localPosition;
     pointers[pointerEvent.pointer] = .new(pos.dx, pos.dy);
 
     if (pointerEvent is PointerDownEvent &&
@@ -294,18 +292,18 @@ class ArrangerStateMachineData {
     }
   }
 
-  void handlePointerMove(ArrangerPointerEvent event) {
-    final pointer = pointers[event.pointerEvent.pointer];
+  void handlePointerMove(PointerEvent event) {
+    final pointer = pointers[event.pointer];
     if (pointer == null) return;
 
-    final pos = event.pointerEvent.localPosition;
+    final pos = event.localPosition;
     pointer.x = pos.dx;
     pointer.y = pos.dy;
   }
 
-  void handlePointerUp(ArrangerPointerEvent event) {
-    if (event.pointerEvent is! PointerCancelEvent) {
-      final pos = event.pointerEvent.localPosition;
+  void handlePointerUp(PointerEvent event) {
+    if (event is! PointerCancelEvent) {
+      final pos = event.localPosition;
       final isInView =
           pos.dx >= 0 &&
           pos.dy >= 0 &&
@@ -318,7 +316,7 @@ class ArrangerStateMachineData {
       }
     }
 
-    final pointerId = event.pointerEvent.pointer;
+    final pointerId = event.pointer;
     pointers.remove(pointerId);
 
     if (activePrimaryPointerId == pointerId) {
@@ -457,7 +455,7 @@ class ArrangerIdleState
   }
 
   void _handlePointerDownSignal(_ArrangerPointerDownSignal signal) {
-    final pointerEvent = signal.event.pointerEvent;
+    final pointerEvent = signal.event;
     if (pointerEvent is! PointerDownEvent) {
       return;
     }
@@ -492,7 +490,7 @@ class ArrangerIdleState
   void _handlePointerUpSignal(_ArrangerPointerUpSignal signal) {
     final wasDoubleClickPressed = doubleClickPressed;
 
-    final pointerEvent = signal.event.pointerEvent;
+    final pointerEvent = signal.event;
     if (pointerEvent is PointerCancelEvent) {
       doubleClickPressed = false;
       _clearActivePrimaryPointerTracking();
@@ -528,18 +526,18 @@ class ArrangerIdleState
     if (wasDoubleClickPressed) {
       _lastPrimaryClickTimestamp = null;
       _lastPrimaryClickPosition = null;
-      handleDoubleClick(signal.event);
+      handleDoubleClick(pointerEvent);
       return;
     }
 
     _lastPrimaryClickTimestamp = clickTimestamp;
     _lastPrimaryClickPosition = clickPosition;
-    handleSingleClick(signal.event);
+    handleSingleClick(pointerEvent);
   }
 
-  void handleSingleClick(ArrangerPointerEvent event) {}
+  void handleSingleClick(PointerEvent event) {}
 
-  void handleDoubleClick(ArrangerPointerEvent event) {}
+  void handleDoubleClick(PointerEvent event) {}
 
   @override
   void onActive({required EditorStateMachineEvent event}) {
@@ -559,7 +557,7 @@ class ArrangerIdleState
       }
       if (signal is _ArrangerPointerUpSignal) {
         _handlePointerUpSignal(signal);
-        if (signal.event.pointerEvent is! PointerCancelEvent) {
+        if (signal.event is! PointerCancelEvent) {
           shouldUpdateHover = true;
         }
       }

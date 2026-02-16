@@ -24,10 +24,8 @@ import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/model/track.dart';
-import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_state_machine.dart';
-import 'package:anthem/widgets/editors/arranger/events.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
@@ -121,73 +119,16 @@ class _ArrangerStateMachineTestFixture {
   ArrangerCreateClipState get createClipState =>
       stateMachine.states[ArrangerCreateClipState]! as ArrangerCreateClipState;
 
-  KeyboardModifiers _keyboardModifiers({
-    bool ctrl = false,
-    bool alt = false,
-    bool shift = false,
-  }) {
-    final modifiers = KeyboardModifiers();
-    if (ctrl) modifiers.setCtrl(true);
-    if (alt) modifiers.setAlt(true);
-    if (shift) modifiers.setShift(true);
-    return modifiers;
+  void pointerDown(PointerDownEvent pointerEvent) {
+    controller.pointerDown(pointerEvent);
   }
 
-  ArrangerPointerEvent _toArrangerPointerEvent(
-    PointerEvent pointerEvent, {
-    KeyboardModifiers? keyboardModifiers,
-  }) {
-    return ArrangerPointerEvent(
-      offset: pixelsToTime(
-        timeViewStart: viewModel.timeView.start,
-        timeViewEnd: viewModel.timeView.end,
-        viewPixelWidth: viewSize.width,
-        pixelOffsetFromLeft: pointerEvent.localPosition.dx,
-      ),
-      track: viewModel.trackPositionCalculator.getTrackIndexFromPosition(
-        pointerEvent.localPosition.dy,
-      ),
-      pointerEvent: pointerEvent,
-      arrangerSize: viewSize,
-      keyboardModifiers: keyboardModifiers ?? _keyboardModifiers(),
-      contentUnderCursor: const ArrangerContentUnderCursor(),
-    );
+  void pointerMove(PointerMoveEvent pointerEvent) {
+    controller.pointerMove(pointerEvent);
   }
 
-  void pointerDown(
-    PointerDownEvent pointerEvent, {
-    KeyboardModifiers? keyboardModifiers,
-  }) {
-    controller.pointerDown(
-      _toArrangerPointerEvent(
-        pointerEvent,
-        keyboardModifiers: keyboardModifiers,
-      ),
-    );
-  }
-
-  void pointerMove(
-    PointerMoveEvent pointerEvent, {
-    KeyboardModifiers? keyboardModifiers,
-  }) {
-    controller.pointerMove(
-      _toArrangerPointerEvent(
-        pointerEvent,
-        keyboardModifiers: keyboardModifiers,
-      ),
-    );
-  }
-
-  void pointerUp(
-    PointerEvent pointerEvent, {
-    KeyboardModifiers? keyboardModifiers,
-  }) {
-    controller.pointerUp(
-      _toArrangerPointerEvent(
-        pointerEvent,
-        keyboardModifiers: keyboardModifiers,
-      ),
-    );
+  void pointerUp(PointerEvent pointerEvent) {
+    controller.pointerUp(pointerEvent);
   }
 
   void hover(Offset pos) {
