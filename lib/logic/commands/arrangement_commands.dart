@@ -164,6 +164,7 @@ class AddArrangementCommand extends Command {
 
   @override
   void rollback(ProjectModel project) {
+    project.sequence.arrangements.remove(arrangementID);
     project.sequence.arrangementOrder.removeLast();
   }
 }
