@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -27,51 +27,76 @@ import 'command.dart';
 void _addPatternToProject({
   required ProjectModel project,
   required PatternModel pattern,
-  required int index,
 }) {
-  project.sequence.patternOrder.insert(index, pattern.id);
   project.sequence.patterns[pattern.id] = pattern;
 }
 
 void _removePatternFromProject({
   required ProjectModel project,
-  required Id patternID,
+  required Id patternId,
 }) {
-  project.sequence.patternOrder.removeWhere((element) => element == patternID);
-  project.sequence.patterns.remove(patternID);
+  project.sequence.patterns.remove(patternId);
 }
 
-class AddPatternCommand extends Command {
-  PatternModel pattern;
-  int index;
+class PatternAddRemoveCommand extends Command {
+  final bool _isAdd;
 
-  AddPatternCommand({required this.pattern, required this.index});
+  late final PatternModel pattern;
+
+  PatternAddRemoveCommand.add({required this.pattern}) : _isAdd = true;
+
+  PatternAddRemoveCommand.remove({
+    required ProjectModel project,
+    required Id patternId,
+  }) : _isAdd = false {
+    final foundPattern = project.sequence.patterns[patternId];
+    if (foundPattern == null) {
+      throw StateError(
+        'PatternAddRemoveCommand.remove(): Pattern $patternId not found.',
+      );
+    }
+
+    pattern = foundPattern;
+  }
 
   @override
   void execute(ProjectModel project) {
-    _addPatternToProject(project: project, pattern: pattern, index: index);
+    if (_isAdd) {
+      _add(project);
+    } else {
+      _remove(project);
+    }
   }
 
   @override
   void rollback(ProjectModel project) {
-    _removePatternFromProject(project: project, patternID: pattern.id);
-  }
-}
-
-class DeletePatternCommand extends Command {
-  PatternModel pattern;
-  int index;
-
-  DeletePatternCommand({required this.pattern, required this.index});
-
-  @override
-  void execute(ProjectModel project) {
-    _removePatternFromProject(project: project, patternID: pattern.id);
+    if (_isAdd) {
+      _remove(project);
+    } else {
+      _add(project);
+    }
   }
 
-  @override
-  void rollback(ProjectModel project) {
-    _addPatternToProject(project: project, pattern: pattern, index: index);
+  void _add(ProjectModel project) {
+    if (project.sequence.patterns[pattern.id] != null) {
+      throw StateError(
+        'Tried to add a pattern that already exists. This indicates bad usage '
+        'of PatternAddRemoveCommand, or bad project state.',
+      );
+    }
+
+    _addPatternToProject(project: project, pattern: pattern);
+  }
+
+  void _remove(ProjectModel project) {
+    if (project.sequence.patterns[pattern.id] == null) {
+      throw StateError(
+        'Tried to remove a pattern that does not exist. This indicates bad '
+        'usage of PatternAddRemoveCommand, or bad project state.',
+      );
+    }
+
+    _removePatternFromProject(project: project, patternId: pattern.id);
   }
 }
 

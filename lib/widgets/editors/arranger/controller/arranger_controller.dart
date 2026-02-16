@@ -151,16 +151,14 @@ abstract class _ArrangerController {
       return;
     }
 
-    final arrangement =
-        project.sequence.arrangements[project.sequence.activeArrangementID]!;
-
     project.startUndoGroup();
 
     for (final clipID in viewModel.selectedClips) {
       project.execute(
-        DeleteClipCommand(
+        ClipAddRemoveCommand.remove(
           arrangementID: project.sequence.activeArrangementID!,
-          clip: arrangement.clips[clipID]!,
+          clipId: clipID,
+          project: project,
         ),
       );
     }

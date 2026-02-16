@@ -68,12 +68,7 @@ class ProjectController {
 
     final patternModel = PatternModel.create(name: name);
 
-    project.execute(
-      AddPatternCommand(
-        pattern: patternModel,
-        index: project.sequence.patternOrder.length,
-      ),
-    );
+    project.execute(PatternAddRemoveCommand.add(pattern: patternModel));
 
     project.sequence.setActivePattern(patternModel.id);
 

@@ -30,21 +30,115 @@ abstract class ArrangementCommand extends Command {
   ArrangementCommand(this.arrangementID);
 }
 
-/// Add a clip to an arrangement
-class AddClipCommand extends ArrangementCommand {
-  final ClipModel clip;
+void _addClipToArrangement({
+  required ProjectModel project,
+  required Id arrangementId,
+  required ClipModel clip,
+}) {
+  project.sequence.arrangements[arrangementId]!.clips[clip.id] = clip;
+}
 
-  AddClipCommand({required Id arrangementID, required this.clip})
-    : super(arrangementID);
+void _removeClipFromArrangement({
+  required ProjectModel project,
+  required Id arrangementId,
+  required Id clipId,
+}) {
+  project.sequence.arrangements[arrangementId]!.clips.remove(clipId);
+}
+
+class ClipAddRemoveCommand extends ArrangementCommand {
+  final bool _isAdd;
+
+  late final ClipModel clip;
+
+  ClipAddRemoveCommand.add({required Id arrangementID, required this.clip})
+    : _isAdd = true,
+      super(arrangementID);
+
+  ClipAddRemoveCommand.remove({
+    required ProjectModel project,
+    required Id arrangementID,
+    required Id clipId,
+  }) : _isAdd = false,
+       super(arrangementID) {
+    final arrangement = project.sequence.arrangements[arrangementID];
+    if (arrangement == null) {
+      throw StateError(
+        'ClipAddRemoveCommand.remove(): Arrangement $arrangementID not found.',
+      );
+    }
+
+    final foundClip = arrangement.clips[clipId];
+    if (foundClip == null) {
+      throw StateError(
+        'ClipAddRemoveCommand.remove(): Clip $clipId not found in arrangement '
+        '$arrangementID.',
+      );
+    }
+
+    clip = foundClip;
+  }
 
   @override
   void execute(ProjectModel project) {
-    project.sequence.arrangements[arrangementID]!.clips[clip.id] = clip;
+    if (_isAdd) {
+      _add(project);
+    } else {
+      _remove(project);
+    }
   }
 
   @override
   void rollback(ProjectModel project) {
-    project.sequence.arrangements[arrangementID]!.clips.remove(clip.id);
+    if (_isAdd) {
+      _remove(project);
+    } else {
+      _add(project);
+    }
+  }
+
+  void _add(ProjectModel project) {
+    final arrangement = project.sequence.arrangements[arrangementID];
+    if (arrangement == null) {
+      throw StateError(
+        'ClipAddRemoveCommand.add(): Arrangement $arrangementID not found.',
+      );
+    }
+
+    if (arrangement.clips[clip.id] != null) {
+      throw StateError(
+        'Tried to add a clip that already exists. This indicates bad usage of '
+        'ClipAddRemoveCommand, or bad project state.',
+      );
+    }
+
+    _addClipToArrangement(
+      project: project,
+      arrangementId: arrangementID,
+      clip: clip,
+    );
+  }
+
+  void _remove(ProjectModel project) {
+    final arrangement = project.sequence.arrangements[arrangementID];
+    if (arrangement == null) {
+      throw StateError(
+        'ClipAddRemoveCommand.remove(): Arrangement $arrangementID not found.',
+      );
+    }
+
+    if (arrangement.clips[clip.id] == null) {
+      throw StateError(
+        'Tried to remove a clip that does not exist. This indicates bad usage '
+        'of ClipAddRemoveCommand, or bad project state.',
+      );
+    }
+
+    _removeClipFromArrangement(
+      project: project,
+      arrangementId: arrangementID,
+      clipId: clip.id,
+    );
   }
 }
 
@@ -152,25 +246,6 @@ class MoveClipCommand extends ArrangementCommand {
 
     clip.offset = oldOffset;
     clip.trackId = oldTrack;
-  }
-}
-
-class DeleteClipCommand extends ArrangementCommand {
-  final ClipModel clip;
-
-  DeleteClipCommand({required Id arrangementID, required this.clip})
-    : super(arrangementID);
-
-  @override
-  void execute(ProjectModel project) {
-    final arrangement = project.sequence.arrangements[arrangementID]!;
-    arrangement.clips.remove(clip.id);
-  }
-
-  @override
-  void rollback(ProjectModel project) {
-    final arrangement = project.sequence.arrangements[arrangementID]!;
-    arrangement.clips[clip.id] = clip;
   }
 }
 
