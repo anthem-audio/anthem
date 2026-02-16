@@ -156,12 +156,16 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
   void leftPointerDown(ArrangerPointerEvent event) {
     final arrangement =
         project.sequence.arrangements[project.sequence.activeArrangementID]!;
+    final clipUnderCursorId =
+        event.contentUnderCursor.clip?.metadata ??
+        event.contentUnderCursor.resizeHandle?.metadata.id;
+    final resizeHandleUnderCursor = event.contentUnderCursor.resizeHandle;
 
     if (event.keyboardModifiers.ctrl || viewModel.tool == EditorTool.select) {
       if (event.keyboardModifiers.shift &&
-          event.clipUnderCursor != null &&
+          clipUnderCursorId != null &&
           viewModel.selectedClips.nonObservableInner.contains(
-            event.clipUnderCursor,
+            clipUnderCursorId,
           )) {
         _eventHandlingState =
             EventHandlingState.creatingSubtractiveSelectionBox;
@@ -181,12 +185,12 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       return;
     }
 
-    if (event.isResizeFromStart || event.isResizeFromEnd) {
-      if (event.clipUnderCursor == null) {
+    if (resizeHandleUnderCursor != null) {
+      if (clipUnderCursorId == null) {
         throw ArgumentError("Resize event didn't provide clipUnderCursor");
       }
 
-      final pressedClip = arrangement.clips[event.clipUnderCursor]!;
+      final pressedClip = arrangement.clips[clipUnderCursorId]!;
 
       viewModel.pressedClip = pressedClip.id;
 
@@ -252,9 +256,8 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
         pointerStartOffset: event.offset,
         pressedClip: pressedClip,
 
-        // If we somehow get both as true, we only want to call it a start resize
-        // if it's not an end resize.
-        isFromStartOfClip: !event.isResizeFromEnd,
+        isFromStartOfClip:
+            resizeHandleUnderCursor.metadata.type == ResizeAreaType.start,
 
         startWidths: startWidths,
         startOffsets: startOffsets,
@@ -329,8 +332,8 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       }
     }
 
-    if (event.clipUnderCursor != null) {
-      final pressedClip = arrangement.clips[event.clipUnderCursor]!;
+    if (clipUnderCursorId != null) {
+      final pressedClip = arrangement.clips[clipUnderCursorId]!;
       viewModel.pressedClip = pressedClip.id;
 
       if (viewModel.selectedClips.contains(pressedClip.id)) {
@@ -433,10 +436,14 @@ mixin _ArrangerPointerEventsMixin on _ArrangerController {
       clipsDeleted: {},
     );
 
-    if (event.clipUnderCursor != null) {
+    final clipUnderCursorId =
+        event.contentUnderCursor.clip?.metadata ??
+        event.contentUnderCursor.resizeHandle?.metadata.id;
+
+    if (clipUnderCursorId != null) {
       arrangement.clips.removeWhere((clipID, clip) {
         final remove =
-            clip.id == event.clipUnderCursor &&
+            clip.id == clipUnderCursorId &&
             // Ignore events that come from the resize handle but aren't over
             // the clip.
             clip.offset + clip.width > event.offset;

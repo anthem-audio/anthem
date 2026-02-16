@@ -327,7 +327,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
 
         viewModel.visibleClips.add(
           rect: Rect.fromLTWH(x, y, width - 1, trackHeight - 1),
-          metadata: (id: clip.id),
+          metadata: clip.id,
         );
 
         final startResizeHandleRect = Rect.fromLTWH(

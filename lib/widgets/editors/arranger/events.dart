@@ -17,8 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
+import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:flutter/widgets.dart';
 
 class ArrangerPointerEvent {
@@ -38,15 +38,8 @@ class ArrangerPointerEvent {
   /// Ctrl, alt and shift key states.
   KeyboardModifiers keyboardModifiers;
 
-  /// The clip under the cursor during this event, if any. Currently just used
-  /// for pointer down events.
-  Id? clipUnderCursor;
-
-  // Whether this is a resize event from the start of the clip.
-  bool isResizeFromStart;
-
-  // Whether this is a resize event from the end of the clip.
-  bool isResizeFromEnd;
+  /// The content currently under the cursor during this event.
+  ArrangerContentUnderCursor contentUnderCursor;
 
   ArrangerPointerEvent({
     required this.offset,
@@ -54,8 +47,6 @@ class ArrangerPointerEvent {
     required this.pointerEvent,
     required this.arrangerSize,
     required this.keyboardModifiers,
-    required this.isResizeFromStart,
-    required this.isResizeFromEnd,
-    this.clipUnderCursor,
+    required this.contentUnderCursor,
   });
 }

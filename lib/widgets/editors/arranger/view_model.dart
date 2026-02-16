@@ -37,6 +37,13 @@ class ArrangerViewModel = _ArrangerViewModel with _$ArrangerViewModel;
 
 enum ResizeAreaType { start, end }
 
+class ArrangerContentUnderCursor {
+  final CanvasAnnotation<Id>? clip;
+  final CanvasAnnotation<({Id id, ResizeAreaType type})>? resizeHandle;
+
+  const ArrangerContentUnderCursor({this.clip, this.resizeHandle});
+}
+
 abstract class _ArrangerViewModel with Store {
   final String projectId;
 
@@ -96,7 +103,7 @@ abstract class _ArrangerViewModel with Store {
   /// Calculates and caches the size and position of tracks in the current view.
   late final TrackPositionAndSize trackPositionCalculator;
 
-  final visibleClips = CanvasAnnotationSet<({Id id})>();
+  final visibleClips = CanvasAnnotationSet<Id>();
   final visibleResizeAreas =
       CanvasAnnotationSet<({Id id, ResizeAreaType type})>();
 
@@ -148,11 +155,7 @@ abstract class _ArrangerViewModel with Store {
   }
 
   /// Calculates the clip and resize handle under the cursor, if there is one.
-  ({
-    CanvasAnnotation<({Id id})>? clip,
-    CanvasAnnotation<({Id id, ResizeAreaType type})>? resizeHandle,
-  })
-  getContentUnderCursor(Offset pos) {
+  ArrangerContentUnderCursor getContentUnderCursor(Offset pos) {
     final clipUnderCursor = visibleClips.hitTest(pos);
     final resizeHandleUnderCursor = visibleResizeAreas
         .hitTestAll(pos)
@@ -164,9 +167,12 @@ abstract class _ArrangerViewModel with Store {
         .firstWhereOrNull(
           (element) =>
               clipUnderCursor == null ||
-              element.metadata.id == clipUnderCursor.metadata.id,
+              element.metadata.id == clipUnderCursor.metadata,
         );
-    return (clip: clipUnderCursor, resizeHandle: resizeHandleUnderCursor);
+    return ArrangerContentUnderCursor(
+      clip: clipUnderCursor,
+      resizeHandle: resizeHandleUnderCursor,
+    );
   }
 
   void registerTrack(Id trackId) {

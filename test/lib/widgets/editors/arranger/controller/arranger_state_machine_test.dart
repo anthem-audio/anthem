@@ -150,8 +150,7 @@ class _ArrangerStateMachineTestFixture {
       pointerEvent: pointerEvent,
       arrangerSize: viewSize,
       keyboardModifiers: keyboardModifiers ?? _keyboardModifiers(),
-      isResizeFromStart: false,
-      isResizeFromEnd: false,
+      contentUnderCursor: const ArrangerContentUnderCursor(),
     );
   }
 

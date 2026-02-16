@@ -134,8 +134,9 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
       event.localPosition.dy,
     );
 
-    final (clip: clipUnderCursor, resizeHandle: resizeHandleUnderCursor) =
-        viewModel.getContentUnderCursor(event.localPosition);
+    final contentUnderCursor = viewModel.getContentUnderCursor(
+      event.localPosition,
+    );
 
     return ArrangerPointerEvent(
       offset: offset,
@@ -143,12 +144,7 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
       pointerEvent: event,
       arrangerSize: viewSize,
       keyboardModifiers: keyboardModifiers,
-      clipUnderCursor:
-          clipUnderCursor?.metadata.id ?? resizeHandleUnderCursor?.metadata.id,
-      isResizeFromStart:
-          resizeHandleUnderCursor?.metadata.type == ResizeAreaType.start,
-      isResizeFromEnd:
-          resizeHandleUnderCursor?.metadata.type == ResizeAreaType.end,
+      contentUnderCursor: contentUnderCursor,
     );
   }
 }
