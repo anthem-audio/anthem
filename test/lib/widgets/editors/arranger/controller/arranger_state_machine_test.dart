@@ -192,6 +192,9 @@ void main() {
     });
 
     test('hover over clip updates canvas cursor to move', () {
+      fixture.hover(const Offset(80, 20));
+      expect(fixture.viewModel.cursorLocation, isNotNull);
+
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(110, 15, 40, 30),
         metadata: 'clip-under-cursor',
@@ -200,9 +203,13 @@ void main() {
       fixture.hover(const Offset(120, 20));
 
       expect(fixture.viewModel.canvasCursor, SystemMouseCursors.move);
+      expect(fixture.viewModel.cursorLocation, isNull);
     });
 
     test('hover over resize handle updates canvas cursor to resize', () {
+      fixture.hover(const Offset(80, 20));
+      expect(fixture.viewModel.cursorLocation, isNotNull);
+
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(110, 15, 40, 30),
         metadata: 'clip-under-cursor',
@@ -218,6 +225,21 @@ void main() {
         fixture.viewModel.canvasCursor,
         SystemMouseCursors.resizeLeftRight,
       );
+      expect(fixture.viewModel.cursorLocation, isNull);
+    });
+
+    test('hover leaving clip restores timeline cursor location', () {
+      fixture.viewModel.visibleClips.add(
+        rect: const Rect.fromLTWH(110, 15, 40, 30),
+        metadata: 'clip-under-cursor',
+      );
+
+      fixture.hover(const Offset(120, 20));
+      expect(fixture.viewModel.cursorLocation, isNull);
+
+      fixture.hover(const Offset(200, 20));
+      expect(fixture.viewModel.cursorLocation, isNotNull);
+      expect(fixture.viewModel.cursorLocation!.$2, _TrackIds.a);
     });
 
     test('exit clears hover-derived cursor location', () {

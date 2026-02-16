@@ -394,6 +394,12 @@ class ArrangerIdleState
     }
 
     final (x, y) = coordinates;
+    final contentUnderCursor = viewModel.getContentUnderCursor(Offset(x, y));
+    if (contentUnderCursor.clip != null ||
+        contentUnderCursor.resizeHandle != null) {
+      viewModel.cursorLocation = null;
+      return;
+    }
 
     final adjustedY =
         y +
