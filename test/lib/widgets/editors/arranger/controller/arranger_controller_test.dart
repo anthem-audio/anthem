@@ -125,6 +125,8 @@ class _ArrangerControllerTestFixture {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late _ArrangerControllerTestFixture fixture;
 
   setUp(() {
@@ -133,6 +135,133 @@ void main() {
 
   tearDown(() {
     fixture.dispose();
+  });
+
+  ({Id patternId, Id clipId}) createClipAndGetCreatedIds({
+    required Id trackId,
+    required double offset,
+    required double width,
+  }) {
+    final arrangementId = fixture.project.sequence.activeArrangementID!;
+    final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+
+    final beforePatternIds = fixture.project.sequence.patterns.keys.toSet();
+    final beforeClipIds = arrangement.clips.keys.toSet();
+
+    fixture.controller.createClip(
+      trackId: trackId,
+      offset: offset,
+      width: width,
+    );
+
+    final createdPatternIds = fixture.project.sequence.patterns.keys
+        .toSet()
+        .difference(beforePatternIds);
+    final createdClipIds = arrangement.clips.keys.toSet().difference(
+      beforeClipIds,
+    );
+
+    expect(createdPatternIds, hasLength(1));
+    expect(createdClipIds, hasLength(1));
+
+    return (patternId: createdPatternIds.single, clipId: createdClipIds.single);
+  }
+
+  group('createClip', () {
+    test(
+      'creates a pattern and clip in active arrangement with rounded timing',
+      () {
+        final arrangementId = fixture.project.sequence.activeArrangementID;
+        expect(arrangementId, isNotNull);
+
+        final createdIds = createClipAndGetCreatedIds(
+          trackId: _TrackIds.a1,
+          offset: 12.6,
+          width: 47.4,
+        );
+
+        final arrangement =
+            fixture.project.sequence.arrangements[arrangementId!]!;
+        final clip = arrangement.clips[createdIds.clipId]!;
+        final pattern =
+            fixture.project.sequence.patterns[createdIds.patternId]!;
+
+        expect(clip.patternId, equals(pattern.id));
+        expect(clip.trackId, equals(_TrackIds.a1));
+        expect(clip.offset, equals(13));
+        expect(clip.timeView, isNotNull);
+        expect(clip.timeView!.start, equals(0));
+        expect(clip.timeView!.end, equals(47));
+      },
+    );
+
+    test('copies track metadata onto created pattern', () {
+      final track = fixture.project.tracks[_TrackIds.b]!;
+
+      final createdIds = createClipAndGetCreatedIds(
+        trackId: _TrackIds.b,
+        offset: 0,
+        width: 96,
+      );
+
+      final pattern = fixture.project.sequence.patterns[createdIds.patternId]!;
+
+      expect(pattern.name, equals(track.name));
+      expect(pattern.color.hue, equals(track.color.hue));
+      expect(pattern.color.palette, equals(track.color.palette));
+      expect(identical(pattern.color, track.color), isFalse);
+    });
+
+    test('is a single undo/redo action', () {
+      final arrangementId = fixture.project.sequence.activeArrangementID!;
+      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+
+      final createdIds = createClipAndGetCreatedIds(
+        trackId: _TrackIds.a2a,
+        offset: 24,
+        width: 32,
+      );
+
+      expect(
+        fixture.project.sequence.patterns.containsKey(createdIds.patternId),
+        isTrue,
+      );
+      expect(arrangement.clips.containsKey(createdIds.clipId), isTrue);
+
+      fixture.project.undo();
+
+      expect(
+        fixture.project.sequence.patterns.containsKey(createdIds.patternId),
+        isFalse,
+      );
+      expect(arrangement.clips.containsKey(createdIds.clipId), isFalse);
+
+      fixture.project.redo();
+
+      expect(
+        fixture.project.sequence.patterns.containsKey(createdIds.patternId),
+        isTrue,
+      );
+      expect(arrangement.clips.containsKey(createdIds.clipId), isTrue);
+    });
+
+    test('rounds offset and width near integer boundaries', () {
+      final arrangementId = fixture.project.sequence.activeArrangementID!;
+
+      final createdIds = createClipAndGetCreatedIds(
+        trackId: _TrackIds.s1,
+        offset: 10.49,
+        width: 0.51,
+      );
+
+      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      final clip = arrangement.clips[createdIds.clipId]!;
+
+      expect(clip.offset, equals(10));
+      expect(clip.timeView, isNotNull);
+      expect(clip.timeView!.start, equals(0));
+      expect(clip.timeView!.end, equals(1));
+    });
   });
 
   group('Track selection basics', () {
