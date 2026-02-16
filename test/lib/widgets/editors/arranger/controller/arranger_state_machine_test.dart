@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
@@ -30,8 +31,10 @@ import 'package:anthem/widgets/editors/arranger/events.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -52,11 +55,13 @@ class _ArrangerStateMachineTestFixture {
 
   final ProjectModel project;
   final ArrangerViewModel viewModel;
+  final ProjectViewModel projectViewModel;
   final ArrangerController controller;
 
   _ArrangerStateMachineTestFixture._({
     required this.project,
     required this.viewModel,
+    required this.projectViewModel,
     required this.controller,
   });
 
@@ -82,8 +87,13 @@ class _ArrangerStateMachineTestFixture {
       baseTrackHeight: 60,
       timeView: TimeRange(0, 960),
     );
+    final projectViewModel = ProjectViewModel()
+      ..activePanel = PanelKind.arranger;
 
     AnthemStore.instance.projects[project.id] = project;
+    ServiceRegistry.forProject(
+      project.id,
+    ).register<ProjectViewModel>(projectViewModel);
 
     final controller = ArrangerController(
       viewModel: viewModel,
@@ -95,6 +105,7 @@ class _ArrangerStateMachineTestFixture {
     return _ArrangerStateMachineTestFixture._(
       project: project,
       viewModel: viewModel,
+      projectViewModel: projectViewModel,
       controller: controller,
     );
   }
@@ -192,9 +203,20 @@ class _ArrangerStateMachineTestFixture {
     controller.onExit(PointerExitEvent(position: pos));
   }
 
+  void pressEscape() {
+    controller.onRawKeyEvent(
+      const KeyDownEvent(
+        timeStamp: Duration.zero,
+        physicalKey: PhysicalKeyboardKey.escape,
+        logicalKey: LogicalKeyboardKey.escape,
+      ),
+    );
+  }
+
   void dispose() {
     controller.dispose();
     AnthemStore.instance.projects.remove(project.id);
+    ServiceRegistry.removeProject(project.id);
   }
 }
 
@@ -731,5 +753,47 @@ void main() {
       expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
       expect(fixture.viewModel.clipCreateHint, isNull);
     });
+
+    test(
+      'escape cancels create clip and prevents re-entry until pointer release',
+      () {
+        final arrangementId = fixture.project.sequence.activeArrangementID!;
+        final arrangement =
+            fixture.project.sequence.arrangements[arrangementId]!;
+        final patternCountBefore = fixture.project.sequence.patterns.length;
+        final clipCountBefore = arrangement.clips.length;
+
+        enterCreateClipState(movePos: const Offset(420, 20));
+        expect(
+          fixture.stateMachine.currentState,
+          isA<ArrangerCreateClipState>(),
+        );
+        expect(fixture.viewModel.clipCreateHint, isNotNull);
+
+        fixture.pressEscape();
+
+        expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
+        expect(fixture.viewModel.clipCreateHint, isNull);
+
+        fixture.pointerMove(
+          const PointerMoveEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(500, 20),
+          ),
+        );
+
+        expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
+        expect(fixture.viewModel.clipCreateHint, isNull);
+
+        fixture.pointerUp(
+          const PointerUpEvent(pointer: 1, position: Offset(500, 20)),
+        );
+
+        expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+        expect(fixture.project.sequence.patterns.length, patternCountBefore);
+        expect(arrangement.clips.length, clipCountBefore);
+      },
+    );
   });
 }

@@ -31,6 +31,8 @@ import 'package:flutter/widgets.dart';
 
 enum ArrangerModifierKey { ctrl, alt, shift }
 
+enum ArrangerCancelTrigger { escapeKey }
+
 sealed class _ArrangerPointerSignal {
   final ArrangerPointerEvent event;
 
@@ -55,6 +57,17 @@ class _ArrangerViewTransformChangedSignal {
 
 class _ArrangerTrackLayoutChangedSignal {
   const _ArrangerTrackLayoutChangedSignal();
+}
+
+class _ArrangerCancelSignal {
+  final ArrangerCancelTrigger trigger;
+
+  const _ArrangerCancelSignal(this.trigger);
+}
+
+bool isArrangerCancelSignal(EditorStateMachineEvent event) {
+  return event is EditorStateMachineSignalEvent &&
+      event.signal is _ArrangerCancelSignal;
 }
 
 /// A state machine to manage user interactions in the arranger.
@@ -83,9 +96,15 @@ class ArrangerStateMachine
   }
 
   void onPointerUp(ArrangerPointerEvent event) {
+    final activePrimaryPointerId = data.activePrimaryPointerId;
+
     data.handlePointerUp(event);
     emitSignal(_ArrangerPointerUpSignal(event));
     notifyDataUpdated();
+
+    if (activePrimaryPointerId == event.pointerEvent.pointer) {
+      data.clearInteractionCancellation();
+    }
   }
 
   void onEnter(PointerEnterEvent event) {
@@ -147,6 +166,11 @@ class ArrangerStateMachine
 
   void onTrackLayoutChanged() {
     emitSignal(const _ArrangerTrackLayoutChangedSignal());
+  }
+
+  void cancelInteraction({required ArrangerCancelTrigger trigger}) {
+    data.requestInteractionCancellation();
+    emitSignal(_ArrangerCancelSignal(trigger));
   }
 
   List<DivisionChange> divisionChanges() {
@@ -227,6 +251,7 @@ class ArrangerStateMachineData {
   double renderedTimeViewStart = 0;
   double renderedTimeViewEnd = 0;
   double renderedVerticalScrollPosition = 0;
+  bool isCurrentInteractionCanceled = false;
 
   ActivePointer? get activePrimaryPointer {
     final pointerId = activePrimaryPointerId;
@@ -265,6 +290,7 @@ class ArrangerStateMachineData {
         pointerEvent.buttons & kPrimaryMouseButton == kPrimaryMouseButton) {
       activePrimaryPointerId = pointerEvent.pointer;
       activePrimaryPointerDownPosition = ActivePointer(pos.dx, pos.dy);
+      clearInteractionCancellation();
     }
   }
 
@@ -311,6 +337,14 @@ class ArrangerStateMachineData {
     hoveredPointer ??= .new(e.localPosition.dx, e.localPosition.dy);
     hoveredPointer!.x = e.localPosition.dx;
     hoveredPointer!.y = e.localPosition.dy;
+  }
+
+  void requestInteractionCancellation() {
+    isCurrentInteractionCanceled = true;
+  }
+
+  void clearInteractionCancellation() {
+    isCurrentInteractionCanceled = false;
   }
 }
 
@@ -554,6 +588,7 @@ class ArrangerDragState
       isDragPointerActive &&
       parentState.doubleClickPressed &&
       hasCrossedActivationDistance &&
+      !interactionState.isCurrentInteractionCanceled &&
       !shouldDelegateToSelectionBox &&
       viewModel.tool == EditorTool.pencil;
 
@@ -660,6 +695,13 @@ class ArrangerCreateClipState
   @override
   Iterable<EditorStateMachineStateTransition<ArrangerStateMachineData>>
   get transitions => [
+    .new(
+      name: 'Cancel clip creation',
+      from: ArrangerCreateClipState,
+      to: ArrangerDragState,
+      canTransition: ({required data, required event, required currentState}) =>
+          isArrangerCancelSignal(event),
+    ),
     .new(
       name: 'Delegate drag to clip creation',
       from: ArrangerDragState,

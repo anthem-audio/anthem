@@ -27,6 +27,11 @@ mixin _ArrangerShortcutsMixin on _ArrangerController {
       return false;
     }
 
+    if (event is KeyDownEvent && event.logicalKey == .escape) {
+      stateMachine.cancelInteraction(trigger: .escapeKey);
+      return false;
+    }
+
     final modifier = _getModifierKey(event.logicalKey);
     if (modifier == null) {
       return false;
