@@ -250,6 +250,35 @@ void main() {
       expect(fixture.viewModel.cursorLocation, isNull);
     });
 
+    test('hover over clip updates canvas cursor to move', () {
+      fixture.viewModel.visibleClips.add(
+        rect: const Rect.fromLTWH(110, 15, 40, 30),
+        metadata: 'clip-under-cursor',
+      );
+
+      fixture.hover(const Offset(120, 20));
+
+      expect(fixture.viewModel.canvasCursor, SystemMouseCursors.move);
+    });
+
+    test('hover over resize handle updates canvas cursor to resize', () {
+      fixture.viewModel.visibleClips.add(
+        rect: const Rect.fromLTWH(110, 15, 40, 30),
+        metadata: 'clip-under-cursor',
+      );
+      fixture.viewModel.visibleResizeAreas.add(
+        rect: const Rect.fromLTWH(110, 15, 8, 30),
+        metadata: (id: 'clip-under-cursor', type: ResizeAreaType.start),
+      );
+
+      fixture.hover(const Offset(112, 20));
+
+      expect(
+        fixture.viewModel.canvasCursor,
+        SystemMouseCursors.resizeLeftRight,
+      );
+    });
+
     test('exit clears hover-derived cursor location', () {
       fixture.enter(const Offset(120, 20));
       fixture.hover(const Offset(120, 20));
@@ -258,6 +287,20 @@ void main() {
       fixture.exit(const Offset(120, 20));
 
       expect(fixture.viewModel.cursorLocation, isNull);
+    });
+
+    test('exit clears canvas cursor', () {
+      fixture.viewModel.visibleClips.add(
+        rect: const Rect.fromLTWH(110, 15, 40, 30),
+        metadata: 'clip-under-cursor',
+      );
+
+      fixture.hover(const Offset(120, 20));
+      expect(fixture.viewModel.canvasCursor, SystemMouseCursors.move);
+
+      fixture.exit(const Offset(120, 20));
+
+      expect(fixture.viewModel.canvasCursor, MouseCursor.defer);
     });
 
     test('alt modifier disables snapping for cursor offset', () {

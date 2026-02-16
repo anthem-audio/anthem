@@ -94,6 +94,10 @@ abstract class _ArrangerViewModel with Store {
   @observable
   (double offset, Id trackId)? cursorLocation;
 
+  /// The current cursor for the arranger canvas.
+  @observable
+  MouseCursor canvasCursor = MouseCursor.defer;
+
   /// The box that shows to indicate where a new clip will be created while
   /// creating a clip.
   @observable

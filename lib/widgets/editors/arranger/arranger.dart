@@ -697,179 +697,137 @@ class _ArrangerCanvas extends StatelessWidget {
     final project = Provider.of<ProjectModel>(context);
     final viewModel = Provider.of<ArrangerViewModel>(context);
 
-    return _ArrangerCanvasCursor(
-      child: Container(
-        clipBehavior: Clip.hardEdge,
-        decoration: BoxDecoration(color: AnthemTheme.grid.backgroundLight),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final grid = Positioned.fill(
-              child: AnimatedBuilder(
-                animation: verticalScrollPositionAnimationController,
-                builder: (context, child) {
-                  return AnimatedBuilder(
-                    animation: timeViewAnimationController,
-                    builder: (context, child) {
-                      return CustomPaintObserver(
-                        painterBuilder: () => ArrangerBackgroundPainter(
-                          viewModel: viewModel,
-                          activeArrangement:
-                              project.sequence.arrangements[project
-                                  .sequence
-                                  .activeArrangementID],
-                          project: project,
-                          verticalScrollPosition:
-                              verticalScrollPositionAnimation.value,
+    return Container(
+      clipBehavior: Clip.hardEdge,
+      decoration: BoxDecoration(color: AnthemTheme.grid.backgroundLight),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final grid = Positioned.fill(
+            child: AnimatedBuilder(
+              animation: verticalScrollPositionAnimationController,
+              builder: (context, child) {
+                return AnimatedBuilder(
+                  animation: timeViewAnimationController,
+                  builder: (context, child) {
+                    return CustomPaintObserver(
+                      painterBuilder: () => ArrangerBackgroundPainter(
+                        viewModel: viewModel,
+                        activeArrangement: project
+                            .sequence
+                            .arrangements[project.sequence.activeArrangementID],
+                        project: project,
+                        verticalScrollPosition:
+                            verticalScrollPositionAnimation.value,
+                        timeViewStart: timeViewStartAnimation.value,
+                        timeViewEnd: timeViewEndAnimation.value,
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          );
+
+          final clipsContainer = Observer(
+            builder: (context) {
+              Widget clips() {
+                return AnimatedBuilder(
+                  animation: verticalScrollPositionAnimationController,
+                  builder: (context, child) {
+                    return AnimatedBuilder(
+                      animation: timeViewAnimationController,
+                      builder: (context, child) {
+                        return ArrangerContentRenderer(
                           timeViewStart: timeViewStartAnimation.value,
                           timeViewEnd: timeViewEndAnimation.value,
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            );
-
-            final clipsContainer = Observer(
-              builder: (context) {
-                Widget clips() {
-                  return AnimatedBuilder(
-                    animation: verticalScrollPositionAnimationController,
-                    builder: (context, child) {
-                      return AnimatedBuilder(
-                        animation: timeViewAnimationController,
-                        builder: (context, child) {
-                          return ArrangerContentRenderer(
-                            timeViewStart: timeViewStartAnimation.value,
-                            timeViewEnd: timeViewEndAnimation.value,
-                            verticalScrollPosition:
-                                verticalScrollPositionAnimation.value,
-                            viewModel: viewModel,
-                          );
-                        },
-                      );
-                    },
-                  );
-                }
-
-                return Positioned.fill(
-                  child: project.sequence.activeArrangementID == null
-                      ? const SizedBox()
-                      : clips(),
+                          verticalScrollPosition:
+                              verticalScrollPositionAnimation.value,
+                          viewModel: viewModel,
+                        );
+                      },
+                    );
+                  },
                 );
-              },
-            );
+              }
 
-            final selectionBox = Observer(
-              builder: (context) {
-                if (viewModel.selectionBox == null) {
-                  return const SizedBox();
-                }
+              return Positioned.fill(
+                child: project.sequence.activeArrangementID == null
+                    ? const SizedBox()
+                    : clips(),
+              );
+            },
+          );
 
-                final selectionBox = viewModel.selectionBox!;
+          final selectionBox = Observer(
+            builder: (context) {
+              if (viewModel.selectionBox == null) {
+                return const SizedBox();
+              }
 
-                final left = timeToPixels(
-                  timeViewStart: viewModel.timeView.start,
-                  timeViewEnd: viewModel.timeView.end,
-                  viewPixelWidth: constraints.maxWidth,
-                  time: selectionBox.left,
-                );
+              final selectionBox = viewModel.selectionBox!;
 
-                final width = timeToPixels(
-                  timeViewStart: viewModel.timeView.start,
-                  timeViewEnd: viewModel.timeView.end,
-                  viewPixelWidth: constraints.maxWidth,
-                  time: viewModel.timeView.start + selectionBox.width,
-                );
+              final left = timeToPixels(
+                timeViewStart: viewModel.timeView.start,
+                timeViewEnd: viewModel.timeView.end,
+                viewPixelWidth: constraints.maxWidth,
+                time: selectionBox.left,
+              );
 
-                final top = viewModel.trackPositionCalculator.getTrackPosition(
-                  selectionBox.top,
-                );
-                final bottom = viewModel.trackPositionCalculator
-                    .getTrackPosition((selectionBox.top + selectionBox.height));
+              final width = timeToPixels(
+                timeViewStart: viewModel.timeView.start,
+                timeViewEnd: viewModel.timeView.end,
+                viewPixelWidth: constraints.maxWidth,
+                time: viewModel.timeView.start + selectionBox.width,
+              );
 
-                final borderColor = const HSLColor.fromAHSL(
-                  1,
-                  166,
-                  0.6,
-                  0.35,
-                ).toColor();
-                final backgroundColor = borderColor.withAlpha(100);
+              final top = viewModel.trackPositionCalculator.getTrackPosition(
+                selectionBox.top,
+              );
+              final bottom = viewModel.trackPositionCalculator.getTrackPosition(
+                (selectionBox.top + selectionBox.height),
+              );
 
-                return Positioned(
-                  left: left,
-                  top: top,
-                  child: Container(
-                    width: width,
-                    height: bottom - top,
-                    decoration: BoxDecoration(
-                      color: backgroundColor,
-                      border: Border.all(color: borderColor),
-                      borderRadius: const BorderRadius.all(Radius.circular(2)),
-                    ),
+              final borderColor = const HSLColor.fromAHSL(
+                1,
+                166,
+                0.6,
+                0.35,
+              ).toColor();
+              final backgroundColor = borderColor.withAlpha(100);
+
+              return Positioned(
+                left: left,
+                top: top,
+                child: Container(
+                  width: width,
+                  height: bottom - top,
+                  decoration: BoxDecoration(
+                    color: backgroundColor,
+                    border: Border.all(color: borderColor),
+                    borderRadius: const BorderRadius.all(Radius.circular(2)),
                   ),
-                );
-              },
-            );
+                ),
+              );
+            },
+          );
 
-            final playhead = Positioned.fill(
-              child: PlayheadLine(
-                timeViewAnimationController: timeViewAnimationController,
-                timeViewStartAnimation: timeViewStartAnimation,
-                timeViewEndAnimation: timeViewEndAnimation,
-                isVisible: true,
-                editorActiveSequenceId: project.sequence.activeArrangementID,
-              ),
-            );
+          final playhead = Positioned.fill(
+            child: PlayheadLine(
+              timeViewAnimationController: timeViewAnimationController,
+              timeViewStartAnimation: timeViewStartAnimation,
+              timeViewEndAnimation: timeViewEndAnimation,
+              isVisible: true,
+              editorActiveSequenceId: project.sequence.activeArrangementID,
+            ),
+          );
 
-            return ArrangerEventListener(
-              child: Stack(
-                children: [grid, clipsContainer, selectionBox, playhead],
-              ),
-            );
-          },
-        ),
+          return ArrangerEventListener(
+            child: Stack(
+              children: [grid, clipsContainer, selectionBox, playhead],
+            ),
+          );
+        },
       ),
-    );
-  }
-}
-
-/// Determines the current cursor for the arranger canvas.
-class _ArrangerCanvasCursor extends StatefulWidget {
-  final Widget? child;
-
-  const _ArrangerCanvasCursor({this.child});
-
-  @override
-  State<_ArrangerCanvasCursor> createState() => _ArrangerCanvasCursorState();
-}
-
-class _ArrangerCanvasCursorState extends State<_ArrangerCanvasCursor> {
-  MouseCursor cursor = MouseCursor.defer;
-
-  @override
-  Widget build(BuildContext context) {
-    final viewModel = Provider.of<ArrangerViewModel>(context);
-
-    return MouseRegion(
-      cursor: cursor,
-      onHover: (e) {
-        final pos = e.localPosition;
-
-        final contentUnderCursor = viewModel.getContentUnderCursor(pos);
-        final newCursor = contentUnderCursor.resizeHandle != null
-            ? SystemMouseCursors.resizeLeftRight
-            : contentUnderCursor.clip != null
-            ? SystemMouseCursors.move
-            : MouseCursor.defer;
-
-        if (cursor == newCursor) return;
-
-        setState(() {
-          cursor = newCursor;
-        });
-      },
-      child: widget.child,
     );
   }
 }

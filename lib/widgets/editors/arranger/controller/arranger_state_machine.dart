@@ -382,11 +382,11 @@ class ArrangerIdleState
   void updateHover() {
     lastHoveredPointer = interactionState.hoveredPointer?.clone();
 
-    updateArrangerCursor(
-      lastHoveredPointer == null
-          ? null
-          : (lastHoveredPointer!.x, lastHoveredPointer!.y),
-    );
+    final coordinates = lastHoveredPointer == null
+        ? null
+        : (lastHoveredPointer!.x, lastHoveredPointer!.y);
+    updateArrangerCursor(coordinates);
+    updateSystemMouseCursor(coordinates);
   }
 
   void updateArrangerCursor((double x, double y)? coordinates) {
@@ -430,6 +430,25 @@ class ArrangerIdleState
           );
 
     viewModel.cursorLocation = (targetTime.toDouble(), trackId);
+  }
+
+  void updateSystemMouseCursor((double x, double y)? coordinates) {
+    if (coordinates == null) {
+      viewModel.canvasCursor = MouseCursor.defer;
+      return;
+    }
+
+    final (x, y) = coordinates;
+    final contentUnderCursor = viewModel.getContentUnderCursor(Offset(x, y));
+    final newCursor = contentUnderCursor.resizeHandle != null
+        ? SystemMouseCursors.resizeLeftRight
+        : contentUnderCursor.clip != null
+        ? SystemMouseCursors.move
+        : MouseCursor.defer;
+
+    if (viewModel.canvasCursor != newCursor) {
+      viewModel.canvasCursor = newCursor;
+    }
   }
 
   void _clearActivePrimaryPointerTracking() {
