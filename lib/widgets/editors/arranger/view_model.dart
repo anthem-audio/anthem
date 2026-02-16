@@ -73,6 +73,8 @@ abstract class _ArrangerViewModel with Store {
   @observable
   TimeViewModel? cursorTimeRange;
 
+  /// Selection box in raw view-space coordinates relative to the top-left of
+  /// the arranger canvas.
   @observable
   Rectangle<double>? selectionBox;
 

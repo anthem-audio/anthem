@@ -44,7 +44,6 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart' as mobx;
 import 'package:provider/provider.dart';
 
-import '../shared/helpers/time_helpers.dart';
 import 'widgets/grid.dart';
 import 'view_model.dart';
 
@@ -766,27 +765,6 @@ class _ArrangerCanvas extends StatelessWidget {
 
               final selectionBox = viewModel.selectionBox!;
 
-              final left = timeToPixels(
-                timeViewStart: viewModel.timeView.start,
-                timeViewEnd: viewModel.timeView.end,
-                viewPixelWidth: constraints.maxWidth,
-                time: selectionBox.left,
-              );
-
-              final width = timeToPixels(
-                timeViewStart: viewModel.timeView.start,
-                timeViewEnd: viewModel.timeView.end,
-                viewPixelWidth: constraints.maxWidth,
-                time: viewModel.timeView.start + selectionBox.width,
-              );
-
-              final top = viewModel.trackPositionCalculator.getTrackPosition(
-                selectionBox.top,
-              );
-              final bottom = viewModel.trackPositionCalculator.getTrackPosition(
-                (selectionBox.top + selectionBox.height),
-              );
-
               final borderColor = const HSLColor.fromAHSL(
                 1,
                 166,
@@ -796,11 +774,11 @@ class _ArrangerCanvas extends StatelessWidget {
               final backgroundColor = borderColor.withAlpha(100);
 
               return Positioned(
-                left: left,
-                top: top,
+                left: selectionBox.left,
+                top: selectionBox.top,
                 child: Container(
-                  width: width,
-                  height: bottom - top,
+                  width: selectionBox.width,
+                  height: selectionBox.height,
                   decoration: BoxDecoration(
                     color: backgroundColor,
                     border: Border.all(color: borderColor),
