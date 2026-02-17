@@ -509,7 +509,7 @@ void main() {
       expect(fixture.viewModel.selectedClips, isEmpty);
     });
 
-    test('single click over clip does not clear selected clips', () {
+    test('single click over non-selected clip clears selected clips', () {
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(240, 10, 80, 30),
         metadata: 'clip-under-cursor',
@@ -528,10 +528,7 @@ void main() {
       );
 
       expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
-      expect(
-        fixture.viewModel.selectedClips.toSet(),
-        equals({'selected-clip'}),
-      );
+      expect(fixture.viewModel.selectedClips, isEmpty);
     });
   });
 
