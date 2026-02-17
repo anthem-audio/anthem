@@ -185,52 +185,70 @@ void paintClipList({
     final textureAtlas = spriteSheet.textureAtlas;
 
     if (textureAtlas != null) {
-      final clipEntriesWithAtlasRect = <ClipRenderInfo>[];
-      final clipEntriesWithoutAtlasRect = <ClipRenderInfo>[];
+      var clipEntriesWithAtlasRectCount = 0;
+      var hasClipEntriesWithoutAtlasRect = false;
 
-      // A new pattern can exist in the arrangement before its title has been
-      // packed into the shared atlas. In that case, fall back to direct title
-      // rendering for that clip instead of crashing the entire paint pass.
       for (final clipEntry in clipList) {
         if (clipEntry.pattern.clipTitleAtlasRect != null) {
-          clipEntriesWithAtlasRect.add(clipEntry);
+          clipEntriesWithAtlasRectCount++;
         } else {
-          clipEntriesWithoutAtlasRect.add(clipEntry);
+          hasClipEntriesWithoutAtlasRect = true;
         }
       }
 
-      if (clipEntriesWithAtlasRect.isNotEmpty) {
+      if (clipEntriesWithAtlasRectCount > 0) {
+        var cursor = 0;
+
+        ClipRenderInfo nextClipEntryWithAtlasRect() {
+          while (cursor < clipList.length) {
+            final clipEntry = clipList[cursor++];
+            if (clipEntry.pattern.clipTitleAtlasRect != null) {
+              return clipEntry;
+            }
+          }
+
+          throw StateError(
+            'Expected clip entry with atlas rect while generating drawAtlas '
+            'inputs.',
+          );
+        }
+
+        final transforms = List.generate(clipEntriesWithAtlasRectCount, (i) {
+          final clipEntry = nextClipEntryWithAtlasRect();
+          return RSTransform.fromComponents(
+            rotation: 0,
+            scale: 1 / devicePixelRatio,
+            anchorX: 0,
+            anchorY: 0,
+            translateX: clipEntry.x,
+            translateY:
+                clipEntry.y +
+                (clipEntry.height > _smallSizeThreshold
+                    ? 0
+                    : (clipEntry.height / 2) - (textHeight / 2)),
+          );
+        }, growable: false);
+
+        cursor = 0;
+        final rects = List.generate(clipEntriesWithAtlasRectCount, (i) {
+          final clipEntry = nextClipEntryWithAtlasRect();
+          final rect = clipEntry.pattern.clipTitleAtlasRect!;
+          return Rect.fromLTWH(
+            rect.left,
+            rect.top,
+            min(
+              rect.width,
+              (clipEntry.width - _clipTitlePadding * 2) * devicePixelRatio,
+            ),
+            rect.height,
+          );
+        }, growable: false);
+
         canvas.drawAtlas(
           textureAtlas,
-          List.generate(clipEntriesWithAtlasRect.length, (i) {
-            final clipEntry = clipEntriesWithAtlasRect[i];
-            return RSTransform.fromComponents(
-              rotation: 0,
-              scale: 1 / devicePixelRatio,
-              anchorX: 0,
-              anchorY: 0,
-              translateX: clipEntry.x,
-              translateY:
-                  clipEntry.y +
-                  (clipEntry.height > _smallSizeThreshold
-                      ? 0
-                      : (clipEntry.height / 2) - (textHeight / 2)),
-            );
-          }, growable: false),
-          List.generate(clipEntriesWithAtlasRect.length, (i) {
-            final clipEntry = clipEntriesWithAtlasRect[i];
-            final rect = clipEntry.pattern.clipTitleAtlasRect!;
-            return Rect.fromLTWH(
-              rect.left,
-              rect.top,
-              min(
-                rect.width,
-                (clipEntry.width - _clipTitlePadding * 2) * devicePixelRatio,
-              ),
-              rect.height,
-            );
-          }, growable: false),
-          List.generate(clipEntriesWithAtlasRect.length, (i) {
+          transforms,
+          rects,
+          List.generate(clipEntriesWithAtlasRectCount, (i) {
             return const Color(0xFF777777);
           }, growable: false),
           BlendMode.dstIn,
@@ -239,13 +257,20 @@ void paintClipList({
         );
       }
 
-      if (clipEntriesWithoutAtlasRect.isNotEmpty) {
-        _drawClipTitlesDirect(
-          canvas: canvas,
-          canvasSize: canvasSize,
-          clipList: clipEntriesWithoutAtlasRect,
-          textHeight: textHeight,
-        );
+      // A new pattern can exist in the arrangement before its title has been
+      // packed into the shared atlas. In that case, fall back to direct title
+      // rendering for that clip instead of crashing the entire paint pass.
+      if (hasClipEntriesWithoutAtlasRect) {
+        for (final clipEntry in clipList) {
+          if (clipEntry.pattern.clipTitleAtlasRect != null) continue;
+
+          _drawClipTitleDirect(
+            canvas: canvas,
+            canvasSize: canvasSize,
+            clipEntry: clipEntry,
+            textHeight: textHeight,
+          );
+        }
       }
     } else {
       // Fallback if the atlas hasn't been generated yet.
@@ -385,38 +410,52 @@ void _drawClipTitlesDirect({
   required double textHeight,
 }) {
   for (final clipEntry in clipList) {
-    final pattern = clipEntry.pattern;
-    final y = clipEntry.y;
-    final height = clipEntry.height;
-
-    final textY = height > _smallSizeThreshold
-        ? y
-        : y + (height / 2) - (textHeight / 2);
-    final rect = Rect.fromLTWH(clipEntry.x, textY, clipEntry.width, textHeight);
-
-    final x = clipEntry.x;
-    final width = clipEntry.width;
-    final selected = clipEntry.selected;
-    final pressed = clipEntry.pressed;
-    drawPatternTitle(
+    _drawClipTitleDirect(
       canvas: canvas,
-      size: canvasSize,
-      clipRect: rect,
-      pattern: pattern,
-      x: x,
-      y: textY,
-      width: width,
-      height: height,
-      selected: selected,
-      pressed: pressed,
-      // We don't need to manually handle device pixel ratio here since we're
-      // drawing directly to the canvas, which already accounts for it.
-      devicePixelRatio: 1,
-      // Match the atlas render path tint to avoid visible color shifts while
-      // a title is waiting to be packed into the shared atlas.
-      overrideTextColor: const Color(0xFF777777),
+      canvasSize: canvasSize,
+      clipEntry: clipEntry,
+      textHeight: textHeight,
     );
   }
+}
+
+void _drawClipTitleDirect({
+  required Canvas canvas,
+  required Size canvasSize,
+  required ClipRenderInfo clipEntry,
+  required double textHeight,
+}) {
+  final pattern = clipEntry.pattern;
+  final y = clipEntry.y;
+  final height = clipEntry.height;
+
+  final textY = height > _smallSizeThreshold
+      ? y
+      : y + (height / 2) - (textHeight / 2);
+  final rect = Rect.fromLTWH(clipEntry.x, textY, clipEntry.width, textHeight);
+
+  final x = clipEntry.x;
+  final width = clipEntry.width;
+  final selected = clipEntry.selected;
+  final pressed = clipEntry.pressed;
+  drawPatternTitle(
+    canvas: canvas,
+    size: canvasSize,
+    clipRect: rect,
+    pattern: pattern,
+    x: x,
+    y: textY,
+    width: width,
+    height: height,
+    selected: selected,
+    pressed: pressed,
+    // We don't need to manually handle device pixel ratio here since we're
+    // drawing directly to the canvas, which already accounts for it.
+    devicePixelRatio: 1,
+    // Match the atlas render path tint to avoid visible color shifts while
+    // a title is waiting to be packed into the shared atlas.
+    overrideTextColor: const Color(0xFF777777),
+  );
 }
 
 void _paintContainer({
