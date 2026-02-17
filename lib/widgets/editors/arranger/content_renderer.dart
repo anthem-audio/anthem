@@ -288,7 +288,21 @@ class ArrangerContentPainter extends CustomPainterObserver {
         selected: viewModel.selectedClips.contains(clip.id),
         pressed: viewModel.pressedClip == clip.id,
       );
-    }).nonNulls;
+    }).nonNulls.toList();
+
+    allClips.sort((a, b) {
+      final offsetCompare = a.clip.offset.compareTo(b.clip.offset);
+      if (offsetCompare != 0) {
+        return offsetCompare;
+      }
+
+      final widthCompare = a.clip.width.compareTo(b.clip.width);
+      if (widthCompare != 0) {
+        return widthCompare;
+      }
+
+      return a.clip.id.compareTo(b.clip.id);
+    });
 
     List<List<ClipRenderInfo>> clipLayers = [];
     final layerBuilder = _ClipLayerBuilder();
