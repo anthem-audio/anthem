@@ -241,67 +241,72 @@ class ArrangerContentPainter extends CustomPainterObserver {
     // Note that if we ever disallow overlapping clips in the arranger, then we
     // could simplify this logic.
 
-    final allClips = arrangement.clips.values.map<ClipRenderInfo?>((clip) {
-      final trackId = clip.trackId;
+    final allClips = arrangement.clips.values
+        .map<ClipRenderInfo?>((clip) {
+          final trackId = clip.trackId;
 
-      final pattern = project.sequence.patterns[clip.patternId]!;
+          final pattern = project.sequence.patterns[clip.patternId]!;
+          final clipOffset = clip.offset;
+          final clipWidth = clip.width;
 
-      final x = timeToPixels(
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        viewPixelWidth: size.width,
-        time: clip.offset.toDouble(),
-      );
-      final width =
-          timeToPixels(
+          final x = timeToPixels(
             timeViewStart: timeViewStart,
             timeViewEnd: timeViewEnd,
             viewPixelWidth: size.width,
-            time: clip.offset.toDouble() + clip.width,
-          ) -
-          x +
-          1;
+            time: clipOffset.toDouble(),
+          );
+          final width =
+              timeToPixels(
+                timeViewStart: timeViewStart,
+                timeViewEnd: timeViewEnd,
+                viewPixelWidth: size.width,
+                time: clipOffset.toDouble() + clipWidth,
+              ) -
+              x +
+              1;
 
-      if (x > size.width || x + width < 0) return null;
+          if (x > size.width || x + width < 0) return null;
 
-      final y =
-          viewModel.trackPositionCalculator.getTrackPosition(
-            viewModel.trackPositionCalculator.trackIdToIndex(trackId),
-          ) -
-          1;
-      final trackHeight =
-          calculateTrackHeight(
-            viewModel.baseTrackHeight,
-            viewModel.trackHeightModifiers[trackId]!,
-          ) +
-          1;
+          final y =
+              viewModel.trackPositionCalculator.getTrackPosition(
+                viewModel.trackPositionCalculator.trackIdToIndex(trackId),
+              ) -
+              1;
+          final trackHeight =
+              calculateTrackHeight(
+                viewModel.baseTrackHeight,
+                viewModel.trackHeightModifiers[trackId]!,
+              ) +
+              1;
 
-      if (y > size.height || y + trackHeight < 0) return null;
+          if (y > size.height || y + trackHeight < 0) return null;
 
-      return (
-        pattern: pattern,
-        clip: clip,
-        x: x,
-        y: y,
-        width: width,
-        height: trackHeight,
-        selected: viewModel.selectedClips.contains(clip.id),
-        pressed: viewModel.pressedClip == clip.id,
-      );
-    }).nonNulls.toList();
+          return ClipRenderInfo(
+            pattern: pattern,
+            clip: clip,
+            x: x,
+            y: y,
+            width: width,
+            height: trackHeight,
+            selected: viewModel.selectedClips.contains(clip.id),
+            pressed: viewModel.pressedClip == clip.id,
+          );
+        })
+        .nonNulls
+        .toList();
 
     allClips.sort((a, b) {
-      final offsetCompare = a.clip.offset.compareTo(b.clip.offset);
+      final offsetCompare = a.clipOffset.compareTo(b.clipOffset);
       if (offsetCompare != 0) {
         return offsetCompare;
       }
 
-      final widthCompare = a.clip.width.compareTo(b.clip.width);
+      final widthCompare = a.clipWidth.compareTo(b.clipWidth);
       if (widthCompare != 0) {
         return widthCompare;
       }
 
-      return a.clip.id.compareTo(b.clip.id);
+      return a.clipId.compareTo(b.clipId);
     });
 
     List<List<ClipRenderInfo>> clipLayers = [];
@@ -309,9 +314,9 @@ class ArrangerContentPainter extends CustomPainterObserver {
 
     for (final clipInfo in allClips) {
       final layerIndex = layerBuilder.insertClip(
-        trackId: clipInfo.clip.trackId,
-        clipStart: clipInfo.clip.offset,
-        clipEnd: clipInfo.clip.offset + clipInfo.clip.width,
+        trackId: clipInfo.trackId,
+        clipStart: clipInfo.clipOffset,
+        clipEnd: clipInfo.clipOffset + clipInfo.clipWidth,
       );
 
       while (clipLayers.length <= layerIndex) {
@@ -337,11 +342,10 @@ class ArrangerContentPainter extends CustomPainterObserver {
         final y = clipEntry.y;
         final width = clipEntry.width;
         final trackHeight = clipEntry.height;
-        final clip = clipEntry.clip;
 
         viewModel.visibleClips.add(
           rect: Rect.fromLTWH(x, y, width - 1, trackHeight - 1),
-          metadata: clip.id,
+          metadata: clipEntry.clipId,
         );
 
         final startResizeHandleRect = Rect.fromLTWH(
@@ -358,7 +362,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
         );
         viewModel.visibleResizeAreas.add(
           rect: startResizeHandleRect,
-          metadata: (id: clip.id, type: ResizeAreaType.start),
+          metadata: (id: clipEntry.clipId, type: ResizeAreaType.start),
         );
 
         // Notice this is fromLTRB. We generally use fromLTWH elsewhere.
@@ -374,7 +378,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
         );
         viewModel.visibleResizeAreas.add(
           rect: endResizeHandleRect,
-          metadata: (id: clip.id, type: ResizeAreaType.end),
+          metadata: (id: clipEntry.clipId, type: ResizeAreaType.end),
         );
       }
     }

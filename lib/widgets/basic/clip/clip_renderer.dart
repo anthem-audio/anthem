@@ -41,16 +41,38 @@ const _clipTitlePadding = 2;
 
 const _contentBaseColor = Color(0xFF777777);
 
-typedef ClipRenderInfo = ({
-  PatternModel pattern,
-  ClipModel clip,
-  double x,
-  double y,
-  double width,
-  double height,
-  bool selected,
-  bool pressed,
-});
+class ClipRenderInfo {
+  final PatternModel pattern;
+  final String clipId;
+  final String trackId;
+  final int clipOffset;
+  final int clipWidth;
+  final double clipTimeViewStart;
+  final double clipTimeViewEnd;
+  final double x;
+  final double y;
+  final double width;
+  final double height;
+  final bool selected;
+  final bool pressed;
+
+  ClipRenderInfo({
+    required this.pattern,
+    required ClipModel clip,
+    required this.x,
+    required this.y,
+    required this.width,
+    required this.height,
+    required this.selected,
+    required this.pressed,
+  }) : clipId = clip.id,
+       trackId = clip.trackId,
+       clipOffset = clip.offset,
+       clipWidth = clip.width,
+       clipTimeViewStart = clip.timeView?.start.toDouble() ?? 0.0,
+       clipTimeViewEnd =
+           clip.timeView?.end.toDouble() ?? pattern.getWidth().toDouble();
+}
 
 void paintClipList({
   required ProjectModel project,
@@ -87,11 +109,6 @@ void paintClipList({
 
     for (final clipEntry in clipList) {
       final pattern = clipEntry.pattern;
-      final clip = clipEntry.clip;
-
-      final clipTimeViewStart = clip.timeView?.start.toDouble() ?? 0;
-      final clipTimeViewEnd =
-          clip.timeView?.end.toDouble() ?? pattern.getWidth().toDouble();
 
       final y = clipEntry.y;
       final height = clipEntry.height;
@@ -103,8 +120,8 @@ void paintClipList({
           canvas: canvas,
           canvasSize: canvasSize,
           xDrawPositionTime: (
-            clip.offset.toDouble(),
-            (clip.offset + clip.width).toDouble(),
+            clipEntry.clipOffset.toDouble(),
+            (clipEntry.clipOffset + clipEntry.clipWidth).toDouble(),
           ),
           yDrawPositionPixels: (y + _clipTitleHeight + 2, y + height - 2),
           points: lane.points,
@@ -118,9 +135,9 @@ void paintClipList({
           // render-clip the draw call around the entire DAW clip (due to
           // performance concerns), we have to get the automation to draw within
           // the DAW clip boundaries without any render clipping.
-          clipStart: clipTimeViewStart,
-          clipEnd: clipTimeViewEnd,
-          clipOffset: clip.offset.toDouble(),
+          clipStart: clipEntry.clipTimeViewStart,
+          clipEnd: clipEntry.clipTimeViewEnd,
+          clipOffset: clipEntry.clipOffset.toDouble(),
           color: _contentBaseColor,
 
           lineBuffer: _automationLineBuffer,
@@ -290,7 +307,8 @@ void paintClipList({
         canvas: canvas,
         notePaint: notePaint,
         pattern: clipEntry.pattern,
-        clip: clipEntry.clip,
+        clipContentWidth: clipEntry.clipWidth.toDouble(),
+        clipTimeViewStart: clipEntry.clipTimeViewStart,
         x: clipEntry.x,
         y: clipEntry.y,
         width: clipEntry.width,
@@ -393,7 +411,9 @@ void paintClip({
         canvas: canvas,
         notePaint: Paint()..color = _contentBaseColor,
         pattern: pattern,
-        clip: clip,
+        clipContentWidth:
+            clip?.width.toDouble() ?? pattern.getWidth().toDouble(),
+        clipTimeViewStart: clip?.timeView?.start.toDouble() ?? 0.0,
         x: x,
         y: y,
         width: width,
@@ -580,7 +600,8 @@ void _paintClipNotes({
   required Canvas canvas,
   required Paint notePaint,
   required PatternModel pattern,
-  ClipModel? clip,
+  required double clipContentWidth,
+  required double clipTimeViewStart,
   required double x,
   required double y,
   required double width,
@@ -606,13 +627,9 @@ void _paintClipNotes({
   // translate this to the correct position and scale it to convert it into
   // pixel coordinates.
 
-  final clipScaleFactor =
-      (width - 1) / (clip?.width.toDouble() ?? pattern.getWidth().toDouble());
+  final clipScaleFactor = (width - 1) / clipContentWidth;
 
-  canvas.translate(
-    -(clip?.timeView?.start.toDouble() ?? 0.0) * clipScaleFactor,
-    0,
-  );
+  canvas.translate(-clipTimeViewStart * clipScaleFactor, 0);
   canvas.translate(x + 1, y + 1 + _clipTitleHeight + notePadding);
   canvas.scale(
     clipScaleFactor,
