@@ -20,7 +20,10 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/track.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/menu/context_menu_api.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:flutter/services.dart';
@@ -153,20 +156,7 @@ class TrackHeader extends StatelessObserverWidget {
                     Container(
                       height: trackHeight - 1,
                       color: trackBackgroundColor,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 7,
-                        ),
-                        child: Text(
-                          track.name,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: AnthemTheme.text.main,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
+                      child: _TrackContent(track: track),
                     ),
                     SizedBox(height: 1),
                     ...track.childTracks.map(
@@ -179,6 +169,93 @@ class TrackHeader extends StatelessObserverWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _TrackContent extends StatelessObserverWidget {
+  final TrackModel track;
+
+  const _TrackContent({required this.track});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              track.name,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: AnthemTheme.text.main, fontSize: 11),
+            ),
+          ),
+          _TrackControlButtons(),
+        ],
+      ),
+    );
+  }
+}
+
+class _TrackControlButtons extends StatelessWidget {
+  const _TrackControlButtons();
+
+  @override
+  Widget build(BuildContext context) {
+    Widget separator() => Container(width: 1, color: AnthemTheme.panel.border);
+
+    return Column(
+      mainAxisSize: .min,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: AnthemTheme.panel.border),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          height: 20,
+          child: Row(
+            children: [
+              Button(
+                width: 22,
+                height: 18,
+                hideBorder: true,
+                borderRadius: .horizontal(left: .circular(3)),
+                contentBuilder: (context, color) {
+                  return Center(
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: .circular(5),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              separator(),
+              Button(
+                width: 22,
+                height: 18,
+                hideBorder: true,
+                borderRadius: .zero,
+                contentPadding: .all(4),
+                icon: Icons.solo,
+              ),
+              separator(),
+              Button(
+                width: 22,
+                height: 18,
+                hideBorder: true,
+                borderRadius: .horizontal(right: .circular(3)),
+                contentPadding: .all(4),
+                icon: Icons.mute,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
