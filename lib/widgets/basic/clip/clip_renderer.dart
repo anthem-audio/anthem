@@ -39,6 +39,8 @@ const _smallSizeThreshold = 38;
 const _clipTitleHeight = 16;
 const _clipTitlePadding = 2;
 
+const _contentBaseColor = Color(0xFF777777);
+
 typedef ClipRenderInfo = ({
   PatternModel pattern,
   ClipModel clip,
@@ -119,7 +121,7 @@ void paintClipList({
           clipStart: clipTimeViewStart,
           clipEnd: clipTimeViewEnd,
           clipOffset: clip.offset.toDouble(),
-          color: const Color(0xFF777777),
+          color: _contentBaseColor,
 
           lineBuffer: _automationLineBuffer,
           lineJoinBuffer: _automationLineJoinBuffer,
@@ -138,16 +140,16 @@ void paintClipList({
       ..style = PaintingStyle.fill;
 
     final linePaint = getLinePaint(
-      chosenColor: const Color(0xFF777777),
+      chosenColor: _contentBaseColor,
       strokeWidth: 2.0,
     );
 
     final lineJoinCirclePaint = getLineJoinPaint(
-      chosenColor: const Color(0xFF777777),
+      chosenColor: _contentBaseColor,
       strokeWidth: 2.0,
     );
 
-    final notePaint = Paint()..color = const Color(0xFF777777);
+    final notePaint = Paint()..color = _contentBaseColor;
 
     // This aliases on Skia, but we draw a line along the main boundary that
     // would alias, so it works out well on Skia platforms (as of writing,
@@ -249,7 +251,7 @@ void paintClipList({
           transforms,
           rects,
           List.generate(clipEntriesWithAtlasRectCount, (i) {
-            return const Color(0xFF777777);
+            return _contentBaseColor;
           }, growable: false),
           BlendMode.dstIn,
           null,
@@ -361,7 +363,7 @@ void paintClip({
       selected: selected,
       pressed: pressed,
       devicePixelRatio: 1,
-      overrideTextColor: const Color(0xFF777777),
+      overrideTextColor: _contentBaseColor,
     );
 
     // Automation
@@ -380,7 +382,7 @@ void paintClip({
         strokeWidth: 2.0,
         timeViewStart: timeViewStart,
         timeViewEnd: timeViewEnd,
-        color: const Color(0xFF777777),
+        color: _contentBaseColor,
       );
     }
 
@@ -389,7 +391,7 @@ void paintClip({
     if (height > _smallSizeThreshold) {
       _paintClipNotes(
         canvas: canvas,
-        notePaint: Paint()..color = const Color(0xFF777777),
+        notePaint: Paint()..color = _contentBaseColor,
         pattern: pattern,
         clip: clip,
         x: x,
@@ -454,7 +456,7 @@ void _drawClipTitleDirect({
     devicePixelRatio: 1,
     // Match the atlas render path tint to avoid visible color shifts while
     // a title is waiting to be packed into the shared atlas.
-    overrideTextColor: const Color(0xFF777777),
+    overrideTextColor: _contentBaseColor,
   );
 }
 
