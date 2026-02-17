@@ -412,6 +412,9 @@ void _drawClipTitlesDirect({
       // We don't need to manually handle device pixel ratio here since we're
       // drawing directly to the canvas, which already accounts for it.
       devicePixelRatio: 1,
+      // Match the atlas render path tint to avoid visible color shifts while
+      // a title is waiting to be packed into the shared atlas.
+      overrideTextColor: const Color(0xFF777777),
     );
   }
 }
