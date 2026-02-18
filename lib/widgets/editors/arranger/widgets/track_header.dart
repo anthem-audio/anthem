@@ -23,6 +23,7 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/controls/slider.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/menu/context_menu_api.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
@@ -173,27 +174,84 @@ class TrackHeader extends StatelessObserverWidget {
   }
 }
 
-class _TrackContent extends StatelessObserverWidget {
+class _TrackContent extends StatelessWidget {
   final TrackModel track;
 
   const _TrackContent({required this.track});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              track.name,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: AnthemTheme.text.main, fontSize: 11),
-            ),
-          ),
-          _TrackControlButtons(),
-        ],
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final height = constraints.maxHeight;
+
+        const heightThreshold1 = 52;
+        const heightThreshold2 = 78;
+
+        return Observer(
+          builder: (context) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: Center(
+                child: Row(
+                  crossAxisAlignment: height >= heightThreshold1
+                      ? .start
+                      : .center,
+                  spacing: 4,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        track.name,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: height >= heightThreshold1 ? 2 : 1,
+                        style: TextStyle(
+                          color: AnthemTheme.text.main,
+                          fontSize: 11,
+                          fontWeight: .w500,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 70,
+                      child: Column(
+                        mainAxisSize: .min,
+                        crossAxisAlignment: .stretch,
+                        spacing: 4,
+                        children: [
+                          _TrackControlButtons(),
+                          if (height >= heightThreshold1)
+                            Slider(value: 0.75, height: 20, borderRadius: 4),
+                          if (height >= heightThreshold2)
+                            Slider(
+                              value: 0,
+                              height: 20,
+                              borderRadius: 4,
+                              type: .pan,
+                            ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: 9,
+                      // This is a bit ugly but avoids an IntrinsicHeight, which the
+                      // docs say is slow, and I don't really want to find out why
+                      height: height >= heightThreshold2
+                          ? 68
+                          : height >= heightThreshold1
+                          ? 44
+                          : 20,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AnthemTheme.panel.border),
+                        borderRadius: .circular(2),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -215,42 +273,43 @@ class _TrackControlButtons extends StatelessWidget {
           ),
           height: 20,
           child: Row(
+            crossAxisAlignment: .stretch,
             children: [
-              Button(
-                width: 22,
-                height: 18,
-                hideBorder: true,
-                borderRadius: .horizontal(left: .circular(3)),
-                contentBuilder: (context, color) {
-                  return Center(
-                    child: Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: .circular(5),
+              Expanded(
+                child: Button(
+                  hideBorder: true,
+                  borderRadius: .horizontal(left: .circular(3)),
+                  contentBuilder: (context, color) {
+                    return Center(
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: .circular(5),
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
               separator(),
-              Button(
-                width: 22,
-                height: 18,
-                hideBorder: true,
-                borderRadius: .zero,
-                contentPadding: .all(4),
-                icon: Icons.solo,
+              Expanded(
+                child: Button(
+                  hideBorder: true,
+                  borderRadius: .zero,
+                  contentPadding: .all(4),
+                  icon: Icons.solo,
+                ),
               ),
               separator(),
-              Button(
-                width: 22,
-                height: 18,
-                hideBorder: true,
-                borderRadius: .horizontal(right: .circular(3)),
-                contentPadding: .all(4),
-                icon: Icons.mute,
+              Expanded(
+                child: Button(
+                  hideBorder: true,
+                  borderRadius: .horizontal(right: .circular(3)),
+                  contentPadding: .all(4),
+                  icon: Icons.mute,
+                ),
               ),
             ],
           ),

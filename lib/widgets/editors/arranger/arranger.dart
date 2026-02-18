@@ -515,7 +515,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
 
   @override
   Widget build(BuildContext context) {
-    const trackHeaderWidth = 160.0;
+    const trackHeaderWidth = 190.0;
 
     final viewModel = Provider.of<ArrangerViewModel>(context);
     final controller = Provider.of<ArrangerController>(context);
