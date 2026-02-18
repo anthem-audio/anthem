@@ -373,7 +373,9 @@ class _SliderPainter extends CustomPainter {
     final borderRect = Rect.fromLTWH(0.5, 0.5, size.width - 1, size.height - 1);
     final innerRect = Rect.fromLTWH(1, 1, size.width - 2, size.height - 2);
     final trackRadius = Radius.circular(borderRadius);
-    final innerContentRadius = Radius.circular(max(0, max(borderRadius - 1, 1)));
+    final innerContentRadius = Radius.circular(
+      max(0, max(borderRadius - 1, 1)),
+    );
     final borderRRect = RRect.fromRectAndRadius(borderRect, trackRadius);
     final innerContentClipRRect = RRect.fromRectAndRadius(
       innerRect,
