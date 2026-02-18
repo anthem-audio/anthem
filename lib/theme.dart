@@ -77,6 +77,7 @@ class _Control {
     lightAccent: const Color(0xFF6C6C6C),
   );
   Color active = const Color(0xFF25C29D);
+  Color activePressed = const Color(0xFF1DAC88);
   Color activeBackground = const Color(0xFF357869);
   Color border = const Color(0xFF323232);
 
