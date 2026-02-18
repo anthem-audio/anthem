@@ -74,8 +74,14 @@ class ClipModel extends _ClipModel
 abstract class _ClipModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   Id id;
 
+  /// The range of the underlying pattern that is actually shown in this clip.
+  ///
+  /// The clip will start at [timeView.start] relative to the pattern start.
+  ///
+  /// If this is null, then the clip size will snap to the pattern's size, and
+  /// start at the start of the pattern.
   @anthemObservable
-  TimeViewModel? timeView; // If null, we snap to content
+  TimeViewModel? timeView;
 
   @anthemObservable
   Id patternId;

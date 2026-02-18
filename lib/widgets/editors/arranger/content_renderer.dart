@@ -41,6 +41,60 @@ const _clipResizeHandleOvershoot = 2.0;
 /// will shrink to make room for this if necessary.
 const _minimumClickableClipArea = 30;
 
+/// Compares clips by render order.
+///
+/// Lower values are painted first (visually underneath later clips).
+int compareClipRenderInfoForLayering(ClipRenderInfo a, ClipRenderInfo b) {
+  // Clips with active timing overrides should render on top of non-overridden
+  // clips while dragging/resizing.
+  final overrideCompare = switch ((a.hasTimingOverride, b.hasTimingOverride)) {
+    (false, true) => -1,
+    (true, false) => 1,
+    _ => 0,
+  };
+  if (overrideCompare != 0) {
+    return overrideCompare;
+  }
+
+  final offsetCompare = a.clipOffset.compareTo(b.clipOffset);
+  if (offsetCompare != 0) {
+    return offsetCompare;
+  }
+
+  final widthCompare = a.clipWidth.compareTo(b.clipWidth);
+  if (widthCompare != 0) {
+    return widthCompare;
+  }
+
+  return a.clipId.compareTo(b.clipId);
+}
+
+/// Sorts clips and groups them into overlap-safe render layers.
+List<List<ClipRenderInfo>> buildClipLayersForPainting(
+  Iterable<ClipRenderInfo> clips,
+) {
+  final sortedClips = clips.toList()..sort(compareClipRenderInfoForLayering);
+
+  final clipLayers = <List<ClipRenderInfo>>[];
+  final layerBuilder = _ClipLayerBuilder();
+
+  for (final clipInfo in sortedClips) {
+    final layerIndex = layerBuilder.insertClip(
+      trackId: clipInfo.trackId,
+      clipStart: clipInfo.clipOffset,
+      clipEnd: clipInfo.clipOffset + clipInfo.clipWidth,
+    );
+
+    while (clipLayers.length <= layerIndex) {
+      clipLayers.add([]);
+    }
+
+    clipLayers[layerIndex].add(clipInfo);
+  }
+
+  return clipLayers;
+}
+
 class ArrangerContentRenderer extends StatelessObserverWidget {
   final double timeViewStart;
   final double timeViewEnd;
@@ -246,8 +300,23 @@ class ArrangerContentPainter extends CustomPainterObserver {
           final trackId = clip.trackId;
 
           final pattern = project.sequence.patterns[clip.patternId]!;
-          final clipOffset = clip.offset;
-          final clipWidth = clip.width;
+
+          final baseClipTimeViewStart = clip.timeView?.start ?? 0;
+          final baseClipTimeViewEnd = baseClipTimeViewStart + clip.width;
+
+          // These are overrides for user interaction. When dragging to move or
+          // resize a clip or group of clips, the clip timing overrides will be
+          // set. This allows us to move the clips around in just the view
+          // layer, and only mutate the actual project model once we have
+          // "committed" the change.
+          final clipTimingOverride = viewModel.clipTimingOverrides[clip.id];
+
+          final clipOffset = clipTimingOverride?.offset ?? clip.offset;
+          final clipTimeViewStart =
+              clipTimingOverride?.timeViewStart ?? baseClipTimeViewStart;
+          final clipTimeViewEnd =
+              clipTimingOverride?.timeViewEnd ?? baseClipTimeViewEnd;
+          final clipWidth = clipTimeViewEnd - clipTimeViewStart;
 
           final x = timeToPixels(
             timeViewStart: timeViewStart,
@@ -284,6 +353,10 @@ class ArrangerContentPainter extends CustomPainterObserver {
           return ClipRenderInfo(
             pattern: pattern,
             clip: clip,
+            hasTimingOverride: clipTimingOverride != null,
+            clipOffset: clipOffset,
+            clipTimeViewStart: clipTimeViewStart,
+            clipTimeViewEnd: clipTimeViewEnd,
             x: x,
             y: y,
             width: width,
@@ -295,36 +368,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
         .nonNulls
         .toList();
 
-    allClips.sort((a, b) {
-      final offsetCompare = a.clipOffset.compareTo(b.clipOffset);
-      if (offsetCompare != 0) {
-        return offsetCompare;
-      }
-
-      final widthCompare = a.clipWidth.compareTo(b.clipWidth);
-      if (widthCompare != 0) {
-        return widthCompare;
-      }
-
-      return a.clipId.compareTo(b.clipId);
-    });
-
-    List<List<ClipRenderInfo>> clipLayers = [];
-    final layerBuilder = _ClipLayerBuilder();
-
-    for (final clipInfo in allClips) {
-      final layerIndex = layerBuilder.insertClip(
-        trackId: clipInfo.trackId,
-        clipStart: clipInfo.clipOffset,
-        clipEnd: clipInfo.clipOffset + clipInfo.clipWidth,
-      );
-
-      while (clipLayers.length <= layerIndex) {
-        clipLayers.add([]);
-      }
-
-      clipLayers[layerIndex].add(clipInfo);
-    }
+    final clipLayers = buildClipLayersForPainting(allClips);
 
     for (final clipList in clipLayers) {
       paintClipList(

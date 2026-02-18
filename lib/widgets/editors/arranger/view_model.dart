@@ -37,6 +37,18 @@ class ArrangerViewModel = _ArrangerViewModel with _$ArrangerViewModel;
 
 enum ResizeAreaType { start, end }
 
+class ClipTimingOverride {
+  final int offset;
+  final int timeViewStart;
+  final int timeViewEnd;
+
+  const ClipTimingOverride({
+    required this.offset,
+    required this.timeViewStart,
+    required this.timeViewEnd,
+  }) : assert(timeViewEnd > timeViewStart);
+}
+
 class ArrangerContentUnderCursor {
   final CanvasAnnotation<Id>? clip;
   final CanvasAnnotation<({Id id, ResizeAreaType type})>? resizeHandle;
@@ -87,6 +99,9 @@ abstract class _ArrangerViewModel with Store {
 
   @observable
   ObservableSet<Id> selectedClips = ObservableSet();
+
+  final ObservableMap<Id, ClipTimingOverride> clipTimingOverrides =
+      ObservableMap();
 
   /// The clip that is currently being pressed, if any.
   @observable

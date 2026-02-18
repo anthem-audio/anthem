@@ -45,6 +45,7 @@ class ClipRenderInfo {
   final PatternModel pattern;
   final String clipId;
   final String trackId;
+  final bool hasTimingOverride;
   final int clipOffset;
   final int clipWidth;
   final double clipTimeViewStart;
@@ -59,19 +60,22 @@ class ClipRenderInfo {
   ClipRenderInfo({
     required this.pattern,
     required ClipModel clip,
+    required this.hasTimingOverride,
+    required this.clipOffset,
+    required int clipTimeViewStart,
+    required int clipTimeViewEnd,
     required this.x,
     required this.y,
     required this.width,
     required this.height,
     required this.selected,
     required this.pressed,
-  }) : clipId = clip.id,
+  }) : assert(clipTimeViewEnd > clipTimeViewStart),
+       clipId = clip.id,
        trackId = clip.trackId,
-       clipOffset = clip.offset,
-       clipWidth = clip.width,
-       clipTimeViewStart = clip.timeView?.start.toDouble() ?? 0.0,
-       clipTimeViewEnd =
-           clip.timeView?.end.toDouble() ?? pattern.getWidth().toDouble();
+       clipWidth = clipTimeViewEnd - clipTimeViewStart,
+       clipTimeViewStart = clipTimeViewStart.toDouble(),
+       clipTimeViewEnd = clipTimeViewEnd.toDouble();
 }
 
 void paintClipList({
