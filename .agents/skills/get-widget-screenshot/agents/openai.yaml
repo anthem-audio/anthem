@@ -1,0 +1,4 @@
+interface:
+  display_name: "Widget Screenshot"
+  short_description: "Capture screenshots to validate Flutter widgets"
+  default_prompt: "Use $get-widget-screenshot to capture a PNG from the Anthem widget testbed for the knob screen."
