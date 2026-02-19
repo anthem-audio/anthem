@@ -245,37 +245,62 @@ class MoveClipsCommand extends ArrangementCommand {
   }
 }
 
-class ResizeClipCommand extends ArrangementCommand {
-  final Id clipID;
-  final int oldOffset;
-  final TimeViewModel? oldTimeView;
-  final int newOffset;
-  final TimeViewModel? newTimeView;
+class ResizeClipsCommand extends ArrangementCommand {
+  final List<
+    ({
+      Id clipID,
+      int oldOffset,
+      TimeViewModel? oldTimeView,
+      int newOffset,
+      TimeViewModel newTimeView,
+    })
+  >
+  clipResizes;
 
-  ResizeClipCommand({
+  ResizeClipsCommand({
     required Id arrangementID,
-    required this.clipID,
-    required this.oldOffset,
-    required this.oldTimeView,
-    required this.newOffset,
-    required this.newTimeView,
-  }) : super(arrangementID);
+    required List<
+      ({
+        Id clipID,
+        int oldOffset,
+        TimeViewModel? oldTimeView,
+        int newOffset,
+        TimeViewModel newTimeView,
+      })
+    >
+    clipResizes,
+  }) : clipResizes = List.unmodifiable(
+         clipResizes.map(
+           (clipResize) => (
+             clipID: clipResize.clipID,
+             oldOffset: clipResize.oldOffset,
+             oldTimeView: clipResize.oldTimeView?.clone(),
+             newOffset: clipResize.newOffset,
+             newTimeView: clipResize.newTimeView.clone(),
+           ),
+         ),
+       ),
+       super(arrangementID);
 
   @override
   void execute(ProjectModel project) {
     final arrangement = project.sequence.arrangements[arrangementID]!;
-    final clip = arrangement.clips[clipID]!;
 
-    clip.offset = newOffset;
-    clip.timeView = newTimeView;
+    for (final clipResize in clipResizes) {
+      final clip = arrangement.clips[clipResize.clipID]!;
+      clip.offset = clipResize.newOffset;
+      clip.timeView = clipResize.newTimeView.clone();
+    }
   }
 
   @override
   void rollback(ProjectModel project) {
     final arrangement = project.sequence.arrangements[arrangementID]!;
-    final clip = arrangement.clips[clipID]!;
 
-    clip.offset = oldOffset;
-    clip.timeView = oldTimeView;
+    for (final clipResize in clipResizes.reversed) {
+      final clip = arrangement.clips[clipResize.clipID]!;
+      clip.offset = clipResize.oldOffset;
+      clip.timeView = clipResize.oldTimeView?.clone();
+    }
   }
 }

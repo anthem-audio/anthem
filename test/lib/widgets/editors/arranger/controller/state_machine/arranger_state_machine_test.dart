@@ -20,6 +20,7 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/arrangement/clip.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
@@ -122,6 +123,9 @@ class _ArrangerStateMachineTestFixture {
 
   ArrangerClipMoveState get clipMoveState =>
       stateMachine.states[ArrangerClipMoveState]! as ArrangerClipMoveState;
+
+  ArrangerClipResizeState get clipResizeState =>
+      stateMachine.states[ArrangerClipResizeState]! as ArrangerClipResizeState;
 
   ArrangerSelectionBoxState get selectionBoxState =>
       stateMachine.states[ArrangerSelectionBoxState]!
@@ -577,6 +581,31 @@ void main() {
     });
 
     test(
+      'pointer down over resize handle sets pressed clip immediately even without clip hit',
+      () {
+        fixture.viewModel.visibleResizeAreas.add(
+          rect: const Rect.fromLTWH(96, 10, 14, 40),
+          metadata: (
+            id: 'clip-under-resize-handle',
+            type: ResizeAreaType.start,
+          ),
+        );
+
+        fixture.pointerDown(
+          const PointerDownEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(100, 20),
+          ),
+        );
+
+        expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
+        expect(fixture.dragState.hasCrossedActivationDistance, isFalse);
+        expect(fixture.viewModel.pressedClip, 'clip-under-resize-handle');
+      },
+    );
+
+    test(
       'pointer up clears pressed clip without crossing activation distance',
       () {
         fixture.viewModel.visibleClips.add(
@@ -595,6 +624,35 @@ void main() {
 
         fixture.pointerUp(
           const PointerUpEvent(pointer: 1, position: Offset(120, 20)),
+        );
+
+        expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+        expect(fixture.viewModel.pressedClip, isNull);
+      },
+    );
+
+    test(
+      'pointer up clears pressed clip from resize-handle press without crossing activation distance',
+      () {
+        fixture.viewModel.visibleResizeAreas.add(
+          rect: const Rect.fromLTWH(96, 10, 14, 40),
+          metadata: (
+            id: 'clip-under-resize-handle',
+            type: ResizeAreaType.start,
+          ),
+        );
+
+        fixture.pointerDown(
+          const PointerDownEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(100, 20),
+          ),
+        );
+        expect(fixture.viewModel.pressedClip, 'clip-under-resize-handle');
+
+        fixture.pointerUp(
+          const PointerUpEvent(pointer: 1, position: Offset(100, 20)),
         );
 
         expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
@@ -622,6 +680,45 @@ void main() {
       );
 
       expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+      expect(fixture.viewModel.pressedClip, isNull);
+    });
+
+    test('select tool down over resize handle does not set pressed clip', () {
+      fixture.viewModel.tool = EditorTool.select;
+      fixture.viewModel.visibleResizeAreas.add(
+        rect: const Rect.fromLTWH(96, 10, 14, 40),
+        metadata: (id: 'clip-under-resize-handle', type: ResizeAreaType.start),
+      );
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(100, 20),
+        ),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
+      expect(fixture.viewModel.pressedClip, isNull);
+    });
+
+    test('ctrl-modified down over resize handle does not set pressed clip', () {
+      fixture.stateMachine.modifierPressed(ArrangerModifierKey.ctrl);
+      fixture.viewModel.tool = EditorTool.pencil;
+      fixture.viewModel.visibleResizeAreas.add(
+        rect: const Rect.fromLTWH(96, 10, 14, 40),
+        metadata: (id: 'clip-under-resize-handle', type: ResizeAreaType.start),
+      );
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(100, 20),
+        ),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
       expect(fixture.viewModel.pressedClip, isNull);
     });
 
@@ -1120,6 +1217,231 @@ void main() {
       fixture.project.undo();
       expect(clip.offset, 100);
       expect(clip.trackId, _TrackIds.a);
+    });
+  });
+
+  group('ArrangerClipResizeState', () {
+    Id addPattern({int clipAutoWidth = 96}) {
+      final pattern = PatternModel.create(name: 'Pattern');
+      pattern.clipAutoWidth = clipAutoWidth;
+      fixture.project.sequence.patterns[pattern.id] = pattern;
+      return pattern.id;
+    }
+
+    ClipModel addClip({
+      required int offset,
+      required Id trackId,
+      required Rect rect,
+      required Rect resizeHandleRect,
+      required ResizeAreaType resizeAreaType,
+      TimeViewModel? timeView,
+      int fallbackPatternWidth = 96,
+    }) {
+      final arrangementId = fixture.project.sequence.activeArrangementID!;
+      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      final clip = ClipModel.create(
+        patternId: addPattern(clipAutoWidth: fallbackPatternWidth),
+        trackId: trackId,
+        offset: offset,
+        timeView: timeView,
+      );
+      arrangement.clips[clip.id] = clip;
+      fixture.viewModel.visibleClips.add(rect: rect, metadata: clip.id);
+      fixture.viewModel.visibleResizeAreas.add(
+        rect: resizeHandleRect,
+        metadata: (id: clip.id, type: resizeAreaType),
+      );
+      return clip;
+    }
+
+    void startClipResize({required Offset downPos, required Offset movePos}) {
+      fixture.pointerDown(
+        PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: downPos,
+        ),
+      );
+      fixture.pointerMove(
+        PointerMoveEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: movePos,
+        ),
+      );
+    }
+
+    test('dragging from resize handle delegates to clip resize state', () {
+      final clip = addClip(
+        offset: 100,
+        trackId: _TrackIds.a,
+        rect: const Rect.fromLTWH(100, 10, 96, 40),
+        resizeHandleRect: const Rect.fromLTWH(96, 10, 14, 40),
+        resizeAreaType: ResizeAreaType.start,
+        timeView: TimeViewModel(start: 0, end: 96),
+      );
+
+      startClipResize(
+        downPos: const Offset(102, 20),
+        movePos: const Offset(118, 20),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerClipResizeState>());
+      expect(fixture.viewModel.pressedClip, clip.id);
+      expect(fixture.viewModel.clipTimingOverrides[clip.id], isNotNull);
+    });
+
+    test(
+      'start resize creates time view for clip without time view and commits via undoable command',
+      () {
+        final clip = addClip(
+          offset: 80,
+          trackId: _TrackIds.a,
+          rect: const Rect.fromLTWH(80, 10, 64, 40),
+          resizeHandleRect: const Rect.fromLTWH(76, 10, 14, 40),
+          resizeAreaType: ResizeAreaType.start,
+          timeView: null,
+          fallbackPatternWidth: 64,
+        );
+
+        fixture.stateMachine.modifierPressed(ArrangerModifierKey.alt);
+        startClipResize(
+          downPos: const Offset(82, 20),
+          movePos: const Offset(92, 20),
+        );
+
+        expect(
+          fixture.stateMachine.currentState,
+          isA<ArrangerClipResizeState>(),
+        );
+        final inProgressOverride =
+            fixture.viewModel.clipTimingOverrides[clip.id]!;
+        expect(inProgressOverride.offset, equals(90));
+        expect(inProgressOverride.timeViewStart, equals(10));
+        expect(inProgressOverride.timeViewEnd, equals(64));
+
+        fixture.pointerUp(
+          const PointerUpEvent(pointer: 1, position: Offset(92, 20)),
+        );
+
+        expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+        expect(clip.offset, equals(90));
+        expect(clip.timeView, isNotNull);
+        expect(clip.timeView!.start, equals(10));
+        expect(clip.timeView!.end, equals(64));
+
+        fixture.project.undo();
+
+        expect(clip.offset, equals(80));
+        expect(clip.timeView, isNull);
+      },
+    );
+
+    test(
+      'end resize on selected clips snaps and blocks next snap when it would make a clip non-positive',
+      () {
+        final snapSize = fixture.stateMachine
+            .divisionChanges()
+            .first
+            .divisionSnapSize;
+        final largeClip = addClip(
+          offset: 100,
+          trackId: _TrackIds.a,
+          rect: const Rect.fromLTWH(100, 10, 100, 40),
+          resizeHandleRect: const Rect.fromLTWH(194, 10, 14, 40),
+          resizeAreaType: ResizeAreaType.end,
+          timeView: TimeViewModel(start: 0, end: 100),
+        );
+        final smallClipWidth = snapSize + 2;
+        final smallClip = addClip(
+          offset: 260,
+          trackId: _TrackIds.b,
+          rect: Rect.fromLTWH(260, 70, smallClipWidth.toDouble(), 40),
+          resizeHandleRect: Rect.fromLTWH(
+            260 + smallClipWidth.toDouble() - 6,
+            70,
+            14,
+            40,
+          ),
+          resizeAreaType: ResizeAreaType.end,
+          timeView: TimeViewModel(start: 0, end: smallClipWidth),
+        );
+
+        fixture.viewModel.selectedClips.addAll({largeClip.id, smallClip.id});
+
+        startClipResize(
+          downPos: const Offset(198, 20),
+          movePos: Offset(198 - (snapSize * 3).toDouble(), 20),
+        );
+
+        expect(
+          fixture.stateMachine.currentState,
+          isA<ArrangerClipResizeState>(),
+        );
+        final largeOverride =
+            fixture.viewModel.clipTimingOverrides[largeClip.id]!;
+        final smallOverride =
+            fixture.viewModel.clipTimingOverrides[smallClip.id]!;
+        final largeWidth =
+            largeOverride.timeViewEnd - largeOverride.timeViewStart;
+        final smallWidth =
+            smallOverride.timeViewEnd - smallOverride.timeViewStart;
+
+        expect(smallWidth, equals(2));
+        expect(largeWidth, equals(100 - snapSize));
+
+        fixture.pointerUp(
+          PointerUpEvent(
+            pointer: 1,
+            position: Offset(198 - (snapSize * 3).toDouble(), 20),
+          ),
+        );
+
+        expect(
+          largeClip.timeView!.end - largeClip.timeView!.start,
+          equals(100 - snapSize),
+        );
+        expect(smallClip.timeView!.end - smallClip.timeView!.start, equals(2));
+
+        fixture.project.undo();
+        expect(
+          largeClip.timeView!.end - largeClip.timeView!.start,
+          equals(100),
+        );
+        expect(
+          smallClip.timeView!.end - smallClip.timeView!.start,
+          equals(smallClipWidth),
+        );
+      },
+    );
+
+    test('pointer cancel does not commit clip resize', () {
+      final clip = addClip(
+        offset: 120,
+        trackId: _TrackIds.a,
+        rect: const Rect.fromLTWH(120, 10, 96, 40),
+        resizeHandleRect: const Rect.fromLTWH(210, 10, 14, 40),
+        resizeAreaType: ResizeAreaType.end,
+        timeView: TimeViewModel(start: 0, end: 96),
+      );
+
+      startClipResize(
+        downPos: const Offset(214, 20),
+        movePos: const Offset(180, 20),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerClipResizeState>());
+      expect(fixture.viewModel.clipTimingOverrides[clip.id], isNotNull);
+
+      fixture.pointerUp(
+        const PointerCancelEvent(pointer: 1, position: Offset(180, 20)),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+      expect(clip.offset, equals(120));
+      expect(clip.timeView!.start, equals(0));
+      expect(clip.timeView!.end, equals(96));
+      expect(fixture.viewModel.clipTimingOverrides, isEmpty);
     });
   });
 

@@ -263,53 +263,116 @@ void main() {
       expect(secondClip.trackId, equals(secondTrack));
     });
 
-    test('ResizeClipCommand execute and rollback with non-null time view', () {
+    test('ResizeClipsCommand execute and rollback with non-null time view', () {
       final arrangement = addArrangementToProject('Arrangement 1');
       final oldTimeView = TimeViewModel(start: 0, end: 96);
       final newTimeView = TimeViewModel(start: 16, end: 64);
       final clip = createClip(offset: 32, timeView: oldTimeView);
       arrangement.clips[clip.id] = clip;
 
-      final command = ResizeClipCommand(
+      final command = ResizeClipsCommand(
         arrangementID: arrangement.id,
-        clipID: clip.id,
-        oldOffset: 32,
-        oldTimeView: oldTimeView,
-        newOffset: 96,
-        newTimeView: newTimeView,
+        clipResizes: [
+          (
+            clipID: clip.id,
+            oldOffset: 32,
+            oldTimeView: oldTimeView,
+            newOffset: 96,
+            newTimeView: newTimeView,
+          ),
+        ],
       );
 
       command.execute(project);
       expect(clip.offset, equals(96));
-      expect(clip.timeView, same(newTimeView));
+      expect(clip.timeView, isNot(same(newTimeView)));
+      expect(clip.timeView!.start, equals(newTimeView.start));
+      expect(clip.timeView!.end, equals(newTimeView.end));
 
       command.rollback(project);
       expect(clip.offset, equals(32));
-      expect(clip.timeView, same(oldTimeView));
+      expect(clip.timeView, isNot(same(oldTimeView)));
+      expect(clip.timeView!.start, equals(oldTimeView.start));
+      expect(clip.timeView!.end, equals(oldTimeView.end));
     });
 
-    test('ResizeClipCommand rollback restores null time view', () {
+    test('ResizeClipsCommand rollback restores null time view', () {
       final arrangement = addArrangementToProject('Arrangement 1');
       final newTimeView = TimeViewModel(start: 16, end: 64);
       final clip = createClip(offset: 8, timeView: null);
       arrangement.clips[clip.id] = clip;
 
-      final command = ResizeClipCommand(
+      final command = ResizeClipsCommand(
         arrangementID: arrangement.id,
-        clipID: clip.id,
-        oldOffset: 8,
-        oldTimeView: null,
-        newOffset: 24,
-        newTimeView: newTimeView,
+        clipResizes: [
+          (
+            clipID: clip.id,
+            oldOffset: 8,
+            oldTimeView: null,
+            newOffset: 24,
+            newTimeView: newTimeView,
+          ),
+        ],
       );
 
       command.execute(project);
       expect(clip.offset, equals(24));
-      expect(clip.timeView, same(newTimeView));
+      expect(clip.timeView, isNotNull);
+      expect(clip.timeView!.start, equals(newTimeView.start));
+      expect(clip.timeView!.end, equals(newTimeView.end));
 
       command.rollback(project);
       expect(clip.offset, equals(8));
       expect(clip.timeView, isNull);
+    });
+
+    test('ResizeClipsCommand updates multiple clips in one command', () {
+      final arrangement = addArrangementToProject('Arrangement 1');
+      final firstClip = createClip(
+        offset: 16,
+        timeView: TimeViewModel(start: 0, end: 64),
+      );
+      final secondClip = createClip(offset: 48, timeView: null);
+      arrangement.clips[firstClip.id] = firstClip;
+      arrangement.clips[secondClip.id] = secondClip;
+
+      final command = ResizeClipsCommand(
+        arrangementID: arrangement.id,
+        clipResizes: [
+          (
+            clipID: firstClip.id,
+            oldOffset: 16,
+            oldTimeView: TimeViewModel(start: 0, end: 64),
+            newOffset: 24,
+            newTimeView: TimeViewModel(start: 8, end: 56),
+          ),
+          (
+            clipID: secondClip.id,
+            oldOffset: 48,
+            oldTimeView: null,
+            newOffset: 60,
+            newTimeView: TimeViewModel(start: 12, end: 80),
+          ),
+        ],
+      );
+
+      command.execute(project);
+      expect(firstClip.offset, equals(24));
+      expect(firstClip.timeView, isNotNull);
+      expect(firstClip.timeView!.start, equals(8));
+      expect(firstClip.timeView!.end, equals(56));
+      expect(secondClip.offset, equals(60));
+      expect(secondClip.timeView, isNotNull);
+      expect(secondClip.timeView!.start, equals(12));
+      expect(secondClip.timeView!.end, equals(80));
+
+      command.rollback(project);
+      expect(firstClip.offset, equals(16));
+      expect(firstClip.timeView, isNotNull);
+      expect(firstClip.timeView!.start, equals(0));
+      expect(firstClip.timeView!.end, equals(64));
+      expect(secondClip.offset, equals(48));
+      expect(secondClip.timeView, isNull);
     });
   });
 }

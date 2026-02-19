@@ -21,6 +21,7 @@ import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/arrangement_commands.dart';
+import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
@@ -32,6 +33,7 @@ import 'package:flutter/widgets.dart';
 
 part 'create_clip_state.dart';
 part 'clip_move_state.dart';
+part 'clip_resize_state.dart';
 part 'selection_box_state.dart';
 
 enum ArrangerModifierKey { ctrl, alt, shift }
@@ -212,12 +214,14 @@ class ArrangerStateMachine
     final dragState = ArrangerDragState(idleState);
     final createClipState = ArrangerCreateClipState(dragState);
     final clipMoveState = ArrangerClipMoveState(dragState);
+    final clipResizeState = ArrangerClipResizeState(dragState);
     final selectionBoxState = ArrangerSelectionBoxState(dragState);
     final states = [
       idleState,
       dragState,
       createClipState,
       clipMoveState,
+      clipResizeState,
       selectionBoxState,
     ];
 
@@ -631,9 +635,16 @@ class ArrangerDragState
   bool get _isDragStartOverResizeHandle =>
       dragStartContentUnderCursor?.resizeHandle != null;
 
+  ({Id id, ResizeAreaType type})? get dragStartResizeHandle =>
+      dragStartContentUnderCursor?.resizeHandle?.metadata;
+
   bool get _isDragStartOverClip => dragStartContentUnderCursor?.clip != null;
 
   Id? get dragStartClipId => dragStartContentUnderCursor?.clip?.metadata;
+
+  Id? get dragStartResizeHandleClipId => dragStartResizeHandle?.id;
+
+  ResizeAreaType? get dragStartResizeAreaType => dragStartResizeHandle?.type;
 
   bool get shouldDelegateToSelectionBox =>
       isDragPointerActive &&
@@ -651,12 +662,21 @@ class ArrangerDragState
       !_isDragStartOverResizeHandle &&
       viewModel.tool == EditorTool.pencil;
 
+  bool get shouldDelegateToClipResize =>
+      isDragPointerActive &&
+      hasCrossedActivationDistance &&
+      !interactionState.isCurrentInteractionCanceled &&
+      !shouldDelegateToSelectionBox &&
+      !shouldDelegateToCreateClip &&
+      _isDragStartOverResizeHandle;
+
   bool get shouldDelegateToClipMove =>
       isDragPointerActive &&
       hasCrossedActivationDistance &&
       !interactionState.isCurrentInteractionCanceled &&
       !shouldDelegateToSelectionBox &&
       !shouldDelegateToCreateClip &&
+      !shouldDelegateToClipResize &&
       !_isDragStartOverResizeHandle &&
       _isDragStartOverClip;
 
@@ -667,11 +687,10 @@ class ArrangerDragState
       isDragPointerActive &&
       !interactionState.isCurrentInteractionCanceled &&
       !_isSelectionModeActive &&
-      !_isDragStartOverResizeHandle &&
-      _isDragStartOverClip;
+      (_isDragStartOverClip || _isDragStartOverResizeHandle);
 
   Id? get _pressedClipCandidateId =>
-      dragStartContentUnderCursor?.clip?.metadata;
+      dragStartContentUnderCursor?.clip?.metadata ?? dragStartResizeHandle?.id;
 
   void _syncPressedClip() {
     final nextPressedClip = _isClipPressEligible
