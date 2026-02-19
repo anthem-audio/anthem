@@ -20,6 +20,7 @@
 import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/commands/arrangement_commands.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
@@ -206,8 +207,15 @@ class ArrangerStateMachine
     final idleState = ArrangerIdleState();
     final dragState = ArrangerDragState(idleState);
     final createClipState = ArrangerCreateClipState(dragState);
+    final clipMoveState = ArrangerClipMoveState(dragState);
     final selectionBoxState = ArrangerSelectionBoxState(dragState);
-    final states = [idleState, dragState, createClipState, selectionBoxState];
+    final states = [
+      idleState,
+      dragState,
+      createClipState,
+      clipMoveState,
+      selectionBoxState,
+    ];
 
     return ArrangerStateMachine._(
       data: data,
@@ -610,10 +618,18 @@ class ArrangerDragState
   int? activePointerId;
   ActivePointer? dragStartPosition;
   ActivePointer? dragCurrentPosition;
+  ArrangerContentUnderCursor? dragStartContentUnderCursor;
   bool hasCrossedActivationDistance = false;
 
   bool get isDragPointerActive =>
       interactionState.activePrimaryPointerId != null;
+
+  bool get _isDragStartOverResizeHandle =>
+      dragStartContentUnderCursor?.resizeHandle != null;
+
+  bool get _isDragStartOverClip => dragStartContentUnderCursor?.clip != null;
+
+  Id? get dragStartClipId => dragStartContentUnderCursor?.clip?.metadata;
 
   bool get shouldDelegateToSelectionBox =>
       isDragPointerActive &&
@@ -627,7 +643,40 @@ class ArrangerDragState
       hasCrossedActivationDistance &&
       !interactionState.isCurrentInteractionCanceled &&
       !shouldDelegateToSelectionBox &&
+      !_isDragStartOverClip &&
+      !_isDragStartOverResizeHandle &&
       viewModel.tool == EditorTool.pencil;
+
+  bool get shouldDelegateToClipMove =>
+      isDragPointerActive &&
+      hasCrossedActivationDistance &&
+      !interactionState.isCurrentInteractionCanceled &&
+      !shouldDelegateToSelectionBox &&
+      !shouldDelegateToCreateClip &&
+      !_isDragStartOverResizeHandle &&
+      _isDragStartOverClip;
+
+  bool get _isSelectionModeActive =>
+      interactionState.isCtrlPressed || viewModel.tool == EditorTool.select;
+
+  bool get _isClipPressEligible =>
+      isDragPointerActive &&
+      !interactionState.isCurrentInteractionCanceled &&
+      !_isSelectionModeActive &&
+      !_isDragStartOverResizeHandle &&
+      _isDragStartOverClip;
+
+  Id? get _pressedClipCandidateId =>
+      dragStartContentUnderCursor?.clip?.metadata;
+
+  void _syncPressedClip() {
+    final nextPressedClip = _isClipPressEligible
+        ? _pressedClipCandidateId
+        : null;
+    if (viewModel.pressedClip != nextPressedClip) {
+      viewModel.pressedClip = nextPressedClip;
+    }
+  }
 
   void _syncDragParameters() {
     final nextActivePointerId = interactionState.activePrimaryPointerId;
@@ -636,15 +685,24 @@ class ArrangerDragState
       activePointerId = null;
       dragStartPosition = null;
       dragCurrentPosition = null;
+      dragStartContentUnderCursor = null;
       hasCrossedActivationDistance = false;
+      _syncPressedClip();
       return;
     }
 
+    // This means a new pointer has been pressed. Since we're only dealing with
+    // one pointer for now, we treat this as the main pointer press signal, and
+    // we store parameters for a drag in case the pointer moves.
     if (activePointerId != nextActivePointerId) {
       activePointerId = nextActivePointerId;
       dragStartPosition = interactionState.activePrimaryPointerDownPosition
           ?.clone();
       dragCurrentPosition = interactionState.activePrimaryPointer?.clone();
+      final start = dragStartPosition;
+      dragStartContentUnderCursor = start == null
+          ? null
+          : viewModel.getContentUnderCursor(Offset(start.x, start.y));
       hasCrossedActivationDistance = false;
     }
 
@@ -653,16 +711,24 @@ class ArrangerDragState
     final start = dragStartPosition;
     final current = dragCurrentPosition;
     if (start == null || current == null) {
+      _syncPressedClip();
       return;
     }
 
     final deltaX = current.x - start.x;
     final deltaY = current.y - start.y;
     final distanceSquared = deltaX * deltaX + deltaY * deltaY;
+
+    // The drag activation distance is the amount the pointer needs to move
+    // before we transition into the applicable action state, whatever that is.
+    // For example, if the user clicks and drags while over a clip, we move that
+    // clip.
     if (!hasCrossedActivationDistance) {
       hasCrossedActivationDistance =
           distanceSquared >= _dragActivationDistance * _dragActivationDistance;
     }
+
+    _syncPressedClip();
   }
 
   @override
@@ -875,6 +941,295 @@ class ArrangerCreateClipState
       offset: start,
       width: end - start,
     );
+  }
+}
+
+class ArrangerClipMoveState
+    extends EditorStateMachineState<ArrangerStateMachineData> {
+  ArrangerStateMachine get arrangerStateMachine =>
+      stateMachine as ArrangerStateMachine;
+
+  ArrangerStateMachineData get interactionState => arrangerStateMachine.data;
+
+  ProjectModel get project => arrangerStateMachine.project;
+  ArrangerViewModel get viewModel => arrangerStateMachine.viewModel;
+
+  @override
+  ArrangerDragState get parentState => super.parentState as ArrangerDragState;
+
+  /// The IDs of clips that are being moved by this operation.
+  Set<Id>? _movingClipIds;
+
+  /// At the start of the drag, this represents the distance between the
+  /// left-most selected clip and the start of the arrangement.
+  ///
+  /// This is calculated because we cannot move clips any further than this,
+  /// otherwise at least one of them would start before the start of the
+  /// arrangement.
+  int _minimumMoveDelta = 0;
+
+  @override
+  Iterable<EditorStateMachineStateTransition<ArrangerStateMachineData>>
+  get transitions => [
+    .new(
+      name: 'Delegate drag to clip move',
+      from: ArrangerDragState,
+      to: ArrangerClipMoveState,
+      canTransition: ({required data, required event, required currentState}) =>
+          (currentState as ArrangerDragState).shouldDelegateToClipMove,
+    ),
+    .new(
+      name: 'Cancel clip move',
+      from: ArrangerClipMoveState,
+      to: ArrangerDragState,
+      canTransition: ({required data, required event, required currentState}) =>
+          isArrangerCancelSignal(event),
+    ),
+    .new(
+      name: 'Clip move fallback to drag',
+      from: ArrangerClipMoveState,
+      to: ArrangerDragState,
+      canTransition: ({required data, required event, required currentState}) =>
+          !(currentState as ArrangerClipMoveState)
+              .parentState
+              .isDragPointerActive,
+    ),
+  ];
+
+  ArrangerClipMoveState(super.parentState);
+
+  @override
+  void onEntry({required event, required from}) {
+    _initializeMoveSession();
+    _syncClipOverrides();
+  }
+
+  @override
+  void onActive({required event}) {
+    _syncClipOverrides();
+  }
+
+  @override
+  void onExit({required event, required to}) {
+    _commitMoveSessionIfNeeded(event: event);
+    _clearMoveSession();
+  }
+
+  void _commitMoveSessionIfNeeded({required EditorStateMachineEvent event}) {
+    if (isArrangerCancelSignal(event)) {
+      return;
+    }
+
+    if (event is! EditorStateMachineSignalEvent) {
+      return;
+    }
+
+    final signal = event.signal;
+    if (signal is! _ArrangerPointerUpSignal ||
+        signal.event is PointerCancelEvent) {
+      return;
+    }
+
+    final movingClipIds = _movingClipIds;
+    final arrangementId = project.sequence.activeArrangementID;
+    if (movingClipIds == null || arrangementId == null) {
+      return;
+    }
+
+    final arrangement = project.sequence.arrangements[arrangementId];
+    if (arrangement == null) {
+      return;
+    }
+
+    final arrangementClips = arrangement.clips.nonObservableInner;
+    final clipTimingOverrides =
+        viewModel.clipTimingOverrides.nonObservableInner;
+    final clipMoves = <({Id clipID, int oldOffset, int newOffset})>[];
+
+    for (final clipId in movingClipIds) {
+      final clip = arrangementClips[clipId];
+      final clipTimingOverride = clipTimingOverrides[clipId];
+      if (clip == null || clipTimingOverride == null) {
+        continue;
+      }
+
+      final oldOffset = clip.offset;
+      final newOffset = clipTimingOverride.offset;
+      if (oldOffset == newOffset) {
+        continue;
+      }
+
+      clipMoves.add((
+        clipID: clip.id,
+        oldOffset: oldOffset,
+        newOffset: newOffset,
+      ));
+    }
+
+    if (clipMoves.isEmpty) {
+      return;
+    }
+
+    project.execute(
+      MoveClipsCommand(arrangementID: arrangement.id, clipMoves: clipMoves),
+    );
+  }
+
+  void _initializeMoveSession() {
+    _movingClipIds = null;
+    _minimumMoveDelta = 0;
+    final clipTimingOverrides = viewModel.clipTimingOverrides;
+    clipTimingOverrides.clear();
+
+    final arrangementId = project.sequence.activeArrangementID;
+    if (arrangementId == null) {
+      return;
+    }
+
+    final arrangement = project.sequence.arrangements[arrangementId];
+    if (arrangement == null) {
+      return;
+    }
+    final arrangementClips = arrangement.clips.nonObservableInner;
+
+    final pressedClipId = parentState.dragStartClipId;
+    if (pressedClipId == null) {
+      return;
+    }
+
+    final pressedClip = arrangementClips[pressedClipId];
+    if (pressedClip == null) {
+      return;
+    }
+
+    viewModel.pressedClip = pressedClip.id;
+
+    final selectedClips = viewModel.selectedClips;
+    var selectedClipIds = selectedClips.nonObservableInner;
+    if (!selectedClipIds.contains(pressedClip.id)) {
+      selectedClips.clear();
+      selectedClipIds = selectedClips.nonObservableInner;
+    }
+
+    final movingClipIds = selectedClipIds.contains(pressedClip.id)
+        ? selectedClipIds.toSet()
+        : <Id>{pressedClip.id};
+    _movingClipIds = Set<Id>.unmodifiable(movingClipIds);
+
+    int? smallestStartOffset;
+    var hasAnyOverrides = false;
+
+    for (final clipId in _movingClipIds!) {
+      final clip = arrangementClips[clipId];
+      if (clip == null) {
+        continue;
+      }
+      hasAnyOverrides = true;
+
+      final timeViewStart = clip.timeView?.start ?? 0;
+      final timeViewEnd = clip.timeView?.end ?? clip.width;
+
+      clipTimingOverrides[clip.id] = ClipTimingOverride(
+        offset: clip.offset,
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+      );
+
+      if (smallestStartOffset == null || clip.offset < smallestStartOffset) {
+        smallestStartOffset = clip.offset;
+      }
+    }
+
+    if (!hasAnyOverrides) {
+      _movingClipIds = null;
+      return;
+    }
+
+    _minimumMoveDelta = -(smallestStartOffset ?? 0);
+  }
+
+  void _syncClipOverrides() {
+    final movingClipIds = _movingClipIds;
+    final dragStartPosition = parentState.dragStartPosition;
+    final dragCurrentPosition = parentState.dragCurrentPosition;
+    if (movingClipIds == null ||
+        dragStartPosition == null ||
+        dragCurrentPosition == null) {
+      return;
+    }
+
+    final arrangementId = project.sequence.activeArrangementID;
+    if (arrangementId == null) {
+      return;
+    }
+
+    final arrangement = project.sequence.arrangements[arrangementId];
+    if (arrangement == null) {
+      return;
+    }
+    final arrangementClips = arrangement.clips.nonObservableInner;
+
+    final startTime = pixelsToTime(
+      timeViewStart: interactionState.renderedTimeViewStart,
+      timeViewEnd: interactionState.renderedTimeViewEnd,
+      viewPixelWidth: interactionState.viewSize.width,
+      pixelOffsetFromLeft: dragStartPosition.x,
+    );
+    final currentTime = pixelsToTime(
+      timeViewStart: interactionState.renderedTimeViewStart,
+      timeViewEnd: interactionState.renderedTimeViewEnd,
+      viewPixelWidth: interactionState.viewSize.width,
+      pixelOffsetFromLeft: dragCurrentPosition.x,
+    );
+
+    var movedDistance = (currentTime - startTime).round();
+
+    if (!interactionState.isAltPressed) {
+      movedDistance = getSnappedTime(
+        rawTime: movedDistance,
+        divisionChanges: arrangerStateMachine.divisionChanges(),
+        round: true,
+      );
+    }
+
+    if (movedDistance < _minimumMoveDelta) {
+      movedDistance = _minimumMoveDelta;
+    }
+
+    final clipTimingOverrides = viewModel.clipTimingOverrides;
+
+    for (final clipId in movingClipIds) {
+      final clip = arrangementClips[clipId];
+      if (clip == null) {
+        clipTimingOverrides.remove(clipId);
+        continue;
+      }
+
+      final timeViewStart = clip.timeView?.start ?? 0;
+      final timeViewEnd = clip.timeView?.end ?? clip.width;
+      final nextOffset = clip.offset + movedDistance;
+
+      final currentOverride = clipTimingOverrides.nonObservableInner[clip.id];
+      if (currentOverride != null &&
+          currentOverride.offset == nextOffset &&
+          currentOverride.timeViewStart == timeViewStart &&
+          currentOverride.timeViewEnd == timeViewEnd) {
+        continue;
+      }
+
+      clipTimingOverrides[clip.id] = ClipTimingOverride(
+        offset: nextOffset,
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+      );
+    }
+  }
+
+  void _clearMoveSession() {
+    _movingClipIds = null;
+    _minimumMoveDelta = 0;
+    viewModel.clipTimingOverrides.clear();
+    viewModel.pressedClip = null;
   }
 }
 

@@ -19,6 +19,7 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
@@ -118,6 +119,9 @@ class _ArrangerStateMachineTestFixture {
 
   ArrangerCreateClipState get createClipState =>
       stateMachine.states[ArrangerCreateClipState]! as ArrangerCreateClipState;
+
+  ArrangerClipMoveState get clipMoveState =>
+      stateMachine.states[ArrangerClipMoveState]! as ArrangerClipMoveState;
 
   ArrangerSelectionBoxState get selectionBoxState =>
       stateMachine.states[ArrangerSelectionBoxState]!
@@ -553,6 +557,113 @@ void main() {
       expect(fixture.dragState.hasCrossedActivationDistance, isFalse);
     });
 
+    test('pointer down over clip sets pressed clip immediately', () {
+      fixture.viewModel.visibleClips.add(
+        rect: const Rect.fromLTWH(100, 10, 80, 40),
+        metadata: 'clip-under-cursor',
+      );
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(120, 20),
+        ),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
+      expect(fixture.dragState.hasCrossedActivationDistance, isFalse);
+      expect(fixture.viewModel.pressedClip, 'clip-under-cursor');
+    });
+
+    test(
+      'pointer up clears pressed clip without crossing activation distance',
+      () {
+        fixture.viewModel.visibleClips.add(
+          rect: const Rect.fromLTWH(100, 10, 80, 40),
+          metadata: 'clip-under-cursor',
+        );
+
+        fixture.pointerDown(
+          const PointerDownEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(120, 20),
+          ),
+        );
+        expect(fixture.viewModel.pressedClip, 'clip-under-cursor');
+
+        fixture.pointerUp(
+          const PointerUpEvent(pointer: 1, position: Offset(120, 20)),
+        );
+
+        expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+        expect(fixture.viewModel.pressedClip, isNull);
+      },
+    );
+
+    test('pointer cancel clears pressed clip', () {
+      fixture.viewModel.visibleClips.add(
+        rect: const Rect.fromLTWH(100, 10, 80, 40),
+        metadata: 'clip-under-cursor',
+      );
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(120, 20),
+        ),
+      );
+      expect(fixture.viewModel.pressedClip, 'clip-under-cursor');
+
+      fixture.pointerUp(
+        const PointerCancelEvent(pointer: 1, position: Offset(120, 20)),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+      expect(fixture.viewModel.pressedClip, isNull);
+    });
+
+    test('select tool down over clip does not set pressed clip', () {
+      fixture.viewModel.tool = EditorTool.select;
+      fixture.viewModel.visibleClips.add(
+        rect: const Rect.fromLTWH(100, 10, 80, 40),
+        metadata: 'clip-under-cursor',
+      );
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(120, 20),
+        ),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
+      expect(fixture.viewModel.pressedClip, isNull);
+    });
+
+    test('ctrl-modified down over clip does not set pressed clip', () {
+      fixture.stateMachine.modifierPressed(ArrangerModifierKey.ctrl);
+      fixture.viewModel.tool = EditorTool.pencil;
+      fixture.viewModel.visibleClips.add(
+        rect: const Rect.fromLTWH(100, 10, 80, 40),
+        metadata: 'clip-under-cursor',
+      );
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(120, 20),
+        ),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
+      expect(fixture.viewModel.pressedClip, isNull);
+    });
+
     test(
       'activation distance remains false below threshold and true above',
       () {
@@ -844,6 +955,172 @@ void main() {
         expect(arrangement.clips.length, clipCountBefore);
       },
     );
+  });
+
+  group('ArrangerClipMoveState', () {
+    ClipModel addClip({
+      required int offset,
+      required Id trackId,
+      required Rect rect,
+    }) {
+      final arrangementId = fixture.project.sequence.activeArrangementID!;
+      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      final clip = ClipModel.create(
+        patternId: getId(),
+        trackId: trackId,
+        offset: offset,
+        timeView: TimeViewModel(start: 0, end: 96),
+      );
+      arrangement.clips[clip.id] = clip;
+      fixture.viewModel.visibleClips.add(rect: rect, metadata: clip.id);
+      return clip;
+    }
+
+    void startClipMove({
+      Offset downPos = const Offset(120, 20),
+      Offset movePos = const Offset(220, 100),
+    }) {
+      fixture.pointerDown(
+        PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: downPos,
+        ),
+      );
+      fixture.pointerMove(
+        PointerMoveEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: movePos,
+        ),
+      );
+    }
+
+    test('pointer up commits clip move and preserves clip track', () {
+      final clip = addClip(
+        offset: 100,
+        trackId: _TrackIds.a,
+        rect: const Rect.fromLTWH(100, 10, 80, 40),
+      );
+
+      startClipMove();
+      expect(fixture.stateMachine.currentState, isA<ArrangerClipMoveState>());
+      final expectedOffset =
+          fixture.viewModel.clipTimingOverrides[clip.id]!.offset;
+
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(220, 100)),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+      expect(clip.offset, expectedOffset);
+      expect(clip.trackId, _TrackIds.a);
+
+      fixture.project.undo();
+
+      expect(clip.offset, 100);
+      expect(clip.trackId, _TrackIds.a);
+    });
+
+    test('pressed clip remains set from down through clip move transition', () {
+      final clip = addClip(
+        offset: 100,
+        trackId: _TrackIds.a,
+        rect: const Rect.fromLTWH(100, 10, 80, 40),
+      );
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(120, 20),
+        ),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
+      expect(fixture.viewModel.pressedClip, clip.id);
+
+      fixture.pointerMove(
+        const PointerMoveEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(220, 100),
+        ),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerClipMoveState>());
+      expect(fixture.viewModel.pressedClip, clip.id);
+
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(220, 100)),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+      expect(fixture.viewModel.pressedClip, isNull);
+    });
+
+    test('moving selected clips is one undoable action', () {
+      final firstClip = addClip(
+        offset: 100,
+        trackId: _TrackIds.a,
+        rect: const Rect.fromLTWH(100, 10, 80, 40),
+      );
+      final secondClip = addClip(
+        offset: 240,
+        trackId: _TrackIds.b,
+        rect: const Rect.fromLTWH(260, 70, 80, 40),
+      );
+
+      fixture.viewModel.selectedClips.addAll({firstClip.id, secondClip.id});
+
+      startClipMove(movePos: const Offset(260, 100));
+      expect(fixture.stateMachine.currentState, isA<ArrangerClipMoveState>());
+      final firstExpectedOffset =
+          fixture.viewModel.clipTimingOverrides[firstClip.id]!.offset;
+      final secondExpectedOffset =
+          fixture.viewModel.clipTimingOverrides[secondClip.id]!.offset;
+
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(260, 100)),
+      );
+
+      expect(firstClip.offset, firstExpectedOffset);
+      expect(secondClip.offset, secondExpectedOffset);
+      expect(firstClip.trackId, _TrackIds.a);
+      expect(secondClip.trackId, _TrackIds.b);
+
+      fixture.project.undo();
+
+      expect(firstClip.offset, 100);
+      expect(secondClip.offset, 240);
+      expect(firstClip.trackId, _TrackIds.a);
+      expect(secondClip.trackId, _TrackIds.b);
+    });
+
+    test('pointer cancel does not commit clip move', () {
+      final clip = addClip(
+        offset: 100,
+        trackId: _TrackIds.a,
+        rect: const Rect.fromLTWH(100, 10, 80, 40),
+      );
+
+      startClipMove();
+      expect(fixture.stateMachine.currentState, isA<ArrangerClipMoveState>());
+      expect(fixture.viewModel.clipTimingOverrides[clip.id], isNotNull);
+
+      fixture.pointerUp(
+        const PointerCancelEvent(pointer: 1, position: Offset(220, 100)),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+      expect(clip.offset, 100);
+      expect(clip.trackId, _TrackIds.a);
+      expect(fixture.viewModel.clipTimingOverrides, isEmpty);
+
+      fixture.project.undo();
+      expect(clip.offset, 100);
+      expect(clip.trackId, _TrackIds.a);
+    });
   });
 
   group('ArrangerSelectionBoxState', () {

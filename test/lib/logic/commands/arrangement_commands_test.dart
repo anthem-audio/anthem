@@ -225,33 +225,42 @@ void main() {
   });
 
   group('Clip edit commands', () {
-    test('MoveClipCommand execute and rollback', () {
+    test('MoveClipsCommand execute and rollback', () {
       final arrangement = addArrangementToProject('Arrangement 1');
-      final oldTrack = getId();
-      final newTrack = getId();
-      final clip = ClipModel.create(
+      final firstTrack = getId();
+      final secondTrack = getId();
+      final firstClip = ClipModel.create(
         patternId: getId(),
-        trackId: oldTrack,
+        trackId: firstTrack,
         offset: 64,
       );
-      arrangement.clips[clip.id] = clip;
+      final secondClip = ClipModel.create(
+        patternId: getId(),
+        trackId: secondTrack,
+        offset: 80,
+      );
+      arrangement.clips[firstClip.id] = firstClip;
+      arrangement.clips[secondClip.id] = secondClip;
 
-      final command = MoveClipCommand(
+      final command = MoveClipsCommand(
         arrangementID: arrangement.id,
-        clipID: clip.id,
-        oldOffset: 64,
-        newOffset: 128,
-        oldTrack: oldTrack,
-        newTrack: newTrack,
+        clipMoves: [
+          (clipID: firstClip.id, oldOffset: 64, newOffset: 128),
+          (clipID: secondClip.id, oldOffset: 80, newOffset: 144),
+        ],
       );
 
       command.execute(project);
-      expect(clip.offset, equals(128));
-      expect(clip.trackId, equals(newTrack));
+      expect(firstClip.offset, equals(128));
+      expect(secondClip.offset, equals(144));
+      expect(firstClip.trackId, equals(firstTrack));
+      expect(secondClip.trackId, equals(secondTrack));
 
       command.rollback(project);
-      expect(clip.offset, equals(64));
-      expect(clip.trackId, equals(oldTrack));
+      expect(firstClip.offset, equals(64));
+      expect(secondClip.offset, equals(80));
+      expect(firstClip.trackId, equals(firstTrack));
+      expect(secondClip.trackId, equals(secondTrack));
     });
 
     test('ResizeClipCommand execute and rollback with non-null time view', () {

@@ -215,38 +215,33 @@ class SetArrangementNameCommand extends ArrangementCommand {
   }
 }
 
-class MoveClipCommand extends ArrangementCommand {
-  final Id clipID;
-  final int oldOffset;
-  final int newOffset;
-  final Id oldTrack;
-  final Id newTrack;
+class MoveClipsCommand extends ArrangementCommand {
+  final List<({Id clipID, int oldOffset, int newOffset})> clipMoves;
 
-  MoveClipCommand({
+  MoveClipsCommand({
     required Id arrangementID,
-    required this.clipID,
-    required this.oldOffset,
-    required this.newOffset,
-    required this.oldTrack,
-    required this.newTrack,
-  }) : super(arrangementID);
+    required List<({Id clipID, int oldOffset, int newOffset})> clipMoves,
+  }) : clipMoves = List.unmodifiable(clipMoves),
+       super(arrangementID);
 
   @override
   void execute(ProjectModel project) {
     final arrangement = project.sequence.arrangements[arrangementID]!;
-    final clip = arrangement.clips[clipID]!;
 
-    clip.offset = newOffset;
-    clip.trackId = newTrack;
+    for (final clipMove in clipMoves) {
+      final clip = arrangement.clips[clipMove.clipID]!;
+      clip.offset = clipMove.newOffset;
+    }
   }
 
   @override
   void rollback(ProjectModel project) {
     final arrangement = project.sequence.arrangements[arrangementID]!;
-    final clip = arrangement.clips[clipID]!;
 
-    clip.offset = oldOffset;
-    clip.trackId = oldTrack;
+    for (final clipMove in clipMoves.reversed) {
+      final clip = arrangement.clips[clipMove.clipID]!;
+      clip.offset = clipMove.oldOffset;
+    }
   }
 }
 
