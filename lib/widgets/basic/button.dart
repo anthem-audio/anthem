@@ -20,7 +20,6 @@
 import 'dart:math';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
-import 'package:flutter/gestures.dart';
 import 'package:vector_math/vector_math_64.dart';
 
 import 'package:flutter/widgets.dart';
@@ -143,6 +142,7 @@ class Button extends StatefulWidget {
   final void Function()? onPress;
   final void Function()? onRightClick;
   final bool? toggleState;
+  final bool consumePress;
 
   final List<HintSection>? hint;
   @visibleForTesting
@@ -168,6 +168,7 @@ class Button extends StatefulWidget {
     this.onPress,
     this.onRightClick,
     this.toggleState,
+    this.consumePress = false,
     this.hint,
     this.hintStoreOverride,
   });
@@ -299,63 +300,57 @@ class _ButtonState extends State<Button> {
           _hintStore.removeHint(hintId!);
         }
       },
-      child: Listener(
-        onPointerDown: _onPointerDown,
-        onPointerUp: _onPointerUp,
-        onPointerCancel: (e) => _onPointerUp(e, true),
-        child: Container(
-          width: widget.width,
-          height: widget.height,
-          decoration: BoxDecoration(
-            borderRadius: widget.borderRadius ?? BorderRadius.circular(4),
-            border: widget.hideBorder == true
-                ? null
-                : Border.all(
-                    color: theme.border.getColor(hovered, pressed, toggled),
-                  ),
-            color: background,
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(1),
-            child: Stack(
-              fit: widget.expand != null
-                  ? StackFit.expand
-                  : StackFit.passthrough,
-              children: stackChildren,
+      child: GestureDetector(
+        behavior: widget.consumePress ? .opaque : null,
+        onTap: widget.onPress ?? (widget.consumePress ? () {} : null),
+        onSecondaryTapUp: (widget.onRightClick != null || widget.consumePress)
+            ? (e) {
+                widget.onRightClick?.call();
+              }
+            : null,
+        child: Listener(
+          onPointerDown: (e) {
+            if (!mounted) return;
+            setState(() {
+              pressed = true;
+            });
+          },
+          onPointerUp: (e) {
+            if (!mounted) return;
+            setState(() {
+              pressed = false;
+            });
+          },
+          onPointerCancel: (e) {
+            if (!mounted) return;
+            setState(() {
+              pressed = false;
+            });
+          },
+          child: Container(
+            width: widget.width,
+            height: widget.height,
+            decoration: BoxDecoration(
+              borderRadius: widget.borderRadius ?? BorderRadius.circular(4),
+              border: widget.hideBorder == true
+                  ? null
+                  : Border.all(
+                      color: theme.border.getColor(hovered, pressed, toggled),
+                    ),
+              color: background,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(1),
+              child: Stack(
+                fit: widget.expand != null
+                    ? StackFit.expand
+                    : StackFit.passthrough,
+                children: stackChildren,
+              ),
             ),
           ),
         ),
       ),
     );
-  }
-
-  int _pressedButtons = 0;
-
-  void _onPointerDown(PointerEvent e) {
-    if (!mounted) return;
-
-    _pressedButtons = e.buttons;
-
-    setState(() {
-      pressed = true;
-    });
-  }
-
-  void _onPointerUp(PointerEvent e, [bool cancelled = false]) {
-    if (!mounted) return;
-
-    setState(() {
-      pressed = false;
-    });
-
-    if (hovered && !cancelled) {
-      if (_pressedButtons & kPrimaryButton != 0) {
-        widget.onPress?.call();
-      } else if (_pressedButtons & kSecondaryButton != 0) {
-        widget.onRightClick?.call();
-      }
-    }
-
-    _pressedButtons = 0;
   }
 }

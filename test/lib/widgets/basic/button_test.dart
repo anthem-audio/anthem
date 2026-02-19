@@ -144,6 +144,84 @@ void main() {
       expect(onPressCalls, equals(0));
       expect(onRightClickCalls, equals(0));
     });
+
+    testWidgets('Button with onPress consumes parent primary tap', (
+      WidgetTester tester,
+    ) async {
+      int parentTapCalls = 0;
+      int onPressCalls = 0;
+
+      await _pumpHarness(
+        tester,
+        GestureDetector(
+          onTap: () => parentTapCalls += 1,
+          child: Button(
+            width: 100,
+            height: 30,
+            text: 'Press',
+            onPress: () => onPressCalls += 1,
+          ),
+        ),
+      );
+
+      await tester.tap(find.byType(Button));
+      await tester.pump();
+
+      expect(onPressCalls, equals(1));
+      expect(parentTapCalls, equals(0));
+    });
+
+    testWidgets('Button without handlers allows parent primary tap', (
+      WidgetTester tester,
+    ) async {
+      int parentTapCalls = 0;
+
+      await _pumpHarness(
+        tester,
+        GestureDetector(
+          onTap: () => parentTapCalls += 1,
+          child: const Button(width: 100, height: 30, text: 'Press'),
+        ),
+      );
+
+      await tester.tap(find.byType(Button));
+      await tester.pump();
+
+      expect(parentTapCalls, equals(1));
+    });
+
+    testWidgets('Button with onRightClick consumes parent secondary tap', (
+      WidgetTester tester,
+    ) async {
+      int parentRightClickCalls = 0;
+      int onRightClickCalls = 0;
+
+      await _pumpHarness(
+        tester,
+        GestureDetector(
+          onSecondaryTapUp: (_) => parentRightClickCalls += 1,
+          child: Button(
+            width: 100,
+            height: 30,
+            text: 'Press',
+            onRightClick: () => onRightClickCalls += 1,
+          ),
+        ),
+      );
+
+      final TestGesture mouse = await _createMouse(
+        tester,
+        buttons: kSecondaryButton,
+      );
+      await _hoverButton(tester, mouse);
+      await mouse.down(_buttonCenter(tester));
+      await tester.pump();
+      await mouse.up();
+      await tester.pump();
+
+      expect(onRightClickCalls, equals(1));
+      expect(parentRightClickCalls, equals(0));
+    });
   });
 
   group('Button visuals', () {
