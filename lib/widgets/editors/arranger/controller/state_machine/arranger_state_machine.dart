@@ -562,14 +562,31 @@ class ArrangerIdleState
     final contentUnderCursor = viewModel.getContentUnderCursor(
       event.localPosition,
     );
-    final clipId = contentUnderCursor.clip?.metadata;
+    final clipId =
+        contentUnderCursor.clip?.metadata ??
+        contentUnderCursor.resizeHandle?.metadata.id;
 
-    if (contentUnderCursor.clip != null &&
-        viewModel.selectedClips.contains(clipId)) {
+    if (clipId == null) {
+      viewModel.selectedClips.clear();
       return;
     }
 
-    viewModel.selectedClips.clear();
+    if (interactionState.isCtrlPressed) {
+      if (viewModel.selectedClips.contains(clipId)) {
+        viewModel.selectedClips.remove(clipId);
+      } else {
+        viewModel.selectedClips.add(clipId);
+      }
+      return;
+    }
+
+    if (viewModel.selectedClips.contains(clipId)) {
+      return;
+    }
+
+    viewModel.selectedClips
+      ..clear()
+      ..add(clipId);
   }
 
   void handleDoubleClick(PointerEvent event) {}

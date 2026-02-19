@@ -517,7 +517,7 @@ void main() {
       expect(fixture.viewModel.selectedClips, isEmpty);
     });
 
-    test('single click over non-selected clip clears selected clips', () {
+    test('single click over non-selected clip selects clicked clip', () {
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(240, 10, 80, 30),
         metadata: 'clip-under-cursor',
@@ -536,8 +536,146 @@ void main() {
       );
 
       expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+      expect(fixture.viewModel.selectedClips, {'clip-under-cursor'});
+    });
+
+    test('single click over resize handle selects associated clip', () {
+      fixture.viewModel.visibleResizeAreas.add(
+        rect: const Rect.fromLTWH(240, 10, 16, 30),
+        metadata: (id: 'clip-under-resize-handle', type: ResizeAreaType.start),
+      );
+      fixture.viewModel.selectedClips.add('selected-clip');
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(255, 20),
+        ),
+      );
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(255, 20)),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+      expect(fixture.viewModel.selectedClips, {'clip-under-resize-handle'});
+    });
+
+    test('ctrl-click over non-selected clip adds it to selection', () {
+      fixture.stateMachine.modifierPressed(ArrangerModifierKey.ctrl);
+      fixture.viewModel.visibleClips.add(
+        rect: const Rect.fromLTWH(240, 10, 80, 30),
+        metadata: 'clip-under-cursor',
+      );
+      fixture.viewModel.selectedClips.add('already-selected');
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(260, 20),
+        ),
+      );
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(260, 20)),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+      expect(fixture.viewModel.selectedClips, {
+        'already-selected',
+        'clip-under-cursor',
+      });
+    });
+
+    test('ctrl-click over selected clip removes it from selection', () {
+      fixture.stateMachine.modifierPressed(ArrangerModifierKey.ctrl);
+      fixture.viewModel.visibleClips.add(
+        rect: const Rect.fromLTWH(240, 10, 80, 30),
+        metadata: 'clip-under-cursor',
+      );
+      fixture.viewModel.selectedClips.addAll({
+        'clip-under-cursor',
+        'other-selected',
+      });
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(260, 20),
+        ),
+      );
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(260, 20)),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+      expect(fixture.viewModel.selectedClips, {'other-selected'});
+    });
+
+    test('ctrl-click on empty space clears selection', () {
+      fixture.stateMachine.modifierPressed(ArrangerModifierKey.ctrl);
+      fixture.viewModel.selectedClips.addAll({'clip-a', 'clip-b'});
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(420, 20),
+        ),
+      );
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(420, 20)),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
       expect(fixture.viewModel.selectedClips, isEmpty);
     });
+
+    test(
+      'ctrl-click on resize handle toggles associated clip in selection',
+      () {
+        fixture.stateMachine.modifierPressed(ArrangerModifierKey.ctrl);
+        fixture.viewModel.visibleResizeAreas.add(
+          rect: const Rect.fromLTWH(240, 10, 16, 30),
+          metadata: (
+            id: 'clip-under-resize-handle',
+            type: ResizeAreaType.start,
+          ),
+        );
+        fixture.viewModel.selectedClips.add('other-selected');
+
+        fixture.pointerDown(
+          const PointerDownEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(255, 20),
+          ),
+        );
+        fixture.pointerUp(
+          const PointerUpEvent(pointer: 1, position: Offset(255, 20)),
+        );
+
+        expect(fixture.viewModel.selectedClips, {
+          'other-selected',
+          'clip-under-resize-handle',
+        });
+
+        fixture.pointerDown(
+          const PointerDownEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(245, 20),
+          ),
+        );
+        fixture.pointerUp(
+          const PointerUpEvent(pointer: 1, position: Offset(245, 20)),
+        );
+
+        expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+        expect(fixture.viewModel.selectedClips, {'other-selected'});
+      },
+    );
   });
 
   group('ArrangerDragState', () {
