@@ -277,6 +277,7 @@ class _TrackControlButtons extends StatelessWidget {
             children: [
               Expanded(
                 child: Button(
+                  consumePress: true,
                   hideBorder: true,
                   borderRadius: .horizontal(left: .circular(3)),
                   contentBuilder: (context, color) {
@@ -296,6 +297,7 @@ class _TrackControlButtons extends StatelessWidget {
               separator(),
               Expanded(
                 child: Button(
+                  consumePress: true,
                   hideBorder: true,
                   borderRadius: .zero,
                   contentPadding: .all(4),
@@ -305,6 +307,7 @@ class _TrackControlButtons extends StatelessWidget {
               separator(),
               Expanded(
                 child: Button(
+                  consumePress: true,
                   hideBorder: true,
                   borderRadius: .horizontal(right: .circular(3)),
                   contentPadding: .all(4),
