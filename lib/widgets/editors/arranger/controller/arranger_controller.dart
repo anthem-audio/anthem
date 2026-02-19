@@ -26,7 +26,7 @@ import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
-import 'package:anthem/widgets/editors/arranger/controller/arranger_state_machine.dart';
+import 'package:anthem/widgets/editors/arranger/controller/state_machine/arranger_state_machine.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';

@@ -26,7 +26,7 @@ import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
-import 'package:anthem/widgets/editors/arranger/controller/arranger_state_machine.dart';
+import 'package:anthem/widgets/editors/arranger/controller/state_machine/arranger_state_machine.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
