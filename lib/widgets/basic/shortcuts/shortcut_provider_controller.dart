@@ -77,16 +77,18 @@ class ShortcutProviderController {
 
   /// The associated [ShortcutProvider] will call this function when it
   /// receives a key down event.
-  void handleKeyDown(KeyEvent event) {
-    var handled = false;
-
-    for (final handler in rawHandlers.values) {
-      handled = handled || handler(event);
-    }
+  void handleKeyDown(
+    KeyEvent event, {
+    bool dispatchRaw = true,
+    bool dispatchShortcuts = true,
+  }) {
+    final handled = dispatchRaw ? _dispatchRawHandlers(event) : false;
 
     if (handled) return;
 
     pressedKeys.add(event.logicalKey);
+
+    if (!dispatchShortcuts) return;
 
     final shortcut = LogicalKeySet.fromSet(pressedKeys);
 
@@ -94,19 +96,16 @@ class ShortcutProviderController {
       handler(shortcut);
     }
 
+    final activeConsumer = this.activeConsumer;
     if (activeConsumer == null) return;
 
-    shortcutHandlers[activeConsumer]!(shortcut);
+    shortcutHandlers[activeConsumer]?.call(shortcut);
   }
 
   /// The associated [ShortcutProvider] will call this function when it receives
   /// a key up event.
-  void handleKeyUp(KeyEvent event) {
-    var handled = false;
-
-    for (final handler in rawHandlers.values) {
-      handled = handled || handler(event);
-    }
+  void handleKeyUp(KeyEvent event, {bool dispatchRaw = true}) {
+    final handled = dispatchRaw ? _dispatchRawHandlers(event) : false;
 
     if (handled) return;
 
@@ -117,6 +116,16 @@ class ShortcutProviderController {
   /// events.
   void setActiveConsumer(String id) {
     activeConsumer = id;
+  }
+
+  bool _dispatchRawHandlers(KeyEvent event) {
+    var handled = false;
+
+    for (final handler in rawHandlers.values) {
+      handled = handled || handler(event);
+    }
+
+    return handled;
   }
 }
 
