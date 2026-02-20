@@ -463,8 +463,6 @@ class ArrangerIdleState
     final contentUnderCursor = viewModel.getContentUnderCursor(Offset(x, y));
     final newCursor = contentUnderCursor.resizeHandle != null
         ? SystemMouseCursors.resizeLeftRight
-        : contentUnderCursor.clip != null
-        ? SystemMouseCursors.move
         : MouseCursor.defer;
 
     if (viewModel.mouseCursor != newCursor) {

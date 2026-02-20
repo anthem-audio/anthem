@@ -203,7 +203,7 @@ void main() {
       expect(fixture.viewModel.hoverIndicatorPosition, isNull);
     });
 
-    test('hover over clip updates canvas cursor to move', () {
+    test('hover over clip keeps canvas cursor as defer', () {
       fixture.hover(const Offset(80, 20));
       expect(fixture.viewModel.hoverIndicatorPosition, isNotNull);
 
@@ -214,7 +214,7 @@ void main() {
 
       fixture.hover(const Offset(120, 20));
 
-      expect(fixture.viewModel.mouseCursor, SystemMouseCursors.move);
+      expect(fixture.viewModel.mouseCursor, MouseCursor.defer);
       expect(fixture.viewModel.hoverIndicatorPosition, isNull);
     });
 
@@ -268,7 +268,7 @@ void main() {
       );
 
       fixture.hover(const Offset(120, 20));
-      expect(fixture.viewModel.mouseCursor, SystemMouseCursors.move);
+      expect(fixture.viewModel.mouseCursor, MouseCursor.defer);
 
       fixture.exit(const Offset(120, 20));
 
