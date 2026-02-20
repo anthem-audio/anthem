@@ -218,8 +218,8 @@ class ArrangerContentPainter extends CustomPainterObserver {
 
       canvas.drawRect(rect, Paint()..color = color);
 
-      canvas.drawRect(
-        rect,
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, .circular(1)),
         Paint()
           ..style = .stroke
           ..color = color.withAlpha(255)
