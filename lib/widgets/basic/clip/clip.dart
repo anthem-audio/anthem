@@ -17,17 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/color_shifter.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
-import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:flutter/widgets.dart';
-import 'package:okcolor/models/extensions.dart';
 import 'package:provider/provider.dart';
 
 class Clip extends StatelessWidget {
@@ -122,23 +119,19 @@ class ClipPainter extends CustomPainterObserver {
       super.shouldRepaint(oldDelegate);
 }
 
-final _selectedColorShifter = AnthemColorShifter(
-  AnthemTheme.primary.main.darker(0.35).desaturate(0.1),
-);
-
 Color getBaseColor({
   required AnthemColor color,
   required bool selected,
   required bool pressed,
 }) {
-  final shifter = selected ? _selectedColorShifter : color.colorShifter;
-  final okColor = shifter.clipBase;
+  final shifter = color.colorShifter;
+  var okColor = shifter.clipBase;
 
   if (pressed) {
-    return okColor.darker(0.15).saturate(okColor.s > 0 ? 0.1 : 0).toColor();
+    okColor = okColor.darker(0.15).saturate(okColor.s > 0 ? 0.1 : 0);
   }
 
-  return okColor.toColor();
+  return okColor.darker(selected ? 0.23 : 0).toColor();
 }
 
 Color getContentColor({
@@ -146,12 +139,19 @@ Color getContentColor({
   required bool selected,
   required bool pressed,
 }) {
-  final shifter = selected ? _selectedColorShifter : color.colorShifter;
-  final okColor = shifter.clipText;
+  final shifter = color.colorShifter;
+  var okColor = shifter.clipText;
 
   if (pressed) {
-    return okColor.darker(0.15).saturate(okColor.s > 0 ? 0.1 : 0).toColor();
+    okColor = okColor.darker(0.15).saturate(okColor.s > 0 ? 0.1 : 0);
   }
 
-  return okColor.toColor();
+  return okColor.darker(selected ? 0.1 : 0).toColor();
+}
+
+Color getSelectedBorderColor({required AnthemColor color}) {
+  final shifter = color.colorShifter;
+  var okColor = shifter.clipText;
+
+  return okColor.lighter(0.1).toColor();
 }

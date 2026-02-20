@@ -511,6 +511,19 @@ void _paintContainer({
   );
 
   canvas.drawRect(rect, rectPaint);
+
+  if (selected) {
+    final strokeColor = getSelectedBorderColor(color: pattern.color);
+
+    final selectedRectPaint = Paint()
+      ..color = strokeColor
+      ..style = .stroke;
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect.deflate(1), .circular(1)),
+      selectedRectPaint,
+    );
+  }
 }
 
 void _paintContainerBorder({
