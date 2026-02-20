@@ -109,11 +109,11 @@ abstract class _ArrangerViewModel with Store {
 
   /// The position of the cursor that shows when you hover over a track.
   @observable
-  (double offset, Id trackId)? cursorLocation;
+  (double offset, Id trackId)? hoverIndicatorPosition;
 
-  /// The current cursor for the arranger canvas.
+  /// The current mouse cursor for the arranger canvas.
   @observable
-  MouseCursor canvasCursor = MouseCursor.defer;
+  MouseCursor mouseCursor = MouseCursor.defer;
 
   /// The box that shows to indicate where a new clip will be created while
   /// creating a clip.

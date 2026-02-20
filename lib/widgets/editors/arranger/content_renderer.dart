@@ -229,7 +229,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
   }
 
   void _drawCursor(Canvas canvas, Size size) {
-    if (viewModel.cursorLocation == null) {
+    if (viewModel.hoverIndicatorPosition == null) {
       return;
     }
 
@@ -242,7 +242,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
       }
     }
 
-    final (offset, trackId) = viewModel.cursorLocation!;
+    final (offset, trackId) = viewModel.hoverIndicatorPosition!;
 
     final trackIndex = viewModel.trackPositionCalculator.trackIdToIndex(
       trackId,

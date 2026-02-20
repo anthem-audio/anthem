@@ -167,7 +167,7 @@ class ArrangerSelectionBoxState
 
   @override
   void onEntry({required event, required from}) {
-    viewModel.cursorLocation = null;
+    viewModel.hoverIndicatorPosition = null;
     _initializeSelectionSession();
     _syncSelectionBox();
     _syncSelectedClips();

@@ -406,7 +406,7 @@ class ArrangerIdleState
 
   void updateArrangerCursor((double x, double y)? coordinates) {
     if (coordinates == null) {
-      viewModel.cursorLocation = null;
+      viewModel.hoverIndicatorPosition = null;
       return;
     }
 
@@ -414,7 +414,7 @@ class ArrangerIdleState
     final contentUnderCursor = viewModel.getContentUnderCursor(Offset(x, y));
     if (contentUnderCursor.clip != null ||
         contentUnderCursor.resizeHandle != null) {
-      viewModel.cursorLocation = null;
+      viewModel.hoverIndicatorPosition = null;
       return;
     }
 
@@ -427,7 +427,7 @@ class ArrangerIdleState
         .getTrackIndexFromPosition(adjustedY);
 
     if (fractionalTrackIndex.isInfinite) {
-      viewModel.cursorLocation = null;
+      viewModel.hoverIndicatorPosition = null;
       return;
     }
 
@@ -450,12 +450,12 @@ class ArrangerIdleState
             round: true,
           );
 
-    viewModel.cursorLocation = (targetTime.toDouble(), trackId);
+    viewModel.hoverIndicatorPosition = (targetTime.toDouble(), trackId);
   }
 
   void updateSystemMouseCursor((double x, double y)? coordinates) {
     if (coordinates == null) {
-      viewModel.canvasCursor = MouseCursor.defer;
+      viewModel.mouseCursor = MouseCursor.defer;
       return;
     }
 
@@ -467,8 +467,8 @@ class ArrangerIdleState
         ? SystemMouseCursors.move
         : MouseCursor.defer;
 
-    if (viewModel.canvasCursor != newCursor) {
-      viewModel.canvasCursor = newCursor;
+    if (viewModel.mouseCursor != newCursor) {
+      viewModel.mouseCursor = newCursor;
     }
   }
 

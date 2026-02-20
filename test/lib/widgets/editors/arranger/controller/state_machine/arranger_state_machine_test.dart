@@ -189,23 +189,23 @@ void main() {
     test('hover over track updates cursor location', () {
       fixture.hover(const Offset(120, 20));
 
-      final cursorLocation = fixture.viewModel.cursorLocation;
+      final cursorLocation = fixture.viewModel.hoverIndicatorPosition;
       expect(cursorLocation, isNotNull);
       expect(cursorLocation!.$2, _TrackIds.a);
     });
 
     test('hover outside track clears cursor location', () {
       fixture.hover(const Offset(120, 20));
-      expect(fixture.viewModel.cursorLocation, isNotNull);
+      expect(fixture.viewModel.hoverIndicatorPosition, isNotNull);
 
       fixture.hover(const Offset(120, -10));
 
-      expect(fixture.viewModel.cursorLocation, isNull);
+      expect(fixture.viewModel.hoverIndicatorPosition, isNull);
     });
 
     test('hover over clip updates canvas cursor to move', () {
       fixture.hover(const Offset(80, 20));
-      expect(fixture.viewModel.cursorLocation, isNotNull);
+      expect(fixture.viewModel.hoverIndicatorPosition, isNotNull);
 
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(110, 15, 40, 30),
@@ -214,13 +214,13 @@ void main() {
 
       fixture.hover(const Offset(120, 20));
 
-      expect(fixture.viewModel.canvasCursor, SystemMouseCursors.move);
-      expect(fixture.viewModel.cursorLocation, isNull);
+      expect(fixture.viewModel.mouseCursor, SystemMouseCursors.move);
+      expect(fixture.viewModel.hoverIndicatorPosition, isNull);
     });
 
     test('hover over resize handle updates canvas cursor to resize', () {
       fixture.hover(const Offset(80, 20));
-      expect(fixture.viewModel.cursorLocation, isNotNull);
+      expect(fixture.viewModel.hoverIndicatorPosition, isNotNull);
 
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(110, 15, 40, 30),
@@ -233,11 +233,8 @@ void main() {
 
       fixture.hover(const Offset(112, 20));
 
-      expect(
-        fixture.viewModel.canvasCursor,
-        SystemMouseCursors.resizeLeftRight,
-      );
-      expect(fixture.viewModel.cursorLocation, isNull);
+      expect(fixture.viewModel.mouseCursor, SystemMouseCursors.resizeLeftRight);
+      expect(fixture.viewModel.hoverIndicatorPosition, isNull);
     });
 
     test('hover leaving clip restores timeline cursor location', () {
@@ -247,21 +244,21 @@ void main() {
       );
 
       fixture.hover(const Offset(120, 20));
-      expect(fixture.viewModel.cursorLocation, isNull);
+      expect(fixture.viewModel.hoverIndicatorPosition, isNull);
 
       fixture.hover(const Offset(200, 20));
-      expect(fixture.viewModel.cursorLocation, isNotNull);
-      expect(fixture.viewModel.cursorLocation!.$2, _TrackIds.a);
+      expect(fixture.viewModel.hoverIndicatorPosition, isNotNull);
+      expect(fixture.viewModel.hoverIndicatorPosition!.$2, _TrackIds.a);
     });
 
     test('exit clears hover-derived cursor location', () {
       fixture.enter(const Offset(120, 20));
       fixture.hover(const Offset(120, 20));
-      expect(fixture.viewModel.cursorLocation, isNotNull);
+      expect(fixture.viewModel.hoverIndicatorPosition, isNotNull);
 
       fixture.exit(const Offset(120, 20));
 
-      expect(fixture.viewModel.cursorLocation, isNull);
+      expect(fixture.viewModel.hoverIndicatorPosition, isNull);
     });
 
     test('exit clears canvas cursor', () {
@@ -271,11 +268,11 @@ void main() {
       );
 
       fixture.hover(const Offset(120, 20));
-      expect(fixture.viewModel.canvasCursor, SystemMouseCursors.move);
+      expect(fixture.viewModel.mouseCursor, SystemMouseCursors.move);
 
       fixture.exit(const Offset(120, 20));
 
-      expect(fixture.viewModel.canvasCursor, MouseCursor.defer);
+      expect(fixture.viewModel.mouseCursor, MouseCursor.defer);
     });
 
     test('alt modifier disables snapping for cursor offset', () {
@@ -301,15 +298,15 @@ void main() {
       ).toDouble();
 
       fixture.hover(initialPos);
-      final snappedOffset = fixture.viewModel.cursorLocation!.$1;
+      final snappedOffset = fixture.viewModel.hoverIndicatorPosition!.$1;
 
       fixture.stateMachine.modifierPressed(ArrangerModifierKey.alt);
       fixture.hover(altTestPos);
-      final unsnappedOffset = fixture.viewModel.cursorLocation!.$1;
+      final unsnappedOffset = fixture.viewModel.hoverIndicatorPosition!.$1;
 
       fixture.stateMachine.modifierReleased(ArrangerModifierKey.alt);
       fixture.hover(releasedPos);
-      final snappedOffsetAgain = fixture.viewModel.cursorLocation!.$1;
+      final snappedOffsetAgain = fixture.viewModel.hoverIndicatorPosition!.$1;
 
       expect(unsnappedOffset, closeTo(rawOffset, 1e-9));
       expect(unsnappedOffset, isNot(equals(snappedOffset)));
@@ -318,7 +315,7 @@ void main() {
 
     test('view transform changed recomputes cursor location', () {
       fixture.hover(const Offset(120, 20));
-      final before = fixture.viewModel.cursorLocation!.$1;
+      final before = fixture.viewModel.hoverIndicatorPosition!.$1;
 
       fixture.controller.onRenderedViewTransformChanged(
         timeViewStart: 120,
@@ -326,13 +323,13 @@ void main() {
         verticalScrollPosition: fixture.viewModel.verticalScrollPosition,
       );
 
-      final after = fixture.viewModel.cursorLocation!.$1;
+      final after = fixture.viewModel.hoverIndicatorPosition!.$1;
       expect(after, isNot(equals(before)));
     });
 
     test('track layout changed recomputes cursor location', () {
       fixture.hover(const Offset(120, 20));
-      expect(fixture.viewModel.cursorLocation!.$2, _TrackIds.a);
+      expect(fixture.viewModel.hoverIndicatorPosition!.$2, _TrackIds.a);
 
       fixture.project.trackOrder
         ..clear()
@@ -342,8 +339,8 @@ void main() {
       );
       fixture.controller.onTrackLayoutChanged();
 
-      expect(fixture.viewModel.cursorLocation, isNotNull);
-      expect(fixture.viewModel.cursorLocation!.$2, _TrackIds.b);
+      expect(fixture.viewModel.hoverIndicatorPosition, isNotNull);
+      expect(fixture.viewModel.hoverIndicatorPosition!.$2, _TrackIds.b);
     });
 
     test('primary pointer down transitions idle to drag', () {

@@ -79,7 +79,7 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
                 );
               },
               child: MouseRegion(
-                cursor: viewModel.canvasCursor,
+                cursor: viewModel.mouseCursor,
                 onEnter: controller.onEnter,
                 onExit: controller.onExit,
                 onHover: controller.onHover,

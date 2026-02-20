@@ -176,7 +176,7 @@ class ArrangerCreateClipState
 
     // Clear the cursor once we have a real clip create hint
     if ((endOffset - startOffset).abs() > 0) {
-      viewModel.cursorLocation = null;
+      viewModel.hoverIndicatorPosition = null;
     }
   }
 
