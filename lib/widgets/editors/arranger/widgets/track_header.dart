@@ -97,6 +97,7 @@ class TrackHeader extends StatelessObserverWidget {
               AnthemMenuItem(
                 text: 'Delete',
                 hint: 'Delete this track',
+                disabled: track.isMasterTrack,
                 onSelected: () {
                   projectController.removeTrack(track.id);
                 },
@@ -105,6 +106,9 @@ class TrackHeader extends StatelessObserverWidget {
               AnthemMenuItem(
                 text: 'Delete selected',
                 hint: 'Delete the selected tracks',
+                disabled: viewModel.selectedTracks.any(
+                  (t) => project.tracks[t]?.isMasterTrack ?? false,
+                ),
                 onSelected: () {
                   projectController.removeTracks(
                     viewModel.selectedTracks.nonObservableInner,

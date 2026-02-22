@@ -154,6 +154,12 @@ class TrackAddRemoveCommand extends Command {
         );
       }
 
+      if (trackModel.isMasterTrack) {
+        throw StateError(
+          'Tried to delete the master track, which is not allowed.',
+        );
+      }
+
       final serviceRegistry = ServiceRegistry.forProject(project.id);
       final projectController = serviceRegistry.projectController;
       final isSendTrack = projectController.isSendTrack(trackId);

@@ -286,6 +286,7 @@ void main() {
       trackO = pairO.$2;
       trackP = pairP.$2;
       masterTrack = pairMaster.$2;
+      masterTrack.isMasterTrack = true;
 
       trackA.childTracks.addAll([trackBId, trackEId, trackHId, trackIId]);
       trackB.childTracks.addAll([trackCId, trackDId]);
@@ -943,6 +944,22 @@ void main() {
         expect(tracks, hasLength(originalTracksCount));
         expect(sendTrackOrder, hasLength(4));
         expect(sendTrackOrder[0], equals(trackLId));
+      });
+
+      test('Throws when trying to remove master track', () {
+        expect(
+          () => TrackAddRemoveCommand.remove(
+            project: project,
+            ids: [masterTrackId],
+          ),
+          throwsA(
+            isA<StateError>().having(
+              (error) => error.message,
+              'message',
+              contains('master track'),
+            ),
+          ),
+        );
       });
 
       test('Remove a leaf track from inside a group', () {

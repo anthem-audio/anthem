@@ -94,6 +94,9 @@ void main() {
       when(trackA.parentTrackId).thenReturn(null);
       when(trackB.parentTrackId).thenReturn(trackAId);
       when(trackC.parentTrackId).thenReturn(trackAId);
+      when(trackA.isMasterTrack).thenReturn(false);
+      when(trackB.isMasterTrack).thenReturn(false);
+      when(trackC.isMasterTrack).thenReturn(false);
 
       tracks[trackAId] = trackA;
       tracks[trackBId] = trackB;
@@ -124,6 +127,9 @@ void main() {
       when(trackL.parentTrackId).thenReturn(null);
       when(trackM.parentTrackId).thenReturn(trackLId);
       when(masterTrack.parentTrackId).thenReturn(null);
+      when(trackL.isMasterTrack).thenReturn(false);
+      when(trackM.isMasterTrack).thenReturn(false);
+      when(masterTrack.isMasterTrack).thenReturn(true);
 
       tracks[trackLId] = trackL;
       tracks[trackMId] = trackM;
@@ -150,6 +156,11 @@ void main() {
       expect(projectController.canGroupTracks([trackB.id, trackM.id]), isFalse);
 
       expect(projectController.canGroupTracks([trackL.id, trackM.id]), isTrue);
+      expect(
+        projectController.canGroupTracks([trackL.id, masterTrack.id]),
+        isFalse,
+      );
+      expect(projectController.canGroupTracks([masterTrack.id]), isFalse);
     });
   });
 

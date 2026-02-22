@@ -69,8 +69,8 @@ class ProjectModel extends _ProjectModel
     final masterTrack = TrackModel(
       name: 'Master',
       color: AnthemColor.randomHue(),
-      type: .instrument,
-    );
+      type: .audio,
+    )..isMasterTrack = true;
     initTracks[masterTrack.id] = masterTrack;
     initSendTrackOrder.add(masterTrack.id);
 

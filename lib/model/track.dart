@@ -88,6 +88,12 @@ abstract class _TrackModel
   /// around.
   Id? parentTrackId;
 
+  /// Whether this track is the master track.
+  ///
+  /// The master track outputs to the speakers, and cannot be removed.
+  @anthemObservable
+  bool isMasterTrack = false;
+
   _TrackModel({required this.name, required this.color, required this.type})
     : id = getId(),
       super();

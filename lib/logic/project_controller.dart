@@ -345,6 +345,15 @@ class ProjectController {
     bool hasRegularTracks = false;
 
     for (final id in trackIds) {
+      final track = project.tracks[id];
+      if (track == null) {
+        continue;
+      }
+
+      if (track.isMasterTrack) {
+        return false;
+      }
+
       final isSendTrack = this.isSendTrack(id, false);
 
       hasSendTracks = hasSendTracks || isSendTrack;
