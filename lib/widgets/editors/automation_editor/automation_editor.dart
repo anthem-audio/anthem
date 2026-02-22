@@ -124,6 +124,7 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
     timeViewAnimationHelper ??= LazyFollowAnimationHelper(
       duration: 250,
       vsync: this,
+      animateOnFirstUpdate: false,
       items: [
         LazyFollowItem(
           initialValue: 0,

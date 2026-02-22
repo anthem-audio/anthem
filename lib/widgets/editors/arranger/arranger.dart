@@ -525,6 +525,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
     timeViewAnimationHelper ??= LazyFollowAnimationHelper(
       duration: 250,
       vsync: this,
+      animateOnFirstUpdate: false,
       items: [
         LazyFollowItem(
           initialValue: 0,
@@ -545,6 +546,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
     verticalScrollPositionAnimationHelper ??= LazyFollowAnimationHelper(
       duration: 250,
       vsync: this,
+      animateOnFirstUpdate: false,
       items: [
         LazyFollowItem(
           initialValue: 0,

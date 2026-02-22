@@ -30,11 +30,15 @@ class LazyFollowAnimationHelper {
 
   final double duration;
   final List<LazyFollowItem> items;
+  final bool animateOnFirstUpdate;
+
+  bool _hasUpdatedOnce = false;
 
   LazyFollowAnimationHelper({
     required this.duration,
     required this.items,
     required TickerProvider vsync,
+    this.animateOnFirstUpdate = true,
   }) {
     animationController = AnimationController(
       duration: const Duration(milliseconds: 250),
@@ -52,12 +56,33 @@ class LazyFollowAnimationHelper {
     // Updates the animation if the value has changed
     final itemsToUpdate = items.map((item) {
       final target = item.getTarget?.call() ?? item.target;
-      return (item: item, target: target);
+      final shouldSnap = item.getShouldSnap?.call() ?? false;
+      return (item: item, target: target, shouldSnap: shouldSnap);
     }).toList();
 
-    for (final (:item, :target) in itemsToUpdate) {
-      final shouldSnap = item.getShouldSnap?.call() ?? false;
+    final shouldUpdate =
+        !_hasUpdatedOnce ||
+        itemsToUpdate.any(
+          (entry) =>
+              entry.target != entry.item.mostRecentValue || entry.shouldSnap,
+        );
 
+    if (!shouldUpdate) {
+      return;
+    }
+
+    if (!_hasUpdatedOnce && !animateOnFirstUpdate) {
+      for (final (item: item, target: target, shouldSnap: _) in itemsToUpdate) {
+        item.tween.begin = target;
+        item.tween.end = target;
+        item.mostRecentValue = target;
+      }
+
+      _hasUpdatedOnce = true;
+      return;
+    }
+
+    for (final (:item, :target, :shouldSnap) in itemsToUpdate) {
       if (shouldSnap) {
         item.tween.begin = target;
       } else {
@@ -67,15 +92,17 @@ class LazyFollowAnimationHelper {
 
     animationController.reset();
 
-    for (final (:item, :target) in itemsToUpdate) {
+    for (final (item: item, target: target, shouldSnap: _) in itemsToUpdate) {
       item.tween.end = target;
     }
 
     animationController.forward();
 
-    for (final (:item, :target) in itemsToUpdate) {
+    for (final (item: item, target: target, shouldSnap: _) in itemsToUpdate) {
       item.mostRecentValue = target;
     }
+
+    _hasUpdatedOnce = true;
   }
 
   void dispose() {

@@ -248,6 +248,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
     timeViewAnimationHelper ??= LazyFollowAnimationHelper(
       duration: 250,
       vsync: this,
+      animateOnFirstUpdate: false,
       items: [
         LazyFollowItem(
           initialValue: 0,
@@ -268,6 +269,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
     keyValueAtTopAnimationHelper ??= LazyFollowAnimationHelper(
       duration: 250,
       vsync: this,
+      animateOnFirstUpdate: false,
       items: [
         LazyFollowItem(
           initialValue: 0,
