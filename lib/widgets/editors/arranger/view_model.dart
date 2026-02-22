@@ -182,18 +182,23 @@ abstract class _ArrangerViewModel with Store {
   /// Calculates the clip and resize handle under the cursor, if there is one.
   ArrangerContentUnderCursor getContentUnderCursor(Offset pos) {
     final clipUnderCursor = visibleClips.hitTest(pos);
-    final resizeHandleUnderCursor = visibleResizeAreas
+    final resizeHandleCandidates = visibleResizeAreas
         .hitTestAll(pos)
         // We only report a resize handle if the cursor is also over the
         // associated clip, or if the cursor is over no clip. This makes the
         // behavior for clip resizing a bit more predictable, as it then doesn't
         // depend on the Z-ordering of clips for clips that are right next to
         // each other.
-        .firstWhereOrNull(
+        .where(
           (element) =>
               clipUnderCursor == null ||
               element.metadata.id == clipUnderCursor.metadata,
         );
+    final resizeHandleUnderCursor =
+        resizeHandleCandidates.firstWhereOrNull(
+          (element) => element.metadata.type == ResizeAreaType.end,
+        ) ??
+        resizeHandleCandidates.firstOrNull;
     return ArrangerContentUnderCursor(
       clip: clipUnderCursor,
       resizeHandle: resizeHandleUnderCursor,

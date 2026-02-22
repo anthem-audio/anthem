@@ -247,6 +247,55 @@ void main() {
     });
 
     test(
+      'getContentUnderCursor prefers end handle when start and end overlap',
+      () {
+        fixture.viewModel.visibleResizeAreas.add(
+          rect: const Rect.fromLTWH(110, 15, 20, 30),
+          metadata: (id: 'clip-under-cursor', type: ResizeAreaType.start),
+        );
+        fixture.viewModel.visibleResizeAreas.add(
+          rect: const Rect.fromLTWH(110, 15, 20, 30),
+          metadata: (id: 'clip-under-cursor', type: ResizeAreaType.end),
+        );
+
+        final content = fixture.viewModel.getContentUnderCursor(
+          const Offset(120, 20),
+        );
+
+        expect(content.resizeHandle, isNotNull);
+        expect(content.resizeHandle!.metadata.type, ResizeAreaType.end);
+      },
+    );
+
+    test(
+      'getContentUnderCursor keeps clip match priority over non-matching end handle',
+      () {
+        fixture.viewModel.visibleClips.add(
+          rect: const Rect.fromLTWH(110, 15, 40, 30),
+          metadata: 'clip-under-cursor',
+        );
+        fixture.viewModel.visibleResizeAreas.add(
+          rect: const Rect.fromLTWH(110, 15, 20, 30),
+          metadata: (id: 'other-clip', type: ResizeAreaType.end),
+        );
+        fixture.viewModel.visibleResizeAreas.add(
+          rect: const Rect.fromLTWH(110, 15, 20, 30),
+          metadata: (id: 'clip-under-cursor', type: ResizeAreaType.start),
+        );
+
+        final content = fixture.viewModel.getContentUnderCursor(
+          const Offset(120, 20),
+        );
+
+        expect(content.clip, isNotNull);
+        expect(content.clip!.metadata, 'clip-under-cursor');
+        expect(content.resizeHandle, isNotNull);
+        expect(content.resizeHandle!.metadata.id, 'clip-under-cursor');
+        expect(content.resizeHandle!.metadata.type, ResizeAreaType.start);
+      },
+    );
+
+    test(
       'hover leaving clip restores timeline cursor location and clears hovered clip',
       () {
         fixture.viewModel.visibleClips.add(

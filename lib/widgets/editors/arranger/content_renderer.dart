@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/project.dart';
@@ -37,9 +39,52 @@ const _clipResizeHandleWidth = 12.0;
 /// How far over the clip the resize handle extends, in pixels.
 const _clipResizeHandleOvershoot = 2.0;
 
-/// There will be at least this much clickable area on a clip. Resize handles
-/// will shrink to make room for this if necessary.
-const _minimumClickableClipArea = 30;
+/// Computes resize handle rectangles for a clip while guaranteeing that each
+/// clip has a center drag area free of resize handles.
+@visibleForTesting
+({Rect start, Rect end}) computeResizeHandleRects({
+  required double clipX,
+  required double clipY,
+  required double clipWidth,
+  required double clipHeight,
+}) {
+  final clipBodyWidth = (clipWidth - 1).clamp(1.0, double.infinity);
+  final clipBodyLeft = clipX;
+  final clipBodyRight = clipBodyLeft + clipBodyWidth;
+  const defaultInsideOverlap =
+      _clipResizeHandleWidth - _clipResizeHandleOvershoot;
+
+  // Always preserve a center drag area
+  final minDragArea = min(15.0, clipBodyWidth);
+  final maxTotalHandleOverlapInside = (clipBodyWidth - minDragArea).clamp(
+    0.0,
+    double.infinity,
+  );
+  final insideOverlapPerHandle = (maxTotalHandleOverlapInside / 2).clamp(
+    0.0,
+    defaultInsideOverlap,
+  );
+
+  final startRight = clipBodyLeft + insideOverlapPerHandle;
+  final startLeft = startRight - _clipResizeHandleWidth;
+  final startRect = Rect.fromLTRB(
+    startLeft,
+    clipY,
+    startRight,
+    clipY + clipHeight - 1,
+  );
+
+  final endLeft = clipBodyRight - insideOverlapPerHandle;
+  final endRight = endLeft + _clipResizeHandleWidth;
+  final endRect = Rect.fromLTRB(
+    endLeft,
+    clipY,
+    endRight,
+    clipY + clipHeight - 1,
+  );
+
+  return (start: startRect, end: endRect);
+}
 
 /// Compares clips by render order.
 ///
@@ -393,34 +438,20 @@ class ArrangerContentPainter extends CustomPainterObserver {
           metadata: clipEntry.clipId,
         );
 
-        final startResizeHandleRect = Rect.fromLTWH(
-          x - _clipResizeHandleOvershoot,
-          y,
-          _clipResizeHandleWidth
-              // Ensures there's a bit of the clip still showing
-              -
-              (_minimumClickableClipArea - width).clamp(
-                0,
-                (_clipResizeHandleWidth - _clipResizeHandleOvershoot),
-              ),
-          trackHeight - 1,
+        final (
+          start: startResizeHandleRect,
+          end: endResizeHandleRect,
+        ) = computeResizeHandleRects(
+          clipX: x,
+          clipY: y,
+          clipWidth: width,
+          clipHeight: trackHeight,
         );
         viewModel.visibleResizeAreas.add(
           rect: startResizeHandleRect,
           metadata: (id: clipEntry.clipId, type: ResizeAreaType.start),
         );
 
-        // Notice this is fromLTRB. We generally use fromLTWH elsewhere.
-        final endResizeHandleRect = Rect.fromLTRB(
-          x +
-              (width - (_clipResizeHandleWidth - _clipResizeHandleOvershoot))
-                  // Ensures there's a bit of the clip still showing
-                  .clamp(_minimumClickableClipArea, double.infinity)
-                  .clamp(0, width),
-          y,
-          x + width + _clipResizeHandleOvershoot,
-          y + trackHeight - 1,
-        );
         viewModel.visibleResizeAreas.add(
           rect: endResizeHandleRect,
           metadata: (id: clipEntry.clipId, type: ResizeAreaType.end),

@@ -21,6 +21,7 @@ import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/content_renderer.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 ClipRenderInfo _makeClip({
@@ -57,6 +58,142 @@ ClipRenderInfo _makeClip({
 }
 
 void main() {
+  group('computeResizeHandleRects', () {
+    Rect clipBodyRect({
+      required double clipX,
+      required double clipY,
+      required double clipWidth,
+      required double clipHeight,
+    }) {
+      final bodyWidth = (clipWidth - 1).clamp(1.0, double.infinity);
+      return Rect.fromLTWH(clipX, clipY, bodyWidth, clipHeight - 1);
+    }
+
+    double insideOverlapWidth({required Rect handle, required Rect clipBody}) {
+      final overlapLeft = handle.left > clipBody.left
+          ? handle.left
+          : clipBody.left;
+      final overlapRight = handle.right < clipBody.right
+          ? handle.right
+          : clipBody.right;
+      final width = overlapRight - overlapLeft;
+      return width > 0 ? width : 0;
+    }
+
+    test(
+      'very small clips keep entire body draggable and place handles outside',
+      () {
+        final clipX = 120.0;
+        final clipY = 16.0;
+        final clipWidth = 2.0;
+        final clipHeight = 32.0;
+
+        final handles = computeResizeHandleRects(
+          clipX: clipX,
+          clipY: clipY,
+          clipWidth: clipWidth,
+          clipHeight: clipHeight,
+        );
+        final clipBody = clipBodyRect(
+          clipX: clipX,
+          clipY: clipY,
+          clipWidth: clipWidth,
+          clipHeight: clipHeight,
+        );
+
+        final startInside = insideOverlapWidth(
+          handle: handles.start,
+          clipBody: clipBody,
+        );
+        final endInside = insideOverlapWidth(
+          handle: handles.end,
+          clipBody: clipBody,
+        );
+
+        expect(startInside, 0);
+        expect(endInside, 0);
+      },
+    );
+
+    test('typical clips keep at least 15px center drag area', () {
+      final clipX = 64.0;
+      final clipY = 8.0;
+      final clipWidth = 120.0;
+      final clipHeight = 48.0;
+
+      final handles = computeResizeHandleRects(
+        clipX: clipX,
+        clipY: clipY,
+        clipWidth: clipWidth,
+        clipHeight: clipHeight,
+      );
+      final clipBody = clipBodyRect(
+        clipX: clipX,
+        clipY: clipY,
+        clipWidth: clipWidth,
+        clipHeight: clipHeight,
+      );
+
+      final startInside = insideOverlapWidth(
+        handle: handles.start,
+        clipBody: clipBody,
+      );
+      final endInside = insideOverlapWidth(
+        handle: handles.end,
+        clipBody: clipBody,
+      );
+      final dragArea = clipBody.width - startInside - endInside;
+
+      expect(dragArea, greaterThanOrEqualTo(15));
+    });
+
+    test('small clips keep drag area equal to full clip width', () {
+      final clipX = 44.0;
+      final clipY = 8.0;
+      final clipWidth = 10.0;
+      final clipHeight = 48.0;
+
+      final handles = computeResizeHandleRects(
+        clipX: clipX,
+        clipY: clipY,
+        clipWidth: clipWidth,
+        clipHeight: clipHeight,
+      );
+      final clipBody = clipBodyRect(
+        clipX: clipX,
+        clipY: clipY,
+        clipWidth: clipWidth,
+        clipHeight: clipHeight,
+      );
+
+      final startInside = insideOverlapWidth(
+        handle: handles.start,
+        clipBody: clipBody,
+      );
+      final endInside = insideOverlapWidth(
+        handle: handles.end,
+        clipBody: clipBody,
+      );
+      final dragArea = clipBody.width - startInside - endInside;
+
+      expect(dragArea, closeTo(clipBody.width, 1e-9));
+    });
+
+    test('handle rects remain valid and non-empty', () {
+      final handles = computeResizeHandleRects(
+        clipX: 30,
+        clipY: 4,
+        clipWidth: 1.2,
+        clipHeight: 22,
+      );
+
+      expect(handles.start.width, greaterThan(0));
+      expect(handles.start.height, greaterThan(0));
+      expect(handles.end.width, greaterThan(0));
+      expect(handles.end.height, greaterThan(0));
+    });
+  });
+
   group('compareClipRenderInfoForLayering', () {
     test('orders timing overrides above non-overridden clips', () {
       final nonOverridden = _makeClip(id: 'clip-a', offset: 200, width: 24);
