@@ -445,7 +445,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
         return Listener(
           onPointerPanZoomUpdate: (event) {
-            handleScroll(-event.panDelta.dy / 2, event.localPosition.dx);
+            handleScroll(-event.panDelta.dy * 0.7, event.localPosition.dx);
           },
           onPointerSignal: (event) {
             if (event is PointerScrollEvent) {
