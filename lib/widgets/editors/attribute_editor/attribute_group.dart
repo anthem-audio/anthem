@@ -54,8 +54,8 @@ class _AttributeGroupState extends State<AttributeGroup>
     );
     heightAnimation = CurvedAnimation(
       parent: heightAnimationController,
-      curve: Curves.easeOutCubic,
-      reverseCurve: Curves.easeInCubic,
+      curve: Curves.easeOutExpo,
+      reverseCurve: Curves.easeInExpo,
     );
   }
 
