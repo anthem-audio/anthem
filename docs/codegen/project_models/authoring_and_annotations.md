@@ -136,6 +136,11 @@ Field-level marker for union/polymorphic fields. Rules:
 
 For project models, this is the supported approach for polymorphism.
 
+Anthem also has an analyzer-plugin diagnostic, `invalid_union_assignment`,
+which reports statically when code assigns a type that is not listed in a
+field's `@Union([...])` annotation. See [Analyzer Plugin](../analyzer_plugin.md)
+for setup, severity, and behavior details.
+
 ### `@AnthemEnum()`
 
 Enum-level marker that enables equivalent C++ enum generation. Enums used in Anthem models must have this annotation - if an enum is used by Anthem models and is missing this annotation, codegen will warn, and the C++ will likely not compile.

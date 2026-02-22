@@ -10,6 +10,7 @@
 - Codegen
   - [Codegen Docs](./codegen/README.md)
   - [Codegen Overview](./codegen/overview.md)
+  - [Codegen Analyzer Plugin](./codegen/analyzer_plugin.md)
 - Design
   - [Composable Sequences](./design/composable_sequences.md)
 - [Setup on Linux](./setup_linux.md)

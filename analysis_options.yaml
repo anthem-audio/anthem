@@ -1,5 +1,11 @@
 include: package:flutter_lints/flutter.yaml
 
+plugins:
+  anthem_analyzer_plugin:
+    path: tools/anthem_analyzer_plugin
+    diagnostics:
+      invalid_union_assignment: error
+
 analyzer:
   language:
     strict-inference: true

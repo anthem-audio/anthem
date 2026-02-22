@@ -13,6 +13,8 @@ If you are new to this area, read in this order:
 
 ## Quick Page Guide
 
+- [Analyzer Plugin](../analyzer_plugin.md)
+  - Plugin-based diagnostics for codegen/model authoring constraints (including union field assignment checks).
 - [Project Model Authoring and Annotations](./authoring_and_annotations.md)
   - How to author model classes, required patterns, annotation behavior, and synced-model constraints.
 - [Dart Sync Runtime (`AnthemModelBase` and Collections)](./dart_sync_runtime.md)

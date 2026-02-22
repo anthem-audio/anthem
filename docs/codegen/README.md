@@ -5,6 +5,7 @@ This section documents Anthem's `codegen/` module: why it exists, how it is stru
 ## Pages
 
 - [Codegen Overview](./overview.md)
+- [Analyzer Plugin](./analyzer_plugin.md)
 - [Project Model Codegen Docs](./project_models/README.md)
 - [Project Model Authoring and Annotations](./project_models/authoring_and_annotations.md)
 - [Dart Sync Runtime (`AnthemModelBase` and Collections)](./project_models/dart_sync_runtime.md)

@@ -74,7 +74,7 @@ void main() {
               items: [
                 VisualizationItem(
                   id: 'subscriptionId',
-                  values: [123, 0.6, 0.7, 0.8],
+                  values: [123.0, 0.6, 0.7, 0.8],
                 ),
               ],
             ),
@@ -108,19 +108,19 @@ void main() {
               items: [
                 VisualizationItem(
                   id: 'subscriptionId',
-                  values: [123, 0.6, 0.7, 0.8],
+                  values: [123.0, 0.6, 0.7, 0.8],
                 ),
               ],
             ),
           );
 
-          expect(subscription.readValue(), 123);
-          expect(subscription.readValues(), [123]);
+          expect(subscription.readValue(), 123.0);
+          expect(subscription.readValues(), [123.0]);
 
           // If we read the value again, it should be the same as the last read
 
-          expect(subscription.readValue(), 123);
-          expect(subscription.readValues(), [123]);
+          expect(subscription.readValue(), 123.0);
+          expect(subscription.readValues(), [123.0]);
 
           // If there are two updates before we read the value again, it should
           // be the maximum across the two updates
