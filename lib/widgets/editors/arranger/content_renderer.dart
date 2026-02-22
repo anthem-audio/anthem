@@ -363,6 +363,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
             height: trackHeight,
             selected: viewModel.selectedClips.contains(clip.id),
             pressed: viewModel.pressedClip == clip.id,
+            hovered: viewModel.hoveredClip == clip.id,
           );
         })
         .nonNulls

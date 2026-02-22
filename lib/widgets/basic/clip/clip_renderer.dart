@@ -56,6 +56,7 @@ class ClipRenderInfo {
   final double height;
   final bool selected;
   final bool pressed;
+  final bool hovered;
 
   ClipRenderInfo({
     required this.pattern,
@@ -70,6 +71,7 @@ class ClipRenderInfo {
     required this.height,
     required this.selected,
     required this.pressed,
+    required this.hovered,
   }) : assert(clipTimeViewEnd > clipTimeViewStart),
        clipId = clip.id,
        trackId = clip.trackId,
@@ -98,6 +100,7 @@ void paintClipList({
       height: clipEntry.height,
       selected: clipEntry.selected,
       pressed: clipEntry.pressed,
+      hovered: clipEntry.hovered,
       hideBorder: hideBorder,
     );
   }
@@ -352,6 +355,7 @@ void paintClip({
   required double height,
   required bool selected,
   required bool pressed,
+  bool hovered = false,
   required double devicePixelRatio,
   required double timeViewStart,
   required double timeViewEnd,
@@ -366,6 +370,7 @@ void paintClip({
     height: height,
     selected: selected,
     pressed: pressed,
+    hovered: hovered,
     hideBorder: hideBorder,
   );
 
@@ -493,12 +498,14 @@ void _paintContainer({
   required double height,
   required bool selected,
   required bool pressed,
+  required bool hovered,
   bool hideBorder = false,
 }) {
   final baseColor = getBaseColor(
     color: pattern.color,
     selected: selected,
     pressed: pressed,
+    hovered: hovered,
   );
 
   final rectPaint = Paint()..color = baseColor;

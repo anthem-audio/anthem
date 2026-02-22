@@ -52,6 +52,7 @@ ClipRenderInfo _makeClip({
     height: 48,
     selected: false,
     pressed: false,
+    hovered: false,
   );
 }
 

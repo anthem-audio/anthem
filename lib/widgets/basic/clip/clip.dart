@@ -123,12 +123,15 @@ Color getBaseColor({
   required AnthemColor color,
   required bool selected,
   required bool pressed,
+  bool hovered = false,
 }) {
   final shifter = color.colorShifter;
   var okColor = shifter.clipBase;
 
   if (pressed) {
     okColor = okColor.darker(0.15).saturate(okColor.s > 0 ? 0.1 : 0);
+  } else if (hovered) {
+    okColor = okColor.lighter(0.15);
   }
 
   return okColor.darker(selected ? 0.23 : 0).toColor();

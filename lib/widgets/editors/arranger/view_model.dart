@@ -107,6 +107,10 @@ abstract class _ArrangerViewModel with Store {
   @observable
   Id? pressedClip;
 
+  /// The clip currently under the mouse cursor, if any.
+  @observable
+  Id? hoveredClip;
+
   /// The position of the cursor that shows when you hover over a track.
   @observable
   (double offset, Id trackId)? hoverIndicatorPosition;

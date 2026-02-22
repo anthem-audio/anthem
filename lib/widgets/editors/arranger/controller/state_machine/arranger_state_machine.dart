@@ -400,8 +400,25 @@ class ArrangerIdleState
     final coordinates = lastHoveredPointer == null
         ? null
         : (lastHoveredPointer!.x, lastHoveredPointer!.y);
+    updateHoveredClip(coordinates);
     updateArrangerCursor(coordinates);
     updateSystemMouseCursor(coordinates);
+  }
+
+  void updateHoveredClip((double x, double y)? coordinates) {
+    if (coordinates == null) {
+      viewModel.hoveredClip = null;
+      return;
+    }
+
+    final (x, y) = coordinates;
+    final contentUnderCursor = viewModel.getContentUnderCursor(Offset(x, y));
+    final hoveredClipId =
+        contentUnderCursor.resizeHandle?.metadata.id ??
+        contentUnderCursor.clip?.metadata;
+    if (viewModel.hoveredClip != hoveredClipId) {
+      viewModel.hoveredClip = hoveredClipId;
+    }
   }
 
   void updateArrangerCursor((double x, double y)? coordinates) {
