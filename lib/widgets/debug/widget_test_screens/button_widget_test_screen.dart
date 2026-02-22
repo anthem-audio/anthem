@@ -19,6 +19,7 @@
 
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/button_group.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:flutter/widgets.dart';
 
@@ -33,6 +34,12 @@ class _ButtonWidgetTestScreenState extends State<ButtonWidgetTestScreen> {
   int primaryPressCount = 0;
   int rightClickCount = 0;
   bool toggleState = false;
+  bool groupA = false;
+  bool groupB = false;
+  bool groupC = false;
+  bool groupTop = false;
+  bool groupMiddle = false;
+  bool groupBottom = false;
 
   @override
   Widget build(BuildContext context) {
@@ -123,6 +130,97 @@ class _ButtonWidgetTestScreenState extends State<ButtonWidgetTestScreen> {
         Text(
           'Right clicks: $rightClickCount',
           style: TextStyle(color: AnthemTheme.text.main, fontSize: 12),
+        ),
+        Text(
+          'ButtonGroup (horizontal)',
+          style: TextStyle(
+            color: AnthemTheme.text.accent,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        SizedBox(
+          height: 26,
+          child: ButtonGroup(
+            children: [
+              Button(
+                width: 70,
+                text: 'One',
+                toggleState: groupA,
+                onPress: () {
+                  setState(() {
+                    groupA = !groupA;
+                  });
+                },
+              ),
+              Button(
+                width: 70,
+                text: 'Two',
+                toggleState: groupB,
+                onPress: () {
+                  setState(() {
+                    groupB = !groupB;
+                  });
+                },
+              ),
+              Button(
+                width: 70,
+                text: 'Three',
+                toggleState: groupC,
+                onPress: () {
+                  setState(() {
+                    groupC = !groupC;
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+        Text(
+          'ButtonGroup (vertical)',
+          style: TextStyle(
+            color: AnthemTheme.text.accent,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        SizedBox(
+          width: 120,
+          child: ButtonGroup(
+            axis: Axis.vertical,
+            children: [
+              Button(
+                height: 24,
+                text: 'Top',
+                toggleState: groupTop,
+                onPress: () {
+                  setState(() {
+                    groupTop = !groupTop;
+                  });
+                },
+              ),
+              Button(
+                height: 24,
+                text: 'Middle',
+                toggleState: groupMiddle,
+                onPress: () {
+                  setState(() {
+                    groupMiddle = !groupMiddle;
+                  });
+                },
+              ),
+              Button(
+                height: 24,
+                text: 'Bottom',
+                toggleState: groupBottom,
+                onPress: () {
+                  setState(() {
+                    groupBottom = !groupBottom;
+                  });
+                },
+              ),
+            ],
+          ),
         ),
       ],
     );

@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/button_group.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/icon.dart' as anthem_icons;
 import 'package:flutter/gestures.dart';
@@ -409,6 +410,81 @@ void main() {
       final Stack stack = tester.widget<Stack>(stackFinder);
       expect(stack.fit, equals(StackFit.expand));
     });
+
+    testWidgets('ButtonGroup applies hideBorder and border radius defaults', (
+      WidgetTester tester,
+    ) async {
+      await _pumpHarness(
+        tester,
+        const ButtonGroup(
+          children: [
+            Button(
+              key: ValueKey<String>('first'),
+              width: 40,
+              height: 24,
+              text: 'A',
+            ),
+            Button(
+              key: ValueKey<String>('middle'),
+              width: 40,
+              height: 24,
+              text: 'B',
+            ),
+            Button(
+              key: ValueKey<String>('last'),
+              width: 40,
+              height: 24,
+              text: 'C',
+            ),
+          ],
+        ),
+      );
+
+      expect(_buttonDecorationByKey(tester, 'first').border, isNull);
+      expect(
+        _buttonDecorationByKey(tester, 'first').borderRadius,
+        equals(const BorderRadius.horizontal(left: Radius.circular(3))),
+      );
+
+      expect(_buttonDecorationByKey(tester, 'middle').border, isNull);
+      expect(
+        _buttonDecorationByKey(tester, 'middle').borderRadius,
+        equals(BorderRadius.zero),
+      );
+
+      expect(_buttonDecorationByKey(tester, 'last').border, isNull);
+      expect(
+        _buttonDecorationByKey(tester, 'last').borderRadius,
+        equals(const BorderRadius.horizontal(right: Radius.circular(3))),
+      );
+    });
+
+    testWidgets('Button explicit props override ButtonGroup defaults', (
+      WidgetTester tester,
+    ) async {
+      await _pumpHarness(
+        tester,
+        const ButtonGroup(
+          children: [
+            Button(
+              key: ValueKey<String>('override'),
+              width: 40,
+              height: 24,
+              text: 'A',
+              hideBorder: false,
+              borderRadius: BorderRadius.all(Radius.circular(7)),
+            ),
+          ],
+        ),
+      );
+
+      final decoration = _buttonDecorationByKey(tester, 'override');
+      expect(decoration.border, isNotNull);
+      expect(
+        decoration.borderRadius,
+        equals(const BorderRadius.all(Radius.circular(7))),
+      );
+    });
   });
 
   group('Button content', () {
@@ -590,6 +666,22 @@ Offset _buttonCenter(WidgetTester tester) {
 BoxDecoration _buttonDecoration(WidgetTester tester) {
   final Finder containerFinder = find.descendant(
     of: find.byType(Button),
+    matching: find.byWidgetPredicate((Widget widget) {
+      return widget is Container &&
+          widget.decoration is BoxDecoration &&
+          widget.child is ClipRRect;
+    }),
+  );
+
+  expect(containerFinder, findsOneWidget);
+
+  final Container container = tester.widget<Container>(containerFinder);
+  return container.decoration! as BoxDecoration;
+}
+
+BoxDecoration _buttonDecorationByKey(WidgetTester tester, String keyValue) {
+  final Finder containerFinder = find.descendant(
+    of: find.byKey(ValueKey<String>(keyValue)),
     matching: find.byWidgetPredicate((Widget widget) {
       return widget is Container &&
           widget.decoration is BoxDecoration &&

@@ -23,6 +23,7 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/button_group.dart';
 import 'package:anthem/widgets/basic/controls/slider.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/menu/context_menu_api.dart';
@@ -261,58 +262,38 @@ class _TrackControlButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget separator() => Container(width: 1, color: AnthemTheme.panel.border);
-
     return Column(
       mainAxisSize: .min,
       children: [
-        Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: AnthemTheme.panel.border),
-            borderRadius: BorderRadius.circular(4),
-          ),
+        SizedBox(
           height: 20,
-          child: Row(
-            crossAxisAlignment: .stretch,
+          child: ButtonGroup(
+            expandChildren: true,
             children: [
-              Expanded(
-                child: Button(
-                  consumePress: true,
-                  hideBorder: true,
-                  borderRadius: .horizontal(left: .circular(3)),
-                  contentBuilder: (context, color) {
-                    return Center(
-                      child: Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          color: color,
-                          borderRadius: .circular(5),
-                        ),
+              Button(
+                consumePress: true,
+                contentBuilder: (context, color) {
+                  return Center(
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: .circular(5),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
               ),
-              separator(),
-              Expanded(
-                child: Button(
-                  consumePress: true,
-                  hideBorder: true,
-                  borderRadius: .zero,
-                  contentPadding: .all(4),
-                  icon: Icons.solo,
-                ),
+              Button(
+                consumePress: true,
+                contentPadding: .all(4),
+                icon: Icons.solo,
               ),
-              separator(),
-              Expanded(
-                child: Button(
-                  consumePress: true,
-                  hideBorder: true,
-                  borderRadius: .horizontal(right: .circular(3)),
-                  contentPadding: .all(4),
-                  icon: Icons.mute,
-                ),
+              Button(
+                consumePress: true,
+                contentPadding: .all(4),
+                icon: Icons.mute,
               ),
             ],
           ),

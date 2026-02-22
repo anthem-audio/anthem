@@ -23,6 +23,7 @@ import 'package:anthem/model/model.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/button_group.dart';
 import 'package:anthem/widgets/basic/controls/digit_control.dart';
 import 'package:anthem/widgets/basic/controls/time_signature_control.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
@@ -115,59 +116,42 @@ class _PlayStopButtonGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(3),
-        border: Border.all(color: AnthemTheme.control.border),
-      ),
-      child: Row(
-        children: [
-          Button(
-            hideBorder: true,
-            icon: Icons.play,
-            height: 24,
-            width: 24,
-            contentPadding: EdgeInsets.all(3),
-            hint: [HintSection('click', 'Play')],
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(2),
-              bottomLeft: Radius.circular(2),
-            ),
-            onPress: () {
-              final projectModel = Provider.of<ProjectModel>(
-                context,
-                listen: false,
-              );
+    return ButtonGroup(
+      children: [
+        Button(
+          icon: Icons.play,
+          height: 24,
+          width: 24,
+          contentPadding: EdgeInsets.all(3),
+          hint: [HintSection('click', 'Play')],
+          onPress: () {
+            final projectModel = Provider.of<ProjectModel>(
+              context,
+              listen: false,
+            );
 
-              if (projectModel.engineState != EngineState.running) {
-                return;
-              }
+            if (projectModel.engineState != EngineState.running) {
+              return;
+            }
 
-              projectModel.sequence.isPlaying = true;
-            },
-          ),
-          Container(width: 1, color: AnthemTheme.control.border),
-          Button(
-            hideBorder: true,
-            icon: Icons.stop,
-            height: 24,
-            width: 24,
-            contentPadding: EdgeInsets.all(3),
-            hint: [HintSection('click', 'Stop')],
-            borderRadius: const BorderRadius.only(
-              topRight: Radius.circular(2),
-              bottomRight: Radius.circular(2),
-            ),
-            onPress: () {
-              final projectModel = Provider.of<ProjectModel>(
-                context,
-                listen: false,
-              );
-              projectModel.sequence.isPlaying = false;
-            },
-          ),
-        ],
-      ),
+            projectModel.sequence.isPlaying = true;
+          },
+        ),
+        Button(
+          icon: Icons.stop,
+          height: 24,
+          width: 24,
+          contentPadding: EdgeInsets.all(3),
+          hint: [HintSection('click', 'Stop')],
+          onPress: () {
+            final projectModel = Provider.of<ProjectModel>(
+              context,
+              listen: false,
+            );
+            projectModel.sequence.isPlaying = false;
+          },
+        ),
+      ],
     );
   }
 }

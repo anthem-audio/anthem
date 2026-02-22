@@ -20,7 +20,9 @@
 import 'dart:math';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
+import 'package:anthem/widgets/basic/button_group.dart';
 import 'package:vector_math/vector_math_64.dart';
+import 'package:provider/provider.dart';
 
 import 'package:flutter/widgets.dart';
 
@@ -214,6 +216,7 @@ class _ButtonState extends State<Button> {
 
   @override
   Widget build(BuildContext context) {
+    final groupStyle = context.watch<ButtonGroupChildStyle?>();
     final variant = widget.variant ?? ButtonVariant.main;
     final theme = getButtonTheme(variant);
 
@@ -280,6 +283,12 @@ class _ButtonState extends State<Button> {
       );
     }
 
+    final effectiveHideBorder = widget.hideBorder ?? groupStyle?.hideBorder;
+    final effectiveBorderRadius =
+        widget.borderRadius ??
+        groupStyle?.borderRadius ??
+        BorderRadius.circular(4);
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (e) {
@@ -331,8 +340,8 @@ class _ButtonState extends State<Button> {
             width: widget.width,
             height: widget.height,
             decoration: BoxDecoration(
-              borderRadius: widget.borderRadius ?? BorderRadius.circular(4),
-              border: widget.hideBorder == true
+              borderRadius: effectiveBorderRadius,
+              border: effectiveHideBorder == true
                   ? null
                   : Border.all(
                       color: theme.border.getColor(hovered, pressed, toggled),
