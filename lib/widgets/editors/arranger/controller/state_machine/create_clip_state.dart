@@ -38,16 +38,21 @@ class ArrangerCreateClipState
   ArrangerController get controller => arrangerStateMachine.controller;
 
   String? _targetTrackId;
+  double? _defaultStartOffset;
+  double? _defaultEndOffset;
 
   @override
   void onEntry({required event, required from}) {
     _resolveTargetTrackId();
+    _resolveDefaultHintBounds();
     _handleMove();
   }
 
   @override
   void onExit({required event, required to}) {
     _targetTrackId = null;
+    _defaultStartOffset = null;
+    _defaultEndOffset = null;
     viewModel.clipCreateHint = null;
   }
 
@@ -129,6 +134,32 @@ class ArrangerCreateClipState
       return;
     }
 
+    final track = project.tracks[trackId];
+    if (track == null) {
+      viewModel.clipCreateHint = null;
+      return;
+    }
+
+    if (!parentState.hasCrossedActivationDistance) {
+      final startOffset = _defaultStartOffset;
+      final endOffset = _defaultEndOffset;
+      if (startOffset == null || endOffset == null) {
+        viewModel.clipCreateHint = null;
+        return;
+      }
+
+      viewModel.clipCreateHint = (
+        trackId: trackId,
+        startOffset: startOffset,
+        endOffset: endOffset,
+        color: track.color.colorShifter.clipBase.toColor().withValues(
+          alpha: 0.5,
+        ),
+      );
+      viewModel.hoverIndicatorPosition = null;
+      return;
+    }
+
     final startOffsetRaw = pixelsToTime(
       timeViewStart: viewModel.timeView.start,
       timeViewEnd: viewModel.timeView.end,
@@ -161,12 +192,6 @@ class ArrangerCreateClipState
             round: true,
           ).toDouble();
 
-    final track = project.tracks[trackId];
-    if (track == null) {
-      viewModel.clipCreateHint = null;
-      return;
-    }
-
     viewModel.clipCreateHint = (
       trackId: trackId,
       startOffset: startOffset,
@@ -178,6 +203,71 @@ class ArrangerCreateClipState
     if ((endOffset - startOffset).abs() > 0) {
       viewModel.hoverIndicatorPosition = null;
     }
+  }
+
+  DivisionChange? _getDivisionChangeAtTime({
+    required Time time,
+    required List<DivisionChange> divisionChanges,
+  }) {
+    if (divisionChanges.isEmpty) {
+      return null;
+    }
+
+    for (var i = 0; i < divisionChanges.length; i++) {
+      if (time >= 0 &&
+          i < divisionChanges.length - 1 &&
+          divisionChanges[i + 1].offset <= time) {
+        continue;
+      }
+      return divisionChanges[i];
+    }
+
+    return divisionChanges.last;
+  }
+
+  /// Resolves the default bounds for the clip creation hint.
+  ///
+  /// The default bounds define the clip size that will be created on
+  /// double-click if the user does not move before releasing the pointer. This
+  /// defaults to a bar, unless the snap size is larger than the current bar
+  /// size, at which point it defaults to the snap size.
+  void _resolveDefaultHintBounds() {
+    final startPosition = parentState.dragStartPosition;
+    if (startPosition == null) {
+      _defaultStartOffset = null;
+      _defaultEndOffset = null;
+      return;
+    }
+
+    final startOffsetRaw = pixelsToTime(
+      timeViewStart: viewModel.timeView.start,
+      timeViewEnd: viewModel.timeView.end,
+      viewPixelWidth: interactionState.viewSize.width,
+      pixelOffsetFromLeft: startPosition.x,
+    );
+
+    final divisionChanges = arrangerStateMachine.divisionChanges();
+    final startOffset = interactionState.isAltPressed
+        ? startOffsetRaw
+        : getSnappedTime(
+            rawTime: startOffsetRaw.round(),
+            divisionChanges: divisionChanges,
+            round: true,
+          ).toDouble();
+
+    final startDivision = _getDivisionChangeAtTime(
+      time: startOffset.round(),
+      divisionChanges: divisionChanges,
+    );
+    final snapLength = startDivision?.divisionSnapSize.toDouble() ?? 0;
+    final barLength = getBarLength(
+      project.sequence.ticksPerQuarter,
+      project.sequence.defaultTimeSignature,
+    ).toDouble();
+    final defaultLength = max(barLength, snapLength);
+
+    _defaultStartOffset = startOffset;
+    _defaultEndOffset = startOffset + defaultLength;
   }
 
   void _handleUp() {

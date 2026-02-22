@@ -1008,10 +1008,9 @@ void main() {
   });
 
   group('ArrangerCreateClipState', () {
-    void enterCreateClipState({
+    void startDoubleClickHold({
       Offset firstClickPos = const Offset(100, 20),
       Offset secondClickPos = const Offset(100, 20),
-      Offset movePos = const Offset(180, 20),
     }) {
       fixture.pointerDown(
         PointerDownEvent(
@@ -1027,6 +1026,17 @@ void main() {
           buttons: kPrimaryMouseButton,
           position: secondClickPos,
         ),
+      );
+    }
+
+    void enterCreateClipState({
+      Offset firstClickPos = const Offset(100, 20),
+      Offset secondClickPos = const Offset(100, 20),
+      Offset movePos = const Offset(180, 20),
+    }) {
+      startDoubleClickHold(
+        firstClickPos: firstClickPos,
+        secondClickPos: secondClickPos,
       );
       fixture.pointerMove(
         PointerMoveEvent(
@@ -1057,6 +1067,26 @@ void main() {
       expect(fixture.viewModel.clipCreateHint, isNull);
     });
 
+    test('double-click hold delegates to create clip state before drag', () {
+      startDoubleClickHold();
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerCreateClipState>());
+      expect(fixture.viewModel.clipCreateHint, isNotNull);
+    });
+
+    test('double-click hold shows default hint length of one bar', () {
+      startDoubleClickHold();
+
+      final hint = fixture.viewModel.clipCreateHint;
+      expect(hint, isNotNull);
+
+      final barLength = getBarLength(
+        fixture.project.sequence.ticksPerQuarter,
+        fixture.project.sequence.defaultTimeSignature,
+      );
+      expect((hint!.endOffset - hint.startOffset).round(), barLength);
+    });
+
     test('double-click drag delegates to create clip state', () {
       enterCreateClipState();
 
@@ -1073,7 +1103,7 @@ void main() {
     });
 
     test('pointer move updates clip create hint end offset', () {
-      enterCreateClipState(movePos: const Offset(180, 20));
+      startDoubleClickHold();
       expect(fixture.stateMachine.currentState, isA<ArrangerCreateClipState>());
 
       final firstHint = fixture.viewModel.clipCreateHint!;
@@ -1088,6 +1118,61 @@ void main() {
 
       final secondHint = fixture.viewModel.clipCreateHint!;
       expect(secondHint.endOffset, isNot(equals(firstHint.endOffset)));
+    });
+
+    test('without drag, pointer up creates default-length clip', () {
+      final arrangementId = fixture.project.sequence.activeArrangementID!;
+      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      final patternCountBefore = fixture.project.sequence.patterns.length;
+      final clipCountBefore = arrangement.clips.length;
+
+      startDoubleClickHold();
+      expect(fixture.stateMachine.currentState, isA<ArrangerCreateClipState>());
+      final hint = fixture.viewModel.clipCreateHint!;
+
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(100, 20)),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+      expect(fixture.viewModel.clipCreateHint, isNull);
+      expect(fixture.project.sequence.patterns.length, patternCountBefore + 1);
+      expect(arrangement.clips.length, clipCountBefore + 1);
+
+      final newClip = arrangement.clips.values.last;
+      expect(newClip.trackId, hint.trackId);
+      expect(newClip.offset, hint.startOffset.round());
+      expect(newClip.timeView, isNotNull);
+      expect(newClip.timeView!.start, 0);
+      expect(
+        newClip.timeView!.end,
+        (hint.endOffset - hint.startOffset).round(),
+      );
+    });
+
+    test('default hint uses snap size when snap is larger than a bar', () {
+      fixture.viewModel.timeView.end = 200000;
+      fixture.controller.onRenderedViewTransformChanged(
+        timeViewStart: fixture.viewModel.timeView.start,
+        timeViewEnd: fixture.viewModel.timeView.end,
+        verticalScrollPosition: fixture.viewModel.verticalScrollPosition,
+      );
+
+      final barLength = getBarLength(
+        fixture.project.sequence.ticksPerQuarter,
+        fixture.project.sequence.defaultTimeSignature,
+      );
+      final snapSize = fixture.stateMachine
+          .divisionChanges()
+          .first
+          .divisionSnapSize;
+      expect(snapSize, greaterThan(barLength));
+
+      startDoubleClickHold();
+
+      final hint = fixture.viewModel.clipCreateHint;
+      expect(hint, isNotNull);
+      expect((hint!.endOffset - hint.startOffset).round(), snapSize);
     });
 
     test('pointer up with non-zero width creates one pattern and one clip', () {

@@ -687,7 +687,6 @@ class ArrangerDragState
   bool get shouldDelegateToCreateClip =>
       isDragPointerActive &&
       parentState.doubleClickPressed &&
-      hasCrossedActivationDistance &&
       !interactionState.isCurrentInteractionCanceled &&
       !shouldDelegateToSelectionBox &&
       !_isDragStartOverClip &&
