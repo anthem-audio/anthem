@@ -1485,6 +1485,144 @@ void main() {
       expect(secondClip.trackId, _TrackIds.b);
     });
 
+    test(
+      'snapped move enters at half snap and advances by full snap intervals in both directions',
+      () {
+        final snapSize = fixture.stateMachine
+            .divisionChanges()
+            .first
+            .divisionSnapSize;
+        expect(snapSize, greaterThan(0));
+        final halfSnapTrigger = (snapSize + 1) ~/ 2;
+
+        final clip = addClip(
+          offset: 300,
+          trackId: _TrackIds.a,
+          rect: const Rect.fromLTWH(280, 10, 120, 40),
+        );
+
+        const downX = 320.0;
+
+        int timeAtX(double x) => pixelsToTime(
+          timeViewStart: fixture.viewModel.timeView.start,
+          timeViewEnd: fixture.viewModel.timeView.end,
+          viewPixelWidth: _ArrangerStateMachineTestFixture.viewSize.width,
+          pixelOffsetFromLeft: x,
+        ).round();
+
+        double xForTime(int time) => timeToPixels(
+          timeViewStart: fixture.viewModel.timeView.start,
+          timeViewEnd: fixture.viewModel.timeView.end,
+          viewPixelWidth: _ArrangerStateMachineTestFixture.viewSize.width,
+          time: time.toDouble(),
+        );
+
+        // Rightward movement
+        fixture.pointerDown(
+          const PointerDownEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(downX, 20),
+          ),
+        );
+        final startTimeRight = timeAtX(downX);
+
+        fixture.pointerMove(
+          PointerMoveEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(
+              xForTime(startTimeRight + halfSnapTrigger - 1),
+              20,
+            ),
+          ),
+        );
+        expect(fixture.stateMachine.currentState, isA<ArrangerClipMoveState>());
+        expect(fixture.viewModel.clipTimingOverrides[clip.id]!.offset, 300);
+
+        fixture.pointerMove(
+          PointerMoveEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(xForTime(startTimeRight + halfSnapTrigger), 20),
+          ),
+        );
+        expect(
+          fixture.viewModel.clipTimingOverrides[clip.id]!.offset,
+          300 + snapSize,
+        );
+
+        fixture.pointerMove(
+          PointerMoveEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(
+              xForTime(startTimeRight + halfSnapTrigger + snapSize),
+              20,
+            ),
+          ),
+        );
+        expect(
+          fixture.viewModel.clipTimingOverrides[clip.id]!.offset,
+          300 + snapSize * 2,
+        );
+
+        fixture.pointerUp(
+          const PointerCancelEvent(pointer: 1, position: Offset(0, 0)),
+        );
+
+        // Leftward movement
+        fixture.pointerDown(
+          const PointerDownEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(downX, 20),
+          ),
+        );
+        final startTimeLeft = timeAtX(downX);
+
+        fixture.pointerMove(
+          PointerMoveEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(
+              xForTime(startTimeLeft - (halfSnapTrigger - 1)),
+              20,
+            ),
+          ),
+        );
+        expect(fixture.stateMachine.currentState, isA<ArrangerClipMoveState>());
+        expect(fixture.viewModel.clipTimingOverrides[clip.id]!.offset, 300);
+
+        fixture.pointerMove(
+          PointerMoveEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(xForTime(startTimeLeft - halfSnapTrigger), 20),
+          ),
+        );
+        expect(
+          fixture.viewModel.clipTimingOverrides[clip.id]!.offset,
+          300 - snapSize,
+        );
+
+        fixture.pointerMove(
+          PointerMoveEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(
+              xForTime(startTimeLeft - (halfSnapTrigger + snapSize)),
+              20,
+            ),
+          ),
+        );
+        expect(
+          fixture.viewModel.clipTimingOverrides[clip.id]!.offset,
+          300 - snapSize * 2,
+        );
+      },
+    );
+
     test('pointer cancel does not commit clip move', () {
       final clip = addClip(
         offset: 100,
@@ -1702,6 +1840,165 @@ void main() {
         expect(
           smallClip.timeView!.end - smallClip.timeView!.start,
           equals(smallClipWidth),
+        );
+      },
+    );
+
+    test(
+      'snapped end resize enters at half snap and advances by full snap intervals in both directions',
+      () {
+        final snapSize = fixture.stateMachine
+            .divisionChanges()
+            .first
+            .divisionSnapSize;
+        expect(snapSize, greaterThan(0));
+        final halfSnapTrigger = (snapSize + 1) ~/ 2;
+
+        final clip = addClip(
+          offset: 120,
+          trackId: _TrackIds.a,
+          rect: const Rect.fromLTWH(120, 10, 240, 40),
+          resizeHandleRect: const Rect.fromLTWH(354, 10, 14, 40),
+          resizeAreaType: ResizeAreaType.end,
+          timeView: TimeViewModel(start: 0, end: 240),
+        );
+
+        const downX = 358.0;
+
+        int timeAtX(double x) => pixelsToTime(
+          timeViewStart: fixture.viewModel.timeView.start,
+          timeViewEnd: fixture.viewModel.timeView.end,
+          viewPixelWidth: _ArrangerStateMachineTestFixture.viewSize.width,
+          pixelOffsetFromLeft: x,
+        ).round();
+
+        double xForTime(int time) => timeToPixels(
+          timeViewStart: fixture.viewModel.timeView.start,
+          timeViewEnd: fixture.viewModel.timeView.end,
+          viewPixelWidth: _ArrangerStateMachineTestFixture.viewSize.width,
+          time: time.toDouble(),
+        );
+
+        // Rightward resize
+        fixture.pointerDown(
+          const PointerDownEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(downX, 20),
+          ),
+        );
+        final startTimeRight = timeAtX(downX);
+
+        fixture.pointerMove(
+          PointerMoveEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(
+              xForTime(startTimeRight + halfSnapTrigger - 1),
+              20,
+            ),
+          ),
+        );
+        expect(
+          fixture.stateMachine.currentState,
+          isA<ArrangerClipResizeState>(),
+        );
+        expect(
+          fixture.viewModel.clipTimingOverrides[clip.id]!.timeViewEnd -
+              fixture.viewModel.clipTimingOverrides[clip.id]!.timeViewStart,
+          240,
+        );
+
+        fixture.pointerMove(
+          PointerMoveEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(xForTime(startTimeRight + halfSnapTrigger), 20),
+          ),
+        );
+        expect(
+          fixture.viewModel.clipTimingOverrides[clip.id]!.timeViewEnd -
+              fixture.viewModel.clipTimingOverrides[clip.id]!.timeViewStart,
+          240 + snapSize,
+        );
+
+        fixture.pointerMove(
+          PointerMoveEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(
+              xForTime(startTimeRight + halfSnapTrigger + snapSize),
+              20,
+            ),
+          ),
+        );
+        expect(
+          fixture.viewModel.clipTimingOverrides[clip.id]!.timeViewEnd -
+              fixture.viewModel.clipTimingOverrides[clip.id]!.timeViewStart,
+          240 + snapSize * 2,
+        );
+
+        fixture.pointerUp(
+          const PointerCancelEvent(pointer: 1, position: Offset(0, 0)),
+        );
+
+        // Leftward resize
+        fixture.pointerDown(
+          const PointerDownEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(downX, 20),
+          ),
+        );
+        final startTimeLeft = timeAtX(downX);
+
+        fixture.pointerMove(
+          PointerMoveEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(
+              xForTime(startTimeLeft - (halfSnapTrigger - 1)),
+              20,
+            ),
+          ),
+        );
+        expect(
+          fixture.stateMachine.currentState,
+          isA<ArrangerClipResizeState>(),
+        );
+        expect(
+          fixture.viewModel.clipTimingOverrides[clip.id]!.timeViewEnd -
+              fixture.viewModel.clipTimingOverrides[clip.id]!.timeViewStart,
+          240,
+        );
+
+        fixture.pointerMove(
+          PointerMoveEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(xForTime(startTimeLeft - halfSnapTrigger), 20),
+          ),
+        );
+        expect(
+          fixture.viewModel.clipTimingOverrides[clip.id]!.timeViewEnd -
+              fixture.viewModel.clipTimingOverrides[clip.id]!.timeViewStart,
+          240 - snapSize,
+        );
+
+        fixture.pointerMove(
+          PointerMoveEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(
+              xForTime(startTimeLeft - (halfSnapTrigger + snapSize)),
+              20,
+            ),
+          ),
+        );
+        expect(
+          fixture.viewModel.clipTimingOverrides[clip.id]!.timeViewEnd -
+              fixture.viewModel.clipTimingOverrides[clip.id]!.timeViewStart,
+          240 - snapSize * 2,
         );
       },
     );

@@ -209,15 +209,18 @@ class ArrangerClipResizeState
       pixelOffsetFromLeft: dragCurrentPosition.x,
     );
 
-    var resizeDelta = (currentTime - startTime).round();
+    final startTimeRounded = startTime.round();
+    final currentTimeRounded = currentTime.round();
+    var resizeDelta = currentTimeRounded - startTimeRounded;
     final divisionChanges = arrangerStateMachine.divisionChanges();
     if (!interactionState.isAltPressed) {
-      resizeDelta = getSnappedTime(
-        rawTime: resizeDelta,
+      resizeDelta = getSnappedDragDelta(
+        startTime: startTimeRounded,
+        currentTime: currentTimeRounded,
         divisionChanges: divisionChanges,
-        round: true,
       );
       resizeDelta = _clampSnappedDeltaToValidRange(
+        startTime: startTimeRounded,
         resizeDelta: resizeDelta,
         divisionChanges: divisionChanges,
       );
@@ -263,6 +266,7 @@ class ArrangerClipResizeState
   }
 
   int _clampSnappedDeltaToValidRange({
+    required int startTime,
     required int resizeDelta,
     required List<DivisionChange> divisionChanges,
   }) {
@@ -271,9 +275,7 @@ class ArrangerClipResizeState
     }
 
     var guardedDelta = resizeDelta;
-    final directionTowardZero = -guardedDelta.sign;
-
-    if (directionTowardZero == 0) {
+    if (guardedDelta == 0) {
       return guardedDelta;
     }
 
@@ -284,16 +286,11 @@ class ArrangerClipResizeState
     while (!_isResizeDeltaValid(guardedDelta) &&
         guardedDelta != 0 &&
         loopCount < 8192) {
-      final stepSize = _getSnapSizeAtRawTime(
-        rawTime: guardedDelta,
+      guardedDelta = stepSnappedDragDeltaTowardZero(
+        startTime: startTime,
+        snappedDelta: guardedDelta,
         divisionChanges: divisionChanges,
       );
-      guardedDelta += directionTowardZero * stepSize;
-
-      if ((directionTowardZero > 0 && guardedDelta > 0) ||
-          (directionTowardZero < 0 && guardedDelta < 0)) {
-        guardedDelta = 0;
-      }
 
       loopCount++;
     }
@@ -303,27 +300,6 @@ class ArrangerClipResizeState
     }
 
     return _clampDeltaToValidRange(resizeDelta);
-  }
-
-  int _getSnapSizeAtRawTime({
-    required int rawTime,
-    required List<DivisionChange> divisionChanges,
-  }) {
-    if (divisionChanges.isEmpty) {
-      return 1;
-    }
-
-    for (var i = 0; i < divisionChanges.length; i++) {
-      if (rawTime >= 0 &&
-          i < divisionChanges.length - 1 &&
-          divisionChanges[i + 1].offset <= rawTime) {
-        continue;
-      }
-
-      return max(1, divisionChanges[i].divisionSnapSize);
-    }
-
-    return max(1, divisionChanges.last.divisionSnapSize);
   }
 
   int _clampDeltaToValidRange(int resizeDelta) {

@@ -257,13 +257,15 @@ class ArrangerClipMoveState
       pixelOffsetFromLeft: dragCurrentPosition.x,
     );
 
-    var movedDistance = (currentTime - startTime).round();
+    final startTimeRounded = startTime.round();
+    final currentTimeRounded = currentTime.round();
+    var movedDistance = currentTimeRounded - startTimeRounded;
 
     if (!interactionState.isAltPressed) {
-      movedDistance = getSnappedTime(
-        rawTime: movedDistance,
+      movedDistance = getSnappedDragDelta(
+        startTime: startTimeRounded,
+        currentTime: currentTimeRounded,
         divisionChanges: arrangerStateMachine.divisionChanges(),
-        round: true,
       );
     }
 

@@ -35,6 +35,7 @@ part 'create_clip_state.dart';
 part 'clip_move_state.dart';
 part 'clip_resize_state.dart';
 part 'selection_box_state.dart';
+part 'snap_delta.dart';
 
 enum ArrangerModifierKey { ctrl, alt, shift }
 
