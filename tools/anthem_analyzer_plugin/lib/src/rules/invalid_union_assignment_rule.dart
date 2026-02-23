@@ -1,3 +1,22 @@
+/*
+  Copyright (C) 2026 Joshua Wade
+
+  This file is part of Anthem.
+
+  Anthem is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Anthem is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+*/
+
 import 'package:analyzer/analysis_rule/analysis_rule.dart';
 import 'package:analyzer/analysis_rule/rule_context.dart';
 import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
@@ -8,6 +27,8 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/error/error.dart';
+
+import 'union_helpers.dart';
 
 class InvalidUnionAssignmentRule extends AnalysisRule {
   static const DiagnosticCode code = _UnionWarningCode(
@@ -47,7 +68,7 @@ final class _Visitor extends SimpleAstVisitor<void> {
 
   @override
   void visitAssignmentExpression(AssignmentExpression node) {
-    if (_shouldSkipFile()) return;
+    if (shouldSkipGeneratedFile(context)) return;
 
     final operator = node.operator.type;
     if (operator != TokenType.EQ &&
@@ -63,7 +84,7 @@ final class _Visitor extends SimpleAstVisitor<void> {
 
   @override
   void visitConstructorFieldInitializer(ConstructorFieldInitializer node) {
-    if (_shouldSkipFile()) return;
+    if (shouldSkipGeneratedFile(context)) return;
 
     final unionInfo = _unionInfoForElement(node.fieldName.element);
     if (unionInfo == null) return;
@@ -73,7 +94,7 @@ final class _Visitor extends SimpleAstVisitor<void> {
 
   @override
   void visitNamedExpression(NamedExpression node) {
-    if (_shouldSkipFile()) return;
+    if (shouldSkipGeneratedFile(context)) return;
 
     final unionInfo = _unionInfoForFormalParameter(node.element);
     if (unionInfo == null) return;
@@ -99,10 +120,10 @@ final class _Visitor extends SimpleAstVisitor<void> {
   _UnionFieldInfo? _unionInfoForField(FieldElement? field) {
     if (field == null) return null;
 
-    final unionAnnotation = _findUnionAnnotation(field.metadata.annotations);
+    final unionAnnotation = findUnionAnnotation(field.metadata.annotations);
     if (unionAnnotation == null) return null;
 
-    final allowedTypes = _typesFromUnionAnnotation(unionAnnotation);
+    final allowedTypes = typesFromUnionAnnotation(unionAnnotation);
     if (allowedTypes.isEmpty) return null;
 
     return _UnionFieldInfo(
@@ -148,6 +169,12 @@ final class _Visitor extends SimpleAstVisitor<void> {
       }
     }
 
+    // If the assigned expression is a supertype of any allowed subtype, then
+    // static analysis cannot prove this assignment is invalid.
+    if (_couldBeAnyAllowedSubtype(expressionType, unionInfo.allowedTypes)) {
+      return;
+    }
+
     final assignedTypeDisplay = expressionType.getDisplayString();
 
     rule.reportAtNode(
@@ -169,15 +196,20 @@ final class _Visitor extends SimpleAstVisitor<void> {
       return true;
     }
 
-    final display = type.getDisplayString();
-    return display == 'Object' || display == 'Object?';
+    return false;
   }
 
-  bool _shouldSkipFile() {
-    final path = context.currentUnit?.file.path;
-    if (path == null) return false;
+  bool _couldBeAnyAllowedSubtype(
+    DartType expressionType,
+    List<DartType> allowedTypes,
+  ) {
+    for (final allowedType in allowedTypes) {
+      if (context.typeSystem.isSubtypeOf(allowedType, expressionType)) {
+        return true;
+      }
+    }
 
-    return path.endsWith('.g.dart') || path.endsWith('.g.part');
+    return false;
   }
 }
 
@@ -194,35 +226,6 @@ final class _UnionFieldInfo {
 
   String get allowedTypesDisplay =>
       allowedTypes.map((type) => type.getDisplayString()).join(', ');
-}
-
-ElementAnnotation? _findUnionAnnotation(
-  Iterable<ElementAnnotation> annotations,
-) {
-  for (final annotation in annotations) {
-    final annotationElement = annotation.element;
-    if (annotationElement is! ConstructorElement) continue;
-
-    final enclosingElement = annotationElement.enclosingElement;
-    if (enclosingElement is! ClassElement) continue;
-
-    if (enclosingElement.name == 'Union') {
-      return annotation;
-    }
-  }
-
-  return null;
-}
-
-List<DartType> _typesFromUnionAnnotation(ElementAnnotation annotation) {
-  final constantValue = annotation.computeConstantValue();
-  final typeList = constantValue?.getField('types')?.toListValue();
-  if (typeList == null) return const [];
-
-  return [
-    for (final item in typeList)
-      if (item.toTypeValue() case final DartType type) type,
-  ];
 }
 
 final class _UnionWarningCode extends DiagnosticCode {

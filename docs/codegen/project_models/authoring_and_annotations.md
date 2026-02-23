@@ -131,15 +131,21 @@ This is a field-level marker for generated MobX integration. It is a drop-in rep
 
 Field-level marker for union/polymorphic fields. Rules:
 
-1. Must be placed on an `Object` or `Object?` field.
+1. May be placed on any field type, but that field type must be a supertype of
+   every type listed in `@Union([...])`.
 2. Declares the allowed runtime subtypes for the field.
 
 For project models, this is the supported approach for polymorphism.
 
-Anthem also has an analyzer-plugin diagnostic, `invalid_union_assignment`,
-which reports statically when code assigns a type that is not listed in a
-field's `@Union([...])` annotation. See [Analyzer Plugin](../analyzer_plugin.md)
-for setup, severity, and behavior details.
+Anthem also has analyzer-plugin diagnostics:
+
+1. `invalid_union_field_type`: reports when the field's declared type is not a
+   valid supertype for one or more `@Union([...])` entries.
+2. `invalid_union_assignment`: reports when code assigns a type that is not
+   listed in a field's `@Union([...])` annotation.
+
+See [Analyzer Plugin](../analyzer_plugin.md) for setup, severity, and behavior
+details.
 
 ### `@AnthemEnum()`
 

@@ -1,3 +1,22 @@
+/*
+  Copyright (C) 2026 Joshua Wade
+
+  This file is part of Anthem.
+
+  Anthem is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Anthem is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+*/
+
 // ignore_for_file: non_constant_identifier_names
 
 import 'package:analyzer_testing/analysis_rule/analysis_rule.dart';
@@ -183,6 +202,81 @@ class Node {
 
 void f() {
   Node(processor: Allowed());
+}
+''';
+
+    await assertNoDiagnostics(content);
+  }
+
+  void test_assignment_invalidConcreteSubtype_onBaseTypedField() async {
+    final content = r'''
+import 'package:anthem_codegen/include.dart';
+
+abstract class Processor {}
+class Allowed implements Processor {}
+class NotAllowed implements Processor {}
+
+class Node {
+  @Union([Allowed])
+  Processor processor;
+
+  Node(this.processor);
+}
+
+void f(Node node) {
+  node.processor = NotAllowed();
+}
+''';
+
+    const expression = 'NotAllowed()';
+
+    await assertDiagnostics(content, [
+      error(
+        InvalidUnionAssignmentRule.code,
+        _offsetOf(content, expression),
+        expression.length,
+      ),
+    ]);
+  }
+
+  void test_assignment_supertypeExpression_skipsDiagnostic() async {
+    final content = r'''
+import 'package:anthem_codegen/include.dart';
+
+abstract class Processor {}
+class Allowed implements Processor {}
+
+class Node {
+  @Union([Allowed])
+  Processor processor;
+
+  Node(this.processor);
+}
+
+void f(Node node, Processor value) {
+  node.processor = value;
+}
+''';
+
+    await assertNoDiagnostics(content);
+  }
+
+  void test_namedArgument_supertypeExpression_skipsDiagnostic() async {
+    final content = r'''
+import 'package:anthem_codegen/include.dart';
+
+abstract class Processor {}
+class Allowed implements Processor {}
+
+class Node {
+  @Union([Allowed])
+  Processor processor;
+
+  Node({required this.processor});
+}
+
+void f(Processor value) {
+  Node(processor: value);
 }
 ''';
 

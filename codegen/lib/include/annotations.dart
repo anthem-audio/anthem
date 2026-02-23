@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -215,6 +215,11 @@ class AnthemEnum {
 /// serialization and deserialization of dynamic fields, and as such allows for
 /// a crude form of polymorphism in the model.
 ///
+/// The type of the field annotated by this annotation may be Object, or it may
+/// be an interface type that is shared by all members of the union. This
+/// interface type will not be used on the C++ side, and is only used to provide
+/// type safety on the Dart side.
+///
 /// Note that we support sealed classes for serialization and use it for IPC,
 /// but not for model sync due to the complexity. So, this is the primary way to
 /// do polymorphism in the model.
@@ -222,8 +227,11 @@ class AnthemEnum {
 /// Unions are defined like so:
 /// ```dart
 /// @Union([FirstType, SecondType])
-/// Object unionField;
+/// MyInterface unionField;
 /// ```
+///
+/// The declared field type should be a supertype of all types listed in
+/// `@Union([...])`.
 class Union {
   final List<Type> types;
 

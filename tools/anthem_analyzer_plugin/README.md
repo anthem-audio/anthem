@@ -6,6 +6,8 @@ Analyzer rules for Anthem.
 
 - `invalid_union_assignment`
   - Reports when a value assigned to an `@Union([...])` field is not one of the allowed union types.
+- `invalid_union_field_type`
+  - Reports when `@Union([...])` includes types that are not assignable to the field's declared type.
 
 ## Local Development
 

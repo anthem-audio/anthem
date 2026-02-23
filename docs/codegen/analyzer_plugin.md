@@ -12,14 +12,25 @@ The plugin package lives at:
 ## Why this exists
 
 Some codegen constraints are difficult to catch with built-in Dart type checks.
-For example, union fields are authored as `Object`/`Object?` with `@Union(...)`
-annotations, so assigning an unsupported type can otherwise fail late (during
-runtime behavior in generated code).
+For example, union fields are authored with `@Union(...)` and can use a base
+type (such as an interface). Without custom diagnostics, invalid declarations
+or assignments can fail late during runtime behavior in generated code.
 
 The analyzer plugin allows these mistakes to be reported in-editor and by
 `dart analyze` / `flutter analyze`.
 
 ## Enabled diagnostics
+
+### `invalid_union_field_type`
+
+Reports when a field declaration uses `@Union([...])`, but one or more listed
+types are not assignable to the field's declared type.
+
+Example:
+
+- field type: `Processor`
+- union list: `[GainProcessor, String]`
+- result: `String` is reported as invalid for that field declaration
 
 ### `invalid_union_assignment`
 
@@ -35,7 +46,7 @@ Currently this checks:
 
 This diagnostic is configured at the workspace root in
 `analysis_options.yaml`, under `plugins.anthem_analyzer_plugin`, and is
-currently promoted to `error`.
+currently promoted to `error`, along with `invalid_union_field_type`.
 
 ## Configuration
 
@@ -46,6 +57,7 @@ plugins:
   anthem_analyzer_plugin:
     path: tools/anthem_analyzer_plugin
     diagnostics:
+      invalid_union_field_type: error
       invalid_union_assignment: error
 ```
 

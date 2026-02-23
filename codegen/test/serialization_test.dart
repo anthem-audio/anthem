@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -125,9 +125,11 @@ class WithUnion extends _WithUnion with _$WithUnionAnthemModelMixin {
       _$WithUnionAnthemModelMixin.fromJson(json);
 }
 
+abstract class UnionBase {}
+
 class _WithUnion {
-  @Union([UnionSubTypeOne, UnionSubTypeTwo, UnionSubTypeThree, String])
-  late Object unionField;
+  @Union([UnionSubTypeOne, UnionSubTypeTwo, UnionSubTypeThree])
+  late UnionBase unionField;
 
   @Union([String, int])
   late Object? unionFieldNullable;
@@ -135,7 +137,8 @@ class _WithUnion {
 
 @AnthemModel(serializable: true)
 class UnionSubTypeOne extends _UnionSubTypeOne
-    with _$UnionSubTypeOneAnthemModelMixin {
+    with _$UnionSubTypeOneAnthemModelMixin
+    implements UnionBase {
   UnionSubTypeOne();
 
   factory UnionSubTypeOne.fromJson(Map<String, dynamic> json) =>
@@ -148,7 +151,8 @@ class _UnionSubTypeOne {
 
 @AnthemModel(serializable: true)
 class UnionSubTypeTwo extends _UnionSubTypeTwo
-    with _$UnionSubTypeTwoAnthemModelMixin {
+    with _$UnionSubTypeTwoAnthemModelMixin
+    implements UnionBase {
   UnionSubTypeTwo();
 
   factory UnionSubTypeTwo.fromJson(Map<String, dynamic> json) =>
@@ -161,7 +165,8 @@ class _UnionSubTypeTwo {
 
 @AnthemModel(serializable: true)
 class UnionSubTypeThree extends _UnionSubTypeThree
-    with _$UnionSubTypeThreeAnthemModelMixin {
+    with _$UnionSubTypeThreeAnthemModelMixin
+    implements UnionBase {
   UnionSubTypeThree();
 
   factory UnionSubTypeThree.fromJson(Map<String, dynamic> json) =>
@@ -347,15 +352,17 @@ void main() {
     expect(deserializedModel.unionFieldNullable, 1);
 
     final model2 = WithUnion()
-      ..unionField = 'test'
+      ..unionField = (UnionSubTypeTwo()..field = 2)
       ..unionFieldNullable = null;
 
     final json2 = model2.toJson();
-    expect(json2['unionField'], {'String': 'test'});
+    expect(json2['unionField'], {
+      'UnionSubTypeTwo': {'field': 2},
+    });
     expect(json2['unionFieldNullable'], null);
 
     final deserializedModel2 = WithUnion.fromJson(json2);
-    expect(deserializedModel2.unionField, 'test');
+    expect((deserializedModel2.unionField as UnionSubTypeTwo).field, 2);
     expect(deserializedModel2.unionFieldNullable, null);
   });
 }
