@@ -36,18 +36,15 @@ part 'tone_generator.g.dart';
 )
 class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
     with
+        Processor,
         _$ToneGeneratorProcessorModel,
-        _$ToneGeneratorProcessorModelAnthemModelMixin
-    implements Processor {
+        _$ToneGeneratorProcessorModelAnthemModelMixin {
   ToneGeneratorProcessorModel({required super.nodeId});
 
   ToneGeneratorProcessorModel.uninitialized() : super(nodeId: '');
 
   factory ToneGeneratorProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$ToneGeneratorProcessorModelAnthemModelMixin.fromJson(json);
-
-  /// The node that this processor represents.
-  NodeModel get node => (project.processingGraph.nodes[nodeId])!;
 
   /// Creates a node for this processor.
   static NodeModel createNode() {

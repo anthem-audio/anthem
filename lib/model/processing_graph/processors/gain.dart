@@ -47,16 +47,13 @@ part 'gain.g.dart';
   cppBehaviorClassIncludePath: 'modules/processors/gain.h',
 )
 class GainProcessorModel extends _GainProcessorModel
-    with _$GainProcessorModel, _$GainProcessorModelAnthemModelMixin
-    implements Processor {
+    with Processor, _$GainProcessorModel, _$GainProcessorModelAnthemModelMixin {
   GainProcessorModel({required super.nodeId});
 
   GainProcessorModel.uninitialized() : super(nodeId: '');
 
   factory GainProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$GainProcessorModelAnthemModelMixin.fromJson(json);
-
-  NodeModel get node => (project.processingGraph.nodes[nodeId])!;
 
   static NodeModel createNode() {
     final id = 'gain-${getId()}';

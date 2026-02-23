@@ -44,16 +44,16 @@ part 'balance.g.dart';
   cppBehaviorClassIncludePath: 'modules/processors/balance.h',
 )
 class BalanceProcessorModel extends _BalanceProcessorModel
-    with _$BalanceProcessorModel, _$BalanceProcessorModelAnthemModelMixin
-    implements Processor {
+    with
+        Processor,
+        _$BalanceProcessorModel,
+        _$BalanceProcessorModelAnthemModelMixin {
   BalanceProcessorModel({required super.nodeId});
 
   BalanceProcessorModel.uninitialized() : super(nodeId: '');
 
   factory BalanceProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$BalanceProcessorModelAnthemModelMixin.fromJson(json);
-
-  NodeModel get node => (project.processingGraph.nodes[nodeId])!;
 
   static NodeModel createNode() {
     final id = 'balance-${getId()}';

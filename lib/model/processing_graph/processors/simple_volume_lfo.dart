@@ -34,18 +34,15 @@ part 'simple_volume_lfo.g.dart';
 )
 class SimpleVolumeLfoProcessorModel extends _SimpleVolumeLfoProcessorModel
     with
+        Processor,
         _$SimpleVolumeLfoProcessorModel,
-        _$SimpleVolumeLfoProcessorModelAnthemModelMixin
-    implements Processor {
+        _$SimpleVolumeLfoProcessorModelAnthemModelMixin {
   SimpleVolumeLfoProcessorModel({required super.nodeId});
 
   SimpleVolumeLfoProcessorModel.uninitialized() : super(nodeId: '');
 
   factory SimpleVolumeLfoProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$SimpleVolumeLfoProcessorModelAnthemModelMixin.fromJson(json);
-
-  /// The node that this processor represents.
-  NodeModel get node => (project.processingGraph.nodes[nodeId])!;
 
   /// Creates a node for this processor.
   static NodeModel createNode() {

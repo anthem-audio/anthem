@@ -34,17 +34,13 @@ part 'vst3_processor.g.dart';
   skipOnWasm: true,
 )
 class VST3ProcessorModel extends _VST3ProcessorModel
-    with _$VST3ProcessorModel, _$VST3ProcessorModelAnthemModelMixin
-    implements Processor {
+    with Processor, _$VST3ProcessorModel, _$VST3ProcessorModelAnthemModelMixin {
   VST3ProcessorModel({required super.nodeId, required super.vst3Path});
 
   VST3ProcessorModel.uninitialized() : super(nodeId: '', vst3Path: '');
 
   factory VST3ProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$VST3ProcessorModelAnthemModelMixin.fromJson(json);
-
-  /// The node that this processor represents.
-  NodeModel get node => (project.processingGraph.nodes[nodeId])!;
 
   /// Creates a node for this processor.
   static NodeModel createNode(String vst3Path) {

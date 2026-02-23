@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 - 2026 Joshua Wade
+  Copyright (C) 2025 Joshua Wade
 
   This file is part of Anthem.
 
@@ -34,9 +34,9 @@ part 'live_event_provider.g.dart';
 )
 class LiveEventProviderProcessorModel extends _LiveEventProviderProcessorModel
     with
+        Processor,
         _$LiveEventProviderProcessorModel,
-        _$LiveEventProviderProcessorModelAnthemModelMixin
-    implements Processor {
+        _$LiveEventProviderProcessorModelAnthemModelMixin {
   LiveEventProviderProcessorModel({required super.nodeId});
 
   LiveEventProviderProcessorModel.uninitialized() : super(nodeId: '');

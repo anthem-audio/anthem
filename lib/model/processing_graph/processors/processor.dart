@@ -17,7 +17,18 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-/// Defines a shared interface for processors.
+import 'package:anthem/model/processing_graph/node.dart';
+import 'package:anthem/model/project_model_getter_mixin.dart';
+import 'package:anthem_codegen/include.dart';
+
+/// Defines shared behavior for processors.
+///
+/// Models are defined by two classes, a private base class (`_MyModel`) and a
+/// public class that extends the base class (`MyModel`). This must be mixed in
+/// to the public class, since it relies on behavior provided by that base
+/// class.
+///
+/// ### Background
 ///
 /// NodeModel is a generic wrapper that defines audio routing within Anthem.
 /// Each node also contains a processor. A node has a set of ports (which are
@@ -38,4 +49,9 @@
 /// to the engine, so it is only defined there. But as it turns out, there is a
 /// need in the UI as well to be able to define a contract for what a processor
 /// should be able to provide. This interface is that contract.
-interface class Processor {}
+mixin Processor on AnthemModelBase, ProjectModelGetterMixin {
+  String get nodeId;
+
+  /// The node that this processor represents.
+  NodeModel get node => (project.processingGraph.nodes[nodeId])!;
+}

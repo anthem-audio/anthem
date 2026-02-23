@@ -38,18 +38,15 @@ part 'master_output.g.dart';
 )
 class MasterOutputProcessorModel extends _MasterOutputProcessorModel
     with
+        Processor,
         _$MasterOutputProcessorModel,
-        _$MasterOutputProcessorModelAnthemModelMixin
-    implements Processor {
+        _$MasterOutputProcessorModelAnthemModelMixin {
   MasterOutputProcessorModel.uninitialized() : super(nodeId: '');
 
   MasterOutputProcessorModel({required super.nodeId});
 
   factory MasterOutputProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$MasterOutputProcessorModelAnthemModelMixin.fromJson(json);
-
-  /// The node that this processor represents.
-  NodeModel get node => (project.processingGraph.nodes[nodeId])!;
 
   /// Creates a node for this processor.
   static NodeModel createNode(String nodeId) {

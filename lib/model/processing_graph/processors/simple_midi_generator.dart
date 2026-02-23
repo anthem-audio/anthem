@@ -35,9 +35,9 @@ part 'simple_midi_generator.g.dart';
 class SimpleMidiGeneratorProcessorModel
     extends _SimpleMidiGeneratorProcessorModel
     with
+        Processor,
         _$SimpleMidiGeneratorProcessorModel,
-        _$SimpleMidiGeneratorProcessorModelAnthemModelMixin
-    implements Processor {
+        _$SimpleMidiGeneratorProcessorModelAnthemModelMixin {
   SimpleMidiGeneratorProcessorModel({required super.nodeId});
 
   SimpleMidiGeneratorProcessorModel.uninitialized() : super(nodeId: '');
@@ -45,8 +45,6 @@ class SimpleMidiGeneratorProcessorModel
   factory SimpleMidiGeneratorProcessorModel.fromJson(
     Map<String, dynamic> json,
   ) => _$SimpleMidiGeneratorProcessorModelAnthemModelMixin.fromJson(json);
-
-  NodeModel get node => (project.processingGraph.nodes[nodeId])!;
 
   static NodeModel createNode() {
     final id = 'simple-midi-generator-${getId()}';

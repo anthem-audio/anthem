@@ -40,9 +40,9 @@ part 'sequence_note_provider.g.dart';
 class SequenceNoteProviderProcessorModel
     extends _SequenceNoteProviderProcessorModel
     with
+        Processor,
         _$SequenceNoteProviderProcessorModel,
-        _$SequenceNoteProviderProcessorModelAnthemModelMixin
-    implements Processor {
+        _$SequenceNoteProviderProcessorModelAnthemModelMixin {
   SequenceNoteProviderProcessorModel({
     required super.nodeId,
     required super.channelId,
@@ -54,8 +54,6 @@ class SequenceNoteProviderProcessorModel
   factory SequenceNoteProviderProcessorModel.fromJson(
     Map<String, dynamic> json,
   ) => _$SequenceNoteProviderProcessorModelAnthemModelMixin.fromJson(json);
-
-  NodeModel get node => (project.processingGraph.nodes[nodeId])!;
 
   static NodeModel createNode(String channelId) {
     final id = 'sequence-note-provider-${getId()}';
