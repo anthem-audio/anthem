@@ -96,6 +96,7 @@ class ProjectController {
     project.execute(command);
 
     project.sequence.setActiveArrangement(command.arrangementID);
+    project.sequence.activeTransportSequenceID = command.arrangementID;
   }
 
   void onShortcut(LogicalKeySet shortcut) {

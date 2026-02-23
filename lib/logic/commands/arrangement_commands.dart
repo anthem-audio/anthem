@@ -145,11 +145,17 @@ class ClipAddRemoveCommand extends ArrangementCommand {
 class AddArrangementCommand extends Command {
   final Id arrangementID = getId();
   final String arrangementName;
+  late final Id? _previousActiveArrangementID;
+  late final Id? _previousActiveTransportSequenceID;
 
   AddArrangementCommand({
     required ProjectModel project,
     required this.arrangementName,
-  });
+  }) {
+    _previousActiveArrangementID = project.sequence.activeArrangementID;
+    _previousActiveTransportSequenceID =
+        project.sequence.activeTransportSequenceID;
+  }
 
   @override
   void execute(ProjectModel project) {
@@ -166,6 +172,9 @@ class AddArrangementCommand extends Command {
   void rollback(ProjectModel project) {
     project.sequence.arrangements.remove(arrangementID);
     project.sequence.arrangementOrder.removeLast();
+    project.sequence.setActiveArrangement(_previousActiveArrangementID);
+    project.sequence.activeTransportSequenceID =
+        _previousActiveTransportSequenceID;
   }
 }
 

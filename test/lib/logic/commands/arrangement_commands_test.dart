@@ -168,6 +168,10 @@ void main() {
 
   group('Arrangement commands', () {
     test('AddArrangementCommand execute and rollback', () {
+      final existingArrangement = addArrangementToProject('Arrangement 1');
+      sequence.activeArrangementID = existingArrangement.id;
+      sequence.activeTransportSequenceID = existingArrangement.id;
+
       final command = AddArrangementCommand(
         project: project,
         arrangementName: 'New Arrangement',
@@ -178,11 +182,37 @@ void main() {
       expect(arrangements[command.arrangementID], isNotNull);
       expect(arrangementOrder.last, equals(command.arrangementID));
 
+      sequence.activeArrangementID = command.arrangementID;
+      sequence.activeTransportSequenceID = command.arrangementID;
       command.rollback(project);
 
       expect(arrangements[command.arrangementID], isNull);
       expect(arrangementOrder.contains(command.arrangementID), isFalse);
+      expect(sequence.activeArrangementID, equals(existingArrangement.id));
+      expect(
+        sequence.activeTransportSequenceID,
+        equals(existingArrangement.id),
+      );
     });
+
+    test(
+      'AddArrangementCommand rollback falls back when previous IDs missing',
+      () {
+        final command = AddArrangementCommand(
+          project: project,
+          arrangementName: 'New Arrangement',
+        );
+
+        command.execute(project);
+        sequence.activeArrangementID = command.arrangementID;
+        sequence.activeTransportSequenceID = command.arrangementID;
+
+        command.rollback(project);
+
+        expect(sequence.activeArrangementID, isNull);
+        expect(sequence.activeTransportSequenceID, isNull);
+      },
+    );
 
     test('DeleteArrangementCommand execute and rollback preserves index', () {
       final arrangementA = addArrangementToProject('A');
