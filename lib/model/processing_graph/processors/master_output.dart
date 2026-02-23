@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,6 +20,7 @@
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -38,7 +39,8 @@ part 'master_output.g.dart';
 class MasterOutputProcessorModel extends _MasterOutputProcessorModel
     with
         _$MasterOutputProcessorModel,
-        _$MasterOutputProcessorModelAnthemModelMixin {
+        _$MasterOutputProcessorModelAnthemModelMixin
+    implements Processor {
   MasterOutputProcessorModel.uninitialized() : super(nodeId: '');
 
   MasterOutputProcessorModel({required super.nodeId});

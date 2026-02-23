@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,6 +22,7 @@ import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/parameter_config.dart';
+import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -36,7 +37,8 @@ part 'tone_generator.g.dart';
 class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
     with
         _$ToneGeneratorProcessorModel,
-        _$ToneGeneratorProcessorModelAnthemModelMixin {
+        _$ToneGeneratorProcessorModelAnthemModelMixin
+    implements Processor {
   ToneGeneratorProcessorModel({required super.nodeId});
 
   ToneGeneratorProcessorModel.uninitialized() : super(nodeId: '');

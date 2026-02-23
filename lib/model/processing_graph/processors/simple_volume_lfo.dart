@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,6 +21,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -34,7 +35,8 @@ part 'simple_volume_lfo.g.dart';
 class SimpleVolumeLfoProcessorModel extends _SimpleVolumeLfoProcessorModel
     with
         _$SimpleVolumeLfoProcessorModel,
-        _$SimpleVolumeLfoProcessorModelAnthemModelMixin {
+        _$SimpleVolumeLfoProcessorModelAnthemModelMixin
+    implements Processor {
   SimpleVolumeLfoProcessorModel({required super.nodeId});
 
   SimpleVolumeLfoProcessorModel.uninitialized() : super(nodeId: '');

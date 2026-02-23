@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,6 +21,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -34,7 +35,8 @@ part 'live_event_provider.g.dart';
 class LiveEventProviderProcessorModel extends _LiveEventProviderProcessorModel
     with
         _$LiveEventProviderProcessorModel,
-        _$LiveEventProviderProcessorModelAnthemModelMixin {
+        _$LiveEventProviderProcessorModelAnthemModelMixin
+    implements Processor {
   LiveEventProviderProcessorModel({required super.nodeId});
 
   LiveEventProviderProcessorModel.uninitialized() : super(nodeId: '');
