@@ -19,6 +19,7 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/basic/menu/menu_positioning.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 import 'package:flutter/widgets.dart';
@@ -69,7 +70,7 @@ class _MenuState extends State<Menu> {
     Offset? incomingPos,
   ) {
     final contentRenderBox = context.findRenderObject() as RenderBox;
-    final pos =
+    final anchorPos =
         incomingPos ??
         contentRenderBox.localToGlobal(
           Offset(
@@ -84,15 +85,15 @@ class _MenuState extends State<Menu> {
               ) +
               widget.offset,
         );
+    final anchorRect = Rect.fromLTWH(anchorPos.dx, anchorPos.dy, 0, 0);
     final id = getId();
 
     screenOverlayController.add(
       id,
       ScreenOverlayEntry(
         builder: (context, id) {
-          return Positioned(
-            left: pos.dx,
-            top: pos.dy,
+          return MenuPositioned(
+            anchorRect: anchorRect,
             child: MenuRenderer(menu: widget.menuDef, id: id),
           );
         },

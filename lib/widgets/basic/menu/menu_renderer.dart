@@ -24,6 +24,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/measure_text.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
+import 'package:anthem/widgets/basic/menu/menu_positioning.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 import 'package:flutter/widgets.dart';
@@ -126,6 +127,7 @@ class _MenuRendererState extends State<MenuRenderer> {
         child: Padding(
           padding: const EdgeInsets.all(_Constants.outerPadding),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: widget.menu.children
                 .map(
                   (child) => MenuItemRenderer(
@@ -344,10 +346,15 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
   }) {
     if (isSubmenuOpen) return;
 
-    final position = (context.findRenderObject() as RenderBox).localToGlobal(
-      const Offset(0, 0),
+    final renderBox = context.findRenderObject() as RenderBox;
+    final position = renderBox.localToGlobal(Offset.zero);
+    final size = renderBox.size;
+    final anchorRect = Rect.fromLTWH(
+      position.dx,
+      position.dy,
+      size.width,
+      size.height,
     );
-    final size = context.size!;
 
     submenuKey = getId();
 
@@ -355,9 +362,11 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
       submenuKey!,
       ScreenOverlayEntry(
         builder: (screenOverlayContext, id) {
-          return Positioned(
-            left: position.dx + size.width + _Constants.horizontalInnerPadding,
-            top: position.dy - _Constants.verticalInnerPadding,
+          return MenuPositioned(
+            anchorRect: anchorRect,
+            horizontalGap: _Constants.horizontalInnerPadding,
+            verticalGap: -_Constants.verticalInnerPadding,
+            alignTopToAnchor: true,
             child: MenuRenderer(id: id, menu: item.submenu!),
           );
         },

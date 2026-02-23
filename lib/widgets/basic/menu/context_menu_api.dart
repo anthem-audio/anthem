@@ -20,6 +20,7 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/basic/menu/menu_positioning.dart';
 import 'package:anthem/widgets/basic/menu/menu_renderer.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 import 'package:flutter/widgets.dart';
@@ -34,15 +35,15 @@ import 'package:flutter/widgets.dart';
 /// [closeContextMenu].
 Id openContextMenu(Offset globalPosition, MenuDef menu) {
   final menuId = getId();
+  final anchorRect = Rect.fromLTWH(globalPosition.dx, globalPosition.dy, 0, 0);
 
   final screenOverlayController = ServiceRegistry.screenOverlayController;
   screenOverlayController.add(
     menuId,
     ScreenOverlayEntry(
       builder: (context, id) {
-        return Positioned(
-          left: globalPosition.dx,
-          top: globalPosition.dy,
+        return MenuPositioned(
+          anchorRect: anchorRect,
           child: MenuRenderer(menu: menu, id: id),
         );
       },
