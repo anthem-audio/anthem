@@ -475,6 +475,7 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
       children: [
         AnthemMenuItem(
           text: 'Undo',
+          shortcutLabel: 'Ctrl+Z',
           onSelected: () {
             getProjectController().undo();
           },
@@ -482,6 +483,7 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
         ),
         AnthemMenuItem(
           text: 'Redo',
+          shortcutLabel: 'Ctrl+Shift+Z',
           onSelected: () {
             getProjectController().redo();
           },
