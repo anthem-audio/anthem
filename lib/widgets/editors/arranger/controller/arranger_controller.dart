@@ -20,6 +20,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:anthem/logic/commands/timeline_commands.dart';
 import 'package:anthem/logic/commands/arrangement_commands.dart';
 import 'package:anthem/logic/commands/pattern_commands.dart';
 import 'package:anthem/logic/service_registry.dart';
@@ -27,6 +28,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/editors/arranger/controller/state_machine/arranger_state_machine.dart';
+import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
@@ -286,5 +288,52 @@ abstract class _ArrangerController {
     );
 
     project.commitUndoGroup();
+  }
+
+  /// Adds a time signature change to the active arrangement.
+  void addTimeSignatureChange({
+    required TimeSignatureModel timeSignature,
+    required Time offset,
+    bool snap = true,
+  }) {
+    final arrangementId = project.sequence.activeArrangementID;
+    if (arrangementId == null) {
+      return;
+    }
+
+    var snappedOffset = offset;
+    if (snap) {
+      final arrangement = project.sequence.arrangements[arrangementId];
+      if (arrangement == null) {
+        return;
+      }
+
+      final divisionChanges = getDivisionChanges(
+        viewWidthInPixels: max(stateMachine.data.viewSize.width, 1),
+        snap: AutoSnap(),
+        defaultTimeSignature: project.sequence.defaultTimeSignature,
+        timeSignatureChanges: arrangement.timeSignatureChanges,
+        ticksPerQuarter: project.sequence.ticksPerQuarter,
+        timeViewStart: viewModel.timeView.start,
+        timeViewEnd: viewModel.timeView.end,
+      );
+
+      snappedOffset = getSnappedTime(
+        rawTime: offset.floor(),
+        divisionChanges: divisionChanges,
+        ceil: true,
+      );
+    }
+
+    project.execute(
+      AddTimeSignatureChangeCommand(
+        timelineKind: TimelineKind.arrangement,
+        arrangementID: arrangementId,
+        change: TimeSignatureChangeModel(
+          offset: snappedOffset,
+          timeSignature: timeSignature,
+        ),
+      ),
+    );
   }
 }

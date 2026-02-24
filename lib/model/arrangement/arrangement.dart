@@ -25,6 +25,7 @@ import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/invalidation_range_collector.dart';
 import 'package:anthem/model/shared/loop_points.dart';
+import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
@@ -128,6 +129,9 @@ abstract class _ArrangementModel
 
   @anthemObservable
   AnthemObservableMap<Id, ClipModel> clips = .new();
+
+  @anthemObservable
+  AnthemObservableList<TimeSignatureChangeModel> timeSignatureChanges = .new();
 
   @anthemObservable
   @hideFromSerialization

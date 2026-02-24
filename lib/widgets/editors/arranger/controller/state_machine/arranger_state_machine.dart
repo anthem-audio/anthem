@@ -23,6 +23,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/arrangement_commands.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/editor_state_machine.dart';
@@ -182,11 +183,18 @@ class ArrangerStateMachine
   }
 
   List<DivisionChange> divisionChanges() {
+    final arrangementTimeSignatureChanges =
+        project
+            .sequence
+            .arrangements[project.sequence.activeArrangementID]
+            ?.timeSignatureChanges ??
+        const <TimeSignatureChangeModel>[];
+
     return getDivisionChanges(
       viewWidthInPixels: data.viewSize.width,
       snap: AutoSnap(),
       defaultTimeSignature: project.sequence.defaultTimeSignature,
-      timeSignatureChanges: [],
+      timeSignatureChanges: arrangementTimeSignatureChanges,
       ticksPerQuarter: project.sequence.ticksPerQuarter,
       timeViewStart: data.renderedTimeViewStart,
       timeViewEnd: data.renderedTimeViewEnd,

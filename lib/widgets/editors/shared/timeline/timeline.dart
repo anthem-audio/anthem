@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -98,6 +98,21 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
     return project.sequence.arrangements[widget.arrangementID];
   }
 
+  List<TimeSignatureChangeModel> _getTimeSignatureChanges(
+    ProjectModel project,
+  ) {
+    if (widget.arrangementID != null) {
+      return project
+              .sequence
+              .arrangements[widget.arrangementID]
+              ?.timeSignatureChanges ??
+          [];
+    }
+
+    return project.sequence.patterns[widget.patternID]?.timeSignatureChanges ??
+        [];
+  }
+
   void _setPlayheadPosition(
     double time,
     bool ignoreSnap, {
@@ -112,8 +127,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
         viewWidthInPixels: _lastTimelineSize.width,
         snap: AutoSnap(),
         defaultTimeSignature: project.sequence.defaultTimeSignature,
-        timeSignatureChanges: /* arrangement?.timeSignatureChanges ?? */
-            pattern?.timeSignatureChanges ?? [],
+        timeSignatureChanges: _getTimeSignatureChanges(project),
         ticksPerQuarter: project.sequence.ticksPerQuarter,
         timeViewStart: widget.timeViewStartAnimation.value,
         timeViewEnd: widget.timeViewEndAnimation.value,
@@ -231,8 +245,9 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
             context,
             listen: false,
           ).sequence.defaultTimeSignature,
-          timeSignatureChanges: /* arrangement?.timeSignatureChanges ?? */
-              pattern?.timeSignatureChanges ?? [],
+          timeSignatureChanges: _getTimeSignatureChanges(
+            Provider.of<ProjectModel>(context, listen: false),
+          ),
           ticksPerQuarter: Provider.of<ProjectModel>(
             context,
             listen: false,
@@ -306,8 +321,9 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
             context,
             listen: false,
           ).sequence.defaultTimeSignature,
-          timeSignatureChanges: /* arrangement?.timeSignatureChanges ?? */
-              pattern?.timeSignatureChanges ?? [],
+          timeSignatureChanges: _getTimeSignatureChanges(
+            Provider.of<ProjectModel>(context, listen: false),
+          ),
           ticksPerQuarter: Provider.of<ProjectModel>(
             context,
             listen: false,
@@ -363,8 +379,9 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
             context,
             listen: false,
           ).sequence.defaultTimeSignature,
-          timeSignatureChanges: /* arrangement?.timeSignatureChanges ?? */
-              pattern?.timeSignatureChanges ?? [],
+          timeSignatureChanges: _getTimeSignatureChanges(
+            Provider.of<ProjectModel>(context, listen: false),
+          ),
           ticksPerQuarter: Provider.of<ProjectModel>(
             context,
             listen: false,
@@ -430,10 +447,6 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
         final timeView = context.watch<TimeRange>();
         final project = Provider.of<ProjectModel>(context);
 
-        List<TimeSignatureChangeModel> getTimeSignatureChanges() =>
-            project.sequence.patterns[widget.patternID]?.timeSignatureChanges ??
-            [];
-
         void handleScroll(double delta, double mouseX) {
           zoomTimeView(
             timeView: timeView,
@@ -477,7 +490,9 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                                     project.sequence.ticksPerQuarter,
                                 defaultTimeSignature:
                                     project.sequence.defaultTimeSignature,
-                                timeSignatureChanges: getTimeSignatureChanges(),
+                                timeSignatureChanges: _getTimeSignatureChanges(
+                                  project,
+                                ),
                               ),
                             );
                           },
@@ -488,25 +503,20 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                 ),
                 Observer(
                   builder: (context) {
-                    final timelineLabels =
-                        project
-                            .sequence
-                            .patterns[widget.patternID]
-                            ?.timeSignatureChanges
-                            .map<Widget>(
-                              (change) => LayoutId(
-                                id: change.offset,
-                                child: TimelineLabel(
-                                  text: change.timeSignature.toDisplayString(),
-                                  id: change.id,
-                                  offset: change.offset,
-                                  timelineWidth: constraints.maxWidth,
-                                  stableBuildContext: context,
-                                ),
-                              ),
-                            )
-                            .toList() ??
-                        [];
+                    final timelineLabels = _getTimeSignatureChanges(project)
+                        .map<Widget>(
+                          (change) => LayoutId(
+                            id: change.offset,
+                            child: TimelineLabel(
+                              text: change.timeSignature.toDisplayString(),
+                              id: change.id,
+                              offset: change.offset,
+                              timelineWidth: constraints.maxWidth,
+                              stableBuildContext: context,
+                            ),
+                          ),
+                        )
+                        .toList();
 
                     return AnimatedBuilder(
                       animation: widget.timeViewAnimationController,
@@ -515,7 +525,9 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                           builder: (context) {
                             return CustomMultiChildLayout(
                               delegate: TimeSignatureLabelLayoutDelegate(
-                                timeSignatureChanges: getTimeSignatureChanges(),
+                                timeSignatureChanges: _getTimeSignatureChanges(
+                                  project,
+                                ),
                                 timeViewStart:
                                     widget.timeViewStartAnimation.value,
                                 timeViewEnd: widget.timeViewEndAnimation.value,

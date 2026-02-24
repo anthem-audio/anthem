@@ -20,7 +20,9 @@
 import 'dart:async';
 
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/logic/commands/timeline_commands.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
@@ -36,6 +38,7 @@ import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.d
 import 'package:anthem/widgets/editors/arranger/widgets/track_headers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/playhead_line.dart';
+import 'package:anthem/widgets/editors/shared/timeline/timeline_notification_handler.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/widgets/util/lazy_follower.dart';
@@ -206,6 +209,7 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = Provider.of<ArrangerViewModel>(context);
     final projectController = Provider.of<ProjectController>(context);
+    final controller = Provider.of<ArrangerController>(context, listen: false);
     final project = Provider.of<ProjectModel>(context);
 
     final menuController = AnthemMenuController();
@@ -235,6 +239,12 @@ class _Header extends StatelessWidget {
                         AnthemMenuItem(
                           text: 'Add time signature change',
                           hint: 'Add a time signature change',
+                          onSelected: () {
+                            controller.addTimeSignatureChange(
+                              timeSignature: TimeSignatureModel(3, 4),
+                              offset: viewModel.timeView.start.floor(),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -599,12 +609,17 @@ class _ArrangerContentState extends State<_ArrangerContent>
                 Expanded(
                   child: Observer(
                     builder: (context) {
-                      return Timeline.arrangement(
-                        timeViewAnimationController:
-                            timeViewEndAnimItem.animationController,
-                        timeViewStartAnimation: timeViewStartAnimItem.animation,
-                        timeViewEndAnimation: timeViewEndAnimItem.animation,
+                      return TimelineNotificationHandler(
+                        timelineKind: TimelineKind.arrangement,
                         arrangementID: project.sequence.activeArrangementID,
+                        child: Timeline.arrangement(
+                          timeViewAnimationController:
+                              timeViewEndAnimItem.animationController,
+                          timeViewStartAnimation:
+                              timeViewStartAnimItem.animation,
+                          timeViewEndAnimation: timeViewEndAnimItem.animation,
+                          arrangementID: project.sequence.activeArrangementID,
+                        ),
                       );
                     },
                   ),

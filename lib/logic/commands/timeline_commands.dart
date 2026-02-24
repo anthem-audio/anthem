@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -52,6 +52,43 @@ void _removeTimeSignatureChangeFromPattern({
   // Should still be sorted, so no need to sort here
 }
 
+void _addTimeSignatureChangeToArrangement({
+  required ProjectModel project,
+  required Id arrangementID,
+  required TimeSignatureChangeModel change,
+}) {
+  final arrangement = project.sequence.arrangements[arrangementID]!;
+  arrangement.timeSignatureChanges.add(change);
+  _sortTimeSignatureChanges(arrangement.timeSignatureChanges);
+}
+
+void _removeTimeSignatureChangeFromArrangement({
+  required ProjectModel project,
+  required Id arrangementID,
+  required Id changeID,
+}) {
+  final arrangement = project.sequence.arrangements[arrangementID]!;
+  final change = arrangement.timeSignatureChanges.firstWhere(
+    (change) => change.id == changeID,
+  );
+  arrangement.timeSignatureChanges.remove(change);
+  // Should still be sorted, so no need to sort here
+}
+
+List<TimeSignatureChangeModel> _getChangeList({
+  required ProjectModel project,
+  required TimelineKind timelineKind,
+  Id? patternID,
+  Id? arrangementID,
+}) {
+  return switch (timelineKind) {
+    TimelineKind.pattern =>
+      project.sequence.patterns[patternID]!.timeSignatureChanges,
+    TimelineKind.arrangement =>
+      project.sequence.arrangements[arrangementID]!.timeSignatureChanges,
+  };
+}
+
 void _sortTimeSignatureChanges(List<TimeSignatureChangeModel> changes) {
   changes.sort((changeA, changeB) => changeA.offset.compareTo(changeB.offset));
 }
@@ -78,8 +115,10 @@ class AddTimeSignatureChangeCommand extends Command {
         change: change,
       );
     } else {
-      throw Exception(
-        "Arrangement time signature changes aren't supported yet.",
+      _addTimeSignatureChangeToArrangement(
+        project: project,
+        arrangementID: arrangementID!,
+        change: change,
       );
     }
   }
@@ -93,8 +132,10 @@ class AddTimeSignatureChangeCommand extends Command {
         changeID: change.id,
       );
     } else {
-      throw Exception(
-        "Arrangement time signature changes aren't supported yet.",
+      _removeTimeSignatureChangeFromArrangement(
+        project: project,
+        arrangementID: arrangementID!,
+        changeID: change.id,
       );
     }
   }
@@ -117,9 +158,11 @@ class RemoveTimeSignatureChangeCommand extends Command {
       change = project.sequence.patterns[patternID]!.timeSignatureChanges
           .firstWhere((change) => change.id == changeID);
     } else {
-      throw Exception(
-        "Arrangement time signature changes aren't supported yet.",
-      );
+      change = project
+          .sequence
+          .arrangements[arrangementID]!
+          .timeSignatureChanges
+          .firstWhere((change) => change.id == changeID);
     }
   }
 
@@ -132,8 +175,10 @@ class RemoveTimeSignatureChangeCommand extends Command {
         changeID: change.id,
       );
     } else {
-      throw Exception(
-        "Arrangement time signature changes aren't supported yet.",
+      _removeTimeSignatureChangeFromArrangement(
+        project: project,
+        arrangementID: arrangementID!,
+        changeID: change.id,
       );
     }
   }
@@ -147,8 +192,10 @@ class RemoveTimeSignatureChangeCommand extends Command {
         change: change,
       );
     } else {
-      throw Exception(
-        "Arrangement time signature changes aren't supported yet.",
+      _addTimeSignatureChangeToArrangement(
+        project: project,
+        arrangementID: arrangementID!,
+        change: change,
       );
     }
   }
@@ -172,27 +219,24 @@ class MoveTimeSignatureChangeCommand extends Command {
     Time? oldOffset,
     required this.newOffset,
   }) {
-    changeList = project.sequence.patterns[patternID]!.timeSignatureChanges;
+    changeList = _getChangeList(
+      project: project,
+      timelineKind: timelineKind,
+      patternID: patternID,
+      arrangementID: arrangementID,
+    );
     change = changeList.firstWhere((change) => change.id == changeID);
     this.oldOffset = oldOffset ?? change.offset;
   }
 
   @override
   void execute(ProjectModel project) {
-    if (timelineKind == TimelineKind.arrangement) {
-      throw Exception('Not supported yet');
-    }
-
     change.offset = newOffset;
     _sortTimeSignatureChanges(changeList);
   }
 
   @override
   void rollback(ProjectModel project) {
-    if (timelineKind == TimelineKind.arrangement) {
-      throw Exception('Not supported yet');
-    }
-
     change.offset = oldOffset;
     _sortTimeSignatureChanges(changeList);
   }
@@ -223,8 +267,12 @@ class SetTimeSignatureNumeratorCommand extends Command {
       );
     }
 
-    change = project.sequence.patterns[patternID]!.timeSignatureChanges
-        .firstWhere((change) => change.id == changeID);
+    change = _getChangeList(
+      project: project,
+      timelineKind: timelineKind,
+      patternID: patternID,
+      arrangementID: arrangementID,
+    ).firstWhere((change) => change.id == changeID);
 
     oldNumerator = change.timeSignature.numerator;
   }
@@ -265,8 +313,12 @@ class SetTimeSignatureDenominatorCommand extends Command {
       );
     }
 
-    change = project.sequence.patterns[patternID]!.timeSignatureChanges
-        .firstWhere((change) => change.id == changeID);
+    change = _getChangeList(
+      project: project,
+      timelineKind: timelineKind,
+      patternID: patternID,
+      arrangementID: arrangementID,
+    ).firstWhere((change) => change.id == changeID);
 
     oldDenominator = change.timeSignature.denominator;
   }

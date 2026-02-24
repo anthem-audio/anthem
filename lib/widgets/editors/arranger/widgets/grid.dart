@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2025 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -80,7 +80,7 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
       size: size,
       snap: AutoSnap(),
       baseTimeSignature: project.sequence.defaultTimeSignature,
-      timeSignatureChanges: [],
+      timeSignatureChanges: activeArrangement?.timeSignatureChanges ?? [],
       ticksPerQuarter: project.sequence.ticksPerQuarter,
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
