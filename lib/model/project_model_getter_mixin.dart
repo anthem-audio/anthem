@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,6 +22,12 @@ import 'package:anthem_codegen/include.dart';
 
 mixin ProjectModelGetterMixin on AnthemModelBase {
   ProjectModel? _project;
+
+  /// Gets the project that contains this model.
+  ///
+  /// This is not safe to use on models that have been removed from the tree.
+  /// For example, if you remove a clip from the clip map, it is not safe to use
+  /// this getter on that object.
   ProjectModel get project {
     if (_project != null) {
       return _project!;
@@ -37,6 +43,9 @@ mixin ProjectModelGetterMixin on AnthemModelBase {
       model = model.parent;
     }
 
-    throw Exception('Could not find project model');
+    throw StateError(
+      'ProjectModelGetterMixin: Could not find project model. '
+      'This model may be detached from the tree.',
+    );
   }
 }
