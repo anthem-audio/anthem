@@ -48,8 +48,8 @@ class MasterOutputProcessorModel extends _MasterOutputProcessorModel
   factory MasterOutputProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$MasterOutputProcessorModelAnthemModelMixin.fromJson(json);
 
-  /// Creates a node for this processor.
-  static NodeModel createNode(String nodeId) {
+  @override
+  NodeModel createNode() {
     return NodeModel(
       id: nodeId,
       processor: MasterOutputProcessorModel(nodeId: nodeId),

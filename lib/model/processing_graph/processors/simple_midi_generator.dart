@@ -38,7 +38,8 @@ class SimpleMidiGeneratorProcessorModel
         Processor,
         _$SimpleMidiGeneratorProcessorModel,
         _$SimpleMidiGeneratorProcessorModelAnthemModelMixin {
-  SimpleMidiGeneratorProcessorModel({required super.nodeId});
+  SimpleMidiGeneratorProcessorModel()
+    : super(nodeId: 'simple-midi-generator-${getId()}');
 
   SimpleMidiGeneratorProcessorModel.uninitialized() : super(nodeId: '');
 
@@ -46,15 +47,14 @@ class SimpleMidiGeneratorProcessorModel
     Map<String, dynamic> json,
   ) => _$SimpleMidiGeneratorProcessorModelAnthemModelMixin.fromJson(json);
 
-  static NodeModel createNode() {
-    final id = 'simple-midi-generator-${getId()}';
-
+  @override
+  NodeModel createNode() {
     return NodeModel(
-      id: id,
-      processor: SimpleMidiGeneratorProcessorModel(nodeId: id),
+      id: nodeId,
+      processor: this,
       eventOutputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: eventOutputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.event),
         ),

@@ -48,35 +48,35 @@ class BalanceProcessorModel extends _BalanceProcessorModel
         Processor,
         _$BalanceProcessorModel,
         _$BalanceProcessorModelAnthemModelMixin {
-  BalanceProcessorModel({required super.nodeId});
+  BalanceProcessorModel() : super(nodeId: 'balance-${getId()}');
 
   BalanceProcessorModel.uninitialized() : super(nodeId: '');
 
   factory BalanceProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$BalanceProcessorModelAnthemModelMixin.fromJson(json);
 
-  static NodeModel createNode() {
-    final id = 'balance-${getId()}';
+  @override
+  NodeModel createNode() {
     return NodeModel(
-      id: id,
-      processor: BalanceProcessorModel(nodeId: id),
+      id: nodeId,
+      processor: this..nodeId = nodeId,
       audioInputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: audioInputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.audio),
         ),
       ]),
       audioOutputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: audioOutputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.audio),
         ),
       ]),
       controlInputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: balancePortId,
           config: NodePortConfigModel(
             dataType: NodePortDataType.control,

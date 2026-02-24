@@ -54,4 +54,10 @@ mixin Processor on AnthemModelBase, ProjectModelGetterMixin {
 
   /// The node that this processor represents.
   NodeModel get node => (project.processingGraph.nodes[nodeId])!;
+
+  /// Creates a node that contains this processor.
+  ///
+  /// The node defines the allowed ports, so each processor must define this
+  /// method and generate a valid NodeModel that can represent it.
+  NodeModel createNode();
 }

@@ -35,31 +35,30 @@ part 'vst3_processor.g.dart';
 )
 class VST3ProcessorModel extends _VST3ProcessorModel
     with Processor, _$VST3ProcessorModel, _$VST3ProcessorModelAnthemModelMixin {
-  VST3ProcessorModel({required super.nodeId, required super.vst3Path});
+  VST3ProcessorModel({required super.vst3Path})
+    : super(nodeId: 'vst3-processor-${getId()}');
 
   VST3ProcessorModel.uninitialized() : super(nodeId: '', vst3Path: '');
 
   factory VST3ProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$VST3ProcessorModelAnthemModelMixin.fromJson(json);
 
-  /// Creates a node for this processor.
-  static NodeModel createNode(String vst3Path) {
-    final id = 'vst3-processor-${getId()}';
-
+  @override
+  NodeModel createNode() {
     return NodeModel(
       isThirdPartyPlugin: true,
-      id: id,
-      processor: VST3ProcessorModel(nodeId: id, vst3Path: vst3Path),
+      id: nodeId,
+      processor: this,
       eventInputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: eventInputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.event),
         ),
       ]),
       audioOutputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: audioOutputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.audio),
         ),

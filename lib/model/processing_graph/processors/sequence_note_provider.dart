@@ -43,10 +43,8 @@ class SequenceNoteProviderProcessorModel
         Processor,
         _$SequenceNoteProviderProcessorModel,
         _$SequenceNoteProviderProcessorModelAnthemModelMixin {
-  SequenceNoteProviderProcessorModel({
-    required super.nodeId,
-    required super.channelId,
-  });
+  SequenceNoteProviderProcessorModel({required super.channelId})
+    : super(nodeId: 'sequence-note-provider-${getId()}');
 
   SequenceNoteProviderProcessorModel.uninitialized()
     : super(nodeId: '', channelId: '');
@@ -55,18 +53,14 @@ class SequenceNoteProviderProcessorModel
     Map<String, dynamic> json,
   ) => _$SequenceNoteProviderProcessorModelAnthemModelMixin.fromJson(json);
 
-  static NodeModel createNode(String channelId) {
-    final id = 'sequence-note-provider-${getId()}';
-
+  @override
+  NodeModel createNode() {
     return NodeModel(
-      id: id,
-      processor: SequenceNoteProviderProcessorModel(
-        nodeId: id,
-        channelId: channelId,
-      ),
+      id: nodeId,
+      processor: this,
       eventOutputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: eventOutputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.event),
         ),

@@ -196,7 +196,7 @@ class ProjectController {
       name: 'VST Plugin',
       generatorType: GeneratorType.instrument,
       color: generateColor(),
-      node: VST3ProcessorModel.createNode(path!),
+      node: VST3ProcessorModel(vst3Path: path!).createNode(),
     );
   }
 

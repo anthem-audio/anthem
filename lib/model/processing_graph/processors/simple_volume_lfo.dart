@@ -37,20 +37,19 @@ class SimpleVolumeLfoProcessorModel extends _SimpleVolumeLfoProcessorModel
         Processor,
         _$SimpleVolumeLfoProcessorModel,
         _$SimpleVolumeLfoProcessorModelAnthemModelMixin {
-  SimpleVolumeLfoProcessorModel({required super.nodeId});
+  SimpleVolumeLfoProcessorModel()
+    : super(nodeId: 'simple-volume-lfo-${getId()}');
 
   SimpleVolumeLfoProcessorModel.uninitialized() : super(nodeId: '');
 
   factory SimpleVolumeLfoProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$SimpleVolumeLfoProcessorModelAnthemModelMixin.fromJson(json);
 
-  /// Creates a node for this processor.
-  static NodeModel createNode() {
-    final nodeId = 'simple-volume-lfo-${getId()}';
-
+  @override
+  NodeModel createNode() {
     return NodeModel(
       id: nodeId,
-      processor: SimpleVolumeLfoProcessorModel(nodeId: nodeId),
+      processor: this,
       audioInputPorts: AnthemObservableList.of([
         NodePortModel(
           config: NodePortConfigModel(dataType: NodePortDataType.audio),

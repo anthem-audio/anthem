@@ -39,30 +39,28 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
         Processor,
         _$ToneGeneratorProcessorModel,
         _$ToneGeneratorProcessorModelAnthemModelMixin {
-  ToneGeneratorProcessorModel({required super.nodeId});
+  ToneGeneratorProcessorModel() : super(nodeId: 'tone-generator-${getId()}');
 
   ToneGeneratorProcessorModel.uninitialized() : super(nodeId: '');
 
   factory ToneGeneratorProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$ToneGeneratorProcessorModelAnthemModelMixin.fromJson(json);
 
-  /// Creates a node for this processor.
-  static NodeModel createNode() {
-    final id = 'tone-generator-${getId()}';
-
+  @override
+  NodeModel createNode() {
     return NodeModel(
-      id: id,
-      processor: ToneGeneratorProcessorModel(nodeId: id),
+      id: nodeId,
+      processor: this,
       audioOutputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: _ToneGeneratorProcessorModel.audioOutputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.audio),
         ),
       ]),
       controlInputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: _ToneGeneratorProcessorModel.frequencyPortId,
           config: NodePortConfigModel(
             dataType: NodePortDataType.control,
@@ -76,7 +74,7 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
           ),
         ),
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: _ToneGeneratorProcessorModel.amplitudePortId,
           config: NodePortConfigModel(
             dataType: NodePortDataType.control,
@@ -92,7 +90,7 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
       ]),
       eventInputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: _ToneGeneratorProcessorModel.eventInputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.event),
         ),

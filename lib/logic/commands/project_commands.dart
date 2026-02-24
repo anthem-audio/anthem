@@ -195,14 +195,14 @@ class AddGeneratorCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
-    final gainNode = GainProcessorModel.createNode();
-    final balanceNode = BalanceProcessorModel.createNode();
+    final gainNode = GainProcessorModel().createNode();
+    final balanceNode = BalanceProcessorModel().createNode();
     // final midiGenNode = SimpleMidiGeneratorProcessorModel.createNode();
-    final sequencerNoteProviderNode =
-        SequenceNoteProviderProcessorModel.createNode(generatorId);
-    final liveEventProviderNode = LiveEventProviderProcessorModel.createNode(
-      generatorId,
-    );
+    final sequencerNoteProviderNode = SequenceNoteProviderProcessorModel(
+      channelId: generatorId,
+    ).createNode();
+    final liveEventProviderNode = LiveEventProviderProcessorModel()
+        .createNode();
 
     final generator = GeneratorModel(
       id: generatorId,

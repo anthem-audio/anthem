@@ -48,36 +48,35 @@ part 'gain.g.dart';
 )
 class GainProcessorModel extends _GainProcessorModel
     with Processor, _$GainProcessorModel, _$GainProcessorModelAnthemModelMixin {
-  GainProcessorModel({required super.nodeId});
+  GainProcessorModel() : super(nodeId: 'gain-${getId()}');
 
   GainProcessorModel.uninitialized() : super(nodeId: '');
 
   factory GainProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$GainProcessorModelAnthemModelMixin.fromJson(json);
 
-  static NodeModel createNode() {
-    final id = 'gain-${getId()}';
-
+  @override
+  NodeModel createNode() {
     return NodeModel(
-      id: id,
-      processor: GainProcessorModel(nodeId: id),
+      id: nodeId,
+      processor: this,
       audioInputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: audioInputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.audio),
         ),
       ]),
       audioOutputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: audioOutputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.audio),
         ),
       ]),
       controlInputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: gainPortId,
           config: NodePortConfigModel(
             dataType: NodePortDataType.control,

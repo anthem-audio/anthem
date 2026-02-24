@@ -56,7 +56,7 @@ class AddChannelMenu extends StatelessWidget {
                 text: 'Tone Generator',
                 onSelected: () {
                   projectController.addGenerator(
-                    node: ToneGeneratorProcessorModel.createNode(),
+                    node: ToneGeneratorProcessorModel().createNode(),
                     name: 'Tone Generator',
                     generatorType: GeneratorType.instrument,
                     color: generateColor(),

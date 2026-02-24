@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -37,21 +37,22 @@ class LiveEventProviderProcessorModel extends _LiveEventProviderProcessorModel
         Processor,
         _$LiveEventProviderProcessorModel,
         _$LiveEventProviderProcessorModelAnthemModelMixin {
-  LiveEventProviderProcessorModel({required super.nodeId});
+  LiveEventProviderProcessorModel()
+    : super(nodeId: 'live-event-provider-${getId()}');
 
   LiveEventProviderProcessorModel.uninitialized() : super(nodeId: '');
 
   factory LiveEventProviderProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$LiveEventProviderProcessorModelAnthemModelMixin.fromJson(json);
 
-  static NodeModel createNode(String channelId) {
-    final id = 'live-event-provider-${getId()}';
+  @override
+  NodeModel createNode() {
     return NodeModel(
-      id: id,
-      processor: LiveEventProviderProcessorModel(nodeId: id),
+      id: nodeId,
+      processor: this,
       eventOutputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: eventOutputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.event),
         ),
