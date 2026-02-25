@@ -27,6 +27,7 @@ import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/model/track.dart';
+import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/controller/state_machine/arranger_state_machine.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
@@ -177,12 +178,16 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late _ArrangerStateMachineTestFixture fixture;
+  late Id Function(Offset globalPosition, MenuDef menu)
+  defaultOpenContextMenuFn;
 
   setUp(() {
+    defaultOpenContextMenuFn = ArrangerIdleState.openContextMenuFn;
     fixture = _ArrangerStateMachineTestFixture.create();
   });
 
   tearDown(() {
+    ArrangerIdleState.openContextMenuFn = defaultOpenContextMenuFn;
     fixture.dispose();
   });
 
@@ -456,6 +461,117 @@ void main() {
       );
 
       expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+    });
+
+    test('right-click over clip opens context menu and selects clip', () {
+      fixture.viewModel.visibleClips.add(
+        rect: const Rect.fromLTWH(240, 10, 80, 30),
+        metadata: 'clip-under-cursor',
+      );
+      fixture.viewModel.selectedClips.add('other-selected');
+
+      var openCount = 0;
+      Offset? openedPosition;
+      MenuDef? openedMenu;
+      ArrangerIdleState.openContextMenuFn = (globalPosition, menu) {
+        openCount++;
+        openedPosition = globalPosition;
+        openedMenu = menu;
+        return 'menu-id';
+      };
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kSecondaryMouseButton,
+          position: Offset(260, 20),
+        ),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+      expect(openCount, 1);
+      expect(openedPosition, const Offset(260, 20));
+      expect(fixture.viewModel.selectedClips, {'clip-under-cursor'});
+
+      final openedItems = openedMenu!.children.whereType<AnthemMenuItem>();
+      expect(openedItems.first.text, 'Clip menu (placeholder)');
+    });
+
+    test('right-click over selected clip preserves existing selection', () {
+      fixture.viewModel.visibleClips.add(
+        rect: const Rect.fromLTWH(240, 10, 80, 30),
+        metadata: 'clip-under-cursor',
+      );
+      fixture.viewModel.selectedClips.addAll({
+        'clip-under-cursor',
+        'other-selected',
+      });
+
+      var openCount = 0;
+      ArrangerIdleState.openContextMenuFn = (_, _) {
+        openCount++;
+        return 'menu-id';
+      };
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kSecondaryMouseButton,
+          position: Offset(260, 20),
+        ),
+      );
+
+      expect(openCount, 1);
+      expect(fixture.viewModel.selectedClips, {
+        'clip-under-cursor',
+        'other-selected',
+      });
+    });
+
+    test('right-click on empty space does not open clip context menu', () {
+      fixture.viewModel.selectedClips.add('selected-clip');
+
+      var openCount = 0;
+      ArrangerIdleState.openContextMenuFn = (_, _) {
+        openCount++;
+        return 'menu-id';
+      };
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kSecondaryMouseButton,
+          position: Offset(420, 20),
+        ),
+      );
+
+      expect(openCount, 0);
+      expect(fixture.viewModel.selectedClips, {'selected-clip'});
+    });
+
+    test('right-click on resize handle opens context menu for clip', () {
+      fixture.viewModel.visibleResizeAreas.add(
+        rect: const Rect.fromLTWH(240, 10, 16, 30),
+        metadata: (id: 'clip-under-resize-handle', type: ResizeAreaType.end),
+      );
+      fixture.viewModel.selectedClips.add('other-selected');
+
+      var openCount = 0;
+      ArrangerIdleState.openContextMenuFn = (_, _) {
+        openCount++;
+        return 'menu-id';
+      };
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kSecondaryMouseButton,
+          position: Offset(245, 20),
+        ),
+      );
+
+      expect(openCount, 1);
+      expect(fixture.viewModel.selectedClips, {'clip-under-resize-handle'});
     });
 
     test('second click within threshold arms double click on down', () {

@@ -26,6 +26,8 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
+import 'package:anthem/widgets/basic/menu/context_menu_api.dart';
+import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/editors/shared/editor_state_machine.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
@@ -391,6 +393,8 @@ class ArrangerIdleState
   static const Duration _doubleClickThreshold = Duration(milliseconds: 500);
   static const double _maxClickTravelDistance = 8;
   static const double _maxDoubleClickDistance = 8;
+  static Id Function(Offset globalPosition, MenuDef menu) openContextMenuFn =
+      openContextMenu;
 
   /// Convenience getter to fetch the base state machine object.
   ArrangerStateMachine get arrangerStateMachine =>
@@ -521,6 +525,13 @@ class ArrangerIdleState
       return;
     }
 
+    final isSecondaryClick =
+        pointerEvent.buttons & kSecondaryMouseButton == kSecondaryMouseButton;
+    if (isSecondaryClick) {
+      handleSecondaryClick(pointerEvent);
+      return;
+    }
+
     final isPrimaryClick =
         pointerEvent.buttons & kPrimaryMouseButton == kPrimaryMouseButton;
     if (!isPrimaryClick) {
@@ -625,6 +636,43 @@ class ArrangerIdleState
     viewModel.selectedClips
       ..clear()
       ..add(clipId);
+  }
+
+  void handleSecondaryClick(PointerEvent event) {
+    final contentUnderCursor = viewModel.getContentUnderCursor(
+      event.localPosition,
+    );
+    final clipId =
+        contentUnderCursor.clip?.metadata ??
+        contentUnderCursor.resizeHandle?.metadata.id;
+    if (clipId == null) {
+      return;
+    }
+
+    if (!viewModel.selectedClips.contains(clipId)) {
+      viewModel.selectedClips
+        ..clear()
+        ..add(clipId);
+    }
+
+    openContextMenuFn(
+      event.position,
+      MenuDef(
+        children: [
+          AnthemMenuItem(
+            text: 'Clip menu (placeholder)',
+            hint: 'No clip actions yet',
+            disabled: true,
+          ),
+          Separator(),
+          AnthemMenuItem(
+            text: 'Coming soon',
+            hint: 'Additional clip actions will be added here',
+            disabled: true,
+          ),
+        ],
+      ),
+    );
   }
 
   void handleDoubleClick(PointerEvent event) {}
