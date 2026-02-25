@@ -135,7 +135,7 @@ jobs:
       # --------------------------------------------------------------
       - name: Run Flutter tests
         if: matrix.arch != 'wasm'
-        run: flutter test .
+        run: dart run anthem:cli flutter_test
 
       # --------------------------------------------------------------
       # Build Flutter (Windows)

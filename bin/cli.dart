@@ -23,6 +23,7 @@ import 'package:args/command_runner.dart';
 
 import 'commands/codegen.dart';
 import 'commands/engine.dart';
+import 'commands/flutter_test.dart';
 import 'commands/flutter_run_web_with_proxy.dart';
 
 /// Main entry point for the CLI command.
@@ -37,6 +38,7 @@ void main(List<String> args) async {
       CommandRunner<dynamic>('anthem:cli', 'Utilities for developing Anthem.')
         ..addCommand(CodegenCommand())
         ..addCommand(EngineCommand())
+        ..addCommand(FlutterTestCommand())
         ..addCommand(FlutterRunWebWithProxyCommand());
 
   try {
