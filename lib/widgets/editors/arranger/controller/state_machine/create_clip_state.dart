@@ -255,14 +255,15 @@ class ArrangerCreateClipState
             round: true,
           ).toDouble();
 
+    final pointerDownTime = startOffsetRaw.round();
     final startDivision = _getDivisionChangeAtTime(
-      time: startOffset.round(),
+      time: pointerDownTime,
       divisionChanges: divisionChanges,
     );
     final snapLength = startDivision?.divisionSnapSize.toDouble() ?? 0;
     final barLength = getBarLength(
       project.sequence.ticksPerQuarter,
-      project.sequence.defaultTimeSignature,
+      arrangerStateMachine.timeSignatureAt(pointerDownTime),
     ).toDouble();
     final defaultLength = max(barLength, snapLength);
 

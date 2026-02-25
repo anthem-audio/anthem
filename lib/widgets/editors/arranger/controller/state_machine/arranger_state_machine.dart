@@ -182,19 +182,33 @@ class ArrangerStateMachine
     emitSignal(_ArrangerCancelSignal(trigger));
   }
 
-  List<DivisionChange> divisionChanges() {
-    final arrangementTimeSignatureChanges =
-        project
+  List<TimeSignatureChangeModel> arrangementTimeSignatureChanges() {
+    return project
             .sequence
             .arrangements[project.sequence.activeArrangementID]
             ?.timeSignatureChanges ??
         const <TimeSignatureChangeModel>[];
+  }
 
+  TimeSignatureModel timeSignatureAt(Time time) {
+    var timeSignature = project.sequence.defaultTimeSignature;
+
+    for (final change in arrangementTimeSignatureChanges()) {
+      if (change.offset > time) {
+        break;
+      }
+      timeSignature = change.timeSignature;
+    }
+
+    return timeSignature;
+  }
+
+  List<DivisionChange> divisionChanges() {
     return getDivisionChanges(
       viewWidthInPixels: data.viewSize.width,
       snap: AutoSnap(),
       defaultTimeSignature: project.sequence.defaultTimeSignature,
-      timeSignatureChanges: arrangementTimeSignatureChanges,
+      timeSignatureChanges: arrangementTimeSignatureChanges(),
       ticksPerQuarter: project.sequence.ticksPerQuarter,
       timeViewStart: data.renderedTimeViewStart,
       timeViewEnd: data.renderedTimeViewEnd,

@@ -24,6 +24,7 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
+import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
@@ -1135,6 +1136,58 @@ void main() {
       );
       expect((hint!.endOffset - hint.startOffset).round(), barLength);
     });
+
+    test(
+      'double-click hold uses time signature at pointer-down position for default hint length',
+      () {
+        final arrangementId = fixture.project.sequence.activeArrangementID!;
+        final arrangement =
+            fixture.project.sequence.arrangements[arrangementId]!;
+        arrangement.timeSignatureChanges.add(
+          TimeSignatureChangeModel(
+            offset: 384,
+            timeSignature: TimeSignatureModel(3, 4),
+          ),
+        );
+
+        const clickPos = Offset(500, 20);
+        startDoubleClickHold(firstClickPos: clickPos, secondClickPos: clickPos);
+
+        final hint = fixture.viewModel.clipCreateHint;
+        expect(hint, isNotNull);
+
+        final startTime = pixelsToTime(
+          timeViewStart: fixture.viewModel.timeView.start,
+          timeViewEnd: fixture.viewModel.timeView.end,
+          viewPixelWidth: _ArrangerStateMachineTestFixture.viewSize.width,
+          pixelOffsetFromLeft: clickPos.dx,
+        ).round();
+
+        final divisionChanges = fixture.stateMachine.divisionChanges();
+        DivisionChange? startDivision;
+        for (var i = 0; i < divisionChanges.length; i++) {
+          if (startTime >= 0 &&
+              i < divisionChanges.length - 1 &&
+              divisionChanges[i + 1].offset <= startTime) {
+            continue;
+          }
+
+          startDivision = divisionChanges[i];
+          break;
+        }
+        if (startDivision == null && divisionChanges.isNotEmpty) {
+          startDivision = divisionChanges.last;
+        }
+
+        final barLength = getBarLength(
+          fixture.project.sequence.ticksPerQuarter,
+          TimeSignatureModel(3, 4),
+        );
+        final snapLength = startDivision?.divisionSnapSize ?? 0;
+        final expectedLength = snapLength > barLength ? snapLength : barLength;
+        expect((hint!.endOffset - hint.startOffset).round(), expectedLength);
+      },
+    );
 
     test('double-click drag delegates to create clip state', () {
       enterCreateClipState();
