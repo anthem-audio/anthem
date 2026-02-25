@@ -53,7 +53,10 @@ mixin Processor on AnthemModelBase, ProjectModelGetterMixin {
   String get nodeId;
 
   /// The node that this processor represents.
-  NodeModel get node => (project.processingGraph.nodes[nodeId])!;
+  ///
+  /// This is only valid once this processor is wrapped in a node via
+  /// [createNode].
+  NodeModel get node => parent as NodeModel;
 
   /// Creates a node that contains this processor.
   ///
