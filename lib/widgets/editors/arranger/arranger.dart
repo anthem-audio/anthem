@@ -77,22 +77,14 @@ class _ArrangerState extends State<Arranger> {
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
+    final serviceRegistry = ServiceRegistry.forProject(project.id);
 
     if (this.viewModel == null) {
-      this.viewModel = ArrangerViewModel(
-        project: project,
-        baseTrackHeight: 53,
-        timeView: TimeRange(0, 3072),
-      );
-      ServiceRegistry.forProject(project.id).register(this.viewModel!);
+      this.viewModel = serviceRegistry.arrangerViewModel;
     }
 
     if (this.controller == null) {
-      this.controller = ArrangerController(
-        viewModel: this.viewModel!,
-        project: project,
-      );
-      ServiceRegistry.forProject(project.id).register(this.controller!);
+      this.controller = serviceRegistry.arrangerController;
     }
 
     final viewModel = this.viewModel!;

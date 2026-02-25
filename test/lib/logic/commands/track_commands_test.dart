@@ -20,9 +20,15 @@
 // ignore_for_file: unused_local_variable, avoid_print
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/logic/commands/track_commands.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/model/processing_graph/node_connection.dart';
+import 'package:anthem/model/processing_graph/processing_graph.dart';
+import 'package:anthem/model/processing_graph/processors/gain.dart';
+import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
+import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
@@ -42,12 +48,32 @@ import 'package:mockito/mockito.dart';
 ])
 import 'track_commands_test.mocks.dart';
 
+class _FakeProcessingGraphApi extends Fake implements ProcessingGraphApi {
+  @override
+  Future<void> compile() async {}
+}
+
+class _MockEngine extends Mock implements Engine {
+  final ProcessingGraphApi _processingGraphApi;
+
+  _MockEngine(this._processingGraphApi);
+
+  @override
+  ProcessingGraphApi get processingGraphApi => _processingGraphApi;
+}
+
 void main() {
   late MockProjectModel project;
+  late ProcessingGraphModel processingGraph;
+  late _MockEngine mockEngine;
 
   setUp(() {
     project = MockProjectModel();
     when(project.id).thenReturn(getId());
+    processingGraph = ProcessingGraphModel();
+    when(project.processingGraph).thenReturn(processingGraph);
+    mockEngine = _MockEngine(_FakeProcessingGraphApi());
+    when(project.engine).thenReturn(mockEngine);
   });
 
   group('Set track properties', () {
@@ -701,6 +727,212 @@ void main() {
     });
 
     group('Add/remove', () {
+      test(
+        'Temp add generator command adds and restores nodes on undo/redo',
+        () {
+          trackC.createAndRegisterNodes(project);
+          final generatorNode = ToneGeneratorProcessorModel().createNode();
+
+          final command = TempDevAddGeneratorToTrackCommand(
+            track: trackC,
+            generatorNode: generatorNode,
+          );
+
+          command.execute(project);
+
+          final sequenceNodeId = trackC.sequenceNoteProviderNodeId;
+          expect(trackC.generatorNodeId, equals(generatorNode.id));
+          expect(sequenceNodeId, isNotNull);
+          expect(processingGraph.nodes[generatorNode.id], isNotNull);
+          expect(processingGraph.nodes[sequenceNodeId!], isNotNull);
+
+          final sequenceNode = processingGraph.nodes[sequenceNodeId]!;
+          final sequenceProcessor =
+              sequenceNode.processor as SequenceNoteProviderProcessorModel;
+          expect(sequenceProcessor.trackId, equals(trackC.id));
+
+          final generatorToGainConnection = processingGraph.connections.values
+              .where(
+                (connection) =>
+                    connection.sourceNodeId == generatorNode.id &&
+                    connection.destinationNodeId == trackC.gainNodeId &&
+                    connection.sourcePortId ==
+                        ToneGeneratorProcessorModel.audioOutputPortId &&
+                    connection.destinationPortId ==
+                        GainProcessorModel.audioInputPortId,
+              )
+              .toList();
+          expect(generatorToGainConnection, hasLength(1));
+
+          final sequenceToGeneratorConnection = processingGraph
+              .connections
+              .values
+              .where(
+                (connection) =>
+                    connection.sourceNodeId == sequenceNode.id &&
+                    connection.destinationNodeId == generatorNode.id &&
+                    connection.sourcePortId ==
+                        SequenceNoteProviderProcessorModel.eventOutputPortId &&
+                    connection.destinationPortId ==
+                        ToneGeneratorProcessorModel.eventInputPortId,
+              )
+              .toList();
+          expect(sequenceToGeneratorConnection, hasLength(1));
+
+          command.rollback(project);
+
+          expect(trackC.generatorNodeId, isNull);
+          expect(trackC.sequenceNoteProviderNodeId, equals(sequenceNodeId));
+          expect(processingGraph.nodes[generatorNode.id], isNull);
+          expect(processingGraph.nodes[sequenceNodeId], isNotNull);
+
+          command.execute(project);
+
+          expect(trackC.generatorNodeId, equals(generatorNode.id));
+          expect(trackC.sequenceNoteProviderNodeId, equals(sequenceNodeId));
+          expect(processingGraph.nodes[generatorNode.id], isNotNull);
+          expect(processingGraph.nodes[sequenceNodeId], isNotNull);
+        },
+      );
+
+      test('Add track undo/redo restores the same track nodes', () {
+        final command = TrackAddRemoveCommand.add(
+          project: project,
+          tracks: [
+            TrackDescriptorForCommand(
+              index: 2,
+              isSendTrack: false,
+              trackType: .instrument,
+              parentTrackId: trackAId,
+            ),
+          ],
+        );
+
+        command.execute(project);
+
+        final newTrackId = trackA.childTracks[2];
+        final newTrack = tracks[newTrackId]!;
+        final gainNodeId = newTrack.gainNodeId;
+        final balanceNodeId = newTrack.balanceNodeId;
+        final gainToBalanceConnectionId = processingGraph.connections.values
+            .firstWhere(
+              (connection) =>
+                  connection.sourceNodeId == gainNodeId &&
+                  connection.destinationNodeId == balanceNodeId,
+            )
+            .id;
+
+        expect(processingGraph.nodes[gainNodeId], isNotNull);
+        expect(processingGraph.nodes[balanceNodeId], isNotNull);
+        expect(
+          processingGraph.connections[gainToBalanceConnectionId],
+          isNotNull,
+        );
+
+        command.rollback(project);
+
+        expect(processingGraph.nodes[gainNodeId], isNull);
+        expect(processingGraph.nodes[balanceNodeId], isNull);
+        expect(processingGraph.connections[gainToBalanceConnectionId], isNull);
+
+        command.execute(project);
+
+        expect(newTrack.gainNodeId, equals(gainNodeId));
+        expect(newTrack.balanceNodeId, equals(balanceNodeId));
+        expect(processingGraph.nodes[gainNodeId], isNotNull);
+        expect(processingGraph.nodes[balanceNodeId], isNotNull);
+        expect(
+          processingGraph.connections[gainToBalanceConnectionId],
+          isNotNull,
+        );
+      });
+
+      test('Remove track undo restores captured nodes and connections', () {
+        trackC.createAndRegisterNodes(project);
+        final gainNodeId = trackC.gainNodeId;
+        final balanceNodeId = trackC.balanceNodeId;
+        final gainToBalanceConnectionId = processingGraph.connections.values
+            .firstWhere(
+              (connection) =>
+                  connection.sourceNodeId == gainNodeId &&
+                  connection.destinationNodeId == balanceNodeId,
+            )
+            .id;
+
+        final command = TrackAddRemoveCommand.remove(
+          project: project,
+          ids: [trackCId],
+        );
+
+        command.execute(project);
+
+        expect(processingGraph.nodes[gainNodeId], isNull);
+        expect(processingGraph.nodes[balanceNodeId], isNull);
+        expect(processingGraph.connections[gainToBalanceConnectionId], isNull);
+
+        command.rollback(project);
+
+        expect(processingGraph.nodes[gainNodeId], isNotNull);
+        expect(processingGraph.nodes[balanceNodeId], isNotNull);
+        expect(
+          processingGraph.connections[gainToBalanceConnectionId],
+          isNotNull,
+        );
+      });
+
+      test('Remove track captures optional generator and sequence nodes', () {
+        trackC.createAndRegisterNodes(project);
+
+        final generatorNode = ToneGeneratorProcessorModel().createNode();
+        final sequenceProviderNode = SequenceNoteProviderProcessorModel(
+          trackId: trackC.id,
+        ).createNode();
+
+        processingGraph.addNode(generatorNode);
+        processingGraph.addNode(sequenceProviderNode);
+
+        processingGraph.addConnection(
+          NodeConnectionModel(
+            id: getId(),
+            sourceNodeId: generatorNode.id,
+            sourcePortId: ToneGeneratorProcessorModel.audioOutputPortId,
+            destinationNodeId: trackC.gainNodeId!,
+            destinationPortId: GainProcessorModel.audioInputPortId,
+          ),
+        );
+        processingGraph.addConnection(
+          NodeConnectionModel(
+            id: getId(),
+            sourceNodeId: sequenceProviderNode.id,
+            sourcePortId: SequenceNoteProviderProcessorModel.eventOutputPortId,
+            destinationNodeId: generatorNode.id,
+            destinationPortId: ToneGeneratorProcessorModel.eventInputPortId,
+          ),
+        );
+
+        trackC.generatorNodeId = generatorNode.id;
+        trackC.sequenceNoteProviderNodeId = sequenceProviderNode.id;
+
+        final command = TrackAddRemoveCommand.remove(
+          project: project,
+          ids: [trackCId],
+        );
+
+        command.execute(project);
+
+        expect(processingGraph.nodes[trackC.gainNodeId], isNull);
+        expect(processingGraph.nodes[trackC.balanceNodeId], isNull);
+        expect(processingGraph.nodes[generatorNode.id], isNull);
+        expect(processingGraph.nodes[sequenceProviderNode.id], isNull);
+
+        command.rollback(project);
+
+        expect(processingGraph.nodes[trackC.gainNodeId], isNotNull);
+        expect(processingGraph.nodes[trackC.balanceNodeId], isNotNull);
+        expect(processingGraph.nodes[generatorNode.id], isNotNull);
+        expect(processingGraph.nodes[sequenceProviderNode.id], isNotNull);
+      });
+
       test('Add a track to a group parent', () {
         final originalChildCount = trackA.childTracks.length;
         final originalTracksCount = tracks.length;

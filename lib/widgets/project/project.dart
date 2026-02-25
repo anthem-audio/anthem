@@ -21,6 +21,9 @@ import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/panel_border.dart';
+import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
+import 'package:anthem/widgets/editors/arranger/view_model.dart';
+import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
@@ -71,8 +74,27 @@ class _ProjectState extends State<Project> {
     _viewModel = ProjectViewModel();
     _controller = ProjectController(projectModel, _viewModel);
 
-    ServiceRegistry.forProject(widget.id).register(_viewModel);
-    ServiceRegistry.forProject(widget.id).register(_controller);
+    final serviceRegistry = ServiceRegistry.forProject(widget.id);
+
+    serviceRegistry.register(_viewModel);
+    serviceRegistry.register(_controller);
+
+    // Multiple downstream widgets may need these, so we will register them here
+    // to avoid not-yet-initialized errors that depend on render order.
+
+    serviceRegistry.register(
+      ArrangerViewModel(
+        project: projectModel,
+        baseTrackHeight: 53,
+        timeView: TimeRange(0, 3072),
+      ),
+    );
+    serviceRegistry.register(
+      ArrangerController(
+        viewModel: serviceRegistry.arrangerViewModel,
+        project: projectModel,
+      ),
+    );
   }
 
   @override

@@ -43,11 +43,11 @@ class SequenceNoteProviderProcessorModel
         Processor,
         _$SequenceNoteProviderProcessorModel,
         _$SequenceNoteProviderProcessorModelAnthemModelMixin {
-  SequenceNoteProviderProcessorModel({required super.channelId})
+  SequenceNoteProviderProcessorModel({required super.trackId})
     : super(nodeId: 'sequence-note-provider-${getId()}');
 
   SequenceNoteProviderProcessorModel.uninitialized()
-    : super(nodeId: '', channelId: '');
+    : super(nodeId: '', trackId: '');
 
   factory SequenceNoteProviderProcessorModel.fromJson(
     Map<String, dynamic> json,
@@ -78,11 +78,11 @@ abstract class _SequenceNoteProviderProcessorModel
 
   String nodeId;
 
-  /// The ID of the channel that this node is providing note events for.
-  String channelId;
+  /// The ID of the track that this node is providing note events for.
+  String trackId;
 
   _SequenceNoteProviderProcessorModel({
     required this.nodeId,
-    required this.channelId,
+    required this.trackId,
   });
 }

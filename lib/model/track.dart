@@ -17,6 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/processing_graph/node.dart';
+import 'package:anthem/model/processing_graph/node_connection.dart';
+import 'package:anthem/model/processing_graph/processors/balance.dart';
+import 'package:anthem/model/processing_graph/processors/gain.dart';
+import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
+import 'package:anthem/model/project.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem_codegen/include.dart';
@@ -94,7 +100,85 @@ abstract class _TrackModel
   @anthemObservable
   bool isMasterTrack = false;
 
+  @anthemObservable
+  Id? gainNodeId;
+
+  NodeModel? get gainNode => project.processingGraph.nodes[gainNodeId];
+
+  @anthemObservable
+  Id? balanceNodeId;
+
+  NodeModel? get balanceNode => project.processingGraph.nodes[balanceNodeId];
+
+  /// Optional generator node assigned to this track.
+  ///
+  /// This is temporary migration state while we move generator ownership to
+  /// tracks.
+  @anthemObservable
+  Id? generatorNodeId;
+
+  /// Sequence note provider node assigned to this track.
+  ///
+  /// This node is the sequencer -> processing graph interface for track notes.
+  @anthemObservable
+  Id? sequenceNoteProviderNodeId;
+
+  NodeModel? get generatorNode =>
+      project.processingGraph.nodes[generatorNodeId];
+
+  NodeModel? get sequenceNoteProviderNode =>
+      project.processingGraph.nodes[sequenceNoteProviderNodeId];
+
+  Id get audioOutputNodeId => balanceNodeId!;
+  int get audioOutputPortId => BalanceProcessorModel.audioOutputPortId;
+
   _TrackModel({required this.name, required this.color, required this.type})
     : id = getId(),
+      gainNodeId = null,
+      balanceNodeId = null,
+      generatorNodeId = null,
+      sequenceNoteProviderNodeId = null,
       super();
+
+  void createAndRegisterNodes(ProjectModel project) {
+    final gainNode = GainProcessorModel().createNode();
+    gainNodeId = gainNode.id;
+    project.processingGraph.addNode(gainNode);
+
+    final balanceNode = BalanceProcessorModel().createNode();
+    balanceNodeId = balanceNode.id;
+    project.processingGraph.addNode(balanceNode);
+
+    project.processingGraph.addConnection(
+      NodeConnectionModel(
+        id: getId(),
+        sourceNodeId: gainNodeId!,
+        sourcePortId: GainProcessorModel.audioOutputPortId,
+        destinationNodeId: balanceNodeId!,
+        destinationPortId: BalanceProcessorModel.audioInputPortId,
+      ),
+    );
+
+    // Temporary: route all tracks directly to master output until final track
+    // routing behavior is implemented.
+    project.processingGraph.addConnection(
+      NodeConnectionModel(
+        id: getId(),
+        sourceNodeId: balanceNodeId!,
+        sourcePortId: BalanceProcessorModel.audioOutputPortId,
+        destinationNodeId: project.processingGraph.masterOutputNodeId,
+        destinationPortId: project.processingGraph
+            .getMasterOutputNode()
+            .audioInputPorts
+            .first
+            .id,
+      ),
+    );
+
+    final sequenceNoteProviderNode = SequenceNoteProviderProcessorModel(
+      trackId: id,
+    ).createNode();
+    sequenceNoteProviderNodeId = sequenceNoteProviderNode.id;
+    project.processingGraph.addNode(sequenceNoteProviderNode);
+  }
 }

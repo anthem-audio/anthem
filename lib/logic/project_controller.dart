@@ -156,6 +156,65 @@ class ProjectController {
     }
   }
 
+  void tempDevAddGeneratorNodeToTrack({
+    required Id trackId,
+    required NodeModel node,
+  }) {
+    final track = project.tracks[trackId];
+    if (track == null) {
+      throw StateError(
+        'ProjectController.tempDevAddGeneratorNodeToTrack(): Track $trackId '
+        'not found.',
+      );
+    }
+
+    project.execute(
+      TempDevAddGeneratorToTrackCommand(track: track, generatorNode: node),
+    );
+  }
+
+  void tempDevAddVst3GeneratorNodeToTrack(Id trackId) async {
+    final dialogController = ServiceRegistry.dialogController;
+    String initialDirectory;
+
+    if (Platform.isWindows) {
+      initialDirectory = 'C:\\Program Files\\Common Files\\VST3';
+    } else if (Platform.isMacOS) {
+      initialDirectory = '/Library/Audio/Plug-Ins/VST3';
+    } else if (Platform.isLinux) {
+      initialDirectory = Platform.environment['HOME'] ?? '/';
+    } else {
+      throw UnsupportedError(
+        'Unsupported platform: ${Platform.operatingSystem}',
+      );
+    }
+
+    final result = await FilePicker.platform.pickFiles(
+      dialogTitle: 'Choose a plugin (VST3)',
+      allowedExtensions: Platform.isMacOS ? null : ['vst3'],
+      initialDirectory: initialDirectory,
+      type: Platform.isMacOS ? FileType.custom : FileType.any,
+    );
+
+    final path = result?.files[0].path;
+
+    if (path?.toLowerCase().endsWith('.vst3') != true) {
+      dialogController.showTextDialog(
+        title: 'Error',
+        text:
+            'The selected plugin could not be loaded. It may '
+            'not be a valid VST3 plugin, or it may be incompatible.',
+        buttons: [DialogButton.ok()],
+      );
+      return;
+    }
+
+    tempDevAddGeneratorNodeToTrack(
+      trackId: trackId,
+      node: VST3ProcessorModel(vst3Path: path!).createNode(),
+    );
+  }
+
   void addVst3Generator() async {
     final dialogController = ServiceRegistry.dialogController;
     String initialDirectory;

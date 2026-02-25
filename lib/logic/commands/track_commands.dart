@@ -20,6 +20,11 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/command.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/model/processing_graph/node.dart';
+import 'package:anthem/model/processing_graph/node_connection.dart';
+import 'package:anthem/model/processing_graph/processing_graph.dart';
+import 'package:anthem/model/processing_graph/processors/gain.dart';
+import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
@@ -70,6 +75,7 @@ class TrackAddRemoveCommand extends Command {
   final bool _isAdd;
 
   late final List<_InternalTrackAddRemoveDescriptor> _tracks;
+  RemovedNodesSnapshot? _removedNodesSnapshot;
 
   TrackAddRemoveCommand.add({
     required ProjectModel project,
@@ -268,6 +274,37 @@ class TrackAddRemoveCommand extends Command {
       ).arrangerViewModel.registerTrack(track.id);
     }
 
+    if (_removedNodesSnapshot != null && !_removedNodesSnapshot!.isEmpty) {
+      project.processingGraph.restoreRemovedNodesSnapshot(
+        _removedNodesSnapshot!,
+      );
+    } else if (_isAdd) {
+      for (final trackDescriptor in _tracks) {
+        final tracksToCheck = <TrackModel>[
+          trackDescriptor.trackModel,
+          ...trackDescriptor.descendantTrackModels,
+        ];
+
+        for (final track in tracksToCheck) {
+          final gainNodeId = _tryGetTrackGainNodeId(track);
+          final balanceNodeId = _tryGetTrackBalanceNodeId(track);
+
+          final hasNoTrackNodes = gainNodeId == null && balanceNodeId == null;
+          final hasSomeTrackNodes = gainNodeId != null || balanceNodeId != null;
+          final hasAllTrackNodes = gainNodeId != null && balanceNodeId != null;
+
+          if (hasNoTrackNodes) {
+            track.createAndRegisterNodes(project);
+          } else if (hasSomeTrackNodes && !hasAllTrackNodes) {
+            throw StateError(
+              'TrackAddRemoveCommand._add(): Track ${track.id} has incomplete '
+              'node state. Both gainNodeId and balanceNodeId are required.',
+            );
+          }
+        }
+      }
+    }
+
     final arrangerViewModel = ServiceRegistry.forProject(
       project.id,
     ).arrangerViewModel;
@@ -275,6 +312,8 @@ class TrackAddRemoveCommand extends Command {
     arrangerViewModel.selectedTracks
       ..clear()
       ..addAll(_tracks.map((t) => t.trackModel.id));
+
+    project.engine.processingGraphApi.compile();
   }
 
   void _remove(ProjectModel project) {
@@ -328,7 +367,240 @@ class TrackAddRemoveCommand extends Command {
     arrangerViewModel.selectedTracks.removeAll(
       _tracks.map((t) => t.trackModel.id),
     );
+
+    final nodeIdsToRemove = _collectTrackNodeIdsForDescriptors(_tracks);
+    if (nodeIdsToRemove.isNotEmpty) {
+      final removedNodesSnapshot = project.processingGraph
+          .removeNodesAndCapture(nodeIdsToRemove);
+      _removedNodesSnapshot ??= removedNodesSnapshot;
+    }
+
+    project.engine.processingGraphApi.compile();
   }
+}
+
+Id? _tryGetTrackGainNodeId(TrackModel track) {
+  return track.gainNodeId;
+}
+
+Id? _tryGetTrackBalanceNodeId(TrackModel track) {
+  return track.balanceNodeId;
+}
+
+Set<Id> _collectTrackNodeIdsForDescriptors(
+  Iterable<_InternalTrackAddRemoveDescriptor> descriptors,
+) {
+  final nodeIds = <Id>{};
+
+  for (final descriptor in descriptors) {
+    final tracksToScan = <TrackModel>[
+      descriptor.trackModel,
+      ...descriptor.descendantTrackModels,
+    ];
+
+    for (final track in tracksToScan) {
+      final gainNodeId = _tryGetTrackGainNodeId(track);
+      if (gainNodeId != null) {
+        nodeIds.add(gainNodeId);
+      }
+
+      final balanceNodeId = _tryGetTrackBalanceNodeId(track);
+      if (balanceNodeId != null) {
+        nodeIds.add(balanceNodeId);
+      }
+
+      final generatorNodeId = track.generatorNodeId;
+      if (generatorNodeId != null) {
+        nodeIds.add(generatorNodeId);
+      }
+
+      final sequenceNoteProviderNodeId = track.sequenceNoteProviderNodeId;
+      if (sequenceNoteProviderNodeId != null) {
+        nodeIds.add(sequenceNoteProviderNodeId);
+      }
+    }
+  }
+
+  return nodeIds;
+}
+
+/// Temporary migration command.
+///
+/// This command exists only while generator ownership is transitioning from the
+/// legacy channel model to tracks.
+class TempDevAddGeneratorToTrackCommand extends Command {
+  final Id trackId;
+  final NodeModel generatorNode;
+
+  final Id? _previousGeneratorNodeId;
+
+  RemovedNodesSnapshot? _removedAddedGeneratorSnapshot;
+  RemovedNodesSnapshot? _removedPreviousGeneratorSnapshot;
+
+  TempDevAddGeneratorToTrackCommand({
+    required TrackModel track,
+    required this.generatorNode,
+  }) : trackId = track.id,
+       _previousGeneratorNodeId = track.generatorNodeId;
+
+  @override
+  void execute(ProjectModel project) {
+    final track = project.tracks[trackId];
+    if (track == null) {
+      throw StateError(
+        'TempDevAddGeneratorToTrackCommand.execute(): Track $trackId not found.',
+      );
+    }
+
+    final sequenceNoteProviderNode = _getExistingSequenceNoteProviderNode(
+      project,
+      track,
+    );
+
+    final hasRestorableGeneratorSnapshot =
+        _removedAddedGeneratorSnapshot != null &&
+        !_removedAddedGeneratorSnapshot!.isEmpty;
+
+    if (hasRestorableGeneratorSnapshot) {
+      _removeCurrentGeneratorNode(project, track, captureForRollback: false);
+      project.processingGraph.restoreRemovedNodesSnapshot(
+        _removedAddedGeneratorSnapshot!,
+      );
+    } else {
+      _removeCurrentGeneratorNode(project, track, captureForRollback: true);
+
+      project.processingGraph.addNode(generatorNode);
+
+      _connectGeneratorAudioToTrackGain(project, track, generatorNode);
+      _connectSequenceProviderToGenerator(
+        project,
+        sequenceNoteProviderNode,
+        generatorNode,
+      );
+    }
+
+    track.generatorNodeId = generatorNode.id;
+
+    project.engine.processingGraphApi.compile();
+  }
+
+  @override
+  void rollback(ProjectModel project) {
+    final track = project.tracks[trackId];
+    if (track == null) {
+      throw StateError(
+        'TempDevAddGeneratorToTrackCommand.rollback(): Track $trackId not found.',
+      );
+    }
+
+    if (track.generatorNodeId == generatorNode.id) {
+      final removedNodesSnapshot = project.processingGraph
+          .removeNodesAndCapture([generatorNode.id]);
+      _removedAddedGeneratorSnapshot ??= removedNodesSnapshot;
+    }
+
+    if (_removedPreviousGeneratorSnapshot != null &&
+        !_removedPreviousGeneratorSnapshot!.isEmpty) {
+      project.processingGraph.restoreRemovedNodesSnapshot(
+        _removedPreviousGeneratorSnapshot!,
+      );
+    }
+
+    track.generatorNodeId = _previousGeneratorNodeId;
+
+    project.engine.processingGraphApi.compile();
+  }
+
+  void _removeCurrentGeneratorNode(
+    ProjectModel project,
+    TrackModel track, {
+    required bool captureForRollback,
+  }) {
+    final currentGeneratorNodeId = track.generatorNodeId;
+    if (currentGeneratorNodeId == null ||
+        currentGeneratorNodeId == generatorNode.id) {
+      return;
+    }
+
+    final removedNodesSnapshot = project.processingGraph.removeNodesAndCapture([
+      currentGeneratorNodeId,
+    ]);
+
+    if (captureForRollback) {
+      _removedPreviousGeneratorSnapshot ??= removedNodesSnapshot;
+    }
+
+    track.generatorNodeId = null;
+  }
+}
+
+NodeModel _getExistingSequenceNoteProviderNode(
+  ProjectModel project,
+  TrackModel track,
+) {
+  final sequenceProviderNodeId = track.sequenceNoteProviderNodeId;
+  final sequenceProviderNode =
+      project.processingGraph.nodes[sequenceProviderNodeId];
+
+  if (sequenceProviderNode == null) {
+    throw StateError(
+      'TempDevAddGeneratorToTrackCommand requires an existing sequence note '
+      'provider node on track ${track.id}.',
+    );
+  }
+
+  return sequenceProviderNode;
+}
+
+void _connectGeneratorAudioToTrackGain(
+  ProjectModel project,
+  TrackModel track,
+  NodeModel generatorNode,
+) {
+  if (generatorNode.audioOutputPorts.isEmpty) {
+    return;
+  }
+
+  final gainNodeId = _tryGetTrackGainNodeId(track);
+  if (gainNodeId == null) {
+    return;
+  }
+
+  final gainNode = project.processingGraph.nodes[gainNodeId];
+  if (gainNode == null || gainNode.audioInputPorts.isEmpty) {
+    return;
+  }
+
+  project.processingGraph.addConnection(
+    NodeConnectionModel(
+      id: getId(),
+      sourceNodeId: generatorNode.id,
+      sourcePortId: generatorNode.audioOutputPorts.first.id,
+      destinationNodeId: gainNode.id,
+      destinationPortId: GainProcessorModel.audioInputPortId,
+    ),
+  );
+}
+
+void _connectSequenceProviderToGenerator(
+  ProjectModel project,
+  NodeModel sequenceProviderNode,
+  NodeModel generatorNode,
+) {
+  if (sequenceProviderNode.eventOutputPorts.isEmpty ||
+      generatorNode.eventInputPorts.isEmpty) {
+    return;
+  }
+
+  project.processingGraph.addConnection(
+    NodeConnectionModel(
+      id: getId(),
+      sourceNodeId: sequenceProviderNode.id,
+      sourcePortId: SequenceNoteProviderProcessorModel.eventOutputPortId,
+      destinationNodeId: generatorNode.id,
+      destinationPortId: generatorNode.eventInputPorts.first.id,
+    ),
+  );
 }
 
 class TrackGroupUngroupCommand extends Command {

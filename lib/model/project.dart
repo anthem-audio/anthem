@@ -62,15 +62,15 @@ class ProjectModel extends _ProjectModel
         color: AnthemColor.randomHue(),
         type: .instrument,
       );
+      track.createAndRegisterNodes(this);
       initTracks[track.id] = track;
       initTrackOrder.add(track.id);
     }
 
-    final masterTrack = TrackModel(
-      name: 'Master',
-      color: AnthemColor.randomHue(),
-      type: .audio,
-    )..isMasterTrack = true;
+    final masterTrack =
+        TrackModel(name: 'Master', color: AnthemColor.randomHue(), type: .audio)
+          ..isMasterTrack = true
+          ..createAndRegisterNodes(this);
     initTracks[masterTrack.id] = masterTrack;
     initSendTrackOrder.add(masterTrack.id);
 

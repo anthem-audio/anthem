@@ -18,9 +18,11 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/logic/commands/command.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/model/processing_graph/processing_graph.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
@@ -38,6 +40,20 @@ import 'package:mockito/mockito.dart';
   MockSpec<ProjectViewModel>(),
 ])
 import 'project_controller_test.mocks.dart';
+
+class _FakeProcessingGraphApi extends Fake implements ProcessingGraphApi {
+  @override
+  Future<void> compile() async {}
+}
+
+class _MockEngine extends Mock implements Engine {
+  final ProcessingGraphApi _processingGraphApi;
+
+  _MockEngine(this._processingGraphApi);
+
+  @override
+  ProcessingGraphApi get processingGraphApi => _processingGraphApi;
+}
 
 void main() {
   group('canGroupTracks()', () {
@@ -169,6 +185,8 @@ void main() {
 
     late MockProjectModel project;
     late ProjectController projectController;
+    late ProcessingGraphModel processingGraph;
+    late _MockEngine mockEngine;
 
     late AnthemObservableMap<Id, TrackModel> tracks;
     late AnthemObservableList<Id> trackOrder;
@@ -200,6 +218,10 @@ void main() {
       when(project.tracks).thenReturn(tracks);
       when(project.trackOrder).thenReturn(trackOrder);
       when(project.sendTrackOrder).thenReturn(sendTrackOrder);
+      processingGraph = ProcessingGraphModel();
+      when(project.processingGraph).thenReturn(processingGraph);
+      mockEngine = _MockEngine(_FakeProcessingGraphApi());
+      when(project.engine).thenReturn(mockEngine);
 
       regularGroup = createTrack('Regular Group', .group);
       regularChildA = createTrack('Regular Child A', .instrument);

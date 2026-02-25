@@ -27,6 +27,25 @@ import 'node_connection.dart';
 
 part 'processing_graph.g.dart';
 
+/// Captures the result of removing one or more processing graph nodes.
+///
+/// This is primarily used by undo/redo commands (for example track add/remove)
+/// so the exact removed nodes and any connections touching those nodes can be
+/// restored on redo/undo without recomputing graph state. This also allows us
+/// to keep the objects around in case they have transient plugin state (e.g.
+/// third-party plugin state) that would be destroyed if the objects were
+/// recreated.
+class RemovedNodesSnapshot {
+  final List<NodeModel> nodes;
+  final List<NodeConnectionModel> connections;
+
+  const RemovedNodesSnapshot({required this.nodes, required this.connections});
+
+  const RemovedNodesSnapshot.empty() : nodes = const [], connections = const [];
+
+  bool get isEmpty => nodes.isEmpty && connections.isEmpty;
+}
+
 @AnthemModel.syncedModel()
 class ProcessingGraphModel extends _ProcessingGraphModel
     with _$ProcessingGraphModel, _$ProcessingGraphModelAnthemModelMixin {
@@ -69,6 +88,86 @@ class ProcessingGraphModel extends _ProcessingGraphModel
 
   void addNode(NodeModel node) {
     nodes[node.id] = node;
+  }
+
+  /// Removes the given nodes from the graph while capturing all removed nodes
+  /// and connections so they can be restored later.
+  RemovedNodesSnapshot removeNodesAndCapture(Iterable<String> nodeIds) {
+    final idsToRemove = <String>{};
+    for (final nodeId in nodeIds) {
+      if (nodes[nodeId] != null) {
+        idsToRemove.add(nodeId);
+      }
+    }
+
+    if (idsToRemove.isEmpty) {
+      return const RemovedNodesSnapshot.empty();
+    }
+
+    final removedConnections = <NodeConnectionModel>[];
+    for (final connection in connections.values) {
+      final isTouchingRemovedNode =
+          idsToRemove.contains(connection.sourceNodeId) ||
+          idsToRemove.contains(connection.destinationNodeId);
+
+      if (isTouchingRemovedNode) {
+        removedConnections.add(connection);
+      }
+    }
+
+    final removedNodes = <NodeModel>[];
+    for (final nodeId in idsToRemove) {
+      final node = nodes[nodeId];
+      if (node != null) {
+        removedNodes.add(node);
+      }
+    }
+
+    for (final connection in removedConnections) {
+      removeConnection(connection.id);
+    }
+
+    for (final node in removedNodes) {
+      nodes.remove(node.id);
+    }
+
+    return RemovedNodesSnapshot(
+      nodes: removedNodes,
+      connections: removedConnections,
+    );
+  }
+
+  /// Restores a snapshot that was captured by [removeNodesAndCapture].
+  void restoreRemovedNodesSnapshot(RemovedNodesSnapshot snapshot) {
+    for (final node in snapshot.nodes) {
+      if (nodes[node.id] != null) {
+        continue;
+      }
+
+      addNode(node);
+    }
+
+    for (final connection in snapshot.connections) {
+      if (connections[connection.id] != null) {
+        continue;
+      }
+
+      if (nodes[connection.sourceNodeId] == null) {
+        throw StateError(
+          'Could not restore connection ${connection.id}: source node '
+          '${connection.sourceNodeId} not found.',
+        );
+      }
+
+      if (nodes[connection.destinationNodeId] == null) {
+        throw StateError(
+          'Could not restore connection ${connection.id}: destination node '
+          '${connection.destinationNodeId} not found.',
+        );
+      }
+
+      addConnection(connection);
+    }
   }
 
   /// Removes a node from the graph, and removes all connections to and from the

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,10 +17,19 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/project_controller.dart';
+import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/hint/hint_store.dart';
+import 'package:anthem/widgets/basic/menu/menu.dart';
+import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/instruments/tone_generator.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -64,10 +73,12 @@ class __ProcessorListState extends State<_ProcessorList> {
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
+    final serviceRegistry = ServiceRegistry.forProject(project.id);
+    final arrangerViewModel = serviceRegistry.arrangerViewModel;
 
-    final activeInstrumentId = project.activeInstrumentID;
+    final activeTrackId = arrangerViewModel.selectedTracks.firstOrNull;
 
-    if (activeInstrumentId == null) {
+    if (activeTrackId == null) {
       return Container(
         color: AnthemTheme.panel.background,
         child: Center(
@@ -95,7 +106,7 @@ class __ProcessorListState extends State<_ProcessorList> {
                 ),
               ),
             ),
-            _buildChild(project, activeInstrumentId),
+            _buildChild(context, project, activeTrackId),
           ],
         ),
       ),
@@ -103,21 +114,84 @@ class __ProcessorListState extends State<_ProcessorList> {
   }
 }
 
-Widget _buildChild(ProjectModel project, String activeInstrumentId) {
-  final instrument = project.generators[activeInstrumentId];
+Widget _buildChild(
+  BuildContext context,
+  ProjectModel project,
+  Id activeTrackId,
+) {
+  final track = project.tracks[activeTrackId];
 
-  if (instrument == null) {
-    return const Text('Invalid instrument');
+  if (track == null) {
+    return const Text('Invalid track');
   }
 
-  final node = project.processingGraph.nodes[instrument.generatorNodeId];
+  final generatorNodeId = track.generatorNodeId;
+  if (generatorNodeId == null) {
+    return _buildAddGeneratorButton(context, track.id);
+  }
+
+  final node = project.processingGraph.nodes[generatorNodeId];
 
   if (node == null) {
-    return const Text('Invalid instrument');
+    return const Text('Invalid generator node');
   }
 
   return switch (node.processor) {
     ToneGeneratorProcessorModel _ => ToneGenerator(node: node),
-    _ => const Text('Invalid instrument'),
+    _ => const Text('No editor for this generator'),
   };
+}
+
+Widget _buildAddGeneratorButton(BuildContext context, Id trackId) {
+  final projectController = Provider.of<ProjectController>(context);
+  final addGeneratorMenuController = AnthemMenuController();
+
+  final menuDef = MenuDef(
+    children: [
+      AnthemMenuItem(
+        text: 'Tone Generator',
+        onSelected: () {
+          projectController.tempDevAddGeneratorNodeToTrack(
+            trackId: trackId,
+            node: ToneGeneratorProcessorModel().createNode(),
+          );
+        },
+      ),
+      Separator(),
+      if (!kIsWeb)
+        AnthemMenuItem(
+          text: 'VST3...',
+          onSelected: () {
+            projectController.tempDevAddVst3GeneratorNodeToTrack(trackId);
+          },
+        ),
+      AnthemMenuItem(
+        text: 'Blank',
+        onSelected: () {
+          projectController.tempDevAddGeneratorNodeToTrack(
+            trackId: trackId,
+            node: NodeModel(id: 'blank-generator-${getId()}'),
+          );
+        },
+      ),
+    ],
+  );
+
+  return Expanded(
+    child: Center(
+      child: Menu(
+        menuController: addGeneratorMenuController,
+        menuDef: menuDef,
+        child: Button(
+          width: 140,
+          height: 26,
+          text: 'Add Generator',
+          hint: [HintSection('click', 'Add a generator node to this track')],
+          onPress: () {
+            addGeneratorMenuController.open();
+          },
+        ),
+      ),
+    ),
+  );
 }

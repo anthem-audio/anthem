@@ -199,7 +199,7 @@ class AddGeneratorCommand extends Command {
     final balanceNode = BalanceProcessorModel().createNode();
     // final midiGenNode = SimpleMidiGeneratorProcessorModel.createNode();
     final sequencerNoteProviderNode = SequenceNoteProviderProcessorModel(
-      channelId: generatorId,
+      trackId: generatorId,
     ).createNode();
     final liveEventProviderNode = LiveEventProviderProcessorModel()
         .createNode();
