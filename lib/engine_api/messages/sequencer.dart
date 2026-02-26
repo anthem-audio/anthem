@@ -94,17 +94,17 @@ class CompileSequenceRequest extends Request {
   }
 }
 
-/// A request to clean up the given channel from the sequencer.
+/// A request to clean up the given track from the sequencer.
 ///
 /// This allows us to release memory from the compiled sequence data without
 /// rebuilding every sequence.
-class RemoveChannelRequest extends Request {
-  /// The channel ID to remove.
-  String channelId;
+class RemoveTrackRequest extends Request {
+  /// The track ID to remove.
+  String trackId;
 
-  RemoveChannelRequest.uninitialized() : channelId = '';
+  RemoveTrackRequest.uninitialized() : trackId = '';
 
-  RemoveChannelRequest({required int id, required this.channelId}) {
+  RemoveTrackRequest({required int id, required this.trackId}) {
     super.id = id;
   }
 }

@@ -110,7 +110,7 @@ class ProjectModel extends _ProjectModel
         // 0: the tracks field
         // 1: accessing a value in the map by key
         final trackId = e.fieldAccessors[1].key as Id;
-        engine.sequencerApi.cleanUpChannel(trackId);
+        engine.sequencerApi.cleanUpTrack(trackId);
       },
     );
   }

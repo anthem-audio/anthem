@@ -382,7 +382,7 @@ class TrackAddRemoveCommand extends Command {
 
     if (project.engine.isRunning) {
       for (final trackId in removedTrackIds) {
-        project.engine.sequencerApi.cleanUpChannel(trackId);
+        project.engine.sequencerApi.cleanUpTrack(trackId);
       }
     }
 

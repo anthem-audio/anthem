@@ -82,20 +82,20 @@ class SequencerApi {
     _engine._requestNoReply(request);
   }
 
-  /// Cleans up the given channel from the sequencer.
+  /// Cleans up the given track from the sequencer.
   ///
-  /// This method allows us to remove a channel from the sequencer without
+  /// This method allows us to remove a track from the sequencer without
   /// needing to rebuild all of the sequences.
   ///
   /// Normally when we update sequences, we update only one or maybe a few
-  /// channels at a time. However, when a channel is removed from the project
-  /// model, we need a way to remove that channel from all of the compiled
+  /// tracks at a time. However, when a track is removed from the project
+  /// model, we need a way to remove that track from all of the compiled
   /// sequences in the engine - otherwise, we would need to rebuild each
-  /// sequence from scratch to remove that channel.
-  void cleanUpChannel(String channelId) {
-    final request = RemoveChannelRequest(
+  /// sequence from scratch to remove that track.
+  void cleanUpTrack(String trackId) {
+    final request = RemoveTrackRequest(
       id: _engine._getRequestId(),
-      channelId: channelId,
+      trackId: trackId,
     );
 
     _engine._requestNoReply(request);
