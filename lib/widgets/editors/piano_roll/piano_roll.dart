@@ -369,7 +369,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
           animation: timeViewAnimationHelper!.animationController,
           builder: (context, child) {
             return AnimatedBuilder(
-              animation: timeViewAnimationHelper!.animationController,
+              animation: keyValueAtTopAnimationHelper!.animationController,
               builder: (context, child) {
                 return PianoRollContentRenderer(
                   timeViewStart: timeViewStartAnimItem.animation.value,
