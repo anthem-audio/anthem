@@ -1466,24 +1466,11 @@ void main() {
       startDoubleClickHold();
 
       expect(fixture.stateMachine.currentState, isA<ArrangerCreateClipState>());
-      expect(fixture.viewModel.clipCreateHint, isNotNull);
-    });
-
-    test('double-click hold shows default hint length of one bar', () {
-      startDoubleClickHold();
-
-      final hint = fixture.viewModel.clipCreateHint;
-      expect(hint, isNotNull);
-
-      final barLength = getBarLength(
-        fixture.project.sequence.ticksPerQuarter,
-        fixture.project.sequence.defaultTimeSignature,
-      );
-      expect((hint!.endOffset - hint.startOffset).round(), barLength);
+      expect(fixture.viewModel.clipCreateHint, isNull);
     });
 
     test(
-      'double-click hold uses time signature at pointer-down position for default hint length',
+      'double-click hold keeps clip create hint hidden even with time signature changes',
       () {
         final arrangementId = fixture.project.sequence.activeArrangementID!;
         final arrangement =
@@ -1498,39 +1485,7 @@ void main() {
         const clickPos = Offset(500, 20);
         startDoubleClickHold(firstClickPos: clickPos, secondClickPos: clickPos);
 
-        final hint = fixture.viewModel.clipCreateHint;
-        expect(hint, isNotNull);
-
-        final startTime = pixelsToTime(
-          timeViewStart: fixture.viewModel.timeView.start,
-          timeViewEnd: fixture.viewModel.timeView.end,
-          viewPixelWidth: _ArrangerStateMachineTestFixture.viewSize.width,
-          pixelOffsetFromLeft: clickPos.dx,
-        ).round();
-
-        final divisionChanges = fixture.stateMachine.divisionChanges();
-        DivisionChange? startDivision;
-        for (var i = 0; i < divisionChanges.length; i++) {
-          if (startTime >= 0 &&
-              i < divisionChanges.length - 1 &&
-              divisionChanges[i + 1].offset <= startTime) {
-            continue;
-          }
-
-          startDivision = divisionChanges[i];
-          break;
-        }
-        if (startDivision == null && divisionChanges.isNotEmpty) {
-          startDivision = divisionChanges.last;
-        }
-
-        final barLength = getBarLength(
-          fixture.project.sequence.ticksPerQuarter,
-          TimeSignatureModel(3, 4),
-        );
-        final snapLength = startDivision?.divisionSnapSize ?? 0;
-        final expectedLength = snapLength > barLength ? snapLength : barLength;
-        expect((hint!.endOffset - hint.startOffset).round(), expectedLength);
+        expect(fixture.viewModel.clipCreateHint, isNull);
       },
     );
 
@@ -1552,8 +1507,7 @@ void main() {
     test('pointer move updates clip create hint end offset', () {
       startDoubleClickHold();
       expect(fixture.stateMachine.currentState, isA<ArrangerCreateClipState>());
-
-      final firstHint = fixture.viewModel.clipCreateHint!;
+      expect(fixture.viewModel.clipCreateHint, isNull);
 
       fixture.pointerMove(
         const PointerMoveEvent(
@@ -1563,11 +1517,21 @@ void main() {
         ),
       );
 
+      final firstHint = fixture.viewModel.clipCreateHint!;
+
+      fixture.pointerMove(
+        const PointerMoveEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(500, 20),
+        ),
+      );
+
       final secondHint = fixture.viewModel.clipCreateHint!;
       expect(secondHint.endOffset, isNot(equals(firstHint.endOffset)));
     });
 
-    test('without drag, pointer up creates default-length clip', () {
+    test('without drag, pointer up creates auto-sized clip', () {
       final arrangementId = fixture.project.sequence.activeArrangementID!;
       final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
       final patternCountBefore = fixture.project.sequence.patterns.length;
@@ -1578,7 +1542,24 @@ void main() {
 
       startDoubleClickHold();
       expect(fixture.stateMachine.currentState, isA<ArrangerCreateClipState>());
-      final hint = fixture.viewModel.clipCreateHint!;
+      expect(fixture.viewModel.clipCreateHint, isNull);
+
+      const clickPos = Offset(100, 20);
+      final rawStartOffset = pixelsToTime(
+        timeViewStart: fixture.viewModel.timeView.start,
+        timeViewEnd: fixture.viewModel.timeView.end,
+        viewPixelWidth: _ArrangerStateMachineTestFixture.viewSize.width,
+        pixelOffsetFromLeft: clickPos.dx,
+      );
+      final expectedStartOffset = getSnappedTime(
+        rawTime: rawStartOffset.round(),
+        divisionChanges: fixture.stateMachine.divisionChanges(),
+        round: true,
+      );
+      final expectedWidth = getBarLength(
+        fixture.project.sequence.ticksPerQuarter,
+        fixture.project.sequence.defaultTimeSignature,
+      );
 
       fixture.pointerUp(
         const PointerUpEvent(pointer: 1, position: Offset(100, 20)),
@@ -1590,43 +1571,40 @@ void main() {
       expect(arrangement.clips.length, clipCountBefore + 1);
 
       final newClip = arrangement.clips.values.last;
-      expect(newClip.trackId, hint.trackId);
-      expect(newClip.offset, hint.startOffset.round());
-      expect(newClip.timeView, isNotNull);
-      expect(newClip.timeView!.start, 0);
-      expect(
-        newClip.timeView!.end,
-        (hint.endOffset - hint.startOffset).round(),
-      );
+      expect(newClip.trackId, _TrackIds.a);
+      expect(newClip.offset, expectedStartOffset);
+      expect(newClip.timeView, isNull);
+      expect(newClip.width, expectedWidth);
       expect(fixture.projectViewModel.selectedEditor, EditorKind.detail);
       expect(fixture.projectViewModel.activePanel, PanelKind.pianoRoll);
       expect(fixture.project.sequence.activePatternID, newClip.patternId);
     });
 
-    test('default hint uses snap size when snap is larger than a bar', () {
-      fixture.viewModel.timeView.end = 200000;
-      fixture.controller.onRenderedViewTransformChanged(
-        timeViewStart: fixture.viewModel.timeView.start,
-        timeViewEnd: fixture.viewModel.timeView.end,
-        verticalScrollPosition: fixture.viewModel.verticalScrollPosition,
-      );
+    test(
+      'double-click hold keeps hint hidden when snap is larger than a bar',
+      () {
+        fixture.viewModel.timeView.end = 200000;
+        fixture.controller.onRenderedViewTransformChanged(
+          timeViewStart: fixture.viewModel.timeView.start,
+          timeViewEnd: fixture.viewModel.timeView.end,
+          verticalScrollPosition: fixture.viewModel.verticalScrollPosition,
+        );
 
-      final barLength = getBarLength(
-        fixture.project.sequence.ticksPerQuarter,
-        fixture.project.sequence.defaultTimeSignature,
-      );
-      final snapSize = fixture.stateMachine
-          .divisionChanges()
-          .first
-          .divisionSnapSize;
-      expect(snapSize, greaterThan(barLength));
+        final barLength = getBarLength(
+          fixture.project.sequence.ticksPerQuarter,
+          fixture.project.sequence.defaultTimeSignature,
+        );
+        final snapSize = fixture.stateMachine
+            .divisionChanges()
+            .first
+            .divisionSnapSize;
+        expect(snapSize, greaterThan(barLength));
 
-      startDoubleClickHold();
+        startDoubleClickHold();
 
-      final hint = fixture.viewModel.clipCreateHint;
-      expect(hint, isNotNull);
-      expect((hint!.endOffset - hint.startOffset).round(), snapSize);
-    });
+        expect(fixture.viewModel.clipCreateHint, isNull);
+      },
+    );
 
     test('pointer up with non-zero width creates one pattern and one clip', () {
       final arrangementId = fixture.project.sequence.activeArrangementID!;

@@ -39,10 +39,11 @@ class ArrangerCreateClipState
 
   String? _targetTrackId;
   double? _defaultStartOffset;
-  double? _defaultEndOffset;
+  bool _didCrossActivationDistance = false;
 
   @override
   void onEntry({required event, required from}) {
+    _didCrossActivationDistance = false;
     _resolveTargetTrackId();
     _resolveDefaultHintBounds();
     _handleMove();
@@ -52,7 +53,7 @@ class ArrangerCreateClipState
   void onExit({required event, required to}) {
     _targetTrackId = null;
     _defaultStartOffset = null;
-    _defaultEndOffset = null;
+    _didCrossActivationDistance = false;
     viewModel.clipCreateHint = null;
   }
 
@@ -140,23 +141,11 @@ class ArrangerCreateClipState
       return;
     }
 
-    if (!parentState.hasCrossedActivationDistance) {
-      final startOffset = _defaultStartOffset;
-      final endOffset = _defaultEndOffset;
-      if (startOffset == null || endOffset == null) {
-        viewModel.clipCreateHint = null;
-        return;
-      }
+    _didCrossActivationDistance =
+        _didCrossActivationDistance || parentState.hasCrossedActivationDistance;
 
-      viewModel.clipCreateHint = (
-        trackId: trackId,
-        startOffset: startOffset,
-        endOffset: endOffset,
-        color: track.color.colorShifter.clipBase.toColor().withValues(
-          alpha: 0.5,
-        ),
-      );
-      viewModel.hoverIndicatorPosition = null;
+    if (!parentState.hasCrossedActivationDistance) {
+      viewModel.clipCreateHint = null;
       return;
     }
 
@@ -205,37 +194,13 @@ class ArrangerCreateClipState
     }
   }
 
-  DivisionChange? _getDivisionChangeAtTime({
-    required Time time,
-    required List<DivisionChange> divisionChanges,
-  }) {
-    if (divisionChanges.isEmpty) {
-      return null;
-    }
-
-    for (var i = 0; i < divisionChanges.length; i++) {
-      if (time >= 0 &&
-          i < divisionChanges.length - 1 &&
-          divisionChanges[i + 1].offset <= time) {
-        continue;
-      }
-      return divisionChanges[i];
-    }
-
-    return divisionChanges.last;
-  }
-
-  /// Resolves the default bounds for the clip creation hint.
+  /// Resolves the default clip start offset for no-move double-click creation.
   ///
-  /// The default bounds define the clip size that will be created on
-  /// double-click if the user does not move before releasing the pointer. This
-  /// defaults to a bar, unless the snap size is larger than the current bar
-  /// size, at which point it defaults to the snap size.
+  /// This snaps pointer-down to the current grid unless Alt is held.
   void _resolveDefaultHintBounds() {
     final startPosition = parentState.dragStartPosition;
     if (startPosition == null) {
       _defaultStartOffset = null;
-      _defaultEndOffset = null;
       return;
     }
 
@@ -255,24 +220,24 @@ class ArrangerCreateClipState
             round: true,
           ).toDouble();
 
-    final pointerDownTime = startOffsetRaw.round();
-    final startDivision = _getDivisionChangeAtTime(
-      time: pointerDownTime,
-      divisionChanges: divisionChanges,
-    );
-    final snapLength = startDivision?.divisionSnapSize.toDouble() ?? 0;
-    final barLength = getBarLength(
-      project.sequence.ticksPerQuarter,
-      arrangerStateMachine.timeSignatureAt(pointerDownTime),
-    ).toDouble();
-    final defaultLength = max(barLength, snapLength);
-
     _defaultStartOffset = startOffset;
-    _defaultEndOffset = startOffset + defaultLength;
   }
 
   void _handleUp() {
-    if (viewModel.clipCreateHint == null) return;
+    if (!_didCrossActivationDistance) {
+      final trackId = _targetTrackId;
+      final startOffset = _defaultStartOffset;
+      if (trackId == null || startOffset == null) {
+        return;
+      }
+
+      controller.createClip(trackId: trackId, offset: startOffset);
+      return;
+    }
+
+    if (viewModel.clipCreateHint == null) {
+      return;
+    }
 
     final clipCreateHint = viewModel.clipCreateHint!;
 

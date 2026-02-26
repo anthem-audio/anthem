@@ -342,10 +342,13 @@ abstract class _ArrangerController {
 
   /// Creates a new pattern, and a new clip pointing to that pattern at the
   /// given time bounds on the given track.
+  ///
+  /// If [width] is null, the clip is created with no explicit time view, so it
+  /// auto-sizes from the target pattern.
   void createClip({
     required Id trackId,
     required double offset,
-    required double width,
+    double? width,
   }) {
     project.startUndoGroup();
 
@@ -358,7 +361,9 @@ abstract class _ArrangerController {
       patternId: pattern.id,
       trackId: trackId,
       offset: offset.round(),
-      timeView: TimeViewModel(start: 0, end: width.round()),
+      timeView: width == null
+          ? null
+          : TimeViewModel(start: 0, end: width.round()),
     );
 
     project.execute(PatternAddRemoveCommand.add(pattern: pattern));
