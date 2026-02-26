@@ -35,6 +35,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+typedef _ClipRemoveTarget = ({Id arrangementId, Id clipId});
+
 class ProjectController {
   ProjectModel project;
   ProjectViewModel viewModel;
@@ -271,14 +273,65 @@ class ProjectController {
   }
 
   void removeTrack(Id trackId) {
-    project.execute(
-      TrackAddRemoveCommand.remove(project: project, ids: [trackId]),
-    );
+    removeTracks([trackId]);
   }
 
+  /// Removes tracks and any sequencer content that points to them.
+  ///
+  /// Clips are conceptually owned by tracks, but all clips are truly owned by a
+  /// single map in the model. If we removed tracks without removing the clips
+  /// associated with those tracks, we would leak clips in the project file,
+  /// with no way for them to be cleaned up. So we first remove clips on the
+  /// removed track set (including descendants), then remove any patterns that
+  /// become orphaned, and finally remove the tracks.
   void removeTracks(Iterable<Id> trackIds) {
-    project.execute(
-      TrackAddRemoveCommand.remove(project: project, ids: trackIds),
+    final trackIdsToRemove = trackIds.toList(growable: false);
+    final trackRemoveCommand = TrackAddRemoveCommand.remove(
+      project: project,
+      ids: trackIdsToRemove,
+    );
+
+    final clipDeleteTargets = _collectClipDeleteTargetsForTracks(
+      trackIdsToRemove,
+    );
+    final clipAndPatternDeletionPlan = _buildClipAndPatternDeletionPlan(
+      clipDeleteTargets,
+    );
+
+    project.startUndoGroup();
+
+    _executeClipAndPatternDeletionPlan(clipAndPatternDeletionPlan);
+
+    project.execute(trackRemoveCommand);
+
+    project.commitUndoGroup();
+  }
+
+  ({Set<Id> deletedClipIds, Set<Id> deletedPatternIds}) deleteClips({
+    required Id arrangementId,
+    required Iterable<Id> clipIds,
+  }) {
+    final clipDeleteTargets = clipIds.map(
+      (clipId) => (arrangementId: arrangementId, clipId: clipId),
+    );
+
+    final clipAndPatternDeletionPlan = _buildClipAndPatternDeletionPlan(
+      clipDeleteTargets,
+    );
+
+    if (clipAndPatternDeletionPlan.clipsToDelete.isEmpty) {
+      return (deletedClipIds: {}, deletedPatternIds: {});
+    }
+
+    project.startUndoGroup();
+    _executeClipAndPatternDeletionPlan(clipAndPatternDeletionPlan);
+    project.commitUndoGroup();
+
+    return (
+      deletedClipIds: clipAndPatternDeletionPlan.clipsToDelete
+          .map((clip) => clip.clipId)
+          .toSet(),
+      deletedPatternIds: clipAndPatternDeletionPlan.patternIdsToDelete.toSet(),
     );
   }
 
@@ -309,6 +362,149 @@ class ProjectController {
     }
 
     return false;
+  }
+
+  Iterable<_ClipRemoveTarget> _collectClipDeleteTargetsForTracks(
+    Iterable<Id> trackIds,
+  ) sync* {
+    final tracksToDelete = _collectTrackIdsIncludingDescendants(trackIds);
+
+    for (final arrangementEntry in project.sequence.arrangements.entries) {
+      for (final clipEntry in arrangementEntry.value.clips.entries) {
+        if (tracksToDelete.contains(clipEntry.value.trackId)) {
+          yield (arrangementId: arrangementEntry.key, clipId: clipEntry.key);
+        }
+      }
+    }
+  }
+
+  List<Id> _collectTrackIdsIncludingDescendants(Iterable<Id> trackIds) {
+    final tracksToDelete = <Id>[];
+
+    void collect(Id trackId) {
+      if (tracksToDelete.contains(trackId)) {
+        return;
+      }
+      tracksToDelete.add(trackId);
+
+      final track = project.tracks[trackId];
+      if (track == null) {
+        return;
+      }
+
+      for (final childTrackId in track.childTracks) {
+        collect(childTrackId);
+      }
+    }
+
+    for (final trackId in trackIds) {
+      collect(trackId);
+    }
+
+    return tracksToDelete;
+  }
+
+  /// Builds a normalized delete plan for clips and patterns.
+  ///
+  /// Normalization means:
+  /// - clip targets are deduplicated so each clip is removed once
+  /// - pattern IDs are deduplicated so shared patterns are evaluated once
+  ///   against global remaining clip references before deciding deletion
+  ({List<_ClipRemoveTarget> clipsToDelete, List<Id> patternIdsToDelete})
+  _buildClipAndPatternDeletionPlan(Iterable<_ClipRemoveTarget> clipTargets) {
+    final clipsToDelete = <({Id arrangementId, Id clipId, Id patternId})>[];
+
+    // We deduplicate clip targets so repeated clip IDs (or overlapping callers)
+    // do not enqueue duplicate remove commands for the same clip.
+    final seenTargets = <_ClipRemoveTarget>{};
+
+    for (final target in clipTargets) {
+      if (!seenTargets.add(target)) {
+        continue;
+      }
+
+      final arrangement = project.sequence.arrangements[target.arrangementId];
+      final clip = arrangement?.clips[target.clipId];
+      if (clip == null) {
+        continue;
+      }
+
+      clipsToDelete.add((
+        arrangementId: target.arrangementId,
+        clipId: target.clipId,
+        patternId: clip.patternId,
+      ));
+    }
+
+    if (clipsToDelete.isEmpty) {
+      return (clipsToDelete: [], patternIdsToDelete: []);
+    }
+
+    // We deduplicate pattern IDs because many clips can point to the same
+    // pattern, and we only want to evaluate/delete each pattern once.
+    final candidatePatternIds = clipsToDelete
+        .map((clip) => clip.patternId)
+        .toSet();
+    final remainingPatternRefCounts = <Id, int>{
+      for (final patternId in candidatePatternIds) patternId: 0,
+    };
+
+    for (final arrangement in project.sequence.arrangements.values) {
+      for (final clip in arrangement.clips.values) {
+        if (!candidatePatternIds.contains(clip.patternId)) {
+          continue;
+        }
+
+        remainingPatternRefCounts[clip.patternId] =
+            remainingPatternRefCounts[clip.patternId]! + 1;
+      }
+    }
+
+    for (final clip in clipsToDelete) {
+      remainingPatternRefCounts[clip.patternId] =
+          (remainingPatternRefCounts[clip.patternId] ?? 0) - 1;
+    }
+
+    final patternIdsToDelete = remainingPatternRefCounts.entries
+        .where(
+          (entry) =>
+              entry.value <= 0 && project.sequence.patterns[entry.key] != null,
+        )
+        .map((entry) => entry.key)
+        .toList(growable: false);
+
+    return (
+      clipsToDelete: clipsToDelete
+          .map(
+            (clip) => (arrangementId: clip.arrangementId, clipId: clip.clipId),
+          )
+          .toList(growable: false),
+      patternIdsToDelete: patternIdsToDelete,
+    );
+  }
+
+  void _executeClipAndPatternDeletionPlan(
+    ({List<_ClipRemoveTarget> clipsToDelete, List<Id> patternIdsToDelete}) plan,
+  ) {
+    for (final clip in plan.clipsToDelete) {
+      project.execute(
+        ClipAddRemoveCommand.remove(
+          arrangementID: clip.arrangementId,
+          clipId: clip.clipId,
+          project: project,
+        ),
+      );
+    }
+
+    for (final patternId in plan.patternIdsToDelete) {
+      if (!project.sequence.patterns.containsKey(patternId)) {
+        continue;
+      }
+
+      project.execute(
+        PatternAddRemoveCommand.remove(project: project, patternId: patternId),
+      );
+    }
   }
 
   /// Note that this DOES NOT WORK with MobX observers. We assume that we will

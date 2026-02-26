@@ -32,7 +32,22 @@ import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 
-class MockProjectController extends Mock implements ProjectController {}
+class MockProjectController extends Mock implements ProjectController {
+  @override
+  ({Set<Id> deletedClipIds, Set<Id> deletedPatternIds}) deleteClips({
+    required Id arrangementId,
+    required Iterable<Id> clipIds,
+  }) {
+    return super.noSuchMethod(
+          Invocation.method(#deleteClips, [], {
+            #arrangementId: arrangementId,
+            #clipIds: clipIds,
+          }),
+          returnValue: (deletedClipIds: <Id>{}, deletedPatternIds: <Id>{}),
+        )
+        as ({Set<Id> deletedClipIds, Set<Id> deletedPatternIds});
+  }
+}
 
 class _TrackIds {
   static const a = 'a';
@@ -320,6 +335,40 @@ void main() {
       fixture.expectSelectedTracks([]);
       expect(fixture.viewModel.lastToggledTrack, equals(_TrackIds.a1));
       expect(fixture.viewModel.lastShiftClickRange, isNull);
+    });
+  });
+
+  group('deleteClips', () {
+    test('delegates to ProjectController and updates selected clips', () {
+      final arrangementId = fixture.project.sequence.activeArrangementID!;
+      final selectedClipA = getId();
+      final selectedClipB = getId();
+      final unselectedClip = getId();
+      final clipIdsToDelete = [selectedClipA, unselectedClip];
+
+      fixture.viewModel.selectedClips.addAll([selectedClipA, selectedClipB]);
+
+      when(
+        fixture.mockProjectController.deleteClips(
+          arrangementId: arrangementId,
+          clipIds: clipIdsToDelete,
+        ),
+      ).thenReturn((
+        deletedClipIds: {selectedClipA},
+        deletedPatternIds: <Id>{},
+      ));
+
+      fixture.controller.deleteClips(clipIdsToDelete);
+
+      verify(
+        fixture.mockProjectController.deleteClips(
+          arrangementId: arrangementId,
+          clipIds: clipIdsToDelete,
+        ),
+      ).called(1);
+
+      expect(fixture.viewModel.selectedClips.contains(selectedClipA), isFalse);
+      expect(fixture.viewModel.selectedClips.contains(selectedClipB), isTrue);
     });
   });
 

@@ -177,80 +177,16 @@ abstract class _ArrangerController {
       return;
     }
 
-    final arrangement = project.sequence.arrangements[arrangementId];
-    if (arrangement == null) {
-      return;
-    }
+    final projectController = ServiceRegistry.forProject(
+      project.id,
+    ).projectController;
 
-    final arrangementClips = arrangement.clips.nonObservableInner;
-    final clipIdsToDelete = clipIds
-        .where((clipId) => arrangementClips.containsKey(clipId))
-        .toSet();
-    if (clipIdsToDelete.isEmpty) {
-      return;
-    }
+    final deletionResult = projectController.deleteClips(
+      arrangementId: arrangementId,
+      clipIds: clipIds,
+    );
 
-    final candidatePatternIds = <Id>{};
-    for (final clipId in clipIdsToDelete) {
-      final clip = arrangementClips[clipId];
-      if (clip == null) {
-        continue;
-      }
-      candidatePatternIds.add(clip.patternId);
-    }
-
-    final remainingPatternRefCounts = <Id, int>{
-      for (final patternId in candidatePatternIds) patternId: 0,
-    };
-
-    for (final sequenceArrangement in project.sequence.arrangements.values) {
-      for (final patternId in candidatePatternIds) {
-        remainingPatternRefCounts[patternId] =
-            remainingPatternRefCounts[patternId]! +
-            sequenceArrangement.getPatternClipReferenceCount(patternId);
-      }
-    }
-
-    for (final clipId in clipIdsToDelete) {
-      final clip = arrangementClips[clipId];
-      if (clip == null) {
-        continue;
-      }
-
-      remainingPatternRefCounts[clip.patternId] =
-          (remainingPatternRefCounts[clip.patternId] ?? 0) - 1;
-    }
-
-    final patternIdsToDelete = remainingPatternRefCounts.entries
-        .where((entry) => entry.value <= 0)
-        .map((entry) => entry.key)
-        .toList(growable: false);
-
-    project.startUndoGroup();
-
-    for (final clipID in clipIdsToDelete) {
-      project.execute(
-        ClipAddRemoveCommand.remove(
-          arrangementID: arrangementId,
-          clipId: clipID,
-          project: project,
-        ),
-      );
-    }
-
-    for (final patternId in patternIdsToDelete) {
-      if (!project.sequence.patterns.containsKey(patternId)) {
-        continue;
-      }
-
-      project.execute(
-        PatternAddRemoveCommand.remove(project: project, patternId: patternId),
-      );
-    }
-
-    project.commitUndoGroup();
-
-    viewModel.selectedClips.removeAll(clipIdsToDelete);
+    viewModel.selectedClips.removeAll(deletionResult.deletedClipIds);
   }
 
   void selectAllClips() {

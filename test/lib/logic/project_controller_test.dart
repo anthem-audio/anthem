@@ -22,8 +22,12 @@ import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/logic/commands/command.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/model/arrangement/arrangement.dart';
+import 'package:anthem/model/arrangement/clip.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
@@ -50,6 +54,9 @@ class _MockEngine extends Mock implements Engine {
   final ProcessingGraphApi _processingGraphApi;
 
   _MockEngine(this._processingGraphApi);
+
+  @override
+  bool get isRunning => false;
 
   @override
   ProcessingGraphApi get processingGraphApi => _processingGraphApi;
@@ -344,6 +351,204 @@ void main() {
 
       expect(sendTrackOrder[anchorIndex], equals(sendTop.id));
       expect(sendTrackOrder[anchorIndex + 2], equals(masterTrack.id));
+    });
+  });
+
+  group('remove clip and track content', () {
+    final projectId = getId();
+
+    late MockProjectModel project;
+    late ProjectController projectController;
+    late SequencerModel sequence;
+    late ProcessingGraphModel processingGraph;
+    late _MockEngine mockEngine;
+
+    late AnthemObservableMap<Id, TrackModel> tracks;
+    late AnthemObservableList<Id> trackOrder;
+    late AnthemObservableList<Id> sendTrackOrder;
+
+    late TrackModel groupTrack;
+    late TrackModel childTrack;
+    late TrackModel otherTrack;
+    late TrackModel masterTrack;
+
+    late ArrangementModel arrangementA;
+    late ArrangementModel arrangementB;
+
+    late PatternModel orphanPatternA;
+    late PatternModel orphanPatternB;
+    late PatternModel sharedPattern;
+
+    late ClipModel clipOnGroupOrphan;
+    late ClipModel clipOnGroupShared;
+    late ClipModel clipOnOtherShared;
+    late ClipModel clipOnChildOrphan;
+
+    TrackModel createTrack(String name, TrackType type) {
+      return TrackModel(name: name, color: AnthemColor.randomHue(), type: type);
+    }
+
+    ClipModel createClip({
+      required Id patternId,
+      required Id trackId,
+      required int offset,
+    }) {
+      return ClipModel.create(
+        patternId: patternId,
+        trackId: trackId,
+        offset: offset,
+      );
+    }
+
+    setUp(() {
+      project = MockProjectModel();
+      when(project.id).thenReturn(projectId);
+
+      sequence = SequencerModel.create();
+      when(project.sequence).thenReturn(sequence);
+
+      tracks = AnthemObservableMap();
+      trackOrder = AnthemObservableList();
+      sendTrackOrder = AnthemObservableList();
+
+      when(project.tracks).thenReturn(tracks);
+      when(project.trackOrder).thenReturn(trackOrder);
+      when(project.sendTrackOrder).thenReturn(sendTrackOrder);
+
+      processingGraph = ProcessingGraphModel();
+      when(project.processingGraph).thenReturn(processingGraph);
+
+      mockEngine = _MockEngine(_FakeProcessingGraphApi());
+      when(project.engine).thenReturn(mockEngine);
+
+      groupTrack = createTrack('Group', .group);
+      childTrack = createTrack('Child', .instrument);
+      otherTrack = createTrack('Other', .instrument);
+      masterTrack = createTrack('Master', .instrument)..isMasterTrack = true;
+
+      groupTrack.childTracks.add(childTrack.id);
+      childTrack.parentTrackId = groupTrack.id;
+
+      tracks.addAll({
+        groupTrack.id: groupTrack,
+        childTrack.id: childTrack,
+        otherTrack.id: otherTrack,
+        masterTrack.id: masterTrack,
+      });
+
+      trackOrder.addAll([groupTrack.id, otherTrack.id]);
+      sendTrackOrder.add(masterTrack.id);
+
+      arrangementA = sequence.arrangements[sequence.activeArrangementID]!;
+      arrangementB = ArrangementModel.create(
+        name: 'Arrangement B',
+        id: getId(),
+      );
+      sequence.arrangements[arrangementB.id] = arrangementB;
+      sequence.arrangementOrder.add(arrangementB.id);
+
+      orphanPatternA = PatternModel.create(name: 'Orphan A');
+      orphanPatternB = PatternModel.create(name: 'Orphan B');
+      sharedPattern = PatternModel.create(name: 'Shared');
+
+      sequence.patterns[orphanPatternA.id] = orphanPatternA;
+      sequence.patterns[orphanPatternB.id] = orphanPatternB;
+      sequence.patterns[sharedPattern.id] = sharedPattern;
+
+      clipOnGroupOrphan = createClip(
+        patternId: orphanPatternA.id,
+        trackId: groupTrack.id,
+        offset: 0,
+      );
+      clipOnGroupShared = createClip(
+        patternId: sharedPattern.id,
+        trackId: groupTrack.id,
+        offset: 16,
+      );
+      clipOnOtherShared = createClip(
+        patternId: sharedPattern.id,
+        trackId: otherTrack.id,
+        offset: 32,
+      );
+      clipOnChildOrphan = createClip(
+        patternId: orphanPatternB.id,
+        trackId: childTrack.id,
+        offset: 48,
+      );
+
+      arrangementA.clips[clipOnGroupOrphan.id] = clipOnGroupOrphan;
+      arrangementA.clips[clipOnGroupShared.id] = clipOnGroupShared;
+      arrangementA.clips[clipOnOtherShared.id] = clipOnOtherShared;
+      arrangementB.clips[clipOnChildOrphan.id] = clipOnChildOrphan;
+
+      when(project.execute(any)).thenAnswer((invocation) {
+        final command = invocation.positionalArguments[0] as Command;
+        command.execute(project);
+      });
+
+      final arrangerViewModel = ArrangerViewModel(
+        project: project,
+        baseTrackHeight: 40,
+        timeView: TimeRange(0, 4),
+      );
+      ServiceRegistry.forProject(
+        projectId,
+      ).register<ArrangerViewModel>(arrangerViewModel);
+
+      projectController = ProjectController(project, MockProjectViewModel());
+      ServiceRegistry.forProject(
+        projectId,
+      ).register<ProjectController>(projectController);
+    });
+
+    tearDown(() {
+      ServiceRegistry.removeProject(projectId);
+    });
+
+    test('deleteClips removes target clips and orphan patterns', () {
+      final result = projectController.deleteClips(
+        arrangementId: arrangementA.id,
+        clipIds: [clipOnGroupOrphan.id, clipOnGroupShared.id, getId()],
+      );
+
+      expect(arrangementA.clips[clipOnGroupOrphan.id], isNull);
+      expect(arrangementA.clips[clipOnGroupShared.id], isNull);
+      expect(arrangementA.clips[clipOnOtherShared.id], isNotNull);
+      expect(arrangementB.clips[clipOnChildOrphan.id], isNotNull);
+
+      expect(result.deletedClipIds, {
+        clipOnGroupOrphan.id,
+        clipOnGroupShared.id,
+      });
+      expect(result.deletedPatternIds, {orphanPatternA.id});
+
+      expect(sequence.patterns[orphanPatternA.id], isNull);
+      expect(sequence.patterns[sharedPattern.id], isNotNull);
+      expect(sequence.patterns[orphanPatternB.id], isNotNull);
+
+      verify(project.startUndoGroup()).called(1);
+      verify(project.commitUndoGroup()).called(1);
+    });
+
+    test('removeTracks removes clips on those tracks and descendants', () {
+      projectController.removeTracks([groupTrack.id]);
+
+      expect(arrangementA.clips[clipOnGroupOrphan.id], isNull);
+      expect(arrangementA.clips[clipOnGroupShared.id], isNull);
+      expect(arrangementB.clips[clipOnChildOrphan.id], isNull);
+      expect(arrangementA.clips[clipOnOtherShared.id], isNotNull);
+
+      expect(sequence.patterns[orphanPatternA.id], isNull);
+      expect(sequence.patterns[orphanPatternB.id], isNull);
+      expect(sequence.patterns[sharedPattern.id], isNotNull);
+
+      expect(tracks[groupTrack.id], isNull);
+      expect(tracks[childTrack.id], isNull);
+      expect(tracks[otherTrack.id], isNotNull);
+      expect(tracks[masterTrack.id], isNotNull);
+
+      verify(project.startUndoGroup()).called(1);
+      verify(project.commitUndoGroup()).called(1);
     });
   });
 }
