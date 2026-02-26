@@ -152,12 +152,6 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   @hideFromSerialization
   Id? activeInstrumentID;
 
-  /// ID of the active automation generator, used to determine which automation
-  /// generator is being written to using the automation editor.
-  @anthemObservable
-  @hideFromSerialization
-  Id? activeAutomationGeneratorID;
-
   /// The ID of the project.
   @hideFromSerialization
   Id id = getId();

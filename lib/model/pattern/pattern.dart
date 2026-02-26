@@ -25,7 +25,6 @@ import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/main.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
-import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
@@ -120,14 +119,6 @@ class PatternModel extends _PatternModel
   /// software. Note that JSON serialization and
   PatternModel.create({required super.name}) : super.create() {
     _init();
-
-    onModelFirstAttached(() {
-      for (final generator in project.generators.values.where(
-        (generator) => generator.generatorType == GeneratorType.automation,
-      )) {
-        automationLanes[generator.id] = AutomationLaneModel();
-      }
-    });
   }
 
   factory PatternModel.fromJson(Map<String, dynamic> json) {
@@ -179,7 +170,7 @@ class PatternModel extends _PatternModel
         _clipAutoWidthUpdateAction.execute();
       });
 
-      onChange((b) => b.automationLanes.withDescendants, (e) {
+      onChange((b) => b.automation.withDescendants, (e) {
         _clipAutoWidthUpdateAction.execute();
       });
 
@@ -200,7 +191,7 @@ class PatternModel extends _PatternModel
     });
   }
 
-  Iterable<String> get channelsWithContent => automationLanes.keys;
+  Iterable<String> get channelsWithContent => project.generatorOrder;
 }
 
 abstract class _PatternModel
@@ -216,10 +207,8 @@ abstract class _PatternModel
   @anthemObservable
   AnthemObservableList<NoteModel> notes = AnthemObservableList();
 
-  /// The ID here is channel ID
   @anthemObservable
-  AnthemObservableMap<Id, AutomationLaneModel> automationLanes =
-      AnthemObservableMap();
+  AutomationLaneModel automation = AutomationLaneModel();
 
   @anthemObservable
   AnthemObservableList<TimeSignatureChangeModel> timeSignatureChanges =
@@ -258,10 +247,9 @@ abstract class _PatternModel
       (previousValue, note) => max(previousValue, (note.offset + note.length)),
     );
 
-    final lastAutomationContent = automationLanes.values.fold<int>(
+    final lastAutomationContent = max(
       ticksPerBar * barMultiple * minPaddingInBarMultiples,
-      (previousValue, automationLane) =>
-          max(previousValue, automationLane.points.lastOrNull?.offset ?? 0),
+      automation.points.lastOrNull?.offset ?? 0,
     );
 
     final lastContent = max(lastNoteContent, lastAutomationContent);
@@ -277,10 +265,10 @@ abstract class _PatternModel
     // prevent detailed observation and just observe the whole thing.
 
     notes.observeAllChanges();
-    automationLanes.observeAllChanges();
+    automation.observeAllChanges();
 
     return blockObservation(
-      modelItems: [notes, automationLanes],
+      modelItems: [notes, automation],
       block: () => getWidth(barMultiple: 4, minPaddingInBarMultiples: 4),
     );
   }

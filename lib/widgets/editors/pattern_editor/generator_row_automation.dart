@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/automation_editor/curves/curve_renderer.dart';
@@ -25,7 +24,6 @@ import 'package:flutter/widgets.dart';
 
 class GeneratorRowAutomation extends StatelessWidget {
   final PatternModel pattern;
-  final Id generatorID;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;
@@ -33,7 +31,6 @@ class GeneratorRowAutomation extends StatelessWidget {
   const GeneratorRowAutomation({
     super.key,
     required this.pattern,
-    required this.generatorID,
     required this.timeViewStart,
     required this.ticksPerPixel,
     required this.color,
@@ -44,7 +41,6 @@ class GeneratorRowAutomation extends StatelessWidget {
     return CustomPaintObserver(
       painterBuilder: () => _GeneratorRowAutomationPainter(
         pattern: pattern,
-        generatorID: generatorID,
         timeViewStart: timeViewStart,
         ticksPerPixel: ticksPerPixel,
         color: color,
@@ -56,7 +52,6 @@ class GeneratorRowAutomation extends StatelessWidget {
 
 class _GeneratorRowAutomationPainter extends CustomPainterObserver {
   final PatternModel pattern;
-  final Id generatorID;
   final double timeViewStart;
   final double ticksPerPixel;
   final Color color;
@@ -64,7 +59,6 @@ class _GeneratorRowAutomationPainter extends CustomPainterObserver {
 
   _GeneratorRowAutomationPainter({
     required this.pattern,
-    required this.generatorID,
     required this.timeViewStart,
     required this.ticksPerPixel,
     required this.color,
@@ -77,7 +71,7 @@ class _GeneratorRowAutomationPainter extends CustomPainterObserver {
 
     final timeViewEnd = timeViewStart + ticksPerPixel * size.width;
 
-    final lane = pattern.automationLanes[generatorID]!;
+    final lane = pattern.automation;
 
     renderAutomationCurve(
       canvas: canvas,
@@ -97,7 +91,6 @@ class _GeneratorRowAutomationPainter extends CustomPainterObserver {
   @override
   bool shouldRepaint(_GeneratorRowAutomationPainter oldDelegate) {
     return oldDelegate.pattern != pattern ||
-        oldDelegate.generatorID != generatorID ||
         oldDelegate.timeViewStart != timeViewStart ||
         oldDelegate.ticksPerPixel != ticksPerPixel ||
         oldDelegate.color != color ||

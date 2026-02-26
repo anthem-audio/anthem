@@ -163,15 +163,11 @@ class _GeneratorRowState extends State<GeneratorRow> {
                 onTap: () {
                   final generator = project.generators[widget.generatorID]!;
 
-                  switch (generator.generatorType) {
-                    case GeneratorType.instrument:
-                      project.activeInstrumentID = widget.generatorID;
-                      project.activeAutomationGeneratorID = null;
-                      break;
-                    case GeneratorType.automation:
-                      project.activeAutomationGeneratorID = widget.generatorID;
-                      project.activeInstrumentID = null;
-                      break;
+                  if (generator.generatorType == GeneratorType.instrument) {
+                    project.activeInstrumentID = widget.generatorID;
+                  } else if (generator.generatorType ==
+                      GeneratorType.automation) {
+                    project.activeInstrumentID = null;
                   }
 
                   projectViewModel.selectedEditor = EditorKind.channelRack;
@@ -247,7 +243,7 @@ class _GeneratorRowState extends State<GeneratorRow> {
                       project.activeInstrumentID = widget.generatorID;
                     } else if (generator.generatorType ==
                         GeneratorType.automation) {
-                      project.activeAutomationGeneratorID = widget.generatorID;
+                      project.activeInstrumentID = null;
                     }
                   },
                   child: Container(
@@ -287,7 +283,6 @@ class _GeneratorRowState extends State<GeneratorRow> {
                             GeneratorType.automation) {
                           return GeneratorRowAutomation(
                             pattern: pattern,
-                            generatorID: widget.generatorID,
                             timeViewStart: 0,
                             // 1 bar is 100 pixels, can be tweaked (and should probably be set above?)
                             ticksPerPixel:

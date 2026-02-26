@@ -140,8 +140,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
       timeViewEnd: timeViewEnd,
     );
 
-    final points =
-        pattern?.automationLanes[project.activeAutomationGeneratorID]?.points;
+    final points = pattern?.automation.points;
 
     if (points != null) {
       points.observeAllChanges();

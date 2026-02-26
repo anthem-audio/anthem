@@ -21,7 +21,6 @@ import 'dart:ui';
 
 import 'package:anthem/logic/commands/pattern_automation_commands.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/pattern/automation_lane.dart';
 import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
@@ -61,9 +60,7 @@ class _AutomationEditorController {
           project.sequence.patterns[project.sequence.activePatternID];
       if (pattern == null) return;
 
-      final automationLane =
-          pattern.automationLanes[project.activeAutomationGeneratorID];
-      if (automationLane == null) return;
+      final automationLane = pattern.automation;
 
       // These will not be watched if there aren't any points, so we'll access
       // them here.

@@ -21,7 +21,6 @@ import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/model.dart';
-import 'package:anthem_codegen/include.dart';
 
 import 'command.dart';
 
@@ -35,9 +34,6 @@ void _addGenerator(
   // required NodeModel midiGenNode,
   required NodeModel sequenceNoteProviderNode,
   required NodeModel liveEventProviderNode,
-
-  Map<Id, AnthemObservableList<NoteModel>>? notes,
-  Map<Id, AutomationLaneModel>? automationLanes,
 }) {
   if (index != null) {
     project.generatorOrder.insert(index, generator.id);
@@ -117,16 +113,9 @@ void _addGenerator(
     ),
   );
 
-  // Add back sequence data for this generator to all patterns
-  for (final pattern in project.sequence.patterns.values) {
-    // if (notes != null && notes.containsKey(pattern.id)) {
-    //   pattern.notes[generator.id] = notes[pattern.id]!;
-    // }
-
-    if (automationLanes != null && automationLanes.containsKey(pattern.id)) {
-      pattern.automationLanes[generator.id] = automationLanes[pattern.id]!;
-    }
-  }
+  // Add back sequence data for this generator to all patterns.
+  // Notes are currently global per pattern (not keyed by generator), so there
+  // is nothing to restore here.
 
   project.engine.processingGraphApi.compile();
 }
@@ -149,16 +138,8 @@ void _removeGenerator(ProjectModel project, Id generatorID) {
   project.processingGraph.removeNode(generator.sequenceNoteProviderNodeId!);
   project.processingGraph.removeNode(generator.liveEventProviderNodeId!);
 
-  // Remove sequence data for this generator from all patterns
-  for (final pattern in project.sequence.patterns.values) {
-    // if (pattern.notes.containsKey(generatorID)) {
-    //   pattern.notes.remove(generatorID);
-    // }
-
-    if (pattern.automationLanes.containsKey(generatorID)) {
-      pattern.automationLanes.remove(generatorID);
-    }
-  }
+  // Sequence note/automation content is currently global per pattern (not
+  // keyed by generator), so there is no per-pattern sequence cleanup here.
 
   project.engine.processingGraphApi.compile();
 }
@@ -246,12 +227,6 @@ class RemoveGeneratorCommand extends Command {
   NodeModel liveEventProviderNode;
   late int index;
 
-  /// Map of pattern ID to notes for this generator.
-  Map<Id, AnthemObservableList<NoteModel>>? notes;
-
-  /// Map of pattern ID to notes for this generator.
-  Map<Id, AutomationLaneModel>? automationLanes;
-
   RemoveGeneratorCommand({
     required ProjectModel project,
     required this.generator,
@@ -265,20 +240,6 @@ class RemoveGeneratorCommand extends Command {
        liveEventProviderNode =
            project.processingGraph.nodes[generator.liveEventProviderNodeId]! {
     index = project.generatorOrder.indexOf(generator.id);
-
-    notes = {};
-    // for (final pattern in project.sequence.patterns.values) {
-    //   if (pattern.notes.containsKey(generator.id)) {
-    //     notes![pattern.id] = pattern.notes[generator.id]!;
-    //   }
-    // }
-
-    automationLanes = {};
-    for (final pattern in project.sequence.patterns.values) {
-      if (pattern.automationLanes.containsKey(generator.id)) {
-        automationLanes![pattern.id] = pattern.automationLanes[generator.id]!;
-      }
-    }
   }
 
   @override
@@ -298,9 +259,6 @@ class RemoveGeneratorCommand extends Command {
       // midiGenNode: midiGenNode,
       sequenceNoteProviderNode: sequenceNoteProviderNode,
       liveEventProviderNode: liveEventProviderNode,
-
-      notes: notes,
-      automationLanes: automationLanes,
     );
   }
 }
