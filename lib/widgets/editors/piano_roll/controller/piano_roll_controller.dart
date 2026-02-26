@@ -138,8 +138,7 @@ class _PianoRollController {
   /// Deletes notes in the selectedNotes set from the view model.
   void deleteSelected() {
     if (viewModel.selectedNotes.isEmpty ||
-        project.sequence.activePatternID == null ||
-        project.activeInstrumentID == null) {
+        project.sequence.activePatternID == null) {
       return;
     }
 
@@ -165,8 +164,7 @@ class _PianoRollController {
 
   /// Adds all notes to the selection set in the view model.
   void selectAll() {
-    if (project.sequence.activePatternID == null ||
-        project.activeInstrumentID == null) {
+    if (project.sequence.activePatternID == null) {
       return;
     }
 

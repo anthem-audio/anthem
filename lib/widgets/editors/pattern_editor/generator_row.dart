@@ -161,15 +161,6 @@ class _GeneratorRowState extends State<GeneratorRow> {
               // Generator name
               GestureDetector(
                 onTap: () {
-                  final generator = project.generators[widget.generatorID]!;
-
-                  if (generator.generatorType == GeneratorType.instrument) {
-                    project.activeInstrumentID = widget.generatorID;
-                  } else if (generator.generatorType ==
-                      GeneratorType.automation) {
-                    project.activeInstrumentID = null;
-                  }
-
                   projectViewModel.selectedEditor = EditorKind.channelRack;
                 },
                 child: Observer(
@@ -238,13 +229,6 @@ class _GeneratorRowState extends State<GeneratorRow> {
                           GeneratorType.instrument => EditorKind.detail,
                           GeneratorType.automation => EditorKind.automation,
                         };
-
-                    if (generator.generatorType == GeneratorType.instrument) {
-                      project.activeInstrumentID = widget.generatorID;
-                    } else if (generator.generatorType ==
-                        GeneratorType.automation) {
-                      project.activeInstrumentID = null;
-                    }
                   },
                   child: Container(
                     height: 30,

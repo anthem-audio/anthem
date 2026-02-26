@@ -51,10 +51,6 @@ class ProjectController {
     project.redo();
   }
 
-  void setActiveGeneratorID(Id id) {
-    project.activeInstrumentID = id;
-  }
-
   Id addPattern([String? name]) {
     if (name == null) {
       final patterns = project.sequence.patterns.nonObservableInner;
@@ -150,10 +146,6 @@ class ProjectController {
         color: color,
       ),
     );
-
-    if (generatorType == GeneratorType.instrument) {
-      project.activeInstrumentID = id;
-    }
   }
 
   void tempDevAddGeneratorNodeToTrack({

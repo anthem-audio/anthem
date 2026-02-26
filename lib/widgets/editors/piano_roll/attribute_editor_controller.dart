@@ -174,7 +174,6 @@ class AttributeEditorController {
     final pattern = project.sequence.patterns[project.sequence.activePatternID];
 
     if (pattern == null) return;
-    if (project.activeInstrumentID == null) return;
 
     late NoteAttribute attribute;
 

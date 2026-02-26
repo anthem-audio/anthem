@@ -146,12 +146,6 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   @anthemObservable
   AnthemObservableList<Id> sendTrackOrder = AnthemObservableList();
 
-  /// ID of the active instrument, used to determine which instrument is shown
-  /// in the channel rack, which is used for piano roll, etc.
-  @anthemObservable
-  @hideFromSerialization
-  Id? activeInstrumentID;
-
   /// The ID of the project.
   @hideFromSerialization
   Id id = getId();
