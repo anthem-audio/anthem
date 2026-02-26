@@ -176,6 +176,7 @@ void main() {
 
     expect(createdPatternIds, hasLength(1));
     expect(createdClipIds, hasLength(1));
+    verify(fixture.mockProjectController.setActiveTrack(trackId)).called(1);
     verify(
       fixture.mockProjectController.openPatternInPianoRoll(
         createdPatternIds.single,

@@ -83,6 +83,10 @@ abstract class _SequencerModel
   Id? activePatternID;
 
   @anthemObservable
+  @hideFromSerialization
+  Id? activeTrackID;
+
+  @anthemObservable
   AnthemObservableMap<Id, ArrangementModel> arrangements = .new();
 
   @anthemObservable
@@ -130,6 +134,10 @@ abstract class _SequencerModel
 
   void setActivePattern(Id? patternID) {
     activePatternID = patternID;
+  }
+
+  void setActiveTrack(Id? trackID) {
+    activeTrackID = trackID;
   }
 
   void setActiveArrangement(Id? arrangementID) {

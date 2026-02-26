@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:flutter/rendering.dart';
@@ -71,9 +72,8 @@ class _PianoControlState extends State<PianoControl> {
     }
 
     final project = Provider.of<ProjectModel>(context, listen: false);
-    final activeInstrumentId = project.activeInstrumentID;
-
-    if (activeInstrumentId == null) {
+    final activeTrackId = project.sequence.activeTrackID;
+    if (activeTrackId == null) {
       return;
     }
 
@@ -81,18 +81,15 @@ class _PianoControlState extends State<PianoControl> {
 
     activeKey = key;
 
-    project.generators[activeInstrumentId]?.liveEventManager.noteOn(
-      pitch: key,
-      velocity: 80,
-      pan: 0,
-    );
+    ServiceRegistry.forProject(project.id).projectController.liveEventManager
+        .noteOn(trackId: activeTrackId, pitch: key, velocity: 80, pan: 0);
   }
 
   void clearActiveKey() {
     final project = Provider.of<ProjectModel>(context, listen: false);
-    final activeInstrumentId = project.activeInstrumentID;
+    final activeTrackId = project.sequence.activeTrackID;
 
-    if (activeInstrumentId == null) {
+    if (activeTrackId == null) {
       return;
     }
 
@@ -100,9 +97,8 @@ class _PianoControlState extends State<PianoControl> {
       return;
     }
 
-    project.generators[activeInstrumentId]?.liveEventManager.noteOff(
-      pitch: activeKey!,
-    );
+    ServiceRegistry.forProject(project.id).projectController.liveEventManager
+        .noteOff(trackId: activeTrackId, pitch: activeKey!);
 
     activeKey = null;
   }

@@ -26,6 +26,7 @@ import 'package:anthem/logic/commands/project_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/track_commands.dart';
+import 'package:anthem/logic/live_event_manager.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
@@ -38,6 +39,7 @@ import 'package:flutter/widgets.dart';
 class ProjectController {
   ProjectModel project;
   ProjectViewModel viewModel;
+  late final LiveEventManager liveEventManager = LiveEventManager(project);
 
   ProjectController(this.project, this.viewModel);
 
@@ -468,6 +470,10 @@ class ProjectController {
   void setActivePattern(Id? id) {
     project.sequence.setActivePattern(id);
     _updateTransportSequenceID(id);
+  }
+
+  void setActiveTrack(Id? id) {
+    project.sequence.setActiveTrack(id);
   }
 
   void openPatternInPianoRoll(Id patternID) {

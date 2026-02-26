@@ -164,9 +164,11 @@ abstract class _ArrangerController {
       return;
     }
 
-    ServiceRegistry.forProject(
+    final projectController = ServiceRegistry.forProject(
       project.id,
-    ).projectController.openPatternInPianoRoll(clip.patternId);
+    ).projectController;
+    projectController.setActiveTrack(clip.trackId);
+    projectController.openPatternInPianoRoll(clip.patternId);
   }
 
   void deleteClips(Iterable<Id> clipIds) {
@@ -376,9 +378,11 @@ abstract class _ArrangerController {
 
     project.commitUndoGroup();
 
-    ServiceRegistry.forProject(
+    final projectController = ServiceRegistry.forProject(
       project.id,
-    ).projectController.openPatternInPianoRoll(pattern.id);
+    ).projectController;
+    projectController.setActiveTrack(trackId);
+    projectController.openPatternInPianoRoll(pattern.id);
   }
 
   /// Adds a time signature change to the active arrangement.

@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/logic/live_event_manager.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter/material.dart';
@@ -66,9 +65,6 @@ class GeneratorModel extends _GeneratorModel
 
   factory GeneratorModel.fromJson(Map<String, dynamic> json) =>
       _$GeneratorModelAnthemModelMixin.fromJson(json);
-
-  @hide
-  late final LiveEventManager liveEventManager = LiveEventManager(this);
 }
 
 abstract class _GeneratorModel

@@ -18,37 +18,48 @@
 */
 
 import 'package:anthem/engine_api/messages/messages.dart';
-import 'package:anthem/model/generator.dart';
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/project.dart';
 
-/// Manages live events for a generator.
+/// Manages live note events for tracks.
 ///
 /// This class is responsible for sending live event messages to the engine
-/// for a specific generator instance.
+/// for a track's live event provider node.
 class LiveEventManager {
-  final GeneratorModel generator;
+  final ProjectModel project;
 
-  LiveEventManager(this.generator);
+  LiveEventManager(this.project);
+
+  Id? _getLiveEventProviderNodeId(Id trackId) {
+    final track = project.tracks[trackId];
+    return track?.liveEventProviderNodeId;
+  }
 
   void noteOn({
+    required Id trackId,
     required int pitch,
     required double velocity,
     required double pan,
   }) {
-    final project = generator.project;
     if (!project.engine.isRunning) return;
 
+    final liveEventProviderNodeId = _getLiveEventProviderNodeId(trackId);
+    if (liveEventProviderNodeId == null) return;
+
     project.engine.processingGraphApi.sendLiveEvent(
-      generator.liveEventProviderNodeId!,
+      liveEventProviderNodeId,
       LiveEventRequestNoteOnEvent(pitch: pitch, velocity: velocity, pan: pan),
     );
   }
 
-  void noteOff({required int pitch}) {
-    final project = generator.project;
+  void noteOff({required Id trackId, required int pitch}) {
     if (!project.engine.isRunning) return;
 
+    final liveEventProviderNodeId = _getLiveEventProviderNodeId(trackId);
+    if (liveEventProviderNodeId == null) return;
+
     project.engine.processingGraphApi.sendLiveEvent(
-      generator.liveEventProviderNodeId!,
+      liveEventProviderNodeId,
       LiveEventRequestNoteOffEvent(pitch: pitch),
     );
   }

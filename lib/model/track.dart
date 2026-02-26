@@ -21,6 +21,7 @@ import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_connection.dart';
 import 'package:anthem/model/processing_graph/processors/balance.dart';
 import 'package:anthem/model/processing_graph/processors/gain.dart';
+import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
@@ -123,14 +124,37 @@ abstract class _TrackModel
   @anthemObservable
   Id? sequenceNoteProviderNodeId;
 
+  /// Live event provider node assigned to this track.
+  ///
+  /// This node allows direct note audition for this track's instrument.
+  @anthemObservable
+  Id? liveEventProviderNodeId;
+
   NodeModel? get generatorNode =>
       project.processingGraph.nodes[generatorNodeId];
 
   NodeModel? get sequenceNoteProviderNode =>
       project.processingGraph.nodes[sequenceNoteProviderNodeId];
 
+  NodeModel? get liveEventProviderNode =>
+      project.processingGraph.nodes[liveEventProviderNodeId];
+
   Id get audioOutputNodeId => balanceNodeId!;
   int get audioOutputPortId => BalanceProcessorModel.audioOutputPortId;
+
+  /// Returns all processing graph node IDs currently owned by this track.
+  ///
+  /// This is the single source of truth for which nodes are considered part of
+  /// a track for lifecycle operations such as remove/restore.
+  List<Id> getOwnedNodeIds() {
+    return [
+      gainNodeId,
+      balanceNodeId,
+      generatorNodeId,
+      sequenceNoteProviderNodeId,
+      liveEventProviderNodeId,
+    ].nonNulls.toList();
+  }
 
   _TrackModel({required this.name, required this.color, required this.type})
     : id = getId(),
@@ -138,6 +162,7 @@ abstract class _TrackModel
       balanceNodeId = null,
       generatorNodeId = null,
       sequenceNoteProviderNodeId = null,
+      liveEventProviderNodeId = null,
       super();
 
   void createAndRegisterNodes(ProjectModel project) {
@@ -180,5 +205,10 @@ abstract class _TrackModel
     ).createNode();
     sequenceNoteProviderNodeId = sequenceNoteProviderNode.id;
     project.processingGraph.addNode(sequenceNoteProviderNode);
+
+    final liveEventProviderNode = LiveEventProviderProcessorModel()
+        .createNode();
+    liveEventProviderNodeId = liveEventProviderNode.id;
+    project.processingGraph.addNode(liveEventProviderNode);
   }
 }

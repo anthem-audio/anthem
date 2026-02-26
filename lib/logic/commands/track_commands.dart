@@ -24,6 +24,7 @@ import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_connection.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
 import 'package:anthem/model/processing_graph/processors/gain.dart';
+import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
@@ -399,25 +400,7 @@ Set<Id> _collectTrackNodeIdsForDescriptors(
     ];
 
     for (final track in tracksToScan) {
-      final gainNodeId = _tryGetTrackGainNodeId(track);
-      if (gainNodeId != null) {
-        nodeIds.add(gainNodeId);
-      }
-
-      final balanceNodeId = _tryGetTrackBalanceNodeId(track);
-      if (balanceNodeId != null) {
-        nodeIds.add(balanceNodeId);
-      }
-
-      final generatorNodeId = track.generatorNodeId;
-      if (generatorNodeId != null) {
-        nodeIds.add(generatorNodeId);
-      }
-
-      final sequenceNoteProviderNodeId = track.sequenceNoteProviderNodeId;
-      if (sequenceNoteProviderNodeId != null) {
-        nodeIds.add(sequenceNoteProviderNodeId);
-      }
+      nodeIds.addAll(track.getOwnedNodeIds());
     }
   }
 
@@ -456,6 +439,10 @@ class TempDevAddGeneratorToTrackCommand extends Command {
       project,
       track,
     );
+    final liveEventProviderNode = _getExistingLiveEventProviderNode(
+      project,
+      track,
+    );
 
     final hasRestorableGeneratorSnapshot =
         _removedAddedGeneratorSnapshot != null &&
@@ -475,6 +462,11 @@ class TempDevAddGeneratorToTrackCommand extends Command {
       _connectSequenceProviderToGenerator(
         project,
         sequenceNoteProviderNode,
+        generatorNode,
+      );
+      _connectLiveEventProviderToGenerator(
+        project,
+        liveEventProviderNode,
         generatorNode,
       );
     }
@@ -552,6 +544,24 @@ NodeModel _getExistingSequenceNoteProviderNode(
   return sequenceProviderNode;
 }
 
+NodeModel _getExistingLiveEventProviderNode(
+  ProjectModel project,
+  TrackModel track,
+) {
+  final liveEventProviderNodeId = track.liveEventProviderNodeId;
+  final liveEventProviderNode =
+      project.processingGraph.nodes[liveEventProviderNodeId];
+
+  if (liveEventProviderNode == null) {
+    throw StateError(
+      'TempDevAddGeneratorToTrackCommand requires an existing live event '
+      'provider node on track ${track.id}.',
+    );
+  }
+
+  return liveEventProviderNode;
+}
+
 void _connectGeneratorAudioToTrackGain(
   ProjectModel project,
   TrackModel track,
@@ -597,6 +607,27 @@ void _connectSequenceProviderToGenerator(
       id: getId(),
       sourceNodeId: sequenceProviderNode.id,
       sourcePortId: SequenceNoteProviderProcessorModel.eventOutputPortId,
+      destinationNodeId: generatorNode.id,
+      destinationPortId: generatorNode.eventInputPorts.first.id,
+    ),
+  );
+}
+
+void _connectLiveEventProviderToGenerator(
+  ProjectModel project,
+  NodeModel liveEventProviderNode,
+  NodeModel generatorNode,
+) {
+  if (liveEventProviderNode.eventOutputPorts.isEmpty ||
+      generatorNode.eventInputPorts.isEmpty) {
+    return;
+  }
+
+  project.processingGraph.addConnection(
+    NodeConnectionModel(
+      id: getId(),
+      sourceNodeId: liveEventProviderNode.id,
+      sourcePortId: LiveEventProviderProcessorModel.eventOutputPortId,
       destinationNodeId: generatorNode.id,
       destinationPortId: generatorNode.eventInputPorts.first.id,
     ),

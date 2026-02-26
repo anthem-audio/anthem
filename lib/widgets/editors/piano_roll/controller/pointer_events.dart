@@ -126,6 +126,10 @@ class _LiveNotes {
 
   _LiveNotes(this.project);
 
+  Id? _activeTrackId() {
+    return project.sequence.activeTrackID;
+  }
+
   bool hasNoteForKey(int key) {
     return _notes.containsKey(key);
   }
@@ -135,46 +139,57 @@ class _LiveNotes {
     required double velocity,
     required double pan,
   }) {
-    final generatorModel = project.generators[project.activeInstrumentID];
-    if (generatorModel == null) {
+    final activeTrackId = _activeTrackId();
+    if (activeTrackId == null) {
       return;
     }
 
-    final liveEventManager = generatorModel.liveEventManager;
+    final liveEventManager = ServiceRegistry.forProject(
+      project.id,
+    ).projectController.liveEventManager;
 
     if (_notes.containsKey(key)) {
-      liveEventManager.noteOff(pitch: key);
+      liveEventManager.noteOff(trackId: activeTrackId, pitch: key);
     }
 
-    liveEventManager.noteOn(pitch: key, velocity: velocity, pan: pan);
+    liveEventManager.noteOn(
+      trackId: activeTrackId,
+      pitch: key,
+      velocity: velocity,
+      pan: pan,
+    );
 
     _notes[key] = (velocity: velocity, pan: pan);
   }
 
   void removeNote(int key) {
-    final generatorModel = project.generators[project.activeInstrumentID];
-    if (generatorModel == null) {
+    final activeTrackId = _activeTrackId();
+    if (activeTrackId == null) {
       return;
     }
 
-    final liveEventManager = generatorModel.liveEventManager;
+    final liveEventManager = ServiceRegistry.forProject(
+      project.id,
+    ).projectController.liveEventManager;
 
     if (_notes.containsKey(key)) {
-      liveEventManager.noteOff(pitch: key);
+      liveEventManager.noteOff(trackId: activeTrackId, pitch: key);
       _notes.remove(key);
     }
   }
 
   void removeAll() {
-    final generatorModel = project.generators[project.activeInstrumentID];
-    if (generatorModel == null) {
+    final activeTrackId = _activeTrackId();
+    if (activeTrackId == null) {
       return;
     }
 
-    final liveEventManager = generatorModel.liveEventManager;
+    final liveEventManager = ServiceRegistry.forProject(
+      project.id,
+    ).projectController.liveEventManager;
 
     for (final key in _notes.keys) {
-      liveEventManager.noteOff(pitch: key);
+      liveEventManager.noteOff(trackId: activeTrackId, pitch: key);
     }
     _notes.clear();
   }

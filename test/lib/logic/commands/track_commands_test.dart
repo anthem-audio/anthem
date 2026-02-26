@@ -27,6 +27,7 @@ import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/processing_graph/node_connection.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
 import 'package:anthem/model/processing_graph/processors/gain.dart';
+import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
 import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/model/project.dart';
@@ -741,12 +742,16 @@ void main() {
           command.execute(project);
 
           final sequenceNodeId = trackC.sequenceNoteProviderNodeId;
+          final liveEventNodeId = trackC.liveEventProviderNodeId;
           expect(trackC.generatorNodeId, equals(generatorNode.id));
           expect(sequenceNodeId, isNotNull);
+          expect(liveEventNodeId, isNotNull);
           expect(processingGraph.nodes[generatorNode.id], isNotNull);
           expect(processingGraph.nodes[sequenceNodeId!], isNotNull);
+          expect(processingGraph.nodes[liveEventNodeId!], isNotNull);
 
           final sequenceNode = processingGraph.nodes[sequenceNodeId]!;
+          final liveEventNode = processingGraph.nodes[liveEventNodeId]!;
           final sequenceProcessor =
               sequenceNode.processor as SequenceNoteProviderProcessorModel;
           expect(sequenceProcessor.trackId, equals(trackC.id));
@@ -779,19 +784,38 @@ void main() {
               .toList();
           expect(sequenceToGeneratorConnection, hasLength(1));
 
+          final liveEventToGeneratorConnection = processingGraph
+              .connections
+              .values
+              .where(
+                (connection) =>
+                    connection.sourceNodeId == liveEventNode.id &&
+                    connection.destinationNodeId == generatorNode.id &&
+                    connection.sourcePortId ==
+                        LiveEventProviderProcessorModel.eventOutputPortId &&
+                    connection.destinationPortId ==
+                        ToneGeneratorProcessorModel.eventInputPortId,
+              )
+              .toList();
+          expect(liveEventToGeneratorConnection, hasLength(1));
+
           command.rollback(project);
 
           expect(trackC.generatorNodeId, isNull);
           expect(trackC.sequenceNoteProviderNodeId, equals(sequenceNodeId));
+          expect(trackC.liveEventProviderNodeId, equals(liveEventNodeId));
           expect(processingGraph.nodes[generatorNode.id], isNull);
           expect(processingGraph.nodes[sequenceNodeId], isNotNull);
+          expect(processingGraph.nodes[liveEventNodeId], isNotNull);
 
           command.execute(project);
 
           expect(trackC.generatorNodeId, equals(generatorNode.id));
           expect(trackC.sequenceNoteProviderNodeId, equals(sequenceNodeId));
+          expect(trackC.liveEventProviderNodeId, equals(liveEventNodeId));
           expect(processingGraph.nodes[generatorNode.id], isNotNull);
           expect(processingGraph.nodes[sequenceNodeId], isNotNull);
+          expect(processingGraph.nodes[liveEventNodeId], isNotNull);
         },
       );
 
@@ -814,6 +838,8 @@ void main() {
         final newTrack = tracks[newTrackId]!;
         final gainNodeId = newTrack.gainNodeId;
         final balanceNodeId = newTrack.balanceNodeId;
+        final sequenceNodeId = newTrack.sequenceNoteProviderNodeId;
+        final liveEventNodeId = newTrack.liveEventProviderNodeId;
         final gainToBalanceConnectionId = processingGraph.connections.values
             .firstWhere(
               (connection) =>
@@ -824,6 +850,8 @@ void main() {
 
         expect(processingGraph.nodes[gainNodeId], isNotNull);
         expect(processingGraph.nodes[balanceNodeId], isNotNull);
+        expect(processingGraph.nodes[sequenceNodeId], isNotNull);
+        expect(processingGraph.nodes[liveEventNodeId], isNotNull);
         expect(
           processingGraph.connections[gainToBalanceConnectionId],
           isNotNull,
@@ -833,14 +861,20 @@ void main() {
 
         expect(processingGraph.nodes[gainNodeId], isNull);
         expect(processingGraph.nodes[balanceNodeId], isNull);
+        expect(processingGraph.nodes[sequenceNodeId], isNull);
+        expect(processingGraph.nodes[liveEventNodeId], isNull);
         expect(processingGraph.connections[gainToBalanceConnectionId], isNull);
 
         command.execute(project);
 
         expect(newTrack.gainNodeId, equals(gainNodeId));
         expect(newTrack.balanceNodeId, equals(balanceNodeId));
+        expect(newTrack.sequenceNoteProviderNodeId, equals(sequenceNodeId));
+        expect(newTrack.liveEventProviderNodeId, equals(liveEventNodeId));
         expect(processingGraph.nodes[gainNodeId], isNotNull);
         expect(processingGraph.nodes[balanceNodeId], isNotNull);
+        expect(processingGraph.nodes[sequenceNodeId], isNotNull);
+        expect(processingGraph.nodes[liveEventNodeId], isNotNull);
         expect(
           processingGraph.connections[gainToBalanceConnectionId],
           isNotNull,
@@ -880,58 +914,70 @@ void main() {
         );
       });
 
-      test('Remove track captures optional generator and sequence nodes', () {
-        trackC.createAndRegisterNodes(project);
+      test(
+        'Remove track captures optional generator, sequence, and live nodes',
+        () {
+          trackC.createAndRegisterNodes(project);
+          final sequenceProviderNodeId = trackC.sequenceNoteProviderNodeId!;
+          final liveEventProviderNodeId = trackC.liveEventProviderNodeId!;
 
-        final generatorNode = ToneGeneratorProcessorModel().createNode();
-        final sequenceProviderNode = SequenceNoteProviderProcessorModel(
-          trackId: trackC.id,
-        ).createNode();
+          final generatorNode = ToneGeneratorProcessorModel().createNode();
 
-        processingGraph.addNode(generatorNode);
-        processingGraph.addNode(sequenceProviderNode);
+          processingGraph.addNode(generatorNode);
 
-        processingGraph.addConnection(
-          NodeConnectionModel(
-            id: getId(),
-            sourceNodeId: generatorNode.id,
-            sourcePortId: ToneGeneratorProcessorModel.audioOutputPortId,
-            destinationNodeId: trackC.gainNodeId!,
-            destinationPortId: GainProcessorModel.audioInputPortId,
-          ),
-        );
-        processingGraph.addConnection(
-          NodeConnectionModel(
-            id: getId(),
-            sourceNodeId: sequenceProviderNode.id,
-            sourcePortId: SequenceNoteProviderProcessorModel.eventOutputPortId,
-            destinationNodeId: generatorNode.id,
-            destinationPortId: ToneGeneratorProcessorModel.eventInputPortId,
-          ),
-        );
+          processingGraph.addConnection(
+            NodeConnectionModel(
+              id: getId(),
+              sourceNodeId: generatorNode.id,
+              sourcePortId: ToneGeneratorProcessorModel.audioOutputPortId,
+              destinationNodeId: trackC.gainNodeId!,
+              destinationPortId: GainProcessorModel.audioInputPortId,
+            ),
+          );
+          processingGraph.addConnection(
+            NodeConnectionModel(
+              id: getId(),
+              sourceNodeId: sequenceProviderNodeId,
+              sourcePortId:
+                  SequenceNoteProviderProcessorModel.eventOutputPortId,
+              destinationNodeId: generatorNode.id,
+              destinationPortId: ToneGeneratorProcessorModel.eventInputPortId,
+            ),
+          );
+          processingGraph.addConnection(
+            NodeConnectionModel(
+              id: getId(),
+              sourceNodeId: liveEventProviderNodeId,
+              sourcePortId: LiveEventProviderProcessorModel.eventOutputPortId,
+              destinationNodeId: generatorNode.id,
+              destinationPortId: ToneGeneratorProcessorModel.eventInputPortId,
+            ),
+          );
 
-        trackC.generatorNodeId = generatorNode.id;
-        trackC.sequenceNoteProviderNodeId = sequenceProviderNode.id;
+          trackC.generatorNodeId = generatorNode.id;
 
-        final command = TrackAddRemoveCommand.remove(
-          project: project,
-          ids: [trackCId],
-        );
+          final command = TrackAddRemoveCommand.remove(
+            project: project,
+            ids: [trackCId],
+          );
 
-        command.execute(project);
+          command.execute(project);
 
-        expect(processingGraph.nodes[trackC.gainNodeId], isNull);
-        expect(processingGraph.nodes[trackC.balanceNodeId], isNull);
-        expect(processingGraph.nodes[generatorNode.id], isNull);
-        expect(processingGraph.nodes[sequenceProviderNode.id], isNull);
+          expect(processingGraph.nodes[trackC.gainNodeId], isNull);
+          expect(processingGraph.nodes[trackC.balanceNodeId], isNull);
+          expect(processingGraph.nodes[generatorNode.id], isNull);
+          expect(processingGraph.nodes[sequenceProviderNodeId], isNull);
+          expect(processingGraph.nodes[liveEventProviderNodeId], isNull);
 
-        command.rollback(project);
+          command.rollback(project);
 
-        expect(processingGraph.nodes[trackC.gainNodeId], isNotNull);
-        expect(processingGraph.nodes[trackC.balanceNodeId], isNotNull);
-        expect(processingGraph.nodes[generatorNode.id], isNotNull);
-        expect(processingGraph.nodes[sequenceProviderNode.id], isNotNull);
-      });
+          expect(processingGraph.nodes[trackC.gainNodeId], isNotNull);
+          expect(processingGraph.nodes[trackC.balanceNodeId], isNotNull);
+          expect(processingGraph.nodes[generatorNode.id], isNotNull);
+          expect(processingGraph.nodes[sequenceProviderNodeId], isNotNull);
+          expect(processingGraph.nodes[liveEventProviderNodeId], isNotNull);
+        },
+      );
 
       test('Add a track to a group parent', () {
         final originalChildCount = trackA.childTracks.length;
