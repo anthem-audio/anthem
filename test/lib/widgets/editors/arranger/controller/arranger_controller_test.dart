@@ -18,6 +18,8 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/project_controller.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
@@ -28,6 +30,9 @@ import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/mockito.dart';
+
+class MockProjectController extends Mock implements ProjectController {}
 
 class _TrackIds {
   static const a = 'a';
@@ -50,11 +55,13 @@ class _ArrangerControllerTestFixture {
   final ProjectModel project;
   final ArrangerViewModel viewModel;
   final ArrangerController controller;
+  final MockProjectController mockProjectController;
 
   _ArrangerControllerTestFixture._({
     required this.project,
     required this.viewModel,
     required this.controller,
+    required this.mockProjectController,
   });
 
   factory _ArrangerControllerTestFixture.create() {
@@ -106,11 +113,16 @@ class _ArrangerControllerTestFixture {
       viewModel: viewModel,
       project: project,
     );
+    final mockProjectController = MockProjectController();
+    ServiceRegistry.forProject(
+      project.id,
+    ).register<ProjectController>(mockProjectController);
 
     return _ArrangerControllerTestFixture._(
       project: project,
       viewModel: viewModel,
       controller: controller,
+      mockProjectController: mockProjectController,
     );
   }
 
@@ -121,6 +133,7 @@ class _ArrangerControllerTestFixture {
   void dispose() {
     controller.dispose();
     AnthemStore.instance.projects.remove(project.id);
+    ServiceRegistry.removeProject(project.id);
   }
 }
 
@@ -163,6 +176,11 @@ void main() {
 
     expect(createdPatternIds, hasLength(1));
     expect(createdClipIds, hasLength(1));
+    verify(
+      fixture.mockProjectController.openPatternInPianoRoll(
+        createdPatternIds.single,
+      ),
+    ).called(1);
 
     return (patternId: createdPatternIds.single, clipId: createdClipIds.single);
   }
