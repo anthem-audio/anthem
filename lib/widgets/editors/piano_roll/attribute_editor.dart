@@ -304,9 +304,15 @@ class _PianoRollAttributePainter extends CustomPainterObserver {
       canvas.drawRect(rect, minorLinePaint);
     }
 
-    final notes = activePattern?.notes;
+    if (activePattern == null) {
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, size.width, size.height),
+        Paint()..color = const Color(0x88404040),
+      );
+      return;
+    }
 
-    if (notes == null) return;
+    final notes = activePattern.notes;
 
     for (final note in notes) {
       double attribute;

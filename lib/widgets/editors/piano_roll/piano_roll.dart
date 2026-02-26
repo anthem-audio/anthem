@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -265,6 +265,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
 
     final [timeViewStartAnimItem, timeViewEndAnimItem] =
         timeViewAnimationHelper!.items;
+    final shouldGreyOut = project.sequence.activePatternID == null;
 
     keyValueAtTopAnimationHelper ??= LazyFollowAnimationHelper(
       duration: 250,
@@ -339,6 +340,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
               return PianoControl(
                 keyValueAtTop: keyValueAtTopAnimItem.animation.value,
                 keyHeight: viewModel.keyHeight,
+                shouldGreyOut: shouldGreyOut,
                 setKeyValueAtTop: (value) {
                   viewModel.keyValueAtTop = value;
                 },
@@ -373,6 +375,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
                   timeViewStart: timeViewStartAnimItem.animation.value,
                   timeViewEnd: timeViewEndAnimItem.animation.value,
                   keyValueAtTop: keyValueAtTopAnimItem.animation.value,
+                  shouldGreyOut: shouldGreyOut,
                 );
               },
             );

@@ -46,12 +46,14 @@ class PianoRollContentRenderer extends StatelessWidget {
   final double timeViewStart;
   final double timeViewEnd;
   final double keyValueAtTop;
+  final bool shouldGreyOut;
 
   const PianoRollContentRenderer({
     super.key,
     required this.timeViewStart,
     required this.timeViewEnd,
     required this.keyValueAtTop,
+    required this.shouldGreyOut,
   });
 
   @override
@@ -67,6 +69,7 @@ class PianoRollContentRenderer extends StatelessWidget {
         project: project,
         viewModel: viewModel,
         devicePixelRatio: View.of(context).devicePixelRatio,
+        shouldGreyOut: shouldGreyOut,
       ),
     );
   }
@@ -79,6 +82,7 @@ class PianoRollPainter extends CustomPainterObserver {
   final PianoRollViewModel viewModel;
   final ProjectModel project;
   final double devicePixelRatio;
+  final bool shouldGreyOut;
 
   PianoRollPainter({
     required this.timeViewStart,
@@ -87,6 +91,7 @@ class PianoRollPainter extends CustomPainterObserver {
     required this.viewModel,
     required this.project,
     required this.devicePixelRatio,
+    required this.shouldGreyOut,
   });
 
   @override
@@ -95,7 +100,13 @@ class PianoRollPainter extends CustomPainterObserver {
     viewModel.visibleResizeAreas.clear();
 
     final pattern = project.sequence.patterns[project.sequence.activePatternID];
-    if (pattern == null) return;
+    if (shouldGreyOut || pattern == null) {
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, size.width, size.height),
+        Paint()..color = const Color(0x88404040),
+      );
+      return;
+    }
 
     final notes = pattern.notes;
 
@@ -280,5 +291,6 @@ class PianoRollPainter extends CustomPainterObserver {
       keyValueAtTop != oldDelegate.keyValueAtTop ||
       viewModel != oldDelegate.viewModel ||
       project != oldDelegate.project ||
+      shouldGreyOut != oldDelegate.shouldGreyOut ||
       super.shouldRepaint(oldDelegate);
 }
