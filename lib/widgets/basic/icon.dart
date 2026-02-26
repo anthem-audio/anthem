@@ -61,9 +61,6 @@ class Icons {
   static IconDef minimize = const IconDef('assets/icons/small/minimize.svg');
   static IconDef mixer = const IconDef('assets/icons/bottom_bar/mixer.svg');
   static IconDef mute = const IconDef('assets/icons/arranger/mute.svg');
-  static IconDef patternEditor = const IconDef(
-    'assets/icons_old/bottom_bar/pattern_editor.svg',
-  );
   static IconDef patternPickerAudio = const IconDef(
     'assets/icons/arranger/clip/audio.svg',
   );

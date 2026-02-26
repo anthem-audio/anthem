@@ -318,6 +318,8 @@ class TrackAddRemoveCommand extends Command {
   }
 
   void _remove(ProjectModel project) {
+    final removedTrackIds = <Id>{};
+
     for (final trackDescriptor in _tracks.reversed) {
       final _InternalTrackAddRemoveDescriptor(
         index: index,
@@ -339,6 +341,7 @@ class TrackAddRemoveCommand extends Command {
         ServiceRegistry.forProject(
           project.id,
         ).arrangerViewModel.unregisterTrack(descendant.id);
+        removedTrackIds.add(descendant.id);
         project.tracks.remove(descendant.id);
       }
 
@@ -358,6 +361,7 @@ class TrackAddRemoveCommand extends Command {
         }
       }
 
+      removedTrackIds.add(track.id);
       project.tracks.remove(track.id);
     }
 
@@ -374,6 +378,12 @@ class TrackAddRemoveCommand extends Command {
       final removedNodesSnapshot = project.processingGraph
           .removeNodesAndCapture(nodeIdsToRemove);
       _removedNodesSnapshot ??= removedNodesSnapshot;
+    }
+
+    if (project.engine.isRunning) {
+      for (final trackId in removedTrackIds) {
+        project.engine.sequencerApi.cleanUpChannel(trackId);
+      }
     }
 
     project.engine.processingGraphApi.compile();
@@ -407,31 +417,27 @@ Set<Id> _collectTrackNodeIdsForDescriptors(
   return nodeIds;
 }
 
-/// Temporary migration command.
-///
-/// This command exists only while generator ownership is transitioning from the
-/// legacy channel model to tracks.
-class TempDevAddGeneratorToTrackCommand extends Command {
+class SetTrackInstrumentNodeCommand extends Command {
   final Id trackId;
-  final NodeModel generatorNode;
+  final NodeModel instrumentNode;
 
-  final Id? _previousGeneratorNodeId;
+  final Id? _previousInstrumentNodeId;
 
-  RemovedNodesSnapshot? _removedAddedGeneratorSnapshot;
-  RemovedNodesSnapshot? _removedPreviousGeneratorSnapshot;
+  RemovedNodesSnapshot? _removedAddedInstrumentSnapshot;
+  RemovedNodesSnapshot? _removedPreviousInstrumentSnapshot;
 
-  TempDevAddGeneratorToTrackCommand({
+  SetTrackInstrumentNodeCommand({
     required TrackModel track,
-    required this.generatorNode,
+    required this.instrumentNode,
   }) : trackId = track.id,
-       _previousGeneratorNodeId = track.generatorNodeId;
+       _previousInstrumentNodeId = track.instrumentNodeId;
 
   @override
   void execute(ProjectModel project) {
     final track = project.tracks[trackId];
     if (track == null) {
       throw StateError(
-        'TempDevAddGeneratorToTrackCommand.execute(): Track $trackId not found.',
+        'SetTrackInstrumentNodeCommand.execute(): Track $trackId not found.',
       );
     }
 
@@ -444,34 +450,34 @@ class TempDevAddGeneratorToTrackCommand extends Command {
       track,
     );
 
-    final hasRestorableGeneratorSnapshot =
-        _removedAddedGeneratorSnapshot != null &&
-        !_removedAddedGeneratorSnapshot!.isEmpty;
+    final hasRestorableInstrumentSnapshot =
+        _removedAddedInstrumentSnapshot != null &&
+        !_removedAddedInstrumentSnapshot!.isEmpty;
 
-    if (hasRestorableGeneratorSnapshot) {
-      _removeCurrentGeneratorNode(project, track, captureForRollback: false);
+    if (hasRestorableInstrumentSnapshot) {
+      _removeCurrentInstrumentNode(project, track, captureForRollback: false);
       project.processingGraph.restoreRemovedNodesSnapshot(
-        _removedAddedGeneratorSnapshot!,
+        _removedAddedInstrumentSnapshot!,
       );
     } else {
-      _removeCurrentGeneratorNode(project, track, captureForRollback: true);
+      _removeCurrentInstrumentNode(project, track, captureForRollback: true);
 
-      project.processingGraph.addNode(generatorNode);
+      project.processingGraph.addNode(instrumentNode);
 
-      _connectGeneratorAudioToTrackGain(project, track, generatorNode);
-      _connectSequenceProviderToGenerator(
+      _connectInstrumentAudioToTrackGain(project, track, instrumentNode);
+      _connectSequenceProviderToInstrument(
         project,
         sequenceNoteProviderNode,
-        generatorNode,
+        instrumentNode,
       );
-      _connectLiveEventProviderToGenerator(
+      _connectLiveEventProviderToInstrument(
         project,
         liveEventProviderNode,
-        generatorNode,
+        instrumentNode,
       );
     }
 
-    track.generatorNodeId = generatorNode.id;
+    track.instrumentNodeId = instrumentNode.id;
 
     project.engine.processingGraphApi.compile();
   }
@@ -481,48 +487,48 @@ class TempDevAddGeneratorToTrackCommand extends Command {
     final track = project.tracks[trackId];
     if (track == null) {
       throw StateError(
-        'TempDevAddGeneratorToTrackCommand.rollback(): Track $trackId not found.',
+        'SetTrackInstrumentNodeCommand.rollback(): Track $trackId not found.',
       );
     }
 
-    if (track.generatorNodeId == generatorNode.id) {
+    if (track.instrumentNodeId == instrumentNode.id) {
       final removedNodesSnapshot = project.processingGraph
-          .removeNodesAndCapture([generatorNode.id]);
-      _removedAddedGeneratorSnapshot ??= removedNodesSnapshot;
+          .removeNodesAndCapture([instrumentNode.id]);
+      _removedAddedInstrumentSnapshot ??= removedNodesSnapshot;
     }
 
-    if (_removedPreviousGeneratorSnapshot != null &&
-        !_removedPreviousGeneratorSnapshot!.isEmpty) {
+    if (_removedPreviousInstrumentSnapshot != null &&
+        !_removedPreviousInstrumentSnapshot!.isEmpty) {
       project.processingGraph.restoreRemovedNodesSnapshot(
-        _removedPreviousGeneratorSnapshot!,
+        _removedPreviousInstrumentSnapshot!,
       );
     }
 
-    track.generatorNodeId = _previousGeneratorNodeId;
+    track.instrumentNodeId = _previousInstrumentNodeId;
 
     project.engine.processingGraphApi.compile();
   }
 
-  void _removeCurrentGeneratorNode(
+  void _removeCurrentInstrumentNode(
     ProjectModel project,
     TrackModel track, {
     required bool captureForRollback,
   }) {
-    final currentGeneratorNodeId = track.generatorNodeId;
-    if (currentGeneratorNodeId == null ||
-        currentGeneratorNodeId == generatorNode.id) {
+    final currentInstrumentNodeId = track.instrumentNodeId;
+    if (currentInstrumentNodeId == null ||
+        currentInstrumentNodeId == instrumentNode.id) {
       return;
     }
 
     final removedNodesSnapshot = project.processingGraph.removeNodesAndCapture([
-      currentGeneratorNodeId,
+      currentInstrumentNodeId,
     ]);
 
     if (captureForRollback) {
-      _removedPreviousGeneratorSnapshot ??= removedNodesSnapshot;
+      _removedPreviousInstrumentSnapshot ??= removedNodesSnapshot;
     }
 
-    track.generatorNodeId = null;
+    track.instrumentNodeId = null;
   }
 }
 
@@ -536,7 +542,7 @@ NodeModel _getExistingSequenceNoteProviderNode(
 
   if (sequenceProviderNode == null) {
     throw StateError(
-      'TempDevAddGeneratorToTrackCommand requires an existing sequence note '
+      'SetTrackInstrumentNodeCommand requires an existing sequence note '
       'provider node on track ${track.id}.',
     );
   }
@@ -554,7 +560,7 @@ NodeModel _getExistingLiveEventProviderNode(
 
   if (liveEventProviderNode == null) {
     throw StateError(
-      'TempDevAddGeneratorToTrackCommand requires an existing live event '
+      'SetTrackInstrumentNodeCommand requires an existing live event '
       'provider node on track ${track.id}.',
     );
   }
@@ -562,12 +568,12 @@ NodeModel _getExistingLiveEventProviderNode(
   return liveEventProviderNode;
 }
 
-void _connectGeneratorAudioToTrackGain(
+void _connectInstrumentAudioToTrackGain(
   ProjectModel project,
   TrackModel track,
-  NodeModel generatorNode,
+  NodeModel instrumentNode,
 ) {
-  if (generatorNode.audioOutputPorts.isEmpty) {
+  if (instrumentNode.audioOutputPorts.isEmpty) {
     return;
   }
 
@@ -584,21 +590,21 @@ void _connectGeneratorAudioToTrackGain(
   project.processingGraph.addConnection(
     NodeConnectionModel(
       id: getId(),
-      sourceNodeId: generatorNode.id,
-      sourcePortId: generatorNode.audioOutputPorts.first.id,
+      sourceNodeId: instrumentNode.id,
+      sourcePortId: instrumentNode.audioOutputPorts.first.id,
       destinationNodeId: gainNode.id,
       destinationPortId: GainProcessorModel.audioInputPortId,
     ),
   );
 }
 
-void _connectSequenceProviderToGenerator(
+void _connectSequenceProviderToInstrument(
   ProjectModel project,
   NodeModel sequenceProviderNode,
-  NodeModel generatorNode,
+  NodeModel instrumentNode,
 ) {
   if (sequenceProviderNode.eventOutputPorts.isEmpty ||
-      generatorNode.eventInputPorts.isEmpty) {
+      instrumentNode.eventInputPorts.isEmpty) {
     return;
   }
 
@@ -607,19 +613,19 @@ void _connectSequenceProviderToGenerator(
       id: getId(),
       sourceNodeId: sequenceProviderNode.id,
       sourcePortId: SequenceNoteProviderProcessorModel.eventOutputPortId,
-      destinationNodeId: generatorNode.id,
-      destinationPortId: generatorNode.eventInputPorts.first.id,
+      destinationNodeId: instrumentNode.id,
+      destinationPortId: instrumentNode.eventInputPorts.first.id,
     ),
   );
 }
 
-void _connectLiveEventProviderToGenerator(
+void _connectLiveEventProviderToInstrument(
   ProjectModel project,
   NodeModel liveEventProviderNode,
-  NodeModel generatorNode,
+  NodeModel instrumentNode,
 ) {
   if (liveEventProviderNode.eventOutputPorts.isEmpty ||
-      generatorNode.eventInputPorts.isEmpty) {
+      instrumentNode.eventInputPorts.isEmpty) {
     return;
   }
 
@@ -628,8 +634,8 @@ void _connectLiveEventProviderToGenerator(
       id: getId(),
       sourceNodeId: liveEventProviderNode.id,
       sourcePortId: LiveEventProviderProcessorModel.eventOutputPortId,
-      destinationNodeId: generatorNode.id,
-      destinationPortId: generatorNode.eventInputPorts.first.id,
+      destinationNodeId: instrumentNode.id,
+      destinationPortId: instrumentNode.eventInputPorts.first.id,
     ),
   );
 }

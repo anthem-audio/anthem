@@ -23,7 +23,6 @@ import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/button_group.dart';
 import 'package:anthem/widgets/basic/button_tabs.dart';
 import 'package:anthem/widgets/basic/hint/hint_display.dart';
-import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 
@@ -71,21 +70,6 @@ class ProjectFooter extends StatelessWidget {
                 (label: 'Mix', onSelect: () {}),
               ],
               selectedIndex: 0,
-            ),
-
-            Observer(
-              builder: (context) {
-                return Button(
-                  icon: Icons.patternEditor,
-                  toggleState: projectModel.isPatternEditorVisible,
-                  width: 24,
-                  onPress: () => projectModel.isPatternEditorVisible =
-                      !projectModel.isPatternEditorVisible,
-                  hint: projectModel.isPatternEditorVisible
-                      ? [HintSection('click', 'Hide pattern editor')]
-                      : [HintSection('click', 'Show pattern editor')],
-                );
-              },
             ),
 
             Observer(

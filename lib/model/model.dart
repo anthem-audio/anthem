@@ -79,7 +79,6 @@ export 'shared/loop_points.dart';
 export 'shared/time_signature.dart';
 
 export 'app.dart';
-export 'generator.dart';
 export 'project.dart';
 export 'sequencer.dart';
 export 'store.dart';

@@ -28,12 +28,12 @@ Consider the following graph:
 
 ```
  ________________       ____________________________
-| GeneratorNode1 |     | Processor1                 |
+| SourceNode1    |     | Processor1                 |
 |   AudioOutput1----.----AudioInput1   AudioOutput1--- ...
 |________________|  |  |____________________________|
                     |
  ________________   |
-| GeneratorNode2 |  |
+| SourceNode2    |  |
 |   AudioOutput1----*
 |________________|
 ```
@@ -43,10 +43,10 @@ Each input port (in this case, just a single input) contains a buffer that is th
 The compiler will produce the following steps for this graph:
 
 1. Write zeros to the `AudioInput1` buffer on `Processor1`
-2. Run the process method on `GeneratorNode1`, which will generate an output on its `AudioOutput1` buffer
-3. Add the result of `GeneratorNode1`'s `AudioOutput1` buffer to the `AudioInput1` buffer on `Processor1`, and write this result back to the `AudioInput1` buffer
-4. Same as step 2, but for `GeneratorNode2`
-5. Same as step 3, but for `GeneratorNode2`
+2. Run the process method on `SourceNode1`, which will generate an output on its `AudioOutput1` buffer
+3. Add the result of `SourceNode1`'s `AudioOutput1` buffer to the `AudioInput1` buffer on `Processor1`, and write this result back to the `AudioInput1` buffer
+4. Same as step 2, but for `SourceNode2`
+5. Same as step 3, but for `SourceNode2`
 
 ## Control values
 

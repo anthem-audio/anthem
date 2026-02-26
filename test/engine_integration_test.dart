@@ -33,7 +33,7 @@ import 'package:anthem/engine_api/engine_connector_desktop.dart';
 var id = 0;
 int getId() => id++;
 
-// Temporary, since these tests are broken until we finish the generator ->
+// Temporary, since these tests are broken until we finish the instrument ->
 // track transition
 const skipEngineIntegrationTests = true;
 
@@ -295,15 +295,15 @@ void main() {
     //   }
     // });
 
-    test('Add a track generator node and some notes', () async {
+    test('Add a track instrument node and some notes', () async {
       final instrumentTrackId = project.trackOrder.first;
       final instrumentTrack = project.tracks[instrumentTrackId]!;
-      final generatorNode = ToneGeneratorProcessorModel().createNode();
+      final instrumentNode = ToneGeneratorProcessorModel().createNode();
 
       project.execute(
-        TempDevAddGeneratorToTrackCommand(
+        SetTrackInstrumentNodeCommand(
           track: instrumentTrack,
-          generatorNode: generatorNode,
+          instrumentNode: instrumentNode,
         ),
       );
 
@@ -328,9 +328,9 @@ void main() {
       final syncedInstrumentTrack =
           trackMap[instrumentTrackId] as Map<String, dynamic>;
       expect(
-        syncedInstrumentTrack['generatorNodeId'],
-        equals(generatorNode.id),
-        reason: 'The track should reference the generator node.',
+        syncedInstrumentTrack['instrumentNodeId'],
+        equals(instrumentNode.id),
+        reason: 'The track should reference the instrument node.',
       );
 
       final pattern =

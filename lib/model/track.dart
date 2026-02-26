@@ -111,12 +111,9 @@ abstract class _TrackModel
 
   NodeModel? get balanceNode => project.processingGraph.nodes[balanceNodeId];
 
-  /// Optional generator node assigned to this track.
-  ///
-  /// This is temporary migration state while we move generator ownership to
-  /// tracks.
+  /// Optional instrument node assigned to this track.
   @anthemObservable
-  Id? generatorNodeId;
+  Id? instrumentNodeId;
 
   /// Sequence note provider node assigned to this track.
   ///
@@ -130,8 +127,8 @@ abstract class _TrackModel
   @anthemObservable
   Id? liveEventProviderNodeId;
 
-  NodeModel? get generatorNode =>
-      project.processingGraph.nodes[generatorNodeId];
+  NodeModel? get instrumentNode =>
+      project.processingGraph.nodes[instrumentNodeId];
 
   NodeModel? get sequenceNoteProviderNode =>
       project.processingGraph.nodes[sequenceNoteProviderNodeId];
@@ -150,7 +147,7 @@ abstract class _TrackModel
     return [
       gainNodeId,
       balanceNodeId,
-      generatorNodeId,
+      instrumentNodeId,
       sequenceNoteProviderNodeId,
       liveEventProviderNodeId,
     ].nonNulls.toList();
@@ -160,7 +157,7 @@ abstract class _TrackModel
     : id = getId(),
       gainNodeId = null,
       balanceNodeId = null,
-      generatorNodeId = null,
+      instrumentNodeId = null,
       sequenceNoteProviderNodeId = null,
       liveEventProviderNodeId = null,
       super();

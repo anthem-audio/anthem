@@ -37,7 +37,6 @@ import 'package:anthem/widgets/editors/arranger/arranger.dart';
 import 'package:anthem/widgets/editors/attribute_editor/attribute_editor.dart';
 import 'package:anthem/widgets/editors/automation_editor/automation_editor.dart';
 import 'package:anthem/widgets/editors/channel_rack/channel_rack.dart';
-import 'package:anthem/widgets/editors/pattern_editor/pattern_editor.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/project_explorer/project_explorer.dart';
 import 'package:anthem/logic/project_controller.dart';
@@ -182,23 +181,10 @@ class _ProjectState extends State<Project> {
                         child: _PanelOverlay(
                           builder: _viewModel.topPanelOverlayContentBuilder,
                           close: () => _viewModel.clearTopPanelOverlay(),
-                          child: Panel(
-                            hidden: !projectModel.isPatternEditorVisible,
-                            orientation: .left,
-                            panelStartSize: 500,
-                            panelMinSize: 500,
-                            contentMinSize: 500,
-                            sizeBehavior: .pixels,
-                            // Pattern editor
-                            panelContent: const RepaintBoundary(
-                              child: PanelBorder(child: PatternEditor()),
-                            ),
-                            // Arranger
-                            child: const RepaintBoundary(
-                              child: PanelBorder(
-                                panelKind: .arranger,
-                                child: Arranger(),
-                              ),
+                          child: const RepaintBoundary(
+                            child: PanelBorder(
+                              panelKind: .arranger,
+                              child: Arranger(),
                             ),
                           ),
                         ),

@@ -22,7 +22,6 @@ import 'dart:io';
 
 import 'package:anthem/logic/commands/arrangement_commands.dart';
 import 'package:anthem/logic/commands/pattern_commands.dart';
-import 'package:anthem/logic/commands/project_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/track_commands.dart';
@@ -129,43 +128,21 @@ class ProjectController {
     }
   }
 
-  void addGenerator({
-    required NodeModel node,
-    required String name,
-    required GeneratorType generatorType,
-    required Color color,
-  }) {
-    final id = getId();
-
-    project.execute(
-      AddGeneratorCommand(
-        generatorId: id,
-        node: node,
-        name: name,
-        generatorType: generatorType,
-        color: color,
-      ),
-    );
-  }
-
-  void tempDevAddGeneratorNodeToTrack({
-    required Id trackId,
-    required NodeModel node,
-  }) {
+  void setTrackInstrumentNode({required Id trackId, required NodeModel node}) {
     final track = project.tracks[trackId];
     if (track == null) {
       throw StateError(
-        'ProjectController.tempDevAddGeneratorNodeToTrack(): Track $trackId '
+        'ProjectController.setTrackInstrumentNode(): Track $trackId '
         'not found.',
       );
     }
 
     project.execute(
-      TempDevAddGeneratorToTrackCommand(track: track, generatorNode: node),
+      SetTrackInstrumentNodeCommand(track: track, instrumentNode: node),
     );
   }
 
-  void tempDevAddVst3GeneratorNodeToTrack(Id trackId) async {
+  void setTrackVst3InstrumentNode(Id trackId) async {
     final dialogController = ServiceRegistry.dialogController;
     String initialDirectory;
 
@@ -201,62 +178,9 @@ class ProjectController {
       return;
     }
 
-    tempDevAddGeneratorNodeToTrack(
+    setTrackInstrumentNode(
       trackId: trackId,
       node: VST3ProcessorModel(vst3Path: path!).createNode(),
-    );
-  }
-
-  void addVst3Generator() async {
-    final dialogController = ServiceRegistry.dialogController;
-    String initialDirectory;
-
-    if (Platform.isWindows) {
-      initialDirectory = 'C:\\Program Files\\Common Files\\VST3';
-    } else if (Platform.isMacOS) {
-      initialDirectory = '/Library/Audio/Plug-Ins/VST3';
-    } else if (Platform.isLinux) {
-      initialDirectory = Platform.environment['HOME'] ?? '/';
-    } else {
-      throw UnsupportedError(
-        'Unsupported platform: ${Platform.operatingSystem}',
-      );
-    }
-
-    final result = await FilePicker.platform.pickFiles(
-      dialogTitle: 'Choose a plugin (VST3)',
-      allowedExtensions: Platform.isMacOS ? null : ['vst3'],
-      initialDirectory: initialDirectory,
-      type: Platform.isMacOS ? FileType.custom : FileType.any,
-    );
-
-    final path = result?.files[0].path;
-
-    if (path?.toLowerCase().endsWith('.vst3') != true) {
-      dialogController.showTextDialog(
-        title: 'Error',
-        text:
-            'The selected plugin could not be loaded. It may '
-            'not be a valid VST3 plugin, or it may be incompatible.',
-        buttons: [DialogButton.ok()],
-      );
-      return;
-    }
-
-    addGenerator(
-      name: 'VST Plugin',
-      generatorType: GeneratorType.instrument,
-      color: generateColor(),
-      node: VST3ProcessorModel(vst3Path: path!).createNode(),
-    );
-  }
-
-  void removeGenerator(Id generatorID) {
-    project.execute(
-      RemoveGeneratorCommand(
-        project: project,
-        generator: project.generators[generatorID]!,
-      ),
     );
   }
 
@@ -540,12 +464,4 @@ class ProjectController {
 
     return completer.future;
   }
-}
-
-var nextHue = 0.0;
-
-Color generateColor() {
-  final color = HSLColor.fromAHSL(1, nextHue, 0.33, 0.5).toColor();
-  nextHue = (nextHue + 330) % 360;
-  return color;
 }

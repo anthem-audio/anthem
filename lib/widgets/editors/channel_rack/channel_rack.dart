@@ -125,33 +125,33 @@ Widget _buildChild(
     return const Text('Invalid track');
   }
 
-  final generatorNodeId = track.generatorNodeId;
-  if (generatorNodeId == null) {
-    return _buildAddGeneratorButton(context, track.id);
+  final instrumentNodeId = track.instrumentNodeId;
+  if (instrumentNodeId == null) {
+    return _buildAddInstrumentButton(context, track.id);
   }
 
-  final node = project.processingGraph.nodes[generatorNodeId];
+  final node = project.processingGraph.nodes[instrumentNodeId];
 
   if (node == null) {
-    return const Text('Invalid generator node');
+    return const Text('Invalid instrument node');
   }
 
   return switch (node.processor) {
     ToneGeneratorProcessorModel _ => ToneGenerator(node: node),
-    _ => const Text('No editor for this generator'),
+    _ => const Text('No editor for this instrument'),
   };
 }
 
-Widget _buildAddGeneratorButton(BuildContext context, Id trackId) {
+Widget _buildAddInstrumentButton(BuildContext context, Id trackId) {
   final projectController = Provider.of<ProjectController>(context);
-  final addGeneratorMenuController = AnthemMenuController();
+  final addInstrumentMenuController = AnthemMenuController();
 
   final menuDef = MenuDef(
     children: [
       AnthemMenuItem(
         text: 'Tone Generator',
         onSelected: () {
-          projectController.tempDevAddGeneratorNodeToTrack(
+          projectController.setTrackInstrumentNode(
             trackId: trackId,
             node: ToneGeneratorProcessorModel().createNode(),
           );
@@ -162,15 +162,15 @@ Widget _buildAddGeneratorButton(BuildContext context, Id trackId) {
         AnthemMenuItem(
           text: 'VST3...',
           onSelected: () {
-            projectController.tempDevAddVst3GeneratorNodeToTrack(trackId);
+            projectController.setTrackVst3InstrumentNode(trackId);
           },
         ),
       AnthemMenuItem(
         text: 'Blank',
         onSelected: () {
-          projectController.tempDevAddGeneratorNodeToTrack(
+          projectController.setTrackInstrumentNode(
             trackId: trackId,
-            node: NodeModel(id: 'blank-generator-${getId()}'),
+            node: NodeModel(id: 'blank-instrument-${getId()}'),
           );
         },
       ),
@@ -180,15 +180,15 @@ Widget _buildAddGeneratorButton(BuildContext context, Id trackId) {
   return Expanded(
     child: Center(
       child: Menu(
-        menuController: addGeneratorMenuController,
+        menuController: addInstrumentMenuController,
         menuDef: menuDef,
         child: Button(
           width: 140,
           height: 26,
-          text: 'Add Generator',
-          hint: [HintSection('click', 'Add a generator node to this track')],
+          text: 'Add Instrument',
+          hint: [HintSection('click', 'Add an instrument node to this track')],
           onPress: () {
-            addGeneratorMenuController.open();
+            addInstrumentMenuController.open();
           },
         ),
       ),

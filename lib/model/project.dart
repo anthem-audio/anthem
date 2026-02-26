@@ -33,7 +33,6 @@ import 'package:anthem_codegen/include.dart';
 import 'package:anthem/engine_api/messages/messages.dart' as message_api;
 import 'package:mobx/mobx.dart';
 
-import 'generator.dart';
 import 'processing_graph/processing_graph.dart';
 import 'shared/hydratable.dart';
 
@@ -95,19 +94,23 @@ class ProjectModel extends _ProjectModel
     // is the top level, we need to call it ourselves.
     setParentPropertiesOnChildren();
 
-    // We need to notify the engine when a generator is removed so it can clean
-    // up any compiled sequences for this channel.
+    // We need to notify the engine when a track is removed so it can clean up
+    // any compiled sequences for this channel.
     onChange(
-      // This filter matches against removals from the generators map
-      (b) => b.generators.anyValue.filterByChangeType([
+      // This filter matches against removals from the tracks map.
+      (b) => b.tracks.anyValue.filterByChangeType([
         ModelFilterChangeType.mapRemove,
       ]),
       (e) {
+        if (!engine.isRunning) {
+          return;
+        }
+
         // Field accessors are:
-        // 0: the generators field
+        // 0: the tracks field
         // 1: accessing a value in the map by key
-        final generatorId = e.fieldAccessors[1].key as Id;
-        engine.sequencerApi.cleanUpChannel(generatorId);
+        final trackId = e.fieldAccessors[1].key as Id;
+        engine.sequencerApi.cleanUpChannel(trackId);
       },
     );
   }
@@ -128,14 +131,6 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   @anthemObservable
   @hideFromSerialization
   int? masterOutputNodeId;
-
-  /// Map of generators in the project.
-  @anthemObservable
-  AnthemObservableMap<Id, GeneratorModel> generators = AnthemObservableMap();
-
-  /// List of generator IDs in the project (to preserve order).
-  @anthemObservable
-  AnthemObservableList<Id> generatorOrder = AnthemObservableList();
 
   @anthemObservable
   AnthemObservableMap<Id, TrackModel> tracks = AnthemObservableMap();
@@ -180,10 +175,6 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   bool isProjectExplorerOpen = false;
 
   // Visual layout flags
-
-  @anthemObservable
-  @hide
-  bool isPatternEditorVisible = true;
 
   @anthemObservable
   @hide

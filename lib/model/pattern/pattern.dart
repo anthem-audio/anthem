@@ -191,7 +191,7 @@ class PatternModel extends _PatternModel
     });
   }
 
-  Iterable<String> get channelsWithContent => project.generatorOrder;
+  Iterable<String> get channelsWithContent => project.tracks.keys;
 }
 
 abstract class _PatternModel
