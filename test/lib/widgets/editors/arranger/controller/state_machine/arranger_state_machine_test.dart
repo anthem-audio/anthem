@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
@@ -58,12 +59,14 @@ class _ArrangerStateMachineTestFixture {
   final ProjectModel project;
   final ArrangerViewModel viewModel;
   final ProjectViewModel projectViewModel;
+  final ProjectController projectController;
   final ArrangerController controller;
 
   _ArrangerStateMachineTestFixture._({
     required this.project,
     required this.viewModel,
     required this.projectViewModel,
+    required this.projectController,
     required this.controller,
   });
 
@@ -91,11 +94,12 @@ class _ArrangerStateMachineTestFixture {
     );
     final projectViewModel = ProjectViewModel()
       ..activePanel = PanelKind.arranger;
+    final projectController = ProjectController(project, projectViewModel);
 
     AnthemStore.instance.projects[project.id] = project;
-    ServiceRegistry.forProject(
-      project.id,
-    ).register<ProjectViewModel>(projectViewModel);
+    final serviceRegistry = ServiceRegistry.forProject(project.id);
+    serviceRegistry.register<ProjectViewModel>(projectViewModel);
+    serviceRegistry.register<ProjectController>(projectController);
 
     final controller = ArrangerController(
       viewModel: viewModel,
@@ -108,6 +112,7 @@ class _ArrangerStateMachineTestFixture {
       project: project,
       viewModel: viewModel,
       projectViewModel: projectViewModel,
+      projectController: projectController,
       controller: controller,
     );
   }
@@ -886,6 +891,90 @@ void main() {
       expect(fixture.viewModel.selectedClips, {'clip-under-resize-handle'});
     });
 
+    test('double click over clip opens piano roll and sets active pattern', () {
+      final pattern = PatternModel.create(name: 'Pattern 1');
+      fixture.project.sequence.patterns[pattern.id] = pattern;
+
+      final clip = ClipModel.create(
+        patternId: pattern.id,
+        trackId: _TrackIds.a,
+        offset: 0,
+        timeView: TimeViewModel(start: 0, end: 96),
+      );
+
+      final arrangementId = fixture.project.sequence.activeArrangementID!;
+      fixture.project.sequence.arrangements[arrangementId]!.clips[clip.id] =
+          clip;
+
+      fixture.viewModel.visibleClips.add(
+        rect: const Rect.fromLTWH(240, 10, 80, 30),
+        metadata: clip.id,
+      );
+
+      fixture.projectViewModel.selectedEditor = EditorKind.channelRack;
+      fixture.projectViewModel.activePanel = PanelKind.channelRack;
+      fixture.project.sequence.activePatternID = null;
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(260, 20),
+        ),
+      );
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(260, 20)),
+      );
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(260, 20),
+        ),
+      );
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(260, 20)),
+      );
+
+      expect(fixture.projectViewModel.selectedEditor, EditorKind.detail);
+      expect(fixture.projectViewModel.activePanel, PanelKind.pianoRoll);
+      expect(fixture.project.sequence.activePatternID, pattern.id);
+    });
+
+    test('double click over empty space does not change active editor', () {
+      fixture.viewModel.tool = EditorTool.select;
+      fixture.projectViewModel.selectedEditor = EditorKind.channelRack;
+      fixture.projectViewModel.activePanel = PanelKind.channelRack;
+      fixture.project.sequence.activePatternID = null;
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(400, 20),
+        ),
+      );
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(400, 20)),
+      );
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(400, 20),
+        ),
+      );
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(400, 20)),
+      );
+
+      expect(fixture.projectViewModel.selectedEditor, EditorKind.channelRack);
+      expect(fixture.projectViewModel.activePanel, PanelKind.channelRack);
+      expect(fixture.project.sequence.activePatternID, isNull);
+    });
+
     test('ctrl-click over non-selected clip adds it to selection', () {
       fixture.stateMachine.modifierPressed(ArrangerModifierKey.ctrl);
       fixture.viewModel.visibleClips.add(
@@ -1483,6 +1572,9 @@ void main() {
       final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
       final patternCountBefore = fixture.project.sequence.patterns.length;
       final clipCountBefore = arrangement.clips.length;
+      fixture.projectViewModel.selectedEditor = EditorKind.channelRack;
+      fixture.projectViewModel.activePanel = PanelKind.channelRack;
+      fixture.project.sequence.activePatternID = null;
 
       startDoubleClickHold();
       expect(fixture.stateMachine.currentState, isA<ArrangerCreateClipState>());
@@ -1506,6 +1598,9 @@ void main() {
         newClip.timeView!.end,
         (hint.endOffset - hint.startOffset).round(),
       );
+      expect(fixture.projectViewModel.selectedEditor, EditorKind.detail);
+      expect(fixture.projectViewModel.activePanel, PanelKind.pianoRoll);
+      expect(fixture.project.sequence.activePatternID, newClip.patternId);
     });
 
     test('default hint uses snap size when snap is larger than a bar', () {
@@ -1538,6 +1633,9 @@ void main() {
       final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
       final patternCountBefore = fixture.project.sequence.patterns.length;
       final clipCountBefore = arrangement.clips.length;
+      fixture.projectViewModel.selectedEditor = EditorKind.channelRack;
+      fixture.projectViewModel.activePanel = PanelKind.channelRack;
+      fixture.project.sequence.activePatternID = null;
 
       enterCreateClipState(movePos: const Offset(420, 20));
       expect(fixture.stateMachine.currentState, isA<ArrangerCreateClipState>());
@@ -1566,6 +1664,9 @@ void main() {
       expect(newClip.timeView, isNotNull);
       expect(newClip.timeView!.start, 0);
       expect(newClip.timeView!.end, expectedWidth.round());
+      expect(fixture.projectViewModel.selectedEditor, EditorKind.detail);
+      expect(fixture.projectViewModel.activePanel, PanelKind.pianoRoll);
+      expect(fixture.project.sequence.activePatternID, newClip.patternId);
     });
 
     test('pointer up with zero width does not create clip or pattern', () {

@@ -152,6 +152,23 @@ abstract class _ArrangerController {
     deleteClips(viewModel.selectedClips.nonObservableInner);
   }
 
+  void openClipInPianoRoll(Id clipId) {
+    final arrangementId = project.sequence.activeArrangementID;
+    if (arrangementId == null) {
+      return;
+    }
+
+    final arrangement = project.sequence.arrangements[arrangementId];
+    final clip = arrangement?.clips[clipId];
+    if (clip == null) {
+      return;
+    }
+
+    ServiceRegistry.forProject(
+      project.id,
+    ).projectController.openPatternInPianoRoll(clip.patternId);
+  }
+
   void deleteClips(Iterable<Id> clipIds) {
     final arrangementId = project.sequence.activeArrangementID;
     if (arrangementId == null) {
@@ -353,6 +370,10 @@ abstract class _ArrangerController {
     );
 
     project.commitUndoGroup();
+
+    ServiceRegistry.forProject(
+      project.id,
+    ).projectController.openPatternInPianoRoll(pattern.id);
   }
 
   /// Adds a time signature change to the active arrangement.

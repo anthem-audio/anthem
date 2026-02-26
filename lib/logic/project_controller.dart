@@ -454,9 +454,29 @@ class ProjectController {
     _updateTransportSequenceID(id);
   }
 
+  void setActiveEditor({required EditorKind editor}) {
+    viewModel.selectedEditor = editor;
+
+    viewModel.activePanel = switch (editor) {
+      .detail => .pianoRoll,
+      .automation => .automationEditor,
+      .channelRack => .channelRack,
+      .mixer => .mixer,
+    };
+  }
+
   void setActivePattern(Id? id) {
     project.sequence.setActivePattern(id);
     _updateTransportSequenceID(id);
+  }
+
+  void openPatternInPianoRoll(Id patternID) {
+    if (!project.sequence.patterns.containsKey(patternID)) {
+      return;
+    }
+
+    setActiveEditor(editor: EditorKind.detail);
+    project.sequence.setActivePattern(patternID);
   }
 
   void _updateTransportSequenceID(Id? id) {

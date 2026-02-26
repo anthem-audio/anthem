@@ -670,7 +670,19 @@ class ArrangerIdleState
     );
   }
 
-  void handleDoubleClick(PointerEvent event) {}
+  void handleDoubleClick(PointerEvent event) {
+    final contentUnderCursor = viewModel.getContentUnderCursor(
+      event.localPosition,
+    );
+    final clipId =
+        contentUnderCursor.clip?.metadata ??
+        contentUnderCursor.resizeHandle?.metadata.id;
+    if (clipId == null) {
+      return;
+    }
+
+    controller.openClipInPianoRoll(clipId);
+  }
 
   @override
   void onActive({required EditorStateMachineEvent event}) {
