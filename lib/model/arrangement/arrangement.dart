@@ -66,11 +66,49 @@ class ArrangementModel extends _ArrangementModel
   });
 
   void _init() {
+    _rebuildPatternClipReferenceCounts();
+
+    // Keep the pattern usage cache in sync when clips are inserted, replaced,
+    // or removed from the arrangement.
+    onChange((b) => b.clips.anyValue, (e) {
+      final oldClip = e.operation.oldValue as ClipModel?;
+      final newClip = e.operation.newValue as ClipModel?;
+
+      if (oldClip != null) {
+        _decrementPatternClipReferenceCount(oldClip.patternId);
+      }
+
+      if (newClip != null) {
+        _incrementPatternClipReferenceCount(newClip.patternId);
+      }
+    });
+
+    // Keep the pattern usage cache in sync when an existing clip is retargeted
+    // to a different pattern.
+    onChange((b) => b.clips.anyValue.patternId, (e) {
+      final oldPatternId = e.operation.oldValue as Id?;
+      final newPatternId = e.operation.newValue as Id?;
+
+      // Clip add/remove is handled by the clips.anyValue observer above.
+      if (oldPatternId == null || newPatternId == null) {
+        return;
+      }
+
+      if (oldPatternId == newPatternId) {
+        return;
+      }
+
+      _decrementPatternClipReferenceCount(oldPatternId);
+      _incrementPatternClipReferenceCount(newPatternId);
+    });
+
     onModelFirstAttached(() {
       _compileInEngine();
 
       updateViewWidthAction.execute();
 
+      // Recompile affected engine clip data when clip timing or source pattern
+      // fields change.
       onChange(
         (b) => b.clips.anyValue.multiple([
           (b) => b.offset,
@@ -82,6 +120,7 @@ class ArrangementModel extends _ArrangementModel
         },
       );
 
+      // Recompile engine clip data when clips are added or removed.
       onChange((b) => b.clips.anyValue, (e) {
         _recompileOnClipAddedOrRemoved(
           e.operation.oldValue as ClipModel?,
@@ -137,9 +176,51 @@ abstract class _ArrangementModel
   @hideFromSerialization
   LoopPointsModel? loopPoints;
 
+  /// Non-serialized cache of clip reference counts per pattern for this
+  /// arrangement.
+  ///
+  /// The key is a pattern ID, and the value is the number of clips in this
+  /// arrangement that reference that pattern ID.
+  @hide
+  final Map<Id, int> patternClipReferenceCounts = {};
+
   _ArrangementModel({required this.name, required this.id}) : super();
 
   _ArrangementModel.create({required this.name, required this.id}) : super();
+
+  @hide
+  int getPatternClipReferenceCount(Id patternId) {
+    return patternClipReferenceCounts[patternId] ?? 0;
+  }
+
+  @hide
+  void _rebuildPatternClipReferenceCounts() {
+    patternClipReferenceCounts.clear();
+    for (final clip in clips.values) {
+      _incrementPatternClipReferenceCount(clip.patternId);
+    }
+  }
+
+  @hide
+  void _incrementPatternClipReferenceCount(Id patternId) {
+    patternClipReferenceCounts[patternId] =
+        (patternClipReferenceCounts[patternId] ?? 0) + 1;
+  }
+
+  @hide
+  void _decrementPatternClipReferenceCount(Id patternId) {
+    final currentCount = patternClipReferenceCounts[patternId];
+    if (currentCount == null) {
+      return;
+    }
+
+    if (currentCount <= 1) {
+      patternClipReferenceCounts.remove(patternId);
+      return;
+    }
+
+    patternClipReferenceCounts[patternId] = currentCount - 1;
+  }
 
   /// Gets the time position of the end of the last clip in this arrangement,
   /// rounded upward to the nearest `barMultiple` bars.

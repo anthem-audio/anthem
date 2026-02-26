@@ -494,7 +494,7 @@ void main() {
       expect(fixture.viewModel.selectedClips, {'clip-under-cursor'});
 
       final openedItems = openedMenu!.children.whereType<AnthemMenuItem>();
-      expect(openedItems.first.text, 'Clip menu (placeholder)');
+      expect(openedItems.first.text, 'Delete');
     });
 
     test('right-click over selected clip preserves existing selection', () {
@@ -573,6 +573,146 @@ void main() {
       expect(openCount, 1);
       expect(fixture.viewModel.selectedClips, {'clip-under-resize-handle'});
     });
+
+    test(
+      'context menu delete removes all selected clips and their patterns',
+      () {
+        final arrangementId = fixture.project.sequence.activeArrangementID!;
+        final arrangement =
+            fixture.project.sequence.arrangements[arrangementId]!;
+
+        final firstPattern = PatternModel.create(name: 'First');
+        final secondPattern = PatternModel.create(name: 'Second');
+        fixture.project.sequence.patterns[firstPattern.id] = firstPattern;
+        fixture.project.sequence.patterns[secondPattern.id] = secondPattern;
+
+        final firstClip = ClipModel.create(
+          patternId: firstPattern.id,
+          trackId: _TrackIds.a,
+          offset: 100,
+          timeView: TimeViewModel(start: 0, end: 96),
+        );
+        final secondClip = ClipModel.create(
+          patternId: secondPattern.id,
+          trackId: _TrackIds.b,
+          offset: 220,
+          timeView: TimeViewModel(start: 0, end: 96),
+        );
+        arrangement.clips[firstClip.id] = firstClip;
+        arrangement.clips[secondClip.id] = secondClip;
+
+        fixture.viewModel.visibleClips.add(
+          rect: const Rect.fromLTWH(240, 10, 80, 30),
+          metadata: firstClip.id,
+        );
+        fixture.viewModel.selectedClips.addAll({firstClip.id, secondClip.id});
+
+        MenuDef? openedMenu;
+        ArrangerIdleState.openContextMenuFn = (_, menu) {
+          openedMenu = menu;
+          return 'menu-id';
+        };
+
+        fixture.pointerDown(
+          const PointerDownEvent(
+            pointer: 1,
+            buttons: kSecondaryMouseButton,
+            position: Offset(260, 20),
+          ),
+        );
+
+        final deleteItem = openedMenu!.children
+            .whereType<AnthemMenuItem>()
+            .firstWhere((item) => item.text == 'Delete');
+        expect(deleteItem.onSelected, isNotNull);
+        deleteItem.onSelected!.call();
+
+        expect(arrangement.clips.containsKey(firstClip.id), isFalse);
+        expect(arrangement.clips.containsKey(secondClip.id), isFalse);
+        expect(
+          fixture.project.sequence.patterns.containsKey(firstPattern.id),
+          isFalse,
+        );
+        expect(
+          fixture.project.sequence.patterns.containsKey(secondPattern.id),
+          isFalse,
+        );
+        expect(fixture.viewModel.selectedClips, isEmpty);
+
+        fixture.project.undo();
+
+        expect(arrangement.clips.containsKey(firstClip.id), isTrue);
+        expect(arrangement.clips.containsKey(secondClip.id), isTrue);
+        expect(
+          fixture.project.sequence.patterns.containsKey(firstPattern.id),
+          isTrue,
+        );
+        expect(
+          fixture.project.sequence.patterns.containsKey(secondPattern.id),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'context menu delete keeps pattern when another clip still references it',
+      () {
+        final arrangementId = fixture.project.sequence.activeArrangementID!;
+        final arrangement =
+            fixture.project.sequence.arrangements[arrangementId]!;
+
+        final sharedPattern = PatternModel.create(name: 'Shared');
+        fixture.project.sequence.patterns[sharedPattern.id] = sharedPattern;
+
+        final firstClip = ClipModel.create(
+          patternId: sharedPattern.id,
+          trackId: _TrackIds.a,
+          offset: 100,
+          timeView: TimeViewModel(start: 0, end: 96),
+        );
+        final secondClip = ClipModel.create(
+          patternId: sharedPattern.id,
+          trackId: _TrackIds.b,
+          offset: 220,
+          timeView: TimeViewModel(start: 0, end: 96),
+        );
+        arrangement.clips[firstClip.id] = firstClip;
+        arrangement.clips[secondClip.id] = secondClip;
+
+        fixture.viewModel.visibleClips.add(
+          rect: const Rect.fromLTWH(240, 10, 80, 30),
+          metadata: firstClip.id,
+        );
+        fixture.viewModel.selectedClips.add(firstClip.id);
+
+        MenuDef? openedMenu;
+        ArrangerIdleState.openContextMenuFn = (_, menu) {
+          openedMenu = menu;
+          return 'menu-id';
+        };
+
+        fixture.pointerDown(
+          const PointerDownEvent(
+            pointer: 1,
+            buttons: kSecondaryMouseButton,
+            position: Offset(260, 20),
+          ),
+        );
+
+        final deleteItem = openedMenu!.children
+            .whereType<AnthemMenuItem>()
+            .firstWhere((item) => item.text == 'Delete');
+        expect(deleteItem.onSelected, isNotNull);
+        deleteItem.onSelected!.call();
+
+        expect(arrangement.clips.containsKey(firstClip.id), isFalse);
+        expect(arrangement.clips.containsKey(secondClip.id), isTrue);
+        expect(
+          fixture.project.sequence.patterns.containsKey(sharedPattern.id),
+          isTrue,
+        );
+      },
+    );
 
     test('second click within threshold arms double click on down', () {
       fixture.pointerDown(

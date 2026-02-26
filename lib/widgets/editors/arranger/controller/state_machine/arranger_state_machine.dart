@@ -660,15 +660,10 @@ class ArrangerIdleState
       MenuDef(
         children: [
           AnthemMenuItem(
-            text: 'Clip menu (placeholder)',
-            hint: 'No clip actions yet',
-            disabled: true,
-          ),
-          Separator(),
-          AnthemMenuItem(
-            text: 'Coming soon',
-            hint: 'Additional clip actions will be added here',
-            disabled: true,
+            text: 'Delete',
+            hint: 'Delete selected clips',
+            onSelected: controller.deleteSelectedClips,
+            shortcutLabel: 'Del',
           ),
         ],
       ),
