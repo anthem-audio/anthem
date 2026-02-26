@@ -20,11 +20,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:anthem/logic/commands/pattern_commands.dart';
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
-import 'package:anthem/logic/commands/project_commands.dart';
+import 'package:anthem/logic/commands/track_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/model/model.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -296,14 +295,15 @@ void main() {
     //   }
     // });
 
-    test('Add a generator and some notes', () async {
+    test('Add a track generator node and some notes', () async {
+      final instrumentTrackId = project.trackOrder.first;
+      final instrumentTrack = project.tracks[instrumentTrackId]!;
+      final generatorNode = ToneGeneratorProcessorModel().createNode();
+
       project.execute(
-        AddGeneratorCommand(
-          generatorId: 'generator1',
-          node: NodeModel.uninitialized(),
-          name: 'Generator name',
-          generatorType: GeneratorType.instrument,
-          color: const Color(0xFF000000),
+        TempDevAddGeneratorToTrackCommand(
+          track: instrumentTrack,
+          generatorNode: generatorNode,
         ),
       );
 
@@ -324,17 +324,19 @@ void main() {
           jsonDecode(await project.engine.modelSyncApi.debugGetEngineJson())
               as Map<String, dynamic>;
 
-      final generatorMap = state['generators'] as Map<String, dynamic>;
+      final trackMap = state['tracks'] as Map<String, dynamic>;
+      final syncedInstrumentTrack =
+          trackMap[instrumentTrackId] as Map<String, dynamic>;
       expect(
-        generatorMap['generator1'],
-        isNotNull,
-        reason: 'The generator should be in the state.',
+        syncedInstrumentTrack['generatorNodeId'],
+        equals(generatorNode.id),
+        reason: 'The track should reference the generator node.',
       );
 
       final pattern =
           state['sequence']!['patterns'][project.sequence.patterns.keys.first]
               as Map<String, dynamic>;
-      final notes = pattern['notes']!['generator1'] as List<dynamic>;
+      final notes = pattern['notes'] as List<dynamic>;
       expect(
         notes.length,
         equals(1),
@@ -402,7 +404,7 @@ void main() {
 
       final pattern =
           state['sequence']!['patterns'][patternId] as Map<String, dynamic>;
-      final notes = pattern['notes']!['generator1'] as List<dynamic>;
+      final notes = pattern['notes'] as List<dynamic>;
       expect(
         notes.length,
         equals(1),
