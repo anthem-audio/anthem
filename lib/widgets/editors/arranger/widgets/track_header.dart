@@ -19,6 +19,8 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/model/processing_graph/processors/balance.dart';
+import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/theme.dart';
@@ -225,13 +227,62 @@ class _TrackContent extends StatelessWidget {
                         children: [
                           _TrackControlButtons(),
                           if (height >= heightThreshold1)
-                            Slider(value: 0.75, height: 20, borderRadius: 4),
+                            Slider(
+                              value:
+                                  track.gainNode
+                                      ?.getPortById(
+                                        GainProcessorModel.gainPortId,
+                                      )
+                                      .parameterValue ??
+                                  0.75,
+                              min: 0,
+                              max: 1,
+                              height: 20,
+                              borderRadius: 4,
+                              stickyPoints: [0.75],
+                              hint: (v) =>
+                                  'Track gain: ${gainParameterValueToString(v)}',
+                              onValueChanged: (value) {
+                                final node = track.gainNode;
+                                if (node == null) return;
+
+                                node
+                                        .getPortById(
+                                          GainProcessorModel.gainPortId,
+                                        )
+                                        .parameterValue =
+                                    value;
+                              },
+                            ),
                           if (height >= heightThreshold2)
                             Slider(
-                              value: 0,
+                              value:
+                                  track.balanceNode
+                                      ?.getPortById(
+                                        BalanceProcessorModel.balancePortId,
+                                      )
+                                      .parameterValue ??
+                                  0,
+                              min: -1,
+                              max: 1,
                               height: 20,
                               borderRadius: 4,
                               type: .pan,
+                              stickyPoints: [0],
+                              hint: (v) => v == 0
+                                  ? 'Track balance: Center'
+                                  : 'Track balance: ${(v * 100).abs().toStringAsFixed(0)}%${v < 0 ? ' L' : ' R'}',
+                              onValueChanged: (value) {
+                                final node = track.balanceNode;
+                                if (node == null) return;
+
+                                node
+                                        .getPortById(
+                                          BalanceProcessorModel.balancePortId,
+                                        )
+                                        .parameterValue =
+                                    value;
+                              },
                             ),
                         ],
                       ),
