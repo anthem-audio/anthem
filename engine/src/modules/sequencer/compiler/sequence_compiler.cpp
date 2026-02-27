@@ -30,44 +30,23 @@ void AnthemSequenceCompiler::compilePattern(std::string patternId) {
   if (patternIter == anthem.project->sequence()->patterns()->end()) {
     return;
   }
-  auto pattern = patternIter->second;
-  
-  // This will leak memory if it's not assigned somewhere or cleaned up here
+
+  // TODO: Patterns no longer route directly to tracks. Until we have a
+  // track-less pattern event list in the runtime store, keep compiled pattern
+  // entries empty instead of writing incorrect per-track data.
   SequenceEventListCollection newSequence;
-  
-  // For every channel, get the note events for that channel
-  for (std::string& channelId : *anthem.project->generatorOrder()) {
-    // This will leak memory if it's not assigned somewhere or cleaned up here
-    SequenceEventList newChannelEvents;
-
-    getChannelNoteEventsForPattern(channelId, patternId, std::nullopt, std::nullopt, *newChannelEvents.events);
-    sortEventList(*newChannelEvents.events);
-
-    newSequence.channels->insert_or_assign(channelId, std::move(newChannelEvents));
-  }
-
-  // Add the new sequence to the store
   auto& store = *anthem.sequenceStore;
   store.addOrUpdateSequence(patternId, newSequence);
 }
 
 void AnthemSequenceCompiler::compilePattern(
   std::string patternId,
-  std::vector<std::string>& channelIdsToRebuild,
+  std::vector<std::string>& trackIdsToRebuild,
   std::vector<std::tuple<double, double>>& invalidationRanges
 ) {
-  auto& store = *Anthem::getInstance().sequenceStore;
-
-  for (auto& channelId : channelIdsToRebuild) {
-    // This will leak memory if it's not assigned somewhere or cleaned up here
-    SequenceEventList newChannelEvents;
-    newChannelEvents.invalidationRanges = new std::vector<std::tuple<double, double>>(invalidationRanges);
-
-    getChannelNoteEventsForPattern(channelId, patternId, std::nullopt, std::nullopt, *newChannelEvents.events);
-    sortEventList(*newChannelEvents.events);
-
-    store.addOrUpdateChannelInSequence(patternId, channelId, newChannelEvents);
-  }
+  (void)trackIdsToRebuild;
+  (void)invalidationRanges;
+  compilePattern(patternId);
 }
 
 void AnthemSequenceCompiler::compileArrangement(std::string arrangementId) {
@@ -82,15 +61,15 @@ void AnthemSequenceCompiler::compileArrangement(std::string arrangementId) {
   // This will leak memory if it's not assigned somewhere or cleaned up here
   SequenceEventListCollection newSequence;
 
-  // For every channel, get the note events for that channel
-  for (std::string& channelId : *anthem.project->generatorOrder()) {
+  // For every track, get the note events for that track.
+  for (std::string& trackId : *anthem.project->trackOrder()) {
     // This will leak memory if it's not assigned somewhere or cleaned up here
     SequenceEventList newChannelEvents;
 
-    getChannelNoteEventsForArrangement(channelId, arrangementId, *newChannelEvents.events);
+    getTrackNoteEventsForArrangement(trackId, arrangementId, *newChannelEvents.events);
     sortEventList(*newChannelEvents.events);
 
-    newSequence.channels->insert_or_assign(channelId, std::move(newChannelEvents));
+    newSequence.channels->insert_or_assign(trackId, std::move(newChannelEvents));
   }
 
   // Add the new sequence to the store
@@ -100,31 +79,31 @@ void AnthemSequenceCompiler::compileArrangement(std::string arrangementId) {
 
 void AnthemSequenceCompiler::compileArrangement(
   std::string arrangementId,
-  std::vector<std::string>& channelIdsToRebuild,
+  std::vector<std::string>& trackIdsToRebuild,
   std::vector<std::tuple<double, double>>& invalidationRanges
 ) {
   auto& store = *Anthem::getInstance().sequenceStore;
 
-  for (auto& channelId : channelIdsToRebuild) {
+  for (auto& trackId : trackIdsToRebuild) {
     // This will leak memory if it's not assigned somewhere or cleaned up here
     SequenceEventList newChannelEvents;
     newChannelEvents.invalidationRanges = new std::vector<std::tuple<double, double>>(invalidationRanges);
 
-    getChannelNoteEventsForArrangement(channelId, arrangementId, *newChannelEvents.events);
+    getTrackNoteEventsForArrangement(trackId, arrangementId, *newChannelEvents.events);
     sortEventList(*newChannelEvents.events);
 
-    store.addOrUpdateChannelInSequence(arrangementId, channelId, newChannelEvents);
+    store.addOrUpdateChannelInSequence(arrangementId, trackId, newChannelEvents);
   }
 }
 
-void AnthemSequenceCompiler::cleanUpChannel(std::string channelId) {
+void AnthemSequenceCompiler::cleanUpTrack(std::string trackId) {
   auto& store = *Anthem::getInstance().sequenceStore;
 
-  store.removeChannelFromAllSequences(channelId);
+  store.removeChannelFromAllSequences(trackId);
 }
 
-void AnthemSequenceCompiler::getChannelNoteEventsForArrangement(
-  std::string channelId,
+void AnthemSequenceCompiler::getTrackNoteEventsForArrangement(
+  std::string trackId,
   std::string arrangementId,
   std::vector<AnthemSequenceEvent>& events
 ) {
@@ -141,9 +120,11 @@ void AnthemSequenceCompiler::getChannelNoteEventsForArrangement(
 
   for (auto& clipPair : *clips) {
     auto clip = clipPair.second;
+    if (clip->trackId() != trackId) {
+      continue;
+    }
 
-    getChannelNoteEventsForPattern(
-      channelId,
+    getPatternNoteEvents(
       clip->patternId(),
       clip->timeView().has_value()
           ? std::make_optional(
@@ -159,8 +140,7 @@ void AnthemSequenceCompiler::getChannelNoteEventsForArrangement(
   }
 }
 
-void AnthemSequenceCompiler::getChannelNoteEventsForPattern(
-  std::string channelId,
+void AnthemSequenceCompiler::getPatternNoteEvents(
   std::string patternId,
   std::optional<std::tuple<double, double>> range,
   std::optional<double> offset,
@@ -175,14 +155,7 @@ void AnthemSequenceCompiler::getChannelNoteEventsForPattern(
 
   auto pattern = patternIter->second;
 
-  auto notesIter = pattern->notes()->find(channelId);
-  if (notesIter == pattern->notes()->end()) {
-    return;
-  }
-
-  auto notes = notesIter->second;
-
-  for (auto& note : *notes) {
+  for (auto& note : *pattern->notes()) {
     auto rangeOptional = clampStartAndEndToRange(
       static_cast<double>(note->offset()),
       static_cast<double>(note->offset() + note->length()),

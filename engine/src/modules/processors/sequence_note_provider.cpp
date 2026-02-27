@@ -34,13 +34,13 @@ SequenceNoteProviderProcessor::~SequenceNoteProviderProcessor() {
 }
 
 void SequenceNoteProviderProcessor::addEventsForJump(std::unique_ptr<AnthemEventBuffer>& targetBuffer, PlayheadJumpEvent& event) {
-  auto& channelId = this->channelId();
+  auto& trackId = this->trackId();
 
   auto& eventsForJump = event.eventsToPlayAtJump;
-  if (eventsForJump.find(channelId) != eventsForJump.end()) {
-    auto& events = eventsForJump.at(channelId);
-    for (auto& event : events) {
-      targetBuffer->addEvent(event);
+  if (eventsForJump.find(trackId) != eventsForJump.end()) {
+    auto& events = eventsForJump.at(trackId);
+    for (auto& jumpEvent : events) {
+      targetBuffer->addEvent(jumpEvent);
     }
   }
 }
@@ -54,7 +54,7 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
     SequenceNoteProviderProcessorModelBase::eventOutputPortId
   );
 
-  auto& channelId = this->channelId();
+  auto& trackId = this->trackId();
 
   auto& transport = Anthem::getInstance().transport;
   auto* config = transport->rt_config;
@@ -91,11 +91,11 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
   }
 
   auto& eventsForSequence = sequenceMap.at(*activeSequenceId);
-  if (eventsForSequence.channels->find(channelId) == eventsForSequence.channels->end()) {
+  if (eventsForSequence.channels->find(trackId) == eventsForSequence.channels->end()) {
     return;
   }
 
-  auto& channelEvents = eventsForSequence.channels->at(channelId);
+  auto& channelEvents = eventsForSequence.channels->at(trackId);
 
   double playheadPos = transport->rt_playhead;
 

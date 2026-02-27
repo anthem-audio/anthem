@@ -91,7 +91,11 @@ private:
   void timerCallback() override;
 
   void addStartEventsForPattern(
-    std::string patternId, double offset, std::unordered_map<std::string, std::vector<AnthemLiveEvent>>& collector);
+    std::string patternId,
+    std::string trackId,
+    double offset,
+    std::unordered_map<std::string, std::vector<AnthemLiveEvent>>& collector
+  );
 
   PlayheadJumpEvent createPlayheadJumpEvent(double playheadPosition);
 

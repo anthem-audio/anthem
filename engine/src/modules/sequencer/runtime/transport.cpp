@@ -207,9 +207,11 @@ PlayheadJumpEvent Transport::createPlayheadJumpEvent(double playheadPosition) {
   if (config.activeSequenceId.has_value()) {
     auto& patterns = *Anthem::getInstance().project->sequence()->patterns();
     if (patterns.find(config.activeSequenceId.value()) != patterns.end()) {
-      auto& pattern = *patterns.at(config.activeSequenceId.value());
+      // TODO: Patterns are now track-less. Start events for direct pattern
+      // playback should be produced from a track-less compiled event list and
+      // then routed to the currently active track. This scaffolding does not
+      // exist yet, so we intentionally do nothing here for now.
       event.eventsToPlayAtJump.clear();
-      addStartEventsForPattern(config.activeSequenceId.value(), playheadPosition, event.eventsToPlayAtJump);
     }
 
     auto& arrangements = *Anthem::getInstance().project->sequence()->arrangements();
@@ -232,11 +234,19 @@ PlayheadJumpEvent Transport::createPlayheadJumpEvent(double playheadPosition) {
           }
 
           addStartEventsForPattern(
-            clip.patternId(), playheadPosition - clipOffset + start, event.eventsToPlayAtJump);
+            clip.patternId(),
+            clip.trackId(),
+            playheadPosition - clipOffset + start,
+            event.eventsToPlayAtJump
+          );
         }
         else {
           addStartEventsForPattern(
-            clip.patternId(), playheadPosition - clipOffset, event.eventsToPlayAtJump);
+            clip.patternId(),
+            clip.trackId(),
+            playheadPosition - clipOffset,
+            event.eventsToPlayAtJump
+          );
         }
       }
     }
@@ -351,37 +361,41 @@ void Transport::sendConfigToAudioThread() {
 }
 
 void Transport::addStartEventsForPattern(
-  std::string patternId, double offset, std::unordered_map<std::string, std::vector<AnthemLiveEvent>>& collector) {
+  std::string patternId,
+  std::string trackId,
+  double offset,
+  std::unordered_map<std::string, std::vector<AnthemLiveEvent>>& collector
+) {
   auto& pattern = *Anthem::getInstance().project->sequence()->patterns()->at(patternId);
 
-  for (auto& pair : *pattern.notes()) {
-    auto& channelId = pair.first;
-    auto& notes = pair.second;
+  auto addStartEventForTrack =
+      [&](const std::string& targetTrackId, const std::shared_ptr<NoteModel>& note) {
+        auto noteOffset = note->offset();
+        auto noteLength = note->length();
+        // noteOffset < offset, because if noteOffset == offset then the note
+        // will be picked up by the sequencer
+        if (noteOffset < offset && noteOffset + noteLength > offset) {
+          if (collector.find(targetTrackId) == collector.end()) {
+            collector[targetTrackId] = std::vector<AnthemLiveEvent>();
+          }
 
-    for (auto& note : *notes) {
-      auto noteOffset = note->offset();
-      auto noteLength = note->length();
-      // noteOffset < offset, because if noteOffset == offset then the note
-      // will be picked up by the sequencer
-      if (noteOffset < offset && noteOffset + noteLength > offset) {
-        if (collector.find(channelId) == collector.end()) {
-          collector[channelId] = std::vector<AnthemLiveEvent>();
-        }
-
-        auto& events = collector[channelId];
-        events.push_back(AnthemLiveEvent{
-          .time = 0,
-          .event = AnthemEvent(
-            AnthemNoteOnEvent(
-              static_cast<int16_t>(note->key()),
-              static_cast<int16_t>(0),
-              static_cast<float>(note->velocity()),
-              0.f,
-              static_cast<int32_t>(-1)
+          auto& events = collector[targetTrackId];
+          events.push_back(AnthemLiveEvent{
+            .time = 0,
+            .event = AnthemEvent(
+              AnthemNoteOnEvent(
+                static_cast<int16_t>(note->key()),
+                static_cast<int16_t>(0),
+                static_cast<float>(note->velocity()),
+                0.f,
+                static_cast<int32_t>(-1)
+              )
             )
-          )
-        });
-      }
-    }
+          });
+        }
+      };
+
+  for (auto& note : *pattern.notes()) {
+    addStartEventForTrack(trackId, note);
   }
 }

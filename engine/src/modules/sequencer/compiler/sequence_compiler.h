@@ -44,38 +44,38 @@ public:
   // store.
   static void compilePattern(std::string patternId);
 
-  // Compiles the given channels for the given pattern, and replaces them in the
+  // Compiles the given tracks for the given pattern, and replaces them in the
   // sequence store.
   static void compilePattern(
     std::string patternId,
-    std::vector<std::string>& channelIdsToRebuild,
+    std::vector<std::string>& trackIdsToRebuild,
     std::vector<std::tuple<double, double>>& invalidationRanges);
 
   // Compiles the given arrangement, and adds or replaces its entry in the
   // sequence store.
   static void compileArrangement(std::string arrangementId);
 
-  // Compiles the given channels for the given arrangement, and replaces them in
+  // Compiles the given tracks for the given arrangement, and replaces them in
   // the sequence store.
   static void compileArrangement(
     std::string arrangementId,
-    std::vector<std::string>& channelIdsToRebuild,
+    std::vector<std::string>& trackIdsToRebuild,
     std::vector<std::tuple<double, double>>& invalidationRanges);
 
-  // Cleans up any sequences related to the given channel ID.
-  static void cleanUpChannel(std::string channelId);
+  // Cleans up any sequences related to the given track ID.
+  static void cleanUpTrack(std::string trackId);
 
 private:
-  // Gets the note events on a given channel for the given arrangement.
+  // Gets the note events on a given track for the given arrangement.
   //
   // The events will be added to the given `events` vector.
-  static void getChannelNoteEventsForArrangement(
-    std::string channelId,
+  static void getTrackNoteEventsForArrangement(
+    std::string trackId,
     std::string arrangementId,
     std::vector<AnthemSequenceEvent>& events
   );
 
-  // Gets the note events on a given channel for the given pattern.
+  // Gets the note events for the given pattern.
   //
   // The events will be added to the given `events` vector.
   //
@@ -88,10 +88,9 @@ private:
   // offset will be nullopt.
   //
   // The events will not be sorted. In the case of compiling an arrangement, a
-  // given channel may have notes from many clips, so we call this method
+  // given track may have notes from many clips, so we call this method
   // multiple times and sort at the end.
-  static void getChannelNoteEventsForPattern(
-    std::string channelId,
+  static void getPatternNoteEvents(
     std::string patternId,
     std::optional<std::tuple<double, double>> range,
     std::optional<double> offset,
