@@ -83,10 +83,6 @@ if(MSVC)
   add_compile_options("/external:anglebrackets")
   add_compile_options("/external:W0")
   add_compile_options("/Zc:__cplusplus")
-
-  # These are currently noisy in generated/model-heavy engine code.
-  add_definitions("/wd4100") # unreferenced formal parameter
-  add_definitions("/wd4189") # initialized but unused local variable
 endif()
 
 # JUCE can't find GTK without this

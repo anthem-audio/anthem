@@ -43,7 +43,8 @@ void VST3Processor::prepareToProcess() {
 }
 
 void VST3Processor::process(AnthemProcessContext& context, int numSamples) {
-  
+  (void) numSamples;
+
   auto& audioOutBuffer = context.getOutputAudioBuffer(VST3ProcessorModelBase::audioOutputPortId);
   auto& eventInBuffer = context.getInputEventBuffer(VST3ProcessorModelBase::eventInputPortId);
 
@@ -194,7 +195,7 @@ void VST3Processor::hidePluginGUI() {
   pluginEditor.reset();
 }
 
-void VST3Processor::audioProcessorParameterChanged(juce::AudioProcessor* processor, int parameterIndex, float newValue) {
+void VST3Processor::audioProcessorParameterChanged(juce::AudioProcessor* /*processor*/, int parameterIndex, float newValue) {
   juce::MessageManager::callAsync([this, parameterIndex, newValue]() {
     Response event = PluginParameterChangedEvent {
       .nodeId = this->nodeId(),
@@ -210,7 +211,7 @@ void VST3Processor::audioProcessorParameterChanged(juce::AudioProcessor* process
   });
 }
 
-void VST3Processor::audioProcessorChanged(juce::AudioProcessor* processor, const juce::AudioProcessor::ChangeDetails& details) {
+void VST3Processor::audioProcessorChanged(juce::AudioProcessor* /*processor*/, const juce::AudioProcessor::ChangeDetails& details) {
   juce::MessageManager::callAsync([this, details]() {
     Response event = PluginChangedEvent {
       .nodeId = this->nodeId(),

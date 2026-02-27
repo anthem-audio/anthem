@@ -72,7 +72,7 @@ public:
     // This might not work
   }
 
-  void initialise(const juce::String &commandLineParameters) override
+  void initialise(const juce::String &/*commandLineParameters*/) override
   {
     // Remove this line to disable logging
     juce::Logger::setCurrentLogger(new ConsoleLogger());

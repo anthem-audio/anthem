@@ -47,7 +47,7 @@ void LiveEventProviderProcessor::addLiveEvent(AnthemLiveEvent event) {
 
 void LiveEventProviderProcessor::prepareToProcess() {}
 
-void LiveEventProviderProcessor::process(AnthemProcessContext& context, int numSamples) {
+void LiveEventProviderProcessor::process(AnthemProcessContext& context, int /*numSamples*/) {
   auto& outputEventBuffer = context.getOutputEventBuffer(
     LiveEventProviderProcessorModelBase::eventOutputPortId
   );
