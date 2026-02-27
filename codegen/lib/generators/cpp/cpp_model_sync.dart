@@ -76,7 +76,7 @@ String getModelSyncFn(ModelClassInfo context) {
   writer.writeLine('return;');
   writer.decrementWhitespace();
   writer.writeLine('}');
-  writer.writeLine('auto self = this->self.lock();');
+  writer.writeLine('auto selfPtr = this->self.lock();');
 
   var noCasesGenerated = true;
 
@@ -294,7 +294,7 @@ void _writeUpdate({
   required String fieldAccessExpression,
   required ModelClassInfo context,
   int fieldAccessIndexMod = 0,
-  String parentAccessor = 'self',
+  String parentAccessor = 'selfPtr',
   bool isCollectionSetter = false,
 }) {
   switch (type) {
@@ -915,10 +915,10 @@ String getInitializeFn(ModelClassInfo context) {
       : '';
 
   writer.writeLine(
-    'void $className$baseSuffix::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) {',
+    'void $className$baseSuffix::initialize(std::shared_ptr<AnthemModelBase> selfModel, std::shared_ptr<AnthemModelBase> parentModel) {',
   );
   writer.incrementWhitespace();
-  writer.writeLine('AnthemModelBase::initialize(self, parent);');
+  writer.writeLine('AnthemModelBase::initialize(selfModel, parentModel);');
   writer.writeLine();
 
   _writeParentSettersForInitializeFn(writer: writer, context: context);

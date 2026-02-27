@@ -87,7 +87,6 @@ if(MSVC)
   # These are currently noisy in generated/model-heavy engine code.
   add_definitions("/wd4100") # unreferenced formal parameter
   add_definitions("/wd4189") # initialized but unused local variable
-  add_definitions("/wd4458") # declaration hides class member
 endif()
 
 # JUCE can't find GTK without this

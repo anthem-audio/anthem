@@ -86,8 +86,11 @@ void VST3Processor::process(AnthemProcessContext& context, int numSamples) {
   rt_eventBufferForPlugin.clear();
 }
 
-void VST3Processor::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) {
-  VST3ProcessorModelBase::initialize(self, parent);
+void VST3Processor::initialize(
+  std::shared_ptr<AnthemModelBase> selfModel,
+  std::shared_ptr<AnthemModelBase> parentModel
+) {
+  VST3ProcessorModelBase::initialize(selfModel, parentModel);
 }
 
 void VST3Processor::tryInitializePlugin() {

@@ -21,7 +21,10 @@
 
 #include "modules/core/anthem.h"
 
-void Sequencer::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) {
+void Sequencer::initialize(
+  std::shared_ptr<AnthemModelBase> selfModel,
+  std::shared_ptr<AnthemModelBase> parentModel
+) {
   auto& transport = *Anthem::getInstance().transport;
 
   // Write initial values to transport
@@ -66,5 +69,5 @@ void Sequencer::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_pt
     Anthem::getInstance().transport->setPlayheadStart(value);
   });
 
-  SequencerModelBase::initialize(self, parent);
+  SequencerModelBase::initialize(selfModel, parentModel);
 }

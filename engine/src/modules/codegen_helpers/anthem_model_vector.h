@@ -252,8 +252,11 @@ public:
   bool operator!=(const AnthemModelVector& other) const { return data != other.data; }
 
   // Additional methods
-  void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override {
-    AnthemModelBase::initialize(self, parent);
+  void initialize(
+    std::shared_ptr<AnthemModelBase> selfModel,
+    std::shared_ptr<AnthemModelBase> parentModel
+  ) override {
+    AnthemModelBase::initialize(selfModel, parentModel);
 
     // Initialize all elements in the vector, if applicable
     if constexpr (isAnthemModelBase) {

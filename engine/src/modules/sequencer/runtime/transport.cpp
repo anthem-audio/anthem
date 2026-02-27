@@ -371,8 +371,8 @@ void Transport::timerCallback() {
   }
 
   // Same, but for configs
-  while (auto config = configDeleteBuffer.read()) {
-    delete config.value();
+  while (auto pendingConfig = configDeleteBuffer.read()) {
+    delete pendingConfig.value();
   }
 }
 

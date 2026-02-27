@@ -88,8 +88,11 @@ void ToneGeneratorProcessor::process(AnthemProcessContext& context, int numSampl
   }
 }
 
-void ToneGeneratorProcessor::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) {
-  ToneGeneratorProcessorModelBase::initialize(self, parent);
+void ToneGeneratorProcessor::initialize(
+  std::shared_ptr<AnthemModelBase> selfModel,
+  std::shared_ptr<AnthemModelBase> parentModel
+) {
+  ToneGeneratorProcessorModelBase::initialize(selfModel, parentModel);
 
   // Empty for now...
 }

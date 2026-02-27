@@ -23,8 +23,11 @@
 
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 
-void NodePort::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) {
-  NodePortModelBase::initialize(self, parent);
+void NodePort::initialize(
+  std::shared_ptr<AnthemModelBase> selfModel,
+  std::shared_ptr<AnthemModelBase> parentModel
+) {
+  NodePortModelBase::initialize(selfModel, parentModel);
 
   if (this->config()->parameterConfig().has_value()) {
     this->addParameterValueObserver([this](std::optional<double> value) {

@@ -61,8 +61,11 @@ public:
   Node(Node&&) noexcept = default;
   Node& operator=(Node&&) noexcept = default;
 
-  void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override {
-    NodeModelBase::initialize(self, parent);
+  void initialize(
+    std::shared_ptr<AnthemModelBase> selfModel,
+    std::shared_ptr<AnthemModelBase> parentModel
+  ) override {
+    NodeModelBase::initialize(selfModel, parentModel);
   }
 
   std::optional<std::shared_ptr<NodePort>> getPortById(int64_t id);

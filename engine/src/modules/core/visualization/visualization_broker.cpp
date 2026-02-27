@@ -29,15 +29,15 @@ VisualizationBroker::VisualizationBroker() {
 }
 
 void VisualizationBroker::setSubscriptions(
-  const std::vector<std::string>& subscriptions
+  const std::vector<std::string>& newSubscriptions
 ) {
-  this->subscriptions = subscriptions;
+  this->subscriptions = newSubscriptions;
 }
 
 void VisualizationBroker::setUpdateInterval(
-  double updateIntervalMs
+  double newUpdateIntervalMs
 ) {
-  this->updateIntervalMs = updateIntervalMs;
+  this->updateIntervalMs = newUpdateIntervalMs;
 
   this->stopTimer();
   this->startTimerHz(static_cast<int>(1000.0 / this->updateIntervalMs));

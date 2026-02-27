@@ -81,9 +81,12 @@ public:
   // This model.
   std::weak_ptr<AnthemModelBase> self;
 
-  virtual void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) {
-    this->self = self;
-    this->parent = parent;
+  virtual void initialize(
+    std::shared_ptr<AnthemModelBase> selfModel,
+    std::shared_ptr<AnthemModelBase> parentModel
+  ) {
+    this->self = selfModel;
+    this->parent = parentModel;
   }
 
   // Adds an observer to this model.
